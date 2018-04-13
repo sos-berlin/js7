@@ -13,7 +13,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
-import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -53,7 +52,7 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
   "problemToEntityMarshaller" in {
     val entity = Marshal(Problem("PROBLEM")).to[MessageEntity] await 99.s
     assert(entity.contentType == `text/plain(UTF-8)`)
-    assert(entity.utf8StringFuture.await(99.s) == "PROBLEM\n")
+    assert(entity.toStrict(99.seconds).await(99.s).data.utf8String == "PROBLEM\n")
   }
 
   "checkedToResponseMarshaller" - {

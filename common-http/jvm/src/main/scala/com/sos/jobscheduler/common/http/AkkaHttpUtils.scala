@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.Materializer
 import akka.util.ByteString
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -28,22 +29,22 @@ object AkkaHttpUtils {
       case o ⇒ throw new RuntimeException(s"Unsupported Encoding: $o")
     }
 
-  implicit final class RichResponseEntity(private val underlying: ResponseEntity) extends AnyVal {
+  private implicit final class RichResponseEntity(private val underlying: ResponseEntity) extends AnyVal {
     // TODO Fail if Content-Type is not a (UTF-8 or other) String.
     // TODO Parameter maxLength to truncateWithEllipsis.
     /**
       * Returns the HttpResponse content interpreted as UTF-8, ignoring any Content-Type.
       * May return a very big String.
       */
-    def utf8StringFuture(implicit mat: Materializer, ec: ExecutionContext): Future[String] =
-      byteStringFuture map (_.utf8String)  // Possible OutOfMemoryError
+    def utf8StringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[String] =
+      byteStringFuture(timeout) map (_.utf8String)  // Possible OutOfMemoryError
 
     /**
       * Returns the HttpResponse content as a `Future[ByteString]`.
       * May return a very big ByteString.
       */
-    def byteStringFuture(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
-      underlying.dataBytes.runFold(ByteString.empty)(_ ++ _)  // Possible OutOfMemoryError
+    def byteStringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
+      underlying.toStrict(timeout).flatMap(_.dataBytes.runFold(ByteString.empty)(_ ++ _))  // Possible OutOfMemoryError
   }
 
   implicit final class RichHttpResponse(private val underlying: HttpResponse) extends AnyVal {
@@ -52,13 +53,13 @@ object AkkaHttpUtils {
       * May return a very big String.
       */
     def utf8StringFuture(implicit mat: Materializer, ec: ExecutionContext): Future[String] =
-      underlying.entity.utf8StringFuture
+      underlying.entity.utf8StringFuture(99.seconds)
 
     /**
       * Returns the HttpResponse content as a `Future[ByteString]`.
       * May return a very big ByteString.
       */
-    def byteStringFuture(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
-      underlying.entity.byteStringFuture
+    def byteStringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
+      underlying.entity.byteStringFuture(99.seconds)
   }
 }

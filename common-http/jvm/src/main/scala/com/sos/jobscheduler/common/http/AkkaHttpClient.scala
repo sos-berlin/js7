@@ -14,10 +14,10 @@ import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichHttpResponse, decodeResponse, encodeGzip}
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.{decodeResponse, encodeGzip}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import io.circe.{Decoder, Encoder}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -72,12 +72,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient
     if (httpResponse.status.isSuccess)
       Unmarshal(httpResponse).to[A]
     else
-      for (message ← httpResponse.utf8StringFuture) yield
+      for (message ← httpResponse.entity.toStrict(FailureTimeout) map (_.data.utf8String)) yield
         throw new HttpException(httpResponse.status, uri, message.truncateWithEllipsis(ErrorMessageLengthMaximum))
 }
 
 object AkkaHttpClient {
   private val ErrorMessageLengthMaximum = 10000
+  private val FailureTimeout = 30.seconds
 
   //final class Standard(protected val actorSystem: ActorSystem)(implicit protected val executionContext: ExecutionContext)
   //extends AkkaHttpClient

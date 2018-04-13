@@ -24,7 +24,7 @@ import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichHttpResponse, decodeResponse}
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.decodeResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
@@ -35,6 +35,7 @@ import com.sos.jobscheduler.data.session.SessionToken
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -146,7 +147,7 @@ trait AgentClient extends HasCloser {
     if (httpResponse.status.isSuccess)
       Unmarshal(httpResponse).to[A]
     else
-      for (message ← httpResponse.utf8StringFuture) yield
+      for (message ← httpResponse.entity.toStrict(timeout) map (_.data.utf8String)) yield
         throw new HttpException(httpResponse.status, message truncateWithEllipsis ErrorMessageLengthMaximum)
 
   private def sessionCredentialsHeaders(sessionAction: SessionAction): List[HttpHeader] =
@@ -212,6 +213,7 @@ trait AgentClient extends HasCloser {
 
 object AgentClient {
   val ErrorMessageLengthMaximum = 10000
+  private val timeout = 60.seconds
 
   def apply(
     agentUri: Uri,
