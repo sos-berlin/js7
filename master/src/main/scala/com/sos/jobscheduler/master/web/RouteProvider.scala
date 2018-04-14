@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.master.OrderClient
+import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.fileBased.FileBasedApi
@@ -54,13 +54,13 @@ object RouteProvider {
     def toRoute(
       gateKeeper: GateKeeper,
       getFileBasedApi: () ⇒ FileBasedApi,
-      getOrderClient: () ⇒ OrderClient,
+      getOrderApi: () ⇒ OrderApi.WithCommands,
       execCmd: () ⇒ MasterCommand ⇒ Future[MasterCommand.Response])
     : Route =
       new RouteProvider(gateKeeper, injector) {
         protected val fileBasedApi = getFileBasedApi()
-        protected val orderClient = getOrderClient()
-        protected def orderCountFuture = orderClient.orderCount
+        protected val orderApi = getOrderApi()
+        protected def orderCountFuture = orderApi.orderCount.runAsync(scheduler)
         protected def executeCommand(command: MasterCommand) = execCmd()(command)
       }.route(actorSystem)
   }

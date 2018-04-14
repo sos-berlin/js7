@@ -5,10 +5,8 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
@@ -20,8 +18,8 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.IfTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
 
 final class IfTest extends FreeSpec {
@@ -40,7 +38,7 @@ final class IfTest extends FreeSpec {
         eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
         for (returnCode ← ExpectedEvents.keys) withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
-          master.addOrder(newOrder(orderId, returnCode)).await(99.s).orThrow
+          master.addOrderBlocking(newOrder(orderId, returnCode))
           if (returnCode == ReturnCode(2))
             eventCollector.await[OrderStopped](_.key == orderId)
           else

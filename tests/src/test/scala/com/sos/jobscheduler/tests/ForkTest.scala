@@ -2,12 +2,10 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -22,8 +20,8 @@ import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.ForkTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
 
 final class ForkTest extends FreeSpec {
@@ -38,7 +36,7 @@ final class ForkTest extends FreeSpec {
           directoryProvider.runMaster() { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.addOrder(TestOrder).await(99.s).orThrow
+            master.addOrderBlocking(TestOrder)
             eventCollector.await[OrderFinished](_.key == TestOrder.id)
             checkEventSeq(eventCollector.all[OrderEvent])
           }

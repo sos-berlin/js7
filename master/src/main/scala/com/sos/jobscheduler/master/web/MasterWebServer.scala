@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.master.OrderClient
+import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.fileBased.FileBasedApi
@@ -32,13 +32,13 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def uriPathPrefix = ""
   protected val bindings = masterConfiguration.webServerBindings
-  private val orderClientOnce = new SetOnce[OrderClient]("OrderClient")
+  private val orderApiOnce = new SetOnce[OrderApi.WithCommands]("OrderApi")
   private val fileBasedApiOnce = new SetOnce[FileBasedApi]("FileBasedApi")
   private val executeCommandOnce = new SetOnce[MasterCommand ⇒ Future[MasterCommand.Response]]
 
-  def setClients(fileBasedApi: FileBasedApi, orderClient: OrderClient): Unit = {
+  def setClients(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands): Unit = {
     fileBasedApiOnce := fileBasedApi
-    orderClientOnce := orderClient
+    orderApiOnce := orderApi
   }
 
   def setExecuteCommand(executeCommand: MasterCommand ⇒ Future[MasterCommand.Response]) =
@@ -48,6 +48,6 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
     injector.instance[RouteProvider.Factory].toRoute(
       new GateKeeper(gateKeeperConfiguration, csrf, timerService, isUnsecuredHttp = binding.isUnsecuredHttp),
       () ⇒ fileBasedApiOnce(),
-      () ⇒ orderClientOnce(),
+      () ⇒ orderApiOnce(),
       () ⇒ executeCommandOnce())
 }

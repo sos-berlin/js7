@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview, TypedPath}
 import monix.eval.Task
 import scala.collection.immutable.Seq
 
@@ -14,6 +14,8 @@ import scala.collection.immutable.Seq
 trait FileBasedApi
 {
   def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]]
+
+  def idTo[A <: FileBased: FileBased.Companion](id: A#Id): Task[Stamped[Checked[A]]]
 
   def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]]
 
@@ -25,10 +27,13 @@ trait FileBasedApi
 }
 
 object FileBasedApi {
-  def forTest[T <: FileBased: FileBased.Companion](pathToFileBased: Map[T#Path, T]) =
+  def forTest(pathToFileBased: Map[_ <: TypedPath, FileBased]) =
     new FileBasedApi {
       def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
         Task.now(Stamped(1, O.fileBasedsToOverview(pathTo.values.toImmutableSeq)))
+
+      def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
+        throw new NotImplementedError
 
       def fileBaseds[A <: FileBased: FileBased.Companion] =
         Task.now(Stamped(2, pathTo[A].values.toImmutableSeq))

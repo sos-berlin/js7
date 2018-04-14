@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.history
 
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -20,9 +19,9 @@ import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.DirectoryProvider.jobXml
 import com.sos.jobscheduler.tests.history.HistoryEventsTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.immutable.IndexedSeq
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.{higherKinds, implicitConversions}
 
@@ -43,7 +42,7 @@ final class HistoryEventsTest extends FreeSpec {
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { api ⇒
               val TearableEventSeq.Torn(oldestEventId) = api.events[Event](after = EventId.BeforeFirst, 1.second) await 99.s
 
-              master.addOrder(TestOrder).await(99.s).orThrow
+              master.addOrderBlocking(TestOrder)
               eventCollector.await[OrderFinished](_.key == TestOrder.id)
 
               val EventSeq.NonEmpty(stampeds) = api.events[Event](after = oldestEventId, 1.second) await 99.s

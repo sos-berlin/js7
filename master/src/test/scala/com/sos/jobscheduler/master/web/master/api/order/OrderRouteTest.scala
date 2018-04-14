@@ -11,31 +11,29 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrderOverview, OrdersOverview, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
-import com.sos.jobscheduler.master.OrderClient
+import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRoute {
 
-  protected implicit def executionContext = system.dispatcher
-  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
+  protected implicit def scheduler = Scheduler.global
+  //private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventIdGenerator = new EventIdGenerator
-  protected val orderClient = new OrderClient {
-    def executionContext = OrderRouteTest.this.executionContext
-    def addOrder(order: FreshOrder) = Future { Valid(order.id != DuplicateOrderId) }
-    def order(orderId: OrderId) = Future.successful(TestOrders.get(orderId))
-    def orders = Future.successful(eventIdGenerator.stamp(TestOrders.values.toVector))
-    def orderCount = Future.successful(TestOrders.values.size)
+  protected val orderApi = new OrderApi.WithCommands {
+    def addOrder(order: FreshOrder) = Task.now(Valid(order.id != DuplicateOrderId))
+    def order(orderId: OrderId) = Task.now(TestOrders.get(orderId))
+    def orders = Task.now(eventIdGenerator.stamp(TestOrders.values.toVector))
+    def orderCount = Task.now(TestOrders.values.size)
   }
 
   private def route: Route =

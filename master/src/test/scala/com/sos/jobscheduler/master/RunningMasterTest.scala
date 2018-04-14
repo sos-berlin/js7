@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -24,8 +23,8 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -35,10 +34,10 @@ import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.ConcurrentLinkedQueue
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.reflect.ClassTag
 
 /**
@@ -80,30 +79,32 @@ final class RunningMasterTest extends FreeSpec {
       env.file(AgentPath("/test-agent-222"), SourceType.Xml).xml = <agent uri={s"http://127.0.0.1:$agent1Port"}/>
 
       RunningMaster.run(MasterConfiguration.forTest(configAndData = env.masterDir)) { master ⇒
-        import master.{injector, orderClient}
+        import master.{injector, orderApi}
         val lastEventId = injector.instance[EventCollector].lastEventId
         val eventGatherer = new TestEventGatherer(injector)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
-        master.addOrder(FreshOrder(TestOrderId, TestWorkflowId.path)).await(10.s).orThrow
+        master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         //Order has been deleted after OrderFinished:
-        //orderClient.order(TestOrderId) await 10.s shouldEqual
+        //orderApi.order(TestOrderId) await 10.s shouldEqual
         //  Some(Order(
         //    TestOrderId,
         //    TestWorkflowId /: Position(2),
         //    Order.Finished,
         //    payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
-        assert(orderClient.orderCount.await(99.s) == 0)
+        assert(orderApi.orderCount.runAsync.await(99.s) == 0)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
         waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
         val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished].toVector
-        for (line ← (for (orderId ← orderIds.sorted) yield for (o ← orderClient.order(orderId)) yield s"$orderId -> $o") await 99.s)
+        for (line ← (for (orderId ← orderIds.sorted) yield
+                       for (o ← orderApi.order(orderId).runAsync: Future[Option[Order[Order.State]]])
+                          yield s"$orderId -> $o") await 99.s)
           logger.info(line)
         assert(orderIds.size >= expectedOrderCount)
         val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet

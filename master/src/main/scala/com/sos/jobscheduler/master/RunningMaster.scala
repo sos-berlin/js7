@@ -9,6 +9,7 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
@@ -39,6 +40,7 @@ import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
 import java.time.{Duration, Instant}
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -54,18 +56,20 @@ import scala.util.{Failure, Success}
  */
 abstract class RunningMaster private(
   val webServer: MasterWebServer,
-  val orderClient: OrderClient,
+  val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
   val terminated: Future[Completed],
   closer: Closer,
   @TestOnly val injector: Injector)
-  (implicit ec: ExecutionContext)
 extends AutoCloseable
 {
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
-  def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
-    orderClient.addOrder(order)
+  def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
+    orderApi.addOrder(order)
+
+  def addOrderBlocking(order: FreshOrder)(implicit s: Scheduler): Boolean =
+    orderApi.addOrder(order).runAsync.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
   val eventCollector = injector.instance[EventCollector]
@@ -148,6 +152,11 @@ object RunningMaster {
           for (repo ← stamped) yield
             O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
 
+      def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
+        for (stamped ← getRepo) yield
+          for (repo ← stamped) yield
+            repo.idTo[A](id)
+
       def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
         for (stamped ← getRepo) yield
           for (repo ← stamped) yield
@@ -165,36 +174,39 @@ object RunningMaster {
       }
     }
 
-    val orderClient = new OrderClient {
+    val orderApi = new OrderApi.WithCommands {
       import masterConfiguration.akkaAskTimeout
 
-      def executionContext = ec
-
       def addOrder(order: FreshOrder) =
-        (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
-          .mapTo[MasterOrderKeeper.Response.ForAddOrder] map (_.created)
+        Task.defer(Task.fromFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
+            .mapTo[MasterOrderKeeper.Response.ForAddOrder] map (_.created)))
 
-      def events[E <: Event](request: EventRequest[E]): Future[TearableEventSeq[Seq, KeyedEvent[E]]] =
-        eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true) map {
-          case EventSeq.NonEmpty(stampeds) ⇒ EventSeq.NonEmpty(stampeds.toImmutableSeq)
-          case o: EventSeq.Empty ⇒ o
-          case o: TearableEventSeq.Torn ⇒ o
-        }
+      def events[E <: Event](request: EventRequest[E]): Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
+        Task.defer(Task.fromFuture(
+          eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true) map {
+            case EventSeq.NonEmpty(stampeds) ⇒ EventSeq.NonEmpty(stampeds.toImmutableSeq)
+            case o: EventSeq.Empty ⇒ o
+            case o: TearableEventSeq.Torn ⇒ o
+          }))
 
-      def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId))
-          .mapTo[Option[Order[Order.State]]]
+      def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
+        Task.defer(Task.fromFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId))
+            .mapTo[Option[Order[Order.State]]]))
 
-      def orders: Future[Stamped[Seq[Order[Order.State]]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrders)
-          .mapTo[Stamped[Seq[Order[Order.State]]]]
+      def orders: Task[Stamped[Seq[Order[Order.State]]]] =
+        Task.defer(Task.fromFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.GetOrders)
+            .mapTo[Stamped[Seq[Order[Order.State]]]]))
 
       def orderCount =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount)
-          .mapTo[Int]
+        Task.defer(Task.fromFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount)
+            .mapTo[Int]))
     }
 
-    webServer.setClients(fileBasedApi, orderClient)
+    webServer.setClients(fileBasedApi, orderApi)
     val webServerReady = webServer.start()
 
     val terminated = actorStopped
@@ -223,7 +235,7 @@ object RunningMaster {
             orderKeeper ? command
         }) map (_.asInstanceOf[command.MyResponse])
       }
-      val master = new RunningMaster(webServer, orderClient, orderKeeper, terminated, closer, injector) {
+      val master = new RunningMaster(webServer, orderApi, orderKeeper, terminated, closer, injector) {
         def executeCommand(command: MasterCommand) = execCmd(command)
       }
       webServer.setExecuteCommand(command ⇒ master.executeCommand(command))

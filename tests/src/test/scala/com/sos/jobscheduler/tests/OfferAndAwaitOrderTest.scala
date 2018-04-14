@@ -1,14 +1,11 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
@@ -19,8 +16,8 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -36,18 +33,18 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         val eventCollector = new TestEventCollector
         eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
 
-        master.addOrder(JoinBefore1Order).await(99.s).orThrow
-        master.addOrder(JoinBefore2Order).await(99.s).orThrow
+        master.addOrderBlocking(JoinBefore1Order)
+        master.addOrderBlocking(JoinBefore2Order)
         eventCollector.await[OrderAwaiting](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
-        master.addOrder(OfferedOrder).await(99.s).orThrow
+        master.addOrderBlocking(OfferedOrder)
         eventCollector.await[OrderJoined]       (_.key == JoinBefore1Order.id)
         eventCollector.await[OrderJoined]       (_.key == JoinBefore2Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore2Order.id)
 
-        master.addOrder(JoinAfterOrder).await(99.s).orThrow
+        master.addOrderBlocking(JoinAfterOrder)
         eventCollector.await[OrderJoined]       (_.key == JoinAfterOrder.id)
         eventCollector.await[OrderFinished](_.key == JoinAfterOrder.id)
 

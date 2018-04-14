@@ -31,11 +31,11 @@ import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
 import java.time.Instant
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
 
 /**
@@ -68,7 +68,7 @@ final class RecoveryTest extends FreeSpec {
                 NoKey <-: FileBasedAdded(Agent(AgentIds(1), directoryProvider.agents(1).localUri.toString)))
               .sortBy(_.toString))
             runAgents(directoryProvider) { _ ⇒
-              master.addOrder(QuickOrder) await 99.s
+              master.addOrderBlocking(QuickOrder)
               lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
               lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
               lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))

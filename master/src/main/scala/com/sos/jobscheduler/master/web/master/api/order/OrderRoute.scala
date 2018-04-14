@@ -13,16 +13,16 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
-import com.sos.jobscheduler.master.OrderClient
-import scala.concurrent.ExecutionContext
+import com.sos.jobscheduler.master.OrderApi
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
   */
 trait OrderRoute {
 
-  protected def orderClient: OrderClient
-  protected implicit def executionContext: ExecutionContext
+  protected def orderApi: OrderApi.WithCommands
+  protected implicit def scheduler: Scheduler
 
   def orderRoute: Route =
     post {
@@ -31,11 +31,12 @@ trait OrderRoute {
           extractUri { uri ⇒
             respondWithHeader(Location(uri + "/" + order.id.string)) {
               complete {
-                orderClient.addOrder(order) map {
+                orderApi.addOrder(order).map {
                   case Invalid(problem) ⇒ problem: ToResponseMarshallable
                   case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added"): ToResponseMarshallable
                   case Valid(true) ⇒ Created: ToResponseMarshallable
                 }
+                .runAsync
               }
             }
           }
@@ -46,7 +47,7 @@ trait OrderRoute {
       pathEnd {
         parameter("return".?) {
           case None ⇒
-            complete(orderClient.ordersOverview)
+            complete(orderApi.ordersOverview)
           case _ ⇒
             complete(Problem("Parameter return is not supported here"))
         }
@@ -54,9 +55,9 @@ trait OrderRoute {
       pathSingleSlash {
         parameter("return".?) {
           case Some("OrderOverview") | None ⇒
-            complete(orderClient.orderOverviews)
+            complete(orderApi.orderOverviews)
           case Some("Order") | None ⇒
-            complete(orderClient.orders)
+            complete(orderApi.orders)
           case Some(unrecognized) ⇒
             complete(Problem(s"Unknown return=$unrecognized"))
         }
@@ -74,7 +75,7 @@ trait OrderRoute {
 
   private def singleOrder(orderId: OrderId): Route =
     complete {
-      orderClient.order(orderId) map {
+      orderApi.order(orderId) map {
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
