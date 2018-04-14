@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.generic
 
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
@@ -38,6 +39,8 @@ object GenericString {
   }
 
   trait Companion[A <: GenericString] extends HasJsonCodec[A] {
+    def checked(o: String): Checked[A] = Checked.catchNonFatal(apply(o))
+
     val name = getClass.simpleScalaName
     implicit val ordering: Ordering[A] = Ordering by { _.string }
     implicit val GenericStringAsString: As[String, A] = As(apply)

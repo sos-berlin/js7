@@ -34,7 +34,7 @@ object VersionId extends GenericString.Companion[VersionId]
   override implicit val jsonDecoder: Decoder[VersionId] =
     _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
 
-  def checked(string: String): Checked[VersionId] =
+  override def checked(string: String): Checked[VersionId] =
     for {
       _ ← check(string)
       versionId ← apply(string) match {

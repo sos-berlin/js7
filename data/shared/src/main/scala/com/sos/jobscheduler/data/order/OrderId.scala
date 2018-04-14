@@ -9,7 +9,7 @@ final case class OrderId(string: String) extends GenericString
 {
   import OrderId._
 
-  require(string.nonEmpty, "OrderId must not be empty")
+  if (string.isEmpty) throw new IllegalArgumentException("OrderId must not be empty")
 
   override def toString = s"Order:$string"
 

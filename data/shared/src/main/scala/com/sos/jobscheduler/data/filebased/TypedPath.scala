@@ -99,7 +99,7 @@ object TypedPath {
     def isSingleSlashAllowed = false
 
     /** Must be non-anonymous, too. */
-    final def checked(string: String): Checked[P] =
+    override final def checked(string: String): Checked[P] =
       if (string == Anonymous.string)
         Problem(s"Anonymous $name?")
       else
