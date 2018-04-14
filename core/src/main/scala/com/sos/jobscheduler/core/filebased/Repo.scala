@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.filebased
 
 import cats.data.Validated.Valid
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -21,6 +20,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
   assert(versions.nonEmpty || idToFileBased.isEmpty)
 
   import Repo._
+
   lazy val pathToVersionToFileBased: Map[TypedPath, Map[VersionId, Option[FileBased]]] =
     idToFileBased.map { case (id, fileBased) ⇒ (id.path, id.versionId, fileBased) }
       .groupBy (_._1)
@@ -38,7 +38,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       idToFileBased.collect {
         case (id, fileBased) if id.path.companion == companion ⇒
           id → fileBased
-      }.toMap
+      }
     }
 
   private val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, FileBased] =
