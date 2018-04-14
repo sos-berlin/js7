@@ -21,10 +21,10 @@ object FileBaseds
     ignoreAliens: Boolean = false)
   : Checked[Seq[RepoEvent]] =
     for (fileBaseds ← readDirectoryTree(readers, directory, versionId, ignoreAliens = ignoreAliens)) yield
-      VersionAdded(versionId) +: toEvents(fileBaseds, previousFileBaseds)
+      VersionAdded(versionId) +: toEvents(fileBaseds, previousFileBaseds).sortBy(_.path)
 
   private def toEvents(readFileBaseds: Iterable[FileBased], previousFileBaseds: Iterable[FileBased])
-  : Seq[RepoEvent] = {
+  : Seq[RepoEvent.FileBasedEvent] = {
     val pathToFileBased = previousFileBaseds toKeyedMap (_.path: TypedPath)
     val addedOrChangedEvents = readFileBaseds.toVector flatMap toAddedOrChanged(pathToFileBased)
     val readPaths = readFileBaseds.map(_.path).toSet
@@ -32,7 +32,7 @@ object FileBaseds
     deletedEvents.toVector ++ addedOrChangedEvents
   }
 
-  private def toAddedOrChanged(previousPathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Option[RepoEvent] =
+  private def toAddedOrChanged(previousPathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Option[RepoEvent.FileBasedEvent] =
     previousPathToFileBased.get(fileBased.path) match {
       case Some(existing) if existing.withVersion(fileBased.id.versionId) == fileBased ⇒
         None

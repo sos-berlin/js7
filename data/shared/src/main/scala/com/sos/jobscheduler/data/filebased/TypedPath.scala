@@ -80,7 +80,10 @@ object TypedPath {
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: TypedPath]: Ordering[P] =
-    (a, b) ⇒ a.string compare b.string
+    (a, b) ⇒ a.string compare b.string match {
+      case 0 ⇒ a.companion.name compare b.companion.name
+      case o ⇒ o
+    }
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
