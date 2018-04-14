@@ -5,7 +5,7 @@
 #
 # (export UID && docker-compose build)
 
-version: "2"
+version: "3"
 
 services:
   master:
@@ -27,6 +27,7 @@ services:
     volumes:
       - ./volumes/master:/var/opt/jobscheduler/master
     stop_grace_period: 60s
+    #restart: unless-stopped
   agent-1:
     image: jobscheduler
     container_name: jobscheduler-agent-1
@@ -36,6 +37,7 @@ services:
     volumes:
       - ./volumes/agent-1:/var/opt/jobscheduler/agent
     stop_grace_period: 60s
+    #restart: unless-stopped
   agent-2:
     image: jobscheduler
     container_name: jobscheduler-agent-2
@@ -45,3 +47,4 @@ services:
     volumes:
       - ./volumes/agent-2:/var/opt/jobscheduler/agent
     stop_grace_period: 60s
+    #restart: unless-stopped
