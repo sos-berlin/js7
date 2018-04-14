@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.data.filebased
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import io.circe.{Decoder, Encoder, Json}
@@ -11,7 +10,7 @@ import io.circe.{Decoder, Encoder, Json}
 /**
   * @author Joacim Zschimmer
   */
-final case class VersionId(string: String) extends IsString
+final case class VersionId(string: String) extends GenericString
 {
   VersionId.check(string).orThrow
 
@@ -23,7 +22,7 @@ final case class VersionId(string: String) extends IsString
   override def toString = s"version $string"
 }
 
-object VersionId extends IsString.Companion[VersionId]
+object VersionId extends GenericString.Companion[VersionId]
 {
   val Anonymous = VersionId("⊥")
 

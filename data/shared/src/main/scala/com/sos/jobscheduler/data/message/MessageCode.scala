@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.message
 
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 
 /**
  * @author Joacim Zschimmer
  */
-final case class MessageCode(string: String) extends IsString
+final case class MessageCode(string: String) extends GenericString

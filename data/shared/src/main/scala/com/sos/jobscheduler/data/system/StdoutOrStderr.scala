@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.data.system
 
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, KeyDecoder, KeyEncoder}
 
 /**
  * @author Joacim Zschimmer
  */
-sealed trait StdoutOrStderr extends IsString
+sealed trait StdoutOrStderr extends GenericString
 with Product with Serializable/*to be compatible with case object*/ {
   val string: String
   override def toString = string
@@ -30,10 +30,10 @@ object StdoutOrStderr {
   }
 }
 
-case object Stdout extends StdoutOrStderr with IsString {
+case object Stdout extends StdoutOrStderr with GenericString {
   val string = "stdout"
 }
 
-case object Stderr extends StdoutOrStderr with IsString {
+case object Stderr extends StdoutOrStderr with GenericString {
   val string = "stderr"
 }

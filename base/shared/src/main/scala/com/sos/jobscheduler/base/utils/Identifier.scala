@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.base.utils
 
 import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
-final case class Identifier private(string: String) extends IsString
+final case class Identifier private(string: String) extends GenericString
 
 /**
   * @author Joacim Zschimmer

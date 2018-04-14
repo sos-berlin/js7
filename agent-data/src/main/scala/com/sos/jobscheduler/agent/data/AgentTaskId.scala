@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data
 
 import com.sos.jobscheduler.agent.data
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import javax.inject.Singleton
 import scala.math.abs
 import scala.util.Random
@@ -10,7 +10,7 @@ import scala.util.Random
  * @see C++ Process_id
  * @author Joacim Zschimmer
  */
-final case class AgentTaskId(string: String) extends IsString {
+final case class AgentTaskId(string: String) extends GenericString {
   import data.AgentTaskId._
 
   if (!pattern.matcher(string).matches) throw new IllegalArgumentException(s"Invalid AgentTaskId($string)")
@@ -23,7 +23,7 @@ final case class AgentTaskId(string: String) extends IsString {
   override def toString = s"AgentTaskId($string)"
 }
 
-object AgentTaskId extends IsString.HasJsonCodec[AgentTaskId] {
+object AgentTaskId extends GenericString.HasJsonCodec[AgentTaskId] {
 
   private val pattern = "[A-Za-z0-9-][A-Za-z0-9._-]*".r.pattern  // Try to exclude any meta characters
 

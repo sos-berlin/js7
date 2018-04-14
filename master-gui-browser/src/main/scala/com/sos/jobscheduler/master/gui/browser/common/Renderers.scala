@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.common
 
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
@@ -16,7 +16,7 @@ import scala.language.implicitConversions
   */
 object Renderers {
 
-  implicit def isStringToVdom(o: IsString): VdomNode =
+  implicit def genericStringToVdom(o: GenericString): VdomNode =
     o.toString
 
   implicit def typedPathToVdom(o: TypedPath): VdomNode =

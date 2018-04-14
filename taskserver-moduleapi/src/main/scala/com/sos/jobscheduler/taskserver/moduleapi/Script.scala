@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.moduleapi
 
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 /**
  * @author Joacim Zschimmer
  */
-final case class Script(string: String) extends IsString {
+final case class Script(string: String) extends GenericString {
   override def toString = {
     val s = string.truncateWithEllipsis(50)
     s"Script($s)"

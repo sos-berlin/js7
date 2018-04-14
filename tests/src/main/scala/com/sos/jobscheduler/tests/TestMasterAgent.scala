@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -58,7 +58,7 @@ object TestMasterAgent {
   private val TestJobPath = JobPath("/test")
 
   /** Für &lt;elememt attribute={stringValue}/>. */
-  private implicit def toXmlText(o: IsString): xml.Text = if (o == null) null else xml.Text(o.string)
+  private implicit def toXmlText(o: GenericString): xml.Text = if (o == null) null else xml.Text(o.string)
 
   def main(args: Array[String]): Unit = {
     lazy val directory =

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.agent
 
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import java.net.URI
 
 /**
@@ -8,7 +8,7 @@ import java.net.URI
   *
   * @author Joacim Zschimmer
   */
-final case class AgentAddress(string: String) extends IsString {
+final case class AgentAddress(string: String) extends GenericString {
   require(!string.endsWith("/"), s"Invalid AgentAddress: $string")
 
   def requireURI(): Unit = new URI(string)  // Throws exception
@@ -16,7 +16,7 @@ final case class AgentAddress(string: String) extends IsString {
   def toURI = new URI(string)
 }
 
-object AgentAddress extends IsString.Companion[AgentAddress] {
+object AgentAddress extends GenericString.Companion[AgentAddress] {
   def apply(uri: URI) = normalized(uri.toString)
 
   def normalized(string: String) = new AgentAddress(

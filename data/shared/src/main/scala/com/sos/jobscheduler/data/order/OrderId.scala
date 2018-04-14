@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.data.order
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.filebased.NameValidator
 
-final case class OrderId(string: String) extends IsString
+final case class OrderId(string: String) extends GenericString
 {
   import OrderId._
 
@@ -32,12 +32,12 @@ final case class OrderId(string: String) extends IsString
     //}
 }
 
-object OrderId extends IsString.Companion[OrderId] {
+object OrderId extends GenericString.Companion[OrderId] {
   val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
   private val nameValidator = new NameValidator(Set('-', '.', ':'))
 
-  final case class ChildId(string: String) extends IsString {
+  final case class ChildId(string: String) extends GenericString {
     if (string.isEmpty) throw new IllegalArgumentException("OrderId.ChildId must not be empty")
   }
-  object ChildId extends IsString.Companion[ChildId]
+  object ChildId extends GenericString.Companion[ChildId]
 }

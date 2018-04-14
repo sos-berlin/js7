@@ -5,11 +5,11 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.filebased.TypedPath._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
@@ -17,7 +17,7 @@ import java.nio.file.{Path, Paths}
 import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
 
-trait TypedPath extends IsString {
+trait TypedPath extends GenericString {
 
   validate()
 
@@ -84,7 +84,7 @@ object TypedPath {
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
-  abstract class Companion[P <: TypedPath: ClassTag] extends IsString.Companion[P]
+  abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Companion[P]
   {
     val NameOrdering: Ordering[P] = Ordering by { _.name }
     lazy val Anonymous: P = apply(InternalPrefix + "anonymous")

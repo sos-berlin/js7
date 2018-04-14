@@ -6,7 +6,7 @@ import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
 import scala.language.implicitConversions
 
-trait IsString {
+trait GenericString {
   def string: String
 
   final def isEmpty = string.isEmpty
@@ -18,29 +18,29 @@ trait IsString {
   override def toString = string
 }
 
-object IsString {
+object GenericString {
 
-  @Nullable def stringOrNull[A <: IsString](o: Option[A]): String = o match {
+  @Nullable def stringOrNull[A <: GenericString](o: Option[A]): String = o match {
     case Some(a) ⇒ a.string
     case None ⇒ null
   }
 
-  private implicit def jsonEncoder[A <: IsString]: Encoder[A] =
+  private implicit def jsonEncoder[A <: GenericString]: Encoder[A] =
     o ⇒ Json.fromString(o.string)
 
-  trait HasJsonCodec[A <: IsString] {
+  trait HasJsonCodec[A <: GenericString] {
     def apply(o: String): A
 
-    implicit val jsonEncoder: Encoder[A] = IsString.jsonEncoder[A]
+    implicit val jsonEncoder: Encoder[A] = GenericString.jsonEncoder[A]
     implicit val jsonDecoder: Decoder[A] = _.as[String] map apply
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o ⇒ Some(apply(o))
   }
 
-  trait Companion[A <: IsString] extends HasJsonCodec[A] {
+  trait Companion[A <: GenericString] extends HasJsonCodec[A] {
     val name = getClass.simpleScalaName
     implicit val ordering: Ordering[A] = Ordering by { _.string }
-    implicit val IsStringAsString: As[String, A] = As(apply)
+    implicit val GenericStringAsString: As[String, A] = As(apply)
 
     implicit def self: Companion[A] = this
   }
