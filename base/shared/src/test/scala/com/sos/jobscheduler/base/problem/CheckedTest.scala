@@ -68,6 +68,12 @@ final class CheckedTest extends FreeSpec  {
     assert(Valid(7.some).evert == Some(Valid(7)))
   }
 
+  "toEitherThrowable" in {
+    assert(Checked(1).toEitherThrowable == Right(1))
+    val Left(throwable: Throwable) = Invalid(Problem("PROBLEM")).toEitherThrowable
+    assert(throwable.getMessage == "PROBLEM")
+  }
+
   "Some Cats examples" - {
     val valid1: Checked[Int] = Valid(1)
     val valid2: Checked[Int] = Valid(2)

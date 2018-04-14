@@ -78,6 +78,12 @@ object Checked
         case Valid(a) ⇒  Some(a)
       }
 
+    def toEitherThrowable: Either[Throwable, A] =
+      underlying match {
+        case Invalid(problem) ⇒ Left(problem.throwable)
+        case Valid(o) ⇒ Right(o)
+      }
+
     def toFuture: Future[A] =
       underlying match {
         case Valid(o) ⇒ Future.successful(o)
