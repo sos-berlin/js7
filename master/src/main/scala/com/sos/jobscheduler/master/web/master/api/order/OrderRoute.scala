@@ -30,14 +30,11 @@ trait OrderRoute {
         entity(as[FreshOrder]) { order ⇒
           extractUri { uri ⇒
             respondWithHeader(Location(uri + "/" + order.id.string)) {
-              complete {
-                orderApi.addOrder(order).map {
-                  case Invalid(problem) ⇒ problem: ToResponseMarshallable
-                  case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added"): ToResponseMarshallable
-                  case Valid(true) ⇒ Created: ToResponseMarshallable
-                }
-                .runAsync
-              }
+              complete(orderApi.addOrder(order).map[ToResponseMarshallable] {
+                case Invalid(problem) ⇒ problem
+                case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added")
+                case Valid(true) ⇒ Created
+              })
             }
           }
         }
@@ -54,12 +51,10 @@ trait OrderRoute {
       } ~
       pathSingleSlash {
         parameter("return".?) {
-          case Some("OrderOverview") | None ⇒
-            complete(orderApi.orderOverviews)
           case Some("Order") | None ⇒
             complete(orderApi.orders)
           case Some(unrecognized) ⇒
-            complete(Problem(s"Unknown return=$unrecognized"))
+            complete(Problem(s"Unrecognized return=$unrecognized"))
         }
       } ~
       path(Segment) { orderIdString ⇒

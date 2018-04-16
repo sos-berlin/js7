@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrderOverview, OrdersOverview, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
@@ -45,16 +45,6 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   "/master/api/order" in {
     Get("/master/api/order") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[OrdersOverview] == OrdersOverview(orderCount = TestOrders.size))
-    }
-  }
-
-  // Seq[OrderOverview]
-  for (uri ← List("/master/api/order/")) {
-    s"$uri" in {
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Stamped(_, _, orders) = responseAs[Stamped[Seq[OrderOverview]]]
-        assert(status == OK && orders == (TestOrders.values.toList map OrderOverview.fromOrder))
-      }
     }
   }
 
