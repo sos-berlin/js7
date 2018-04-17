@@ -25,6 +25,9 @@ trait AllRoute extends MasterRoute {
       } ~
       pathSegments("master") {
         masterRoute
+      } ~
+      path("graphql") {
+        redirect("/master/api/graphql", TemporaryRedirect)
       }
     }
 }

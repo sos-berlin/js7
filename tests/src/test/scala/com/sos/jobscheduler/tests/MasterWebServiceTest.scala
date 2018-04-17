@@ -18,15 +18,17 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import javax.inject.Singleton
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -48,6 +50,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   override def beforeAll() = {
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
+    directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     directoryProvider.agents(0).file(JobPath("/A"), SourceType.Xml).xml = <job><script language="shell">exit</script></job>
     super.beforeAll()
@@ -73,8 +76,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow") await 99.s,
       json"""{
-        "eventId": 1000005,
-        "count": 1
+        "eventId": 1000006,
+        "count": 2
       }""")
   }
 
@@ -82,9 +85,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow/") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "value": [
-          "/WORKFLOW"
+          "/WORKFLOW",
+          "/WORKFLOW-2"
         ]
       }""")
   }
@@ -93,7 +97,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow/WORKFLOW") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "id": {
           "path": "/WORKFLOW",
           "versionId": "(initial)"
@@ -113,7 +117,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "count": 2
       }""")
   }
@@ -122,7 +126,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "value": [
           "/AGENT",
           "/FOLDER/AGENT-A"
@@ -134,7 +138,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "value": [
           {
             "id": {
@@ -142,8 +146,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
               "versionId": "(initial)"
             },
             "uri": "$agent1Uri"
-          },
-          {
+          }, {
             "id": {
               "path": "/FOLDER/AGENT-A",
               "versionId": "(initial)"
@@ -158,7 +161,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER/AGENT-A?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -171,7 +174,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER%2FAGENT-A?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000005,
+        "eventId": 1000006,
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -298,9 +301,31 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         }, {
           "eventId": 1005,
-          "TYPE": "MasterReady"
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "Workflow",
+            "id": {
+              "path": "/WORKFLOW-2",
+              "versionId": "(initial)"
+            },
+            "instructions": [
+              {
+                "TYPE": "Job",
+                "jobPath": "/A",
+                "agentPath": "/AGENT"
+              }, {
+                "TYPE": "Job",
+                "jobPath": "/MISSING",
+                "agentPath": "/AGENT"
+              }
+            ],
+            "source": "job \"/A\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+          }
         }, {
           "eventId": 1006,
+          "TYPE": "MasterReady"
+        }, {
+          "eventId": 1007,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
@@ -308,7 +333,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "versionId": "(initial)"
           }
         }, {
-          "eventId": 1007,
+          "eventId": 1008,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
           "agentId": {
@@ -316,11 +341,11 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "versionId": "(initial)"
           }
         }, {
-          "eventId": 1008,
+          "eventId": 1009,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1009,
+          "eventId": 1010,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "variablesDiff": {
@@ -332,25 +357,181 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "returnCode": 0
           }
         }, {
-          "eventId": 1010,
+          "eventId": 1011,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1011,
+          "eventId": 1012,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderTransferredToMaster",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }
       ]
     }""")
+  }
+
+  "/master/api/graphql" - {
+    "Syntax error" in {
+      val query = "INVALID"
+      val response = httpClient.post_(master.localUri + "/master/api/graphql", json"""{ "query": "$query" }""") await 99.s
+      assert(response.status.intValue == 400/*BadRequest*/)
+      assert(response.utf8StringFuture.await(99.s).parseJson ==
+        json"""{
+          "errors": [
+            {
+              "message": "Syntax error while parsing GraphQL query. Invalid input 'I', expected OperationDefinition, FragmentDefinition or TypeSystemDefinition (line 1, column 1):\nINVALID\n^",
+              "locations": [
+                {
+                  "line": 1,
+                  "column": 1
+                }
+              ]
+            }
+          ]
+        }""")
+    }
+
+    "Unknown field" in {
+      val query = "{ UNKNOWN }"
+      val response = httpClient.post_(master.localUri + "/master/api/graphql", json"""{ "query": "$query" }""") await 99.s
+      assert(response.status.intValue == 400/*BadRequest*/)
+      assert(response.utf8StringFuture.await(99.s).parseJson ==
+        json"""{
+          "errors": [
+            {
+              "message": "Query does not pass validation. Violations:\n\nCannot query field 'UNKNOWN' on type 'Query'. (line 1, column 3):\n{ UNKNOWN }\n  ^"
+            }
+          ]
+        }""")
+    }
+
+    "Orders" - {
+      val order2Id = OrderId("ORDER-MISSING-JOB")
+
+      "(add order)" in {
+        master.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
+        master.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/WORKFLOW-2")))
+        eventCollector.await[OrderProcessed](_.key == order2Id)
+      }
+
+      "Single order" in {
+        val body = Json.obj(
+          "query" → """
+            query Q($orderId: OrderId!) {
+              order(id: $orderId) {
+                id
+                workflowPosition {
+                  workflowId { path, versionId }
+                  position
+                },
+                attachedTo {
+                  agentId { path, versionId }
+                }
+              }
+            }""".asJson,
+          "variables" → Json.obj(
+            "orderId" → order2Id.asJson))
+        assert(postGraphql(body) ==
+          json"""{
+            "data": {
+              "order": {
+                "id": "ORDER-MISSING-JOB",
+                "workflowPosition": {
+                  "workflowId": {
+                    "path": "/WORKFLOW-2",
+                    "versionId": "(initial)"
+                  },
+                  "position": [ 1 ]
+                },
+                "attachedTo": {
+                  "agentId": {
+                    "path": "/AGENT",
+                    "versionId": "(initial)"
+                  }
+                }
+              }
+            }
+          }""")
+      }
+
+      "All orders" in {
+        val body = Json.obj(
+          "query" → """{
+            orders {
+              id
+              workflowPosition {
+                workflowId { path }
+                position
+              }
+            }
+          }""".asJson)
+        assert(postGraphql(body) ==
+          json"""{
+           "data": {
+              "orders": [
+                {
+                  "id": "ORDER-FRESH",
+                  "workflowPosition": {
+                    "workflowId": { "path": "/WORKFLOW" },
+                    "position": [ 0 ]
+                  }
+                }, {
+                  "id": "ORDER-MISSING-JOB",
+                  "workflowPosition": {
+                    "workflowId": { "path": "/WORKFLOW-2" },
+                    "position": [ 1 ]
+                  }
+                }
+              ]
+            }
+          }""")
+      }
+
+      "Order in /WORKFLOW-2" in {
+        val body = Json.obj(
+          "query" → """
+            query Q($workflowPath: WorkflowPath) {
+              orders(workflowPath: $workflowPath) {
+                id
+                workflowPosition {
+                  instruction {
+                    ... on Job {
+                      jobPath
+                    }
+                  }
+                }
+              }
+            }""".asJson,
+          "variables" → Json.obj(
+            "workflowPath" → "/WORKFLOW-2".asJson))
+        assert(postGraphql(body) ==
+          json"""{
+           "data": {
+              "orders": [
+                {
+                  "id": "ORDER-MISSING-JOB",
+                  "workflowPosition": {
+                    "instruction": {
+                      "jobPath": "/MISSING"
+                    }
+                  }
+                }
+              ]
+            }
+          }""")
+      }
+    }
+
+    def postGraphql(graphql: Json): Json =
+      httpClient.post(master.localUri + "/master/api/graphql", graphql).await(99.s)
   }
 
   "Terminate" in {
@@ -364,13 +545,12 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     val eventIds = Iterator.from(1001)
     def changeEvent(json: Json): Json = {
       val obj = json.asObject.get
-      //(obj("TYPE") != Some(Json.fromString("AgentEventIdEvent"))) ?
-        Json.fromJsonObject(JsonObject.fromMap(
-          obj.toMap flatMap {
-            case ("eventId", _) ⇒ ("eventId" → Json.fromInt(eventIds.next())) :: Nil
-            case ("timestamp", _) ⇒ Nil
-            case o ⇒ o :: Nil
-          }))
+      Json.fromJsonObject(JsonObject.fromMap(
+        obj.toMap flatMap {
+          case ("eventId", _) ⇒ ("eventId" → Json.fromInt(eventIds.next())) :: Nil
+          case ("timestamp", _) ⇒ Nil
+          case o ⇒ o :: Nil
+        }))
     }
     eventResponse.hcursor
       .downField("stampeds").withFocus(_.mapArray(_ map changeEvent)).up

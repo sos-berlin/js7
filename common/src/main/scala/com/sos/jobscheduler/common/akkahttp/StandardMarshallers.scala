@@ -20,12 +20,17 @@ object StandardMarshallers
   private val ProblemStatusCode = BadRequest
   private val Nl = ByteString("\n")
 
-  implicit def taskToResponseMarshaller[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
+  val StringMarshaller: ToEntityMarshaller[String] =
+    Marshaller.withOpenCharset(`text/plain`) { (string, charset) ⇒
+      HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
+    }
+
+  implicit def monixTaskToResponseMarshaller[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
     task.runAsync
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
-      stringMarshaller(`text/plain`, _.toString),
+      stringMarshaller[Problem](`text/plain`, _.toString),
       jsonOrYamlMarshaller[Problem])
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =

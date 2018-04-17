@@ -4,6 +4,7 @@ import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.data.workflow.Position._
 import io.circe.syntax.EncoderOps
 import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Encoder, Json}
+import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.language.implicitConversions
 
@@ -20,6 +21,12 @@ final case class Position(parents: List[Parent], nr: InstructionNr) {
       Position(parents dropRight 1, last.nr)
 
   def increment: Position = copy(nr = nr + 1)
+
+  def asSeq: IndexedSeq[Any] =
+    parents.toVector.flatMap(p ⇒ Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number
+
+  private[workflow] def asJsonArray: Vector[Json] =
+    parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson)) :+ nr.asJson
 
   override def toString = "#" + (parents map (p ⇒ s"${p.nr.number}/${p.branchId}/") mkString "") + nr.number
 }
@@ -43,12 +50,15 @@ object Position {
       Parent(nr, BranchId.Indexed(index))
   }
 
-  sealed trait BranchId
+  sealed trait BranchId {
+    private[Position] def toSimpleType: Any
+  }
   object BranchId {
     implicit def apply(branchId: String): Named = Named(branchId)
     implicit def apply(index: Int): Indexed = Indexed(index)
 
     final case class Named(string: String) extends BranchId {
+      private[Position] def toSimpleType: String = string
       override def toString = string
     }
     object Named {
@@ -57,6 +67,7 @@ object Position {
     }
 
     final case class Indexed(number: Int) extends BranchId {
+      private[Position] def toSimpleType: Int = number
       override def toString = number.toString
     }
     object Indexed {
@@ -84,8 +95,7 @@ object Position {
     }
   }
 
-  implicit val jsonEncoder: ArrayEncoder[Position] =
-    position ⇒ position.parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson)) :+ position.nr.asJson
+  implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[Position] =
     _.as[List[Json]] flatMap (parts ⇒

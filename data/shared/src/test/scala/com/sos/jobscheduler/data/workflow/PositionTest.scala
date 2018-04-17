@@ -4,12 +4,33 @@ import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.workflow.Position._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 final class PositionTest extends FreeSpec {
+
+  "JSON" in {
+    testJson(Position(1)               , json"""[ 1 ]""")
+    testJson(Position(1) / "BRANCH" / 2, json"""[ 1, "BRANCH", 2 ]""")
+    testJson(Position(1) / 2 / 3       , json"""[ 1, 2, 3 ]""")
+
+    assert("""[ 1, 2 ]""".parseJson.as[Position].isLeft/*failed*/)
+  }
+
+  "Represented as array of simple types" in {
+    assert(Position(1)                 .asSeq == Vector(1))
+    assert((Position(1) / "BRANCH" / 2).asSeq == Vector(1, "BRANCH", 2))
+    assert((Position(1) / 2 / 2)       .asSeq == Vector(1, 2, 2))
+  }
+
+  "Represented as array of JSON types" in {
+    assert(Position(1)                 .asJsonArray == Vector(1.asJson))
+    assert((Position(1) / "BRANCH" / 2).asJsonArray == Vector(1.asJson, "BRANCH".asJson, 2.asJson))
+    assert((Position(1) / 2 / 2)       .asJsonArray == Vector(1.asJson, 2.asJson, 2.asJson))
+  }
 
   "test" in {
     Position(0)
@@ -37,11 +58,4 @@ final class PositionTest extends FreeSpec {
         InstructionNr(3)))
   }
 
-  "JSON" in {
-    testJson(Position(7)          , json"""[ 7 ]""")
-    testJson(Position(1) / "A" / 2, json"""[ 1, "A", 2 ]""")
-    testJson(Position(1) / 2 / 3  , json"""[ 1, 2, 3 ]""")
-
-    assert("""[ 1, 2 ]""".parseJson.as[Position].isLeft/*failed*/)
-  }
 }

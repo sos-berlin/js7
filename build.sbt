@@ -283,6 +283,8 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      "org.sangria-graphql" %% "sangria" % sangriaVersion ++
+      "org.sangria-graphql" %% "sangria-circe" % sangriaCirceVersion ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
       log4j % "test"

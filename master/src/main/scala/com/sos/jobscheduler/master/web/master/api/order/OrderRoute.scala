@@ -24,7 +24,7 @@ trait OrderRoute {
   protected def orderApi: OrderApi.WithCommands
   protected implicit def scheduler: Scheduler
 
-  def orderRoute: Route =
+  final def orderRoute: Route =
     post {
       pathEnd {
         entity(as[FreshOrder]) { order ⇒
