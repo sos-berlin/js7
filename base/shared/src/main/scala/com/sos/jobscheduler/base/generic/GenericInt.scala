@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.generic
 
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json}
 
 /**
@@ -12,7 +13,11 @@ trait GenericInt {
 
 object GenericInt {
   trait Companion[A <: GenericInt] {
+    val name = getClass.simpleScalaName
+
     def apply(number: Int): A
+
+    implicit val self = this
 
     implicit val ordering: Ordering[A] = Ordering by { _.number }
 
