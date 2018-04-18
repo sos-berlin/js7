@@ -188,7 +188,7 @@ private[graphql] object MasterGraphqlSchema
     "A map of String values",
     coerceOutput = (o, _) ⇒ ast.ObjectValue(o.map(kv ⇒ ast.ObjectField(kv._1, ast.StringValue(kv._2))).toVector),
     coerceUserInput = {
-      case o: Map[String, String] ⇒ Right(o)
+      case o: Map[_, _] if isStringStringMap(o) ⇒ Right(o.asInstanceOf[Map[String, String]])
       case _ ⇒ Left(StringCoercionViolation)
     },
     coerceInput = {
@@ -199,6 +199,12 @@ private[graphql] object MasterGraphqlSchema
         Right(tuples.toMap)
       case _ ⇒ Left(StringCoercionViolation)
     })
+
+  private def isStringStringMap(map: Map[_, _]) =
+    map forall {
+      case (_: String, _: String) ⇒ true
+      case _ ⇒ false
+    }
 
   private implicit val OrderAttachedToType = ObjectType(
     "Order_AttachedTo",
