@@ -25,15 +25,13 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.filebased.Repo
+import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
-import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
 import java.nio.file.Files.{createDirectory, exists}

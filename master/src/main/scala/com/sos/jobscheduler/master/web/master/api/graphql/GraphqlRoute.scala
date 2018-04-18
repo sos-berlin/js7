@@ -9,10 +9,10 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute._
 import io.circe.parser.{parse ⇒ parseJson}
 import io.circe.syntax.EncoderOps

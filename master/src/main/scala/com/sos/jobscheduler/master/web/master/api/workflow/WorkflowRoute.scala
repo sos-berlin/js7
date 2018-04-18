@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import monix.execution.Scheduler
 
 /**

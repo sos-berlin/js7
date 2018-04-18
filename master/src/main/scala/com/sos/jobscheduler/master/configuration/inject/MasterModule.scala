@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.ActorEventCollector
-import com.sos.jobscheduler.master.AgentEventIdEvent
+import com.sos.jobscheduler.master.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
 import com.typesafe.config.Config

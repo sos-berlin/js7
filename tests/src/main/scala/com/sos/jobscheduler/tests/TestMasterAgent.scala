@@ -38,7 +38,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
+import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory

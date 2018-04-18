@@ -15,10 +15,10 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRouteTest._
 import io.circe.Json
 import monix.eval.Task

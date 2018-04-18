@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
+import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment._
 import io.circe.{Json, ObjectEncoder}
 import java.io.IOException

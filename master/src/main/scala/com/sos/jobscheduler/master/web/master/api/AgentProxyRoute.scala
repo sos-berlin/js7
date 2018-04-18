@@ -10,9 +10,9 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.base.monix.MonixForCats._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
 import monix.execution.Scheduler

@@ -44,7 +44,7 @@ private[agent] final class AgentActor @Inject private(
   (implicit executionContext: ExecutionContext)
 extends KeyedEventJournalingActor[AgentEvent] {
 
-  import agentConfiguration.{akkaAskTimeout, liveDirectory, stateDirectory}
+  import agentConfiguration.{akkaAskTimeout, fileBasedDirectory, stateDirectory}
   import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -57,7 +57,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
-    watch(actorOf(Props { new JobKeeper(liveDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper"))
+    watch(actorOf(Props { new JobKeeper(fileBasedDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper"))
   }
   private val masterToOrderKeeper = new MasterRegister
   private var terminating, jobKeeperStopped = false

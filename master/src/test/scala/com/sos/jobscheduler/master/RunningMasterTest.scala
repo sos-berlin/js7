@@ -28,7 +28,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
+import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import java.net.InetSocketAddress
 import java.time.Instant

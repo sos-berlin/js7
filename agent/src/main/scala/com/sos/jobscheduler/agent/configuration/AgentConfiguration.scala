@@ -106,7 +106,7 @@ final case class AgentConfiguration(
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
-  def liveDirectory: Path =
+  def fileBasedDirectory: Path =
     configDirectory map { _ / "live" } getOrElse { throw new NoSuchElementException("Missing data directory") }
 
   def stateDirectory: Path =

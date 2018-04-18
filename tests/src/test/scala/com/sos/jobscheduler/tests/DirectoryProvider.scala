@@ -41,7 +41,7 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     master.createDirectories()
     for (a ← agentToTree.values) {
       a.createDirectories()
-      val file = master.live / s"${a.agentPath.withoutStartingSlash}.agent.xml"
+      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.xml"
       Files.createDirectories(file.getParent)
       file.xml = <agent uri={a.conf.localUri.toString}/>
     }
@@ -101,7 +101,7 @@ object DirectoryProvider {
 
   sealed class Tree(val directory: Path) {
     val config = directory / "config"
-    val live = config / "live"
+    val fileBasedDirectory = config / "live"
     lazy val orderGenerators = {
       val dir = config / "order-generators"
       Files.createDirectory(dir)
@@ -110,7 +110,7 @@ object DirectoryProvider {
     val data = directory / "data"
 
     def createDirectories(): Unit = {
-      Files.createDirectories(live)
+      Files.createDirectories(fileBasedDirectory)
       Files.createDirectory(data)
     }
 
@@ -125,7 +125,7 @@ object DirectoryProvider {
       file(path, SourceType.Txt).contentString = content
 
     def file(path: TypedPath, t: SourceType): Path =
-      live resolve path.toFile(t)
+      fileBasedDirectory resolve path.toFile(t)
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {

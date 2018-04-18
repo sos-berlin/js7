@@ -9,10 +9,10 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import monix.execution.Scheduler

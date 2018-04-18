@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
-import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 
 /**
   * @author Joacim Zschimmer

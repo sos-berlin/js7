@@ -36,7 +36,7 @@ final case class MasterConfiguration(
         a.optionAs("-http-port=")(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
 
-  def liveDirectory: Path = configDirectory / "live"
+  def fileBasedDirectory: Path = configDirectory / "live"
 
   def orderGeneratorsDirectory: Path = configDirectory / "order-generators"
 

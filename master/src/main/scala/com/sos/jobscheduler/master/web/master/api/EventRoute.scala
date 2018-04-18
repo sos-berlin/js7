@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMar
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.{Event, EventSeq, KeyedEvent, SomeEventRequest, TearableEventSeq}
-import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
+import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 

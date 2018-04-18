@@ -20,8 +20,8 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, 
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
+import com.sos.jobscheduler.master.workflow.LegacyJobchainXmlParser
 import com.sos.jobscheduler.tests.LegacyJobchainTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec

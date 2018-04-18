@@ -11,11 +11,11 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec

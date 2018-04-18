@@ -8,10 +8,10 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 

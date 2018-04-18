@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSou
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.agent.{Agent, AgentId}
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.master.order.agent.AgentXmlParser
 
 /**
   * @author Joacim Zschimmer

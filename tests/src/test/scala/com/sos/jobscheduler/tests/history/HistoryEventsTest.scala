@@ -13,8 +13,8 @@ import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
-import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
+import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.DirectoryProvider.jobXml
