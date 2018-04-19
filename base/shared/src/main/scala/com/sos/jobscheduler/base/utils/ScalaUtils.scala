@@ -195,9 +195,17 @@ object ScalaUtils {
         case Right(o) ⇒ o
       }
 
+    /** Converts an `Either[Throwable, A]` to a Checked[A] with complete Throwable. */
     def toChecked: Checked[R] =
       underlying match {
         case Left(t) ⇒ Invalid(Problem.fromEagerThrowable(t.appendCurrentStackTrace))
+        case Right(o) ⇒ Valid(o)
+      }
+
+    /** Converts an `Either[Throwable, A]` to a Checked[A] with the `Throwable`'s message only (toStringWithCauses). */
+    def toSimpleChecked: Checked[R] =
+      underlying match {
+        case Left(t) ⇒ Invalid(Problem.fromEager(Option(t.getMessage) getOrElse t.toStringWithCauses))
         case Right(o) ⇒ Valid(o)
       }
 
