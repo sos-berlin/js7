@@ -2,12 +2,12 @@ package com.sos.jobscheduler.core.filebased
 
 import akka.util.ByteString
 import cats.instances.vector._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.core.filebased.FileBasedReader._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath, VersionId}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
@@ -25,8 +25,9 @@ trait FileBasedReader
 
   private def readUntyped(id: FileBasedId_, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
     assert(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
-    read(id.asInstanceOf[FileBasedId[ThisTypedPath]], byteString).applyOrElse(sourceType,
+    val result: Checked[ThisFileBased] = read(id.asInstanceOf[FileBasedId[ThisTypedPath]], byteString).applyOrElse(sourceType,
       (_: SourceType) ⇒ Problem(s"Unrecognized SourceType $sourceType for path '$id'"))
+    result.mapProblem(p ⇒ SourceProblem(id.path, sourceType, p))
   }
 
   final def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = companion.typedPathCompanion
@@ -57,8 +58,10 @@ object FileBasedReader
     def apply(o: TypedSource): Checked[FileBased] =
       companionToReader(o.path.companion)
         .readUntyped(o.path % versionId, o.byteString, o.sourceType)
-        .withProblemKey(s"${o.path} (${o.sourceType})")
   }
 
   final case class TypedSource(byteString: ByteString, path: TypedPath, sourceType: SourceType)
+
+  final case class SourceProblem private(path: TypedPath, sourceType: SourceType, underlying: Problem)
+    extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
 }

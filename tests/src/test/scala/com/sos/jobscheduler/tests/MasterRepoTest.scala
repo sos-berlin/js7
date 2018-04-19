@@ -26,9 +26,8 @@ import org.scalatest.FreeSpec
 import scala.language.higherKinds
 import scala.util.Try
 
-
-final class ConfigurationTest extends FreeSpec {
-  import ConfigurationTest._
+final class MasterRepoTest extends FreeSpec {
+  import MasterRepoTest._
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
@@ -120,7 +119,7 @@ final class ConfigurationTest extends FreeSpec {
   }
 }
 
-object ConfigurationTest {
+object MasterRepoTest {
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")

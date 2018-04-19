@@ -13,6 +13,7 @@ import scala.collection.immutable
 import scala.collection.immutable.Seq
 
 /**
+  * Representation of versioned FileBased (configuration objects).
   * @author Joacim Zschimmer
   */
 final case class Repo private(versions: List[VersionId], idToFileBased: Map[FileBasedId_, Option[FileBased]])
@@ -33,14 +34,6 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       fileBased ← fileBasedOption
     } yield path → fileBased
 
-  private val typeToIdToFileBased: FileBased.Companion_ ⇒ Map[FileBasedId_, Option[FileBased]] =
-    Memoizer { companion ⇒
-      idToFileBased.collect {
-        case (id, fileBased) if id.path.companion == companion ⇒
-          id → fileBased
-      }
-    }
-
   private val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, FileBased] =
     Memoizer { companion ⇒
       currentVersion collect {
@@ -49,8 +42,10 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       }
     }
 
-  //def typed[A <: FileBased](implicit A: FileBased.Companion[A]): Map[FileBasedId[A#Path], Option[A]] =
-  //  typeToIdToFileBased(A).asInstanceOf[Map[FileBasedId[A#Path], Option[A]]]
+  def onlyCurrentVersion: Repo =
+    Repo(
+      versions.head :: Nil,
+      currentVersion.values.map(fileBased ⇒ fileBased.id → Some(fileBased)).toMap)
 
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).asInstanceOf[Map[A#Path, A]]

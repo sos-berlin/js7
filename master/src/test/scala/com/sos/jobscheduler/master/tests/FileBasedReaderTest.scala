@@ -25,18 +25,21 @@ final class FileBasedReaderTest extends FreeSpec {
   "readDirectoryTreeWithProblems" in {
     provideDirectory { directory ⇒
       createFiles(directory)
-      assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, V0).orThrow.toSet == Set(
+      val result = readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, V0).orThrow
+      assert(result.map(_.mapProblem(o ⇒ Problem(o.toString))).toSet == Set(
         Valid(AWorkflow withVersion V0),
         Valid(BWorkflow withVersion V0),
         Valid(CWorkflow withVersion V0),
-        Invalid(Problem("""Problem with 'Workflow:/D (txt)': End:1:1 ..."ERROR"""")),
+        Invalid(Problem("""Problem with 'Workflow:/D' (txt) [End:1:1 ..."ERROR"]""")),
+        Invalid(Problem("""Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""")),
         Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
         Valid(AAgent withVersion V0),
         Valid(BAgent withVersion V0)))
 
       assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==
         Invalid(Problem.set(
-          """Problem with 'Workflow:/D (txt)': End:1:1 ..."ERROR"""",
+          """Problem with 'Workflow:/D' (txt) [End:1:1 ..."ERROR"]""",
+          """Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""",
           """File 'folder/test.alien.json' is not recognized as a configuration file""")))
 
       (directory / "A.workflow.txt").contentString = ""
@@ -53,6 +56,7 @@ object FileBasedReaderTest {
     (directory / "B.job_chain.xml").xml = <job_chain><job_chain_node.end state="B-END"/></job_chain>
     (directory / "C.workflow.txt").contentString = "// EMPTY"
     (directory / "D.workflow.txt").contentString = "ERROR"
+    (directory / "E.workflow.json").contentString = "NO-JSON"
     (directory / "A.agent.xml").xml = <agent uri="http://A"/>
     (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
     (directory / "folder" / "test.alien.json").contentString = ""

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.workflow.Instruction
 object Instructions
 {
   import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.BooleanExpression.jsonDecoder
-  private[workflow] implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
+  implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
     Subtype[AwaitOrder],
     Subtype[Job],
     Subtype.named(singletonCodec(ExplicitEnd), "End"),
