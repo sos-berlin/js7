@@ -20,11 +20,13 @@ sealed trait Problem
 
   def throwableOption: Option[Throwable] = None
 
+  def cause: Option[Problem]
+
+  def head: Problem = this
+
   def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
 
   def withPrefix(prefix: String): Problem = Problem(prefix) |+| this
-
-  def head: Problem = this
 
   override def equals(o: Any) = o match {
     case o: Problem ⇒ toString == o.toString
@@ -55,9 +57,12 @@ object Problem
     def message: String
   }
 
-  class Lazy protected[problem](messageFunction: ⇒ String) extends HasMessage {
+  private[Problem] trait Simple extends HasMessage {
+    protected def rawMessage: String
+
+    // A val, to compute message only once.
     final lazy val message = {
-      messageFunction match {
+      rawMessage match {
         case null ⇒ "A problem occurred (null)"
         case "" ⇒ "A problem occurred (no message)"
         case o ⇒ o
@@ -68,9 +73,15 @@ object Problem
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + message)
 
-    override def hashCode = message.hashCode
+    override def hashCode = message.hashCode ^ cause.hashCode
 
-    override def toString = message
+    override def toString = message + cause.map(o ⇒ s" [$o]").getOrElse("")
+  }
+
+  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem]) extends Simple
+
+  class Lazy protected[problem](messageFunction: ⇒ String, val cause: Option[Problem] = None) extends Simple {
+    protected def rawMessage = messageFunction
   }
 
   def set(problems: String*): Multiple =
@@ -82,7 +93,7 @@ object Problem
   def multiple(problems: Iterable[String]): Multiple =
     Multiple(problems.map(o ⇒ new Lazy(o)))
 
-  final case class Multiple private[problem](problems: Iterable[Lazy]) extends HasMessage {
+  final case class Multiple private[problem](problems: Iterable[Problem]) extends HasMessage {
     require(problems.nonEmpty)
 
     def throwable = new ProblemException(toString)
@@ -90,6 +101,8 @@ object Problem
     lazy val message = problems map (_.toString) reduce combineMessages
 
     override def head = problems.head
+
+    def cause = None
 
     override def equals(o: Any) = o match {
       case o: Multiple ⇒
@@ -110,6 +123,8 @@ object Problem
     def throwable = throwable_
 
     override def throwableOption = Some(throwable_)
+
+    def cause = None
 
     override def toString = throwable_.toStringWithCauses
   }
