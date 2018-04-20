@@ -18,8 +18,8 @@ import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalActor, J
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.collection.mutable
-import scala.concurrent.{Promise, blocking}
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Promise, blocking}
 
 /**
   * @author Joacim Zschimmer

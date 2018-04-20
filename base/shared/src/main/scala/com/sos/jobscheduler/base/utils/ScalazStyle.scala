@@ -13,8 +13,8 @@ object ScalazStyle {
 
     /**
       * Conditional `Option`.
-      * <p>`(true option a) == Some(a)`
-      * <br>`(false option a) == None`
+      * <p>`(true ? a) == Some(a)`
+      * <br>`(false ? a) == None`
       */
     def ?[A](a: ⇒ A): Option[A] = option(a)
 
