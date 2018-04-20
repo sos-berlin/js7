@@ -123,7 +123,7 @@ final class RecoveryTest extends FreeSpec {
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     val conversion = new GzipCompression {}
-    autoClosing(new JsonFileIterator(JournalMeta.Header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
+    autoClosing(new JsonFileIterator(JournalMeta.header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
       _.toVector collect {
         case o if AgentEvent.KeyedEventJsonCodec.canDeserialize(o) ⇒
           o.as[Stamped[KeyedEvent[AgentEvent]]].orThrow

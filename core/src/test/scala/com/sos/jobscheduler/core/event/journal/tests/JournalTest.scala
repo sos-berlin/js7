@@ -22,7 +22,7 @@ import com.sos.jobscheduler.core.event.journal.tests.JournalTest._
 import com.sos.jobscheduler.core.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import io.circe.Json
+import io.circe.{Json, JsonObject}
 import java.io.{EOFException, FileInputStream}
 import java.nio.file.Files.{createTempDirectory, delete, deleteIfExists}
 import java.util.concurrent.atomic.AtomicInteger
@@ -238,9 +238,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
       val iterator = new InputStreamJsonSeqIterator(new GZIPInputStream(in))
       if (iterator.hasNext) {
         val header = iterator.next()
-        assert(header == Json.obj(
+        assert(header.asObject.get.remove("timestamp") == JsonObject(
           "TYPE" → Json.fromString("JobScheduler.Journal"),
-          "version" → Json.fromString(JournalMeta.Header.version),
+          "version" → Json.fromString(JournalMeta.header.version),
           "softwareVersion" → Json.fromString(BuildInfo.version),
           "buildId" → Json.fromString(BuildInfo.buildId)))
       }

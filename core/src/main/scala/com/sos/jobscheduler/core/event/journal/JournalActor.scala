@@ -14,7 +14,6 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
-import com.sos.jobscheduler.core.event.journal.JournalMeta.Header
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -221,7 +220,7 @@ extends Actor with Stash {
   }
 
   private def newJsonWriter(file: Path, append: Boolean) =
-    new FileJsonWriter(Header, convertOutputStream, file, append = append)
+    new FileJsonWriter(JournalMeta.header, convertOutputStream, file, append = append)
 
   private def writeToDisk(jsons: Seq[Json], errorReplyTo: ActorRef): Unit =
     try for (jsValue ← jsons) jsonWriter.writeJson(ByteString(jsValue.compactPrint))

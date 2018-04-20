@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.event.journal.JournalActor.{EventsHeader, SnapshotsHeader}
-import com.sos.jobscheduler.core.event.journal.JournalMeta.Header
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Files.exists
@@ -42,7 +41,7 @@ trait JournalRecoverer[E <: Event] {
       try
         blocking {  // May take a long time
           logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
-          autoClosing(new JsonFileIterator(Header, convertInputStream(_, journalFile), journalFile)) { jsonIterator ⇒
+          autoClosing(new JsonFileIterator(JournalMeta.header, convertInputStream(_, journalFile), journalFile)) { jsonIterator ⇒
             var separator: Option[Json] = jsonIterator.hasNext option jsonIterator.next()
             if (separator contains SnapshotsHeader) {
               separator = recoverJsonsUntilSeparator(jsonIterator, recoverSnapshotJson)

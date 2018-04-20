@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 
@@ -13,10 +14,11 @@ class JournalMeta[E <: Event](
 extends StreamConversion
 
 object JournalMeta {
-  val Header = JournalHeader(
-    version = "0.10",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  def header = JournalHeader(
+    version = "0.11",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version,
-    buildId = BuildInfo.buildId)
+    buildId = BuildInfo.buildId,
+    Timestamp.now.toIsoString)
 
   def gzipped[E <: Event](
     snapshotJsonCodec: TypedJsonCodec[Any],
