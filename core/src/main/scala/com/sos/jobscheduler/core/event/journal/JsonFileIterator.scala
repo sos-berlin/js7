@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqIterator
 import io.circe.Json
-import io.circe.syntax.EncoderOps
 import java.io.{BufferedInputStream, FileInputStream, InputStream}
 import java.nio.file.Path
 
@@ -20,12 +19,13 @@ extends AutoCloseable with Iterator[Json] {
   private val iterator = new InputStreamJsonSeqIterator(if (converted eq bufferedIn) bufferedIn else new BufferedInputStream(converted))
 
   if (iterator.hasNext) {
-    checkHeader(iterator.next().asJson)
+    checkHeader(iterator.next().value)
   }
 
   def hasNext = iterator.hasNext
 
-  def next() = iterator.next()
+  def next(): Json =
+    iterator.next().value
 
   def close() = {
     in.close()

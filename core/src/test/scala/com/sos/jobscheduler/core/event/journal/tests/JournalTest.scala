@@ -238,14 +238,14 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
       val iterator = new InputStreamJsonSeqIterator(new GZIPInputStream(in))
       if (iterator.hasNext) {
         val header = iterator.next()
-        assert(header.asObject.get.remove("timestamp") == JsonObject(
+        assert(header.value.asObject.get.remove("timestamp") == JsonObject(
           "TYPE" → Json.fromString("JobScheduler.Journal"),
           "version" → Json.fromString(JournalMeta.header.version),
           "softwareVersion" → Json.fromString(BuildInfo.version),
           "buildId" → Json.fromString(BuildInfo.buildId)))
       }
       Vector.build[Json] { builder ⇒
-        try iterator foreach builder.+=
+        try iterator foreach (o ⇒ builder += o.value)
         catch {
           case _: EOFException ⇒ None
           case _: java.util.zip.ZipException ⇒ None

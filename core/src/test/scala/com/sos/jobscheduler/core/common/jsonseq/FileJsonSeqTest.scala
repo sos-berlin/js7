@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.common.jsonseq.FileJsonSeqTest._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import io.circe.Json
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import java.io.{FileInputStream, FileOutputStream, InputStream, OutputStream}
@@ -56,7 +57,7 @@ final class FileJsonSeqTest extends FreeSpec {
       assert(file.contentString endsWith "\n")
       autoClosing(new FileInputStream(file)) { in ⇒
         val iterator = new InputStreamJsonSeqIterator(in)
-        assert((iterator map { _.as[A].orThrow }).toList == List(
+        assert((iterator map { _.value.as[A].orThrow }).toList == List(
           A(1, "a"),
           A(2, "b"),
           A(3, "c")))
@@ -128,7 +129,7 @@ final class FileJsonSeqTest extends FreeSpec {
 
           for (_ ← 1 to 5)
           autoClosing(inputFilter(new FileInputStream(file))) { in ⇒
-            val iterator = new InputStreamJsonSeqIterator(in)
+            val iterator: Iterator[Json] = new InputStreamJsonSeqIterator(in) map (_.value)
             for (_ ← 1 to m) {
               val stopwatch = new Stopwatch
               var dummy = 0
