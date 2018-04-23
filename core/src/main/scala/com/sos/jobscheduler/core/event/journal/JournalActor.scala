@@ -197,9 +197,11 @@ extends Actor with Stash {
   }
 
   private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
-    case SnapshotWriter.Output.Finished(done) ⇒
+    case SnapshotWriter.Output.Finished(Failure(t)) ⇒
+      throw t.appendCurrentStackTrace
+
+    case SnapshotWriter.Output.Finished(Success(snapshotCount)) ⇒
       temporaryJsonWriter.close()
-      val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
       if (snapshotCount > 0) {
         logger.info(s"$snapshotCount snapshots written to journal")
@@ -254,14 +256,15 @@ extends Actor with Stash {
 }
 
 object JournalActor {
-  trait CallersItem
-  val SnapshotsHeader = Json.fromString("SNAPSHOTS")
-  val EventsHeader = Json.fromString("EVENTS")
+  private[journal] val SnapshotsHeader = Json.fromString("-------SNAPSHOTS-------")
+  private[journal] val EventsHeader    = Json.fromString("-------EVENTS-------")
 
   def props[E <: Event](meta: JournalMeta[E], file: Path, syncOnCommit: Boolean,
     eventIdGenerator: EventIdGenerator, keyedEventBus: StampedKeyedEventBus, stopped: Promise[Stopped] = Promise())
   =
     Props { new JournalActor(meta, file, syncOnCommit, eventIdGenerator, keyedEventBus, stopped) }
+
+  trait CallersItem
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
