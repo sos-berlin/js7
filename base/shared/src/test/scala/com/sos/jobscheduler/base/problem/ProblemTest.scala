@@ -103,6 +103,9 @@ final class ProblemTest extends FreeSpec {
 
   "equals" in {
     assert(Problem("TEST") == Problem("TEST"))
+    assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
+    assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
+    assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
     assert(Problem("X") != Problem("Y"))
   }
 }

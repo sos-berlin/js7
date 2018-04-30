@@ -28,10 +28,14 @@ sealed trait Problem
 
   def withPrefix(prefix: String): Problem = Problem(prefix) |+| this
 
+  final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
+
   override def equals(o: Any) = o match {
     case o: Problem ⇒ toString == o.toString
     case _ ⇒ false
   }
+
+  override def hashCode = toString.hashCode
 
   override def toString: String
 }
@@ -73,15 +77,16 @@ object Problem
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + message)
 
-    override def hashCode = message.hashCode ^ cause.hashCode
-
     override def toString = message + cause.map(o ⇒ s" [$o]").getOrElse("")
   }
 
-  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem]) extends Simple
+  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem]) extends Simple {
+    override final def hashCode = super.hashCode  // Derived case class should not override
+  }
 
   class Lazy protected[problem](messageFunction: ⇒ String, val cause: Option[Problem] = None) extends Simple {
     protected def rawMessage = messageFunction
+    override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
   def set(problems: String*): Multiple =
@@ -114,10 +119,12 @@ object Problem
         case _ ⇒ super.equals(o)
       }
 
+    override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
+
     override def toString = message
   }
 
-  private class FromThrowable(throwableFunction: () ⇒ Throwable) extends Problem {
+  private final class FromThrowable(throwableFunction: () ⇒ Throwable) extends Problem {
     private lazy val throwable_ = throwableFunction()
 
     def throwable = throwable_
