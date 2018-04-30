@@ -100,7 +100,7 @@ object RunningAgent {
     val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
-    val sessionRegister = injector.getInstance(inject.Key.get(new inject.TypeLiteral[SessionRegister[LoginSession]] {}))
+    val sessionRegister = injector.instance[SessionRegister[LoginSession]]
     val readyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
     val mainActor = actorSystem.actorOf(
