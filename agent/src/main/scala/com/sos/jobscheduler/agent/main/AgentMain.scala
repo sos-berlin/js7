@@ -10,11 +10,8 @@ import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.EmptyAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
-import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -53,9 +50,10 @@ object AgentMain {
 
   private def tryProvideDotnet(conf: AgentConfiguration): (AgentConfiguration, AutoCloseable) =
     conf match {
-      case c if isWindows ⇒
-        val env = new DotnetEnvironment(temporaryDirectory)
-        (c withDotnetAdapterDirectory Some(env.directory), env)
+      // TODO DotnetModule als ServiceProvider realisieren, so dass unter Unix kompilierter Agent auch unter Windows nutzbar ist.
+      //case c if isWindows ⇒
+      //  val env = new DotnetEnvironment(temporaryDirectory)
+      //  (c withDotnetAdapterDirectory Some(env.directory), env)
       case c ⇒ (c, EmptyAutoCloseable)
     }
 
