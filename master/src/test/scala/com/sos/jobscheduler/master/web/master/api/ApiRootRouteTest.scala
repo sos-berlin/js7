@@ -8,23 +8,24 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRootRoute {
 
-  protected implicit def executionContext = system.dispatcher
+  protected implicit def scheduler = Scheduler.global
 
   protected def executeCommand(command: MasterCommand) =
     command match {
-      case MasterCommand.Terminate ⇒ Future.successful(MasterCommand.Response.Accepted)
+      case MasterCommand.Terminate ⇒ Task.pure(MasterCommand.Response.Accepted)
       case _ ⇒ fail()
     }
 
-  protected def orderCountFuture = Future.successful(7)
+  protected def orderCount = Task.pure(7)
 
   private def route: Route =
     pathSegments("api") {

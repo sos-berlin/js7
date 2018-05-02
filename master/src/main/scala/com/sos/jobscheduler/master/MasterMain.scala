@@ -19,9 +19,9 @@ import com.sos.jobscheduler.master.MasterMain._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 /**
@@ -50,7 +50,7 @@ object MasterMain {
   def main(args: Array[String]): Unit = {
     logger.info(s"Master ${BuildInfo.buildVersion}")  // Log early
     try
-      start(MasterConfiguration.fromCommandLine(args.toImmutableSeq))
+      start(MasterConfiguration.fromCommandLine(args.toImmutableSeq)).runAsync
         .flatMap { _.terminated }
         .onComplete {
           case Success(Completed) ⇒
@@ -70,13 +70,13 @@ object MasterMain {
     }
   }
 
-  def start(conf: MasterConfiguration): Future[RunningMaster] =
+  def start(conf: MasterConfiguration): Task[RunningMaster] =
     for (master ← RunningMaster(conf)) yield {
       val hook = JavaShutdownHook.add("MasterMain") {
         // TODO Interfers with Akkas CoordinatedShutdown shutdown hook
         onJavaShutdown(master)
       }
-      master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration)) // Will block on recovery until Agents are started: await 99.s
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration)).runAsync // Will block on recovery until Agents are started: await 99.s
       master.terminated andThen { case _ ⇒
         hook.remove()
       }

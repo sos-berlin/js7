@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.http.CirceToYaml.{toYamlString, yamlToJson}
 import io.circe.Json
+import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -18,20 +19,20 @@ trait TextClient extends AkkaHttpClient {
   protected def apiUri(tail: String): Uri
 
   def executeCommand(command: String): Unit = {
-    val whenResponded = post[Json, Json](commandUri, yamlToJson(command))
+    val whenResponded = post[Json, Json](commandUri, yamlToJson(command)).runAsync
     val response = awaitResult(whenResponded)
     printer.doPrint(toYamlString(response))
   }
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = get[Json](apiUri(u), 60.seconds)
+    val whenResponded = get[Json](apiUri(u), 60.seconds).runAsync
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit = {
-    val whenResponded = get[Json](apiUri(""), 60.seconds)
+    val whenResponded = get[Json](apiUri(""), 60.seconds).runAsync
     awaitResult(whenResponded)
     print(s"$serverName is responding")
   }

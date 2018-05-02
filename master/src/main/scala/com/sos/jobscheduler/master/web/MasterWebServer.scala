@@ -13,7 +13,8 @@ import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import monix.eval.Task
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -34,14 +35,14 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   protected val bindings = masterConfiguration.webServerBindings
   private val orderApiOnce = new SetOnce[OrderApi.WithCommands]("OrderApi")
   private val fileBasedApiOnce = new SetOnce[FileBasedApi]("FileBasedApi")
-  private val executeCommandOnce = new SetOnce[MasterCommand ⇒ Future[MasterCommand.Response]]
+  private val executeCommandOnce = new SetOnce[MasterCommand ⇒ Task[MasterCommand.Response]]
 
   def setClients(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands): Unit = {
     fileBasedApiOnce := fileBasedApi
     orderApiOnce := orderApi
   }
 
-  def setExecuteCommand(executeCommand: MasterCommand ⇒ Future[MasterCommand.Response]) =
+  def setExecuteCommand(executeCommand: MasterCommand ⇒ Task[MasterCommand.Response]) =
     executeCommandOnce := executeCommand
 
   protected def newRoute(binding: WebServerBinding) =

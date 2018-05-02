@@ -10,9 +10,9 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.web.master.RouteService.NamedRoute
 import java.util.ServiceLoader
 import monix.eval.Coeval
+import monix.execution.Scheduler
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext
 
 /**
   * Java service provider interface.
@@ -46,7 +46,7 @@ object RouteService {
   final case class NamedRoute(suburi: String, route: Route)
 
   private[master] trait RouteServiceRoute {
-    protected implicit def executionContext: ExecutionContext
+    protected implicit def scheduler: Scheduler
 
     private val _route: Coeval[Route] = routeServices.map(
       _.map {

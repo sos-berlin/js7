@@ -12,7 +12,6 @@ final class AkkaHttpMasterApi(val u: Uri) extends HttpMasterApi with AkkaHttpCli
 {
   protected val uri = u.toString
   protected def httpClient = this
-  protected def executionContext = actorSystem.dispatcher
   protected def userAndPassword = None
 
   closer.onClose { super.close() }

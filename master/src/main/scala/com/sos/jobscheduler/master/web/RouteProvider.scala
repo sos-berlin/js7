@@ -15,8 +15,8 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
+import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -29,7 +29,6 @@ extends AllRoute {
   protected val masterConfiguration = injector.instance[MasterConfiguration]
   protected val config              = injector.instance[Config]
   protected def eventReader         = injector.instance[EventReader[Event]]
-  protected val executionContext    = injector.instance[ExecutionContext]
   protected val scheduler           = injector.instance[Scheduler]
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =
@@ -54,12 +53,12 @@ object RouteProvider {
       gateKeeper: GateKeeper,
       getFileBasedApi: () ⇒ FileBasedApi,
       getOrderApi: () ⇒ OrderApi.WithCommands,
-      execCmd: () ⇒ MasterCommand ⇒ Future[MasterCommand.Response])
+      execCmd: () ⇒ MasterCommand ⇒ Task[MasterCommand.Response])
     : Route =
       new RouteProvider(gateKeeper, injector) {
         protected val fileBasedApi = getFileBasedApi()
         protected val orderApi = getOrderApi()
-        protected def orderCountFuture = orderApi.orderCount.runAsync(scheduler)
+        protected def orderCount = orderApi.orderCount
         protected def executeCommand(command: MasterCommand) = execCmd()(command)
       }.route(actorSystem)
   }

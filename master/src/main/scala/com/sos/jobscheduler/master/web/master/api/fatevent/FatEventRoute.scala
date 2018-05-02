@@ -10,8 +10,9 @@ import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, 
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderFatEvent}
 import com.sos.jobscheduler.master.order.fat.StatefulEventToFatOrderEventConverter
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
 trait FatEventRoute
 {
   protected def eventReader: EventReader[Event]
-  protected implicit def executionContext: ExecutionContext
+  protected implicit def scheduler: Scheduler
 
   final val fatEventRoute: Route =
     pathEnd {

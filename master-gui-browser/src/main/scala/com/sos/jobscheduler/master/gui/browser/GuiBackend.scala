@@ -14,9 +14,9 @@ import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
+import monix.execution.Scheduler.Implicits.global
 import org.scalajs.dom.{raw, window}
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -67,7 +67,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
   private def requestWorkflows: Callback =
     Callback.future {
-      MasterApi.workflows transform {
+      MasterApi.workflows.runAsync transform {
         case Failure(err) ⇒ setError(err)
         case Success(stamped: Stamped[Seq[Workflow]]) ⇒
           Try {
@@ -90,7 +90,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
         content = OrdersState.FetchingContent))
     ) >>
     Callback.future {
-      MasterApi.orders transform {
+      MasterApi.orders.runAsync transform {
         case Failure(err) ⇒ setError(err)
         case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
           Try {
@@ -124,7 +124,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       def fetchEvents() =
         Callback.future {
           isRequestingEvents = true
-          MasterApi.events[OrderEvent](after = after, timeout = timeout)
+          MasterApi.events[OrderEvent](after = after, timeout = timeout).runAsync
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             }

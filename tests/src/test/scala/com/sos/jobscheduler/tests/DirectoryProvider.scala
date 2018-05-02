@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -24,6 +25,8 @@ import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
 import java.time.Duration
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.{ExecutionContext, Future}
@@ -47,15 +50,15 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     }
   }
 
-  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit s: Scheduler): Unit =
     runAgents()(agents ⇒
       runMaster()(master ⇒
         body(master, agents)))
 
-  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
     RunningMaster.runForTest(directory, eventCollector)(body)
 
-  def startMaster(module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
+  def startMaster(module: Module = EMPTY_MODULE)(implicit s: Scheduler): Task[RunningMaster] =
     RunningMaster(RunningMaster.newInjector(directory, module))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
@@ -76,7 +79,7 @@ object DirectoryProvider {
 
     protected def agentPaths: Seq[AgentPath]
 
-    import ExecutionContext.Implicits.global
+    import Scheduler.Implicits.global
 
     protected lazy val directoryProvider = new DirectoryProvider(agentPaths)
     protected lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s

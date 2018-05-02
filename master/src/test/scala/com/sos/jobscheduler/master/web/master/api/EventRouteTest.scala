@@ -17,6 +17,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -28,7 +29,7 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
 
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventReader = new EventCollector.ForTest
-  protected implicit def executionContext = system.dispatcher
+  protected implicit def scheduler = Scheduler.global
 
   TestEvents foreach eventReader.addStamped
 

@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -45,8 +46,8 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
 
@@ -139,7 +140,7 @@ object TestMasterAgent {
 
       val master = RunningMaster(injector) await 99.s
       val startTime = now
-      master.executeCommand(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration))
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)) await 99.s
       injector.instance[ActorSystem].actorOf(Props {
         new Actor {
           injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])

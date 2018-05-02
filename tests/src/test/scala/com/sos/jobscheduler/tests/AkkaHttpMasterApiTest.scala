@@ -3,8 +3,8 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
@@ -15,8 +15,8 @@ import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer

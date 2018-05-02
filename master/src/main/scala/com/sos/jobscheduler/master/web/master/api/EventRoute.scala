@@ -12,15 +12,15 @@ import com.sos.jobscheduler.data.event.{Event, EventSeq, KeyedEvent, SomeEventRe
 import com.sos.jobscheduler.master.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.web.master.api.EventRoute._
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
 trait EventRoute {
   protected def eventReader: EventReader[Event]
-  protected implicit def executionContext: ExecutionContext
+  protected implicit def scheduler: Scheduler
 
   final val eventRoute: Route =
     get {

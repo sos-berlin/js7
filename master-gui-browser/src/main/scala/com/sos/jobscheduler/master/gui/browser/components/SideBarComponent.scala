@@ -4,6 +4,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, ScalaComponent}
+import monix.execution.Scheduler.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -29,6 +30,6 @@ object SideBarComponent {
             "Shutdown"))))
 
   private def terminate = Callback {
-    MasterApi.executeCommand(MasterCommand.Terminate)
+    MasterApi.executeCommand(MasterCommand.Terminate).runAsync
   }
 }

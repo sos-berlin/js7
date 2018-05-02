@@ -19,7 +19,6 @@ private[master] final class TextMasterClient(
 extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
 
   private val masterUris = MasterUris(s"$masterUri/master")
-  protected val executionContext = actorSystem.dispatcher
 
   protected def serverName = "JobScheduler Master"
 

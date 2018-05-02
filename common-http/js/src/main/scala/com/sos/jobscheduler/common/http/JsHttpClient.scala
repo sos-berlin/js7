@@ -6,10 +6,9 @@ import com.sos.jobscheduler.common.http.HttpClientException.{HostUnreachable, Ht
 import com.sos.jobscheduler.common.http.JsHttpClient._
 import io.circe
 import io.circe.{Decoder, Encoder}
+import monix.eval.Task
 import org.scalajs.dom.ext.{Ajax, AjaxException}
 import org.scalajs.dom.{XMLHttpRequest, window}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.math.min
 import scala.util.{Failure, Success, Try}
@@ -19,33 +18,35 @@ import scala.util.{Failure, Success, Try}
   */
 final class JsHttpClient(requiredBuildId: String) extends HttpClient {
 
-  def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Future[A] =
+  def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A] =
     decodeResponse(
-      Ajax.get(
-        uri,
-        headers = Map("Accept" → "application/json"),
-        timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt))
+      Task.deferFuture(
+        Ajax.get(
+          uri,
+          headers = Map("Accept" → "application/json"),
+          timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt)))
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A): Future[B] =
+  def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
     decodeResponse(post_(uri, data))
 
   def postIgnoreResponse[A: Encoder](uri: String, data: A) =
     post_(uri, data).map(_.status)
 
-  private def post_[A: Encoder](uri: String, data: A): Future[XMLHttpRequest] =
-    Ajax.post(
-      uri,
-      implicitly[Encoder[A]].apply(data).compactPrint,
-      headers = Map("Content-Type" → "application/json"))
+  private def post_[A: Encoder](uri: String, data: A): Task[XMLHttpRequest] =
+    Task.deferFuture(
+      Ajax.post(
+        uri,
+        implicitly[Encoder[A]].apply(data).compactPrint,
+        headers = Map("Content-Type" → "application/json")))
 
-  private def decodeResponse[A: Decoder](body: ⇒ Future[XMLHttpRequest]): Future[A] =
+  private def decodeResponse[A: Decoder](body: ⇒ Task[XMLHttpRequest]): Task[A] =
     for (xhr ← checkResponse(body)) yield circe.parser.decode[A](xhr.responseText) match {
       case Right(o) ⇒ o
       case Left(t) ⇒ logAndThrow(OtherFailure(s"Error in JSON decoding: ${t.toStringWithCauses}", Some(t)))
     }
 
-  private def checkResponse[A](body: ⇒ Future[XMLHttpRequest]): Future[XMLHttpRequest] =
-    body transform { tried ⇒ Success(checkResponse(tried)) }
+  private def checkResponse[A](body: ⇒ Task[XMLHttpRequest]): Task[XMLHttpRequest] =
+    body.materialize.map(tried ⇒ Success(checkResponse(tried))).dematerialize
 
   private def checkResponse(tried: Try[XMLHttpRequest]): XMLHttpRequest =
     tried match {

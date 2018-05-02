@@ -23,8 +23,8 @@ import javax.inject.Singleton
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -54,7 +54,7 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
     }
 
     @Provides @Singleton
-    def authenticator(conf: AgentConfiguration)(implicit ec: ExecutionContext): Authenticator[User] =
+    def authenticator(conf: AgentConfiguration): Authenticator[User] =
       new OurAuthenticator({
         case TestUserId ⇒ Some(HashedPassword(Password, identity))
         case _ ⇒ None

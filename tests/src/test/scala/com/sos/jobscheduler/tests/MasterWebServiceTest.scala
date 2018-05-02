@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus

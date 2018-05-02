@@ -20,7 +20,6 @@ private[agent] final class TextAgentClient(
 extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
 
   private val agentUris = AgentUris(agentUri)
-  protected val executionContext = actorSystem.dispatcher
 
   protected def serverName = "JobScheduler Agent"
 

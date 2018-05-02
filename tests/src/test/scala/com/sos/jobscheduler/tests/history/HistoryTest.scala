@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath

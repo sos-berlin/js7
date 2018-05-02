@@ -5,8 +5,8 @@ import com.sos.jobscheduler.data.order.{Order, OrderFatEvent, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
 import io.circe.{Decoder, ObjectEncoder}
+import monix.eval.Task
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
@@ -15,19 +15,19 @@ import scala.reflect.ClassTag
   */
 trait MasterApi {
 
-  def executeCommand(command: MasterCommand): Future[command.MyResponse]
+  def executeCommand(command: MasterCommand): Task[command.MyResponse]
 
-  def overview: Future[MasterOverview]
+  def overview: Task[MasterOverview]
 
   def events[E <: Event: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
-    : Future[TearableEventSeq[Seq, KeyedEvent[E]]]
+    : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
 
   def fatEvents[E <: OrderFatEvent: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
-    : Future[TearableEventSeq[Seq, KeyedEvent[E]]]
+    : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
 
-  def ordersOverview: Future[OrdersOverview]
+  def ordersOverview: Task[OrdersOverview]
 
-  def orders: Future[Stamped[Seq[Order[Order.State]]]]
+  def orders: Task[Stamped[Seq[Order[Order.State]]]]
 
-  def workflows: Future[Stamped[Seq[Workflow]]]
+  def workflows: Task[Stamped[Seq[Workflow]]]
 }

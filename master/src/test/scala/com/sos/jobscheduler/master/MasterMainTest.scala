@@ -3,14 +3,15 @@ package com.sos.jobscheduler.master
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEnvironment
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer

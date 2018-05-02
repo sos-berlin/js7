@@ -12,8 +12,6 @@ final class SimpleAkkaHttpClient(label: String) extends AkkaHttpClient
 {
   protected val actorSystem = Akkas.newActorSystem(label)
 
-  protected implicit def executionContext = actorSystem.dispatcher
-
   protected def userAndPassword = None
 
   override def close() = {
