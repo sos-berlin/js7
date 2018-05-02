@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
+import com.sos.jobscheduler.base.utils.ScalaUtils.function1WithToString
 import com.sos.jobscheduler.common.event.EventReader.Every
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
 import monix.eval.Task
@@ -20,7 +21,7 @@ trait EventReader[E <: Event] {
 
   def strict: StrictEventReader[E] = new StrictEventReader(this)
 
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
+  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
     (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]]
 
@@ -70,5 +71,5 @@ trait EventReader[E <: Event] {
 
 object EventReader
 {
-  private[event] val Every: Any ⇒ Boolean = _ ⇒ true
+  private[event] val Every: Any ⇒ Boolean = function1WithToString("Every")(_ ⇒ true)
 }

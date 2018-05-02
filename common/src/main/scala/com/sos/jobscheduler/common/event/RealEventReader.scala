@@ -47,16 +47,18 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     sync.onEventAdded(eventId)
   }
 
-  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
+  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
     (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]] =
-    observe2(request, predicate)
+    recursive_observe2(request, predicate, limitRecursion = 100/*2000 would blow up test*/)
+    //tailRecM_observe(request, predicate)
 
-  private def observe2[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean, wasEmpty: Boolean = false)
+  // Blows up stack when not limited
+  private def recursive_observe2[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean, limitRecursion: Int)
     (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]] =
   {
-    if (request.limit <= 0)
+    if (request.limit <= 0 || limitRecursion <= 0)
       Observable.empty
     else
       Observable.fromTask(read[E1](request, predicate = predicate)) flatMap {
@@ -65,27 +67,54 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
         case EventSeq.Empty(lastEventId) ⇒
           val nextRequest = request.copy[E1](after = lastEventId)
-          if (wasEmpty)
-            Observable.evalDelayed(EmptyLoopSlowDown, // Just in case ...
-              observe2(nextRequest, predicate, wasEmpty = true))
-            .flatten
-          else
-            observe2(nextRequest, predicate, wasEmpty = true)
+          recursive_observe2(nextRequest, predicate, limitRecursion - 1)
 
         case EventSeq.NonEmpty(events) ⇒
+          if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
           var lastEventId = request.after
           var limit = request.limit
-          var empty = false  // Just in case ...
           closeableIteratorToObservable(events)
             .map { o ⇒
               lastEventId = o.eventId
               limit -= 1
-              empty = false
               o
-            } ++
+            } ++/*<-- Monix 3.0 concatention will not expand stack ??? */
             Observable.defer(
-              observe2(request.copy[E1](after = lastEventId, limit = limit), predicate, wasEmpty = empty))
+              recursive_observe2(request.copy[E1](after = lastEventId, limit = limit), predicate, limitRecursion - 1))
       }
+    }
+
+  // This implementations blows up heap. See Alexandru's notes in https://github.com/typelevel/cats/issues/1329
+  private def tailRecM_observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
+    (implicit scheduler: Scheduler)
+  =
+    Observable.tailRecM((request, predicate)) { case (req, pred) ⇒
+      if (req.limit <= 0)
+        Observable.empty
+      else
+        Observable.fromTask(read[E1](req, predicate = pred)) flatMap {
+          case _: TearableEventSeq.Torn ⇒
+            throw new IllegalArgumentException(s"EventSeq is torn - after=${req.after} oldestEventId=$oldestEventId")
+
+          case EventSeq.Empty(lastEventId) ⇒
+            Observable(Left((req.copy[E1](after = lastEventId), pred)))
+
+          case EventSeq.NonEmpty(events) ⇒
+            if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
+            var lastEventId = req.after
+            var limit = req.limit
+            closeableIteratorToObservable(events)
+              .map(Right.apply)
+              .endWith(Left(PlaceHolder) :: Nil)
+              .map {
+                case Right(stamped) ⇒
+                  lastEventId = stamped.eventId
+                  limit -= 1
+                  Right(stamped)
+                case Left(PlaceHolder) ⇒
+                  Left((req.copy[E1](after = lastEventId, limit = limit), pred))
+              }
+        }
     }
 
   final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
@@ -229,5 +258,5 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 }
 
 object RealEventReader {
-  private val EmptyLoopSlowDown = 500.millis
+  private object PlaceHolder
 }

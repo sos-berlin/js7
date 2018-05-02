@@ -12,6 +12,8 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
     try super.toVector
     finally close()
 
+  def :+[B >: A](b: ⇒ B) = wrap(this ++ Iterator(b))
+
   override def take(n: Int): CloseableIterator[A] =
     wrap(super.take(n))
 

@@ -20,7 +20,7 @@ trait EventReaderProvider[E <: Event] extends EventReader[E]
 {
   private lazy val realEventReaderTask = Task.fromFuture(whenRealEventReader)
 
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
+  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
     (implicit scheduler: Scheduler)
   = Observable.fromFuture(whenRealEventReader) flatMap (_.observe(request, predicate))
 

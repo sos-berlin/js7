@@ -118,7 +118,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       waitForCondition(99.s, 10.ms) { stampeds.size == 3 }
       assert(stampeds == Stamped(1, "1" <-: A1) :: Stamped(3, "3" <-: A1) :: Stamped(4, "4" <-: A1) :: Nil)
 
-      // limit=2 reached
+      // limit=3 reached
       observed await 99.s
     }
   }
