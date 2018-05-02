@@ -32,7 +32,6 @@ private class TestAgentActorProvider extends HasCloser {
   lazy val agentDirectory = directoryProvider.agentDirectory
 
   lazy val (eventCollector, agentActor) = start(agentDirectory)
-  lazy val lastEventId = eventCollector.lastAddedEventId
 
   def startAgent() = agentActor
 

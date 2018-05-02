@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
-import com.sos.jobscheduler.data.event.EventRequest
+import com.sos.jobscheduler.data.event.{EventId, EventRequest}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
@@ -42,7 +42,6 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
       closer onClose actorSystem.terminate()
       provideAgent { (client, agent) ⇒
         val eventCollector = newEventCollector(agent.injector)
-        val lastEventId = eventCollector.lastAddedEventId
 
         val orderIds = for (i ← 0 until 3) yield OrderId(s"TEST-ORDER-$i")
         (for (orderId ← orderIds) yield
@@ -59,7 +58,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
             for (orderId ← orderIds) yield
-              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = lastEventId, 90.s), orderId))
+              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId))
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 

@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.EventRequest
+import com.sos.jobscheduler.data.event.{EventId, EventRequest}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import org.scalatest.FreeSpec
@@ -41,14 +41,13 @@ final class AgentActorTest extends FreeSpec {
               <script language="shell">{AScript}</script>
             </job>
         withCloser { implicit closer ⇒
-          val lastEventId = eventCollector.lastAddedEventId
           (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
           executeCommand(RegisterAsMaster) await 99.s
           val stopwatch = new Stopwatch
           val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
           orderIds map (orderId ⇒ executeCommand(AttachOrder(TestOrder.copy(id = orderId), TestAgentPath % "(initial)", SimpleTestWorkflow))) await 99.s
           for (orderId ← orderIds)
-            eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
+            eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId) await 99.s
           info(stopwatch.itemsPerSecondString(n, "Orders"))
 
           val GetOrders.Response(orders) = executeCommand(GetOrders) await 99.s
@@ -64,7 +63,7 @@ final class AgentActorTest extends FreeSpec {
 
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
           for (orderId ← orderIds)
-            eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
+            eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId) await 99.s
         }
         executeCommand(AgentCommand.Terminate()) await 99.s
       }

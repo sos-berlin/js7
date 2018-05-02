@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -22,14 +24,17 @@ trait EventReader[E <: Event]
 
   protected def timeoutLimit: Duration
 
-  def oldestEventId: EventId
+  protected def started: Future[Completed]
+
+  /** Valid first after Journal has been started. See implementing subclasses. */
+  protected def unsafeOldestEventId: EventId
 
   protected def eventsAfter(after: EventId): Future[Option[Iterator[Stamped[KeyedEvent[E]]]]]
 
   protected def reverseEventsAfter(after: EventId): Future[Iterator[Stamped[KeyedEvent[E]]]]
 
   private var _lastEventId: EventId = EventId.BeforeFirst
-  private lazy val sync = new Sync(initialLastEventId = oldestEventId, timerService)
+  private lazy val sync = new Sync(initialLastEventId = unsafeOldestEventId, timerService)
 
   protected final def onEventAdded(eventId: EventId): Unit = {
     if (eventId < _lastEventId) throw new IllegalArgumentException(s"EventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
@@ -132,7 +137,7 @@ trait EventReader[E <: Event]
           else
             EventSeq.Empty(lastEventId)
         case None ⇒
-          TearableEventSeq.Torn(oldestKnownEventId = oldestEventId)
+          TearableEventSeq.Torn(oldestKnownEventId = unsafeOldestEventId)
       }
   }
 
@@ -146,7 +151,7 @@ trait EventReader[E <: Event]
       .filter(stamped ⇒ predicate(stamped.value))
       .take(request.limit) match {
         case stampeds if stampeds.nonEmpty ⇒ EventSeq.NonEmpty(stampeds)
-        case _ ⇒ EventSeq.Empty(lastAddedEventId)
+        case _ ⇒ EventSeq.Empty(unsafeLastAddedEventId)
       })
 
   protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
@@ -163,19 +168,24 @@ trait EventReader[E <: Event]
         }
         .take(request.limit))
 
-  final def lastAddedEventId: EventId =
-    if (_lastEventId == EventId.BeforeFirst) oldestEventId else _lastEventId
+  /** Valid first after Journal has been started. See `unsafeOldestEventId` in implementing subclasses. */
+  private def unsafeLastAddedEventId: EventId =
+    if (_lastEventId == EventId.BeforeFirst) unsafeOldestEventId else _lastEventId
+
+  def oldestEventId: Future[EventId] =
+    started map (_ ⇒ unsafeOldestEventId)
 
   /** Blocking. */
   @TestOnly
   def await[E1 <: E: ClassTag](
     predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true,
-    after: EventId = EventId.BeforeFirst)(
+    after: EventId = EventId.BeforeFirst,
+    timeout: Duration = 99.s)(
     implicit ec: ExecutionContext)
   : Vector[Stamped[KeyedEvent[E1]]] =
-    when[E1](EventRequest.singleClass[E1](after = after, 99.s), predicate) await 99.s match {
+    when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.s match {
       case EventSeq.NonEmpty(events) ⇒ events.toVector
-      case o ⇒ sys.error(s"Unexpected EventSeq: $o")
+      case o ⇒ sys.error(s"EventReader.await[${implicitClass[E1].scalaName}] unexpected EventSeq: $o")
     }
 
   @TestOnly

@@ -26,16 +26,18 @@ extends EventReader[E]
 {
   import journalMeta.eventJsonCodec
 
-  private val journalStarted = Promise[Completed]()
+  private val _journalStarted = Promise[Completed]()
   private val eventIdToPositionIndex = new EventIdPositionIndex(size = 1000)
   private var _oldestEventId = EventId(-1)
   private var endPosition = -1L
+
+  protected def started = _journalStarted.future
 
   private[journal] def onJournalingStarted(positionAndEventId: PositionAnd[EventId]): Unit = {
     endPosition = positionAndEventId.position
     _oldestEventId = positionAndEventId.value
     eventIdToPositionIndex.addAfter(eventId = positionAndEventId.value, position = positionAndEventId.position)
-    journalStarted.success(Completed)
+    _journalStarted.success(Completed)
   }
 
   private[journal] def onEventAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
@@ -48,18 +50,18 @@ extends EventReader[E]
     super.onEventAdded(eventId)
   }
 
-  def oldestEventId = {
-    requireJournalingStarted("oldestEventId")
+  protected def unsafeOldestEventId = {
+    requireJournalingStarted("unsafeOldestEventId")
     _oldestEventId
   }
 
   /**
-    * @return `Future(None)` if `after` < `oldestEventId`
+    * @return `Future(None)` if `after` < `unsafeOldestEventId`
     *         `Future(Some(Iterator.empty))` if no events are available for now
     */
   def eventsAfter(after: EventId): Future[Option[Iterator[Stamped[KeyedEvent[E]]]]] =
-    for (_ ← journalStarted.future) yield
-      (after >= oldestEventId) ? {
+    for (_ ← started) yield
+      (after >= _oldestEventId) ? {
         val position = eventIdToPositionIndex.positionAfter(after)
         if (position >= endPosition)  // Data behind endPosition is not flushed and probably incomplete
           Iterator.empty
@@ -81,5 +83,5 @@ extends EventReader[E]
     Future.successful(Iterator.empty)  // Not implemented
 
   private def requireJournalingStarted(method: String): Unit =
-    if (!journalStarted.isCompleted) throw new IllegalStateException(s"JournalFileReader: $method before onJournalStarted?")
+    if (!_journalStarted.isCompleted) throw new IllegalStateException(s"JournalFileReader: $method before onJournalStarted?")
 }
