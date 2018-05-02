@@ -6,12 +6,14 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.JournalEventReaderTest._
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -25,37 +27,37 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
 
   "eventReader.keyedEventQueue.after" in {
     withJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
-      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.isEmpty)
+      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.strict.isEmpty)
 
       writer.writeEvents(Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil)
-      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.isEmpty)  // Not flushed, so nothing has been read
+      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.strict.isEmpty)  // Not flushed, so nothing has been read
 
       writer.flush()
-      val stampedEventSeq = eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.toList
+      val stampedEventSeq = eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.strict
       assert(stampedEventSeq == Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil)
-      assert(eventReader.eventsAfter(after = stampedEventSeq(0).eventId).await(99.s).get.toList == Stamped(2, "2" <-: A1) :: Nil)
-      assert(eventReader.eventsAfter(after = stampedEventSeq(1).eventId).await(99.s).get.isEmpty)
+      assert(eventReader.eventsAfter(after = stampedEventSeq(0).eventId).await(99.s).get.strict == Stamped(2, "2" <-: A1) :: Nil)
+      assert(eventReader.eventsAfter(after = stampedEventSeq(1).eventId).await(99.s).get.strict.isEmpty)
     }
   }
 
   "eventReader.when with torn event stream" in {
     withJournal(lastEventId = EventId(1000)) { (writer, eventReader) ⇒
       assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s) == None)
-      assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s) ==
+      assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
         TearableEventSeq.Torn(oldestKnownEventId = 1000))
 
       val anyFuture = eventReader.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
       writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
       writer.flush()
-      val EventSeq.NonEmpty(anyEvents) = anyFuture await 99.s
-      assert(anyEvents.toList == Stamped(1001, "1" <-: A1) :: Nil)
+      val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
+      assert(anyEvents == Stamped(1001, "1" <-: A1) :: Nil)
     }
   }
 
   "eventReader.when for selected event subclasses" in {
     withJournal(lastEventId = EventId(1000)) { (writer, eventReader) ⇒
       assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s) == None)
-      assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s) ==
+      assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
         TearableEventSeq.Torn(oldestKnownEventId = 1000))
 
       val anyFuture = eventReader.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
@@ -63,13 +65,13 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
 
       writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
       writer.flush()
-      val EventSeq.NonEmpty(anyEvents) = anyFuture await 99.s
-      assert(anyEvents.toList == Stamped(1001, "1" <-: A1) :: Nil)
+      val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
+      assert(anyEvents == Stamped(1001, "1" <-: A1) :: Nil)
 
       writer.writeEvents(Stamped(1002, "2" <-: B1) :: Nil)
       writer.flush()
-      val EventSeq.NonEmpty(bEventsIterator) = bFuture await 99.s
-      assert(bEventsIterator.toList == Stamped(1002, "2" <-: B1) :: Nil)
+      val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict
+      assert(bEventsIterator == Stamped(1002, "2" <-: B1) :: Nil)
     }
   }
 
@@ -84,7 +86,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       writer.flush()
 
       def eventsForKey[E <: MyEvent: ClassTag](key: E#Key) = {
-        val EventSeq.NonEmpty(eventIterator) = eventReader.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key) await 10.s
+        val EventSeq.NonEmpty(eventIterator) = eventReader.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key).await(10.s).strict
         eventIterator.toVector map { _.value }
       }
       assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
@@ -96,6 +98,28 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       assert(keyedEvent[AEvent]("1") == A1)
       assert(keyedEvent[AEvent]("2") == A2)
       assert(keyedEvent[BEvent]("1") == B1)
+    }
+  }
+
+  "observe" in {
+    withJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
+      val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
+      val observed = eventReader.observe(EventRequest.singleClass[AEvent](after = EventId.BeforeFirst, limit = 3, timeout = 99.seconds))
+        .foreach(stampeds.+=)
+      assert(stampeds.isEmpty)
+
+      writer.writeEvents(Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: B1) :: Stamped(3, "3" <-: A1) :: Nil)
+      writer.flush()
+      waitForCondition(99.s, 10.ms) { stampeds.size == 2 }
+      assert(stampeds == Stamped(1, "1" <-: A1) :: Stamped(3, "3" <-: A1) :: Nil)
+
+      writer.writeEvents(Stamped(4, "4" <-: A1) :: Nil)
+      writer.flush()
+      waitForCondition(99.s, 10.ms) { stampeds.size == 3 }
+      assert(stampeds == Stamped(1, "1" <-: A1) :: Stamped(3, "3" <-: A1) :: Stamped(4, "4" <-: A1) :: Nil)
+
+      // limit=2 reached
+      observed await 99.s
     }
   }
 

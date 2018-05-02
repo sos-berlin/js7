@@ -4,7 +4,6 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
-import monix.eval.Task
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Promise}
 
@@ -22,11 +21,11 @@ extends EventReaderProvider[E]
 {
   private val eventReaderPromise = Promise[JournalEventReader[E]]()
 
+  val whenRealEventReader = eventReaderPromise.future
+
   private[journal] def onJournalingStarted(positionAndEventId: PositionAnd[EventId]): JournalEventReader[E] = {
     val eventReader = new JournalEventReader[E](journalMeta, journalFile, positionAndEventId, timeoutLimit)
     eventReaderPromise.success(eventReader)
     eventReader
   }
-
-  def whenEventReader = Task.fromFuture(eventReaderPromise.future)
 }

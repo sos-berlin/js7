@@ -16,13 +16,19 @@ import scala.reflect.ClassTag
   */
 object EventDirectives {
 
-  private val DefaultEventRequestDelay = 500.milliseconds
+  val DefaultTimeout = 0.seconds
+  val DefaultDelay = 500.milliseconds
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
     eventRequest[E](None)
 
-  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag](defaultReturnType: Option[String] = None): Directive1[SomeEventRequest[E]] =
+  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag](
+    defaultAfter: Option[EventId] = None,
+    defaultTimeout: FiniteDuration = DefaultTimeout,
+    defaultDelay: FiniteDuration = DefaultDelay,
+    defaultReturnType: Option[String] = None)
+  : Directive1[SomeEventRequest[E]] =
     new Directive1[SomeEventRequest[E]] {
       def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
         parameter("return".?) {
@@ -40,7 +46,7 @@ object EventDirectives {
               if (eventClasses.size != returnTypeNames.size)
                 reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
               else
-                eventRequestRoute[E](eventClasses, inner)
+                eventRequestRoute[E](eventClasses, defaultAfter, defaultTimeout, defaultDelay, inner)
           }
         }
     }
@@ -48,18 +54,28 @@ object EventDirectives {
   private implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
     Unmarshaller.strict((o: String) ⇒ new FiniteDuration(o.toInt, TimeUnit.SECONDS))  // Whole seconds only !!!
 
-  private def eventRequestRoute[E <: Event](eventClasses: Set[Class[_ <: E]], inner: Tuple1[SomeEventRequest[E]] ⇒ Route): Route = {
+  private def eventRequestRoute[E <: Event](
+    eventClasses: Set[Class[_ <: E]],
+    defaultAfter: Option[EventId],
+    defaultTimeout: FiniteDuration,
+    defaultDelay: FiniteDuration,
+    inner: Tuple1[SomeEventRequest[E]] ⇒ Route)
+  : Route =
     parameter("limit" ? Int.MaxValue) {
-
       case 0 ⇒
         reject(ValidationRejection("Invalid limit=0"))
 
       case limit if limit > 0 ⇒
-        parameter("after".as[EventId]) { after ⇒
-          parameter("timeout" ? Duration.Zero) { timeout ⇒
-            parameter("delay" ? DefaultEventRequestDelay) { delay ⇒
-              inner(Tuple1(EventRequest[E](eventClasses, after = after, timeout = timeout, delay = delay, limit = limit)))
-            }
+        parameter("after".as[EventId].?) {
+          _ orElse defaultAfter match {
+            case None ⇒ reject(ValidationRejection("Missing parameter after="))
+            case Some(after) ⇒
+              parameter("timeout" ? defaultTimeout) { timeout ⇒
+                parameter("delay" ? defaultDelay) { delay ⇒
+                  val eventRequest = EventRequest[E](eventClasses, after = after, timeout = timeout, delay = delay, limit = limit)
+                  inner(Tuple1(eventRequest))
+                }
+              }
           }
         }
 
@@ -68,5 +84,4 @@ object EventDirectives {
           inner(Tuple1(ReverseEventRequest[E](eventClasses, after = after, limit = -limit)))
         }
     }
-  }
 }

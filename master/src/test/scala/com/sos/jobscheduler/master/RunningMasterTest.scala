@@ -95,7 +95,7 @@ final class RunningMasterTest extends FreeSpec {
         //    TestWorkflowId /: Position(2),
         //    Order.Finished,
         //    payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
-        assert(orderApi.orderCount.runAsync.await(99.s) == 0)
+        assert(orderApi.orderCount.await(99.s) == 0)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second

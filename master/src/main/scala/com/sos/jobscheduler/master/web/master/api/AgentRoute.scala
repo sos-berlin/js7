@@ -42,5 +42,5 @@ trait AgentRoute
 }
 
 object AgentRoute {
-  intelliJuseImport(() ⇒ checkedToEntityMarshaller(null))
+  intelliJuseImport(() ⇒ checkedToResponseMarshaller(null))
 }

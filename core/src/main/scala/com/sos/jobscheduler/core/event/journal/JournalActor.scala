@@ -69,7 +69,7 @@ extends Actor with Stash {
       eventIdGenerator.updateLastEventId(lastEventId)
       keyToJournalingActor ++= keyToActor
       keyToJournalingActor.values foreach context.watch
-      eventReaderOptionProvider = eventReaderProviderOption_ map (_.asInstanceOf[JournalEventReaderProvider[E]]/*cast erased type argument*/)
+      eventReaderOptionProvider = eventReaderProviderOption_ map (_.asInstanceOf[JournalEventReaderProvider[E]]/*restore erased type argument, not checked*/)
       val sender = this.sender()
       becomeTakingSnapshotThen(lastEventId = lastEventId) {
         unstashAll()

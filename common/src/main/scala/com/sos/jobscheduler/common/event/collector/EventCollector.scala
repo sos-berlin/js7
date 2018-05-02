@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventReader
 import com.sos.jobscheduler.common.event.collector.EventCollector._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -28,11 +29,11 @@ extends RealEventReader[Event]
   final def oldestEventId: EventId =
     keyedEventQueue.oldestEventId
 
-  protected final def eventsAfter(after: EventId) =
-    Task.pure(keyedEventQueue.after(after))
+  final def eventsAfter(after: EventId) =
+    Task.pure(keyedEventQueue.after(after) map CloseableIterator.fromIterator)
 
   protected final def reverseEventsAfter(after: EventId) =
-    Task.pure(keyedEventQueue.reverseEvents(after = after))
+    Task.pure(CloseableIterator.fromIterator(keyedEventQueue.reverseEvents(after = after)))
 }
 
 object EventCollector

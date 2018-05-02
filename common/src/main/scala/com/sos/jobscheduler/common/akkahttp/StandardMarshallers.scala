@@ -1,15 +1,19 @@
 package com.sos.jobscheduler.common.akkahttp
 
+import akka.NotUsed
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType}
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import com.sos.jobscheduler.common.akkahttp.StreamingSupport.monixObservableToAkkaSource
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import scala.language.implicitConversions
 
 /**
@@ -25,8 +29,13 @@ object StandardMarshallers
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
 
-  implicit def monixTaskToResponseMarshaller[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
+  implicit def monixTaskToResponseMarshallable[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
     task.runAsync
+
+  implicit def monixObservableMarshallable[A: ToEntityMarshaller](observable: Observable[A])
+    (implicit s: Scheduler, q: Source[A, NotUsed] ⇒ ToResponseMarshallable)
+  : ToResponseMarshallable =
+    monixObservableToAkkaSource(observable)
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
@@ -43,7 +52,7 @@ object StandardMarshallers
       HttpEntity.Strict(ContentType(mediaType, charset), byteString)
     }
 
-  implicit def checkedToEntityMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
+  implicit def checkedToResponseMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
     Marshaller {
       implicit ec ⇒ {
         case Valid(a) ⇒

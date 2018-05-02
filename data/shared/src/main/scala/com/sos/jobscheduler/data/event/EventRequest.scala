@@ -19,7 +19,7 @@ final case class EventRequest[E <: Event](
   limit: Int)
 extends SomeEventRequest[E] {
   require(eventClasses.nonEmpty, "Missing Event class")
-  require(limit > 0, "Limit must not be below zero")
+  require(limit >= 0, "Limit must not be below zero")
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]

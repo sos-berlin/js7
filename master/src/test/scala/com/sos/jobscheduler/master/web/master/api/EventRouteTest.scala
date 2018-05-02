@@ -1,15 +1,19 @@
 package com.sos.jobscheduler.master.web.master.api
 
+import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -27,6 +31,7 @@ import scala.concurrent.duration._
   */
 final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRoute {
 
+  private implicit val timeout = 9.seconds
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventReader = new EventCollector.ForTest
   protected implicit def scheduler = Scheduler.global
@@ -43,18 +48,35 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
     s"/event?timeout=60&after=0")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         val EventSeq.NonEmpty(stampeds) = responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
         assert(stampeds == TestEvents)
       }
     }
   }
+
+  "/event application/json-seq" in {
+    Get(s"/event?after=0&limit=${TestEvents.length}") ~> Accept(`application/json-seq`) ~> route ~> check {
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      assert(response.entity.contentType == ContentType(`application/json-seq`))
+      val rs = Ascii.RS.toChar
+      val lf = Ascii.LF.toChar
+      assert(response.utf8StringFuture.await(99.s) ==
+        s"""$rs{"eventId":111111,"timestamp":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
+        s"""$rs{"eventId":222222,"timestamp":1000,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
+
+      //implicit val x = JsonSeqStreamSupport
+      //implicit val y = CirceJsonSeqSupport
+      //val stampeds = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
+      //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
+      //assert(stampeds == TestEvents)
+    }
+  }
 }
 
-object EventRouteTest {
-  intelliJuseImport(jsonUnmarshaller)
-
-  private val TestEvents = List(
+object EventRouteTest
+{
+  private val TestEvents = Vector(
     Stamped(EventId(111111), Timestamp.ofEpochMilli(1000),
       OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)),
     Stamped(EventId(222222), Timestamp.ofEpochMilli(1000),

@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
 import io.circe.Json
@@ -21,7 +22,7 @@ import java.nio.file.Path
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize)
+class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize)
 extends AutoCloseable {
 
   private val block = new Array[Byte](blockSize)
@@ -36,7 +37,7 @@ extends AutoCloseable {
   /** Closes underlying `SeekableInputStream`. */
   def close() = in.close()
 
-  def read(): Option[PositionAnd[Json]] = {
+  final def read(): Option[PositionAnd[Json]] = {
     val pos = _position
     readByteString() map (o ⇒ PositionAnd(pos, o.decodeString(UTF_8).parseJson))
   }
@@ -77,14 +78,14 @@ extends AutoCloseable {
     val length = in.read(block.array)
     if (length == -1) {
       blockLength = 0
-      false
+      false  // EOF
     } else {
       blockLength = length
       true
     }
   }
 
-  def seek(position: Long): Unit = {
+  final def seek(position: Long): Unit =
     if (position != _position) {
       in.seek(position)
       _position = position
@@ -92,9 +93,8 @@ extends AutoCloseable {
       blockRead = 0
       lineNumber = -1
     }
-  }
 
-  def position = _position
+  final def position = _position
 
   private def throwCorrupted(extra: String) = {
     val where = if (lineNumber != -1) s"line $lineNumber" else s"position $position"
@@ -102,10 +102,20 @@ extends AutoCloseable {
   }
 }
 
-object InputStreamJsonSeqReader {
-  def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize) =
-    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize)
-
+object InputStreamJsonSeqReader
+{
   private val BlockSize = 4096
   private val CharBufferSize = 1000
+  private val logger = Logger(getClass)
+
+  def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize): InputStreamJsonSeqReader = {
+    val result = new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize) {
+      override def close() = {
+        logger.trace(s"Close  $file")
+        super.close()
+      }
+    }
+    logger.trace(s"Opened $file")
+    result
+  }
 }

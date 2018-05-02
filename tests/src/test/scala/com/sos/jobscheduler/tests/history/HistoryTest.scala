@@ -47,7 +47,8 @@ final class HistoryTest extends FreeSpec
               var rounds = 0
               while (!finished) {
                 rounds += 1
-                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[OrderFatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)) await 99.s
+                val request = EventRequest.singleClass[OrderFatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
+                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(request) await 99.s
                 val chunk = stampeds take 2
                 chunk foreach history.handleHistoryEvent
                 lastEventId = chunk.last.eventId

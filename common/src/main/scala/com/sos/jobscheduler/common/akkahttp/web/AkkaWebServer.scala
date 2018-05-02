@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.akkahttp.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.generic.Completed
@@ -10,6 +11,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.Https.toHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
+import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -56,7 +58,9 @@ trait AkkaWebServer extends AutoCloseable {
 
   private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] =
     akkaHttp.bindAndHandle(newRoute(binding), interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
-      connectionContext)
+      connectionContext,
+      settings = ServerSettings(actorSystem)
+        .withParserSettings(ParserSettings(actorSystem) withCustomMediaTypes `application/json-seq`))
 
   def close() = {
     materializer.shutdown()

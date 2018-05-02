@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
+import scala.collection.immutable.Seq
 import scala.collection.{GenTraversableOnce, Iterator}
 
 /**
@@ -7,6 +8,10 @@ import scala.collection.{GenTraversableOnce, Iterator}
   */
 trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
 {
+  def strict: Seq[A] =
+    try super.toVector
+    finally close()
+
   override def take(n: Int): CloseableIterator[A] =
     wrap(super.take(n))
 

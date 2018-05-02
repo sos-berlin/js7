@@ -53,7 +53,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala takeWhile { _ > after } map queue.get)
       .asScala
 
-  private def lastEventId: EventId =
+  def lastEventId: EventId =
     if (queue.isEmpty) oldestEventId else queue.lastKey
 
   /** Events before this EventId are lost. */

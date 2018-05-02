@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.core.event.journal
 
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventReader
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -50,26 +51,28 @@ extends RealEventReader[E]
     * @return `Task(None)` if `after` < `oldestEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
-  def eventsAfter(after: EventId): Task[Option[Iterator[Stamped[KeyedEvent[E]]]]] =
+  def eventsAfter(after: EventId): Task[Option[CloseableIterator[Stamped[KeyedEvent[E]]]]] =
     Task.pure(
-      (after >= _oldestEventId) ? {
+      (after >= oldestEventId) ? {
         val position = eventIdToPositionIndex.positionAfter(after)
         if (position >= endPosition)  // Data behind endPosition is not flushed and probably incomplete
-          Iterator.empty
-        else
-          autoClosing(InputStreamJsonSeqReader.open(journalFile)) { jsonFileReader ⇒
+          CloseableIterator.empty
+        else {
+          val jsonFileReader = InputStreamJsonSeqReader.open(journalFile)
+          closeOnError(jsonFileReader) {
             jsonFileReader.seek(position)
-            new Iterator[Stamped[KeyedEvent[E]]] {
+            new CloseableIterator[Stamped[KeyedEvent[E]]] {
+              def close() = jsonFileReader.close()
               def hasNext = jsonFileReader.position != endPosition
               def next() = jsonFileReader.read().map(_.value)
                 .getOrElse(sys.error(s"Unexpected end of journal at position ${jsonFileReader.position}"))
                 .as[Stamped[KeyedEvent[E]]].orThrow
             }
-            .dropWhile(_.eventId <= after)
-            .take(1000/*To prevent OutOfMemoryError until streaming is implemented*/).toVector.toIterator
           }
+        }
+        .dropWhile(_.eventId <= after)
       })
 
   protected def reverseEventsAfter(after: EventId) =
-    Task.pure(Iterator.empty)  // Not implemented
+    Task.pure(CloseableIterator.empty)  // Not implemented
 }

@@ -3,6 +3,8 @@ package com.sos.jobscheduler.data.event
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.CloseableIterator
+import com.sos.jobscheduler.data.event.EventSeq.{Empty, NonEmpty}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
@@ -43,6 +45,21 @@ object TearableEventSeq {
     */
   final case class Torn(oldestKnownEventId: EventId)
   extends TearableEventSeq[Nothing, Nothing]
+
+  implicit final class Closed[E](private val underlying: TearableEventSeq[CloseableIterator, E]) extends AnyVal {
+    def close(): Unit = underlying match {
+      case NonEmpty(stampeds) ⇒ stampeds.close()
+      case _ ⇒
+    }
+
+    def strict: TearableEventSeq[Seq, E] = underlying match {
+      case Torn(eventId) ⇒ Torn(eventId)
+      case Empty(eventId) ⇒ Empty(eventId)
+      case NonEmpty(stampeds) ⇒
+        try NonEmpty(stampeds.toVector)
+        finally stampeds.close()
+    }
+  }
 
   implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](

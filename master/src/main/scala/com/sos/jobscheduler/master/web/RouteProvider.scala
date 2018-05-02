@@ -28,7 +28,7 @@ extends AllRoute {
   protected def actorRefFactory = actorSystem
   protected val masterConfiguration = injector.instance[MasterConfiguration]
   protected val config              = injector.instance[Config]
-  protected def eventReader         = injector.instance[EventReaderProvider[Event]]
+  protected val eventReader         = injector.instance[EventReaderProvider[Event]]
   protected val scheduler           = injector.instance[Scheduler]
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =

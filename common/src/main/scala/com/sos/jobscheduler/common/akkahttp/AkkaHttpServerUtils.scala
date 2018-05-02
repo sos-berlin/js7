@@ -1,13 +1,10 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ContentNegotiator, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
-import monix.eval.Task
-import monix.execution.Scheduler
 import scala.annotation.tailrec
 
 /**
@@ -24,16 +21,19 @@ object AkkaHttpServerUtils {
     }
   }
 
-  def accept(mediaType: MediaType.WithOpenCharset, mediaTypes: MediaType.WithOpenCharset*): Directive0 =
+  def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive0 =
     accept(mediaTypes.toSet + mediaType)
 
-  def accept(mediaTypes: Set[MediaType.WithOpenCharset]): Directive0 =
+  def accept(mediaTypes: Set[MediaType]): Directive0 =
     mapInnerRoute { route ⇒
       headerValueByType[Accept](()) {
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o ⇒ mediaTypes exists o.matches } ⇒
           route
         case _ ⇒
-          reject(UnacceptedResponseContentTypeRejection(mediaTypes map ContentNegotiator.Alternative.MediaType.apply))
+          reject(UnacceptedResponseContentTypeRejection(mediaTypes map {
+            case m: MediaType.WithOpenCharset ⇒ ContentNegotiator.Alternative.MediaType(m)
+            case m: MediaType.WithFixedCharset ⇒ ContentNegotiator.Alternative.ContentType(m)
+          }))
       }
     }
 

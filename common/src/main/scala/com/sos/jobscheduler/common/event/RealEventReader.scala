@@ -1,8 +1,12 @@
 package com.sos.jobscheduler.common.event
 
+import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import com.sos.jobscheduler.common.akkahttp.StreamingSupport.closeableIteratorToObservable
+import com.sos.jobscheduler.common.event.RealEventReader._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -10,7 +14,9 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequ
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -25,12 +31,15 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   protected def oldestEventId: EventId
 
-  protected def eventsAfter(after: EventId): Task[Option[Iterator[Stamped[KeyedEvent[E]]]]]
+  @VisibleForTesting
+  def eventsAfter(after: EventId): Task[Option[CloseableIterator[Stamped[KeyedEvent[E]]]]]
 
-  protected def reverseEventsAfter(after: EventId): Task[Iterator[Stamped[KeyedEvent[E]]]]
+  protected def reverseEventsAfter(after: EventId): Task[CloseableIterator[Stamped[KeyedEvent[E]]]]
 
   private var _lastEventId: EventId = EventId.BeforeFirst
   private lazy val sync = new Sync(initialLastEventId = oldestEventId, timerService)
+
+  final val whenRealEventReader = Future.successful(this)
 
   protected final def onEventAdded(eventId: EventId): Unit = {
     if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
@@ -38,8 +47,49 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     sync.onEventAdded(eventId)
   }
 
+  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
+    (implicit scheduler: Scheduler)
+  : Observable[Stamped[KeyedEvent[E1]]] =
+    observe2(request, predicate)
+
+  private def observe2[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean, wasEmpty: Boolean = false)
+    (implicit scheduler: Scheduler)
+  : Observable[Stamped[KeyedEvent[E1]]] =
+  {
+    if (request.limit <= 0)
+      Observable.empty
+    else
+      Observable.fromTask(read[E1](request, predicate = predicate)) flatMap {
+        case _: TearableEventSeq.Torn ⇒
+          throw new IllegalArgumentException(s"EventSeq is torn - after=${request.after} oldestEventId=$oldestEventId")
+
+        case EventSeq.Empty(lastEventId) ⇒
+          val nextRequest = request.copy[E1](after = lastEventId)
+          if (wasEmpty)
+            Observable.evalDelayed(EmptyLoopSlowDown, // Just in case ...
+              observe2(nextRequest, predicate, wasEmpty = true))
+            .flatten
+          else
+            observe2(nextRequest, predicate, wasEmpty = true)
+
+        case EventSeq.NonEmpty(events) ⇒
+          var lastEventId = request.after
+          var limit = request.limit
+          var empty = false  // Just in case ...
+          closeableIteratorToObservable(events)
+            .map { o ⇒
+              lastEventId = o.eventId
+              limit -= 1
+              empty = false
+              o
+            } ++
+            Observable.defer(
+              observe2(request.copy[E1](after = lastEventId, limit = limit), predicate, wasEmpty = empty))
+      }
+    }
+
   final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
-  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]] =
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
     request match {
       case request: EventRequest[E1] ⇒
         when[E1](request, predicate)
@@ -48,11 +98,11 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     }
 
   final def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
-  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]] =
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
     whenAny[E1](request, request.eventClasses, predicate)
 
   final def whenAny[E1 <: E](request: EventRequest[E1], eventClasses: Set[Class[_ <: E1]], predicate: KeyedEvent[E1] ⇒ Boolean)
-  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]]
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
   =
     whenAnyKeyedEvents(
       request,
@@ -62,7 +112,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       })
 
   final def byKey[E1 <: E](request: SomeEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean)
-  : Task[TearableEventSeq[Iterator, E1]] =
+  : Task[TearableEventSeq[CloseableIterator, E1]] =
     request match {
       case request: EventRequest[E1] ⇒
         whenKey(request, key, predicate)
@@ -72,7 +122,9 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   final def whenKeyedEvent[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Task[E1] =
     whenKey[E1](request.copy[E1](limit = 1), key, predicate) map {
-      case eventSeq: EventSeq.NonEmpty[Iterator, E1] ⇒ eventSeq.stampeds.next().value
+      case eventSeq: EventSeq.NonEmpty[CloseableIterator, E1] ⇒
+        try eventSeq.stampeds.next().value
+        finally eventSeq.close()
       case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
       case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
     }
@@ -81,7 +133,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     request: EventRequest[E1],
     key: E1#Key,
     predicate: E1 ⇒ Boolean)
-  : Task[TearableEventSeq[Iterator, E1]]
+  : Task[TearableEventSeq[CloseableIterator, E1]]
   =
     whenAnyKeyedEvents(
       request,
@@ -91,11 +143,11 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       })
 
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
-  : Task[TearableEventSeq[Iterator, A]] =
+  : Task[TearableEventSeq[CloseableIterator, A]] =
     whenAnyKeyedEvents2(request.after, now + (request.timeout min timeoutLimit), request.delay, collect, request.limit)
 
   private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : Task[TearableEventSeq[Iterator, A]] =
+  : Task[TearableEventSeq[CloseableIterator, A]] =
     Task.deferFutureAction(implicit s ⇒ sync.whenEventIsAvailable(after, until, delay))
       .flatMap (_ ⇒
         collectEventsSince(after, collect, limit) flatMap {
@@ -110,7 +162,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
         })
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : Task[TearableEventSeq[Iterator, A]] = {
+  : Task[TearableEventSeq[CloseableIterator, A]] = {
     require(limit >= 0, "limit must be >= 0")
     for (stampedsOption ← eventsAfter(after)) yield
       stampedsOption match {
@@ -120,17 +172,18 @@ trait RealEventReader[E <: Event] extends EventReader[E]
             .map { o ⇒ lastEventId = o.eventId; o }
             .collect { case stamped if collect isDefinedAt stamped.value ⇒ stamped map collect }
             .take(limit)
-          if (eventIterator.nonEmpty)
-            EventSeq.NonEmpty(eventIterator)
-          else
+          if (eventIterator.isEmpty) {
+            eventIterator.close()
             EventSeq.Empty(lastEventId)
+          } else
+            EventSeq.NonEmpty(eventIterator)
         case None ⇒
           TearableEventSeq.Torn(oldestKnownEventId = oldestEventId)
       }
   }
 
   protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
-  : Task[EventSeq[Iterator, KeyedEvent[E1]]] =
+  : Task[EventSeq[CloseableIterator, KeyedEvent[E1]]] =
     reverseEventsAfter(after = request.after).map(_
       .collect {
         case stamped if request matchesClass stamped.value.event.getClass ⇒
@@ -143,7 +196,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       })
 
   protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
-  : Task[EventSeq.NonEmpty[Iterator, E1]] =
+  : Task[EventSeq.NonEmpty[CloseableIterator, E1]] =
     for (stampeds ← reverseEventsAfter(after = request.after)) yield
       EventSeq.NonEmpty(
         stampeds.collect {
@@ -156,19 +209,25 @@ trait RealEventReader[E <: Event] extends EventReader[E]
         }
         .take(request.limit))
 
-  private def lastAddedEventId: EventId =
-    if (_lastEventId == EventId.BeforeFirst) oldestEventId else _lastEventId
+  def lastAddedEventId: EventId =
+    if (_lastEventId != EventId.BeforeFirst) _lastEventId else oldestEventId
 
   /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler) =
     when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.seconds match {
-      case EventSeq.NonEmpty(events) ⇒ events.toVector
+      case EventSeq.NonEmpty(events) ⇒
+        try events.toVector
+        finally events.close()
       case o ⇒ sys.error(s"RealEventReader.await[${implicitClass[E1].scalaName}] unexpected EventSeq: $o")
     }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[Iterator, KeyedEvent[E1]] =
+  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
     when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.seconds), _ ⇒ true) await 99.s
+}
+
+object RealEventReader {
+  private val EmptyLoopSlowDown = 500.millis
 }

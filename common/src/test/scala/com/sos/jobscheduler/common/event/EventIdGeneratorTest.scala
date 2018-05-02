@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventId
@@ -17,12 +18,26 @@ final class EventIdGeneratorTest extends FreeSpec {
 
   "test" in {
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala
-    val uniqueTimestampedIdIterator = new EventIdGenerator
+    val eventIdGenerator = new EventIdGenerator
     val n = 10000 * sys.runtime.availableProcessors
     (for (_ ← 1 to n) yield
       Future {
-        eventIds += ((uniqueTimestampedIdIterator.next(), ()))
+        eventIds += ((eventIdGenerator.next(), ()))
       }) await 20.s
     assert(eventIds.size == n)  // All EventIds are distinct
+  }
+
+  "updateLastEventId" in {
+    val eventIdGenerator = new EventIdGenerator(new event.EventIdClock.Fixed(currentTimeMillis = 100))
+    assert(eventIdGenerator.lastUsedEventId == 0)
+    assert(eventIdGenerator.next() == 100000)
+
+    eventIdGenerator.updateLastEventId(100)
+    assert(eventIdGenerator.lastUsedEventId == 100000)
+    assert(eventIdGenerator.next() == 100001)
+
+    eventIdGenerator.updateLastEventId(200000)
+    assert(eventIdGenerator.lastUsedEventId == 200000)
+    assert(eventIdGenerator.next() == 200001)
   }
 }

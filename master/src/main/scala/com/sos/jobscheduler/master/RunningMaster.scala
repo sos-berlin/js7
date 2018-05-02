@@ -14,7 +14,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventReader}
+import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventReader}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -72,7 +72,7 @@ extends AutoCloseable
     orderApi.addOrder(order).runAsync.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
-  val eventReader: EventReader[Event] = injector.instance[EventReaderProvider[Event]]
+  val eventReader: StrictEventReader[Event] = injector.instance[EventReaderProvider[Event]].strict
 
   def close() = closer.close()
 }
