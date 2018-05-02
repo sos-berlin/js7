@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -26,22 +27,23 @@ extends EventReader[E]
   import journalMeta.eventJsonCodec
 
   private val journalStarted = Promise[Completed]()
-  private val afterEventIdToPosition = new java.util.concurrent.ConcurrentHashMap[Long, Long]  // Oder Buffer mit binärer Suche ???
+  private val eventIdToPositionIndex = new EventIdPositionIndex(size = 1000)
   private var _oldestEventId = EventId(-1)
   private var endPosition = -1L
 
-  def onJournalingStarted(positionAndEventId: PositionAnd[EventId]): Unit = {
+  private[journal] def onJournalingStarted(positionAndEventId: PositionAnd[EventId]): Unit = {
     endPosition = positionAndEventId.position
     _oldestEventId = positionAndEventId.value
-    afterEventIdToPosition.put(_oldestEventId, positionAndEventId.position)
+    eventIdToPositionIndex.addAfter(eventId = positionAndEventId.value, position = positionAndEventId.position)
     journalStarted.success(Completed)
   }
 
-  def onEventAdded(flushedPosition: Long, eventId: EventId): Unit = {
+  private[journal] def onEventAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
     requireJournalingStarted("onEventAdded")
+    val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < endPosition)
       throw new IllegalArgumentException(s"JournalEventReader: Added file position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
-    afterEventIdToPosition.put(eventId, flushedPosition)  // OutOfMemoryError Grows BIG
+    eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position)
     endPosition = flushedPosition
     super.onEventAdded(eventId)
   }
@@ -57,7 +59,8 @@ extends EventReader[E]
     */
   def eventsAfter(after: EventId): Future[Option[Iterator[Stamped[KeyedEvent[E]]]]] =
     for (_ ← journalStarted.future) yield
-      for (position ← Option(afterEventIdToPosition.get(after))) yield
+      (after >= oldestEventId) ? {
+        val position = eventIdToPositionIndex.positionAfter(after)
         if (position >= endPosition)  // Data behind endPosition is not flushed and probably incomplete
           Iterator.empty
         else
@@ -69,8 +72,10 @@ extends EventReader[E]
                 .getOrElse(sys.error(s"Unexpected end of journal at position ${jsonFileReader.position}"))
                 .as[Stamped[KeyedEvent[E]]].orThrow
             }
+            .dropWhile(_.eventId <= after)
             .take(1000/*To prevent OutOfMemoryError until streaming is implemented*/).toVector.toIterator
           }
+      }
 
   protected def reverseEventsAfter(after: EventId) =
     Future.successful(Iterator.empty)  // Not implemented

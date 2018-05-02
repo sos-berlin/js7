@@ -39,7 +39,7 @@ final class HistoryTest extends FreeSpec
 
         provider.runAgents() { runningAgents ⇒
           provider.runMaster() { master ⇒
-            autoClosing(new AkkaHttpMasterApi(master.localUri)) { api ⇒
+            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
               master.addOrderBlocking(TestOrder)
               master.injector.instance[EventReader[Event]].await[OrderFinished](_.key == TestOrder.id)
 
@@ -49,7 +49,7 @@ final class HistoryTest extends FreeSpec
               var rounds = 0
               while (!finished) {
                 rounds += 1
-                val EventSeq.NonEmpty(stampeds) = api.fatEvents[OrderFatEvent](after = lastEventId, 99.second) await 99.s
+                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents[OrderFatEvent](after = lastEventId, 99.second) await 99.s
                 val chunk = stampeds take 2
                 chunk foreach history.handleHistoryEvent
                 lastEventId = chunk.last.eventId

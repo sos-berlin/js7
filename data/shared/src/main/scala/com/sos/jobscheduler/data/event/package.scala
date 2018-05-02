@@ -38,6 +38,7 @@ package object event {
 
     def apply(eventId: String) = eventId.toLong
 
+    @inline
     def apply(eventId: Long) = eventId
 
     def toTimestamp(eventId: EventId) = Timestamp ofEpochMilli(toEpochMilli(eventId))

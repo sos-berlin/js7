@@ -89,7 +89,7 @@ extends AutoCloseable
       jsonWriter.flush()
       statistics.afterFlush()
       for (e ← eventReader) {
-        for (o ← positionsAndEventIds) e.onEventAdded(flushedPosition = o.position, eventId = o.value)
+        positionsAndEventIds foreach e.onEventAdded
         if (positionsAndEventIds.size <= PositionBufferMaxSize) {
           positionsAndEventIds.clear()
         } else {

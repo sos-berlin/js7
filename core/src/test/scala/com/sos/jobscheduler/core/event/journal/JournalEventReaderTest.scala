@@ -23,7 +23,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
 
   "eventReader.keyedEventQueue.after" in {
     withJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
-      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.toList.isEmpty)
+      assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.isEmpty)
 
       writer.writeEvents(Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil)
       assert(eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.isEmpty)  // Not flushed, so nothing has been read
@@ -32,7 +32,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       val stampedEventSeq = eventReader.eventsAfter(after = EventId.BeforeFirst).await(99.s).get.toList
       assert(stampedEventSeq == Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil)
       assert(eventReader.eventsAfter(after = stampedEventSeq(0).eventId).await(99.s).get.toList == Stamped(2, "2" <-: A1) :: Nil)
-      assert(eventReader.eventsAfter(after = stampedEventSeq(1).eventId).await(99.s).get.toList.isEmpty)
+      assert(eventReader.eventsAfter(after = stampedEventSeq(1).eventId).await(99.s).get.isEmpty)
     }
   }
 
