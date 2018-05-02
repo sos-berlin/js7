@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.scheduledorder
 
 import akka.Done
 import akka.actor.{ActorRef, Stash, Status}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
@@ -36,26 +37,22 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
   def key = Key
 
-  def snapshot = Option(generatedUntil) map OrderScheduleEndedAt.apply
+  def snapshot = Option(generatedUntil) map (o ⇒ OrderScheduleEndedAt(Timestamp.ofInstant(o)))
 
   override def postStop(): Unit = {
     timerService.cancel(timer)
     super.postStop()
   }
 
-  protected def recoverFromSnapshot(snapshot: Any) = snapshot match {
-    case OrderScheduleEndedAt(instant) ⇒
-      generatedUntil = instant
-      recovered = true
-  }
+  protected def recoverFromSnapshot(snapshot: Any) = PartialFunction.empty
 
-  protected def recoverFromEvent(event: OrderScheduleEvent) = event match {
-    case OrderScheduleEvent.GeneratedUntil(until) ⇒
-      generatedUntil = until.toInstant
-      recovered = true
-  }
+  protected def recoverFromEvent(event: OrderScheduleEvent) = PartialFunction.empty
 
   def receive = journaling orElse {
+    case Input.Recover(until) ⇒
+      generatedUntil = until.toInstant
+      recovered = true
+
     case Input.Change(scheduledOrderGenerators) ⇒
       scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, scheduledOrderGenerators)
 
@@ -117,6 +114,7 @@ object OrderScheduleGenerator {
   private val logger = Logger(getClass)
 
   object Input {
+    final case class Recover(generatedUntil: Timestamp)
     final case class Change(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator])
     final case class ScheduleEvery(every: Duration)
   }

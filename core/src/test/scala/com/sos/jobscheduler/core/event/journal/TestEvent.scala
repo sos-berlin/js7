@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.tests
+package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.Event
@@ -7,11 +7,11 @@ import io.circe.generic.JsonCodec
 /**
   * @author Joacim Zschimmer
   */
-private[tests] sealed trait TestEvent extends Event {
+private[journal] sealed trait TestEvent extends Event {
   type Key = String
 }
 
-private[tests] object TestEvent {
+private[journal] object TestEvent {
   @JsonCodec
   final case class Added(
     string: String,
@@ -38,13 +38,10 @@ private[tests] object TestEvent {
   @JsonCodec
   final case class Appended(char: Char) extends TestEvent
 
-  final case object Reversed extends TestEvent
-
   final case object Removed extends TestEvent
 
   implicit val OrderEventJsonFormat = TypedJsonCodec[TestEvent](
     Subtype[Added],
     Subtype[Appended],
-    Subtype(Reversed),
     Subtype(Removed))
 }

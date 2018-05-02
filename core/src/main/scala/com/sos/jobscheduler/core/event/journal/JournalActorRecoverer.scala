@@ -3,7 +3,6 @@ package com.sos.jobscheduler.core.event.journal
 import akka.actor.{ActorContext, ActorRef}
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import scala.collection.mutable
 

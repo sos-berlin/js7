@@ -41,7 +41,7 @@ final class AgentActorTest extends FreeSpec {
               <script language="shell">{AScript}</script>
             </job>
         withCloser { implicit closer ⇒
-          val lastEventId = eventCollector.lastEventId
+          val lastEventId = eventCollector.lastAddedEventId
           (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
           executeCommand(RegisterAsMaster) await 99.s
           val stopwatch = new Stopwatch

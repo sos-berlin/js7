@@ -21,7 +21,6 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -30,11 +29,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -57,7 +55,6 @@ final class AgentOrderKeeper(
   implicit private val askTimeout: Timeout,
   syncOnCommit: Boolean,
   keyedEventBus: StampedKeyedEventBus,
-  eventIdGenerator: EventIdGenerator,
   config: Config,
   implicit private val timerService: TimerService)
 extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
@@ -68,8 +65,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   protected val journalActor = actorOf(
     JournalActor.props(
-      journalMeta(compressWithGzip = config.getBoolean("jobscheduler.agent.journal.gzip")),
-      journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus),
+      journalMeta,
+      journalFile, syncOnCommit = syncOnCommit, keyedEventBus),
     "Journal")
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
@@ -100,7 +97,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! KeyedJournalingActor.Input.Recover(order)
       }
-    startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
+    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }
 
   override def postStop() = {
@@ -422,8 +419,7 @@ object AgentOrderKeeper {
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
 
-  private[order] def journalMeta(compressWithGzip: Boolean) =
-    JournalMeta.gzipped[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
+  private[order] val journalMeta = new JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec)
 
   sealed trait Input
   object Input {

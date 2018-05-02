@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -29,8 +28,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
   protected implicit def scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
-  protected val eventCollector = new EventCollector.ForTest
-  protected val eventIdGenerator = new EventIdGenerator
+  protected val eventReader = new EventCollector.ForTest
 
   private def route: Route =
     pathSegments("api/workflow") {

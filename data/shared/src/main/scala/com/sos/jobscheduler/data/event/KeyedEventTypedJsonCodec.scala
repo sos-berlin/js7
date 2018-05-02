@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.event
 
+import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
@@ -22,12 +23,17 @@ with Decoder[KeyedEvent[E]] {
   def encodeObject(keyedEvent: KeyedEvent[E]) =
     keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
 
-  def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] = {
+  def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
     for {
       typeName ← c.get[String](TypeFieldName)
       keyedEvent ← nameToDecoder(typeName)(c)
     } yield keyedEvent
-  }
+
+  //def orElse[O <: Event: ClassTag](other: KeyedEventTypedJsonCodec[O]): Decoder[O] =
+  //  new Decoder[X] {
+  //    def apply(c: HCursor) =
+  //      jsonToDecoder(c.value) orElse other.jsonToDecoder(c.value)
+  //  }
 
   implicit def keyedEventJsonCodec[EE <: E]: KeyedEventTypedJsonCodec[EE] =
     this.asInstanceOf[KeyedEventTypedJsonCodec[EE]]
@@ -37,6 +43,9 @@ with Decoder[KeyedEvent[E]] {
       case Some(o) ⇒ o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
       case _ ⇒ false
     }
+
+  //def jsonToDecoder(json: Json): Option[Decoder[KeyedEvent[E]]] =
+  //  json.asObject flatMap (_ (TypeFieldName)) flatMap (_.asString) flatMap nameToDecoder.get
 
   def typenameToClassOption(name: String): Option[Class[_ <: E]] =
     if (name == this.name)

@@ -1,177 +1,41 @@
 package com.sos.jobscheduler.common.event.collector
 
+import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.event.collector.EventCollector._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
-import com.typesafe.config.Config
-import java.time.Instant.now
-import java.time.{Duration, Instant}
-import java.util.concurrent.TimeoutException
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
+import java.time.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
-abstract class EventCollector(initialOldestEventId: EventId, configuration: Configuration)
+abstract class EventCollector(configuration: Configuration)
   (implicit
-    timerService: TimerService,
-    executionContext: ExecutionContext)
+    protected val timerService: TimerService,
+    protected val executionContext: ExecutionContext)
+extends EventReader[Event]
 {
-  private[collector] val keyedEventQueue = new KeyedEventQueue(initialOldestEventId = initialOldestEventId, sizeLimit = configuration.queueSize)
-  private val sync = new Sync(initialLastEventId = initialOldestEventId, timerService)
+  protected def timeoutLimit = configuration.timeoutLimit
+  private[collector] val keyedEventQueue = new MemoryKeyedEventQueue(sizeLimit = configuration.queueSize)
 
   logger.debug("oldestEventId=" + EventId.toString(oldestEventId))
 
   final def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
     keyedEventQueue.add(stamped)
-    sync.onNewEvent(stamped.eventId)
+    onEventAdded(stamped.eventId)
   }
-
-  final def byPredicate[E <: Event](request: SomeEventRequest[E], predicate: KeyedEvent[E] ⇒ Boolean): Future[TearableEventSeq[Iterator, KeyedEvent[E]]] =
-    request match {
-      case request: EventRequest[E] ⇒
-        when[E](request, predicate)
-      case request: ReverseEventRequest[E] ⇒
-        val stampeds = reverse[E](request, predicate)
-        Future.successful(
-          if (stampeds.nonEmpty)
-            EventSeq.NonEmpty(stampeds)
-          else
-            EventSeq.Empty(keyedEventQueue.lastEventId))  // eventReverse is only for testing purposes
-  }
-
-  final def when[E <: Event](
-    request: EventRequest[E],
-    predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
-  : Future[TearableEventSeq[Iterator, KeyedEvent[E]]]
-  =
-    whenAny[E](request, request.eventClasses, predicate)
-
-  final def whenAny[E <: Event](
-    request: EventRequest[E],
-    eventClasses: Set[Class[_ <: E]],
-    predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
-  : Future[TearableEventSeq[Iterator, KeyedEvent[E]]]
-  =
-    whenAnyKeyedEvents(
-      request,
-      collect = {
-        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E]]) ⇒
-          e.asInstanceOf[KeyedEvent[E]]
-      })
-
-  final def byKeyAndPredicate[E <: Event](request: SomeEventRequest[E], key: E#Key, predicate: E ⇒ Boolean): Future[TearableEventSeq[Iterator, E]] =
-    request match {
-      case request: EventRequest[E] ⇒
-        whenForKey(request, key, predicate)
-      case request: ReverseEventRequest[E] ⇒
-        Future.successful(EventSeq.NonEmpty(reverseForKey(request, key)))
-    }
-
-  final def whenKeyedEvent[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
-    predicate: E ⇒ Boolean = (_: E) ⇒ true)
-  : Future[E]
-  =
-    whenForKey[E](request.copy[E](limit = 1), key, predicate) map {
-      case eventSeq: EventSeq.NonEmpty[Iterator, E] ⇒ eventSeq.stampeds.next().value
-      case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
-      case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
-    }
-
-  final def whenForKey[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
-    predicate: E ⇒ Boolean = (_: E) ⇒ true)
-  : Future[TearableEventSeq[Iterator, E]]
-  =
-    whenAnyKeyedEvents(
-      request,
-      collect = {
-        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E]) ⇒
-          e.event.asInstanceOf[E]
-      })
-
-  private def whenAnyKeyedEvents[E <: Event, A](request: EventRequest[E], collect: PartialFunction[AnyKeyedEvent, A]): Future[TearableEventSeq[Iterator, A]] =
-    whenAnyKeyedEvents2(request.after, now + (request.timeout min configuration.timeoutLimit), request.delay, collect, request.limit)
-
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Instant, delay: Duration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int): Future[TearableEventSeq[Iterator, A]] =
-    (for (_ ← sync.whenEventIsAvailable(after, until, delay)) yield
-      collectEventsSince(after, collect, limit) match {
-        case o @ EventSeq.NonEmpty(_) ⇒
-          Future.successful(o)
-        case EventSeq.Empty(lastEventId) if now < until ⇒
-          whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
-        case EventSeq.Empty(lastEventId) ⇒
-          Future.successful(EventSeq.Empty(lastEventId))
-        case o: TearableEventSeq.Torn ⇒
-          Future.successful(o)
-    }).flatten
-
-  private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int): TearableEventSeq[Iterator, A] = {
-    require(limit >= 0, "limit must be >= 0")
-    val stampedsOption = keyedEventQueue.after(after)
-    var lastEventId = after
-    stampedsOption match {
-      case Some(stampeds) ⇒
-        val eventIterator =
-          stampeds
-            .map { o ⇒ lastEventId = o.eventId; o }
-            .collect {
-              case stamped if collect.isDefinedAt(stamped.value) ⇒
-                stamped map collect
-            }
-            .take(limit)
-        if (eventIterator.nonEmpty)
-          EventSeq.NonEmpty(eventIterator)
-        else
-          EventSeq.Empty(lastEventId)
-      case None ⇒
-        TearableEventSeq.Torn(oldestKnownEventId = oldestEventId)
-    }
-  }
-
-  final def reverse[E <: Event](
-    request: ReverseEventRequest[E],
-    predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
-  : Iterator[Stamped[KeyedEvent[E]]]
-  =
-    keyedEventQueue.reverseEvents(after = request.after)
-      .collect {
-        case stamped if request matchesClass stamped.value.event.getClass ⇒
-          stamped.asInstanceOf[Stamped[KeyedEvent[E]]]
-      }
-      .filter(stamped ⇒ predicate(stamped.value))
-      .take(request.limit)
-
-  final def reverseForKey[E <: Event](
-    request: ReverseEventRequest[E],
-    key: E#Key,
-    predicate: E ⇒ Boolean = (_: E) ⇒ true)
-  : Iterator[Stamped[E]]
-  =
-    keyedEventQueue.reverseEvents(after = request.after)
-      .collect {
-        case stamped if request matchesClass stamped.value.event.getClass ⇒
-          stamped.asInstanceOf[Stamped[KeyedEvent[E]]]
-      }
-      .collect {
-        case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) ⇒
-          Stamped(eventId, timestamp, event)
-      }
-      .take(request.limit)
 
   final def oldestEventId: EventId =
     keyedEventQueue.oldestEventId
 
-  final def lastEventId: EventId =
-    keyedEventQueue.lastEventId
+  protected final def eventsAfter(after: EventId) =
+    Future.successful(keyedEventQueue.after(after))
 
-  final def eventCount: Int =
-    keyedEventQueue.size
+  protected final def reverseEventsAfter(after: EventId) =
+    Future.successful(keyedEventQueue.reverseEvents(after = after))
 }
 
 object EventCollector {
@@ -184,18 +48,12 @@ object EventCollector {
 
   object Configuration {
     val ForTest = Configuration(queueSize = 1000, timeoutLimit = 600.s)
-
-    final def fromSubConfig(config: Config) = Configuration(
-      queueSize = config.getInt("queue-size"),
-      timeoutLimit = config.getDuration("timeout-limit")
-    )
   }
 
   final class ForTest(
-    initialOldestEventId: EventId = EventId.BeforeFirst,
     configuration: Configuration = Configuration.ForTest)
     (implicit
       timerService: TimerService,
       executionContext: ExecutionContext)
-    extends EventCollector(initialOldestEventId, configuration)
+    extends EventCollector(configuration)
 }

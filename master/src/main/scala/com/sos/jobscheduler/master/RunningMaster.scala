@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import com.google.common.io.Closer
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
+import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
@@ -13,8 +14,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
-import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.{EventIdClock, EventReader}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -25,8 +25,9 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.JournalEventReader
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
-import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -70,7 +71,7 @@ extends AutoCloseable
     orderApi.addOrder(order).runAsync.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
-  val eventCollector = injector.instance[EventCollector]
+  val eventReader = injector.instance[EventReader[Event]]
 
   def close() = closer.close()
 }
@@ -106,7 +107,7 @@ object RunningMaster {
     }
 
   def newInjector(directory: Path, module: Module = EMPTY_MODULE): Injector =
-    Guice.createInjector(DEVELOPMENT, newModule(directory), module)
+    Guice.createInjector(DEVELOPMENT, Modules `override` newModule(directory) `with` module)
 
   private def newModule(directory: Path): Module =
     new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master"))
@@ -121,25 +122,25 @@ object RunningMaster {
     val masterConfiguration = injector.instance[MasterConfiguration]
 
     StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
-    injector.instance[EventCollector]  // Start EventCollector
+    injector.instance[EventReader[Event]]  // ??? // Start EventCollector
     masterConfiguration.stateDirectory match {
       case o if !exists(o) ⇒ createDirectory(o)
       case _ ⇒
     }
 
     val actorSystem = injector.instance[ActorSystem]
-    val eventIdGenerator = injector.instance[EventIdGenerator]
-    val eventCollector = injector.instance[EventCollector]
+    val eventIdClock = injector.instance[EventIdClock]
+    val eventReader = injector.instance[JournalEventReader[Event]]
     val closer = injector.instance[Closer]
     val webServer = injector.instance[MasterWebServer]
 
     val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
         _ ⇒ Props {
           new MasterOrderKeeper(
-            masterConfiguration)(
+            masterConfiguration,
+            eventIdClock)(
             injector.instance[TimerService],
-            eventIdGenerator,
-            eventCollector,
+            eventReader,
             injector.instance[StampedKeyedEventBus]) },
         onStopped = _ ⇒ Success(Completed)
       )(actorSystem)
@@ -179,14 +180,6 @@ object RunningMaster {
         Task.defer(Task.fromFuture(
           (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
             .mapTo[MasterOrderKeeper.Response.ForAddOrder] map (_.created)))
-
-      def events[E <: Event](request: EventRequest[E]): Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
-        Task.defer(Task.fromFuture(
-          eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true) map {
-            case EventSeq.NonEmpty(stampeds) ⇒ EventSeq.NonEmpty(stampeds.toImmutableSeq)
-            case o: EventSeq.Empty ⇒ o
-            case o: TearableEventSeq.Torn ⇒ o
-          }))
 
       def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
         Task.defer(Task.fromFuture(
@@ -234,7 +227,8 @@ object RunningMaster {
         }) map (_.asInstanceOf[command.MyResponse])
       }
       val master = new RunningMaster(webServer, orderApi, orderKeeper, terminated, closer, injector) {
-        def executeCommand(command: MasterCommand) = execCmd(command)
+        def executeCommand(command: MasterCommand): Future[command.MyResponse] =
+          execCmd(command)
       }
       webServer.setExecuteCommand(command ⇒ master.executeCommand(command))
       master

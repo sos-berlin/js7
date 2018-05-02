@@ -5,14 +5,15 @@ import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.{EventIdClock, EventReader}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.ActorEventCollector
-import com.sos.jobscheduler.master.agent.AgentEventIdEvent
+import com.sos.jobscheduler.core.event.journal.JournalEventReader
+import com.sos.jobscheduler.data.event.Event
+import com.sos.jobscheduler.master.MasterOrderKeeper
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
 import com.typesafe.config.Config
@@ -27,15 +28,19 @@ import scala.util.control.NonFatal
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
   @Provides @Singleton
-  def eventCollector(factory: ActorEventCollector.Factory): EventCollector =
-    factory.apply {
-      case _: AgentEventIdEvent ⇒ false
-      case _ ⇒ true
-    }
+  def eventReader(journalEventReader: JournalEventReader[Event]): EventReader[Event] =
+    journalEventReader
 
   @Provides @Singleton
-  def eventCollectorConfiguration(config: Config): EventCollector.Configuration =
-    EventCollector.Configuration.fromSubConfig(config.getConfig("jobscheduler.master.event"))
+  def journalEventReader()(implicit ec: ExecutionContext, ts: TimerService, config: Config): JournalEventReader[Event] =
+    new JournalEventReader[Event](
+      MasterOrderKeeper.journalMeta,
+      configuration.journalFile,
+      timeoutLimit = config.getDuration("jobscheduler.master.event.timeout-limit"))
+
+  @Provides @Singleton
+  def eventIdClock(): EventIdClock =
+    EventIdClock.Default
 
   @Provides @Singleton
   def csrfConfiguration(config: Config): CSRF.Configuration =

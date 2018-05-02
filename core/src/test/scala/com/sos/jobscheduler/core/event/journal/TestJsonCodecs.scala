@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.tests
+package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype

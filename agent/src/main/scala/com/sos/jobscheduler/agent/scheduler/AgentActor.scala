@@ -16,7 +16,6 @@ import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
@@ -24,7 +23,6 @@ import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
@@ -37,7 +35,6 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   */
 private[agent] final class AgentActor @Inject private(
   agentConfiguration: AgentConfiguration,
-  eventIdGenerator: EventIdGenerator,
   newTaskRunner: TaskRunner.Factory,
   keyedEventBus: StampedKeyedEventBus,
   timerService: TimerService)
@@ -49,11 +46,10 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val journalMeta = JournalMeta.gzipped(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec,
-    compressWithGzip = agentConfiguration.config.getBoolean("jobscheduler.agent.journal.gzip"))
+  private val journalMeta = new JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec)
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = actorOf(
-    JournalActor.props(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus),
+    JournalActor.props(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus),
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
@@ -67,8 +63,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override def preStart() = {
     super.preStart()
-    new MyJournalRecoverer().recoverAll()
-    startJournalAndFinishRecovery(journalActor = journalActor)
+    val recoverer = new MyJournalRecoverer()
+    recoverer.recoverAll()
+    recoverer.startJournalAndFinishRecovery(journalActor = journalActor)
   }
 
   override def postStop() = {
@@ -80,8 +77,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
     protected val sender = AgentActor.this.sender()
     protected val journalMeta = AgentActor.this.journalMeta
     protected val journalFile = AgentActor.this.journalFile
-
-    protected def isDeletedEvent = Set()
 
     def recoverSnapshot = {
       case AgentSnapshot.Master(userId) ⇒
@@ -212,7 +207,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
           askTimeout = akkaAskTimeout,
           syncOnCommit = agentConfiguration.journalSyncOnCommit,
           keyedEventBus,
-          eventIdGenerator,
           agentConfiguration.config,
           timerService)
         },

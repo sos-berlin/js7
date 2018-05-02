@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -80,14 +80,14 @@ final class RunningMasterTest extends FreeSpec {
 
       RunningMaster.run(MasterConfiguration.forTest(configAndData = env.masterDir)) { master ⇒
         import master.{injector, orderApi}
-        val lastEventId = injector.instance[EventCollector].lastEventId
+        val lastEventId = injector.instance[EventReader[Event]].lastAddedEventId
         val eventGatherer = new TestEventGatherer(injector)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
-        master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
+        master.eventReader.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         //Order has been deleted after OrderFinished:
         //orderApi.order(TestOrderId) await 10.s shouldEqual
         //  Some(Order(

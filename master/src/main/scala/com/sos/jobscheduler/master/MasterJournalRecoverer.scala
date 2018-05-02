@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.master
 
-import akka.actor.ActorRef
+import cats.syntax.option._
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
-import com.sos.jobscheduler.core.event.journal.{JournalRecoverer, KeyedJournalingActor}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.core.event.journal.JournalRecoverer
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -12,6 +14,7 @@ import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleEvent}
 import java.nio.file.Path
 import scala.collection.mutable
@@ -19,35 +22,38 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private[master] class MasterJournalRecoverer(protected val journalFile: Path, orderScheduleGenerator: ActorRef)(implicit protected val sender: ActorRef)
-extends JournalRecoverer[Event] {
-  protected val journalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
-  private var _repo = Repo.empty
+private final class MasterJournalRecoverer(protected val journalFile: Path)
+extends JournalRecoverer[Event]
+{
+  protected val journalMeta = MasterOrderKeeper.journalMeta
+  private var repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val _agentToEventId = mutable.Map[AgentId, EventId]()
+  private val agentToEventId = mutable.Map[AgentId, EventId]()
+  private var orderScheduleEndedAt = none[Timestamp]
 
-  def recoverSnapshot = {
-    case o: OrderScheduleEndedAt ⇒
-      orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromSnapshot(o)
-
+  protected def recoverSnapshot = {
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
 
     case AgentEventId(agentPath, eventId) ⇒
-      _agentToEventId(agentPath) = eventId
+      agentToEventId(agentPath) = eventId
 
     case event: RepoEvent ⇒
-      _repo = _repo.applyEvent(event).orThrow
+      repo = repo.applyEvent(event).orThrow
+
+    case OrderScheduleEndedAt(timestamp) ⇒
+      orderScheduleEndedAt = Some(timestamp)
   }
 
-  def recoverEvent = {
-    case stamped @ Stamped(_, _, keyedEvent) ⇒
+  protected def recoverEvent = {
+    case Stamped(_, _, keyedEvent) ⇒
       keyedEvent match {
-        case KeyedEvent(_: NoKey, _: OrderScheduleEvent) ⇒
-          orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
+        case KeyedEvent(_: NoKey, MasterEvent.MasterReady) ⇒
+        case KeyedEvent(_: NoKey, OrderScheduleEvent.GeneratedUntil(instant)) ⇒
+          orderScheduleEndedAt = Some(instant)
 
         case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
-          _repo = _repo.applyEvent(event).orThrow
+          repo = repo.applyEvent(event).orThrow
 
         case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
           event match {
@@ -64,11 +70,8 @@ extends JournalRecoverer[Event] {
             case _: OrderStdWritten ⇒
           }
 
-        case KeyedEvent(FileBasedId(a: AgentPath, v)/*Scala 2.12.4 requires this pattern*/, AgentEventIdEvent(agentEventId)) ⇒
-          _agentToEventId(a % v) = agentEventId
-
-        case _ ⇒
-          sys.error(s"Unknown event in journal: $stamped")
+        case KeyedEvent(FileBasedId(a: AgentPath, v), AgentEventIdEvent(agentEventId)) ⇒
+          agentToEventId(a % v) = agentEventId
       }
   }
 
@@ -94,11 +97,6 @@ extends JournalRecoverer[Event] {
       case _ ⇒
     }
 
-  def orders: Vector[Order[Order.State]] =
-    idToOrder.values.toVector
-
-  def agentToEventId: Map[AgentId, EventId] =
-    _agentToEventId.toMap
-
-  def repo = _repo
+  def masterState: Option[MasterState] =
+    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.values.toVector, agentToEventId.toMap, orderScheduleEndedAt)
 }

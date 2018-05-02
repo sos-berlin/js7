@@ -16,15 +16,15 @@ import org.jetbrains.annotations.TestOnly
   */
 final class OutputStreamJsonSeqWriter(out: OutputStream) extends AutoCloseable {
 
+  private var _written = 0L
+
   private val buffered = out match {
     case o: BufferedOutputStream ⇒ o
     case o ⇒ new BufferedOutputStream(o)
   }
   private var array: Array[Byte] = null
 
-  def close(): Unit = {
-    buffered.close()
-  }
+  def close() = buffered.close()
 
   @TestOnly
   private[jsonseq] def writeJson(json: Json): Unit =
@@ -38,14 +38,15 @@ final class OutputStreamJsonSeqWriter(out: OutputStream) extends AutoCloseable {
     buffered.write(Ascii.RS)
     buffered.write(array, 0, byteString.length)
     buffered.write('\n')
+    _written += 2 + byteString.length
     if (array.length > MaxBufferSize) {
       array = null
     }
   }
 
-  def flush(): Unit = {
-    buffered.flush()
-  }
+  def flush() = buffered.flush()
+
+  def bytesWritten = _written
 }
 
 object OutputStreamJsonSeqWriter {

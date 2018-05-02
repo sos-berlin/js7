@@ -1,15 +1,14 @@
-package com.sos.jobscheduler.core.event.journal.tests
+package com.sos.jobscheduler.core.event.journal
 
 import akka.Done
 import akka.actor.ActorRef
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
-import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
-import com.sos.jobscheduler.core.event.journal.tests.TestAggregateActor._
+import com.sos.jobscheduler.core.event.journal.TestAggregateActor._
 
 /**
   * @author Joacim Zschimmer
   */
-private[tests] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef)
+private[journal] final class TestAggregateActor(protected val key: String, val journalActor: ActorRef)
 extends KeyedJournalingActor[TestEvent] {
 
   private var aggregate: TestAggregate = null
@@ -105,7 +104,7 @@ extends KeyedJournalingActor[TestEvent] {
   }
 
 
-  private def update(event: TestEvent): Unit = {
+  private def update(event: TestEvent): Unit =
     event match {
       case event: TestEvent.Added ⇒
         assert(aggregate == null)
@@ -117,12 +116,11 @@ extends KeyedJournalingActor[TestEvent] {
         context.stop(self)
 
       case event: TestEvent ⇒
-        aggregate = aggregate.update(event)
+        aggregate = aggregate.applyEvent(event)
     }
-  }
 }
 
-private[tests] object TestAggregateActor {
+private[journal] object TestAggregateActor {
 
   object Input {
     final case object Get

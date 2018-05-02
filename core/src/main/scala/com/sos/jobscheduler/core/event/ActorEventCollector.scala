@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -18,10 +17,9 @@ final class ActorEventCollector private(
   configuration: EventCollector.Configuration,
   timerService: TimerService,
   executionContext: ExecutionContext,
-  protected val eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus,
   actorSystem: ActorSystem)
-extends EventCollector(initialOldestEventId = eventIdGenerator.next(), configuration)(timerService, executionContext)
+extends EventCollector(configuration)(timerService, executionContext)
 with AutoCloseable {
 
   private val actorRef = actorSystem.actorOf(
@@ -60,17 +58,17 @@ object ActorEventCollector {
     configuration: EventCollector.Configuration,
     timerService: TimerService,
     executionContext: ExecutionContext,
-    protected val eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus,
     actorSystem: ActorSystem)
   {
-    def apply(isCollectable: Event ⇒ Boolean = _ ⇒ true) =
+    def apply() = filterEvents(_ ⇒ true)
+
+    def filterEvents(isEventCollectable: Event ⇒ Boolean) =
       new ActorEventCollector(
-        isCollectable)(
+        isEventCollectable)(
         configuration,
         timerService,
         executionContext,
-        eventIdGenerator,
         keyedEventBus,
         actorSystem)
   }

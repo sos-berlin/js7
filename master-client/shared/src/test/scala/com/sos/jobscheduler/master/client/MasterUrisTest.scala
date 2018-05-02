@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.client
 
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -23,6 +23,11 @@ final class MasterUrisTest extends FreeSpec {
   "event" in {
     assert(masterUris.events[OrderEvent](after = 7, timeout = 1230.millis ) ==
       "http://example.com/master/api/event?return=OrderEvent&timeout=1.23&after=7")
+  }
+
+  "fatEvent" in {
+    assert(masterUris.fatEvents[OrderFatEvent](after = 7, timeout = 1230.millis ) ==
+      "http://example.com/master/api/fatEvent?return=OrderFatEvent&timeout=1.23&after=7")
   }
 
   "order" - {

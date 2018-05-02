@@ -52,7 +52,8 @@ extends Actor with Stash {
 
   override def postStop() = {
     killAll(SIGKILL)
-    if (shellFile != null) {
+    filePool.close()
+    if (shellFile != null) {  // TODO Always true
       tryDeleteFile(shellFile)
     }
     super.postStop()

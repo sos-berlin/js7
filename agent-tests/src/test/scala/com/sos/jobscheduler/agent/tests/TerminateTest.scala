@@ -42,7 +42,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
       closer onClose actorSystem.terminate()
       provideAgent { (client, agent) ⇒
         val eventCollector = newEventCollector(agent.injector)
-        val lastEventId = eventCollector.lastEventId
+        val lastEventId = eventCollector.lastAddedEventId
 
         val orderIds = for (i ← 0 until 3) yield OrderId(s"TEST-ORDER-$i")
         (for (orderId ← orderIds) yield

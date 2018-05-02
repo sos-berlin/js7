@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.event.collector
+package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -12,12 +12,12 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-private[collector] final class Sync(initialLastEventId: EventId, timerService: TimerService) {
+private[event] final class Sync(initialLastEventId: EventId, timerService: TimerService) {
 
   @volatile private var promise: Promise[Boolean] = null
   @volatile private var lastEventId = initialLastEventId
 
-  def onNewEvent(eventId: EventId): Unit =
+  def onEventAdded(eventId: EventId): Unit =
     synchronized {
       lastEventId = eventId
       if (promise != null) {
@@ -29,7 +29,7 @@ private[collector] final class Sync(initialLastEventId: EventId, timerService: T
   /**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
-  def whenEventIsAvailable(after: EventId, until: Instant, delay: Duration = Duration.ZERO)(implicit ec: ExecutionContext): Future[Boolean] =
+  def whenEventIsAvailable(after: EventId, until: Instant, delay: Duration = Duration.ZERO)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (after < lastEventId)
       Future.successful(true)
     else
@@ -53,4 +53,5 @@ private[collector] final class Sync(initialLastEventId: EventId, timerService: T
           .thenDelay(delay min (until - now))(timerService, ec)
           .timeoutAt(until, Success(false), getClass.getName)(timerService, ec)
     }
+  }
 }

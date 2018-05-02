@@ -11,7 +11,6 @@ import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
 import com.sos.jobscheduler.agent.web.views.RootWebService
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import javax.inject.{Inject, Singleton}
@@ -27,7 +26,6 @@ private abstract class RouteProvider private(
   protected val timerService: TimerService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
-  protected val eventIdGenerator: EventIdGenerator,
   protected val actorSystem: ActorSystem,
   implicit protected val executionContext: ExecutionContext,
   injector: Injector)
@@ -60,7 +58,6 @@ private[web] object RouteProvider {
     timerService: TimerService,
     extraWebServices: immutable.Seq[ExternalWebService],
     agentConfiguration: AgentConfiguration,
-    eventIdGenerator: EventIdGenerator,
     actorSystem: ActorSystem,
     executionContext: ExecutionContext,
     injector: Injector)
@@ -72,7 +69,6 @@ private[web] object RouteProvider {
         timerService,
         extraWebServices,
         agentConfiguration,
-        eventIdGenerator,
         actorSystem,
         executionContext,
         injector)

@@ -76,7 +76,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "count": 2
       }""")
   }
@@ -85,7 +85,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow/") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "value": [
           "/WORKFLOW",
           "/WORKFLOW-2"
@@ -97,7 +97,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/workflow/WORKFLOW") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "id": {
           "path": "/WORKFLOW",
           "versionId": "(initial)"
@@ -117,7 +117,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "count": 2
       }""")
   }
@@ -126,7 +126,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "value": [
           "/AGENT",
           "/FOLDER/AGENT-A"
@@ -138,7 +138,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "value": [
           {
             "id": {
@@ -161,7 +161,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER/AGENT-A?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -174,7 +174,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testJson(
       httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER%2FAGENT-A?return=Agent") await 99.s,
       json"""{
-        "eventId": 1000006,
+        "eventId": 1000005,
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -250,7 +250,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "/master/api/event" in {
     eventCollector.await[OrderFinished]()
-    val events = httpClient.get[Json](master.localUri + "/master/api/event?after=1000000") await 99.s
+    val events = httpClient.get[Json](master.localUri + "/master/api/event?after=0") await 99.s
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateForTest(events) == json"""{
       "TYPE": "NonEmpty",

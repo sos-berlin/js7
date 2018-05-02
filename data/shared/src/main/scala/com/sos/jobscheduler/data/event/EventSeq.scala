@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
@@ -19,7 +19,6 @@ object EventSeq {
     assert(stampeds.nonEmpty)
   }
 
-  @JsonCodec
   final case class Empty(lastEventId: EventId)
   extends EventSeq[Nothing, Nothing]
 
@@ -32,7 +31,7 @@ object EventSeq {
   implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
     TypedJsonCodec[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
-      Subtype[Empty])
+      Subtype(deriveCodec[Empty]))
 }
 
 sealed trait TearableEventSeq[+M[_], +E]
@@ -42,12 +41,11 @@ object TearableEventSeq {
     * `oldestKnownEventId` is for testing only.
     * @param oldestKnownEventId
     */
-  @JsonCodec
   final case class Torn(oldestKnownEventId: EventId)
   extends TearableEventSeq[Nothing, Nothing]
 
   implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](
       Subtype[EventSeq[Seq, E]],
-      Subtype[Torn])
+      Subtype(deriveCodec[Torn]))
 }

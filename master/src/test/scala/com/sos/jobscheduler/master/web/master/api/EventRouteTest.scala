@@ -27,10 +27,10 @@ import scala.concurrent.duration._
 final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRoute {
 
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
-  protected val eventCollector = new EventCollector.ForTest
+  protected val eventReader = new EventCollector.ForTest
   protected implicit def executionContext = system.dispatcher
 
-  TestEvents foreach eventCollector.addStamped
+  TestEvents foreach eventReader.addStamped
 
   private def route: Route =
     pathSegments("event") {
@@ -54,6 +54,8 @@ object EventRouteTest {
   intelliJuseImport(jsonUnmarshaller)
 
   private val TestEvents = List(
-    Stamped(EventId(111222), Timestamp.ofEpochMilli(1000),
-      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)))
+    Stamped(EventId(111111), Timestamp.ofEpochMilli(1000),
+      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)),
+    Stamped(EventId(222222), Timestamp.ofEpochMilli(1000),
+      OrderId("2") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)))
 }

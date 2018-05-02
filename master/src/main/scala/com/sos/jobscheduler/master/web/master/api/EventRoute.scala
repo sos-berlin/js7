@@ -1,40 +1,62 @@
 package com.sos.jobscheduler.master.web.master.api
 
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.{Event, EventSeq, KeyedEvent, SomeEventRequest, TearableEventSeq}
+import com.sos.jobscheduler.master.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
+import com.sos.jobscheduler.master.web.master.api.EventRoute._
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
 trait EventRoute {
-  protected def eventCollector: EventCollector
+  protected def eventReader: EventReader[Event]
   protected implicit def executionContext: ExecutionContext
 
   final val eventRoute: Route =
-    pathEnd {
-      get {
+    get {
+      pathEnd {
         eventRequest[Event](defaultReturnType = Some("Event")).apply {
           case request: SomeEventRequest[Event] ⇒
-              val whenEvents: Future[TearableEventSeq[Seq, KeyedEvent[Event]]] =
-                eventCollector.byPredicate[Event](request, predicate = _ ⇒ true) map {
-                  case EventSeq.NonEmpty(events) ⇒ EventSeq.NonEmpty(events.toImmutableSeq)
-                  case o: EventSeq.Empty ⇒ o
-                  case o: TearableEventSeq.Torn ⇒ o
-                }
+            type ESeq = TearableEventSeq[Seq, KeyedEvent[Event]]
             intelliJuseImport(jsonOrYamlMarshaller)
-            complete(whenEvents)
+            complete(
+              eventReader.byPredicate[Event](request, predicate = isRelevantEvent) map {
+                case o: TearableEventSeq.Torn ⇒
+                  (o: ESeq): ToResponseMarshallable
+                case o: EventSeq.Empty ⇒
+                  (o: ESeq): ToResponseMarshallable
+                case EventSeq.NonEmpty(events) ⇒
+                  (EventSeq.NonEmpty(events.toImmutableSeq): ESeq): ToResponseMarshallable
+              })
+
           case _ ⇒
             reject
         }
       }
+    }
+}
+
+object EventRoute
+{
+  private def isRelevantEvent(keyedEvent: KeyedEvent[_ <: Event]): Boolean =
+    isRelevantEvent(keyedEvent.event)
+
+  private def isRelevantEvent(event: Event): Boolean =
+    event match {
+      case (//_: OrderEvent.OrderDetachable |
+            _: AgentEventIdEvent) ⇒
+        false
+      case _ ⇒
+        true
     }
 }

@@ -5,8 +5,8 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.common.jsonseq.OutputStreamJsonSeqWriter
 import io.circe.syntax.EncoderOps
-import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
-import java.nio.file.Path
+import java.io.{BufferedOutputStream, FileOutputStream}
+import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -14,60 +14,54 @@ import java.util.concurrent.atomic.AtomicBoolean
   */
 final class FileJsonWriter(
   header: JournalHeader,
-  convertOutput: OutputStream ⇒ OutputStream,
   val file: Path,
   append: Boolean = false)
 extends AutoCloseable {
 
   private val out = new FileOutputStream(file, append)
   private val bufferedOut = new BufferedOutputStream(out)
-  private val convertingOut = convertOutput(bufferedOut)
-  private val writer = new OutputStreamJsonSeqWriter(convertingOut)
+  private val writer = new OutputStreamJsonSeqWriter(bufferedOut)
   private val closed = new AtomicBoolean
   private var flushed = false
   private var synced = false
+  private val initialPosition = Files.size(file)
 
   if (!append) {
-    writer.writeJson(ByteString.fromString(header.asJson.compactPrint))
+    write(ByteString.fromString(header.asJson.compactPrint))
     flush()
   }
 
-  def writeJson(json: ByteString): Unit = {
-    flushed = false
-    synced = false
-    writer.writeJson(json)
-  }
-
-  def close() = {
+  def close() =
     if (closed.compareAndSet(false, true)) {
       flush()
       writer.close()
-      convertingOut.close()
+      bufferedOut.close()
       out.close()
     }
+
+  def write(byteString: ByteString): Unit = {
+    flushed = false
+    synced = false
+    writer.writeJson(byteString)
   }
 
-  /**
-    * Flushes and optionally syncs the previously written items.
-    *
-    * @return Wether something has been flushed
-    */
-  def flush(): Unit = {
-    !flushed && {
-      writer.flush()
-      convertingOut.flush()
-      out.flush()
-      flushed = true
-      true
+  def sync(): Unit =
+    if (!synced) {
+      flush()
+      out.getFD.sync()
+      synced = true
     }
-  }
 
-  def sync(): Unit = {
-    out.getFD.sync()
-    synced = true
-  }
+  def flush(): Unit =
+    if (!flushed) {
+      writer.flush()
+      bufferedOut.flush()
+      flushed = true
+    }
 
   def isFlushed = flushed
 
   def isSynced = synced
+
+  def fileLength = initialPosition + writer.bytesWritten
 }

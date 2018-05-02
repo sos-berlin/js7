@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
@@ -16,6 +17,7 @@ import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
 trait ApiRoute
 extends ApiRootRoute
 with EventRoute
+with FatEventRoute
 with GraphqlRoute
 with OrderRoute
 with WorkflowRoute
@@ -30,6 +32,9 @@ with AgentProxyRoute
         } ~
         pathSegments("event") {
           eventRoute
+        } ~
+        pathSegments("fatEvent") {
+          fatEventRoute
         } ~
         pathSegments("order") {
           orderRoute

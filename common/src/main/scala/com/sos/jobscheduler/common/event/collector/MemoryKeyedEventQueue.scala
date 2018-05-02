@@ -9,12 +9,12 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int)
+final class MemoryKeyedEventQueue(sizeLimit: Int)
 {
   private val queue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, Stamped[AnyKeyedEvent]]
   private var queueLength: Int = 0
   @volatile
-  private var lastRemovedFirstId: EventId = initialOldestEventId
+  private var lastRemovedFirstId: EventId = EventId.BeforeFirst
 
   def add(stamped: Stamped[AnyKeyedEvent]): Unit =
     synchronized {
@@ -53,15 +53,12 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int)
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala takeWhile { _ > after } map queue.get)
       .asScala
 
-  def lastEventId: EventId =
+  private def lastEventId: EventId =
     if (queue.isEmpty) oldestEventId else queue.lastKey
 
   /** Events before this EventId are lost. */
   def oldestEventId: EventId =
     lastRemovedFirstId
-
-  def size: Int =
-    queueLength
 
   private class EventIterator(firstEventId: EventId, stampedIterator: Iterator[Stamped[AnyKeyedEvent]])
   extends GuavaIterator[Stamped[AnyKeyedEvent]] {
@@ -83,5 +80,5 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int)
       }
   }
 
-  override def toString = s"KeyedEventQueue(length=$queueLength, lastRemovedFirstId=$lastRemovedFirstId)"
+  override def toString = s"MemoryKeyedEventQueue(length=$queueLength, lastRemovedFirstId=$lastRemovedFirstId)"
 }

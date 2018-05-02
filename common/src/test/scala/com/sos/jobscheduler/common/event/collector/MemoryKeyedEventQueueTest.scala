@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.event.collector.KeyedEventQueueTest._
+import com.sos.jobscheduler.common.event.collector.MemoryKeyedEventQueueTest._
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, NoKeyEvent, Stamped}
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventQueueTest extends FreeSpec {
+final class MemoryKeyedEventQueueTest extends FreeSpec {
 
-  private val queue = new KeyedEventQueue(initialOldestEventId = EventId.BeforeFirst, 3)
+  private val queue = new MemoryKeyedEventQueue(3)
   private val stampeds = for (i ← 1 to 5) yield Stamped(EventId(i), Timestamp.ofEpochMilli(0), KeyedEvent(AEvent(i)))
 
   stampeds foreach queue.add
@@ -46,6 +46,6 @@ final class KeyedEventQueueTest extends FreeSpec {
   }
 }
 
-object KeyedEventQueueTest {
+object MemoryKeyedEventQueueTest {
   private case class AEvent(number: Int) extends NoKeyEvent
 }

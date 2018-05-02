@@ -11,23 +11,11 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 class JournalMeta[E <: Event](
   val snapshotJsonCodec: TypedJsonCodec[Any],
   implicit val eventJsonCodec: KeyedEventTypedJsonCodec[E])
-extends StreamConversion
 
 object JournalMeta {
   def header = JournalHeader(
-    version = "0.11",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+    version = "0.12",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version,
     buildId = BuildInfo.buildId,
     Timestamp.now.toIsoString)
-
-  def gzipped[E <: Event](
-    snapshotJsonCodec: TypedJsonCodec[Any],
-    eventJsonCodec: KeyedEventTypedJsonCodec[E],
-    compressWithGzip: Boolean = true)
-  : JournalMeta[E] = {
-    val gz = compressWithGzip
-    new JournalMeta(snapshotJsonCodec, eventJsonCodec) with GzipCompression {
-      override def compressWithGzip = gz
-    }
-  }
 }

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.event.{Event, EventId}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
 import org.scalactic.Requirements._
@@ -22,7 +22,13 @@ final class MasterUris private(masterUri: String) {
   val command = api()
 
   def events[E <: Event: ClassTag](after: EventId, timeout: Duration): String =
-    api("/event") + encodeQuery(
+    events_[E]("/event", after, timeout)
+
+  def fatEvents[E <: OrderFatEvent: ClassTag](after: EventId, timeout: Duration): String =
+    events_[E]("/fatEvent", after, timeout)
+
+  def events_[E <: Event: ClassTag](path: String, after: EventId, timeout: Duration): String =
+    api(path) + encodeQuery(
       "return" → encodeClass[E],
       "timeout" → s"${BigDecimal(timeout.toMillis) / 1000}",
       "after" → after.toString)

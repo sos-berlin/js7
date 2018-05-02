@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.core.event.journal.tests
+package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.core.event.journal.tests.TestEvent._
+import com.sos.jobscheduler.core.event.journal.TestEvent._
 
 /**
   * @author Joacim Zschimmer
   */
-private[tests] final case class TestAggregate(key: String, string: String,
+private[journal] final case class TestAggregate(key: String, string: String,
   a: String = "X",
   b: String = "X",
   c: String = "X",
@@ -26,12 +26,12 @@ private[tests] final case class TestAggregate(key: String, string: String,
   q: String = "X",
   r: String = "X") {
 
-  def update(event: TestEvent) = event match {
+  def applyEvent(event: TestEvent) = event match {
     case Appended(char) ⇒ copy(string = string + char)
     case _ ⇒ sys.error(s"Not applicable: $event")
   }
 }
 
-private[tests] object TestAggregate {
+private[journal] object TestAggregate {
   implicit val jsonCodec = deriveCodec[TestAggregate]
 }

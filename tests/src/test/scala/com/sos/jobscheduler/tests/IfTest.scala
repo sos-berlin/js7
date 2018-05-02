@@ -64,7 +64,7 @@ object IfTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = """
       |job "JOB-RC" on "AGENT" successReturnCodes=(0, 1); // #0
-      |if (returnCode == 0) {    // #1
+      |if (returnCode == 0) {   // #1
       |  job "JOB" on "AGENT";  // #1/0/0
       |} else {
       |  job "JOB" on "AGENT";  // #1/1/0

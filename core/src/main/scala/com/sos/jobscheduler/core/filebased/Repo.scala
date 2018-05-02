@@ -120,7 +120,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
     }
 
   /** Converts the Repo to an event sequence. */
-  def toEvents: Seq[RepoEvent] = {
+  private[filebased] def toEvents: Seq[RepoEvent] = {
     val versionToFileBasedOptions: Map[VersionId, Seq[Either[FileBased/*added/changed*/, TypedPath/*deleted*/]]] =
       pathToVersionToFileBased.toVector.sortBy(_._1)/*for testing*/
         .flatMap { case (path, versionToFileBasedOpt) ⇒

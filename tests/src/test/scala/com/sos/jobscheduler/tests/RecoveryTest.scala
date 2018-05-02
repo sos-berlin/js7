@@ -12,7 +12,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
+import com.sos.jobscheduler.common.utils.UntilNoneIterator
+import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -121,15 +122,13 @@ final class RecoveryTest extends FreeSpec {
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
     }
 
-  private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
-    val conversion = new GzipCompression {}
-    autoClosing(new JsonFileIterator(JournalMeta.header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
-      _.toVector collect {
-        case o if AgentEvent.KeyedEventJsonCodec.canDeserialize(o) ⇒
-          o.as[Stamped[KeyedEvent[AgentEvent]]].orThrow
+  private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
+    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader ⇒
+      UntilNoneIterator(reader.read).toVector map (_.value) collect {
+        case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) ⇒
+          json.as[Stamped[KeyedEvent[AgentEvent]]].orThrow
       }
     }
-  }
 }
 
 private object RecoveryTest {

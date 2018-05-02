@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.event.journal.tests
+package com.sos.jobscheduler.core.event.journal
 
 import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
@@ -7,14 +7,13 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.tests.TestActor._
-import com.sos.jobscheduler.core.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalActor, JournalActorRecoverer, JournalMeta, JournalRecoverer}
+import com.sos.jobscheduler.core.event.journal.TestActor._
+import com.sos.jobscheduler.core.event.journal.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.collection.mutable
@@ -24,14 +23,15 @@ import scala.concurrent.{Promise, blocking}
 /**
   * @author Joacim Zschimmer
   */
-private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
+private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], journalFile: Path, journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
 
   private implicit val executionContext = context.dispatcher
 
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private implicit val askTimeout = Timeout(999.seconds)
+  private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.actorOf(
-    JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus, journalStopped),
+    JournalActor.props(journalMeta, journalFile, syncOnCommit = true, new StampedKeyedEventBus, journalStopped,
+      new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/))),
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
@@ -90,6 +90,10 @@ private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[
       keyToAggregate += key → actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
+    case Input.Forward(key: String, command @ TestAggregateActor.Command.Remove) ⇒
+      (keyToAggregate(key) ? command).mapTo[TestAggregateActor.Response.Completed] pipeTo sender()
+      keyToAggregate -= key
+
     case Input.Forward(key: String, disturb: TestAggregateActor.Command.Disturb) ⇒
       keyToAggregate(key) ! disturb
 
@@ -133,12 +137,12 @@ private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[
       s"Test-$key"))
 }
 
-private[tests] object TestActor {
+private[journal] object TestActor {
   intelliJuseImport(TestKeyedEventJsonCodec)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])
-  private val TestJournalMeta = new JournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec) with GzipCompression
+  val TestJournalMeta = new JournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec)
   private val logger = Logger(getClass)
 
   object Input {

@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.Outcome.Undisrupted
+import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutOrStderr
 import com.sos.jobscheduler.data.workflow.WorkflowPosition
 import scala.collection.immutable.Seq
@@ -13,20 +13,21 @@ import scala.collection.immutable.Seq
 final case class OrderEntry(
   orderId: OrderId,
   parent: Option[OrderId] = None,
-  cause: OrderEntry.Cause,
+  cause: OrderFatEvent.OrderAddedFat.Cause,
   startWorkflowPosition: Option[WorkflowPosition] = None,
-  startedAt: Option[Timestamp] = None,
   scheduledAt: Option[Timestamp] = None,
+  startedAt: Option[Timestamp] = None,
   endedAt: Option[Timestamp] = None,
   endWorkflowPosition: Option[WorkflowPosition] = None,
-  steps: Seq[OrderStepEntry])
+  steps: Seq[OrderStepEntry] = Vector.empty)
 {
-  def updateLastStep(returnCode: Option[ReturnCode], endVariables: Map[String, String]) = {
+  def updateLastStep(endedAt: Timestamp, outcome: Outcome, variables: Map[String, String]): OrderEntry = {
     val lastStep = steps.last
     copy(steps = steps.take(steps.size - 1) :+
       lastStep.copy(
-        returnCode = returnCode,
-        endVariables = Some(endVariables)))
+        endedAt = Some(endedAt),
+        returnCode = Some(outcome) collect { case o: Undisrupted ⇒ o.returnCode },
+        endVariables = Some(variables)))
   }
 
   def addToLog(outErr: StdoutOrStderr, chunk: String): OrderEntry =
@@ -41,12 +42,5 @@ final case class OrderEntry(
       steps = steps.take(steps.size - 1) :+
         lastStep.copy(
           log = Some(lastStep.log.getOrElse("") + chunk)))
-  }
-}
-object OrderEntry {
-  sealed trait Cause
-  object Cause {
-    case object UNKNOWN extends Cause
-    case object Forked extends Cause
   }
 }

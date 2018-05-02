@@ -16,7 +16,6 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -157,7 +156,7 @@ private object OrderActorTest {
       AgentConfiguration.forTest(configAndData = Some(dir)))
 
     private val journalActor = actorOf(
-      JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus),
+      JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, keyedEventBus),
       "Journal")
     private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
     private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")

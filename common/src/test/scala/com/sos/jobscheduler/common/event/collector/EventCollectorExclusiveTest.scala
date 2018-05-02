@@ -90,9 +90,9 @@ private object EventCollectorExclusiveTest {
   private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
     (implicit
       protected val eventIdGenerator: EventIdGenerator,
-      protected val timerService: TimerService,
-      protected val executionContext: ExecutionContext)
-  extends EventCollector(initialOldestEventId = EventId.BeforeFirst, configuration)
+      timerService: TimerService,
+      executionContext: ExecutionContext)
+  extends EventCollector(configuration)
   with EventIdGenerating
   {
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)

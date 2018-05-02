@@ -12,7 +12,6 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.auth.User.Anonymous
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -33,7 +32,7 @@ private class TestAgentActorProvider extends HasCloser {
   lazy val agentDirectory = directoryProvider.agentDirectory
 
   lazy val (eventCollector, agentActor) = start(agentDirectory)
-  lazy val lastEventId = eventCollector.lastEventId
+  lazy val lastEventId = eventCollector.lastAddedEventId
 
   def startAgent() = agentActor
 
@@ -57,7 +56,6 @@ object TestAgentActorProvider {
     implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
     implicit val timerService = TimerService(idleTimeout = Some(1.s))
     implicit val keyedEventBus = injector.instance[StampedKeyedEventBus]
-    implicit val eventIdGenerator = injector.instance[EventIdGenerator]
 
     val eventCollector = injector.createChildInjector(new AbstractModule {
       override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
