@@ -27,14 +27,15 @@ object PreparedWorkflow {
       // Same procedure as in WorkflowComponent
       def renderNested(labeledInstructions: Seq[Instruction.Labeled], parents: Position.Parents, nesting: Int): Unit = {
         for ((labeled, nr) ← labeledInstructions.zipWithIndex) {
-          val position = parents / InstructionNr(nr)
-          positionsWithXY += ((position, nestingPx(nesting), lastY))
+          val y = lastY
           lastY += InstructionHeight
-          addVdom(<.div(^.cls := "orders-Instruction", moveElement(nestingPx(nesting), lastY), instructionToVdom(labeled)))
+          val position = parents / InstructionNr(nr)
+          positionsWithXY += ((position, nestingPx(nesting), y))
+          addVdom(<.div(^.cls := "orders-Instruction", moveElement(nestingPx(nesting), y), instructionToVdom(labeled)))
           labeled.instruction match {
             case ForkJoin(branches) ⇒
               for (branch ← branches) {
-                addVdom(<.div(^.cls := "orders-Branch", moveElement(nestingPx(nesting + 0.4), lastY + BranchIdY), branch.id.string))
+                addVdom(<.div(^.cls := "orders-Branch", moveElement(nestingPx(nesting + 0.4), y + BranchIdY), branch.id.string))
                 renderNested(branch.workflow.labeledInstructions, position / branch.id, nesting + 1)
               }
 
@@ -43,7 +44,7 @@ object PreparedWorkflow {
                 renderNested(stripImplicitEnd(w.labeledInstructions), position / branch, nesting + 1)
               renderBranch(0)  // then
               if (_if.elseWorkflow.isDefined) {
-                addVdom(<.div(^.cls := "orders-Branch", moveElement(nestingPx(nesting), lastY + ElseY), "else"))
+                addVdom(<.div(^.cls := "orders-Branch", moveElement(nestingPx(nesting), y + ElseY), "else"))
                 renderBranch(1)  // else
               }
 

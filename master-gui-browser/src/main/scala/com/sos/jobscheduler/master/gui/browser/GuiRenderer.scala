@@ -48,7 +48,7 @@ final class GuiRenderer(
 
   private def eventsAndClock: (TagMod, TagMod) =
     state.ordersState.content match {
-      case OrdersState.Initial ⇒
+      case OrdersState.Starting ⇒
         (TagMod.empty, TagMod.empty)
       case OrdersState.FetchingContent ⇒
         (TagMod.empty,
@@ -71,7 +71,9 @@ final class GuiRenderer(
         case AppState.Freezed ⇒ <.span(^.cls := "freezed")("❄ freezed")
         case AppState.Standby ⇒ <.span(^.cls := "standby")(s"$Moon standby")
         case AppState.RequestingEvents ⇒
-          if (state.ordersState.content == OrdersState.FetchingContent)
+          if (state.ordersState.content == OrdersState.Starting)
+            "starting..."
+          else if (state.ordersState.content == OrdersState.FetchingContent)
             "fetching..."
           else if (state.isConnected)
             Connected

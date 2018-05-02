@@ -28,6 +28,9 @@ object Router {
 
   def route(stateSnapshot: StateSnapshot[GuiState]): TagMod = {
     val state = stateSnapshot.value
+    if (state.ordersState.content == OrdersState.Starting)
+      <.div(<.i("Starting..."))
+    else
     if (state.ordersState.content == OrdersState.FetchingContent)
       <.div(<.i("Waiting for JobScheduler response..."))
     else

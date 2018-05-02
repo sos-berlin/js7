@@ -36,14 +36,14 @@ final case class OrdersState(
 }
 
 object OrdersState {
-  val Empty = OrdersState(Initial, step = 0, error = None)
+  val Empty = OrdersState(Starting, step = 0, error = None)
 
   private type WorkflowToOrderIds = Map[WorkflowId, Vector[OrderId]]
   sealed trait Content {
     def orderCountByWorkflow(workflowId: WorkflowId): Option[Int]
   }
 
-  object Initial extends Content {
+  object Starting extends Content {
     def orderCountByWorkflow(workflowId: WorkflowId) = None
   }
   object FetchingContent extends Content {

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
 import com.sos.jobscheduler.master.gui.browser.common.Utils.memoize
-import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, FetchingContent, Initial, OrderEntry}
+import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, FetchingContent, Starting, OrderEntry}
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow
 import com.sos.jobscheduler.master.gui.browser.components.workfloworders.WorkflowOrdersBackend._
 import com.sos.jobscheduler.master.gui.browser.components.workfloworders.WorkflowOrdersComponent.Props
@@ -23,7 +23,7 @@ extends OnUnmount {
   def render(props: Props): VdomElement = {
     val ordersState = props.ordersStateSnapshot.value
     ordersState.content match {
-      case Initial ⇒
+      case Starting ⇒
         <.div
 
       case FetchingContent ⇒
