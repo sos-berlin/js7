@@ -1,19 +1,20 @@
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
 
-object VersionFormatter  {
+object VersionFormatter
+{
+  private val CommitHashLength = 7
 
   def buildVersion(version: String, versionCommitHash: Option[String], branch: String): String = {
     var result = version
-    if (version endsWith "-SNAPSHOT") result += " " + branchAndCommitSuffix(resolveBranch(branch), versionCommitHash)
-    result.trim
-  }
-
-  private def resolveBranch(branch: String) =
-    branch match {
-      case "" ⇒ sys.env.getOrElse("GIT_BRANCH", "")  // Jenkins Git plugin
+    val resolvedBranch = branch match {
+      case o if o.isEmpty || versionCommitHash.getOrElse("").startsWith(o) ⇒
+        sys.env.getOrElse("GIT_BRANCH", "")  // Maybe set by Jenkins Git plugin
       case o ⇒ o
     }
+    if (version endsWith "-SNAPSHOT") result += " " + branchAndCommitSuffix(resolvedBranch, versionCommitHash map (_ take CommitHashLength))
+    result.trim
+  }
 
   private def branchAndCommitSuffix(branch: String, versionCommitHash: Option[String]) = {
     val parts = branch +:
