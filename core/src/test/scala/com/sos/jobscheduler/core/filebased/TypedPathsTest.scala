@@ -7,6 +7,7 @@ import com.sos.jobscheduler.core.filebased.TypedPaths._
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import java.io.File.separator
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
@@ -21,13 +22,13 @@ final class TypedPathsTest extends FreeSpec {
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.job.json")) ==
-      Invalid(Problem("File 'folder/test.job.json' is not recognized as a configuration file")))
+      Invalid(Problem(s"File '...${separator}folder${separator}test.job.json' is not recognized as a configuration file")))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.txt")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Txt))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.job_chain.xml")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Xml))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.wrong")) ==
-      Invalid(Problem("File 'folder/test.workflow.wrong' is not recognized as a configuration file")))
+      Invalid(Problem(s"File '...${separator}folder${separator}test.workflow.wrong' is not recognized as a configuration file")))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("a@b.workflow.json")) ==

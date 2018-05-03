@@ -13,6 +13,7 @@ import com.sos.jobscheduler.master.tests.FileBasedReaderTest._
 import com.sos.jobscheduler.master.tests.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow, V0, provideDirectory}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
+import java.io.File.separator
 import java.nio.file.Files.createDirectories
 import java.nio.file.Path
 import org.scalatest.FreeSpec
@@ -32,7 +33,7 @@ final class FileBasedReaderTest extends FreeSpec {
         Valid(CWorkflow withVersion V0),
         Invalid(Problem("""Problem with 'Workflow:/D' (txt) [End:1:1 ..."ERROR"]""")),
         Invalid(Problem("""Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""")),
-        Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
+        Invalid(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")),
         Valid(AAgent withVersion V0),
         Valid(BAgent withVersion V0)))
 
@@ -40,7 +41,7 @@ final class FileBasedReaderTest extends FreeSpec {
         Invalid(Problem.set(
           """Problem with 'Workflow:/D' (txt) [End:1:1 ..."ERROR"]""",
           """Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""",
-          """File 'folder/test.alien.json' is not recognized as a configuration file""")))
+         s"""File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file""")))
 
       (directory / "A.workflow.txt").contentString = ""
       assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==

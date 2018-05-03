@@ -10,6 +10,7 @@ import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalkerTest._
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec
@@ -28,7 +29,7 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
         Valid(TypedFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
         Valid(TypedFile(dir / "test.job_chain.xml", AWorkflowPath, SourceType.Xml)),
         Valid(TypedFile(dir / "folder" / "test.job.xml", BJobPath, SourceType.Xml)),
-        Invalid(Problem("File 'folder/test.alien.xml' is not recognized as a configuration file"))))
+        Invalid(Problem(s"File '...${separator}folder${separator}test.alien.xml' is not recognized as a configuration file"))))
       assert(checkUniqueness(checkedTypedFiles) == Invalid(Problem(
         s"Duplicate configuration files: ${dir / "test.job_chain.xml"}, ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }

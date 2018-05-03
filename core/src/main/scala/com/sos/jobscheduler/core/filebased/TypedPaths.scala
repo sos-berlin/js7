@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.filebased
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import java.io.File.separator
 import java.nio.file.Path
 import scala.collection.immutable.Iterable
 
@@ -23,5 +24,5 @@ object TypedPaths {
   }
 
   final case class UnrecognizedFileProblem(file: Path)
-  extends Problem.Lazy(s"File '${file.toString.stripPrefix("/")}' is not recognized as a configuration file")
+  extends Problem.Lazy(s"File '...$separator${file.toString.stripPrefix(separator)}' is not recognized as a configuration file")
 }

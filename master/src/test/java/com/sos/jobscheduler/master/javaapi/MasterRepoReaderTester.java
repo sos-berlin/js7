@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import static java.io.File.separator;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.delete;
 import static java.nio.file.Files.write;
@@ -50,7 +51,7 @@ final class MasterRepoReaderTester {
         assert new HashSet<>(problemsToStrings(result2)).equals(
             new HashSet<>(asList(
                 "Problem with 'Workflow:/ERROR-2' (JSON) [CanBuildFrom for A: DownField(instructions)]",
-                "File 'UNKNOWN.tmp' is not recognized as a configuration file",
+                "File '..."+ separator +"UNKNOWN.tmp' is not recognized as a configuration file",
                 "Problem with 'Workflow:/NO-JSON' (JSON) [expected json value got I (line 1, column 1)]",
                 "Problem with 'Workflow:/ERROR-1' (JSON) [Attempt to decode value on failed cursor: DownField(instructions)]")));
 
