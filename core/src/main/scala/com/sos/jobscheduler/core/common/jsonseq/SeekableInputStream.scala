@@ -17,6 +17,8 @@ object SeekableInputStream {
 
   private class FileSeekableInputStream(file: RandomAccessFile) extends SeekableInputStream
   {
+    override def close() = file.close()
+
     def read() =
       file.read()
 
