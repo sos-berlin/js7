@@ -95,10 +95,10 @@ object DirectoryProvider {
 
     override def afterAll() = {
       closer.close()
-      directoryProvider.close()
       for (a ← agents) a.close()
       master.close()
       super.afterAll()
+      directoryProvider.close()
     }
   }
 
@@ -136,28 +136,28 @@ object DirectoryProvider {
     lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
   }
 
-  def jobXml(sleep: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
+  def jobXml(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
     <job tasks="3">
       <params>{
         for ((k, v) ← variables) yield <param name={k} value={v}/>
       }</params>
-      <script language="shell">{script(sleep, resultVariable)}</script>
+      <script language="shell">{script(duration, resultVariable)}</script>
     </job>
 
   val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
-  private def script(sleep: Duration, resultVariable: Option[String]) =
+  private def script(duration: Duration, resultVariable: Option[String]) =
     if (isWindows)
       (s"""
         |@echo off
         |echo ${StdoutOutput.trim}
-        |ping -n ${(sleep + 999999.µs).toSecondsString} 127.0.0.1 >nul""" +
+        |ping -n ${1 + (duration + 999999.µs).toMillis / 1000} 127.0.0.1 >nul""" +
         resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
       ).stripMargin
     else
       (s"""
         |echo ${StdoutOutput.trim}
-        |sleep ${sleep.toSecondsString}""" +
+        |sleep ${duration.toSecondsString}""" +
         resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 }
