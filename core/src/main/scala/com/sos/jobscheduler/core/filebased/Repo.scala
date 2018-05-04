@@ -152,13 +152,18 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       case Nil ⇒ Problem(s"No such '$versionId'")
       case _ :: tail ⇒ Valid(tail)
     }
+
+  def newVersionId(): VersionId = {
+    val v = VersionId("#" + Timestamp.now.toIsoString)
+    if (!versions.contains(v))
+      v
+    else
+      Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !versions.contains(w) ⇒ w } .get
+  }
 }
 
 object Repo {
   val empty = new Repo(Nil, Map.empty)
-
-  def newVersionId(): VersionId =
-    VersionId("?" + Timestamp.now.toIsoString)
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[FileBased]])
   extends AnyVal {

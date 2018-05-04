@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.filebased
 
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.filebased.RepoTest._
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
@@ -81,6 +82,16 @@ final class RepoTest extends FreeSpec
   "versionId" in {
     assert(testRepo.versionId == V3)
     assert(Repo.empty.versionId.isAnonymous)
+  }
+
+  "newVersionId returns unique value" in {
+    var repo = testRepo
+    val n = 100
+    for (_ ← 1 to n) {
+      repo = repo.applyEvent(VersionAdded(repo.newVersionId())).orThrow
+    }
+    assert(repo.versions.size - testRepo.versions.size == n)
+    assert(repo.versions.toSet.size - testRepo.versions.size == n)
   }
 
   "idTo" in {

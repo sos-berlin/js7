@@ -20,7 +20,7 @@ trait RepoReader
 
   def readConfiguration(repo: Repo, versionId: Option[VersionId]): Checked[(Seq[RepoEvent], Repo)] =
     for {
-      events ← FileBaseds.readDirectory(readers, fileBasedDirectory, repo.currentFileBaseds, versionId getOrElse Repo.newVersionId())
+      events ← FileBaseds.readDirectory(readers, fileBasedDirectory, repo.currentFileBaseds, versionId getOrElse repo.newVersionId())
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
     } yield (events, changedRepo)
 }
