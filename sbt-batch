@@ -2,4 +2,8 @@
 set -e
 
 cd "$(dirname -- "$0")"
-sbt -batch -Dsbt.log.noformat=true "$@"
+if [ "$OSTYPE" = "cygwin" ]; then
+  cmd /c sbt-batch.cmd "$@"
+else
+  sbt -batch -Dsbt.log.noformat=true "$@"
+fi

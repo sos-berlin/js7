@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -53,7 +54,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
-    directoryProvider.agents(0).file(JobPath("/A"), SourceType.Xml).xml = <job><script language="shell">exit</script></job>
+    directoryProvider.agents(0).file(JobPath("/A"), SourceType.Xml).xml =
+      <job><script language="shell">{if (isWindows) "@exit" else "exit"}</script></job>
     super.beforeAll()
   }
 
