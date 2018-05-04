@@ -2,4 +2,4 @@
 -XX:MetaspaceSize=256M
 -XX:MaxMetaspaceSize=1G
 -Xms500M
--Xmx2G
+-Xmx3G
