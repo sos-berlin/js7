@@ -45,10 +45,10 @@ trait JournalRecoverer[E <: Event] {
   def startJournalAndFinishRecovery(
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReader: Option[JournalEventReader[E]] = None)
+    eventReaderProvider: Option[JournalEventReaderProvider[E]] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReader,
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReaderProvider,
       eventsAcceptedUntil = _eventsAcceptedUntil, lastEventId = _lastEventId)
 
   val lastRecoveredEventId = _lastEventId
@@ -60,7 +60,7 @@ object JournalRecoverer {
   private def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReader: Option[JournalEventReader[E]] = None,
+    eventReaderProvider: Option[JournalEventReaderProvider[E]] = None,
     eventsAcceptedUntil: EventId,
     lastEventId: EventId)
     (implicit actorRefFactory: ActorRefFactory)
@@ -70,7 +70,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, eventReader, eventsAcceptedUntil = eventsAcceptedUntil, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, eventReaderProvider, eventsAcceptedUntil = eventsAcceptedUntil, lastEventId = lastEventId)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

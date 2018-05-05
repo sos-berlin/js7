@@ -26,7 +26,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalEventReader
+import com.sos.jobscheduler.core.event.journal.{EventReaderProvider, JournalEventReaderProvider}
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
@@ -72,7 +72,7 @@ extends AutoCloseable
     orderApi.addOrder(order).runAsync.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
-  val eventReader = injector.instance[EventReader[Event]]
+  val eventReader: EventReader[Event] = injector.instance[EventReaderProvider[Event]]
 
   def close() = closer.close()
 }
@@ -124,7 +124,6 @@ object RunningMaster {
       val masterConfiguration = injector.instance[MasterConfiguration]
 
       StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
-      injector.instance[EventReader[Event]]  // ??? // Start EventCollector
       masterConfiguration.stateDirectory match {
         case o if !exists(o) ⇒ createDirectory(o)
         case _ ⇒
@@ -132,7 +131,7 @@ object RunningMaster {
 
       val actorSystem = injector.instance[ActorSystem]
       val eventIdClock = injector.instance[EventIdClock]
-      val eventReader = injector.instance[JournalEventReader[Event]]
+      val eventReaderProvider = injector.instance[JournalEventReaderProvider[Event]]
       val closer = injector.instance[Closer]
       val webServer = injector.instance[MasterWebServer]
 
@@ -142,7 +141,7 @@ object RunningMaster {
               masterConfiguration,
               eventIdClock)(
               injector.instance[TimerService],
-              eventReader,
+              eventReaderProvider,
               injector.instance[StampedKeyedEventBus]) },
           onStopped = _ ⇒ Success(Completed)
         )(actorSystem)

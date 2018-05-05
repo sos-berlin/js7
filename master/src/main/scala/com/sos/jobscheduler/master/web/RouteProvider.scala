@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.event.journal.EventReaderProvider
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.OrderApi
@@ -28,7 +28,7 @@ extends AllRoute {
   protected def actorRefFactory = actorSystem
   protected val masterConfiguration = injector.instance[MasterConfiguration]
   protected val config              = injector.instance[Config]
-  protected def eventReader         = injector.instance[EventReader[Event]]
+  protected def eventReader         = injector.instance[EventReaderProvider[Event]]
   protected val scheduler           = injector.instance[Scheduler]
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =

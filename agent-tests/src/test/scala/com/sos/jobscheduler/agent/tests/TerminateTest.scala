@@ -25,9 +25,9 @@ import com.sos.jobscheduler.data.event.{EventId, EventRequest}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -58,7 +58,8 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
             for (orderId ← orderIds) yield
-              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId))
+              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId)
+                .runAsync: Future[OrderEvent.OrderProcessed])
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 

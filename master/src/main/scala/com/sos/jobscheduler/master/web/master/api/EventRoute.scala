@@ -18,7 +18,8 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute {
+trait EventRoute
+{
   protected def eventReader: EventReader[Event]
   protected implicit def scheduler: Scheduler
 
@@ -29,15 +30,16 @@ trait EventRoute {
           case request: SomeEventRequest[Event] ⇒
             type ESeq = TearableEventSeq[Seq, KeyedEvent[Event]]
             intelliJuseImport(jsonOrYamlMarshaller)
-            complete(
-              eventReader.byPredicate[Event](request, predicate = isRelevantEvent) map {
+            val marshallable =
+              eventReader.read[Event](request, predicate = isRelevantEvent).runAsync map {
                 case o: TearableEventSeq.Torn ⇒
-                  (o: ESeq): ToResponseMarshallable
+                  ToResponseMarshallable(o: ESeq)
                 case o: EventSeq.Empty ⇒
-                  (o: ESeq): ToResponseMarshallable
+                  ToResponseMarshallable(o: ESeq)
                 case EventSeq.NonEmpty(events) ⇒
-                  (EventSeq.NonEmpty(events.toImmutableSeq): ESeq): ToResponseMarshallable
-              })
+                  ToResponseMarshallable(EventSeq.NonEmpty(events.toImmutableSeq): ESeq)
+              }
+            complete(marshallable)
 
           case _ ⇒
             reject

@@ -1,15 +1,13 @@
 package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.event.EventReader
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{Event, EventId, EventSeq}
+import com.sos.jobscheduler.data.event.{EventId, EventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -18,8 +16,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderFatEvent, OrderId, Payl
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.DirectoryProvider
-import com.sos.jobscheduler.tests.DirectoryProvider.jobXml
-import com.sos.jobscheduler.tests.DirectoryProvider.StdoutOutput
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.history.HistoryTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -42,7 +39,7 @@ final class HistoryTest extends FreeSpec
           provider.runMaster() { master ⇒
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
               master.addOrderBlocking(TestOrder)
-              master.injector.instance[EventReader[Event]].await[OrderFinished](_.key == TestOrder.id)
+              master.eventReader.await[OrderFinished](_.key == TestOrder.id)
 
               val history = new InMemoryHistory
               var lastEventId = EventId.BeforeFirst

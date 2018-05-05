@@ -5,13 +5,13 @@ import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventReader}
+import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.journal.JournalEventReader
+import com.sos.jobscheduler.core.event.journal.{EventReaderProvider, JournalEventReaderProvider}
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.MasterOrderKeeper
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -28,12 +28,12 @@ import scala.util.control.NonFatal
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
   @Provides @Singleton
-  def eventReader(journalEventReader: JournalEventReader[Event]): EventReader[Event] =
-    journalEventReader
+  def eventReaderProvider(p: JournalEventReaderProvider[Event]): EventReaderProvider[Event] =
+    p
 
   @Provides @Singleton
-  def journalEventReader()(implicit ec: ExecutionContext, ts: TimerService, config: Config): JournalEventReader[Event] =
-    new JournalEventReader[Event](
+  def journalEventReaderProvider()(implicit ec: ExecutionContext, ts: TimerService, config: Config): JournalEventReaderProvider[Event] =
+    new JournalEventReaderProvider[Event](
       MasterOrderKeeper.journalMeta,
       configuration.journalFile,
       timeoutLimit = config.getDuration("jobscheduler.master.event.timeout-limit"))

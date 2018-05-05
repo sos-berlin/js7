@@ -3,9 +3,11 @@ package com.sos.jobscheduler.common.event.collector
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
@@ -14,8 +16,6 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll {
-
-  import scala.concurrent.ExecutionContext.Implicits.global
 
   private implicit val eventIdGenerator = new EventIdGenerator
   private implicit lazy val timerService = TimerService()
@@ -39,8 +39,8 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
 
   "eventCollector.when with torn event stream" in {
     val eventCollector = new MyEventCollector(EventCollector.Configuration.ForTest.copy(queueSize = 2))
-    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](after = EventId.BeforeFirst, 30.s))
-    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 30.s))
+    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](after = EventId.BeforeFirst, 30.s)).runAsync
+    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 30.s)).runAsync
     assert(!anyFuture.isCompleted)
     eventCollector.putEvent_("1" <-: A1)
     val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms
@@ -61,7 +61,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.s)) await 500.ms).isInstanceOf[TearableEventSeq.Torn])
   }
 
-  "eventCollector.whenForKey, whenKeyedEvent" in {
+  "eventCollector.whenKey, whenKeyedEvent" in {
     val eventCollector = new MyEventCollector
     eventCollector.putEvent_("1" <-: A1)
     eventCollector.putEvent_("1" <-: B1)
@@ -70,7 +70,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     eventCollector.putEvent_("1" <-: B2)
 
     def eventsForKey[E <: Event: ClassTag](key: E#Key) = {
-      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenForKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), key) await 10.s
+      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), key) await 10.s
       eventIterator.toVector map { _.value }
     }
     assert(eventsForKey[AEvent]("1") == Vector(A1, A2))

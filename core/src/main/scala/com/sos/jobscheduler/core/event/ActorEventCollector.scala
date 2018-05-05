@@ -7,7 +7,6 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.ActorEventCollector._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -16,10 +15,9 @@ final class ActorEventCollector private(
   isCollectable: Event ⇒ Boolean)(
   configuration: EventCollector.Configuration,
   timerService: TimerService,
-  executionContext: ExecutionContext,
   keyedEventBus: StampedKeyedEventBus,
   actorSystem: ActorSystem)
-extends EventCollector(configuration)(timerService, executionContext)
+extends EventCollector(configuration)(timerService)
 with AutoCloseable {
 
   private val actorRef = actorSystem.actorOf(
@@ -57,7 +55,6 @@ object ActorEventCollector {
   final class Factory @Inject private(
     configuration: EventCollector.Configuration,
     timerService: TimerService,
-    executionContext: ExecutionContext,
     keyedEventBus: StampedKeyedEventBus,
     actorSystem: ActorSystem)
   {
@@ -68,7 +65,6 @@ object ActorEventCollector {
         isEventCollectable)(
         configuration,
         timerService,
-        executionContext,
         keyedEventBus,
         actorSystem)
   }

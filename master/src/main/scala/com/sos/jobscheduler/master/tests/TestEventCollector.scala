@@ -8,16 +8,12 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, Stamped}
 import com.sos.jobscheduler.master.tests.TestEventCollector._
-import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
 final class TestEventCollector
-extends EventCollector(
-  EventCollector.Configuration.ForTest)(
-  TimerService(idleTimeout = Some(1.s)),
-  ExecutionContext.global)
+extends EventCollector(EventCollector.Configuration.ForTest)(TimerService(idleTimeout = Some(1.s)))
 {
   def start(actorRefFactory: ActorRefFactory, keyedEventBus: StampedKeyedEventBus): Unit = {
     val actor = actorRefFactory.actorOf(

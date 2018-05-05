@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.JournalWriter._
@@ -21,12 +21,13 @@ private[journal] final class JournalWriter[E <: Event](
   meta: JournalMeta[E],
   val file: Path,
   appendToSnapshots: Boolean = false,
-  eventReader: Option[JournalEventReader[E]])
+  eventReaderProvider: Option[JournalEventReaderProvider[E]])
 extends AutoCloseable
 {
   import meta.eventJsonCodec
 
   private val jsonWriter = new FileJsonWriter(JournalMeta.header, file, append = appendToSnapshots)
+  private val eventReaderOnce = new SetOnce[JournalEventReader[E]]
   private var positionsAndEventIds = mutable.Buffer[PositionAnd[EventId]]()
   private var snapshotStarted = appendToSnapshots
   private var eventsStarted = false
@@ -63,7 +64,9 @@ extends AutoCloseable
     if (eventsStarted) throw new IllegalStateException("JournalWriter: duplicate startEvents()")
     jsonWriter.write(ByteString(EventsHeader.compactPrint))
     flush()
-    for (e ← eventReader) e.onJournalingStarted(PositionAnd(jsonWriter.fileLength, _lastEventId))
+    for (e ← eventReaderProvider) {
+      eventReaderOnce := e.onJournalingStarted(PositionAnd(jsonWriter.fileLength, _lastEventId))
+    }
     eventsStarted = true
   }
 
@@ -79,7 +82,7 @@ extends AutoCloseable
         try ByteString(stamped.asJson.compactPrint)
         catch { case t: Exception ⇒ throw new SerializationException(t) }
       jsonWriter.write(byteString)
-      for (_ ← eventReader) positionsAndEventIds += PositionAnd(jsonWriter.fileLength, stamped.eventId)
+      for (_ ← eventReaderProvider) positionsAndEventIds += PositionAnd(jsonWriter.fileLength, stamped.eventId)
     }
   }
 
@@ -88,7 +91,7 @@ extends AutoCloseable
       statistics.beforeFlush()
       jsonWriter.flush()
       statistics.afterFlush()
-      for (e ← eventReader) {
+      for (e ← eventReaderOnce) {
         positionsAndEventIds foreach e.onEventAdded
         if (positionsAndEventIds.size <= PositionBufferMaxSize) {
           positionsAndEventIds.clear()

@@ -24,7 +24,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReader, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReaderProvider, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -59,7 +59,7 @@ final class MasterOrderKeeper(
   eventIdClock: EventIdClock)
   (implicit
     timerService: TimerService,
-    eventReader: JournalEventReader[Event],
+    eventReaderProvider: JournalEventReaderProvider[Event],
     keyedEventBus: StampedKeyedEventBus)
 extends Stash
 with KeyedEventJournalingActor[Event] {
@@ -130,7 +130,7 @@ with KeyedEventJournalingActor[Event] {
     recoverer.startJournalAndFinishRecovery(
       journalActor = journalActor,
       RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)),
-      Some(eventReader))
+      Some(eventReaderProvider))
   }
 
   def receive = journaling orElse {

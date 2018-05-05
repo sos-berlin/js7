@@ -10,6 +10,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -17,8 +18,8 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{EventId, EventRequest}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 /**

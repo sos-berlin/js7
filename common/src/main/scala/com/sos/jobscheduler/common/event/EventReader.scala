@@ -1,199 +1,64 @@
 package com.sos.jobscheduler.common.event
 
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.event.EventReader.Every
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
-import java.time.Instant.now
-import java.time.{Duration, Instant}
-import java.util.concurrent.TimeoutException
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
+import java.time.Duration
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
-trait EventReader[E <: Event]
-{
-  protected implicit def executionContext: ExecutionContext
+trait EventReader[E <: Event] {
 
-  protected def timerService: TimerService
+  def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]]
 
-  protected def timeoutLimit: Duration
+  def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]]
 
-  protected def started: Future[Completed]
-
-  /** Valid first after Journal has been started. See implementing subclasses. */
-  protected def unsafeOldestEventId: EventId
-
-  protected def eventsAfter(after: EventId): Future[Option[Iterator[Stamped[KeyedEvent[E]]]]]
-
-  protected def reverseEventsAfter(after: EventId): Future[Iterator[Stamped[KeyedEvent[E]]]]
-
-  private var _lastEventId: EventId = EventId.BeforeFirst
-  private lazy val sync = new Sync(initialLastEventId = unsafeOldestEventId, timerService)
-
-  protected final def onEventAdded(eventId: EventId): Unit = {
-    if (eventId < _lastEventId) throw new IllegalArgumentException(s"EventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
-    _lastEventId = eventId
-    sync.onEventAdded(eventId)
-  }
-
-  final def byPredicate[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean): Future[TearableEventSeq[Iterator, KeyedEvent[E1]]] =
-    request match {
-      case request: EventRequest[E1] ⇒
-        when[E1](request, predicate)
-      case request: ReverseEventRequest[E1] ⇒
-        reverse[E1](request, predicate)
-    }
-
-  final def when[E1 <: E](
-    request: EventRequest[E1],
-    predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
-  : Future[TearableEventSeq[Iterator, KeyedEvent[E1]]]
-  =
-    whenAny[E1](request, request.eventClasses, predicate)
-
-  final def whenAny[E1 <: E](
+  def whenAny[E1 <: E](
     request: EventRequest[E1],
     eventClasses: Set[Class[_ <: E1]],
-    predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
-  : Future[TearableEventSeq[Iterator, KeyedEvent[E1]]]
-  =
-    whenAnyKeyedEvents(
-      request,
-      collect = {
-        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E1]]) ⇒
-          e.asInstanceOf[KeyedEvent[E1]]
-      })
+    predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  : Task[TearableEventSeq[Iterator, KeyedEvent[E1]]]
 
-  final def byKeyAndPredicate[E1 <: E](request: SomeEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Future[TearableEventSeq[Iterator, E1]] =
-    request match {
-      case request: EventRequest[E1] ⇒
-        whenForKey(request, key, predicate)
-      case request: ReverseEventRequest[E1] ⇒
-        reverseForKey(request, key)
-    }
+  def byKey[E1 <: E](
+    request: SomeEventRequest[E1],
+    key: E1#Key,
+    predicate: E1 ⇒ Boolean = Every)
+  : Task[TearableEventSeq[Iterator, E1]]
 
-  final def whenKeyedEvent[E1 <: E](
+  def whenKeyedEvent[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
-    predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
-  : Future[E1]
-  =
-    whenForKey[E1](request.copy[E1](limit = 1), key, predicate) map {
-      case eventSeq: EventSeq.NonEmpty[Iterator, E1] ⇒ eventSeq.stampeds.next().value
-      case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
-      case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
-    }
+    predicate: E1 ⇒ Boolean = Every)
+  : Task[E1]
 
-  final def whenForKey[E1 <: E](
+  def whenKey[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
-    predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
-  : Future[TearableEventSeq[Iterator, E1]]
-  =
-    whenAnyKeyedEvents(
-      request,
-      collect = {
-        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E1]) ⇒
-          e.event.asInstanceOf[E1]
-      })
+    predicate: E1 ⇒ Boolean = Every)
+  : Task[TearableEventSeq[Iterator, E1]]
 
-  private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
-  : Future[TearableEventSeq[Iterator, A]] =
-    whenAnyKeyedEvents2(request.after, now + (request.timeout min timeoutLimit), request.delay, collect, request.limit)
-
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Instant, delay: Duration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : Future[TearableEventSeq[Iterator, A]] =
-    sync.whenEventIsAvailable(after, until, delay) flatMap (_ ⇒
-      collectEventsSince(after, collect, limit) flatMap {
-        case o @ EventSeq.NonEmpty(_) ⇒
-          Future.successful(o)
-        case EventSeq.Empty(lastEventId) if now < until ⇒
-          whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
-        case EventSeq.Empty(lastEventId) ⇒
-          Future.successful(EventSeq.Empty(lastEventId))
-        case o: TearableEventSeq.Torn ⇒
-          Future.successful(o)
-      })
-
-  private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : Future[TearableEventSeq[Iterator, A]] = {
-    require(limit >= 0, "limit must be >= 0")
-    for (stampedsOption ← eventsAfter(after)) yield
-      stampedsOption match {
-        case Some(stampeds) ⇒
-          var lastEventId = after
-          val eventIterator = stampeds
-            .map { o ⇒ lastEventId = o.eventId; o }
-            .collect { case stamped if collect isDefinedAt stamped.value ⇒ stamped map collect }
-            .take(limit)
-          if (eventIterator.nonEmpty)
-            EventSeq.NonEmpty(eventIterator)
-          else
-            EventSeq.Empty(lastEventId)
-        case None ⇒
-          TearableEventSeq.Torn(oldestKnownEventId = unsafeOldestEventId)
-      }
-  }
-
-  protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
-  : Future[EventSeq[Iterator, KeyedEvent[E1]]] =
-    reverseEventsAfter(after = request.after).map(_
-      .collect {
-        case stamped if request matchesClass stamped.value.event.getClass ⇒
-          stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
-      }
-      .filter(stamped ⇒ predicate(stamped.value))
-      .take(request.limit) match {
-        case stampeds if stampeds.nonEmpty ⇒ EventSeq.NonEmpty(stampeds)
-        case _ ⇒ EventSeq.Empty(unsafeLastAddedEventId)
-      })
-
-  protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
-  : Future[EventSeq.NonEmpty[Iterator, E1]] =
-    for (stampeds ← reverseEventsAfter(after = request.after)) yield
-      EventSeq.NonEmpty(
-        stampeds.collect {
-          case stamped if request matchesClass stamped.value.event.getClass ⇒
-            stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
-        }
-        .collect {
-          case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) ⇒
-            Stamped(eventId, timestamp, event)
-        }
-        .take(request.limit))
-
-  /** Valid first after Journal has been started. See `unsafeOldestEventId` in implementing subclasses. */
-  private def unsafeLastAddedEventId: EventId =
-    if (_lastEventId == EventId.BeforeFirst) unsafeOldestEventId else _lastEventId
-
-  def oldestEventId: Future[EventId] =
-    started map (_ ⇒ unsafeOldestEventId)
-
-  /** Blocking. */
+  /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E1 <: E: ClassTag](
-    predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true,
+    predicate: KeyedEvent[E1] ⇒ Boolean = Every,
     after: EventId = EventId.BeforeFirst,
-    timeout: Duration = 99.s)(
-    implicit ec: ExecutionContext)
-  : Vector[Stamped[KeyedEvent[E1]]] =
-    when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.s match {
-      case EventSeq.NonEmpty(events) ⇒ events.toVector
-      case o ⇒ sys.error(s"EventReader.await[${implicitClass[E1].scalaName}] unexpected EventSeq: $o")
-    }
+    timeout: Duration = 99.s)
+    (implicit s: Scheduler)
+  : Vector[Stamped[KeyedEvent[E1]]]
 
+  /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag]: TearableEventSeq[Iterator, KeyedEvent[E1]] =
-    byPredicate[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
+  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[Iterator, KeyedEvent[E1]]
 }
 
-object EventReader {
-  implicit final class TestExtension[E <: Event](private val underlying: EventReader[E]) extends AnyVal {
-  }
+object EventReader
+{
+  private val Every: Any ⇒ Boolean = _ ⇒ true
 }

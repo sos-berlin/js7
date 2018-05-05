@@ -58,7 +58,7 @@ final class RecoveryTest extends FreeSpec {
 
           runMaster(directoryProvider, eventCollector) { master ⇒
             if (lastEventId == EventId.BeforeFirst) {
-              lastEventId = eventCollector.oldestEventId await 99.s
+              lastEventId = eventCollector.oldestEventId
             }
             eventCollector.await[MasterEvent.MasterReady](after = lastEventId)
             assert(eventCollector.await[RepoEvent]().map(_.value).sortBy(_.toString) ==

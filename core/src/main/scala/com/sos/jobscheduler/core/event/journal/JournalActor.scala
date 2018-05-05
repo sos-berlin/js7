@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
+import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -40,7 +40,7 @@ extends Actor with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private var journalWriter: JournalWriter[E] = null
-  private var eventReaderOption: Option[JournalEventReader[E]] = None
+  private var eventReaderOptionProvider: Option[JournalEventReaderProvider[E]] = None
   private var temporaryJournalWriter: JournalWriter[E] = null
   private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
   private val keylessJournalingActors = mutable.Set[ActorRef]()
@@ -65,11 +65,11 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderOption_, eventsAcceptedUntil, lastEventId) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderProviderOption_, eventsAcceptedUntil, lastEventId) ⇒
       eventIdGenerator.updateLastEventId(lastEventId)
       keyToJournalingActor ++= keyToActor
       keyToJournalingActor.values foreach context.watch
-      eventReaderOption = eventReaderOption_ map (_.asInstanceOf[JournalEventReader[E]]/*cast erased type argument*/)
+      eventReaderOptionProvider = eventReaderProviderOption_ map (_.asInstanceOf[JournalEventReaderProvider[E]]/*cast erased type argument*/)
       val sender = this.sender()
       becomeTakingSnapshotThen(lastEventId = lastEventId) {
         unstashAll()
@@ -224,7 +224,7 @@ extends Actor with Stash {
   }
 
   private def newJsonWriter(file: Path, appendToSnapshots: Boolean) =
-    new JournalWriter[E](meta, file, appendToSnapshots = appendToSnapshots, eventReaderOption)
+    new JournalWriter[E](meta, file, appendToSnapshots = appendToSnapshots, eventReaderOptionProvider)
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
@@ -254,7 +254,7 @@ object JournalActor
   object Input {
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
-      eventReader: Option[JournalEventReader[_ <: Event]],
+      eventReader: Option[JournalEventReaderProvider[_ <: Event]],
       eventsAcceptedUntil: EventId,
       lastEventId: EventId)
     final case object StartWithoutRecovery
