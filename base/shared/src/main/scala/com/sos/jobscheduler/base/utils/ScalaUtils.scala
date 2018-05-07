@@ -81,6 +81,10 @@ object ScalaUtils {
       cause(delegate)
     }
 
+    def toStringWithCausesAndStackTrace: String =
+      delegate.toStringWithCauses +
+        (if (delegate.getStackTrace.isEmpty) "" else "\n" + delegate.stackTraceAsString)
+
     def toStringWithCauses: String = {
       val strings = mutable.Buffer[String]()
       var t: Throwable = delegate
@@ -93,10 +97,23 @@ object ScalaUtils {
 
     def toSimplifiedString: String = {
       lazy val msg = delegate.getMessage
-      if (msg != null && msg != "" && (RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[ProblemException]) || delegate.isInstanceOf[PublicException])
+      if (msg != null && msg != "" && (
+          delegate.getClass == classOf[IllegalArgumentException] ||
+          delegate.getClass == classOf[RuntimeException] ||
+          delegate.isInstanceOf[PublicException] ||
+          delegate.isInstanceOf[ProblemException]))
         msg
       else
-        delegate.toString
+        delegate match {
+          case _: java.util.NoSuchElementException ⇒
+            delegate.toString stripPrefix "java.util."
+
+          case _: java.lang.IllegalStateException ⇒
+            delegate.toString stripPrefix "java.lang."
+
+          case _ ⇒
+            delegate.toString
+        }
     }
 
     def stackTraceAsString: String = {
@@ -104,12 +121,6 @@ object ScalaUtils {
       delegate.printStackTrace(new PrintWriter(w))
       w.toString
     }
-  }
-
-  /*Scala 2.12.3 crashes: private*/ object RichThrowable {
-    private val isIgnorableClass = Set[Class[_ <: Throwable]](
-      classOf[IllegalArgumentException],
-      classOf[RuntimeException])
   }
 
   def cast[A: ClassTag](o: Any): A = {

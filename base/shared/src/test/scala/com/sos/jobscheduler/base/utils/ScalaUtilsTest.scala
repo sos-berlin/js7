@@ -79,14 +79,14 @@ final class ScalaUtilsTest extends FreeSpec {
   "Throwable.toStringWithCauses" in {
     assert(new RuntimeException("TEST").toStringWithCauses == "TEST")
     assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
-      "TEST, caused by: java.lang.IllegalStateException: STATE")
+      "TEST, caused by: IllegalStateException: STATE")
   }
 
   "Throwable.toSimplifiedString" in {
     assert(new RuntimeException("ERROR").toSimplifiedString == "ERROR")
     assert(new IllegalArgumentException("ERROR").toSimplifiedString == "ERROR")
     assert(new StandardPublicException("ERROR").toSimplifiedString == "ERROR")
-    assert(new IllegalStateException("ERROR").toSimplifiedString == "java.lang.IllegalStateException: ERROR")
+    assert(new IllegalStateException("ERROR").toSimplifiedString == "IllegalStateException: ERROR")
   }
 
   "cast" in {
