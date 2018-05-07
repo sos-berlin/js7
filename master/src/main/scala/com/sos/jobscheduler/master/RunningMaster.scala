@@ -168,7 +168,7 @@ object RunningMaster {
               stamped.copy(value = a)
 
         private def getRepo: Task[Stamped[Repo]] = {
-          import masterConfiguration.akkaAskTimeout
+          import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
           Task.deferFuture(
             (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])
         }
