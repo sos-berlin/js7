@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.common.http.HttpClient
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderFatEvent, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
@@ -36,17 +36,17 @@ trait HttpMasterApi extends MasterApi
   final def orders: Task[Stamped[Seq[Order[Order.State]]]] =
     httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
 
-  final def events[E <: Event: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def events[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
-      uris.events[E](after = after, timeout = timeout),
-      timeout = timeout + ToleratedEventDelay)
+      uris.events[E](request),
+      timeout = request.timeout + ToleratedEventDelay)
 
-  final def fatEvents[E <: OrderFatEvent: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def fatEvents[E <: OrderFatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
-      uris.fatEvents[E](after = after, timeout = timeout),
-      timeout = timeout + ToleratedEventDelay)
+      uris.fatEvents[E](request),
+      timeout = request.timeout + ToleratedEventDelay)
 
   final def workflows: Task[Stamped[Seq[Workflow]]] =
     httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])

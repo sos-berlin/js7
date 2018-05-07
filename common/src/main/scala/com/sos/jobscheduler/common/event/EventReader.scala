@@ -1,12 +1,11 @@
 package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.common.event.EventReader.Every
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
-import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
@@ -49,7 +48,7 @@ trait EventReader[E <: Event] {
   def await[E1 <: E: ClassTag](
     predicate: KeyedEvent[E1] ⇒ Boolean = Every,
     after: EventId = EventId.BeforeFirst,
-    timeout: Duration = 99.s)
+    timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]]
 

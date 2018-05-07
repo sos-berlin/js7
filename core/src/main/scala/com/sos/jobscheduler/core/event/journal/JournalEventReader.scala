@@ -8,9 +8,9 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
-import java.time.Duration
 import monix.eval.Task
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +19,7 @@ final class JournalEventReader[E <: Event](
   journalMeta: JournalMeta[E],
   private[journal] val journalFile: Path,
   startPositionAndEventId: PositionAnd[EventId],
-  protected val timeoutLimit: Duration)
+  protected val timeoutLimit: FiniteDuration)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)

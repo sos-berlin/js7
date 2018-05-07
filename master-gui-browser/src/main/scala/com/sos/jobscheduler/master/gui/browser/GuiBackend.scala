@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.browser
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.gui.browser.GuiBackend._
@@ -113,7 +113,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       def fetchEvents() =
         Callback.future {
           isRequestingEvents = true
-          MasterApi.events[OrderEvent](after = after, timeout = timeout).runAsync
+          MasterApi.events(EventRequest.singleClass[OrderEvent](after = after, timeout = timeout)).runAsync
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             }

@@ -41,8 +41,8 @@ import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import com.typesafe.config.Config
 import java.nio.file.Path
-import java.time.Duration
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -424,7 +424,7 @@ object AgentOrderKeeper {
   sealed trait Input
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
-    final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueueActor.MyEventSeq]) extends Input
+    final case class RequestEvents(after: EventId, timeout: FiniteDuration, limit: Int, result: Promise[EventQueueActor.MyEventSeq]) extends Input
     final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
     final case object Terminate
   }

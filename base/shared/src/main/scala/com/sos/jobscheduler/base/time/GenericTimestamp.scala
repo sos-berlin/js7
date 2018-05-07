@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.base.time
 
 import io.circe
-import scala.concurrent.duration.Duration
+import java.util.concurrent.TimeUnit.MILLISECONDS
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -19,6 +20,8 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
   def compare(o: A) = toEpochMilli compare o.toEpochMilli
 
   def +(o: Duration) = copy(epochMilli = toEpochMilli + o.toMillis)
+
+  def -(o: GenericTimestamp[A]) = new FiniteDuration(toEpochMilli - o.toEpochMilli, MILLISECONDS)
 
   def copy(epochMilli: Long): A
 

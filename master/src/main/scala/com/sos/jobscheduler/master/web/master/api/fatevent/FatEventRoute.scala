@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderFatEvent}
-import com.sos.jobscheduler.master.order.fat.StatefulEventToFatOrderEventConverter
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -41,7 +40,7 @@ trait FatEventRoute
       after = EventId.BeforeFirst,  // TODO Provisorisch: Wir lesen jedesmal vom Anfang des Journals
       timeout = request.timeout, request.delay,
       limit = Int.MaxValue)
-    val converter = new StatefulEventToFatOrderEventConverter
+    val converter = new StatefulEventToFatEventConverter
     eventReader.when[Event](req, predicate = _ ⇒ true)
       .map {
         case o: TearableEventSeq.Torn ⇒ o
@@ -50,5 +49,5 @@ trait FatEventRoute
           val fat = stampeds flatMap converter.toFatOrderEvents dropWhile (_.eventId <= request.after) take request.limit
           EventSeq.NonEmpty(fat.toImmutableSeq)
       }
-  }
+    }
 }

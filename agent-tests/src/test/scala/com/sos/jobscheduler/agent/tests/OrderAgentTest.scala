@@ -25,6 +25,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -46,7 +47,7 @@ final class OrderAgentTest extends FreeSpec {
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.executeCommand(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
-          EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
+          EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.seconds).repeat(agentClient.mastersEvents) {
             case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
           }
           val processedOrder = agentClient.order(order.id) await 99.s
@@ -66,7 +67,7 @@ final class OrderAgentTest extends FreeSpec {
       (jobDir / "a.job.xml").xml = AJobXml
       (jobDir / "b.job.xml").xml = BJobXml
       val agentConf = AgentConfiguration.forTest(Some(directory))
-      val timeout = 1.h
+      val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒
         withCloser { implicit closer ⇒
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)

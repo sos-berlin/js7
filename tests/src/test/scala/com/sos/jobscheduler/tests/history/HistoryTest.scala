@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{EventId, EventSeq}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -47,7 +47,7 @@ final class HistoryTest extends FreeSpec
               var rounds = 0
               while (!finished) {
                 rounds += 1
-                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents[OrderFatEvent](after = lastEventId, 99.second) await 99.s
+                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[OrderFatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)) await 99.s
                 val chunk = stampeds take 2
                 chunk foreach history.handleHistoryEvent
                 lastEventId = chunk.last.eventId

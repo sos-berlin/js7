@@ -2,12 +2,11 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
 import org.scalactic.Requirements._
-import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 /**
@@ -21,17 +20,14 @@ final class MasterUris private(masterUri: String) {
 
   val command = api()
 
-  def events[E <: Event: ClassTag](after: EventId, timeout: Duration): String =
-    events_[E]("/event", after, timeout)
+  def events[E <: Event: ClassTag](request: EventRequest[E]): String =
+    events_[E]("/event", request)
 
-  def fatEvents[E <: OrderFatEvent: ClassTag](after: EventId, timeout: Duration): String =
-    events_[E]("/fatEvent", after, timeout)
+  def fatEvents[E <: OrderFatEvent: ClassTag](request: EventRequest[E]): String =
+    events_[E]("/fatEvent", request)
 
-  def events_[E <: Event: ClassTag](path: String, after: EventId, timeout: Duration): String =
-    api(path) + encodeQuery(
-      "return" → encodeClass[E],
-      "timeout" → s"${BigDecimal(timeout.toMillis) / 1000}",
-      "after" → after.toString)
+  def events_[E <: Event: ClassTag](path: String, request: EventRequest[E]): String =
+    api(path) + encodeQuery(request.toQueryParameters)
 
   object order {
     def overview = api("/order")

@@ -2,9 +2,9 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.event.EventRequest._
-import java.time.Duration
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, duration}
 import scala.reflect.ClassTag
 
@@ -14,8 +14,8 @@ import scala.reflect.ClassTag
 final case class EventRequest[E <: Event](
   eventClasses: Set[Class[_ <: E]],
   after: EventId,
-  timeout: Duration,
-  delay: Duration = DefaultDelay,
+  timeout: FiniteDuration,
+  delay: FiniteDuration = DefaultDelay,
   limit: Int)
 extends SomeEventRequest[E] {
   require(eventClasses.nonEmpty, "Missing Event class")
@@ -24,9 +24,9 @@ extends SomeEventRequest[E] {
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     builder += returnQueryParameter
-    if (timeout != Duration.ZERO) builder += "timeout" → timeout.toString
-    builder += "delay" → delay.toString
-    if (limit != Int.MaxValue) builder += "limit" → limit.toString
+    if (timeout != Duration.Zero) builder += "timeout" → durationToString(timeout)
+    if (delay != DefaultDelay) builder += "delay" → durationToString(delay)
+    if (limit != DefaultLimit) builder += "limit" → limit.toString
     builder += "after" → after.toString
     builder.result()
   }
@@ -51,13 +51,17 @@ extends SomeEventRequest[E] {
 }
 
 object EventRequest {
-  val DefaultDelay = Duration.ZERO
+  val DefaultDelay = Duration.Zero
+  val DefaultLimit = Int.MaxValue
 
   /**
     * Convenience for only one Event class.
     */
-  def singleClass[E <: Event: ClassTag](after: EventId, timeout: Duration, delay: Duration = DefaultDelay, limit: Int = Int.MaxValue): EventRequest[E] =
+  def singleClass[E <: Event: ClassTag](after: EventId, timeout: FiniteDuration, delay: FiniteDuration = DefaultDelay, limit: Int = DefaultLimit): EventRequest[E] =
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit)
+
+  private def durationToString(duration: FiniteDuration): String =
+    BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
 }
 
 final case class ReverseEventRequest[E <: Event](

@@ -6,6 +6,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -15,6 +16,11 @@ final class TimestampTest extends FreeSpec {
   private val isoString = "2017-12-04T11:22:33.456Z"
   private val millis = 1512386553456L
   private val timestamp = Timestamp.parse(isoString)
+
+  "JSON" in {
+    testJson(Timestamp.ofEpochMilli(millis), json"""1512386553456""")
+    //testJson(Timestamp.ofEpochMilli(millis), json""" "2017-12-04T11:22:33.456Z" """)
+  }
 
   "ofEpochMilli" in {
     assert(timestamp.toEpochMilli == millis)
@@ -31,9 +37,12 @@ final class TimestampTest extends FreeSpec {
     assert(timestamp.toIsoString == isoString)
   }
 
-  "JSON" in {
-    testJson(Timestamp.ofEpochMilli(millis), json"""1512386553456""")
-    //testJson(Timestamp.ofEpochMilli(millis), json""" "2017-12-04T11:22:33.456Z" """)
+  "plus" in {
+    assert(timestamp + (1.hour + 111.milliseconds) == Timestamp.parse("2017-12-04T12:22:33.567Z"))
+  }
+
+  "minus" in {
+    assert(Timestamp.parse("2017-12-04T12:22:33.567Z") - timestamp == 1.hour + 111.milliseconds)
   }
 
   if (sys.props contains "test.speed")

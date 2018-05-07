@@ -36,7 +36,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     new JournalEventReaderProvider[Event](
       MasterOrderKeeper.journalMeta,
       configuration.journalFile,
-      timeoutLimit = config.getDuration("jobscheduler.master.event.timeout-limit"))
+      timeoutLimit = config.getDuration("jobscheduler.master.event.timeout-limit").toFiniteDuration)
 
   @Provides @Singleton
   def eventIdClock(): EventIdClock =

@@ -2,15 +2,13 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.agent.EventFetcher._
 import com.typesafe.config.Config
-import java.time.Duration
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
@@ -28,7 +26,7 @@ extends AutoCloseable {
 
   protected def onEvents(stamped: Seq[Stamped[KeyedEvent[E]]]): Unit
 
-  protected lazy val delay = config.as[Duration]("jobscheduler.master.agent-driver.event-fetcher.delay")
+  protected lazy val delay = config.getDuration("jobscheduler.master.agent-driver.event-fetcher.delay")
   private var logCount = 0
   @volatile private var closed = false
 
@@ -66,5 +64,5 @@ extends AutoCloseable {
 
 object EventFetcher {
   private val logger = Logger(getClass)
-  private val EventTimeout = 50.s
+  private val EventTimeout = 50.seconds
 }

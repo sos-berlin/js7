@@ -1,16 +1,17 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
-import java.time.Instant.now
-import java.time.{Duration, Instant}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
@@ -93,7 +94,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   : Task[TearableEventSeq[Iterator, A]] =
     whenAnyKeyedEvents2(request.after, now + (request.timeout min timeoutLimit), request.delay, collect, request.limit)
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Instant, delay: Duration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
+  private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : Task[TearableEventSeq[Iterator, A]] =
     Task.deferFutureAction(implicit s ⇒ sync.whenEventIsAvailable(after, until, delay))
       .flatMap (_ ⇒
@@ -160,13 +161,8 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](
-    predicate: KeyedEvent[E1] ⇒ Boolean,
-    after: EventId = EventId.BeforeFirst,
-    timeout: Duration = 99.s)
-    (implicit s: Scheduler)
-  : Vector[Stamped[KeyedEvent[E1]]] =
-    when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.s match {
+  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler) =
+    when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.seconds match {
       case EventSeq.NonEmpty(events) ⇒ events.toVector
       case o ⇒ sys.error(s"RealEventReader.await[${implicitClass[E1].scalaName}] unexpected EventSeq: $o")
     }
@@ -174,5 +170,5 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   /** TEST ONLY - Blocking. */
   @TestOnly
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[Iterator, KeyedEvent[E1]] =
-    when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
+    when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.seconds), _ ⇒ true) await 99.s
 }

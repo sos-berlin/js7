@@ -4,8 +4,8 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
-import java.time.Duration
 import monix.eval.Task
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Promise}
 final class JournalEventReaderProvider[E <: Event](
   journalMeta: JournalMeta[E],
   private[journal] val journalFile: Path,
-  protected val timeoutLimit: Duration)
+  protected val timeoutLimit: FiniteDuration)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)

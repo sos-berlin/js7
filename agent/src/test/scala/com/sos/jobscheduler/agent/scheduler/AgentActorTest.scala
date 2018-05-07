@@ -48,7 +48,7 @@ final class AgentActorTest extends FreeSpec {
           val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
           orderIds map (orderId ⇒ executeCommand(AttachOrder(TestOrder.copy(id = orderId), TestAgentPath % "(initial)", SimpleTestWorkflow))) await 99.s
           for (orderId ← orderIds)
-            eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId) await 99.s
+            eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(after = EventId.BeforeFirst, 90.seconds), orderId) await 99.s
           info(stopwatch.itemsPerSecondString(n, "Orders"))
 
           val GetOrders.Response(orders) = executeCommand(GetOrders) await 99.s
@@ -64,7 +64,7 @@ final class AgentActorTest extends FreeSpec {
 
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
           for (orderId ← orderIds)
-            eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId) await 99.s
+            eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(after = EventId.BeforeFirst, 90.seconds), orderId) await 99.s
         }
         executeCommand(AgentCommand.Terminate()) await 99.s
       }

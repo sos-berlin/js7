@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 abstract class EventCollector(configuration: Configuration)(implicit protected val timerService: TimerService)
 extends RealEventReader[Event]
 {
-  protected def timeoutLimit = configuration.timeoutLimit
+  protected def timeoutLimit = configuration.timeoutLimit.toFiniteDuration
   protected val started = Future.successful(Completed)
   private[collector] val keyedEventQueue = new MemoryKeyedEventQueue(sizeLimit = configuration.queueSize)
 

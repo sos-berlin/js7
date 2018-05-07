@@ -5,10 +5,10 @@ import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event._
-import java.time.Duration
+import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
   */
 object EventDirectives {
 
-  private val DefaultEventRequestDelay = 500.ms
+  private val DefaultEventRequestDelay = 500.milliseconds
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
@@ -45,8 +45,8 @@ object EventDirectives {
         }
     }
 
-  private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
-    Unmarshaller.strict(parseDuration)
+  private implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
+    Unmarshaller.strict((o: String) ⇒ new FiniteDuration(o.toInt, TimeUnit.SECONDS))  // Whole seconds only !!!
 
   private def eventRequestRoute[E <: Event](eventClasses: Set[Class[_ <: E]], inner: Tuple1[SomeEventRequest[E]] ⇒ Route): Route = {
     parameter("limit" ? Int.MaxValue) {
@@ -56,7 +56,7 @@ object EventDirectives {
 
       case limit if limit > 0 ⇒
         parameter("after".as[EventId]) { after ⇒
-          parameter("timeout" ? 0.s) { timeout ⇒
+          parameter("timeout" ? Duration.Zero) { timeout ⇒
             parameter("delay" ? DefaultEventRequestDelay) { delay ⇒
               inner(Tuple1(EventRequest[E](eventClasses, after = after, timeout = timeout, delay = delay, limit = limit)))
             }

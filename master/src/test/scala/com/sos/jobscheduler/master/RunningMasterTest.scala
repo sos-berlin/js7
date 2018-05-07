@@ -38,6 +38,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
@@ -86,7 +87,7 @@ final class RunningMasterTest extends FreeSpec {
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
-        master.eventReader.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), _.key == TestOrderId) await 99.s
+        master.eventReader.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), _.key == TestOrderId) await 99.s
         //Order has been deleted after OrderFinished:
         //orderApi.order(TestOrderId) await 10.s shouldEqual
         //  Some(Order(

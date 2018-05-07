@@ -4,11 +4,11 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.event.collector.EventDirectivesTest._
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent}
 import io.circe.generic.JsonCodec
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -25,10 +25,10 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
     def route =
       path("test") {
         eventRequest[MyEvent].apply { eventRequest ⇒
-          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(7), timeout = 60.s, limit = 999))
+          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(7), timeout = 60.seconds, limit = 999))
             complete("A")
           else
-          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(777), 60.s, limit = 999))
+          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(777), 60.seconds, limit = 999))
             complete("B")
           else
             reject

@@ -4,10 +4,10 @@ import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest}
-import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 /**
@@ -56,12 +56,7 @@ trait EventReaderProvider[E <: Event] extends EventReader[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](
-    predicate: KeyedEvent[E1] ⇒ Boolean,
-    after: EventId = EventId.BeforeFirst,
-    timeout: Duration = 99.s)
-    (implicit s: Scheduler)
-  =
+  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler) =
     whenEventReader.await(timeout).await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */

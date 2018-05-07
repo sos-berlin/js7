@@ -58,7 +58,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
             for (orderId ← orderIds) yield
-              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.s), orderId)
+              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.seconds), orderId)
                 .runAsync: Future[OrderEvent.OrderProcessed])
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)

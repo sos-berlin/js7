@@ -292,4 +292,7 @@ object ScalaTime {
   implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
     def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
   }
+
+  implicit def finiteToJavaDuration(duration: FiniteDuration): Duration =
+    duration.toJavaDuration
 }
