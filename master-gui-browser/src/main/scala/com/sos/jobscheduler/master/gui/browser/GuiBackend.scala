@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.gui.browser
 
-import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
@@ -13,7 +12,7 @@ import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiSt
 import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback}
+import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo}
 import monix.execution.Scheduler.Implicits.global
 import org.scalajs.dom.{raw, window}
 import scala.collection.immutable.Seq
@@ -25,7 +24,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
-  private val onDocumentVisibilityChanged = (_: raw.Event) ⇒ awake().runNow()
+  private val onDocumentVisibilityChanged: raw.Event ⇒ Unit = _ ⇒ awake().runNow()
   private val onHashChanged = { _: raw.HashChangeEvent⇒
     //dom.window.screenX
     scope.modState(state ⇒ state.updateUriHash)
@@ -33,10 +32,12 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
     .runNow()
   }
   private var isRequestingEvents = false
+  private var unmounted = false
 
-  def componentDidMount() =
-    catchException(
-      Callback {
+  def componentDidMount() = start()
+
+  private def start(): Callback =
+    Callback {
         window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
         window.onhashchange = onHashChanged
       } >>
@@ -44,21 +45,10 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           ordersState = o.ordersState.copy(
             content = OrdersState.FetchingContent))) >>
         requestWorkflows >>
-        requestOrdersAndEvents)
-
-  private def catchException[A](callback: Callback): Callback =
-    callback.attemptTry flatMap {
-      case Success(()) ⇒
-        Callback.empty
-
-      case Failure(t) ⇒ // GUI failed
-        t.printStackTrace()
-        scope.modState(o ⇒ o.copy(
-          ordersState = o.ordersState.copy(
-            error = Some(t.toStringWithCauses))))
-    }
+        requestOrdersAndEvents
 
   def componentWillUnmount() = Callback {
+    unmounted = true
     window.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
   }
 
@@ -68,12 +58,13 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
   private def requestWorkflows: Callback =
     Callback.future {
       MasterApi.workflows.runAsync transform {
-        case Failure(err) ⇒ setError(err)
+        case Failure(err) ⇒
+          onRequestInitialStateError(err).runNow()
+          Failure(err)
         case Success(stamped: Stamped[Seq[Workflow]]) ⇒
           Try {
             scope.modState(_.copy(
-              idToWorkflow = stamped.value.map(o ⇒ o.id → PreparedWorkflow(o.id, o)).toMap
-                .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"Unknown $k"))))
+              idToWorkflow = stamped.value.map(o ⇒ o.id → PreparedWorkflow(o.id, o)).toMap))
           }
       }
     }
@@ -91,7 +82,9 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
     ) >>
     Callback.future {
       MasterApi.orders.runAsync transform {
-        case Failure(err) ⇒ setError(err)
+        case Failure(err) ⇒
+          onRequestInitialStateError(err).runNow()
+          Failure(err)
         case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
           Try {
             for {
@@ -105,15 +98,11 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       }
     }
 
-  private def setError(throwable: Throwable) =
-    Try {
-      scope.modState(state ⇒ state.copy(
-        isConnected = false,
-        ordersState = state.ordersState.copy(
-          content = InitialFetchedContext,
-          error = Some(throwable.toString),
-          step = state.ordersState.step + 1)))
-    }
+  private def onRequestInitialStateError(throwable: Throwable): Callback =
+    onGuiFailed(throwable) >>
+    scope.modState(state ⇒ state.copy(
+      ordersState = state.ordersState.copy(
+        content = InitialFetchedContext)))
 
   private def requestAndHandleEvents(
     after: EventId,
@@ -140,7 +129,8 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
             case state ⇒
               val step = state.ordersState.step
               response match {
-                case Failure(_) ⇒
+                case Failure(t) ⇒
+                  window.console.warn(t.toStringWithCauses)
                   scope.setState(state.copy(
                     isConnected = false)
                   ) >>
@@ -176,8 +166,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           }
         }
 
-      catchException(
-        for {
+      ( for {
           state ← scope.state
           callback ←
             if (state.appState != AppState.RequestingEvents)
@@ -188,8 +177,12 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
                 appState = AppState.Standby))
             } else
               fetchEvents()
-        } yield callback)
-    }
+        } yield callback
+      ).attemptTry flatMap {
+        case Success(()) ⇒ Callback.empty
+        case Failure(t) ⇒ onGuiFailed(t)
+      }
+  }
 
   private def withProperState(forStep: Int)(body: GuiState ⇒ Callback): Callback =
     for {
@@ -206,13 +199,31 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
   private def catching(body: ⇒ Callback): Callback =
     try body
     catch {
-      case t: Throwable ⇒
-        window.console.error(t.toStringWithCauses + "\n" + t.stackTraceAsString)
-        scope.modState(state ⇒ state.copy(
-          isConnected = false,
-          ordersState = state.ordersState.copy( // ordersState.error ???
-            error = Some(t.toStringWithCauses))))
+      case t: Throwable ⇒ onGuiFailed(t)
     }
+
+  private def onGuiFailed(throwable: Throwable): CallbackTo[Unit] = {
+    window.console.error(throwable.toStringWithCausesAndStackTrace)
+    scope.modState(o ⇒ o.copy(
+      isConnected = false,
+      ordersState = o.ordersState.copy(
+        error = Some(throwable.toStringWithCauses)))
+    ) //>>
+      //(throwable match {
+      //  case _ if unmounted ⇒
+      //    Callback.empty
+      //  case t: HttpClientException if t.reason.isUnreachable ⇒
+      //    window.console.info("isUnreachable")
+      //    window.console.warn(t.toStringWithCauses)
+      //    if (window.document.hidden)    // Stops when browser windows is hidden and does not restart
+      //      Callback.empty
+      //    else
+      //      start().delay(UnreachableDelay).map(_ ⇒ ())
+      //  case _ ⇒
+      //    window.console.info("!isUnreachable")
+      //    onGuiFailed(throwable)
+      //  })
+  }
 
   def render(props: GuiComponent.Props, state: GuiState): VdomElement =
     new GuiRenderer(props, StateSnapshot(state).setStateVia(scope), toggleFreezed).render
@@ -257,6 +268,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 }
 
 object GuiBackend {
+  private val UnreachableDelay  =  5.seconds
   private val FirstEventTimeout =  0.seconds   // Short timeout to check connection
   private val EventTimeout      = 50.seconds
   private val ContinueDelay     = if (isMobile) 1.second else 500.milliseconds

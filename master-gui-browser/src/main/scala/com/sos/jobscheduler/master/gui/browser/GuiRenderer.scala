@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.gui.browser
 
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.gui.browser.GuiRenderer._
-import com.sos.jobscheduler.master.gui.browser.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.browser.router.Router
 import com.sos.jobscheduler.master.gui.browser.services.JsBridge
@@ -71,17 +70,19 @@ final class GuiRenderer(
         case AppState.Freezed ⇒ <.span(^.cls := "freezed")("❄ freezed")
         case AppState.Standby ⇒ <.span(^.cls := "standby")(s"$Moon standby")
         case AppState.RequestingEvents ⇒
-          if (state.ordersState.content == OrdersState.Starting)
-            "starting..."
-          else if (state.ordersState.content == OrdersState.FetchingContent)
-            "fetching..."
-          else if (state.isConnected)
-            Connected
-          else
-            state.ordersState.error match {
-              case Some(error) ⇒ <.span(^.cls := "disconnected", ^.title := error)("☠️ ERROR")
-              case None ⇒ <.span(^.cls := "disconnected")("⚠️ disconnected")
-            }
+          state.ordersState.content match {
+            case OrdersState.Starting ⇒
+              "starting..."
+            case OrdersState.FetchingContent ⇒
+              "fetching..."
+            case _ if state.isConnected ⇒
+              Connected
+            case _ ⇒
+              state.ordersState.error match {
+                case Some(error) ⇒ <.span(^.cls := "disconnected", ^.title := error)("☠️ ERROR")
+                case None ⇒ <.span(^.cls := "disconnected")("⚠️ disconnected")
+              }
+          }
       })
 }
 

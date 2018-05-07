@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.http
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.http.HttpClientException.{HostUnreachable, HttpFailure, OtherFailure}
+import com.sos.jobscheduler.common.http.HttpClientException.{HostUnreachable, HttpFailure, OtherFailure, Reason}
 import com.sos.jobscheduler.common.http.JsHttpClient._
 import io.circe
 import io.circe.{Decoder, Encoder}
@@ -51,16 +51,19 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
   private def checkResponse(tried: Try[XMLHttpRequest]): XMLHttpRequest =
     tried match {
       case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
-        logAndThrow(OtherFailure(s"Problem while accessing JobScheduler Master: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
+        logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
 
       case Failure(t: AjaxException) if t.getMessage == null || t.getMessage.isEmpty ⇒
         throw new HttpClientException(HostUnreachable())
+
+      case Failure(t: AjaxException) if t.xhr.status != 0 ⇒
+        throw new HttpClientException(HttpFailure(t.xhr.status, t.xhr.statusText))
 
       case Failure(t: AjaxException) ⇒
         throw new HttpClientException(HostUnreachable(t.toString))
 
       case Failure(t) ⇒
-        logAndThrow(OtherFailure(s"Problem while accessing JobScheduler Master: ${t.toStringWithCauses}", Some(t)))
+        logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: ${t.toStringWithCauses}", Some(t)))
 
       case Success(xhr) ⇒
         requireMatchingBuildId(xhr)
@@ -70,17 +73,17 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
   private def requireMatchingBuildId(xhr: XMLHttpRequest): Unit =
     xhr.getResponseHeader("X-JobScheduler-Build-ID") match {
       case null ⇒
-        logAndThrow(OtherFailure("JobScheduler Master does not respond as expected (missing buildId)", None))
+        logAndThrow(OtherFailure("JobScheduler does not respond as expected (missing buildId)", None))
 
       case fromServer if fromServer != requiredBuildId ⇒
-        window.console.warn(s"JobScheduler Master build has changed from '$requiredBuildId' to '$fromServer' — Reloading page...")
+        window.console.warn(s"JobScheduler build has changed from '$requiredBuildId' to '$fromServer' — Reloading page...")
         reloadPage()
-        throw new HttpClientException(OtherFailure(s"JobScheduler Master build has changed — Reloading page...", None))
+        throw new HttpClientException(OtherFailure(s"JobScheduler build has changed — Reloading page...", None))
 
       case _ ⇒
     }
 
-  private def logAndThrow[A](error: HttpFailure): Nothing = {
+  private def logAndThrow[A](error: Reason): Nothing = {
     window.console.warn(error.toString)
     throw new HttpClientException(error)
   }

@@ -26,16 +26,17 @@ object Router {
   private val WorkflowPrefix = "#workflow/"
   private val OrderPrefix = "#order/"
 
-  def route(stateSnapshot: StateSnapshot[GuiState]): TagMod = {
-    val state = stateSnapshot.value
-    if (state.ordersState.content == OrdersState.Starting)
-      <.div(<.i("Starting..."))
-    else
-    if (state.ordersState.content == OrdersState.FetchingContent)
-      <.div(<.i("Waiting for JobScheduler response..."))
-    else
-      selectPage(stateSnapshot)
-  }
+  def route(stateSnapshot: StateSnapshot[GuiState]): TagMod =
+    stateSnapshot.value.ordersState.content match {
+      case OrdersState.Starting ⇒
+        <.div(<.i("Starting..."))
+
+      case OrdersState.FetchingContent ⇒
+        <.div(<.i("Waiting for JobScheduler response..."))
+
+      case _: OrdersState.FetchedContent ⇒
+        selectPage(stateSnapshot)
+    }
 
   private def selectPage(stateSnapshot: StateSnapshot[GuiState]): TagMod = {
     val guiState = stateSnapshot.value
@@ -59,13 +60,14 @@ object Router {
           }
         }
         checkedPathAndVersion match {
-          case Invalid(problem) ⇒ <.div(^.cls := "error", s"Unrecognized URI ${window.document.location}: $problem")
+          case Invalid(problem) ⇒ <.div(^.cls := "error", s"Does not denote a workflow: $problem")
           case Valid((path, None)) ⇒
             if (originalPathAndVersion startsWith "/") {
               window.document.location.replace(hash(path))
               "..."
             } else
               <.div(^.cls := "error", "Missing VersionId")
+
           case Valid((path, Some(version))) ⇒
             val id = path % version
             if (originalPathAndVersion startsWith "/") {
@@ -73,12 +75,17 @@ object Router {
               "..."
             } else {
               window.document.title = id.pretty
-              WorkflowOrdersComponent(
-                guiState.idToWorkflow(id),
-                StateSnapshot(guiState.ordersState)((orderStateOption, callback) ⇒
-                  stateSnapshot.modStateOption(
-                    guiState ⇒ orderStateOption map (o ⇒ guiState.copy(ordersState = o)),
-                    callback)))
+              guiState.idToWorkflow.get(id) match {
+                case None ⇒
+                  <.div(^.cls := "error", guiState.ordersState.error getOrElse s"Unknown $id": String)
+                case Some(workflow) ⇒
+                  WorkflowOrdersComponent(
+                    workflow,
+                    StateSnapshot(guiState.ordersState)((orderStateOption, callback) ⇒
+                      stateSnapshot.modStateOption(
+                        guiState ⇒ orderStateOption map (o ⇒ guiState.copy(ordersState = o)),
+                        callback)))
+              }
           }
         }
 
@@ -101,6 +108,7 @@ object Router {
     } catch {
       case NonFatal(t) ⇒
         window.document.title = DefaultTitle
+        window.console.error("Router selectPage: " + t.toStringWithCausesAndStackTrace)
         <.div(^.cls := "error", t.toStringWithCauses)
     }
   }
