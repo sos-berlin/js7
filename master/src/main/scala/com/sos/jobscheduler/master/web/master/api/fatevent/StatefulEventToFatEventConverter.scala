@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.master.order.fat
+package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
@@ -17,12 +17,17 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class StatefulEventToFatOrderEventConverter
+private[fatevent] final class StatefulEventToFatEventConverter
 {
   private var repo = Repo.empty
-  private val idToOrder = mutable.LinkedHashMap[OrderId, Order[Order.State]]()
+  private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
+  private var _lastEventId = EventId.BeforeFirst
 
-  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): Seq[Stamped[KeyedEvent[OrderFatEvent]]] =
+  def lastEventId = _lastEventId
+
+  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): Seq[Stamped[KeyedEvent[OrderFatEvent]]] = {
+    if (stamped.eventId <= _lastEventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
+    _lastEventId = stamped.eventId
     stamped.value match {
       case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
         handleOrderEvent(stamped.copy(value = orderId <-: event))
@@ -34,6 +39,7 @@ final class StatefulEventToFatOrderEventConverter
       case _ ⇒
         Nil
     }
+  }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Seq[Stamped[KeyedEvent[OrderFatEvent]]] = {
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
