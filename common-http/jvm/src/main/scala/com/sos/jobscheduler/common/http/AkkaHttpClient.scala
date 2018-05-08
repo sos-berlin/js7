@@ -40,21 +40,28 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient
   def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get(Uri(uri), timeout)
 
+  /** HTTP Get with Accept: application/json. */
   def get[A: Decoder](uri: Uri, timeout: Duration): Task[A] =
-    sendReceive(HttpRequest(GET, uri, Accept(`application/json`) :: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
-      .flatMap(decode[A](uri))
+    get_[A](uri, Accept(`application/json`) :: Nil)
+
+  def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
+    sendReceive(HttpRequest(GET, uri, headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
+      .flatMap(unmarshal[A](uri))
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
     post[A, B](Uri(uri), data)
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A): Task[B] =
-    post_[A](uri, data, Accept(`application/json`) :: Nil)
-      .flatMap(decode[B](uri))
+    post_[A](uri, Accept(`application/json`) :: Nil, data)
+      .flatMap(unmarshal[B](uri))
 
-  def postIgnoreResponse[A: Encoder](uri: String, data: A): Task[Int] =
-    post_[A](uri, data) map (_.status.intValue)
+  def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
+    post_[A](uri, Accept(`application/json`) :: Nil, data) map { response ⇒
+      response.entity.discardBytes()
+      response.status.intValue
+    }
 
-  def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader] = Nil): Task[HttpResponse] =
+  def post_[A: Encoder](uri: Uri, headers: List[HttpHeader], data: A): Task[HttpResponse] =
     for {
       entity ← Task.deferFutureAction(implicit scheduler ⇒ Marshal(data).to[RequestEntity])
       response ← sendReceive(Gzip.encodeMessage(HttpRequest(POST, uri, headers, entity)))
@@ -62,13 +69,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient
 
   private def sendReceive(request: HttpRequest): Task[HttpResponse] = {
     val authentication = userAndPassword map (o ⇒ Authorization(BasicHttpCredentials(o.userId.string, o.password.string)))
-    val myRequest = encodeGzip(request.withHeaders(
-      Vector(Accept(`application/json`), `Cache-Control`(`no-cache`, `no-store`)) ++ authentication ++ request.headers))
+    val myRequest = encodeGzip(request.withHeaders(authentication ++: request.headers))
     deferFuture(http.singleRequest(myRequest, httpsConnectionContext))
       .map(decodeResponse)
   }
 
-  private def decode[A: FromResponseUnmarshaller](uri: Uri)(httpResponse: HttpResponse): Task[A] =
+  private def unmarshal[A: FromResponseUnmarshaller](uri: Uri)(httpResponse: HttpResponse): Task[A] =
     if (httpResponse.status.isSuccess)
       deferFuture(Unmarshal(httpResponse).to[A])
     else
@@ -80,9 +86,6 @@ object AkkaHttpClient {
   private val ErrorMessageLengthMaximum = 10000
   private val FailureTimeout = 30.seconds
 
-  //final class Standard(protected val actorSystem: ActorSystem)(implicit protected val executionContext: ExecutionContext)
-  //extends AkkaHttpClient
-
-  final class HttpException(val status: StatusCode, val uri: Uri, val message: String)
-  extends RuntimeException(s"$status: $uri: $message".trim)
+  final class HttpException private[AkkaHttpClient](val status: StatusCode, val uri: Uri, val dataAsString: String)
+  extends RuntimeException(s"$status: $uri: $dataAsString".trim)
 }

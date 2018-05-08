@@ -13,5 +13,6 @@ trait HttpClient
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B]
 
-  def postIgnoreResponse[A: Encoder](uri: String, data: A): Task[/*StatusCode*/Int]
+  /** Returns the HTTP status code, discarding the response data. */
+  def postDiscardResponse[A: Encoder](uri: String, data: A): Task[/*StatusCode*/Int]
 }

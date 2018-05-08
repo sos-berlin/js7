@@ -29,7 +29,7 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
   def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
     decodeResponse(post_(uri, data))
 
-  def postIgnoreResponse[A: Encoder](uri: String, data: A) =
+  def postDiscardResponse[A: Encoder](uri: String, data: A) =
     post_(uri, data).map(_.status)
 
   private def post_[A: Encoder](uri: String, data: A): Task[XMLHttpRequest] =

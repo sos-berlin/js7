@@ -28,7 +28,7 @@ trait HttpMasterApi extends MasterApi
     httpClient.get[MasterOverview](uris.overview)
 
   final def addOrder(order: FreshOrder): Task[Boolean]  =
-    httpClient.postIgnoreResponse(uris.order.add, order) map (_ == 201/*Created*/)
+    httpClient.postDiscardResponse(uris.order.add, order) map (_ == 201/*Created*/)
 
   final def ordersOverview: Task[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)

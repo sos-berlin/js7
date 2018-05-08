@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorRefFactory
-import akka.http.scaladsl.model.headers.Location
+import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
+import akka.http.scaladsl.model.headers.{Accept, Location}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -9,8 +10,9 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
@@ -39,6 +41,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
   protected val agentPaths = TestAgentPath :: AgentPath("/FOLDER/AGENT-A") :: Nil
+  private lazy val uri = master.localUri
   private lazy val agent1Uri = directoryProvider.agents(0).localUri.toString
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest")
@@ -60,33 +63,33 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   }
 
   // --------------------------------------------------------
-  // Use headers
+  // Use HTTP headers
   // - Content-Type: application/json
   // - Accept: application/json
+  //
+  // For GET additionally if a fresh response is required:
+  // - Cache-Control: no-cache, no-store
+  //
   // And over a not very fast network:
   // - Content-Encoding: gzip
   // - Accept-Encoding: gzip
   // --------------------------------------------------------
 
   "/master/api" in {
-    val overview = httpClient.get[Json](master.localUri + "/master/api") await 99.s
+    val overview = httpClient.get[Json](s"$uri/master/api") await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.buildVersion)
     assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt)
     assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
 
-  "/master/api/workflow" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/workflow") await 99.s,
+  "/master/api/workflow" - {
+    testGet("master/api/workflow",
       json"""{
         "eventId": 1000005,
         "count": 2
       }""")
-  }
 
-  "/master/api/workflow/" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/workflow/") await 99.s,
+    testGet("master/api/workflow/",
       json"""{
         "eventId": 1000005,
         "value": [
@@ -94,11 +97,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "/WORKFLOW-2"
         ]
       }""")
-  }
 
-  "/master/api/workflow/WORKFLOW" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/workflow/WORKFLOW") await 99.s,
+    testGet("master/api/workflow/WORKFLOW",
       json"""{
         "eventId": 1000005,
         "id": {
@@ -116,18 +116,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       }""")
   }
 
-  "/master/api/agent" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/agent") await 99.s,
+  "/master/api/agent" - {
+    testGet("master/api/agent",
       json"""{
         "eventId": 1000005,
         "count": 2
       }""")
-  }
 
-  "/master/api/agent/" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/agent/") await 99.s,
+    testGet("master/api/agent/",
       json"""{
         "eventId": 1000005,
         "value": [
@@ -135,11 +131,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "/FOLDER/AGENT-A"
         ]
       }""")
-  }
 
-  "/master/api/agent/?return=Agent" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/agent/?return=Agent") await 99.s,
+    testGet("master/api/agent/?return=Agent",
       json"""{
         "eventId": 1000005,
         "value": [
@@ -158,11 +151,18 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         ]
       }""")
-  }
 
-  "/master/api/agent/FOLDER/AGENT-A?return=Agent" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER/AGENT-A?return=Agent") await 99.s,
+    testGet("master/api/agent/FOLDER/AGENT-A?return=Agent",
+      json"""{
+        "eventId": 1000005,
+        "id": {
+          "path": "/FOLDER/AGENT-A",
+          "versionId": "(initial)"
+        },
+        "uri": "$agent2Uri"
+      }""")
+
+    testGet("master/api/agent/FOLDER%2FAGENT-A?return=Agent",
       json"""{
         "eventId": 1000005,
         "id": {
@@ -173,44 +173,33 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       }""")
   }
 
-  "/master/api/agent/FOLDER%2FAGENT-A?return=Agent" in {
-    testJson(
-      httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER%2FAGENT-A?return=Agent") await 99.s,
-      json"""{
-        "eventId": 1000005,
-        "id": {
-          "path": "/FOLDER/AGENT-A",
-          "versionId": "(initial)"
-        },
-        "uri": "$agent2Uri"
-      }""")
-  }
+  "/master/api/agent-proxy" - {
+    "/master/api/agent-proxy/FOLDER%2FAGENT-A" in {
+      // Pass-through Agent. Slashes but the first in AgentPath must be coded as %2F.
+      val overview = httpClient.get[AgentOverview](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A") await 99.s
+      assert(overview.version == BuildInfo.buildVersion)
+    }
 
-  "/master/api/agent-proxy/FOLDER%2FAGENT-A" in {
-    // Pass-through Agent. Slashes but the first in AgentPath must be coded as %2F.
-    val overview = httpClient.get[AgentOverview](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A") await 99.s
-    assert(overview.version == BuildInfo.buildVersion)
-  }
+    "/master/api/agent-proxy/UNKNOWN returns 400" in {
+      assert(
+        intercept[HttpException] {
+          httpClient.get[Json](s"$uri/master/api/agent-proxy/UNKNOWN") await 99.s
+        }.status.intValue == 400/*BadRequest*/)
+    }
 
-  "/master/api/agent-proxy/UNKNOWN returns 400" in {
-    assert(
-      intercept[AkkaHttpClient.HttpException] {
-        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/UNKNOWN") await 99.s
-      }.status.intValue == 400/*BadRequest*/)
-  }
+    "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
+      assert(
+        intercept[HttpException] {
+          httpClient.get[Json](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A/task") await 99.s
+        }.status.intValue == 404/*NotFound*/)
+    }
 
-  "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
-    assert(
-      intercept[AkkaHttpClient.HttpException] {
-        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/task") await 99.s
-      }.status.intValue == 404/*NotFound*/)
-  }
-
-  "/master/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
-    assert(
-      intercept[AkkaHttpClient.HttpException] {
-        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/timer") await 99.s
-      }.status.intValue == 404/*NotFound*/)
+    "/master/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
+      assert(
+        intercept[HttpException] {
+          httpClient.get[Json](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A/timer") await 99.s
+        }.status.intValue == 404/*NotFound*/)
+    }
   }
 
   "/master/api/order" - {
@@ -219,9 +208,11 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "id": "ORDER-ID",
         "workflowPath": "/MISSING"
       }"""
-      val response = httpClient.post_(master.localUri + "/master/api/order", order) await 99.s
-      assert(response.status.intValue == 400/*BadRequest*/)
-      assert(response.utf8StringFuture.await(99.s) contains "No such key 'Workflow:/MISSING'")  // Or similar
+      val exception = intercept[HttpException] {
+        httpClient.post(s"$uri/master/api/order", order) await 99.s
+      }
+      assert(exception.status.intValue == 400/*BadRequest*/)
+      assert(exception.dataAsString contains "No such key 'Workflow:/MISSING'")  // Or similar
     }
 
     "POST" - {
@@ -231,31 +222,34 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       }"""
 
       "First" in {
-        val response = httpClient.post_[Json](master.localUri + "/master/api/order", order) await 99.s
+        val response = httpClient.post_[Json](s"$uri/master/api/order", Accept(`application/json`) :: Nil, order) await 99.s
         assert(response.status.intValue == 201/*Created*/)
-        assert(response.header[Location] == Some(Location(master.localUri + "/master/api/order/ORDER-ID")))
+        assert(response.header[Location] == Some(Location(s"$uri/master/api/order/ORDER-ID")))
         response.entity.discardBytes()
       }
 
       "Duplicate" in {
-        val response = httpClient.post_[Json](master.localUri + "/master/api/order", order) await 99.s
+        val response = httpClient.post_[Json](s"$uri/master/api/order", Accept(`application/json`) :: Nil, order) await 99.s
         assert(response.status.intValue == 409/*Conflict*/)
-        assert(response.header[Location] == Some(Location(master.localUri + "/master/api/order/ORDER-ID")))
+        assert(response.header[Location] == Some(Location(s"$uri/master/api/order/ORDER-ID")))
         response.entity.discardBytes()
       }
     }
 
     "GET" in {
-      val order = httpClient.get[Json](master.localUri + "/master/api/order/ORDER-ID") await 99.s
-      assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))
+      val order = httpClient.get[Json](s"$uri/master/api/order/ORDER-ID") await 99.s
+      assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
+    }
+
+    "(await OrderFinished)" in {
+      eventCollector.await[OrderFinished]()  // Needed for test /master/api/events
     }
   }
 
-  "/master/api/event" in {
-    eventCollector.await[OrderFinished]()
-    val events = httpClient.get[Json](master.localUri + "/master/api/event?after=0") await 99.s
+  "/master/api/event (only JSON)" in {
+    val events = httpClient.get[Json](s"$uri/master/api/event?after=0") await 99.s
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
-    assert(manipulateForTest(events) == json"""{
+    assert(manipulateEventsForTest(events) == json"""{
       "TYPE": "NonEmpty",
       "stampeds": [
         {
@@ -379,12 +373,29 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }
       ]
     }""")
+
+    def manipulateEventsForTest(eventResponse: Json): Json = {
+      val eventIds = Iterator.from(1001)
+      def changeEvent(json: Json): Json = {
+        val obj = json.asObject.get
+        Json.fromJsonObject(JsonObject.fromMap(
+          obj.toMap flatMap {
+            case ("eventId", _) ⇒ ("eventId" → Json.fromInt(eventIds.next())) :: Nil
+            case ("timestamp", _) ⇒ Nil
+            case o ⇒ o :: Nil
+          }))
+      }
+      eventResponse.hcursor
+        .downField("stampeds").withFocus(_.mapArray(_ map changeEvent)).up
+        .top.get
+    }
   }
 
   "/master/api/graphql" - {
     "Syntax error" in {
       val query = "INVALID"
-      val response = httpClient.post_(master.localUri + "/master/api/graphql", json"""{ "query": "$query" }""") await 99.s
+      val queryJson = json"""{ "query": "$query" }"""
+      val response = httpClient.post_[Json](s"$uri/master/api/graphql", Accept(`application/json`) :: Nil, queryJson) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
       assert(response.utf8StringFuture.await(99.s).parseJson ==
         json"""{
@@ -404,7 +415,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
     "Unknown field" in {
       val query = "{ UNKNOWN }"
-      val response = httpClient.post_(master.localUri + "/master/api/graphql", json"""{ "query": "$query" }""") await 99.s
+      val queryJson = json"""{ "query": "$query" }"""
+      val response = httpClient.post_[Json](s"$uri/master/api/graphql", Accept(`application/json`) :: Nil, queryJson) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
       assert(response.utf8StringFuture.await(99.s).parseJson ==
         json"""{
@@ -534,29 +546,31 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     }
 
     def postGraphql(graphql: Json): Json =
-      httpClient.post(master.localUri + "/master/api/graphql", graphql).await(99.s)
+      httpClient.post(s"$uri/master/api/graphql", graphql).await(99.s)
   }
 
-  "Terminate" in {
-    val cmd = json"""{ "TYPE": "Terminate" }"""
-    val response = httpClient.post_(master.localUri + "/master/api", cmd) await 99.s
-    assert(response.status.intValue == 200/*OK*/)  // May fail if terminated before response (Master tries to delay termination until responded)
-    response.entity.discardBytes()
-  }
-
-  private def manipulateForTest(eventResponse: Json): Json = {
-    val eventIds = Iterator.from(1001)
-    def changeEvent(json: Json): Json = {
-      val obj = json.asObject.get
-      Json.fromJsonObject(JsonObject.fromMap(
-        obj.toMap flatMap {
-          case ("eventId", _) ⇒ ("eventId" → Json.fromInt(eventIds.next())) :: Nil
-          case ("timestamp", _) ⇒ Nil
-          case o ⇒ o :: Nil
-        }))
+  "Commands" - {
+    "Terminate" in {
+      val cmd = json"""{ "TYPE": "Terminate" }"""
+      testJson(
+        httpClient.post(s"$uri/master/api", cmd) await 99.s,
+        json"""{
+          "TYPE": "Accepted"
+        }""")
     }
-    eventResponse.hcursor
-      .downField("stampeds").withFocus(_.mapArray(_ map changeEvent)).up
-      .top.get
   }
+
+  private def testGet(suburi: String, expected: ⇒ Json, mainpulateResponse: Json ⇒ Json = identity): Unit =
+    suburi - {
+      "JSON" in {
+        testJson(
+          mainpulateResponse(httpClient.get[Json](s"$uri/$suburi") await 99.s),
+          expected)
+      }
+      "YAML" in {
+        val yamlString = httpClient.get_[String](s"$uri/$suburi", Accept(`text/plain`) :: Nil) await 99.s
+        assert(yamlString.head.isLetter)  // A YAML object starts with the first field name
+        testJson(mainpulateResponse(yamlToJson(yamlString)), expected)
+      }
+    }
 }
