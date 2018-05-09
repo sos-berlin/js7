@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
+import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
@@ -47,33 +48,42 @@ trait EventRoute
   final val eventRoute: Route =
     get {
       pathEnd {
-        accept(`application/json-seq`) {
-          eventDirective(defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = DefaultJsonSeqChunkDelay) {
-            case request: EventRequest[Event] ⇒
-              implicit val x = JsonSeqStreamSupport
-              implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-              complete(eventReader.observe(request, predicate = isRelevantEvent))
-
-            case _ ⇒
-              reject
-          }
+        htmlPreferred {
+          oneShot
         } ~
-        eventDirective() { request ⇒
-          intelliJuseImport(jsonOrYamlMarshaller)
-          val marshallable = eventReader.read[Event](request, predicate = isRelevantEvent) map {
-            case o: TearableEventSeq.Torn ⇒
-              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
-
-            case o: EventSeq.Empty ⇒
-              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
-
-            case EventSeq.NonEmpty(events) ⇒
-              implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              ToResponseMarshallable(closeableIteratorToAkkaSource(events))
-          }
-          complete(marshallable)
-        }
+        accept(`application/json-seq`) {
+          jsonSeqEvents
+        } ~
+        oneShot
       }
+    }
+
+  private def jsonSeqEvents: Route =
+    eventDirective(defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = DefaultJsonSeqChunkDelay) {
+      case request: EventRequest[Event] ⇒
+        implicit val x = JsonSeqStreamSupport
+        implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
+        complete(eventReader.observe(request, predicate = isRelevantEvent))
+
+      case _ ⇒
+        reject
+    }
+
+  private def oneShot: Route =
+    eventDirective() { request ⇒
+      intelliJuseImport(jsonOrYamlMarshaller)
+      val marshallable = eventReader.read[Event](request, predicate = isRelevantEvent) map {
+        case o: TearableEventSeq.Torn ⇒
+          ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
+
+        case o: EventSeq.Empty ⇒
+          ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
+
+        case EventSeq.NonEmpty(events) ⇒
+          implicit val x = NonEmptyEventSeqJsonStreamingSupport
+          ToResponseMarshallable(closeableIteratorToAkkaSource(events))
+      }
+      complete(marshallable)
     }
 }
 
