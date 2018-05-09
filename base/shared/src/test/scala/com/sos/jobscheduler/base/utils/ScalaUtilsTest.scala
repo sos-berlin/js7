@@ -61,13 +61,13 @@ final class ScalaUtilsTest extends FreeSpec {
   }
 
   "withToString" in {
-    val f = functionWithToString("TEST") { 7 }
+    val f = function0WithToString("TEST") { 7 }
     assert(f() == 7)
     assert(f.toString == "TEST")
   }
 
-  "withToString1" in {
-    val f = withToString1("TEST") { i: Int ⇒ 2 * i }
+  "function1WithToString" in {
+    val f = function1WithToString("TEST") { i: Int ⇒ 2 * i }
     assert(f(3) == 6)
     assert(f.toString == "TEST")
   }

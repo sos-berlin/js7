@@ -37,31 +37,32 @@ object ScalaUtils {
   }
 
   /**
-   * Returns 'body' as a argumentless function with replaced toString.
-   */
-  def functionWithToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
+    * Replaces toString of the body (argumentless function), for logging and debugging.
+    */
+  def function0WithToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
     new (() ⇒ R) {
       def apply() = body
       override def toString() = lazyString
     }
 
   /**
-   * Replaces toString of the monadic function.
+   * Replaces toString of the function, for logging and debugging.
    */
-  def withToString1[A, R](lazyString: ⇒ String)(function: A ⇒ R): A ⇒ R =
+  def function1WithToString[A, R](string: String)(function: A ⇒ R): A ⇒ R =
     new (A ⇒ R) {
       def apply(a: A) = function(a)
-      override def toString() = lazyString
+      override def toString() = string
     }
 
   object implicits {
     import scala.language.implicitConversions
 
     implicit final class ToStringFunction1[A, R](private val delegate: A ⇒ R) {
-      def withToString(string: String) = new (A ⇒ R) {
-        def apply(a: A) = delegate(a)
-        override def toString() = string
-      }
+      def withToString(string: String): A ⇒ R =
+        new (A ⇒ R) {
+          def apply(a: A) = delegate(a)
+          override def toString() = string
+        }
     }
   }
 
