@@ -19,6 +19,7 @@ services:
       - "agent-1"
       - "agent-2"
     command: ["master", "-J-Xmx100m"]
+    hostname: master
     networks:
     - default
     ports:
