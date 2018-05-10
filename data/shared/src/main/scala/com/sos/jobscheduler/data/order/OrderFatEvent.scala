@@ -24,7 +24,8 @@ object OrderFatEvent {
     parent: Option[OrderId],
     cause: OrderAddedFat.Cause,
     workflowPosition: WorkflowPosition,
-    scheduledAt: Option[Timestamp])
+    scheduledAt: Option[Timestamp],
+    variables: Map[String, String])
   extends OrderFatEvent
 
   object OrderAddedFat {

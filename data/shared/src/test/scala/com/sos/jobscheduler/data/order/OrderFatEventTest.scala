@@ -19,7 +19,8 @@ final class OrderFatEventTest extends FreeSpec {
         Some(OrderId("PARENT")),
         OrderAddedFat.Cause.Forked,
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
-        Some(Timestamp.ofEpochMilli(111))),
+        Some(Timestamp.ofEpochMilli(111)),
+        Map("VARIABLE" → "VALUE")),
       json"""{
         "TYPE": "OrderAddedFat",
         "parent": "PARENT",
@@ -31,7 +32,10 @@ final class OrderFatEventTest extends FreeSpec {
           },
           "position": [ 0 ]
         },
-        "scheduledAt": 111
+        "scheduledAt": 111,
+        "variables": {
+          "VARIABLE": "VALUE"
+        }
       }""")
   }
 

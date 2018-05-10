@@ -29,7 +29,7 @@ extends RealEventReader[Event]
   final def oldestEventId: EventId =
     keyedEventQueue.oldestEventId
 
-  final def eventsAfter(after: EventId) =
+  def eventsAfter(after: EventId) =
     Task.pure(keyedEventQueue.after(after) map CloseableIterator.fromIterator)
 
   protected final def reverseEventsAfter(after: EventId) =

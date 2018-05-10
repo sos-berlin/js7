@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.time.Timestamp
@@ -38,14 +37,12 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
 
   TestEvents foreach eventReader.addStamped
 
-  private def route: Route =
-    pathSegments("event") {
-      eventRoute
-    }
+  private def route = pathSegments("event")(eventRoute)
 
   for (uri ← List(
-    s"/event?return=OrderEvent&timeout=60&after=0",
-    s"/event?timeout=60&after=0")) {
+    "/event?return=OrderEvent&timeout=60&after=0",
+    "/event?timeout=60&after=0"))
+  {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")

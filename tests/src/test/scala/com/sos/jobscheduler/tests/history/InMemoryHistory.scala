@@ -15,10 +15,10 @@ final class InMemoryHistory {
   def handleHistoryEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
     val Stamped(_, timestamp, KeyedEvent(orderId, event)) = stampedEvent
     event match {
-      case OrderAddedFat(parent, cause, workflowPosition, scheduledAt) ⇒
+      case OrderAddedFat(parent, cause, workflowPosition, scheduledAt, variables) ⇒
         idToOrderEntry.get(orderId) match {
           case None ⇒
-            idToOrderEntry(orderId) = com.sos.jobscheduler.tests.history.OrderEntry(orderId, parent, cause, Some(workflowPosition), scheduledAt)
+            idToOrderEntry(orderId) = OrderEntry(orderId, parent, cause, Some(workflowPosition), scheduledAt)
 
           case Some(existing) ⇒
             idToOrderEntry(orderId) = existing.copy(
