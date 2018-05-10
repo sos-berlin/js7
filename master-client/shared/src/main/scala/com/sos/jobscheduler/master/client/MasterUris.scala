@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
-import org.scalactic.Requirements._
 import scala.reflect.ClassTag
 
 /**
@@ -53,7 +52,7 @@ final class MasterUris private(masterUri: String) {
     api("", query: _*)
 
   def api(path: String, query: (String, String)*): String = {
-    require(path.isEmpty || path.startsWith("/"))
+    if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Master URI path must start with slash")
     master("api" + path) +
       encodeQuery(query: _*)
   }

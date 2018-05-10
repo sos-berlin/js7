@@ -8,8 +8,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry

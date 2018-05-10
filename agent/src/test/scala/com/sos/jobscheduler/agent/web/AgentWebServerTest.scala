@@ -12,11 +12,11 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
-import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerTest._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass

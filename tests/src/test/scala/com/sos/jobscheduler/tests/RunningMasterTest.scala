@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
@@ -25,11 +25,12 @@ import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.RunningMasterTest._
+import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
+import com.sos.jobscheduler.tests.RunningMasterTest._
 import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now

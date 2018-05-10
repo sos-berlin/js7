@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.views
+package com.sos.jobscheduler.agent.data.views
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation

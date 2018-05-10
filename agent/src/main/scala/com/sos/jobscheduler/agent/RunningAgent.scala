@@ -3,15 +3,13 @@ package com.sos.jobscheduler.agent
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import com.google.common.io.Closer
-import com.google.inject
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
 import com.sos.jobscheduler.agent.command.CommandHandler
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.auth.User.Anonymous

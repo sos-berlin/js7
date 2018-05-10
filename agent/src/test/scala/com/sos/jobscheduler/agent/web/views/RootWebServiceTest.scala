@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation

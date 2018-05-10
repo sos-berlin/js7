@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.views
+package com.sos.jobscheduler.agent.configuration
 
 import com.sos.jobscheduler.common.BuildInfo
 import java.time.Instant

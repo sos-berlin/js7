@@ -2,8 +2,8 @@ package com.sos.jobscheduler.agent.web
 
 import akka.http.scaladsl.server.Directives._
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments

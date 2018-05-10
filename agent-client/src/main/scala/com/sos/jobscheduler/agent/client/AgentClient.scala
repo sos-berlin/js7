@@ -1,4 +1,5 @@
 package com.sos.jobscheduler.agent.client
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.marshalling.Marshal
@@ -16,10 +17,9 @@ import com.sos.jobscheduler.agent.client.AgentClient._
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
+import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonCodec
-import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
@@ -95,7 +95,6 @@ trait AgentClient extends HasCloser {
       response ← unmarshal[A](httpResponse)
     } yield
       response
-
 
   final def overview: Future[AgentOverview] = get[AgentOverview](_.overview)
 

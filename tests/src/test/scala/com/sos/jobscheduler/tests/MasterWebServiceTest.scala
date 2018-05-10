@@ -4,7 +4,7 @@ import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo

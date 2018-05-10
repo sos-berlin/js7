@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.agent.tests
 
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.Akkas
+import com.sos.jobscheduler.agent.configuration.{AgentStartInformation, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.test.AgentTest
-import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec

@@ -4,9 +4,9 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor.Command
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
-import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent
