@@ -101,7 +101,7 @@ header, main, footer { padding-left: 150px; }
 .OrderId { white-space: nowrap; }
 
 .Workflow-content { margin-top: 1rem; }
-.orders-Instruction { position: absolute; width: 100%; border-top: 0.5px solid #a0a0a0; margin: 3px 0; padding: 4px; height: 42px; }
+.orders-Instruction { position: absolute; width: 100%; border-top: 0.5px solid #c0c0c0; margin: 3px 0; padding: 4px; height: 42px; }
 .orders-Instruction-head { overflow: hidden; text-overflow: ellipsis; line-height: 1.2rem; }
 .orders-Instruction-Job { font-weight: bold; }
 .orders-Instruction-Agent { font-weight: bold; }
