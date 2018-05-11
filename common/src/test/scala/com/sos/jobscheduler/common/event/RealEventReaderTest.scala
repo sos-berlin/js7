@@ -26,7 +26,7 @@ final class RealEventReaderTest extends FreeSpec {
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
       }
     observed await 99.s
-    assert(expectedNext.eventId == 301/*TODO Stack overflow limit. Should be: n + 1*/)
+    assert(expectedNext.eventId == n + 1)
   }
 }
 

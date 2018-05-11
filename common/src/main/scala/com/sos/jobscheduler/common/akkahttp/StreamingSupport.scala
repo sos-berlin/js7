@@ -39,12 +39,14 @@ object StreamingSupport
         ByteString(","),
         ByteString("]}")))
 
-  def closeableIteratorToAkkaSource[A](iterator: CloseableIterator[A])(implicit scheduler: Scheduler): Source[A, NotUsed] =
-    monixObservableToAkkaSource(closeableIteratorToObservable(iterator))
-    // How to close without Monix??? Source.fromIterator(() ⇒ iterator).__onTerminate__(iterator.close()
+  implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal {
+    def toAkkaSource(implicit scheduler: Scheduler): Source[A, NotUsed] =
+      Source.fromPublisher(underlying.toReactivePublisher(scheduler))
+  }
 
-  def monixObservableToAkkaSource[A](observable: Observable[A])(implicit scheduler: Scheduler): Source[A, NotUsed] =
-    Source.fromPublisher(observable.toReactivePublisher(scheduler))
+  def closeableIteratorToAkkaSource[A](iterator: CloseableIterator[A])(implicit scheduler: Scheduler): Source[A, NotUsed] =
+    closeableIteratorToObservable(iterator).toAkkaSource
+    // How to close without Monix??? Source.fromIterator(() ⇒ iterator).__onTerminate__(iterator.close()
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A])(implicit scheduler: Scheduler): Observable[A] =
     Observable.fromIterator(iterator).doOnTerminateEval(_ ⇒ Task.eval(iterator.close()))

@@ -6,13 +6,12 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport.closeableIteratorToObservable
-import com.sos.jobscheduler.common.event.RealEventReader._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
@@ -50,72 +49,35 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
     (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]] =
-    recursive_observe2(request, predicate, limitRecursion = 100/*2000 would blow up test*/)
-    //tailRecM_observe(request, predicate)
-
-  // Blows up stack when not limited
-  private def recursive_observe2[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean, limitRecursion: Int)
-    (implicit scheduler: Scheduler)
-  : Observable[Stamped[KeyedEvent[E1]]] =
   {
-    if (request.limit <= 0 || limitRecursion <= 0)
-      Observable.empty
-    else
-      Observable.fromTask(read[E1](request, predicate = predicate)) flatMap {
-        case _: TearableEventSeq.Torn ⇒
-          throw new IllegalArgumentException(s"EventSeq is torn - after=${request.after} oldestEventId=$oldestEventId")
-
-        case EventSeq.Empty(lastEventId) ⇒
-          val nextRequest = request.copy[E1](after = lastEventId)
-          recursive_observe2(nextRequest, predicate, limitRecursion - 1)
-
-        case EventSeq.NonEmpty(events) ⇒
-          if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-          var lastEventId = request.after
-          var limit = request.limit
-          closeableIteratorToObservable(events)
-            .map { o ⇒
-              lastEventId = o.eventId
-              limit -= 1
-              o
-            } ++/*<-- Monix 3.0 concatention will not expand stack ??? */
-            Observable.defer(
-              recursive_observe2(request.copy[E1](after = lastEventId, limit = limit), predicate, limitRecursion - 1))
-      }
-    }
-
-  // This implementations blows up heap. See Alexandru's notes in https://github.com/typelevel/cats/issues/1329
-  private def tailRecM_observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
-    (implicit scheduler: Scheduler)
-  =
-    Observable.tailRecM((request, predicate)) { case (req, pred) ⇒
-      if (req.limit <= 0)
-        Observable.empty
+    def next(lazyRequest: () ⇒ EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () ⇒ EventRequest[E1])] = {
+      val request = lazyRequest()  // Access now in last iteration computed values lastEventId and limit (see below)
+      if (request.limit <= 0)
+        Task.pure((None, lazyRequest))
       else
-        Observable.fromTask(read[E1](req, predicate = pred)) flatMap {
+        read[E1](request, predicate) map {
           case _: TearableEventSeq.Torn ⇒
-            throw new IllegalArgumentException(s"EventSeq is torn - after=${req.after} oldestEventId=$oldestEventId")
+            throw new IllegalArgumentException(s"EventSeq is torn - after=${request.after} oldestEventId=$oldestEventId")
 
           case EventSeq.Empty(lastEventId) ⇒
-            Observable(Left((req.copy[E1](after = lastEventId), pred)))
+            (Some(Observable.empty), Coeval.pure(request.copy[E1](after = lastEventId)))
 
           case EventSeq.NonEmpty(events) ⇒
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
-            var lastEventId = req.after
-            var limit = req.limit
-            closeableIteratorToObservable(events)
-              .map(Right.apply)
-              .endWith(Left(PlaceHolder) :: Nil)
-              .map {
-                case Right(stamped) ⇒
-                  lastEventId = stamped.eventId
-                  limit -= 1
-                  Right(stamped)
-                case Left(PlaceHolder) ⇒
-                  Left((req.copy[E1](after = lastEventId, limit = limit), pred))
+            var lastEventId = request.after
+            var limit = request.limit
+            val observable = closeableIteratorToObservable(events)
+              .map { o ⇒
+                lastEventId = o.eventId
+                limit -= 1
+                o
               }
+            // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values
+            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit))
         }
     }
+    Observable.fromAsyncStateAction(next)(() ⇒ request).takeWhile(_.nonEmpty).map(_.get).flatten
+  }
 
   final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
@@ -255,8 +217,4 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   @TestOnly
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
     when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.seconds), _ ⇒ true) await 99.s
-}
-
-object RealEventReader {
-  private object PlaceHolder
 }

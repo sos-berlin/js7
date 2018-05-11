@@ -10,7 +10,7 @@ import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport.monixObservableToAkkaSource
+import com.sos.jobscheduler.common.akkahttp.StreamingSupport.AkkaObservable
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -35,7 +35,7 @@ object StandardMarshallers
   implicit def monixObservableMarshallable[A: ToEntityMarshaller](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] ⇒ ToResponseMarshallable)
   : ToResponseMarshallable =
-    monixObservableToAkkaSource(observable)
+    observable.toAkkaSource
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

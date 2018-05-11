@@ -53,14 +53,14 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
   }
 
   "/event application/json-seq" in {
-    Get(s"/event?after=0&limit=${TestEvents.length}") ~> Accept(`application/json-seq`) ~> route ~> check {
+    Get(s"/event?after=0&limit=2") ~> Accept(`application/json-seq`) ~> route ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/json-seq`))
       val rs = Ascii.RS.toChar
       val lf = Ascii.LF.toChar
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""$rs{"eventId":111111,"timestamp":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
-        s"""$rs{"eventId":222222,"timestamp":1000,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
+        s"""$rs{"eventId":1000,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
+        s"""$rs{"eventId":2000,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
 
       //implicit val x = JsonSeqStreamSupport
       //implicit val y = CirceJsonSeqSupport
@@ -73,9 +73,7 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
 
 object EventRouteTest
 {
-  private val TestEvents = Vector(
-    Stamped(EventId(111111), Timestamp.ofEpochMilli(1000),
-      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)),
-    Stamped(EventId(222222), Timestamp.ofEpochMilli(1000),
-      OrderId("2") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)))
+  private val TestEvents = for (i ← 1 to 6) yield
+    Stamped(EventId(1000 * i), Timestamp.ofEpochMilli(999),
+      OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty))
 }
