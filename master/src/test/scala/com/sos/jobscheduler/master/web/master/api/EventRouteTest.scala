@@ -59,8 +59,8 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
       val rs = Ascii.RS.toChar
       val lf = Ascii.LF.toChar
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""$rs{"eventId":1000,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
-        s"""$rs{"eventId":2000,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
+        s"""$rs{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
+        s"""$rs{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
 
       //implicit val x = JsonSeqStreamSupport
       //implicit val y = CirceJsonSeqSupport
@@ -69,11 +69,70 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
       //assert(stampeds == TestEvents)
     }
   }
+
+  "Fetch events with repeated GET requests" - {  // Similar to FatEventRouteTest
+    "/event?limit=3&after=30 continue" in {
+      val stampeds = getEvents("/event?limit=3&after=30")
+      assert(stampeds.head.eventId == 40)
+      assert(stampeds.last.eventId == 60)
+    }
+
+    "/event?limit=3&after=60 continue" in {
+      val stampeds = getEvents("/event?limit=3&after=60")
+      assert(stampeds.head.eventId == 70)
+      assert(stampeds.last.eventId == 90)
+    }
+
+    "/event?limit=1&after=70 rewind in last chunk" in {
+      val stampeds = getEvents("/event?limit=3&after=70")
+      assert(stampeds.head.eventId ==  80)
+      assert(stampeds.last.eventId == 100)
+    }
+
+    "/event?limit=3&after=80 continue" in {
+      val stampeds = getEvents("/event?limit=3&after=80")
+      assert(stampeds.head.eventId ==  90)
+      assert(stampeds.last.eventId == 110)
+    }
+
+    "/event?limit=3&after=60 rewind to oldest" in {
+      val stampeds = getEvents("/event?limit=3&after=60")
+      assert(stampeds.head.eventId == 70)
+      assert(stampeds.last.eventId == 90)
+    }
+
+    "/event?limit=3&after=150 skip some events" in {
+      val stampeds = getEvents("/event?limit=3&after=150")
+      assert(stampeds.head.eventId == 160)
+      assert(stampeds.last.eventId == 180)
+    }
+
+    "/event?after=180 no more events" in {
+      assert(getEventSeq("/event?after=180") == EventSeq.Empty(180))
+    }
+
+    "After truncated journal snapshot" in pending  // TODO Test torn event stream
+  }
+
+  private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
+    getEventSeq(uri) match {
+      case EventSeq.NonEmpty(stampeds) ⇒
+        assert(stampeds.nonEmpty)
+        stampeds
+
+      case x ⇒ fail(s"Unexpected response: $x")
+    }
+
+  private def getEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderEvent]] =
+    Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
+    }
 }
 
 object EventRouteTest
 {
-  private val TestEvents = for (i ← 1 to 6) yield
-    Stamped(EventId(1000 * i), Timestamp.ofEpochMilli(999),
+  private val TestEvents = for (i ← 1 to 18) yield
+    Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty))
 }

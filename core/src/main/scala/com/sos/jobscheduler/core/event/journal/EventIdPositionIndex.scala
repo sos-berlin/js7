@@ -3,6 +3,8 @@ package com.sos.jobscheduler.core.event.journal
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
+import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -48,5 +50,11 @@ private[journal] final class EventIdPositionIndex(size: Int)
           if (eventId < eventIds.head) throw new IllegalArgumentException(s"EventIdPositionIndex.positionAfter($eventId) but oldest EventId is ${eventIds.head}")
           positions(-i - 2)
       }
+    }
+
+  @TestOnly
+  private[journal] def positionAndEventIds: Seq[PositionAnd[EventId]] =
+    synchronized {
+      for (i ← 0 until length) yield PositionAnd(positions(i), eventIds(i))
     }
 }

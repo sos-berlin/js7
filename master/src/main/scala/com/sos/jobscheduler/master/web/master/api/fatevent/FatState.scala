@@ -17,23 +17,22 @@ import scala.collection.immutable.Seq
   */
 private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
 {
-  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Seq[Stamped[KeyedEvent[OrderFatEvent]]]) =
-    synchronized {
-      if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
-      stamped.value match {
-        case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
-          handleOrderEvent(stamped.copy(value = orderId <-: event))
+  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Seq[Stamped[KeyedEvent[OrderFatEvent]]]) = {
+    if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
+    stamped.value match {
+      case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+        handleOrderEvent(stamped.copy(value = orderId <-: event))
 
-        case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
-          val updatedConverter = copy(
-            eventId = stamped.eventId,
-            repo = repo.applyEvent(event).orThrow)
-          (updatedConverter, Nil)
+      case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
+        val updatedConverter = copy(
+          eventId = stamped.eventId,
+          repo = repo.applyEvent(event).orThrow)
+        (updatedConverter, Nil)
 
-        case _ ⇒
-          (this, Nil)
-      }
+      case _ ⇒
+        (this, Nil)
     }
+  }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): (FatState, Seq[Stamped[KeyedEvent[OrderFatEvent]]]) = {
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
@@ -42,8 +41,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case event: OrderCoreEvent ⇒ idToOrder(orderId).update(event)
       case _ ⇒ idToOrder(orderId)
     }
-    val fatEvents = toFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, e))
-    val updatedConverter = event match {
+    val updatedFatState = event match {
       case _: OrderAdded      ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _: OrderFinished   ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder - order.id)
       case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
@@ -51,7 +49,8 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _ ⇒ this
     }
-    (updatedConverter, fatEvents)
+    val fatEvents = toFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, e))
+    (updatedFatState, fatEvents)
   }
 
   private def toFatEvent(order: Order[Order.State], event: OrderEvent): Seq[KeyedEvent[OrderFatEvent]] =
