@@ -18,6 +18,7 @@ object EventDirectives {
 
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
+  private val MinimumDelay = 100.milliseconds   // TODO To let JournalEventReader less often open and close the journal
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
@@ -52,7 +53,7 @@ object EventDirectives {
     }
 
   private implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
-    Unmarshaller.strict((o: String) ⇒ new FiniteDuration(o.toInt, TimeUnit.SECONDS))  // Whole seconds only !!!
+    Unmarshaller.strict((o: String) ⇒ new FiniteDuration((BigDecimal(o) * 1000).toLong, TimeUnit.MILLISECONDS))
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[_ <: E]],
@@ -72,7 +73,8 @@ object EventDirectives {
             case Some(after) ⇒
               parameter("timeout" ? defaultTimeout) { timeout ⇒
                 parameter("delay" ? defaultDelay) { delay ⇒
-                  val eventRequest = EventRequest[E](eventClasses, after = after, timeout = timeout, delay = delay, limit = limit)
+                  val eventRequest = EventRequest[E](eventClasses, after = after,
+                    timeout = timeout, delay = delay max MinimumDelay, limit = limit)
                   inner(Tuple1(eventRequest))
                 }
               }

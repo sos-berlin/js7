@@ -21,23 +21,28 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
       KeyedSubtype.singleEvent[BEvent])
   }
 
-  "eventRequest" in {
-    def route =
-      path("test") {
-        eventRequest[MyEvent].apply { eventRequest ⇒
-          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(7), timeout = 60.seconds, limit = 999))
-            complete("A")
-          else
-          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(777), 60.seconds, limit = 999))
-            complete("B")
-          else
-            reject
+  private def route =
+    path("test") {
+      eventRequest[MyEvent].apply { eventRequest ⇒
+        if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]),
+            after = EventId(66), delay = 770.millis, timeout = 88.seconds, limit = 99))
+          complete("A")
+        else
+        if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]),
+            after = EventId(666), delay = 777.millis, timeout = 888.seconds, limit = 999))
+          complete("B")
+        else {
+          println(eventRequest)
+          reject
         }
       }
-    Get("/test?return=AEvent&timeout=60&delay=0&limit=999&after=7") ~> route ~> check {
+    }
+
+  "eventRequest" in {
+    Get("/test?return=AEvent&delay=0.77&timeout=88&limit=99&after=66") ~> route ~> check {
       assert(responseAs[String] == "A")
     }
-    Get("/test?return=AEvent,BEvent&timeout=60&delay=0&limit=999&after=777") ~> route ~> check {
+    Get("/test?return=AEvent,BEvent&delay=0.777&timeout=888&limit=999&after=666") ~> route ~> check {
       assert(responseAs[String] == "B")
     }
   }
