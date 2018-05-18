@@ -23,7 +23,7 @@ object Dependencies {
   val scalaJsDomVersion = "0.9.5"
   val scajaJsJQueryVersion = "0.9.3"
   val bootstrapVersion = "4.0.0"
-  val sangriaVersion = "1.4.0"
+  val sangriaVersion = "1.4.1"
   val sangriaCirceVersion = "1.2.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion

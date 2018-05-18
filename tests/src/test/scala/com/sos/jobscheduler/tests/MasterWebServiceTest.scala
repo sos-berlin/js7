@@ -401,7 +401,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         json"""{
           "errors": [
             {
-              "message": "Syntax error while parsing GraphQL query. Invalid input 'I', expected OperationDefinition, FragmentDefinition or TypeSystemDefinition (line 1, column 1):\nINVALID\n^",
+              "message": "Syntax error while parsing GraphQL query. Invalid input 'I', expected ExecutableDefinition or TypeSystemDefinition (line 1, column 1):\nINVALID\n^",
               "locations": [
                 {
                   "line": 1,
