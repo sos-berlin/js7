@@ -1,15 +1,17 @@
 package com.sos.jobscheduler.common.system
 
 import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
 import scala.util.Try
 
-object SystemInformations {
+object SystemInformations
+{
   private def filteredMap(keyValues: Iterable[(String, Any)]): Map[String, Any] =
     (keyValues flatMap {
-      case (_, v: Int) if v < 0 ⇒ None
-      case o ⇒ Some(o)
+      case (_, v: Int) if v < 0 ⇒ Nil
+      case o ⇒ o :: Nil
     }).toMap
 
 
@@ -35,14 +37,12 @@ object SystemInformations {
     } yield key → value)
   }
 
-  def systemInformation(): SystemInformation = {
-    import OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+  def systemInformation(): SystemInformation =
     SystemInformation(
-      hostname = hostname,
-      distribution = distributionNameAndVersionOption,
-      cpuModel = cpuModel,
+      hostname = operatingSystem.hostname,
+      distribution = operatingSystem.distributionNameAndVersionOption,
+      cpuModel = operatingSystem.cpuModel,
       mxBeans = Map("operatingSystem" → (
         operatingSystemMXBean() ++
         platformMBean())))
-  }
 }

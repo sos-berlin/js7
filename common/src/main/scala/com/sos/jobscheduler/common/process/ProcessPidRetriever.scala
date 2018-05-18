@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.process
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
@@ -17,25 +18,24 @@ private[process] object ProcessPidRetriever {
   private val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
   private val logger = Logger(getClass)
 
-  private[process] val processToPid = {
+  private[process] val processToPid: Process ⇒ Option[Pid] =
     if (hasJava9)
       Java9ProcessToPid
     else if (isWindows)
       WindowsBeforeJava9ProcessToPid
     else
       UnixBeforeJava9ProcessToPid
-  }
 
   private object Java9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    private val getPid = classOf[Process].getMethod("pid")   // Needs Java 9
+    private val pidMethod = classOf[Process].getMethod("pid")   // Needs Java 9
     private var logged = false
 
     def apply(process: Process) =
-      try Some(Pid(getPid.invoke(process).asInstanceOf[java.lang.Long]))
+      try Some(Pid(pidMethod.invoke(process).asInstanceOf[java.lang.Long]))
       catch { case t: Throwable ⇒
         if (!logged) {
           logged = true
-          logger.error(s"Process.pid: $t", t)
+          logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
         }
         None
       }
