@@ -6,6 +6,6 @@ hprof=$data/logs/OutOfMemoryError.hprof
 
 rm -fv "$hprof"
 exec /opt/jobscheduler/bin/jobscheduler-agent \
-  -log4j-lmax \
+  -log4j-async \
   -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
   "$@"

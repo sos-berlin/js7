@@ -8,17 +8,17 @@
                              fileName="target/build.log"
                              filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
                              append="true"
-                             immediateFlush="false">
-      <!-- append=true for forked tests -->
+                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+      <!-- append=true is required to let forked tests append. -->
+      <policies>
+        <timeBasedTriggeringPolicy/>
+      </policies>
       <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
-      <policies>
-        <onStartupTriggeringPolicy/>
-      </policies>
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="WARN">
+    <root level="INFO">
       <appenderRef level="OFF" ref="console"/>
       <appenderRef level="DEBUG" ref="file"/>
     </root>

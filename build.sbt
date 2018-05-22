@@ -33,7 +33,15 @@ import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
 
-val _dummy_ = BuildUtils.initializeLogger()
+val _dummy_ = {
+  sys.props += "log4j2.contextSelector" → "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+  sys.props += "jobscheduler.log4j.immediateFlush" → "false"
+}
+val rootDirectory = Paths.get(".").toAbsolutePath
+// Does not work:
+ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml"
+ForkedTest / javaOptions += "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+ForkedTest / javaOptions += "-Djobscheduler.log4j.immediateFlush=false"
 
 val testParallelization: Int = 1 * sys.runtime.availableProcessors
 
@@ -700,16 +708,16 @@ lazy val testSettings =
   inConfig(ExclusiveTest)(Defaults.testTasks) ++
   inConfig(ForkedTest   )(Defaults.testTasks) ++
   Seq(
-    testOptions in Test          := Seq(scalaTestArguments, Tests.Filter(name ⇒ !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
-    testOptions in StandardTest  := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
-    testOptions in ExclusiveTest := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
-    testOptions in ForkedTest    := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
-    javaOptions in ForkedTest    ++= Seq("-Xmx100m", "-Xms20m", "-Dlog4j.configurationFile=../project/log4j2.xml"),  // SettingKey for ../project ???
-    testForkedParallel in ForkedTest := testParallel,
-    logBuffered in Test          := false,  // Recommended for ScalaTest
-    logBuffered in StandardTest  := false,
-    logBuffered in ExclusiveTest := false,
-    logBuffered in ForkedTest    := false,
+    Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name ⇒ !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
+    StandardTest  / testOptions := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
+    ExclusiveTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
+    ForkedTest/ testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
+    ForkedTest / javaOptions ++= Seq("-Xmx100m", "-Xms20m"),
+    ForkedTest / testForkedParallel := testParallel,
+    Test          / logBuffered := false,  // Recommended for ScalaTest
+    StandardTest  / logBuffered := false,
+    ExclusiveTest / logBuffered := false,
+    ForkedTest    / logBuffered := false,
     fork in ForkedTest := true)
 
 def isStandardTest(name: String): Boolean = !isExclusiveTest(name) && !isForkedTest(name)

@@ -19,7 +19,7 @@ data=/var/opt/jobscheduler/master/data
 httpPort=4444
 masterOptions=()
 javaOptions=()
-log4jLmax=false
+log4jAsync=false
 
 for arg in "$@"; do :
   case "$arg" in
@@ -64,8 +64,8 @@ for arg in "$@"; do :
       httpPort="${arg#*=}"
       shift
       ;;
-    -log4j-lmax)
-      log4jLmax=true
+    -log4j-async)
+      log4jAsync=true
       shift
       ;;
     *)
@@ -93,9 +93,9 @@ export SCHEDULER_LOGS="$logs"  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
 fi
-if $log4jLmax; then :
-  javaOptions+=("-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
-  javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
+if $log4jAsync; then :
+  javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+  javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
 fi
 
 masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")

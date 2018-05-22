@@ -10,11 +10,10 @@ object BuildUtils {
   val isWindows = sys.props("os.name") startsWith "Windows"
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
-  def initializeLogger(): Unit = {
+  def initializeLogger(): Unit =
     sys.props ++= List(
-      "Log4jContextSelector" → "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector",
-      "AsyncLogger.WaitStrategy" → "Blocking")
-  }
+      "log4j2.contextSelector" → "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector",
+      "jobscheduler.log4j.immediateFlush" → "false")
 
   def newBuildId: String = {
     val uuid = UUID.randomUUID

@@ -7,7 +7,7 @@
     <rollingRandomAccessFile name="file"
                              fileName="${env:SCHEDULER_LOGS}/master.log"
                              filePattern="${env:SCHEDULER_LOGS}/master-%d{yyyy-MM-dd}-%i.log.gz"
-                             immediateFlush="false">
+                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
