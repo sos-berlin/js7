@@ -193,7 +193,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
             body(state)
           }
         else
-          Callback.log(s"${state.appState} forStep=$forStep!= state.version=${state.ordersState.step} - Response discarded")
+          Callback.log(s"${state.appState} forStep=$forStep != state.version=${state.ordersState.step} - Response discarded")
     } yield callback
 
   private def catching(body: ⇒ Callback): Callback =

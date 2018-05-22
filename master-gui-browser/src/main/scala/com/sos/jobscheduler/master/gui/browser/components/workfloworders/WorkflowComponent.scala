@@ -16,9 +16,11 @@ object WorkflowComponent
 
   private val component = ScalaComponent.builder[PreparedWorkflow]("PreparedWorkflow")
     .render_P { preparedWorkflow ⇒
-      val b = new VdomBuilder
-      b.build(preparedWorkflow.workflow)
-      b.vdomArray
+      <.div {
+        val b = new VdomBuilder
+        b.build(preparedWorkflow.workflow)
+        b.vdomArray
+      }
     }
     .configure {
       implicit val reuse = Reusability.byRef[PreparedWorkflow]

@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 
-import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
 import com.sos.jobscheduler.master.gui.browser.common.Utils.memoize
-import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, FetchingContent, Starting, OrderEntry}
+import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, FetchingContent, OrderEntry, Starting}
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow
 import com.sos.jobscheduler.master.gui.browser.components.workfloworders.WorkflowOrdersBackend._
 import com.sos.jobscheduler.master.gui.browser.components.workfloworders.WorkflowOrdersComponent.Props
@@ -36,25 +35,26 @@ extends OnUnmount {
             props.preparedWorkflow.id),
           <.div(sequence.length.toString, " orders"),
           ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
-          <.div(^.cls := "Workflow-content",
+          <.div(^.cls := "Workflow-with-orders",
             WorkflowComponent(props.preparedWorkflow),
             renderOrders(props.preparedWorkflow, content)))
     }
   }
 
   private def renderOrders(preparedWorkflow: PreparedWorkflow, content: FetchedContent) =
-    (for {
-        (position, x0, y) ← preparedWorkflow.positionsWithXY
-        orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.id /: position)
-        n = min(orderIds.length, OrderPerInstructionLimit)
-        (orderEntry, i) ← Iterator.tabulate[(OrderEntry, Int)](n)(i ⇒ content.idToEntry(orderIds(i)) → i)
-        x = orderXpx(x0, i)
-      } yield (orderEntry, x, y))
-    .sortBy(_._1.id)  // Sort to allow React to identify known orders
-    .toVdomArray { case (orderEntry, x, y) ⇒
-      <.div(^.key := orderEntry.id.string, moveElement(x, y), ^.cls := "orders-Order-moving",
-        boxedOrderComponent(orderEntry))
-    }
+    <.div(
+      (for {
+          (position, x0, y) ← preparedWorkflow.positionsWithXY
+          orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.id /: position)
+          n = min(orderIds.length, OrderPerInstructionLimit)
+          (orderEntry, i) ← Iterator.tabulate[(OrderEntry, Int)](n)(i ⇒ content.idToEntry(orderIds(i)) → i)
+          x = orderXpx(x0, i)
+        } yield (orderEntry, x, y))
+      .sortBy(_._1.id)  // Sort to allow React to identify known orders
+      .toVdomArray { case (orderEntry, x, y) ⇒
+        <.div(^.key := orderEntry.id.string, ^.cls := "orders-Order-moving", moveElement(x, y),
+          boxedOrderComponent(orderEntry))
+      })
 }
 
 object WorkflowOrdersBackend {
@@ -64,11 +64,5 @@ object WorkflowOrdersBackend {
 
   private val moveElement = memoize[(Int, Int), TagMod] { case (x, y) ⇒
     WorkflowComponent.moveElement(x, y)
-  }
-
-  private case class Line(y: Int, content: Line.Content)
-  private object Line {
-    sealed trait Content
-    final case class Instr(labeledInstruction: Instruction.Labeled) extends Content
   }
 }
