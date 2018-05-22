@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.web.master
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import com.google.inject.Injector
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -26,9 +27,12 @@ object RouteService {
   private val logger = Logger(getClass)
   private val InterfaceName = classOf[RouteService].scalaName
 
-  private val routeServices = Coeval.evalOnce {
+  private def routeServices(injector: Injector) = Coeval.evalOnce {
     val routes: Seq[NamedRouteService] = ServiceLoader.load(classOf[RouteService]).iterator.asScala
-      .flatMap(svc ⇒ svc.namedRoutes map (r ⇒ NamedRouteService(r, svc))).toVector
+      .flatMap { svc ⇒
+        injector.injectMembers(svc)
+        svc.namedRoutes map (r ⇒ NamedRouteService(r, svc))
+      }.toVector
     routes.duplicateKeys(_.namedRoute.suburi) match {
       case duplicates if duplicates.nonEmpty ⇒ sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(_.toString).mkString(", "))
       case _ ⇒
@@ -47,8 +51,9 @@ object RouteService {
 
   private[master] trait RouteServiceRoute {
     protected implicit def scheduler: Scheduler
+    protected implicit def injector: Injector
 
-    private val _route: Coeval[Route] = routeServices.map(
+    private val _route: Coeval[Route] = routeServices(injector).map(
       _.map {
         case NamedRouteService(NamedRoute("", route), _) ⇒ route
         case NamedRouteService(NamedRoute(name, route), _) ⇒ pathSegments(name)(route)

@@ -21,7 +21,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-private abstract class RouteProvider(gateKeeper: GateKeeper, injector: Injector)
+private abstract class RouteProvider(gateKeeper: GateKeeper, protected val injector: Injector)
 extends AllRoute {
 
   protected val actorSystem = injector.instance[ActorSystem]

@@ -1,12 +1,15 @@
 package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
 import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.google.common.base.Ascii
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
@@ -128,6 +131,49 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
     }
+
+  "Server-sent events" - {
+    "/event?after=0" in {
+      Get(s"/event?after=0&limit=2") ~> Accept(`text/event-stream`) ~> route ~> check {
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+        assert(response.entity.contentType == ContentType(`text/event-stream`))
+        assert(response.utf8StringFuture.await(99.s) ==
+          """data:{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}
+            |id:10
+            |
+            |data:{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}
+            |id:20
+            |
+            |""".stripMargin)
+      }
+    }
+
+    "/event?after=0, retry with Last-Event-Id" in {
+      Get(s"/event?after=0&limit=2") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+        assert(response.entity.contentType == ContentType(`text/event-stream`))
+        assert(response.utf8StringFuture.await(99.s) ==
+          """data:{"eventId":30,"timestamp":999,"key":"3","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}
+            |id:30
+            |
+            |data:{"eventId":40,"timestamp":999,"key":"4","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}
+            |id:40
+            |
+            |""".stripMargin)
+      }
+    }
+
+    "/event?v=XXX&after=0, buildId changed" in {
+      Get(s"/event?v=XXX&after=0") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+        assert(response.entity.contentType == ContentType(`text/event-stream`))
+        val string = response.utf8StringFuture.await(99.s)
+        val problemJson = """{"TYPE":"Problem","message":"BUILD-CHANGED"}"""
+        assert(string == s"data:$problemJson\n\n")
+        assert(problemJson.parseJson.as[Problem].orThrow.toString == "BUILD-CHANGED")
+      }
+    }
+  }
 }
 
 object EventRouteTest

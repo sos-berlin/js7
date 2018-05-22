@@ -10,6 +10,7 @@ import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{Con
 import org.scalajs.dom.window
 import scala.collection.immutable.{Seq, VectorBuilder}
 import scala.collection.mutable
+import scala.scalajs.js
 
 /**
   * @author Joacim Zschimmer
@@ -84,14 +85,14 @@ object OrdersState {
 
     def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[OrderEvent]]]): FetchedContent = {
       val updated = mutable.Map[OrderId, OrderEntry]()
-      val added = mutable.Map[WorkflowId, mutable.Buffer[OrderId]]()
+      val added = mutable.Map[WorkflowId, js.Array[OrderId]]()
       val deleted = mutable.Set[OrderId]()
       var evtCount = 0
       val nowMillis = Timestamp.epochMilli
       stampedEvents foreach {
         case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
           updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
-          added.getOrElseUpdate(event.workflowId, mutable.Buffer()) += orderId
+          added.getOrElseUpdate(event.workflowId, new js.Array) += orderId
           deleted -= orderId
           evtCount += 1
 
@@ -122,7 +123,7 @@ object OrdersState {
                   for (childOrder ← entry.order.newForkedOrders(event)) {
                     updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
                     deleted -= childOrder.id
-                    added.getOrElseUpdate(entry.order.workflowId, mutable.Buffer()) += childOrder.id
+                    added.getOrElseUpdate(entry.order.workflowId, new js.Array) += childOrder.id
                   }
 
                 case _: OrderJoined ⇒
@@ -170,7 +171,7 @@ object OrdersState {
 
   private def concatOrderIds(
     wToO: WorkflowToOrderIds,
-    added: mutable.Map[WorkflowId, mutable.Buffer[OrderId]])
+    added: mutable.Map[WorkflowId, js.Array[OrderId]])
   : WorkflowToOrderIds =
       wToO ++
         (for ((workflowId, orderIds) ← added) yield

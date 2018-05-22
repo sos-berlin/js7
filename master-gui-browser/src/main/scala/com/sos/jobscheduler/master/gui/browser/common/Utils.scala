@@ -6,6 +6,7 @@ import japgolly.scalajs.react.vdom.TagMod
 import org.scalajs.dom.window
 import scala.collection.mutable
 import scala.language.{higherKinds, implicitConversions}
+import scala.scalajs.js.URIUtils.encodeURIComponent
 
 /**
   * @author Joacim Zschimmer
@@ -36,4 +37,11 @@ object Utils {
     new mutable.HashMap[K, V] {
       override def apply(key: K) = getOrElseUpdate(key, f(key))
     }
+
+  def toUriQueryString(keyValues: Iterable[(String, String)]): String =
+    keyValues.map { case (k, v) ⇒
+      val kk = encodeURIComponent(k)
+      val vv = encodeURIComponent(v)
+      s"$kk=$vv"
+    }.mkString("&")
 }

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.gui.server
 
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked.CheckedOption
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.BuildInfo.{buildId, buildVersion}
@@ -9,6 +10,9 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.master.gui.server.common.HtmlPage
+import com.typesafe.config.Config
+import io.circe.Json
+import io.circe.syntax.EncoderOps
 import scala.language.implicitConversions
 import scalatags.Text.all._
 import scalatags.Text.{TypedTag, tags2}
@@ -16,7 +20,7 @@ import scalatags.Text.{TypedTag, tags2}
 /**
   * @author Joacim Zschimmer
   */
-object IndexHtml extends HtmlPage.Cached {
+final class IndexHtml(config: Config) extends HtmlPage.Cached {
 
   private val logger = Logger(getClass)
   private lazy val resource = JavaResource("com/sos/jobscheduler/master/gui/server/gui-js.conf")
@@ -33,21 +37,27 @@ object IndexHtml extends HtmlPage.Cached {
           div(id := "GUI")(
             pre("JobScheduler Master...")),
           script(`type` := "text/javascript", src := s"master/gui/master-gui-browser-jsdeps.min.js?v=$buildId"),
-          script(`type` := "text/javascript")(s"""
-            |jobschedulerBuildId='$buildId';
-            |jobschedulerBuildVersion='$buildVersion';
-            |jQuery(document).ready(function() {
-            |  jQuery('#GUI').on('click', '.clickable-row', function() {
-            |    window.location = jQuery(this).data('href');
-            |  });
-            |});"""
-            .stripMargin + "\n"),
+          script(`type` := "text/javascript")(raw(s"""
+           |guiConfig=${guiConfig.pretty(CompactPrinter)};
+           |jQuery(document).ready(function() {
+           |  jQuery('#GUI').on('click', '.clickable-row', function() {
+           |    window.location = jQuery(this).data('href');
+           |  });
+           |});""".stripMargin + "\n")),
           jsName match {
             case Invalid(problem) ⇒
               p(b(color := "red", problem.toString))
             case Valid(o) ⇒
               script(`type` := "text/javascript", src := s"master/gui/$o?v=$buildId")
           }))
+
+  private def guiConfig = Json.obj(
+    "buildId"           → buildId.asJson,
+    "buildVersion"      → buildVersion.asJson,
+    "fetchEventsWith"   → config.as[String] ("jobscheduler.gui.fetch-events-with", "").asJson,
+    "sseBatchDelay"     → config.getDuration("jobscheduler.gui.sse.batch-delay").toMillis.asJson,
+    "sseBatchSize"      → config.getInt     ("jobscheduler.gui.sse.batch-size").asJson,
+    "sseServerTimeout"  → config.getDuration("jobscheduler.gui.sse.server-timeout").toMillis.asJson)
 
   private def jsName: Checked[String] =
     (try Configs.loadResource(resource).optionAs[String]("jsName")

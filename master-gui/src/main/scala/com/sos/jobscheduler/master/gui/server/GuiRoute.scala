@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.pathEndElseRedir
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.master.gui.server.GuiRoute._
+import com.typesafe.config.Config
 
 /**
   * @author Joacim Zschimmer
@@ -20,6 +21,7 @@ trait GuiRoute extends WebjarsRoute {
   // Lazy and not in object to avoid ExceptionInInitializerError
   private lazy val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/browser/gui")
   protected def copiedWebjarsResource = ResourceDirectory / "webjars"
+  protected def config: Config
 
   final def indexHtmlRoute =
     pathEndElseRedirect {
@@ -27,7 +29,7 @@ trait GuiRoute extends WebjarsRoute {
         conditional(EntityTag(BuildInfo.buildId)) {
           respondWithHeader(`Cache-Control`(`max-age`(0))) {  // This allows Firefox and Safari (but not Chrome) to use the cache when hitting the back button - for good user experience.
             // A simple page reload must fetch a fresh copy of index.html to get the up-to-date buildId matching the API's buildId
-            complete(IndexHtml)
+            complete(new IndexHtml(config))
           }
         }
       }

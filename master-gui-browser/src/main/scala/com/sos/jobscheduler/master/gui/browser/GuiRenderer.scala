@@ -4,7 +4,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.gui.browser.GuiRenderer._
 import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.browser.router.Router
-import com.sos.jobscheduler.master.gui.browser.services.JsBridge
+import com.sos.jobscheduler.master.gui.browser.services.JsBridge.guiConfig
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
@@ -93,7 +93,7 @@ object GuiRenderer {
   val Moon = "\uD83C\uDF19"
 
   lazy val topLineleft = {
-    val Array(version, versionExt) = (JsBridge.jobschedulerBuildVersion + " ").split(" ", 2)
+    val Array(version, versionExt) = (guiConfig.buildVersion + " ").split(" ", 2)
     <.td(^.cls := "page-top-left")(
       <.span(^.cls := "page-top-left-segment")(
         <.a(^.cls := "hidden-link", ^.href := "#")(

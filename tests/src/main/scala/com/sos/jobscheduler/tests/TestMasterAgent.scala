@@ -81,10 +81,12 @@ object TestMasterAgent {
   private def run(conf: Conf): Unit = {
     val env = new TestEnvironment(conf.agentPaths, conf.directory)
     withCloser { implicit closer ⇒
-      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(
-        configAndData = env.masterDir,
-        httpPort = 4444).copy(
-        journalSyncOnCommit = conf.syncMaster)))
+      val masterConfiguration = MasterConfiguration.forTest(
+              configAndData = env.masterDir,
+              httpPort = 4444)
+      val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
+        journalSyncOnCommit = conf.syncMaster,
+        config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
         env.agentFile(agentPath, TestJobPath, SourceType.Xml).xml =

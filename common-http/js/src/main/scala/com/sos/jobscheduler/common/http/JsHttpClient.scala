@@ -50,17 +50,16 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
 
   private def checkResponse(tried: Try[XMLHttpRequest]): XMLHttpRequest =
     tried match {
-      case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
-        logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
+      //case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
+      //  logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
 
-      case Failure(t: AjaxException) if t.getMessage == null || t.getMessage.isEmpty ⇒
-        throw new HttpClientException(HostUnreachable())
-
-      case Failure(t: AjaxException) if t.xhr.status != 0 ⇒
-        throw new HttpClientException(HttpFailure(t.xhr.status, t.xhr.statusText))
+      //case Failure(t: AjaxException) if t.getMessage == null || t.getMessage.isEmpty ⇒
+      //  throw new HttpClientException(HostUnreachable())
 
       case Failure(t: AjaxException) ⇒
-        throw new HttpClientException(HostUnreachable(t.toString))
+        throw new HttpClientException(
+          if (t.xhr.status != 0) HttpFailure(t.xhr.status, t.xhr.statusText)
+          else HostUnreachable(t.toStringWithCauses))
 
       case Failure(t) ⇒
         logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: ${t.toStringWithCauses}", Some(t)))
@@ -87,13 +86,13 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
     window.console.warn(error.toString)
     throw new HttpClientException(error)
   }
-
-  private def reloadPage(): Unit =
-    window.setTimeout(
-      () ⇒ window.location.reload(),
-      ReloadDelay.toMillis)  // Delay in case of reload-loop
 }
 
 object JsHttpClient {
   private val ReloadDelay = 2.second  // Just in case of a loop
+
+  def reloadPage(): Unit =
+    window.setTimeout(
+      () ⇒ window.location.reload(),
+      ReloadDelay.toMillis)  // Delay in case of reload-loop
 }

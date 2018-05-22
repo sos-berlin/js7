@@ -11,7 +11,6 @@ import scala.scalajs.js.annotation.JSGlobalScope
 @JSGlobalScope
 object JsBridge extends js.Object {
 
-  var jobschedulerBuildId: String = js.native
-  var jobschedulerBuildVersion: String = js.native
+  val guiConfig: GuiConfig = js.native
   val jQuery: JQueryStatic = js.native
 }

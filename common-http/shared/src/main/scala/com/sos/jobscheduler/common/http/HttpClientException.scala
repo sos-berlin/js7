@@ -28,7 +28,7 @@ object HttpClientException {
   final case class HostUnreachable(reason: String = "") extends Reason {
     override def isUnreachable = true
 
-    override def toString = s"JobScheduler is not reachable — $reason".trim stripSuffix " —"
+    override def toString = s"JobScheduler is unreachable — $reason".trim stripSuffix " —"
   }
 
   final case class OtherFailure(reason: String, maybeThrowable: Option[Throwable]) extends Reason {
