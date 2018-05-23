@@ -28,8 +28,8 @@ final class MasterRepoReaderTest extends FreeSpec {
       writeWorkflowFile(BWorkflowPath)
       repo = repoReader.applyConfigurationDirectory(repo, Some(V1)).orThrow
       assert(repo.idToFileBased == Map(
-        (AWorkflowPath % V1) → Some(TestWorkflow.copy(id = AWorkflowPath % V1)),
-        (BWorkflowPath % V1) → Some(TestWorkflow.copy(id = BWorkflowPath % V1))))
+        (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
+        (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1))))
 
       assert(repoReader.applyConfigurationDirectory(repo, Some(V1)) == Invalid(Problem("Duplicate VersionId '1'")))
 
@@ -57,10 +57,10 @@ final class MasterRepoReaderTest extends FreeSpec {
 
       assert(repo.versions == V3 :: V2 :: V1 :: Nil)
       assert(repo.idToFileBased == Map(
-        (AWorkflowPath % V1) → Some(TestWorkflow.copy(id = AWorkflowPath % V1)),
-        (BWorkflowPath % V1) → Some(TestWorkflow.copy(id = BWorkflowPath % V1)),
+        (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
+        (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1)),
         (BWorkflowPath % V3) → None,
-        (CWorkflowPath % V2) → Some(TestWorkflow.copy(id = CWorkflowPath % V2))))
+        (CWorkflowPath % V2) → Some(TestWorkflow.withId(CWorkflowPath % V2))))
 
       def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
         directory.resolve(workflowPath.toFile(SourceType.Json)).contentString = TestWorkflowJson.toString

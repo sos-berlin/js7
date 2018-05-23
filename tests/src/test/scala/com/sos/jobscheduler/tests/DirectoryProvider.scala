@@ -5,6 +5,7 @@ import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
@@ -13,14 +14,15 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
+import io.circe.syntax.EncoderOps
 import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
@@ -44,9 +46,9 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     master.createDirectories()
     for (a ← agentToTree.values) {
       a.createDirectories()
-      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.xml"
+      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
       Files.createDirectories(file.getParent)
-      file.xml = <agent uri={a.conf.localUri.toString}/>
+      file.contentString = Agent(AgentPath.NoId, uri = a.conf.localUri.toString).asJson.toPrettyString
     }
   }
 
@@ -136,13 +138,13 @@ object DirectoryProvider {
     lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
   }
 
-  def jobXml(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
-    <job tasks="3">
-      <params>{
-        for ((k, v) ← variables) yield <param name={k} value={v}/>
-      }</params>
-      <script language="shell">{script(duration, resultVariable)}</script>
-    </job>
+  def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
+    JobConfiguration(
+      JobPath.NoId,
+      JobScript(script(duration, resultVariable)),
+      variables,
+      taskLimit = 10
+    ).asJson.toPrettyString
 
   val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 

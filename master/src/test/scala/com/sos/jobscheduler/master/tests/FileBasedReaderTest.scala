@@ -53,12 +53,12 @@ final class FileBasedReaderTest extends FreeSpec {
 object FileBasedReaderTest {
   private def createFiles(directory: Path): Unit = {
     createDirectories(directory / "ignored.agent.xml")  // Empty directory named like an agent is ignored
-    (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString
+    (directory / "A.workflow.json").contentString = AWorkflow.withoutId.asJson.toPrettyString
     (directory / "B.job_chain.xml").xml = <job_chain><job_chain_node.end state="B-END"/></job_chain>
     (directory / "C.workflow.txt").contentString = "// EMPTY"
     (directory / "D.workflow.txt").contentString = "ERROR"
     (directory / "E.workflow.json").contentString = "NO-JSON"
-    (directory / "A.agent.xml").xml = <agent uri="http://A"/>
+    (directory / "A.agent.json").contentString = """{ "uri": "http://A" }"""
     (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
     (directory / "folder" / "test.alien.json").contentString = ""
   }

@@ -6,21 +6,25 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, Login, RegisterAsMaster}
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.agent.tests.OrderAgentTest._
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
@@ -35,8 +39,8 @@ final class OrderAgentTest extends FreeSpec {
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
-      (jobDir / AJob.jobPath.toXmlFile).xml = AJobXml
-      (jobDir / BJob.jobPath.toXmlFile).xml = BJobXml
+      (jobDir resolve AJob.jobPath.toFile(SourceType.Json)).contentString = AJobConfiguration.asJson.toPrettyString
+      (jobDir resolve BJob.jobPath.toFile(SourceType.Json)).contentString = BJobConfiguration.asJson.toPrettyString
       val agentConf = AgentConfiguration.forTest(Some(directory))
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
         withCloser { implicit closer ⇒
@@ -64,8 +68,8 @@ final class OrderAgentTest extends FreeSpec {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
-      (jobDir / "a.job.xml").xml = AJobXml
-      (jobDir / "b.job.xml").xml = BJobXml
+      (jobDir / "a.job.json").contentString = AJobConfiguration.asJson.toPrettyString
+      (jobDir / "b.job.json").contentString = BJobConfiguration.asJson.toPrettyString
       val agentConf = AgentConfiguration.forTest(Some(directory))
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒
@@ -112,21 +116,11 @@ private object OrderAgentTest {
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
-  private val AJobXml =
-    <job tasks={sys.runtime.availableProcessors.toString}>
-      <params>
-        <param name="var1" value="AAA"/>
-      </params>
-      <script language="shell">{TestScript}</script>
-    </job>
+  private val AJobConfiguration =
+    JobConfiguration(JobPath.NoId, JobScript(TestScript), Map("var1" → "AAA"), taskLimit = sys.runtime.availableProcessors)
 
-  private val BJobXml =
-    <job tasks={sys.runtime.availableProcessors.toString}>
-      <params>
-        <param name="var1" value="BBB"/>
-      </params>
-      <script language="shell">{TestScript}</script>
-    </job>
+  private val BJobConfiguration =
+    JobConfiguration(JobPath.NoId, JobScript(TestScript), Map("var1" → "BBB"), taskLimit = sys.runtime.availableProcessors)
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(

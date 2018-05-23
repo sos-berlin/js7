@@ -29,7 +29,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.tests.TestEventCollector
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
 import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
 import java.time.Instant
@@ -51,7 +51,7 @@ final class RecoveryTest extends FreeSpec {
       var lastEventId = EventId.BeforeFirst
       autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
         for ((agentPath, tree) ← directoryProvider.agentToTree)
-          tree.file(TestJobPath, SourceType.Xml).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
+          tree.file(TestJobPath, SourceType.Json).contentString = jobJson(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
         withCloser { implicit closer ⇒
           for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
           (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem

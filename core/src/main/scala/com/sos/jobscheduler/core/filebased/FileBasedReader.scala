@@ -3,12 +3,15 @@ package com.sos.jobscheduler.core.filebased
 import akka.util.ByteString
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath, VersionId}
+import io.circe.Decoder
+import io.circe.parser.{parse ⇒ parseJson}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
 
@@ -21,7 +24,7 @@ trait FileBasedReader
 
   import companion.{ThisFileBased, Path ⇒ ThisTypedPath}
 
-  def read(id: FileBasedId[ThisTypedPath], byteString: ByteString): PartialFunction[SourceType, Checked[ThisFileBased]]
+  protected def read(id: FileBasedId[ThisTypedPath], byteString: ByteString): PartialFunction[SourceType, Checked[ThisFileBased]]
 
   private def readUntyped(id: FileBasedId_, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
     assert(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
@@ -31,6 +34,9 @@ trait FileBasedReader
   }
 
   final def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = companion.typedPathCompanion
+
+  protected final def readAnonymousJson[A <: FileBased { type Self = A }: Decoder](source: ByteString): Checked[A] =
+    parseJson(source.utf8String).toSimpleChecked flatMap (_.as[A].toSimpleChecked)
 }
 
 object FileBasedReader

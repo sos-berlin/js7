@@ -3,8 +3,8 @@ package com.sos.jobscheduler.tests.history
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderFatEvent, OrderId, Payl
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.DirectoryProvider
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
 import com.sos.jobscheduler.tests.history.HistoryTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -33,7 +33,7 @@ final class HistoryTest extends FreeSpec
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
       withCloser { implicit closer ⇒
         provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
-        for (a ← provider.agents) a.file(TestJobPath, SourceType.Xml).xml = jobXml(0.s)
+        for (a ← provider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(0.s)
 
         provider.runAgents() { runningAgents ⇒
           provider.runMaster() { master ⇒

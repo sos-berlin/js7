@@ -7,6 +7,8 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
@@ -41,6 +43,7 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
+import io.circe.syntax.EncoderOps
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
@@ -89,12 +92,10 @@ object TestMasterAgent {
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
-        env.agentFile(agentPath, TestJobPath, SourceType.Xml).xml =
-          <job tasks={conf.tasksPerJob.toString}>
-            <params>
-              <param name="JOB-VARIABLE" value={s"VALUE-${ agentPath.withoutStartingSlash }"}/>
-            </params>
-            <script language="shell">{
+        env.agentFile(agentPath, TestJobPath, SourceType.Xml).contentString =
+          JobConfiguration(
+            JobPath.NoId,
+            JobScript(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
@@ -105,9 +106,10 @@ object TestMasterAgent {
                  |echo Hello ☘️
                  |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                  |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
-                 |""".stripMargin
-            }</script>
-          </job>
+                 |""".stripMargin),
+            Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
+            taskLimit = conf.tasksPerJob
+          ).asJson.toPrettyString
         val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
             configAndData = Some(env.agentDir(agentPath))).copy(
             journalSyncOnCommit = conf.syncAgent))

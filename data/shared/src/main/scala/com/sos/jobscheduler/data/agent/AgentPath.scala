@@ -13,5 +13,6 @@ final case class AgentPath(string: String) extends TypedPath {
 object AgentPath extends TypedPath.Companion[AgentPath]
 {
   val sourceTypeToFilenameExtension = Map(
+    SourceType.Json → ".agent.json",
     SourceType.Xml → ".agent.xml")
 }

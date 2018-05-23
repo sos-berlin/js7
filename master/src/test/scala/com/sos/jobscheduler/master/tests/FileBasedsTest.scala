@@ -34,11 +34,11 @@ final class FileBasedsTest extends FreeSpec {
       val v0FileBaseds = List(AWorkflow, BWorkflow, DWorkflow, AAgent)
 
       // Write folder image for version V1, using different source types
-      (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString  // Same
-      (directory / "C.workflow.txt").contentString = CWorkflow.source.get              // Same
-      (directory / "D.workflow.txt").contentString = D1Workflow.source.get             // Changed
-      (directory / "A.agent.xml").xml = <agent uri="http://A"/>                        // Same
-      (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>             // Added
+      (directory / "A.workflow.json").contentString = AWorkflow.withoutId.asJson.toPrettyString  // Same
+      (directory / "C.workflow.txt").contentString = CWorkflow.source.get                 // Same
+      (directory / "D.workflow.txt").contentString = D1Workflow.source.get                // Changed
+      (directory / "A.agent.json").contentString = AAgent.withoutId.asJson.toPrettyString // Same
+      (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>                // Added
 
       val eventsChecked = FileBaseds.readDirectory(readers, directory, v0FileBaseds, V1)
       assert(eventsChecked.map(_.toSet) == Valid(Set(
@@ -91,7 +91,6 @@ object FileBasedsTest {
   private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "CHANGED-D-END: end").orThrow
   private[tests] val AAgent = Agent(AgentPath("/A") % u, "http://A")
   private[tests] val BAgent = Agent(AgentPath("/folder/B") % u, "http://B")
-
 
   private[tests] def provideDirectory[A](body: Path ⇒ A): A = {
     val dir = createTempDirectory("test-")

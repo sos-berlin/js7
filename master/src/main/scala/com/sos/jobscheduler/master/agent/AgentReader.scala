@@ -14,6 +14,10 @@ object AgentReader extends FileBasedReader
   val companion = Agent
 
   def read(agentId: AgentId, source: ByteString) = {
-    case SourceType.Xml ⇒ AgentXmlParser.parseXml(agentId, simpleByteStringSource(source))
+    case SourceType.Json ⇒
+      readAnonymousJson[Agent](source) map (_ withId agentId)
+
+    case SourceType.Xml ⇒
+      AgentXmlParser.parseXml(agentId, simpleByteStringSource(source))
   }
 }

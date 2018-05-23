@@ -8,22 +8,26 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Login, RegisterAsMaster, Terminate}
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateTest._
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.{EventId, EventRequest}
+import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import io.circe.syntax.EncoderOps
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -84,10 +88,13 @@ object TerminateTest {
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
-      (agentDirectory / "config" / "live" / AJob.jobPath.toXmlFile).xml =
-        <job tasks="10">
-          <script language="shell">{AScript}</script>
-        </job>
+      (agentDirectory / "config" / "live" resolve AJob.jobPath.toFile(SourceType.Json)).contentString =
+        JobConfiguration(
+          JobPath.NoId,
+          JobScript(AScript),
+          Map.empty,
+          taskLimit = 10
+        ).asJson.toPrettyString
       val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
       implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(

@@ -1,0 +1,5 @@
+{
+  "script": "echo はじめまして。\nexit\n",
+  "variables": {},
+  "taskLimit": 1
+}

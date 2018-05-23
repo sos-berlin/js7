@@ -1,15 +1,53 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import cats.data.Validated.Valid
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.tester.CirceJsonTester
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 final class JobConfigurationTest extends FreeSpec {
+
+  "JSON, anonymous" in {
+    CirceJsonTester.testJson(
+      JobConfiguration(
+        JobPath.NoId,
+        JobScript("echo HELLO\n"),
+        Map("VARIABLE" → "VALUE"),
+        taskLimit = 3),
+      json"""{
+        "script": "echo HELLO\n",
+        "variables": {
+          "VARIABLE": "VALUE"
+        },
+        "taskLimit": 3
+      }""")
+  }
+
+  "JSON, with Id" in {
+    CirceJsonTester.testJson(
+      JobConfiguration(
+        JobPath("/JOB") % "1",
+        JobScript("echo HELLO\n"),
+        Map("VARIABLE" → "VALUE"),
+        taskLimit = 3),
+      json"""{
+        "id": {
+          "path": "/JOB",
+          "versionId": "1"
+        },
+        "script": "echo HELLO\n",
+        "variables": {
+          "VARIABLE": "VALUE"
+        },
+        "taskLimit": 3
+      }""")
+  }
 
   "test" in {
     val jobXml =

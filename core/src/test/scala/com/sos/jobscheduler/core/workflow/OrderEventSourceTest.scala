@@ -163,7 +163,7 @@ final class OrderEventSourceTest extends FreeSpec {
 
 object OrderEventSourceTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
-  private val ForkWorkflow = ForkTestSetting.TestWorkflow.copy(id = TestWorkflowId)
+  private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.Success)))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.StandardFailure)))

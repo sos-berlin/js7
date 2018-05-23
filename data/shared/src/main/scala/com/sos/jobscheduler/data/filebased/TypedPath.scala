@@ -23,15 +23,15 @@ trait TypedPath extends GenericString {
 
   def companion: Companion[_ <: TypedPath]
 
-  lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
+  final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
   /** Has to be called in every implementing constructor. */
   final def validate() = companion.check(string).orThrow
 
-  def requireNonAnonymous(): Unit =
+  final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
 
-  def nesting = string stripSuffix "/" count { _ == '/' }
+  final def nesting = string stripSuffix "/" count { _ == '/' }
 
   final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
 
@@ -41,19 +41,19 @@ trait TypedPath extends GenericString {
   def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 
-  def asTyped[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+  final def asTyped[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
     if (P == companion)
       this.asInstanceOf[P]
     else
       P.apply(string)
   }
 
-  def cast[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+  final def cast[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
     if (P != companion) throw new ClassCastException(s"Expected ${companion.name} but is: $toString")
     this.asInstanceOf[P]
   }
 
-  def officialSyntaxChecked: Checked[this.type] =
+  final def officialSyntaxChecked: Checked[this.type] =
     if (string startsWith InternalPrefix)
       Problem(s"Internal path is not allowed here: $this")
     else
@@ -62,15 +62,15 @@ trait TypedPath extends GenericString {
         case Valid(_) ⇒ Valid(this)
       }
 
-  def isAnonymous = this == companion.Anonymous
+  final def isAnonymous = this == companion.Anonymous
 
-  def isGenerated = string startsWith InternalPrefix
+  final def isGenerated = string startsWith InternalPrefix
 
   override def toString = toTypedString
 
-  def pretty: String = s"${companion.camelName} $string"
+  final def pretty: String = s"${companion.camelName} $string"
 
-  def toTypedString: String = s"${companion.camelName}:$string"
+  final def toTypedString: String = s"${companion.camelName}:$string"
 }
 
 object TypedPath {
@@ -89,9 +89,9 @@ object TypedPath {
 
   abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Companion[P]
   {
-    val NameOrdering: Ordering[P] = Ordering by { _.name }
-    lazy val Anonymous: P = apply(InternalPrefix + "anonymous")
-    lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
+    final val NameOrdering: Ordering[P] = Ordering by { _.name }
+    final lazy val Anonymous: P = apply(InternalPrefix + "anonymous")
+    final lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
 
     def apply(o: String): P
 
@@ -105,7 +105,7 @@ object TypedPath {
       else
         check(string) map (_ ⇒ apply(string))
 
-    private[TypedPath] def check(string: String): Checked[Unit] = {
+    final private[TypedPath] def check(string: String): Checked[Unit] = {
       def errorString = s"$name '$string'"
       if (!isEmptyAllowed && string.isEmpty)
         Problem(s"Must not be the empty string in $errorString")
@@ -123,14 +123,14 @@ object TypedPath {
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
-    implicit val implicitCompanion: Companion[P] = this
-    implicit val checkedString: CheckedString[P] = string ⇒ Companion.this.checked(string)
+    final implicit val implicitCompanion: Companion[P] = this
+    final implicit val checkedString: CheckedString[P] = string ⇒ Companion.this.checked(string)
     final val camelName: String = name stripSuffix "Path"
 
     final def typedPathClass: Class[P] = implicitClass[P]
 
     /** Converts a relative file path with normalized slahes (/) to a `TypedPath`. */
-    def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
+    final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext ⇒
         checked("/" + normalized.dropRight(ext.length)) map (_ → t)
       }
@@ -145,12 +145,12 @@ object TypedPath {
 
     override def toString = name
 
-    override implicit val jsonEncoder: Encoder[P] = o ⇒ {
+    override final implicit val jsonEncoder: Encoder[P] = o ⇒ {
       if (o == Anonymous) throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
       Json.fromString(o.string)
     }
 
-    override implicit val jsonDecoder: Decoder[P] =
+    override final implicit val jsonDecoder: Decoder[P] =
       _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
   }
 

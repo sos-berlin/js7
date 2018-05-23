@@ -20,7 +20,7 @@ import scala.util.control.NoStackTrace
 final class WorkflowParserTest extends FreeSpec {
 
   "parse" in {
-    assert(parse(TestWorkflowNotation) == TestWorkflow.copy(id = WorkflowPath.NoId))
+    assert(parse(TestWorkflowNotation) == TestWorkflow.withId(WorkflowPath.NoId))
   }
 
   "Single instruction with relative paths" in {

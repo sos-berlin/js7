@@ -1,7 +1,6 @@
-package com.sos.jobscheduler.master.agent
+package com.sos.jobscheduler.data.agent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -10,7 +9,14 @@ import org.scalatest.FreeSpec
   */
 final class AgentTest extends FreeSpec
 {
-  "JSON" in {
+  "JSON, anonymous" in {
+    testJson(Agent(AgentPath.NoId, "http://127.0.0.1"),
+      json"""{
+        "uri": "http://127.0.0.1"
+      }""")
+  }
+
+  "JSON, with ID" in {
     testJson(Agent(AgentPath("/AGENT") % "VERSION", "http://127.0.0.1"),
       json"""{
         "id": {

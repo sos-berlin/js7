@@ -22,7 +22,7 @@ final class TypedPathsTest extends FreeSpec {
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.job.json")) ==
-      Invalid(Problem(s"File '...${separator}folder${separator}test.job.json' is not recognized as a configuration file")))
+      Valid(JobPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.txt")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Txt))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.job_chain.xml")) ==

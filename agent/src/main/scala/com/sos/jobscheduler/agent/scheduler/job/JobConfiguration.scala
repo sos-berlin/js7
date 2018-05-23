@@ -1,11 +1,13 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.xmls.{FileSource, ScalaXMLEventReader}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.core.common.VariablesXmlParser
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.job.{JobId, JobPath}
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
 import javax.xml.transform.Source
 
 /**
@@ -36,10 +38,21 @@ object JobConfiguration extends FileBased.Companion[JobConfiguration]
 
   private val DefaultTaskLimit = 1
 
-  def parseXml(id: JobId, file: java.nio.file.Path): Checked[JobConfiguration] =
-    autoClosing(new FileSource(file)) { src ⇒
-      JobConfiguration.parseXml(id, src)
-    }
+  implicit val jsonEncoder: ObjectEncoder[JobConfiguration] = job ⇒
+    JsonObject(
+      "id" → (!job.id.isAnonymous ? job.id).asJson,
+      "script" → Json.fromString(job.script.string),
+      "variables" → job.variables.asJson,
+      "taskLimit" → Json.fromInt(job.taskLimit))
+
+  implicit val jsonDecoder: Decoder[JobConfiguration] =
+    cursor ⇒
+      for {
+        id ← cursor.get[Option[JobId]]("id") map (_ getOrElse JobPath.NoId)
+        script ← cursor.get[String]("script") map JobScript.apply
+        variables ← cursor.get[Map[String, String]]("variables")
+        taskLimit ← cursor.get[Int]("taskLimit")
+      } yield JobConfiguration(id, script, variables, taskLimit)
 
   def parseXml(id: JobId, source: Source): Checked[JobConfiguration] =
     Checked.catchNonFatal {

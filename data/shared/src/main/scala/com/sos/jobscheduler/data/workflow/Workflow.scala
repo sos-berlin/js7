@@ -207,7 +207,7 @@ object Workflow extends FileBased.Companion[Workflow] {
   }
   implicit val jsonDecoder: Decoder[Workflow] =
     cursor ⇒ for {
-      id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.Anonymous % VersionId.Anonymous)
+      id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.NoId)
       instructions ← cursor.get[IndexedSeq[Labeled]]("instructions")
       source ← cursor.get[Option[String]]("source")
     } yield Workflow(id, instructions, source)

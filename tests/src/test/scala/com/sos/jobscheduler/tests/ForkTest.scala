@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
@@ -18,7 +18,7 @@ import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
 import com.sos.jobscheduler.tests.ForkTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -30,7 +30,7 @@ final class ForkTest extends FreeSpec {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
         directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
-        for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = jobXml(100.ms)
+        for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(100.ms)
 
         directoryProvider.runAgents() { _ ⇒
           directoryProvider.runMaster() { master ⇒

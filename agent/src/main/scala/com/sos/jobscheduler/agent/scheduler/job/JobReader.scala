@@ -13,6 +13,9 @@ object JobReader extends FileBasedReader {
   val companion = JobConfiguration
 
   def read(jobId: JobId, source: ByteString) = {
+    case SourceType.Json ⇒
+      readAnonymousJson[JobConfiguration](source) map (_ withId jobId)
+
     case SourceType.Xml ⇒
       JobConfiguration.parseXml(jobId, simpleByteStringSource(source))
   }
