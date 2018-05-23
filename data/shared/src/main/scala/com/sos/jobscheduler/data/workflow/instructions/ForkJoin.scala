@@ -32,7 +32,7 @@ extends Instruction
   def workflowOption(branchId: Position.BranchId.Named): Option[Workflow] =
     branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow }
 
-  override def toShortString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
+  override def toString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
 }
 
 object ForkJoin {

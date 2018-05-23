@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, ObjectEncoder}
@@ -12,8 +11,6 @@ import scala.language.implicitConversions
   */
 trait Instruction
 {
-  def toShortString = toString truncateWithEllipsis 40
-
   final def @:(labels: Seq[Label]) = Labeled(labels, this)
   final def @:(label: Label) = Labeled(label :: Nil, this)
   final def @:(label: String) = Labeled(Label(label) :: Nil, this)
@@ -31,8 +28,6 @@ object Instruction {
     Labeled(Nil, instruction)
 
   final case class Labeled(labels: Seq[Label], instruction: Instruction) {
-    def toShortString = labelsString + instruction.toShortString
-
     override def toString = labelsString + instruction
 
     def labelsString = labels.map(o ⇒ s"$o: ").mkString

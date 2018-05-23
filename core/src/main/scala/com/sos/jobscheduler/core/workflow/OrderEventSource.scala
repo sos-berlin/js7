@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.workflow
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
@@ -63,7 +64,8 @@ final class OrderEventSource(
       case Some(position) ⇒
         if (visited contains position)
           Invalid(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos ⇒ pos + " " + idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toShortString).mkString(" --> ")))
+            visited.reverse.map(pos ⇒ pos + " " +
+              idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))

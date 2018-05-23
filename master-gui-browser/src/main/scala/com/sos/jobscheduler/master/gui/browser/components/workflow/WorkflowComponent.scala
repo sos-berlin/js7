@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.components.workflow
 
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.instructions._
 import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowId}
@@ -79,7 +80,7 @@ object WorkflowComponent {
           "end"
 
         case stmt ⇒
-          stmt.toShortString
+          stmt.toString truncateWithEllipsis 40
       })
 
   final case class Props(preparedWorkflow: PreparedWorkflow, orders: Seq[Order[Order.State]])
