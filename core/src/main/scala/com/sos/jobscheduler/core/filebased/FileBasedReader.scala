@@ -41,13 +41,15 @@ trait FileBasedReader
 
 object FileBasedReader
 {
-  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false): Checked[Seq[FileBased]] =
+  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false)
+  : Checked[Seq[FileBased]] =
     for {
       checkedFileBasedIterator ← readDirectoryTreeWithProblems(readers, directory, versionId, ignoreAliens = ignoreAliens)
       fileBaseds ← checkedFileBasedIterator.toVector.sequence
     } yield fileBaseds
 
-  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false): Checked[Iterator[Checked[FileBased]]] = {
+  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false)
+  : Checked[Iterator[Checked[FileBased]]] = {
     val typedSourceReader = new TypedSourceReader(readers, versionId)
     val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
     for (_ ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
@@ -58,7 +60,7 @@ object FileBasedReader
         } yield fileBased
   }
 
-  final class TypedSourceReader(readers: Iterable[FileBasedReader], versionId: VersionId) {
+  private class TypedSourceReader(readers: Iterable[FileBasedReader], versionId: VersionId) {
     val companionToReader: Map[TypedPath.AnyCompanion, FileBasedReader] = readers toKeyedMap (_.typedPathCompanion)
 
     def apply(o: TypedSource): Checked[FileBased] =
@@ -66,7 +68,7 @@ object FileBasedReader
         .readUntyped(o.path % versionId, o.byteString, o.sourceType)
   }
 
-  final case class TypedSource(byteString: ByteString, path: TypedPath, sourceType: SourceType)
+  private case class TypedSource(byteString: ByteString, path: TypedPath, sourceType: SourceType)
 
   final case class SourceProblem private(path: TypedPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
