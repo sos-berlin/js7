@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.base.monix
+package com.sos.jobscheduler.common.monix
 
 import cats.Applicative
 import monix.eval.Task

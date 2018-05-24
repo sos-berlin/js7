@@ -203,7 +203,6 @@ lazy val base = crossProject
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "io.monix" %%% "monix-eval" % monixVersion ++
       javaxAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
@@ -269,8 +268,8 @@ lazy val `common-http` = crossProject
   .settings(commonSettings)
   .settings {
     import Dependencies._
-    libraryDependencies +=
-      scalaTest % "test"
+    libraryDependencies += scalaTest % "test"
+    libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
   }
   .jvmSettings {
     import Dependencies._
