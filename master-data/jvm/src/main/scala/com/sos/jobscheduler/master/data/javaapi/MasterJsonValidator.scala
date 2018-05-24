@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.javaapi
+package com.sos.jobscheduler.master.data.javaapi
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops

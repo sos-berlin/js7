@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.javaapi;
+package com.sos.jobscheduler.master.data.javaapi;
 
 import com.sos.jobscheduler.base.problem.Problem;
 import java.util.Optional;
@@ -8,12 +8,12 @@ import java.util.Optional;
  */
 final class MasterJsonValidatorTester {
 
-    private static final MasterJsonValidator validator = new MasterJsonValidator();
+    private static final MasterJsonValidator MasterJsonValidator = new MasterJsonValidator();
 
     private MasterJsonValidatorTester() {}
 
     static void testValidWorkflow() {
-        Optional<Problem> maybeProblem = validator.checkWorkflowJson(
+        Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson(
             "{" +
                 "\"instructions\": [" +
                     "{ \"TYPE\": \"Job\", \"jobPath\": \"/JOB\", \"agentPath\": \"/AGENT\" }" +
@@ -23,19 +23,19 @@ final class MasterJsonValidatorTester {
     }
 
     static void testInvalidWorkflow() {
-        Optional<Problem> maybeProblem = validator.checkWorkflowJson("{" +
+        Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson("{" +
             "\"instructions\": 999" +
           "}");
         assertEqual(maybeProblem.get().toString(), "CanBuildFrom for A: DownField(instructions)");
     }
 
     static void testInvalidJson() {
-        Optional<Problem> maybeProblem = validator.checkWorkflowJson("NO-JSON");
+        Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson("NO-JSON");
         assertEqual(maybeProblem.get().toString(), "expected json value got N (line 1, column 1)");
     }
 
     static void testValidInstruction() {
-        Optional<Problem> maybeProblem = validator.checkInstructionJson(
+        Optional<Problem> maybeProblem = MasterJsonValidator.checkInstructionJson(
             "{" +
                 "\"TYPE\": \"Job\"," +
                 "\"jobPath\": \"/JOB\"," +
@@ -45,7 +45,7 @@ final class MasterJsonValidatorTester {
     }
 
     static void testInvalidInstruction() {
-        Optional<Problem> maybeProblem = validator.checkInstructionJson(
+        Optional<Problem> maybeProblem = MasterJsonValidator.checkInstructionJson(
             "{" +
                 "\"TYPE\": \"INVALID\"" +
             "}");
@@ -54,6 +54,6 @@ final class MasterJsonValidatorTester {
     }
 
     private static void assertEqual(String string, String expected) {
-        assert string.equals(expected) : string + " != " + expected;
+        assert string.equals(expected) : string + " did not equal "/*IntelliJ string*/ + expected;
     }
 }
