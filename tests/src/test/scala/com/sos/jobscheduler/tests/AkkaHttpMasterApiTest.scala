@@ -53,7 +53,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "ordersOverview" in {
-    assert(api.ordersOverview.await(99.s).orderCount == 1)
+    assert(api.ordersOverview.await(99.s).count == 1)
   }
 
   "orders" in {

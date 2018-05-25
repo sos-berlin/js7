@@ -17,7 +17,7 @@ trait OrderApi {
 
   def ordersOverview: Task[OrdersOverview] =
     for (c ← orderCount) yield
-      OrdersOverview(orderCount = c)
+      OrdersOverview(count = c)
 
   def orderCount: Task[Int]
 }

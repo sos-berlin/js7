@@ -29,7 +29,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
     }
     assert(output(0) contains "version:")
     assert(output(1) == "---")
-    assert(output(2) contains "orderCount: 0")
+    assert(output(2) contains "count: 0")
   }
 
   "main with Master URI only checks wether Master is responding (it is not)" in {

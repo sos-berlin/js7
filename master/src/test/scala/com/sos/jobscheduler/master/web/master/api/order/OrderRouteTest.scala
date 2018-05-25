@@ -44,7 +44,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   // OrdersOverview
   "/master/api/order" in {
     Get("/master/api/order") ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[OrdersOverview] == OrdersOverview(orderCount = TestOrders.size))
+      assert(responseAs[OrdersOverview] == OrdersOverview(count = TestOrders.size))
     }
   }
 
