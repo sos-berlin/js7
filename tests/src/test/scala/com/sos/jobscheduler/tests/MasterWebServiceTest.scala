@@ -92,7 +92,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/workflow/",
       json"""{
         "eventId": 1000005,
-        "value": [
+        "array": [
           "/WORKFLOW",
           "/WORKFLOW-2"
         ]
@@ -126,7 +126,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent/",
       json"""{
         "eventId": 1000005,
-        "value": [
+        "array": [
           "/AGENT",
           "/FOLDER/AGENT-A"
         ]
@@ -135,7 +135,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent/?return=Agent",
       json"""{
         "eventId": 1000005,
-        "value": [
+        "array": [
           {
             "id": {
               "path": "/AGENT",

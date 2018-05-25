@@ -37,12 +37,12 @@ final class StampedTest extends FreeSpec {
       """{
         "eventId": 777,
         "timestamp": 123,
-        "value": [111, 222]
+        "array": [111, 222]
       }""")
     testJson(Stamped(EventId(123007), Timestamp.ofEpochMilli(123), List(111, 222)),
       """{
         "eventId": 123007,
-        "value": [111, 222]
+        "array": [111, 222]
       }""")
   }
 

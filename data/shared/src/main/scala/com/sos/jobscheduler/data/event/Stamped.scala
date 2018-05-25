@@ -24,7 +24,7 @@ object Stamped
   def apply[A](eventId: EventId, value: A): Stamped[A] =
     new Stamped(eventId, EventId.toTimestamp(eventId), value)
 
-  implicit def _eq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
+  implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
   implicit val functor: Functor[Stamped] = new Functor[Stamped] {
     def map[A,B](fa: Stamped[A])(f: A ⇒ B) =
@@ -39,12 +39,12 @@ object Stamped
       if (epochMilli != EventId.toEpochMilli(stamped.eventId)) {
         fields += "timestamp" → Json.fromLong(epochMilli)
       }
-      val valueJson = stamped.value.asJson
-      valueJson.asObject match {
+      val json = stamped.value.asJson
+      json.asObject match {
         case Some(o) ⇒
           fields ++= o.toIterable
         case None ⇒
-          fields += "value" → valueJson
+          fields += (if (json.isArray) "array" else "value") → json
       }
       JsonObject.fromIterable(fields)
     }
@@ -56,7 +56,11 @@ object Stamped
         timestamp = cursor.get[Long]("timestamp") map Timestamp.ofEpochMilli getOrElse EventId.toTimestamp(eventId)
         a ← cursor.get[A]("value") match {
           case o if o.isRight ⇒ o
-          case _ ⇒ cursor.as[A]
+          case _ ⇒
+            cursor.get[A]("array") match {
+              case o if o.isRight ⇒ o
+              case _ ⇒ cursor.as[A]
+            }
         }
       } yield Stamped(eventId, timestamp, a)
 }
