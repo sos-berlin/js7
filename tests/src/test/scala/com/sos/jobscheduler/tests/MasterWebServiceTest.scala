@@ -55,7 +55,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   override def beforeAll() = {
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
-    directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
+    directoryProvider.master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     directoryProvider.agents(0).file(JobPath("/A"), SourceType.Xml).xml =
       <job><script language="shell">{if (isWindows) "@exit" else "exit"}</script></job>
@@ -93,16 +93,18 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       json"""{
         "eventId": 1000005,
         "array": [
-          "/WORKFLOW",
-          "/WORKFLOW-2"
+          "/FOLDER/WORKFLOW-2",
+          "/WORKFLOW"
         ]
       }""")
 
-    testGet("master/api/workflow/WORKFLOW",
+    testGets("master/api/workflow/FOLDER/WORKFLOW-2" ::
+             "master/api/workflow//FOLDER/WORKFLOW-2" ::
+             "master/api/workflow/%2FFOLDER%2FWORKFLOW-2" :: Nil,
       json"""{
         "eventId": 1000005,
         "id": {
-          "path": "/WORKFLOW",
+          "path": "/FOLDER/WORKFLOW-2",
           "versionId": "(initial)"
         },
         "instructions": [
@@ -110,9 +112,13 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "TYPE": "Job",
             "jobPath": "/A",
             "agentPath": "/AGENT"
+          }, {
+            "TYPE": "Job",
+            "jobPath": "/MISSING",
+            "agentPath": "/AGENT"
           }
         ],
-        "source": "job \"/A\" on \"/AGENT\";"
+        "source": "job \"/A\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
       }""")
   }
 
@@ -284,25 +290,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "fileBased": {
             "TYPE": "Workflow",
             "id": {
-              "path": "/WORKFLOW",
-              "versionId": "(initial)"
-            },
-            "instructions": [
-              {
-                "TYPE": "Job",
-                "jobPath": "/A",
-                "agentPath": "/AGENT"
-              }
-            ],
-            "source": "job \"/A\" on \"/AGENT\";"
-          }
-        }, {
-          "eventId": 1005,
-          "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "id": {
-              "path": "/WORKFLOW-2",
+              "path": "/FOLDER/WORKFLOW-2",
               "versionId": "(initial)"
             },
             "instructions": [
@@ -317,6 +305,24 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
               }
             ],
             "source": "job \"/A\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+          }
+        }, {
+          "eventId": 1005,
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "Workflow",
+            "id": {
+              "path": "/WORKFLOW",
+              "versionId": "(initial)"
+            },
+            "instructions": [
+              {
+                "TYPE": "Job",
+                "jobPath": "/A",
+                "agentPath": "/AGENT"
+              }
+            ],
+            "source": "job \"/A\" on \"/AGENT\";"
           }
         }, {
           "eventId": 1006,
@@ -433,7 +439,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
       "(add order)" in {
         master.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
-        master.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/WORKFLOW-2")))
+        master.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/FOLDER/WORKFLOW-2")))
         eventCollector.await[OrderProcessed](_.key == order2Id)
       }
 
@@ -461,7 +467,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 "id": "ORDER-MISSING-JOB",
                 "workflowPosition": {
                   "workflowId": {
-                    "path": "/WORKFLOW-2",
+                    "path": "/FOLDER/WORKFLOW-2",
                     "versionId": "(initial)"
                   },
                   "position": [ 1 ]
@@ -501,7 +507,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }, {
                   "id": "ORDER-MISSING-JOB",
                   "workflowPosition": {
-                    "workflowId": { "path": "/WORKFLOW-2" },
+                    "workflowId": { "path": "/FOLDER/WORKFLOW-2" },
                     "position": [ 1 ]
                   }
                 }
@@ -510,7 +516,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }""")
       }
 
-      "Order in /WORKFLOW-2" in {
+      "Order in /FOLDER/WORKFLOW-2" in {
         val body = Json.obj(
           "query" → """
             query Q($workflowPath: WorkflowPath) {
@@ -526,7 +532,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
               }
             }""".asJson,
           "variables" → Json.obj(
-            "workflowPath" → "/WORKFLOW-2".asJson))
+            "workflowPath" → "/FOLDER/WORKFLOW-2".asJson))
         assert(postGraphql(body) ==
           json"""{
            "data": {
@@ -560,17 +566,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     }
   }
 
-  private def testGet(suburi: String, expected: ⇒ Json, mainpulateResponse: Json ⇒ Json = identity): Unit =
+  private def testGets(suburis: Iterable[String], expected: ⇒ Json, manipulateResponse: Json ⇒ Json = identity): Unit =
+    for (suburi ← suburis) testGet(suburi, expected, manipulateResponse)
+
+  private def testGet(suburi: String, expected: ⇒ Json, manipulateResponse: Json ⇒ Json = identity): Unit =
     suburi - {
       "JSON" in {
         testJson(
-          mainpulateResponse(httpClient.get[Json](s"$uri/$suburi") await 99.s),
+          manipulateResponse(httpClient.get[Json](s"$uri/$suburi") await 99.s),
           expected)
       }
       "YAML" in {
         val yamlString = httpClient.get_[String](s"$uri/$suburi", Accept(`text/plain`) :: Nil) await 99.s
         assert(yamlString.head.isLetter)  // A YAML object starts with the first field name
-        testJson(mainpulateResponse(yamlToJson(yamlString)), expected)
+        testJson(manipulateResponse(yamlToJson(yamlString)), expected)
       }
     }
 }

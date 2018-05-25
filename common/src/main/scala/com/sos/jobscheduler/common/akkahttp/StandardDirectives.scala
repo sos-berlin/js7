@@ -12,7 +12,7 @@ import scala.concurrent.Future
   */
 object StandardDirectives {
   /**
-    * A PathMatcher that matches the last single segment or the whole remaining path,
+    * A PathMatcher that matches a single segment or the whole remaining path,
     * treating encoded slashes (%2F) like unencoded ones.
     * "a/b" ~ "a%2Fb"
     */
@@ -30,7 +30,7 @@ object StandardDirectives {
       case Path.Segment(segment, Path.Empty) ⇒
         P.checked("/" + segment.stripPrefix("/"))  // Slashes encoded as %2F; First slash is optional
       case _ ⇒
-        P.checked("/" + uriPath)   // Slashes not encoded
+        P.checked("/" + uriPath.toString.stripPrefix("/"))   // Slashes not encoded, first slash optional (to avoid /api/xxx//path)
     }
 
   final def lazyRoute(lazyRoute: ⇒ Route): Route =
