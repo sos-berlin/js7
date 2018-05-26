@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.common.akkahttp
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.common.http.CirceToYaml._
+import com.sos.jobscheduler.common.http.CirceToYaml.{yamlToJson, _}
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
 
@@ -33,17 +34,27 @@ final class CirceToYamlTest extends FreeSpec {
                        |""".stripMargin
 
   "toYamlString" in {
-    assert(toYamlString(json) == yaml)
+    assert(json.toYamlString == yaml)
   }
 
-  ".toYamlString" in {
-    case class A(x: Int, y: String)
-    implicit val jsonCodec = deriveCodec[A]
-    assert(Set("x: 123\n" + "y: ABC\n", "y: ABC\n" + "x: 123\n") contains A(123, "ABC").toYamlString)
+  "yamlToJson" in {
+    assert(yamlToJson(yaml) == Valid(json))
   }
 
-  ".toJson" in {
-    assert(yamlToJson(yaml) == json)
+  "yamlToJson, failed" in {
+    val Invalid(problem: YamlProblem) = yamlToJson("{ INVALID YAML")
+    assert(problem.toString ==
+      """YAML error: while parsing a flow mapping
+        | in 'string', line 1, column 1:
+        |    { INVALID YAML
+        |    ^
+        |expected ',' or '}', but got StreamEnd
+        | in 'string', line 1, column 15:
+        |    { INVALID YAML
+        |                  ^"""
+        .stripMargin)
+    assert(problem.line == 0)
+    assert(problem.column == 14)
   }
 
   ".toFlowYamlString" in {

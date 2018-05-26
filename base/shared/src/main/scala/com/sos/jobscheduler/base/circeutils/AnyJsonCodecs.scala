@@ -28,9 +28,9 @@ object AnyJsonCodecs {
       case null ⇒ Json.Null
       case v: Map[_, _] ⇒ mapToJson(v.asInstanceOf[Map[String, Any]])
       case v: java.util.Map[_, _] ⇒ mapToJson(v.asInstanceOf[java.util.Map[String, Any]].asScala.toMap)
-      case v: Array[_] ⇒ Json.fromValues((v map anyToJson))
-      case v: Iterable[_] ⇒ Json.fromValues((v map anyToJson))
-      case v: java.lang.Iterable[_] ⇒ Json.fromValues((v.asScala map anyToJson))
+      case v: Array[_] ⇒ Json.fromValues(v map anyToJson)
+      case v: Iterable[_] ⇒ Json.fromValues(v map anyToJson)
+      case v: java.lang.Iterable[_] ⇒ Json.fromValues(v.asScala map anyToJson)
       case v: Json ⇒ v
       case v: java.math.BigDecimal ⇒ Json.fromBigDecimal(v)
       case v ⇒ sys.error(s"Unsupported type for JSON serialization: ${v.getClass.getName}")

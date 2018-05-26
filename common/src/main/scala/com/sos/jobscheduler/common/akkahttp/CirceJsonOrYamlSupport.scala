@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils.implicits.CompactPrinter
-import com.sos.jobscheduler.common.http.CirceToYaml.jsonToYaml
+import com.sos.jobscheduler.common.http.CirceToYaml._
 import com.sos.jobscheduler.common.http.{CirceJsonSupport, CirceToYaml}
 import com.sos.jobscheduler.common.scalautil.Logger
 import io.circe.syntax.EncoderOps
@@ -43,7 +43,7 @@ object CirceJsonOrYamlSupport {
       } catch {
         case t: OutOfMemoryError ⇒
           logger.error(t.toString)
-          throw new RuntimeException(s"While converting to YAML: $t", t)  // Too avoid termination of Akka
+          throw new RuntimeException(s"While converting to YAML: $t", t)  // To avoid termination of Akka
       }
     }
 }

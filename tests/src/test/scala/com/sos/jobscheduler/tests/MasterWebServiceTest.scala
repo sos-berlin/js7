@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.{Accept, Location}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
@@ -576,10 +577,11 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           manipulateResponse(httpClient.get[Json](s"$uri/$suburi") await 99.s),
           expected)
       }
+
       "YAML" in {
         val yamlString = httpClient.get_[String](s"$uri/$suburi", Accept(`text/plain`) :: Nil) await 99.s
         assert(yamlString.head.isLetter)  // A YAML object starts with the first field name
-        testJson(manipulateResponse(yamlToJson(yamlString)), expected)
+        testJson(manipulateResponse(yamlToJson(yamlString).orThrow), expected)
       }
     }
 }

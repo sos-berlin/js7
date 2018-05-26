@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.common.http
 
 import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.http.CirceToYaml.{toYamlString, yamlToJson}
+import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration._
@@ -19,9 +20,9 @@ trait TextClient extends AkkaHttpClient {
   protected def apiUri(tail: String): Uri
 
   def executeCommand(command: String): Unit = {
-    val whenResponded = post[Json, Json](commandUri, yamlToJson(command)).runAsync
-    val response = awaitResult(whenResponded)
-    printer.doPrint(toYamlString(response))
+    val response = awaitResult(
+      post[Json, Json](commandUri, yamlToJson(command).orThrow).runAsync)
+    printer.doPrint(response.toYamlString)
   }
 
   def getApi(uri: String): Unit = {
@@ -59,7 +60,7 @@ trait TextClient extends AkkaHttpClient {
     private var needYamlDocumentSeparator = false
 
     def doPrint(json: Json): Unit =
-      printer.doPrint(toYamlString(json))
+      printer.doPrint(json.toYamlString)
 
     def doPrint(string: String): Unit = {
       if (needYamlDocumentSeparator) print("---")
