@@ -62,7 +62,7 @@ object JobConfiguration extends FileBased.Companion[JobConfiguration]
         def parseScript(): JobScript =
           parseElement("script") {
             val languageOption = attributeMap.get("language")
-            require(languageOption contains "shell")
+            require(languageOption contains "shell", "language=\"shell\" required")
             JobScript(eatText())
           }
 

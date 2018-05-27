@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath, VersionId}
@@ -35,8 +36,15 @@ trait FileBasedReader
 
   final def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = companion.typedPathCompanion
 
-  protected final def readAnonymousJson[A <: FileBased { type Self = A }: Decoder](source: ByteString): Checked[A] =
-    parseJson(source.utf8String).toSimpleChecked flatMap (_.as[A].toSimpleChecked)
+  protected final def readAnonymousJsonLike[A <: FileBased { type Self = A }: Decoder]
+  (sourceType: SourceType.JsonLike, source: ByteString): Checked[A]
+  = sourceType match {
+      case SourceType.Json ⇒
+        parseJson(source.utf8String).toSimpleChecked flatMap (_.as[A].toSimpleChecked)
+
+      case SourceType.Yaml ⇒
+        yamlToJson(source.utf8String) flatMap (_.as[A].toSimpleChecked)
+    }
 }
 
 object FileBasedReader

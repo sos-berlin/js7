@@ -110,12 +110,23 @@ object FileUtils {
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path ⇒ A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
 
+
   def autoDeleting[A](file: Path)(body: Path ⇒ A): A =
     withCloser { closer ⇒
       closer.onClose {
         delete(file)
       }
       body(file)
+  }
+
+  def withTemporaryDirectory[A](prefix: String = "")(body: Path ⇒ A): A = {
+    val dir = Files.createTempDirectory(prefix)
+    withCloser { closer ⇒
+      closer.onClose {
+        deleteDirectoryRecursively(dir)
+      }
+      body(dir)
+    }
   }
 
   def deleteDirectoryRecursively(dir: Path): Unit = {

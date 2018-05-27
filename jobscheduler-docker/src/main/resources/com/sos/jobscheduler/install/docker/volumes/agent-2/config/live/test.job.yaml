@@ -1,0 +1,5 @@
+taskLimit: 1
+variables: {}
+script: |
+  echo はじめまして。
+  exit

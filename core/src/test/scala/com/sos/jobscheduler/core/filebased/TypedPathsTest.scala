@@ -21,6 +21,8 @@ final class TypedPathsTest extends FreeSpec {
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
+    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.yaml")) ==
+      Valid(WorkflowPath("/folder/test") → SourceType.Yaml))
     assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.job.json")) ==
       Valid(JobPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.txt")) ==

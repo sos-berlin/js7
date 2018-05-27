@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.workflow
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.filebased.SourceType
@@ -16,19 +15,15 @@ object WorkflowReader extends FileBasedReader
 {
   val companion = Workflow
 
-  def read(workflowId: WorkflowId, source: ByteString) =
-    Function.unlift { sourceType: SourceType ⇒
-      readWorkflow(FolderPath.parentOf(workflowId.path), source).lift(sourceType) map (_ map (_ withId workflowId))
-    }
-
-  private def readWorkflow(folderPath: FolderPath, source: ByteString): PartialFunction[SourceType, Checked[Workflow]] = {
-    case SourceType.Json ⇒
-      readAnonymousJson[Workflow](source)
+  def read(workflowId: WorkflowId, source: ByteString) = {
+    case t: SourceType.JsonLike ⇒
+      readAnonymousJsonLike[Workflow](t, source) map (_ withId workflowId)
 
     case SourceType.Txt ⇒
-      WorkflowParser.parse(source.utf8String)
+      WorkflowParser.parse(source.utf8String) map (_ withId workflowId)
 
     case SourceType.Xml ⇒
-      LegacyJobchainXmlParser.parseXml(folderPath, simpleByteStringSource(source))
+      val folderPath = FolderPath.parentOf(workflowId.path)
+      LegacyJobchainXmlParser.parseXml(folderPath, simpleByteStringSource(source)) map (_ withId workflowId)
   }
 }

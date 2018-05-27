@@ -14,5 +14,6 @@ object AgentPath extends TypedPath.Companion[AgentPath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json → ".agent.json",
+    SourceType.Yaml → ".agent.yaml",
     SourceType.Xml → ".agent.xml")
 }

@@ -8,8 +8,14 @@ import scala.collection.immutable.IndexedSeq
 sealed trait SourceType
 
 object SourceType {
-  case object Json extends SourceType {
+  sealed trait JsonLike extends SourceType
+
+  case object Json extends JsonLike {
     override def toString = "JSON"
+  }
+
+  case object Yaml extends JsonLike {
+    override def toString = "YAML"
   }
 
   case object Txt extends SourceType {

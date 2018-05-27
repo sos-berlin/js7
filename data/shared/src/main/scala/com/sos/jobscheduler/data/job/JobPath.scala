@@ -12,5 +12,6 @@ object JobPath extends TypedPath.Companion[JobPath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json → ".job.json",
+    SourceType.Yaml → ".job.yaml",
     SourceType.Xml → ".job.xml")
 }
