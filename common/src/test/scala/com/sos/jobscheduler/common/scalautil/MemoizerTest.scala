@@ -20,7 +20,7 @@ final class MemoizerTest extends FreeSpec {
       called += a
       s"/$a/"
     }
-    val m: Int ⇒ String = Memoizer(f)
+    val m: Int ⇒ String = Memoizer.nonStrict(f)
     assert(m(1) == "/1/")
     assert(called == List(1))
     assert(m(2) == "/2/")
@@ -37,7 +37,7 @@ final class MemoizerTest extends FreeSpec {
       called += ((a, b))
       s"$a $b"
     }
-    val m: (Int, Boolean) ⇒ String = Memoizer(f)
+    val m: (Int, Boolean) ⇒ String = Memoizer.nonStrict(f)
     assert(m(1, false) == "1 false")
     assert(called == List((1, false)))
     assert(m(1, true) == "1 true")
@@ -49,7 +49,7 @@ final class MemoizerTest extends FreeSpec {
   }
 
   "Concurrency" in {
-    val calls = testConcurreny { f ⇒ Memoizer(f) }
+    val calls = testConcurreny { f ⇒ Memoizer.nonStrict(f) }
     assert(calls >= Arguments.size && calls < ParallelCount * Arguments.size)
   }
 

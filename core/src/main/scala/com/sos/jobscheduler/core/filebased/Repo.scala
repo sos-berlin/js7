@@ -35,7 +35,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
     } yield path → fileBased
 
   private val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, FileBased] =
-    Memoizer { companion ⇒
+    Memoizer.nonStrict { companion ⇒
       currentVersion collect {
         case (path, fileBased) if fileBased.companion == companion ⇒
           path → fileBased
