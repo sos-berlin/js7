@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/html`, `te
 import akka.http.scaladsl.model.StatusCodes.NotAcceptable
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -24,12 +24,14 @@ import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class GraphqlRouteTest extends FreeSpec with ScalatestRouteTest with GraphqlRoute {
 
+  private implicit val timeout = RouteTestTimeout(10.seconds)
   protected implicit def scheduler = Scheduler.Implicits.global
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
   private val eventIdGenerator = new EventIdGenerator
