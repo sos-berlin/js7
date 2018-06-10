@@ -7,11 +7,11 @@ import cats.data.Validated;
  */
 final class JavaCheckedTester
 {
-    // Access to cryptic JobScheduler internals for this test only. Not a offical API.
+    // Access to cryptic JobScheduler internals for this test only. Not an offical API.
     @SuppressWarnings("unchecked")
-    private static final JavaChecked<String> valid = new JavaChecked(new Validated.Valid("VALID"));
+    private static final JavaChecked<String> valid = new JavaChecked<>(new Validated.Valid("VALID"));
     @SuppressWarnings("unchecked")
-    private static final JavaChecked<String> invalid = new JavaChecked(new Validated.Invalid(Problem$.MODULE$.fromEager("PROBLEM")));
+    private static final JavaChecked<String> invalid = new JavaChecked<>(new Validated.Invalid(Problem$.MODULE$.fromEager("PROBLEM")));
 
     private JavaCheckedTester() {}
 
