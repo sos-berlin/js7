@@ -12,11 +12,14 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.agent.CommandQueueTest._
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import scala.concurrent.duration._
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.language.reflectiveCalls
 
 /**
@@ -31,7 +34,7 @@ final class CommandQueueTest extends FreeSpec {
       val failed = mutable.Buffer[(Vector[Input.QueueableInput], Throwable)]()
 
       protected def executeCommand(command: AgentCommand.Batch) =
-        Future.successful(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(Accepted))))
+        Task.pure(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(Accepted))))
 
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses
@@ -46,12 +49,12 @@ final class CommandQueueTest extends FreeSpec {
 
     // The first Input is sent alone to the Agent regardless of batchSize.
     val aOrder = toOrder("A")
-    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath % "(initial)", TestWorkflow))
+    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
     expected += toQueuedInputResponse(aOrder) :: Nil
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow))
+    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
@@ -60,7 +63,7 @@ final class CommandQueueTest extends FreeSpec {
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow))
+    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
     expected += fiveOrders take 1 map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 

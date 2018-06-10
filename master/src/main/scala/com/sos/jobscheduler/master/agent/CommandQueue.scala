@@ -2,20 +2,23 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.master.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
+import monix.eval.Task
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit ec: ExecutionContext) {
+private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler) {
 
-  protected def executeCommand(command: AgentCommand.Batch): Future[command.Response]
+  protected def executeCommand(command: AgentCommand.Batch): Task[command.Response]
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
   protected def asyncOnBatchFailed(inputs: Vector[Input.QueueableInput], throwable: Throwable): Unit
 
@@ -46,28 +49,33 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def onReconnected() =
     freshReconnected = true
 
-  final def enqueue(input: Input.QueueableInput): Unit = {
+  final def enqueue(input: Input.QueueableInput): Future[Completed] = {
     queue.enqueue(input)
     if (queue.size == batchSize || freshReconnected) {
       maySend()
-    }
+    } else
+      Future.successful(Completed)
   }
 
-  final def maySend(): Unit =
+  final def maySend(): Future[Completed] =
     if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0)) {
       val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
       if (inputs.nonEmpty) {
         executingInputs ++= inputs
         openRequestCount += 1
-        executeCommand(Batch(inputs map inputToAgentCommand)) onComplete {
-          case Success(Batch.Response(responses)) ⇒
-            asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
+        executeCommand(Batch(inputs map inputToAgentCommand))
+          .runAsync
+          .andThen {
+            case Success(Batch.Response(responses)) ⇒
+              asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
 
-          case Failure(t) ⇒
-            asyncOnBatchFailed(inputs, t)
-        }
-      }
-    }
+            case Failure(t) ⇒
+              asyncOnBatchFailed(inputs, t)
+          } map (_ ⇒ Completed)
+      } else
+        Future.successful(Completed)
+    } else
+      Future.successful(Completed)
 
   private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =
     input match {
