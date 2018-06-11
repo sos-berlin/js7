@@ -2,10 +2,9 @@ package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import java.time.Duration
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
-import scala.concurrent.duration.Duration.Inf
+import scala.concurrent.duration._
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -20,7 +19,7 @@ object Futures {
   /**
    * Like [[Await]]`.result` - in case of exception, own stack trace is added.
    */
-  def awaitResult[A](future: Future[A], atMost: Duration): A = {
+  def awaitResult[A](future: Future[A], atMost: java.time.Duration): A = {
     import implicits.SuccessFuture
     Await.ready[A](future, atMost.toConcurrent.toCoarsest).successValue
   }
@@ -86,34 +85,37 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[Duration]): A =
+      def await(duration: Option[java.time.Duration]): A =
         duration match {
           case Some(o) ⇒ await(o)
           case None ⇒ awaitInfinite
         }
 
-      def await(duration: Duration): A =
+      def await(duration: java.time.Duration): A =
         Await.ready(delegate, duration.toFiniteDuration).successValue
 
+      def await(duration: Duration): A =
+        Await.ready(delegate, duration).successValue
+
       def awaitInfinite: A =
-        Await.ready(delegate, Inf).successValue
+        Await.ready(delegate, Duration.Inf).successValue
     }
 
     implicit final class RichFutures[A, M[X] <: TraversableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[Duration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: Option[java.time.Duration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         duration match {
           case Some(o) ⇒ await(o)
           case None ⇒ awaitInfinite
         }
 
-      def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: java.time.Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         Await.result(Future.sequence(delegate)(cbf, ec), duration.toFiniteDuration)
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        Await.ready(Future.sequence(delegate)(cbf, ec), Inf).successValue
+        Await.ready(Future.sequence(delegate)(cbf, ec), Duration.Inf).successValue
     }
 
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal {

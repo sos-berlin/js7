@@ -16,12 +16,12 @@ import scala.concurrent.duration.DurationInt
 final class AgentCommandTest extends FreeSpec {
 
   "Batch" in {
-    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.Logout)),
+    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop)),
       json"""{
         "TYPE": "Batch",
         "commands": [
           { "TYPE": "NoOperation" },
-          { "TYPE": "Logout" }
+          { "TYPE": "EmergencyStop" }
         ]
       }""")
   }
@@ -29,20 +29,6 @@ final class AgentCommandTest extends FreeSpec {
   "EmergencyStop" in {
     check(AgentCommand.EmergencyStop,
       json"""{ "TYPE": "EmergencyStop" }""")
-  }
-
-  "Login" in {
-    check(AgentCommand.Login,
-      json"""{
-        "TYPE": "Login"
-      }""")
-  }
-
-  "Logout" in {
-    check(AgentCommand.Logout,
-      json"""{
-        "TYPE": "Logout"
-      }""")
   }
 
   "NoOperation" in {

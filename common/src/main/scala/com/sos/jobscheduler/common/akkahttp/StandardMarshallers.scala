@@ -9,8 +9,8 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport.AkkaObservable
+import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -40,10 +40,10 @@ object StandardMarshallers
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
       stringMarshaller[Problem](`text/plain`, _.toString),
-      jsonOrYamlMarshaller[Problem])
+      jsonMarshaller[Problem])
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
-    problemToEntityMarshaller map (entity ⇒ HttpResponse.apply(ProblemStatusCode, Nil, entity))
+    problemToEntityMarshaller map (entity ⇒ HttpResponse(ProblemStatusCode, Nil, entity))
 
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A ⇒ String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) ⇒

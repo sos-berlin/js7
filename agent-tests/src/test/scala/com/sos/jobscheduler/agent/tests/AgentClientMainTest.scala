@@ -42,7 +42,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   "main" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
-    AgentClientMain.run(List(agent.localUri.toString, commandYaml, "?"), o ⇒ output += o)
+    AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o ⇒ output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
@@ -53,7 +53,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   "main with Agent URI only checks wether Agent is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      AgentClientMain.run(List(agent.localUri.toString), o ⇒ output += o)
+      AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString), o ⇒ output += o)
     }
     assert(output == List("JobScheduler Agent is responding"))
   }
@@ -62,7 +62,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
     val port = findRandomFreeTcpPort()
     val output = mutable.Buffer[String]()
     assertResult(1) {
-      AgentClientMain.run(List(s"http://127.0.0.1:$port"), output += _)
+      AgentClientMain.run(List(s"-data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }
     assert(output.head contains "JobScheduler Agent is not responding: ")
     assert(output.head contains "Connection refused")

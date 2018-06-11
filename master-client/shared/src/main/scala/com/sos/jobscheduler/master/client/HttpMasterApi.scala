@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.client
 
-import com.sos.jobscheduler.common.http.HttpClient
+import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderFatEvent, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -12,13 +13,18 @@ import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
-trait HttpMasterApi extends MasterApi
+trait HttpMasterApi extends MasterApi with SessionApi
 {
   /** Host URI or empty for addressing base on "master/". */
-  protected def uri: String
+  protected def baseUriString: String
+
+  protected def uriPrefixPath = "/master"
+
   protected def httpClient: HttpClient
 
-  private lazy val uris = MasterUris(masterUri = if (uri.isEmpty) uri else uri.stripSuffix("/") + "/master")
+  protected final def sessionUri = uris.session
+
+  private lazy val uris = MasterUris(masterUri = if (baseUriString.isEmpty) baseUriString else baseUriString.stripSuffix("/") + "/master")
 
   final def executeCommand(command: MasterCommand): Task[command.MyResponse] =
     httpClient.post[MasterCommand, MasterCommand.Response](uris.command, command)

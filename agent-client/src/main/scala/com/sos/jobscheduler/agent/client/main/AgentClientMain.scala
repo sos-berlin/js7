@@ -1,11 +1,16 @@
 package com.sos.jobscheduler.agent.client.main
 
 import com.sos.jobscheduler.agent.client.TextAgentClient
+import com.sos.jobscheduler.base.auth.SessionToken
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentAddress
+import java.nio.file.{Files, Path}
+import scala.collection.JavaConverters._
 import scala.io
 import scala.util.control.NonFatal
 
@@ -30,8 +35,10 @@ object AgentClientMain {
     }
 
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
-    val (agentUri, operations) = parseArgs(args)
+    val (agentUri, dataDir, operations) = parseArgs(args)
+    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
     autoClosing(new TextAgentClient(agentUri, print)) { client ⇒
+      client.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (client.checkIsResponding()) 0 else 1
       else {
@@ -48,13 +55,14 @@ object AgentClientMain {
   private def parseArgs(args: Seq[String]) =
     CommandLineArguments.parse(args) { arguments ⇒
       val agentUri = AgentAddress.normalized(arguments.keylessValue(0))
+      val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
         case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
         case "-" ⇒ StdinCommand
         case command ⇒ StringCommand(command)
       }
       if((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      (agentUri, operations)
+      (agentUri, dataDirectory, operations)
     }
 
   private sealed trait Operation

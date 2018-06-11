@@ -27,7 +27,7 @@ final class MasterMainTest extends FreeSpec {
         "-config-directory=" + env.masterDir / "config",
         "-http-port=" + httpPort))))
       yield {
-        runningMaster.executeCommand(MasterCommand.Terminate) await 99.s
+        runningMaster.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
         runningMaster.terminated await 99.s
         runningMaster.close()
       }) await 99.s

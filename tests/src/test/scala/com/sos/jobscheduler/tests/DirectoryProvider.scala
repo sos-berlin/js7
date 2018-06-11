@@ -116,6 +116,7 @@ object DirectoryProvider {
 
     def createDirectories(): Unit = {
       Files.createDirectories(fileBasedDirectory)
+      Files.createDirectory(config / "private")
       Files.createDirectory(data)
     }
 

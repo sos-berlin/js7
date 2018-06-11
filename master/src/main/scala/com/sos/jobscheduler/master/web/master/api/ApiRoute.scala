@@ -6,6 +6,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute
+import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import com.sos.jobscheduler.master.web.master.api.ApiRoute._
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute
@@ -15,7 +18,8 @@ import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
   * @author Joacim Zschimmer
   */
 trait ApiRoute
-extends ApiRootRoute
+extends MasterRouteProvider
+with ApiRootRoute
 with EventRoute
 with FatEventRoute
 with GraphqlRoute
@@ -23,13 +27,17 @@ with OrderRoute
 with WorkflowRoute
 with AgentRoute
 with AgentProxyRoute
+with SessionRoute
 {
   final val apiRoute: Route =
-    respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
-      respondWithHeader(`Cache-Control`(`max-age`(0), `no-store`, `no-cache`)) {
-        pathEnd {
-          apiRootRoute
-        } ~
+    respondWithHeaders(StandardResponseHeaders: _*) {
+      pathEnd {
+        apiRootRoute
+      } ~
+      pathSegments("session") {
+        sessionRoute
+      } ~
+      authorizedUser() { _ ⇒
         pathSegments("event") {
           eventRoute
         } ~
@@ -53,4 +61,10 @@ with AgentProxyRoute
         }
       }
     }
+}
+
+object ApiRoute {
+  private val StandardResponseHeaders = Array(
+    RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId),
+    `Cache-Control`(`max-age`(0), `no-store`, `no-cache`))
 }

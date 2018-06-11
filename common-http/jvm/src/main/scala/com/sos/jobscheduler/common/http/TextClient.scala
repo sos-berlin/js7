@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.http
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
@@ -12,10 +13,11 @@ import scala.concurrent.{Await, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait TextClient extends AkkaHttpClient {
+trait TextClient extends AkkaHttpClient with SessionApi {
 
   protected val print: String ⇒ Unit
   protected def serverName: String
+  protected def sessionUri: String
   protected def commandUri: Uri
   protected def apiUri(tail: String): Uri
 

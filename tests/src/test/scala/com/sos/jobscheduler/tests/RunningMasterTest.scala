@@ -98,7 +98,7 @@ final class RunningMasterTest extends FreeSpec {
         //    payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
         assert(orderApi.orderCount.await(99.s) == 0)
 
-        master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
+        master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
         waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
@@ -112,7 +112,7 @@ final class RunningMasterTest extends FreeSpec {
         assert(addedOrderIds.size == orderIds.size)
         assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished] == addedOrderIds)
 
-        master.executeCommand(MasterCommand.Terminate) await 99.s
+        master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
         master.terminated await 99.s
         agent1.terminate() await 99.s
         agent1.close()

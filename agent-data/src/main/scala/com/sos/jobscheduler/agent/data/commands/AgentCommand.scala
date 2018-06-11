@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.session.SessionToken
 import com.sos.jobscheduler.data.workflow.Workflow
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
@@ -75,17 +74,6 @@ object AgentCommand {
   case object EmergencyStop extends TerminateOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
-  }
-
-  sealed trait SessionCommand extends AgentCommand
-
-  case object Login extends SessionCommand {
-    @JsonCodec
-    final case class Response(sessionToken: SessionToken) extends AgentCommand.Response
-  }
-
-  case object Logout extends SessionCommand {
-    type Response = Accepted.type
   }
 
   case object NoOperation extends AgentCommand {
@@ -159,8 +147,6 @@ object AgentCommand {
     TypedJsonCodec[AgentCommand](
       Subtype[Batch],
       Subtype(EmergencyStop),
-      Subtype(Login),
-      Subtype(Logout),
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype[Terminate],
@@ -172,6 +158,5 @@ object AgentCommand {
   implicit val ResponseJsonFormat: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
       Subtype.named[Batch.Response]("BatchResponse"),
-      Subtype(Accepted),
-      Subtype.named[Login.Response]("LoginResponse"))
+      Subtype(Accepted))
 }

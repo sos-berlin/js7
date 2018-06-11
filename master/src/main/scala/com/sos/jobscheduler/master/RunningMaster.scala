@@ -8,16 +8,20 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
+import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventReader}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.log.Log4j
+import com.sos.jobscheduler.common.monix.MonixForCats._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -31,6 +35,7 @@ import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
+import com.sos.jobscheduler.master.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -38,7 +43,7 @@ import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
-import java.time.{Duration, Instant}
+import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -54,7 +59,9 @@ import scala.util.{Failure, Success}
  *
  * @author Joacim Zschimmer
  */
-abstract class RunningMaster private(
+final class RunningMaster private(
+  val sessionRegister: SessionRegister[LoginSession.Simple],
+  val commandExecutor: CommandExecutor,
   val webServer: MasterWebServer,
   val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
@@ -63,7 +70,14 @@ abstract class RunningMaster private(
   @TestOnly val injector: Injector)
 extends AutoCloseable
 {
-  def executeCommand(command: MasterCommand): Task[command.MyResponse]
+  def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.MyResponse]] =
+    for {
+      checkedSession ← sessionRegister.systemSession
+      checkedChecked ← checkedSession.map(session ⇒ executeCommand(command, CommandMeta(session.user))).evert
+    } yield checkedChecked.flatten
+
+  def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.MyResponse]] =
+    commandExecutor.executeCommand(command, meta)
 
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
     orderApi.addOrder(order)
@@ -78,7 +92,7 @@ extends AutoCloseable
 }
 
 object RunningMaster {
-  val StartedAt = Instant.now()
+  val StartedAt = Timestamp.now
   private val logger = Logger(getClass)
 
   def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit = {
@@ -99,7 +113,7 @@ object RunningMaster {
     autoClosing(RunningMaster(injector) await 99.s) { master ⇒
       try {
         body(master)
-        master.executeCommand(MasterCommand.Terminate) await 99.s
+        master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
         master.terminated await 99.s
       } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
         t.addSuppressed(master.terminated.failed.successValue)
@@ -134,6 +148,12 @@ object RunningMaster {
       val eventReaderProvider = injector.instance[JournalEventReaderProvider[Event]]
       val closer = injector.instance[Closer]
       val webServer = injector.instance[MasterWebServer]
+      val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+
+      val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
+      sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+        .runAsync await masterConfiguration.akkaAskTimeout.duration
+      closer onClose { sessionTokenFile.delete() }
 
       val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
           _ ⇒ Props {
@@ -142,7 +162,8 @@ object RunningMaster {
               eventIdClock)(
               injector.instance[TimerService],
               eventReaderProvider,
-              injector.instance[StampedKeyedEventBus]) },
+              injector.instance[StampedKeyedEventBus],
+              scheduler) },
           onStopped = _ ⇒ Success(Completed)
         )(actorSystem)
 
@@ -209,26 +230,10 @@ object RunningMaster {
           }
           closer.close()  // Close automatically after termination
         }
+      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper = orderKeeper)
       for (_ ← Task.fromFuture(webServerReady)) yield {
-        def execCmd(command: MasterCommand): Task[command.MyResponse] = {
-          import masterConfiguration.akkaAskTimeout
-          (command match {
-            case MasterCommand.EmergencyStop ⇒
-              val msg = "Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW"
-              logger.error(msg)
-              Log4j.shutdown()
-              sys.runtime.halt(99)
-              Task.pure(MasterCommand.Response.Accepted)  // unreachable
-
-            case _ ⇒
-              Task.deferFuture(orderKeeper ? command)
-          }) map (_.asInstanceOf[command.MyResponse])
-        }
-        val master = new RunningMaster(webServer, orderApi, orderKeeper, terminated, closer, injector) {
-          def executeCommand(command: MasterCommand): Task[command.MyResponse] =
-            execCmd(command)
-        }
-        webServer.setExecuteCommand(command ⇒ master.executeCommand(command))
+        val master = new RunningMaster(sessionRegister, commandExecutor, webServer, orderApi, orderKeeper, terminated, closer, injector)
+        webServer.setExecuteCommand((command, meta) ⇒ master.executeCommand(command, meta))
         master
       }
     }

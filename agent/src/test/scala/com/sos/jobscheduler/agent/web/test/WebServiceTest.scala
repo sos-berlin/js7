@@ -3,11 +3,14 @@ package com.sos.jobscheduler.agent.web.test
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.web.common.{AgentWebService, LoginSession}
+import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
+import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
 
@@ -15,11 +18,17 @@ import scala.concurrent.duration._
   * @author Joacim Zschimmer
   */
 trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest {
-  this: AgentWebService with Suite ⇒
+  this: AgentRouteProvider with Suite ⇒
 
   protected def uriPathPrefix = ""
 
-  protected val sessionRegister = new SessionRegister[LoginSession]
+  protected final val gateKeeper = new GateKeeper(
+    GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply),
+    TimerService(idleTimeout = Some(1.s)),
+    isHttps = false)
+
+  protected final val sessionRegister = SessionRegister.start[LoginSession.Simple](
+    actorRefFactory, LoginSession.Simple.apply, akkaAskTimeout = 99.seconds)
 
   override def testConfig = AgentConfiguration.DefaultsConfig
   protected final def actorSystem = system
@@ -35,6 +44,4 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     cleanUp()
     super.afterAll()
   }
-
-  protected lazy val route = buildRoute(GateKeeper.forTest)
 }

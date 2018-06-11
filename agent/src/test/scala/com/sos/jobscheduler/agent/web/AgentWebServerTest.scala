@@ -12,11 +12,11 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.TestUserAndPassword
 import com.sos.jobscheduler.agent.web.AgentWebServerTest._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
@@ -42,6 +42,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
@@ -61,6 +62,8 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
   }
   private implicit lazy val materializer = ActorMaterializer()
   private lazy val http = Http()
+  private lazy val expectedInvalidAuthenticationDelay =
+    agentConfiguration.config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay") - 100.millis
 
   override protected def afterAll() = {
     materializer.shutdown()
@@ -74,12 +77,13 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
 
   "HTTPS" - {
     implicit lazy val httpsConnectionContext = Https.toHttpsConnectionContext(ClientKeystoreRef)
-    lazy val uri = s"${agent.webServer.localHttpsUriOption.get}/$Api"
+    lazy val uri = agent.webServer.localHttpsUriOption.get
 
-    "Unauthorized request is rejected" - {
+    "Unauthenticated request is rejected" - {
       "due to missing credentials" in {
+        assert(uri.scheme == "https")
         intercept[HttpException] {
-          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/task"), password = None) await 99.s
+          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/agent/api/order/"), password = None) await 99.s
         }
         .status shouldEqual Unauthorized
       }
@@ -87,43 +91,48 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
       "due to wrong credentials" in {
         val t = now
         val e = intercept[HttpException] {
-          executeRequest[AgentOverview](HttpRequest(GET, uri), Some("WRONG-PASSWORD")) await 10.s
+          executeRequest[AgentOverview](HttpRequest(GET, s"$uri/agent/api"), Some("WRONG-PASSWORD")) await 10.s
         }
-        assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+        assert(now - t >= expectedInvalidAuthenticationDelay)
         e.status shouldEqual Unauthorized
       }
 
-      addPostTextPlainText(uri)
+      addPostTextPlainTest(s"$uri/agent/api/command")
     }
 
-    "Authorized request" - {
+    "Authenticated request" - {
       val password = Some("SHA512-PASSWORD")
 
       "is accepted" in {
-        val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), password) await 10.s
+        val overview = executeRequest[AgentOverview](HttpRequest(GET, s"$uri/agent/api"), password) await 10.s
         assert(overview.version == AgentStartInformation.VersionString)
       }
 
-      addPostTextPlainText(uri, password)
+      addPostTextPlainTest(s"$uri/agent/api/command", password)
     }
 
     addThroughputMeasurementTests(uri)
   }
 
   "HTTP" - {
-    lazy val uri = s"${agent.webServer.localHttpUriOption.get}/$Api"
+    lazy val uri = Uri(s"${agent.webServer.localHttpUriOption.get}/agent/api")
 
     "Without credentials" in {
+      assert(uri.scheme == "http")
       val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), password = None) await 10.s
       assert(overview.version == AgentStartInformation.VersionString)
     }
 
-    "Credentials are ignored" in {
-      val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), Some("WRONG-PASSWORD")) await 10.s
-      assert(overview.version == AgentStartInformation.VersionString)
+    "Invalid credentials are rejected despite event though Anonymous is allowed" in {  // Behavior changed with JobScheduler 2
+      val t = now
+      val e = intercept[HttpException] {
+        executeRequest[AgentOverview](HttpRequest(GET, uri), Some("WRONG-PASSWORD")) await 10.s
+      }
+      assert(e.status == Unauthorized)
+      assert(now - t >= expectedInvalidAuthenticationDelay)
     }
 
-    addPostTextPlainText(uri)
+    addPostTextPlainTest(s"$uri/agent/api/command")
     addThroughputMeasurementTests(uri)
   }
 
@@ -137,18 +146,20 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
     agent.close()
   }
 
-  private def addPostTextPlainText(uri: ⇒ Uri, password: Option[String] = None)(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext): Unit =
+  private def addPostTextPlainTest(uri: ⇒ Uri, password: Option[String] = None)
+    (implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext)
+  : Unit =
     "POST plain/text is rejected due to CSRF" in {
       val exception = intercept[HttpException] {
         executeRequest[HttpResponse](HttpRequest(POST, uri, entity = "TEXT"), password) await 10.s
       }
       assert(exception.status == Forbidden)
-      assert(exception.getMessage contains "HTML form POST is forbidden")
+      assert(exception.getMessage contains Forbidden.defaultMessage) //"HTML form POST is forbidden")
     }
 
   private def addThroughputMeasurementTests(uri: ⇒ Uri)(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext): Unit = {
     if (false) {
-      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer")
+      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/agent/api/timer")
     }
   }
 
@@ -169,20 +180,17 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
       Gzip.encodeMessage(request withHeaders
         Accept(`application/json`) ::
         `Cache-Control`(`no-cache`, `no-store`) ::
-        (password.toList map { pw ⇒ Authorization(BasicHttpCredentials("SHA512-USER", pw)) }) ++
+        (password.toList map { pw ⇒ Authorization(BasicHttpCredentials(TestUserAndPassword.userId.string, pw)) }) ++
         request.headers),
       httpsConnectionContext)
     whenHttpResponse map { o ⇒ Gzip.decodeMessage(o) } flatMap { response ⇒
-      if (response.status.isSuccess)
-        implicitly[FromResponseUnmarshaller[A]].apply(response)
-      else
-        throw new HttpException(response.status, response.utf8StringFuture await 99.s)
+      if (!response.status.isSuccess) throw new HttpException(response.status, response.utf8StringFuture await 99.s)
+      implicitly[FromResponseUnmarshaller[A]].apply(response)
     }
   }
 }
 
 private object AgentWebServerTest {
-  private val Api = "agent/api"
   private val ClientKeystoreRef = KeystoreReference(
     TestAgentDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))

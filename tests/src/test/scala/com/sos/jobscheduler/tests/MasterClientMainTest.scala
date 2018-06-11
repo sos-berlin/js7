@@ -13,11 +13,12 @@ import scala.collection.mutable
 final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   protected val agentPaths = Nil
+  private def dataDirectory = directoryProvider.master.data
 
   "main with Master URI only checks wether Master is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      MasterClientMain.run(List(master.localUri.toString), output.+=)
+      MasterClientMain.run(List(s"-data-directory=$dataDirectory", master.localUri.toString), output.+=)
     }
     assert(output == List("JobScheduler Master is responding"))
   }
@@ -25,7 +26,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
   "Multiple api calls" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      MasterClientMain.run(List(master.localUri.toString, "?", "/order"), output.+=)
+      MasterClientMain.run(List(s"-data-directory=$dataDirectory", master.localUri.toString, "?", "/order"), output.+=)
     }
     assert(output(0) contains "version:")
     assert(output(1) == "---")
@@ -36,7 +37,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
     val port = findRandomFreeTcpPort()
     val output = mutable.Buffer[String]()
     assertResult(1) {
-      MasterClientMain.run(List(s"http://127.0.0.1:$port"), output += _)
+      MasterClientMain.run(List(s"-data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }
     assert(output.head contains "JobScheduler Master is not responding: ")
     assert(output.head contains "Connection refused")
@@ -45,7 +46,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
   "Terminate" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: Terminate }"""
-    MasterClientMain.run(List(master.localUri.toString, commandYaml), output.+=)
+    MasterClientMain.run(List(s"-data-directory=$dataDirectory", master.localUri.toString, commandYaml), output.+=)
     assert(output == List("TYPE: Accepted"))
     master.terminated await 99.s
   }

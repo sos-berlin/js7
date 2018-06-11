@@ -3,13 +3,13 @@ package com.sos.jobscheduler.master.gui.browser
 import com.sos.jobscheduler.master.gui.browser.GuiBackend._
 import com.sos.jobscheduler.master.gui.browser.ScreenBackground.setScreenClass
 import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiState, OrdersState}
-import com.sos.jobscheduler.master.gui.browser.services.JsBridge.guiConfig
+import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
+import monix.execution.Scheduler.Implicits.global
 import org.scalajs.dom.{raw, window}
 import scala.concurrent.duration._
-import scala.scalajs.js
 
 /**
   * @author Joacim Zschimmer
@@ -32,13 +32,17 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
   private def start(): Callback =
     Callback {
-        window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
-        window.onhashchange = onHashChanged
-      } >>
-        scope.modState(o ⇒ o.copy(
-          ordersState = o.ordersState.copy(
-            content = OrdersState.FetchingContent))) >>
-        eventHandler.requestStateAndEvents
+      window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
+      window.onhashchange = onHashChanged
+    } >>
+      Callback.future {
+        MasterApi.login(None).map { _ ⇒
+          scope.modState(o ⇒ o.copy(
+            ordersState = o.ordersState.copy(
+              content = OrdersState.FetchingContent))) >>
+          Callback.byName(eventHandler.requestStateAndEvents)
+        }.runAsync
+      } map (_ ⇒ ())
 
   def componentWillUnmount() = Callback {
     unmounted = true
@@ -91,9 +95,11 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 }
 
 object GuiBackend {
-  private val ServerSentEventsSupported = guiConfig.fetchEventsWith == "SSE" &&
-    (js.typeOf(js.Dynamic.global.EventSource) != "undefined" || {
-      window.console.log("This browser does not seam to support server-sent events (EventSource is undefined)")
-      false
-    })
+  private val ServerSentEventsSupported = false
+    // No way to send header X-JobScheduler-SessionToken
+    //guiConfig.fetchEventsWith == "SSE" &&
+    //(js.typeOf(js.Dynamic.global.EventSource) != "undefined" || {
+    //  window.console.log("This browser does not seam to support server-sent events (EventSource is undefined)")
+    //  false
+    //})*&
 }

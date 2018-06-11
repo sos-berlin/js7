@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.client
 
+import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextClient}
@@ -15,15 +15,21 @@ import com.sos.jobscheduler.data.agent.AgentAddress
 private[agent] final class TextAgentClient(
   agentUri: AgentAddress,
   protected val print: String ⇒ Unit,
-  protected val userAndPassword: Option[UserAndPassword] = None,
   keystore: Option[KeystoreReference] = None)
 extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
 
   private val agentUris = AgentUris(agentUri)
 
+  protected def baseUri = Uri(agentUri.string)
+  protected def uriPrefixPath = "/agent"
+
   protected def serverName = "JobScheduler Agent"
 
-  protected def commandUri = agentUris.command
+  protected val sessionUri = agentUris.session.toString
+
+  protected val commandUri = agentUris.command
+
+  protected def httpClient = this
 
   protected def apiUri(tail: String) = agentUris.api(tail)
 

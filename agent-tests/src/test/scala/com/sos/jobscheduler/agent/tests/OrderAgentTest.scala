@@ -5,15 +5,15 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, Login, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import com.sos.jobscheduler.agent.tests.OrderAgentTest._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -25,10 +25,10 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import io.circe.syntax.EncoderOps
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 /**
@@ -46,14 +46,16 @@ final class OrderAgentTest extends FreeSpec {
         withCloser { implicit closer ⇒
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
-
+          agentClient.login(Some(TestUserAndPassword)) await 99.s
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.executeCommand(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
-          EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.seconds).repeat(agentClient.mastersEvents) {
-            case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
-          }
+          EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.seconds)
+            .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync)
+            {
+              case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
+            }
           val processedOrder = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
           agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
@@ -76,7 +78,7 @@ final class OrderAgentTest extends FreeSpec {
         withCloser { implicit closer ⇒
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
-          agentClient.executeCommand(Login) await 99.s
+          agentClient.login(Some(TestUserAndPassword)) await 99.s
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield

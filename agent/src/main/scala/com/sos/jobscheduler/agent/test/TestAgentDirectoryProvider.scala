@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.agent.test
 
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider._
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -47,6 +48,7 @@ object TestAgentDirectoryProvider {
   val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private-https.jks")
   val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/public-https.jks")
   val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")
+  val TestUserAndPassword = UserAndPassword(UserId("SHA512-USER"), SecretString("SHA512-PASSWORD"))
   private val KeystoreJksLocation = "config/private/private-https.jks"
   private val logger = Logger(getClass)
 

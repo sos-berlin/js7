@@ -204,6 +204,7 @@ lazy val base = crossProject
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
+      "io.monix" %%% "monix-eval" % monixVersion ++
       javaxAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
@@ -467,7 +468,6 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
       akkaHttp ++
       intelliJAnnotations % "compile" ++
       scalactic ++
-      tagging ++
       guice ++
       mockito % "test" ++
       scalaTest % "test" ++

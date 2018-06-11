@@ -1,24 +1,25 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.web.common.AgentWebService
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils._
+import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
+import com.sos.jobscheduler.base.auth.KnownUserPermission
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.data.order.OrderId
-import scala.concurrent.ExecutionContext
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
   */
-trait OrderWebService extends AgentWebService {
+trait OrderWebService extends AgentRouteProvider {
 
   protected def commandHandler: CommandHandler
-  protected implicit def executionContext: ExecutionContext
+  protected implicit def scheduler: Scheduler
 
-  routeBuilder.addApiRoute { user ⇒
-    pathSegments("order") {
+  protected final val orderRoute: Route =
+    authorizedUser(KnownUserPermission) { user ⇒
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)
         complete {
@@ -38,7 +39,6 @@ trait OrderWebService extends AgentWebService {
         }
       }
     }
-  }
 }
 
 

@@ -51,8 +51,8 @@ trait AgentProxyRoute
 
   private def forwardTo(agentUri: Uri, forwardUri: Uri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
     val agentClient = AgentClient(agentUri)
-    Task.fromFuture(agentClient.sendReceive(
-      HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) })))
+    agentClient.sendReceive(
+      HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
         .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))
       .doOnFinish(_ ⇒ Task {
         agentClient.close()

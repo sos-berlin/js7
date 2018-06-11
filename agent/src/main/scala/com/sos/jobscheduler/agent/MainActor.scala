@@ -2,20 +2,19 @@ package com.sos.jobscheduler.agent
 
 import akka.actor.{Actor, Props, Terminated}
 import com.google.inject.Injector
-import com.softwaremill.tagging._
 import com.sos.jobscheduler.agent.MainActor._
-import com.sos.jobscheduler.agent.command.{CommandActor, CommandHandler, SessionActor}
+import com.sos.jobscheduler.agent.command.{CommandActor, CommandHandler}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
-import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
-import scala.concurrent.{ExecutionContext, Promise}
+import monix.execution.Scheduler
+import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
 /**
@@ -23,7 +22,7 @@ import scala.util.control.NoStackTrace
   */
 final class MainActor(
   agentConfiguration: AgentConfiguration,
-  sessionRegister: SessionRegister[LoginSession],
+  sessionRegister: SessionRegister[LoginSession.Simple],
   injector: Injector,
   readyPromise: Promise[Ready],
   stoppedPromise: Promise[Completed])
@@ -34,13 +33,12 @@ extends Actor {
 
   override val supervisorStrategy = CatchingSupervisorStrategy(stoppedPromise)
 
-  private implicit val executionContext = injector.instance[ExecutionContext]
+  private implicit val scheduler = injector.instance[Scheduler]
   private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
   private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler
-    val sessionActor = actorOf(Props { new SessionActor(sessionRegister) }, "session").taggedWith[SessionActor]
-    val actor = actorOf(Props { new CommandActor(sessionActor, agentHandle) }, "command")
+    val actor = actorOf(Props { new CommandActor(agentHandle) }, "command")
     new CommandActor.Handle(actor)(akkaAskTimeout)
   }
 

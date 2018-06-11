@@ -4,8 +4,9 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.{AgentStartInformation, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.test.AgentTest
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
 
@@ -16,7 +17,7 @@ final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTest {
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
 
-  override lazy val agentConfiguration = newAgentConfiguration().copy(uriPathPrefix = "test")
+  override lazy val agentConfiguration = newAgentConfiguration()
   private implicit lazy val actorSystem = Akkas.newActorSystem("AgentClientTest")(closer)
   private lazy val client = AgentClient(agentUri = agent.localUri.toString)
     //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))

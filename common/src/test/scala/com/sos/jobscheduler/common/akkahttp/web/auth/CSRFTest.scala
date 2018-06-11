@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
 import org.scalatest.FreeSpec
 
 /**
@@ -13,10 +14,8 @@ import org.scalatest.FreeSpec
   */
 final class CSRFTest extends FreeSpec with ScalatestRouteTest {
 
-  private val csrf = new CSRF(CSRF.Configuration.ForTest)
-
   private val route: Route =
-    csrf.rejectSomeCSRF {
+    forbidCSRF {
       path("TEST") {
         (get | post) {
           complete(OK)
@@ -41,7 +40,7 @@ final class CSRFTest extends FreeSpec with ScalatestRouteTest {
   "POST plain/text is forbidden" in {
     Post(uri, "STRING") ~> route ~> check {
       assert(status == Forbidden)
-      assert(responseAs[String] == "HTML form POST is forbidden")
+      assert(responseAs[String] == Forbidden.defaultMessage)
     }
   }
 }

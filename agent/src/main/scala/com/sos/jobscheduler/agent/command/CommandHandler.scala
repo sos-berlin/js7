@@ -9,12 +9,12 @@ import scala.concurrent.Future
  */
 trait CommandHandler {
 
-  def execute(command: AgentCommand, meta: CommandMeta = CommandMeta()): Future[AgentCommand.Response]
+  def execute(command: AgentCommand, meta: CommandMeta = CommandMeta.Default): Future[AgentCommand.Response]
 
   def overview: Future[CommandHandlerOverview]
 
   def detailed: Future[CommandHandlerDetailed]
 
-  final def typedExecute(command: AgentCommand, meta: CommandMeta = CommandMeta()): Future[command.Response] =
+  final def typedExecute(command: AgentCommand, meta: CommandMeta = CommandMeta.Default): Future[command.Response] =
     execute(command, meta) .map { _.asInstanceOf[command.Response]} (SynchronousExecutionContext)
 }

@@ -1,17 +1,14 @@
 package com.sos.jobscheduler.agent.command
 
-import com.sos.jobscheduler.base.auth.User
-import com.sos.jobscheduler.data.session.SessionToken
+import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser}
 
 /**
  * @author Joacim Zschimmer
  */
 final case class CommandMeta(
-  user: User = User.Anonymous,
+  user: SimpleUser = SimpleUser.Anonymous,
   sessionTokenOption: Option[SessionToken] = None)
 
 object CommandMeta {
-  private val Empty = new CommandMeta
-
-  def apply(): CommandMeta = Empty
+  val Default = new CommandMeta
 }

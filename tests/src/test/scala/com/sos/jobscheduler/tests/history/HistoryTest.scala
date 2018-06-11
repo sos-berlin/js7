@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.tests.history
 
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -32,12 +34,14 @@ final class HistoryTest extends FreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
       withCloser { implicit closer ⇒
+        (provider.master.config / "private/private.conf").contentString = """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
         provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
         for (a ← provider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(0.s)
 
         provider.runAgents() { runningAgents ⇒
           provider.runMaster() { master ⇒
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
               master.addOrderBlocking(TestOrder)
               master.eventReader.await[OrderFinished](_.key == TestOrder.id)
 

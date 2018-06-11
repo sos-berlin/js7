@@ -19,6 +19,8 @@ final class MasterUris private(masterUri: String) {
 
   val command = api()
 
+  val session = api("/session")
+
   def events[E <: Event: ClassTag](request: EventRequest[E]): String =
     events_[E]("/event", request)
 

@@ -43,7 +43,7 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V1.some)) await 99.s }
+          assert(Try { master.executeCommandAsSystemUser(ReadConfigurationDirectory(V1.some)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V1.string}'")
 
           // Add Workflow
@@ -64,16 +64,16 @@ final class MasterRepoTest extends FreeSpec {
 
           // Change workflow
           directoryProvider.master.writeJson(testWorkflow(V5) withId CWorkflowPath % VersionId.Anonymous)
-          master.executeCommand(ReadConfigurationDirectory(V5.some)) await 99.s
+          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V5.some)) await 99.s
 
           // Delete workflow
           delete(directoryProvider.master.file(CWorkflowPath, SourceType.Json))
-          master.executeCommand(ReadConfigurationDirectory(V6.some)) await 99.s
+          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V6.some)) await 99.s
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V2.some)) await 99.s }
+          assert(Try { master.executeCommandAsSystemUser(ReadConfigurationDirectory(V2.some)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V2.string}'")
 
           // AWorkflowPath is still version V3
@@ -98,7 +98,7 @@ final class MasterRepoTest extends FreeSpec {
         val order = FreshOrder(orderId, path)
         // Add Workflow
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
-        master.executeCommand(ReadConfigurationDirectory(versionId.some)) await 99.s
+        master.executeCommandAsSystemUser(ReadConfigurationDirectory(versionId.some)) await 99.s
         master.addOrderBlocking(order)
         awaitOrder(order.id, path % versionId)
       }

@@ -43,7 +43,7 @@ object Checked
     }
 
   implicit final class EvertChecked[A[_], V](private val underlying: Checked[A[V]]) extends AnyVal {
-    /** `Checked[A[V] ] => A[Checked[V] ]`. */
+    /** `Checked[A[V]``] => A[Checked[V]``]`. */
     def evert(implicit A: Applicative[A]): A[Checked[V]] = Checked.evert(underlying)
   }
 

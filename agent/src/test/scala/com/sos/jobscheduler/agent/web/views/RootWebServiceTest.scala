@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -13,6 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.JavaInformation
 import io.circe.Json
 import java.time.Instant
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 
@@ -21,7 +23,7 @@ import scala.concurrent.Future
  */
 final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
 
-  protected def executionContext = actorSystem.dispatcher
+  protected def scheduler = Scheduler.global
   protected def agentOverview = Future.successful(AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
@@ -54,6 +56,11 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
       }
     }
   }"""
+
+  private val route =
+    pathSegments("agent/api") {
+      apiRootRoute
+    }
 
   "overview" - {
     "Accept: application/json returns compact JSON" in {

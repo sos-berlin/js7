@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{ContentTypes, HttpRequest, HttpResponse, MessageEntity}
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
@@ -45,7 +45,7 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
     val response = Marshal(Problem("PROBLEM")).toResponseFor(HttpRequest(headers = List(Accept(`application/json`)))) await 99.s
     assert(response.status == BadRequest)
     assert(response.entity.contentType == ContentTypes.`application/json`)
-    assert(response.entity.toStrict(9.seconds).await(99.s).data.utf8String.parseJson ==
+    assert(response.entity.asInstanceOf[HttpEntity.Strict].data.utf8String.parseJson ==  // Should be Strict to allow WebLogDirectives direct access
       json"""{ "TYPE": "Problem", "message": "PROBLEM" }""")
   }
 

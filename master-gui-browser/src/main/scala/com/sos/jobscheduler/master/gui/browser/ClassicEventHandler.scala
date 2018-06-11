@@ -39,8 +39,10 @@ final class ClassicEventHandler(protected val scope: BackendScope[GuiComponent.P
                 scope.setState(state.copy(
                   isConnected = false)
                 ) >>
-                  startRequestAndHandleEvents(after = after, forStep = step, timeout = FirstEventTimeout, afterErrorDelay = afterErrorDelay)
-                    .delay(afterErrorDelay.next()).void
+                  Callback.future[Unit] {
+                    MasterApi.loginUntilReachable(afterErrorDelay).runAsync map (_ ⇒
+                      startRequestAndHandleEvents(after = after, forStep = step, timeout = FirstEventTimeout, afterErrorDelay = afterErrorDelay))
+                  }.delay(afterErrorDelay.next()).void
 
               case Success(EventSeq.Empty(lastEventId)) ⇒
                 scope.setState(state.copy(

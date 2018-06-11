@@ -48,10 +48,10 @@ final case class MasterConfiguration(
 object MasterConfiguration {
 
   def forTest(configAndData: Path, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-    fromDataDirectory(dataDirectory = configAndData / "config", configDirectory = configAndData / "config", config).copy(
+    fromDataDirectory(dataDirectory = configAndData / "data", configDirectory = configAndData / "config", config).copy(
       webServerBindings = Vector(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
 
-  private[configuration] lazy val DefaultConfig = Configs.loadResource(
+  lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
 
   def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒

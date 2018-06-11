@@ -13,7 +13,6 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
@@ -46,6 +45,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -60,14 +60,14 @@ final class MasterOrderKeeper(
   (implicit
     timerService: TimerService,
     eventReaderProvider: JournalEventReaderProvider[Event],
-    keyedEventBus: StampedKeyedEventBus)
+    keyedEventBus: StampedKeyedEventBus,
+    scheduler: Scheduler)
 extends Stash
 with KeyedEventJournalingActor[Event] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  import context.{become, dispatcher}
-  intelliJuseImport(dispatcher)
+  import context.become
 
   private val journalFile = masterConfiguration.journalFile
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)

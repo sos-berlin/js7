@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegiste
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
 import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
@@ -17,6 +18,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.job.JobPath
 import io.circe.Json
 import java.time.Instant
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable
 import scala.concurrent.Promise
@@ -32,7 +34,13 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
     new TaskRegister(actor)(99.seconds)
   }
 
-  protected lazy val executionContext = actorSystem.dispatcher
+  protected def executionContext = scheduler
+  protected def scheduler = Scheduler.global
+
+  private val route =
+    pathSegments("agent/api/task") {
+      taskRoute
+    }
 
   override def beforeAll() = {
     taskRegister.add(new BaseAgentTask {

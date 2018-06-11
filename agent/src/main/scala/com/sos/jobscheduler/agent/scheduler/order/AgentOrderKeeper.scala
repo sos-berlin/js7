@@ -5,7 +5,6 @@ import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
-import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
@@ -44,6 +43,7 @@ import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
+import shapeless.tag
 
 /**
   * Keeper of one Master's orders.
@@ -72,7 +72,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
-  private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
+  private val eventsForMaster = tag[EventQueueActor](
+    actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster"))
 
   private var terminating = false
 

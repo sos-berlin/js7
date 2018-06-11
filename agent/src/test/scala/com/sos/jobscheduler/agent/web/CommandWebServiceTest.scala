@@ -9,11 +9,12 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.common.akkahttp.JsonString
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import java.time.Instant
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -23,7 +24,7 @@ import scala.concurrent.duration._
  */
 final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService {
 
-  protected implicit def executionContext = system.dispatcher
+  protected def scheduler = Scheduler.global
   override protected val uriPathPrefix = "test"
 
   protected val commandHandler = new CommandHandler {
@@ -41,8 +42,13 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       CommandRunOverview(InternalCommandId(333), Instant.parse("2015-06-22T12:00:00Z"), TestCommand))))
   }
 
+  private val route =
+    pathSegments("agent/api/command") {
+      commandRoute
+    }
+
   "Terminate" in {
-    val json = """{
+    val json = json"""{
         "TYPE": "Terminate",
         "sigtermProcesses": false,
         "sigkillProcessesAfter": 999
@@ -55,13 +61,13 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     }
   }
 
-  private def postJsonCommand(json: String): RouteTestResult =
-    Post("/test/agent/api/command", JsonString(json)) ~>
+  private def postJsonCommand(json: Json): RouteTestResult =
+    Post("/agent/api/command", json) ~>
       Accept(`application/json`) ~>
       route
 
   "commandHandler returns overview" in {
-    Get("/test/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[Json] == Json.obj(
         "currentCommandCount" → Json.fromInt(111),
         "totalCommandCount" → Json.fromInt(222)))
@@ -69,7 +75,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   }
 
   "commandHandler/ returns array of running command" in {
-    Get("/test/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(

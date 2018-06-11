@@ -9,7 +9,7 @@ import java.net.InetSocketAddress
 sealed trait WebServerBinding {
   def address: InetSocketAddress
   def scheme: String
-  def isUnsecuredHttp: Boolean
+  def isHttps: Boolean
 }
 
 object WebServerBinding {
@@ -17,7 +17,7 @@ object WebServerBinding {
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding {
     def scheme = "http"
-    def isUnsecuredHttp = true
+    def isHttps = false
   }
 
   final case class Https(
@@ -25,6 +25,6 @@ object WebServerBinding {
     keystoreReference: KeystoreReference)
   extends WebServerBinding {
     def scheme = "https"
-    def isUnsecuredHttp = false
+    def isHttps = true
   }
 }

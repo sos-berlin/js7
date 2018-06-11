@@ -151,7 +151,7 @@ object AkkaHttpServerUtils {
       * Matches complete segments (not characters, as `startWith`).
       */
     @tailrec
-    final def startsWithPath(prefix: Uri.Path): Boolean =
+    def startsWithPath(prefix: Uri.Path): Boolean =
       (delegate, prefix) match {
         case (Slash(a), Slash(b)) ⇒ a startsWithPath b
         case (Segment(aHead, aTail), Segment(bHead, bTail)) ⇒ aHead == bHead && (aTail startsWithPath bTail)
@@ -171,7 +171,10 @@ object AkkaHttpServerUtils {
     * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
     */
   def pathSegments(prefix: String): Directive0 =
-    pathSegments(Uri.Path(prefix))
+    if (prefix.isEmpty)
+      pass
+    else
+      pathSegments(Uri.Path(prefix))
 
   /**
     * Like `pathPrefix`, but matches complete path segments.

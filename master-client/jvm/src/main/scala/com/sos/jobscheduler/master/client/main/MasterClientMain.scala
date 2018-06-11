@@ -1,11 +1,16 @@
 package com.sos.jobscheduler.master.client.main
 
 import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.base.auth.SessionToken
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.client.TextMasterClient
+import java.nio.file.{Files, Path}
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.io
 import scala.util.control.NonFatal
@@ -31,8 +36,10 @@ object MasterClientMain {
     }
 
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
-    val (masterUri, operations) = parseArgs(args)
+    val (masterUri, dataDir, operations) = parseArgs(args)
+    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
     autoClosing(new TextMasterClient(masterUri, print)) { client ⇒
+      client.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (client.checkIsResponding()) 0 else 1
       else {
@@ -46,16 +53,17 @@ object MasterClientMain {
     }
   }
 
-  private def parseArgs(args: Seq[String]): (Uri, Vector[Operation]) =
+  private def parseArgs(args: Seq[String]): (Uri, Path, Vector[Operation]) =
     CommandLineArguments.parse(args) { arguments ⇒
       val masterUri = Uri(arguments.keylessValue(0))
+      val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
         case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
         case "-" ⇒ StdinCommand
         case command ⇒ StringCommand(command)
       }
-      if((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      (masterUri, operations)
+      if ((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
+      (masterUri, dataDirectory, operations)
     }
 
   private sealed trait Operation

@@ -92,7 +92,8 @@ if $log4Async; then :
 fi
 
 agentOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
-agentOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
+normalizedData="$(toSystemPath "$data" || kill $$)"
+agentOptions+=("-data-directory=$normalizedData")
 [ -z "$httpPort" ] || agentOptions+=("-http-port=$httpPort")
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
@@ -117,6 +118,7 @@ function terminate() {
     -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
     -classpath "$classpathString" \
     com.sos.jobscheduler.agent.client.main.AgentClientMain \
+    -data-directory="$normalizedData" \
     http://127.0.0.1:$httpPort \
     "$terminateCommand" >/dev/null &
   (sleep $terminateTimeout && kill $pid) &

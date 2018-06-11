@@ -28,6 +28,8 @@ extends AutoCloseable {
 
   createDirectories(masterDir / "config/live")
   createDirectories(masterDir / "config/order-generators")
+  createDirectories(masterDir / "config/private")
+  createDirectories(masterDir / "data")
   for (agentPath ← agentPaths) {
     createDirectories(agentDir(agentPath) / "config/live")
     createDirectory(agentDir(agentPath) / "data")
@@ -49,6 +51,8 @@ extends AutoCloseable {
     val dir = if (path.companion == ScheduledOrderGeneratorPath) "order-generators" else "live"
     masterDir / "config" / dir resolve path.toFile(t)
   }
+
+  def masterPrivateConf = masterDir / "config/private/private.conf"
 
   def masterDir: Path =
     temporaryDirectory / "master"

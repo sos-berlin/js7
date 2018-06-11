@@ -99,7 +99,8 @@ if $log4jAsync; then :
 fi
 
 masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
-masterOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
+normalizedData="$(toSystemPath "$data" || kill $$)"
+masterOptions+=("-data-directory=$normalizedData")
 [ -z "$httpPort" ] || masterOptions+=("-http-port=$httpPort")
 
 live="$config/live"
@@ -127,6 +128,7 @@ function terminate() {
     -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
     -classpath "$classpathString" \
     com.sos.jobscheduler.master.client.main.MasterClientMain \
+    -data-directory="$normalizedData" \
     http://127.0.0.1:$httpPort \
     "{ TYPE: Terminate }" >/dev/null &
   (sleep $terminateTimeout && kill $pid) &

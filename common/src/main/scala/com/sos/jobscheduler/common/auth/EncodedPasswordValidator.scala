@@ -4,6 +4,7 @@ import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing.sha512
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.generic.SecretString.timingAttackSecureEqual
 import com.sos.jobscheduler.common.auth.EncodedPasswordValidator._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -19,7 +20,11 @@ import scala.util.{Failure, Success, Try}
   * tobbe = "plain:PASSWORD"
   * lisbeth = "sha512:130c7809c9e5a8d81347b55f5c82c3a7407f4b41b461eb641887d276b11af4b575c5a32d1cf104e531c700e4b1ddd75b27b9e849576f6dfb8ca42789fbc7ece2"
   * </pre>
-  * The SHA512 check sum can be generated with: sha512sum <code><(echo -n "password")</code>.
+  * How to generate SHA512?
+  * <ul>
+  *   <li>Gnu (Linux): <code>sha512sum <(echo -n "password")</code>.
+  *   <li>MacOS: <code>shasum -a 512 <(echo -n "password")</code>.
+  * </ul>
   *
   * @author Joacim Zschimmer
   */
@@ -43,8 +48,8 @@ extends (UserAndPassword ⇒ Boolean) {
   private[auth] def validatePassword(userAndPassword: UserAndPassword)(hashedPassword: SecretString): Boolean = {
     import userAndPassword.{password, userId}
     hashedPassword.string match {
-      case EntryRegex("plain", pw) ⇒ SecretString.equals(pw, password.string)
-      case EntryRegex("sha512", pw) ⇒ sha512.hashString(password.string, UTF_8) == HashCode.fromString(pw)
+      case EntryRegex("plain", pw) ⇒ timingAttackSecureEqual(pw, password.string)
+      case EntryRegex("sha512", pw) ⇒ sha512.hashString(password.string, UTF_8) equals HashCode.fromString(pw)
       case EntryRegex(_, _) ⇒
         logger.error(s"Unknown password encoding scheme for user '$userId'")
         false

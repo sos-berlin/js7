@@ -4,10 +4,8 @@ import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
-import com.sos.jobscheduler.agent.web.common.ExternalWebService
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -32,7 +30,6 @@ import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
 import scala.collection.immutable
-import scala.reflect.ClassTag
 
 /**
  * @author Joacim Zschimmer
@@ -42,8 +39,6 @@ final case class AgentConfiguration(
   configDirectory: Option[Path],
   http: Option[WebServerBinding.Http],
   https: Option[WebServerBinding.Https],
-  uriPathPrefix: String,
-  externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]],
   workingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
   environment: Map[String, String],
@@ -51,21 +46,18 @@ final case class AgentConfiguration(
   dotnet: DotnetConfiguration,
   rpcKeepaliveDuration: Option[Duration],
   killScript: Option[ProcessKillScript],
-  startupTimeout: Duration,
   commandTimeout: Duration,
   implicit val akkaAskTimeout: Timeout,
   name: String,
   journalSyncOnCommit: Boolean,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 {
-  require(!(uriPathPrefix.startsWith("/") || uriPathPrefix.endsWith("/")))
   require(workingDirectory.isAbsolute)
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     var v = copy(
       http = a.optionAs("-http-port=", http)(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
       https = a.optionAs("-https-port=")(StringToServerInetSocketAddress) map { o ⇒ inetSocketAddressToHttps(o) } orElse https,
-      uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix) stripPrefix "/" stripSuffix "/",
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
       jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
@@ -94,15 +86,10 @@ final case class AgentConfiguration(
 
   private def newKeyStoreReference() =
     KeystoreReference.fromSubConfig(
-      config.getConfig("jobscheduler.agent.webserver.https.keystore"),
+      config.getConfig("jobscheduler.webserver.https.keystore"),
       configDirectory = configDirectory getOrElse {
         throw new IllegalArgumentException("For HTTPS, agentDirectory is required")
       })
-
-  def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
-
-  def withWebServices(classes: Iterable[Class[_ <: ExternalWebService]]) =
-    copy(externalWebServiceClasses = externalWebServiceClasses ++ classes)
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
@@ -159,7 +146,6 @@ final case class AgentConfiguration(
 
 object AgentConfiguration {
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
-  val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
@@ -181,15 +167,12 @@ object AgentConfiguration {
       configDirectory = configDir,
       http = c.optionAs("webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       https = None,  // Changed below
-      externalWebServiceClasses = Nil,
-      uriPathPrefix = c.as[String]("webserver.uri-prefix") stripPrefix "/" stripSuffix "/",
       logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (dataDir map defaultLogDirectory) getOrElse temporaryDirectory,
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
       jobJavaOptions = c.stringSeq("task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      startupTimeout = c.getDuration("startup-timeout"),
       commandTimeout = c.getDuration("command-timeout"),
       akkaAskTimeout = c.getDuration("akka-ask-timeout").toFiniteDuration,
       name = "Agent",

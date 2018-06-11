@@ -80,7 +80,7 @@ object Problem
     override def toString = message + cause.map(o ⇒ s" [$o]").getOrElse("")
   }
 
-  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem]) extends Simple {
+  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None) extends Simple {
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 

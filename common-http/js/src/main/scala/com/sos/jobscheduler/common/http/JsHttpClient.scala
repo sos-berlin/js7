@@ -1,7 +1,10 @@
 package com.sos.jobscheduler.common.http
 
+import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.http.HttpClientException.{HostUnreachable, HttpFailure, OtherFailure, Reason}
 import com.sos.jobscheduler.common.http.JsHttpClient._
 import io.circe
@@ -16,28 +19,32 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JsHttpClient(requiredBuildId: String) extends HttpClient {
+trait JsHttpClient extends HttpClient with HasSessionToken {
+
+  protected def requiredBuildId: String
 
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A] =
     decodeResponse(
       Task.deferFuture(
         Ajax.get(
           uri,
-          headers = Map("Accept" → "application/json"),
+          headers = (("Accept" → "application/json") :: sessionHeaders).toMap,
           timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt)))
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
-    decodeResponse(post_(uri, data))
+    decodeResponse(post_(uri, data, headers = ("Accept" → "application/json") :: Nil))
 
   def postDiscardResponse[A: Encoder](uri: String, data: A) =
     post_(uri, data).map(_.status)
 
-  private def post_[A: Encoder](uri: String, data: A): Task[XMLHttpRequest] =
+  private def post_[A: Encoder](uri: String, data: A, headers: List[(String, String)] = Nil): Task[XMLHttpRequest] =
     Task.deferFuture(
       Ajax.post(
         uri,
         implicitly[Encoder[A]].apply(data).compactPrint,
-        headers = Map("Content-Type" → "application/json")))
+        headers = (headers ::: ("Content-Type" → "application/json") :: sessionHeaders).toMap))
+
+  private def sessionHeaders = sessionToken.map(SessionToken.HeaderName → _.secret.string).toList
 
   private def decodeResponse[A: Decoder](body: ⇒ Task[XMLHttpRequest]): Task[A] =
     for (xhr ← checkResponse(body)) yield circe.parser.decode[A](xhr.responseText) match {

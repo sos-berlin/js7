@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.http
+package com.sos.jobscheduler.base.web
 
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task

@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.master.gui.server
 
-import com.sos.jobscheduler.master.web.master.RouteService
-import com.sos.jobscheduler.master.web.master.RouteService.NamedRoute
+import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
+import akka.http.scaladsl.server.Directives.{pathEndOrSingleSlash, redirect}
+import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
+import com.sos.jobscheduler.master.web.serviceprovider.{NamedRoute, RouteService}
 import com.typesafe.config.Config
 import javax.inject.Inject
 
@@ -14,7 +16,14 @@ final class GuiRouteService extends RouteService with GuiRoute
   protected var config: Config = null
 
   def namedRoutes = Vector(
-    NamedRoute("", indexHtmlRoute),  // /master
-    NamedRoute("gui", guiRoute))     // /master/gui
+    NamedRoute("",
+      pathEndOrSingleSlash {
+        htmlPreferred {
+          redirect("/master", TemporaryRedirect)
+        }
+      }
+    ),
+    NamedRoute("master", indexHtmlRoute),
+    NamedRoute("master/gui", guiRoute))
 }
 

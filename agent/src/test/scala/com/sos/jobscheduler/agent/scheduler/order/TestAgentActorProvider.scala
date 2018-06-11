@@ -11,7 +11,7 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.auth.User.Anonymous
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -43,7 +43,7 @@ private class TestAgentActorProvider extends HasCloser {
 }
 
 object TestAgentActorProvider {
-  private val MasterUserId = Anonymous.id
+  private val MasterUserId = UserId.Anonymous
 
   def provide[A](body: TestAgentActorProvider ⇒ A): A =
     autoClosing(new TestAgentActorProvider)(body)

@@ -17,14 +17,13 @@ final class AgentUris private(agentUri: AgentAddress) {
 
   val prefixedUri = Uri(s"$agentUri/agent")
 
-  def overview = toUri("api")
-
+  val overview = toUri("api")
+  val session = toUri("api/session")
   val command = toUri("api/command")
 
   object task {
-    def overview = toUri("api/task")
-
-    def tasks = toUri("api/task/")
+    val overview = toUri("api/task")
+    val tasks = toUri("api/task/")
 
     def apply(id: AgentTaskId) = toUri(Path("api/task") / id.string)
   }
@@ -33,13 +32,13 @@ final class AgentUris private(agentUri: AgentAddress) {
     def apply(orderId: OrderId): Uri =
       toUri(Uri(path = Path("api/order") / orderId.string))
 
-    def ids: Uri =
+    val ids: Uri =
       toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderId"))
 
-    def events: Uri =
+    val events: Uri =
       toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderEvent"))
 
-    def orders: Uri =
+    val orders: Uri =
       toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "Order"))
   }
 

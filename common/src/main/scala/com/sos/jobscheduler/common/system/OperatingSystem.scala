@@ -4,7 +4,10 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
 import java.nio.file.Files.newDirectoryStream
+import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
+import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
+import scala.collection.immutable
 import scala.io.Source.fromInputStream
 import scala.util.Try
 
@@ -12,6 +15,8 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 trait OperatingSystem {
+
+  def secretFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
 
   def makeExecutableFilename(name: String): String
 
@@ -50,6 +55,8 @@ object OperatingSystem {
   def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.getDynamicLibraryEnvironmentVariableName
 
   final class Windows private[system] extends OperatingSystem {
+    val secretFileAttributes = Nil  // TODO File must not be accessible for other Windows users
+
     def makeExecutableFilename(name: String): String = name + ".exe"
 
     def getDynamicLibraryEnvironmentVariableName: String = "PATH"
@@ -62,6 +69,9 @@ object OperatingSystem {
   }
 
   final class Unix private[system] extends OperatingSystem {
+    val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
+      .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
+
     def makeExecutableFilename(name: String): String = name
 
     def getDynamicLibraryEnvironmentVariableName: String = "LD_LIBRARY_PATH"

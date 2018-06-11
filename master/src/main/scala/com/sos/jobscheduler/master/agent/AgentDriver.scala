@@ -5,8 +5,10 @@ import akka.http.scaladsl.model.Uri
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -18,8 +20,8 @@ import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.typesafe.config.Config
 import java.time.Instant.now
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -28,7 +30,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class AgentDriver(agentId: AgentId, uri: Uri, config: Config)
-(implicit timerService: TimerService, executionContext: ExecutionContext)
+(implicit timerService: TimerService, scheduler: Scheduler)
 extends Actor
 with Stash {
 
@@ -58,9 +60,10 @@ with Stash {
       eventFetcher.close()
     }
     if (client.hasSession) {
-      client.executeCommand(AgentCommand.Logout) onComplete {
-        _ ⇒ client.close()  // Ignoring the response
+      client.logout().runAsync onComplete {
+        _ ⇒ client.close()
       }
+      // Don't await response
     } else {
       client.close()
     }
@@ -72,13 +75,14 @@ with Stash {
   private def disconnected: Receive = {
     case Internal.Connect ⇒
       reconnectPause.onConnect()
-      (for {
-        _ ← client.executeCommand(AgentCommand.Login)  // Separate commands because AgentClient catches the SessionToken of Login.Response
-        _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
-      } yield Internal.Connected)
-      .recover {
-        case t ⇒ Internal.ConnectFailed(t)
-      } pipeTo self
+      ( for {
+          _ ← client.login(Some(UserId.Anonymous → SecretString("")))  // Separate commands because AgentClient catches the SessionToken of Login.Response
+          _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
+        } yield Internal.Connected
+      ).runAsync
+        .recover {
+          case t ⇒ Internal.ConnectFailed(t)
+        } pipeTo self
       unstashAll()
       become(connecting)
 
@@ -134,7 +138,7 @@ with Stash {
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
       def config = AgentDriver.this.config
-      def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
+      def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request).runAsync
       def onEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]]) = self ! Internal.AgentEvents(stamped)
     }
     eventFetcher.start() onComplete {
@@ -150,7 +154,7 @@ with Stash {
     }
     become(disconnecting)
     if (client.hasSession) {
-      client.executeCommand(AgentCommand.Logout) onComplete { _ ⇒
+      client.logout().runAsync onComplete { _ ⇒
         self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent has been restarted) or Agent shutdown
       }
     } else {
@@ -183,7 +187,7 @@ with Stash {
     case Internal.BatchFailed(inputs, throwable) ⇒
       commandQueue.handleBatchFailed(inputs)
       throwable match {
-        case t: AgentClient.HttpException ⇒
+        case t: AkkaHttpClient.HttpException ⇒
           onConnectionError(t.toStringWithCauses)
 
         case t ⇒

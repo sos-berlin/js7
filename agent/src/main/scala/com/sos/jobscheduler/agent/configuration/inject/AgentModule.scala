@@ -7,10 +7,9 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.agent.web.AgentWebServer
-import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
-import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
-import com.sos.jobscheduler.common.auth.EncodedToHashedPassword
+import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
@@ -19,7 +18,7 @@ import com.sos.jobscheduler.taskserver.modules.javamodule.{JavaScriptEngineModul
 import com.sos.jobscheduler.taskserver.modules.shell.ShellModule
 import com.typesafe.config.Config
 import javax.inject.Singleton
-import scala.collection.immutable
+import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -29,22 +28,12 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration)
 extends AbstractModule {
 
   @Provides @Singleton
-  def sessionRegister(): SessionRegister[LoginSession] =
-    new SessionRegister[LoginSession]
+  def sessionRegister(actorSystem: ActorSystem, conf: AgentConfiguration): SessionRegister[LoginSession.Simple] =
+    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply, akkaAskTimeout = conf.akkaAskTimeout)
 
   @Provides @Singleton
-  def provideCsrfConfiguration(config: Config): CSRF.Configuration =
-    CSRF.Configuration.fromSubConfig(config.getConfig("jobscheduler.agent.webserver.csrf"))
-
-  @Provides @Singleton
-  def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
-    GateKeeper.Configuration
-      .fromSubConfig(config.getConfig("jobscheduler.agent.webserver.auth"))
-      .copy(userIdToHashedPassword = () ⇒ EncodedToHashedPassword.fromSubConfig(config.getConfig("jobscheduler.agent.auth.users")))
-
-  @Provides @Singleton
-  def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =
-    agentConfiguration.externalWebServiceClasses map { o ⇒ injector.getInstance(o) }
+  def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =
+    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
   @Provides @Singleton
   def actorRefFactory(o: ActorSystem): ActorRefFactory = o
@@ -74,7 +63,12 @@ extends AbstractModule {
     TimerService() closeWithCloser closer
 
   @Provides @Singleton
-  def executionContext(actorSystem: ActorSystem): ExecutionContext = actorSystem.dispatcher
+  def executionContext(scheduler: Scheduler): ExecutionContext =
+    scheduler
+
+  @Provides @Singleton
+  def monixScheduler(): Scheduler =
+    Scheduler.global
 
   @Provides @Singleton
   def agentConfiguration(): AgentConfiguration = originalAgentConfiguration.finishAndProvideFiles
@@ -86,9 +80,9 @@ extends AbstractModule {
   def closer(): Closer = Closer.create()  // Do not use concurrently !!!
 
   @Provides @Singleton
-  def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration, csrf: CSRF,
+  def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     timerService: TimerService,
     closer: Closer, injector: Injector, actorSystem: ActorSystem, executionContext: ExecutionContext): AgentWebServer =
-      new AgentWebServer(conf, gateKeeperConfiguration, csrf, timerService, closer, injector)(actorSystem, executionContext)
+      new AgentWebServer(conf, gateKeeperConfiguration, timerService, closer, injector)(actorSystem, executionContext)
         .closeWithCloser(closer)
 }

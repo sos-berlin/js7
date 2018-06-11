@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.auth.UserAndPassword
+import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextClient}
@@ -12,13 +13,19 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
   * @author Joacim Zschimmer
   */
 private[master] final class TextMasterClient(
-  masterUri: Uri,
+  protected val baseUri: Uri,
   protected val print: String ⇒ Unit,
   protected val userAndPassword: Option[UserAndPassword] = None,
   keystore: Option[KeystoreReference] = None)
-extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
+extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient with SessionApi {
 
-  private val masterUris = MasterUris(s"$masterUri/master")
+  protected def uriPrefixPath = "/master"
+
+  private val masterUris = MasterUris(s"$baseUri/master")
+
+  protected def httpClient = this
+
+  protected def sessionUri = masterUris.session
 
   protected def serverName = "JobScheduler Master"
 

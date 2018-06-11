@@ -7,11 +7,12 @@ package com.sos.jobscheduler.base.auth
   */
 trait User {
   def id: UserId
-}
+  def hashedPassword: HashedPassword
+  def grantedPermissions: PermissionBundle
 
-object User {
-  /** The unauthenticated, anonymous user. */
-  case object Anonymous extends User {
-    def id = UserId.Anonymous
-  }
+  final def hasPermissions(requiredPermissions: PermissionBundle): Boolean =
+    grantedPermissions contains requiredPermissions
+
+  final def hasPermission(requiredPermission: Permission): Boolean =
+    grantedPermissions contains requiredPermission
 }

@@ -11,13 +11,14 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer
-import com.sos.jobscheduler.agent.web.common.LoginSession
-import com.sos.jobscheduler.base.auth.User.Anonymous
+import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -25,6 +26,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
 import java.nio.file.Paths
 import java.time.Duration
+import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
@@ -62,7 +64,7 @@ extends AutoCloseable {
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
   private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
     promiseFuture[AgentCommand.Response](promise ⇒
-      mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, command, promise))
+      mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise))
 }
 
 object RunningAgent {
@@ -98,12 +100,18 @@ object RunningAgent {
     val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
-    val sessionRegister = injector.instance[SessionRegister[LoginSession]]
+    val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
     val readyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
     val mainActor = actorSystem.actorOf(
       Props { new MainActor(agentConfiguration, sessionRegister, injector, readyPromise, stoppedPromise) },
       "main")
+    implicit val scheduler = injector.instance[Scheduler]
+
+    val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
+    sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+      .runAsync await agentConfiguration.akkaAskTimeout.duration
+    closer onClose { sessionTokenFile.delete() }
 
     for (ready ← readyPromise.future) yield {
       webServerReady await WebServerReadyTimeout

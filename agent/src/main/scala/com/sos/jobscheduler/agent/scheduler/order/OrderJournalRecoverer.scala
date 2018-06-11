@@ -3,7 +3,6 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import com.softwaremill.tagging.@@
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -16,6 +15,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import java.nio.file.Path
 import scala.collection.mutable
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer

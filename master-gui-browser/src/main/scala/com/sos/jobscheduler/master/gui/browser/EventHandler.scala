@@ -38,13 +38,13 @@ trait EventHandler {
     timeout: FiniteDuration = EventTimeout,
     afterErrorDelay: Iterator[FiniteDuration] = newAfterErrorDelayIterator)
   : Callback =
-      scope.state.flatMap(state ⇒
-        ifInactive(state) getOrElse
-          fetchAndHandleEvents(after, forStep, timeout, afterErrorDelay))
-      .attemptTry flatMap {
-        case Success(()) ⇒ Callback.empty
-        case Failure(t) ⇒ onGuiFailed(t)
-      }
+    scope.state.flatMap(state ⇒
+      ifInactive(state) getOrElse
+        fetchAndHandleEvents(after, forStep, timeout, afterErrorDelay))
+    .attemptTry flatMap {
+      case Success(()) ⇒ Callback.empty
+      case Failure(t) ⇒ onGuiFailed(t)
+    }
 
   protected final def ifInactive(state: GuiState): Option[Callback] =
     if (state.appState != AppState.RequestingEvents)

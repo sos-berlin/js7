@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
@@ -36,8 +35,6 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
       configDirectory = Some(tmp / "config"),
       http = None,
       https = None,
-      uriPathPrefix = "",
-      externalWebServiceClasses = Nil,
       workingDirectory = WorkingDirectory,
       logDirectory = tmp / "logs",
       environment = Map(),
@@ -45,7 +42,6 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
       killScript = Some(ProcessKillScript(tmp / "tmp" / s"kill_task.$shellExt")),
-      startupTimeout = 900.s,
       commandTimeout = 60.s,
       akkaAskTimeout = 60.seconds,
       name = "Agent",
@@ -82,11 +78,6 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
     assert(conf("-data-directory=TEST/DATA").logDirectory == Paths.get("TEST/DATA/logs").toAbsolutePath)
     assert(conf("-data-directory=TEST/DATA", "-log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
     assert(conf("-log-directory=test").logDirectory == Paths.get("test").toAbsolutePath)
-  }
-
-  "-uri-prefix=" in {
-    assert(conf("-uri-prefix=test").uriPathPrefix == "test")
-    assert(conf("-uri-prefix=/test/").uriPathPrefix == "test")
   }
 
   "-kill-script= is missing (default)" - {

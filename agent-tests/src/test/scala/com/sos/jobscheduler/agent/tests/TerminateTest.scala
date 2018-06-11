@@ -7,18 +7,20 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Login, RegisterAsMaster, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateTest._
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.soslicense.LicenseKeyString
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
@@ -88,6 +90,7 @@ object TerminateTest {
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
+      (agentDirectory / "config" / "private" / "private.conf").contentString = """ jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
       (agentDirectory / "config" / "live" resolve AJob.jobPath.toFile(SourceType.Json)).contentString =
         JobConfiguration(
           JobPath.NoId,
@@ -98,9 +101,9 @@ object TerminateTest {
       val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
       implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(
-        agentUri = agent.localUri.toString,
-        licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
-      client.executeCommand(Login) await 99.s
+        agentUri = agent.localUri.toString)
+        //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
+      client.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
       client.executeCommand(RegisterAsMaster) await 99.s
       body(client, agent)
       agent.close()

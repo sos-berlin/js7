@@ -3,7 +3,9 @@ package com.sos.jobscheduler.master.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -32,7 +34,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     p
 
   @Provides @Singleton
-  def journalEventReaderProvider()(implicit ec: ExecutionContext, ts: TimerService, config: Config): JournalEventReaderProvider[Event] =
+  def journalEventReaderProvider()(implicit s: Scheduler, ts: TimerService, config: Config): JournalEventReaderProvider[Event] =
     new JournalEventReaderProvider[Event](
       MasterOrderKeeper.journalMeta,
       configuration.journalFile,
@@ -43,12 +45,12 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     EventIdClock.Default
 
   @Provides @Singleton
-  def csrfConfiguration(config: Config): CSRF.Configuration =
-    CSRF.Configuration.fromSubConfig(config.getConfig("jobscheduler.master.webserver.csrf"))
+  def sessionRegister(actorSystem: ActorSystem, conf: MasterConfiguration): SessionRegister[LoginSession.Simple] =
+    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply, conf.akkaAskTimeout)
 
   @Provides @Singleton
-  def gateKeeperConfiguration: GateKeeper.Configuration =
-    GateKeeper.Configuration.fromSubConfig(configuration.config.getConfig("jobscheduler.master.webserver.auth"))
+  def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =
+    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =

@@ -1,0 +1,15 @@
+package com.sos.jobscheduler.agent.web.common
+
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, RouteProvider}
+
+/**
+ * Standard trait for Agent web services.
+ * To be able to mix-in multiple web services, use `addRootRoute` to add a `Route`.
+ * Method `buildRoute` returns the combined `Route`.
+ *
+ * @author Joacim Zschimmer
+ */
+trait AgentRouteProvider extends RouteProvider
+{
+  protected type Session = LoginSession.Simple
+}

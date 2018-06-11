@@ -3,10 +3,9 @@ package com.sos.jobscheduler.agent.command
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.softwaremill.tagging.@@
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand._
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -16,8 +15,9 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import io.circe.generic.JsonCodec
 import java.time.Instant
 import java.time.Instant.now
+import monix.execution.Scheduler
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
 /**
@@ -25,7 +25,7 @@ import scala.util.{Success, Try}
  *
  * @author Joacim Zschimmer
  */
-final class CommandActor(sessionActor: ActorRef @@ SessionActor, agentHandle: AgentHandle)(implicit ec: ExecutionContext)
+final class CommandActor(agentHandle: AgentHandle)(implicit s: Scheduler)
 extends Actor {
 
   private var totalCounter = 0L
@@ -79,10 +79,8 @@ extends Actor {
         val singleResponseFutures = responses map { _.future } map { _
           .map(Batch.Succeeded.apply)
           .recover { case t ⇒ Batch.Failed(t.toString) }}
-        response.completeWith(Future.sequence(singleResponseFutures) map Batch.Response.apply)
-
-      case command: SessionCommand ⇒
-        sessionActor.forward(SessionActor.Command.Execute(command, meta, response))
+        response.completeWith(
+          Future.sequence(singleResponseFutures) map Batch.Response.apply)
 
       case NoOperation ⇒
         response.success(AgentCommand.Accepted)

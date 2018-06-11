@@ -6,10 +6,6 @@ import akka.http.scaladsl.model.MediaTypes.{`application/x-www-form-urlencoded`,
 import akka.http.scaladsl.model.StatusCodes.Forbidden
 import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
-import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF._
-import com.typesafe.config.Config
-import javax.inject.{Inject, Singleton}
-import scala.collection.JavaConverters._
 
 /**
   * Simplistic check agains some CSRF attacks, especially HTML 5 form POST.
@@ -19,14 +15,18 @@ import scala.collection.JavaConverters._
   *
   * @author Joacim Zschimmer
   */
-@Singleton
-final class CSRF @Inject()(conf: Configuration) {
+object CSRF
+{
+  /** For a list of cross-site HTML 5 form POST content types, see https://www.w3.org/TR/html5/forms.html#attr-fs-enctype. */
+  private val RejectedContentTypes = Set(
+    `application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`).map(_.value) +
+    "none/none"
 
-  val rejectSomeCSRF: Directive0 =
+  val forbidCSRF: Directive0 =
     mapInnerRoute { inner ⇒
       extractRequest { request ⇒
         if (looksLikeHtmlFormPost(request))
-          complete(Forbidden → "HTML form POST is forbidden")
+          complete(Forbidden)   // be quiet: → "HTML form POST is forbidden")
         else
           inner
       }
@@ -34,22 +34,5 @@ final class CSRF @Inject()(conf: Configuration) {
 
   private def looksLikeHtmlFormPost(request: HttpRequest): Boolean =
     request.method == POST &&
-      conf.rejectedContentTypes.contains(request.entity.contentType.mediaType.value)
-}
-
-object CSRF {
-
-  final case class Configuration(
-    /** For a list of cross-site HTML 5 form POST content types, see https://www.w3.org/TR/html5/forms.html#attr-fs-enctype. */
-    rejectedContentTypes: Set[String])
-
-  object Configuration {
-    // See https://www.w3.org/TR/html5/forms.html#attr-fs-enctype
-    @Deprecated
-    val ForTest = Configuration(
-      rejectedContentTypes = Set(`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`) map { _.value })
-
-    def fromSubConfig(config: Config) = new Configuration(
-      rejectedContentTypes = Set("none/none") ++ config.getStringList("reject-post-content-types").asScala)
-  }
+      RejectedContentTypes.contains(request.entity.contentType.mediaType.value)
 }

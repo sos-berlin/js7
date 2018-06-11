@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.tests
 
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -29,8 +31,8 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
 
   override def beforeAll() = {
     super.beforeAll()
-    //env.xmlFile(TestAgentPath).xml = <agent uri="http://0.0.0.0:0"/>
     env.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
+    env.masterPrivateConf.contentString = """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
     master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     api = new AkkaHttpMasterApi(master.localUri)
@@ -41,6 +43,10 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
     if (api != null) api.close()
     env.close()
     super.afterAll()
+  }
+
+  "login" in {
+    api.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
   }
 
   "POST order" in {

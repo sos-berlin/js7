@@ -1,68 +1,63 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.http.scaladsl.model.StatusCodes.Forbidden
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, Route}
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.auth.SecretStringGenerator
-import com.sos.jobscheduler.data.session.SessionToken
-import java.util.concurrent.ConcurrentHashMap
+import akka.actor.{ActorRef, ActorRefFactory}
+import akka.pattern.ask
+import akka.util.Timeout
+import com.sos.jobscheduler.base.auth.{SessionToken, UserId}
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.{RichPath, pathToFile}
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
+import java.nio.file.{Files, Path}
+import monix.eval.Task
+import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[S] {
+final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef, implicit private val akkaAskTimeout: Timeout)
+{
+  private val systemSessionPromise = Promise[Checked[S]]()
+  val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
 
-  private val sessions = new ConcurrentHashMap[SessionToken, S]()
-
-  def add(session: S): SessionToken = {
-    val token = SessionToken(SecretStringGenerator.newSecretString())
-    assert(!sessions.containsKey(token))
-    sessions.put(token, session)
-    token
-  }
-
-  def remove(sessionToken: SessionToken): Unit = {
-    sessions.remove(sessionToken)
-  }
-
-  def contains(sessionToken: SessionToken): Boolean =
-    sessions containsKey sessionToken
-
-  object directives {
-    object session extends Directive1[S] {
-      def tapply(inner: Tuple1[S] ⇒ Route) =
-        optionalHeaderValueByName(SessionToken.HeaderName) {
-          case Some(string) ⇒
-            val sessionToken = SessionToken(SecretString(string))
-            sessions.get(sessionToken) match {
-              case null ⇒
-                complete(Forbidden → "Unknown SessionToken")  // 'Unauthorized' requires 'WWW-Authenticate'
-              case session ⇒
-                inner(Tuple1(session))
-            }
-          case None ⇒
-            reject
-        }
+  def createSystemSession(user: S#User, file: Path): Task[Completed] =
+    for (sessionToken ← login(user)/*TODO No session timeout*/) yield {
+      file.delete()
+      Files.createFile(file, operatingSystem.secretFileAttributes: _*)
+      file.contentString = sessionToken.secret.string
+      logger.info(s"Session for user '${user.id.string}' token placed in file $file")
+      systemSessionPromise.completeWith(sessionFuture(Some(user.id), sessionToken))
+      Completed
     }
 
-    /**
-      * Directive passes with known SessionToken or when no SessionToken header is set.
-      */
-    object optionalSession extends Directive1[Option[S]] {
-      def tapply(inner: Tuple1[Option[S]] ⇒ Route) =
-        optionalHeaderValueByName(SessionToken.HeaderName) {
-          case Some(string) ⇒
-            val sessionToken = SessionToken(SecretString(string))
-            sessions.get(sessionToken) match {
-              case null ⇒
-                complete(Forbidden → "Unknown SessionToken") // 'Unauthorized' requires 'WWW-Authenticate'
-              case session ⇒
-                inner(Tuple1(Some(session)))
-            }
-          case None ⇒
-            inner(Tuple1(None))
-        }
-    }
+  def login(user: S#User, sessionTokenOption: Option[SessionToken] = None): Task[SessionToken] =
+    Task.deferFuture(
+      (actor ? SessionActor.Command.Login(user, sessionTokenOption)).mapTo[SessionToken])
+
+  def logout(sessionToken: SessionToken): Task[Completed] =
+    Task.deferFuture(
+      (actor ? SessionActor.Command.Logout(sessionToken)).mapTo[Completed])
+
+  private[session] def session(sessionToken: SessionToken, userId: Option[UserId]): Task[Checked[S]] =
+    Task.deferFuture(
+      sessionFuture(userId, sessionToken))
+
+  private[session] def sessionFuture(userId: Option[UserId], sessionToken: SessionToken): Future[Checked[S]] =
+    (actor ? SessionActor.Command.Get(sessionToken, userId)).mapTo[Checked[S]]
+}
+
+object SessionRegister
+{
+  private val logger = Logger(getClass)
+
+  def start[S <: LoginSession](
+    actorRefFactory: ActorRefFactory,
+    newSession: SessionInit[S#User] ⇒ S,
+    akkaAskTimeout: Timeout)
+  : SessionRegister[S] = {
+    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession), "session")
+    new SessionRegister[S](sessionActor, akkaAskTimeout = akkaAskTimeout)
   }
 }

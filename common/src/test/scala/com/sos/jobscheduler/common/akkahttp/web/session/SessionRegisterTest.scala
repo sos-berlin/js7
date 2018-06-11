@@ -1,60 +1,67 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.data.session.SessionToken
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import com.sos.jobscheduler.base.generic.{Completed, SecretString}
+import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegisterTest._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
+import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest {
+final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
+{
+  override def executor = super.executor  // Not implicit
 
-  private val sessionRegister = new SessionRegister[String]
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
+  private lazy val actor = tag[SessionActor[MySession]](
+    system.actorOf(SessionActor.props[MySession](MySession.apply)))
+  private lazy val sessionRegister = new SessionRegister[MySession](actor, akkaAskTimeout = 99.seconds)
+  private var sessionToken = SessionToken(SecretString("INVALID"))
 
-  "Remove unknown SessionToken" in {
-    sessionRegister.remove(unknownSessionToken)
+  "Logout unknown SessionToken" in {
+    assert(sessionRegister.logout(unknownSessionToken).await(99.seconds) == Completed)
   }
 
-  "contains" in {
-    assert(!sessionRegister.contains(unknownSessionToken))
+  "session(unknown)" in {
+    assert(sessionRegister.session(unknownSessionToken, None).await(99.seconds).isInvalid)
+    assert(sessionRegister.session(unknownSessionToken, Some(AUser.id)).await(99.seconds).isInvalid)
   }
 
   "login" in {
-    val sessionToken = sessionRegister.add("A")
-    assert(sessionRegister contains sessionToken)
-    sessionRegister.remove(sessionToken)
-    assert(!sessionRegister.contains(sessionToken))
-    sessionRegister.remove(sessionToken)
+    sessionToken = sessionRegister.login(AUser).await(99.seconds)
   }
 
-  "sessionOption directive" - {
-    val route = path("test") {
-      sessionRegister.directives.session { session ⇒
-        complete(session)
-      }
+  "session" in {
+    val someToken = SessionToken(SecretString("X"))
+    for (userId ← List(Some(AUser.id), None)) {
+      assert(sessionRegister.session(sessionToken, userId).await(99.seconds).map(o ⇒ o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
+        Valid(MySession(SessionInit(someToken, 1, AUser))))
     }
+  }
 
-    "No session header" in {
-      Get("/test") ~> route ~> check {
-        assert(!handled)
-      }
-    }
+  "Changed UserId is rejected" in {
+    assert(sessionRegister.session(sessionToken, Some(BUser.id)).await(99.seconds) == Invalid(Problem("Invalid session token")))
+  }
 
-    "Unknown session header is rejected" in {
-      Get("/test") ~> addHeader(SessionToken.HeaderName, "UNKNOWN") ~> route ~> check {
-        assert(status == Unauthorized || status == Forbidden)
-      }
-    }
+  "logout" in {
+    assert(sessionRegister.logout(sessionToken).await(99.seconds) == Completed)
+    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isInvalid)
+  }
+}
 
-    "Known session header" in {
-      val sessionToken = sessionRegister.add("TEST-SESSION")
-      Get("/test") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
-        assert(responseAs[String] == s"TEST-SESSION")
-      }
-    }
+private object SessionRegisterTest
+{
+  private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty)
+  private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty)
+
+  final case class MySession(sessionInit: SessionInit[SimpleUser]) extends LoginSession {
+    type User = SimpleUser
   }
 }

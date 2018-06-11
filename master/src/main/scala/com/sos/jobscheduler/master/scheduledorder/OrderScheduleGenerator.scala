@@ -15,6 +15,7 @@ import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.scheduledorder.OrderScheduleGenerator._
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import monix.execution.Scheduler
 import scala.collection.immutable.Iterable
 
 /**
@@ -24,10 +25,10 @@ final class OrderScheduleGenerator(
   val journalActor: ActorRef,
   masterOrderKeeper: ActorRef,
   masterConfiguration: MasterConfiguration)
-  (implicit timerService: TimerService)
+  (implicit
+    timerService: TimerService,
+    scheduler: Scheduler)
 extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
-
-  import context.dispatcher
 
   private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, Nil)
   private var versionId: VersionId = null

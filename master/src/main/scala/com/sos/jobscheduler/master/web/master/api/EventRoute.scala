@@ -147,6 +147,6 @@ object EventRoute
     try java.lang.Long.parseLong(header.id)
     catch {
       case e: NumberFormatException ⇒
-        throw new HttpStatusCodeException(BadRequest, s"Invalid header Last-Event-Id: $e")
+        throw new HttpStatusCodeException(BadRequest, Problem(s"Invalid header Last-Event-Id: $e"))
     }
 }

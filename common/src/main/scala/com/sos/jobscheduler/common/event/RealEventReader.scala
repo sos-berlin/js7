@@ -161,7 +161,8 @@ trait RealEventReader[E <: Event] extends EventReader[E]
           var lastEventId = after
           val eventIterator = stampeds
             .map { o ⇒ lastEventId = o.eventId; o }
-            .collect { case stamped if collect isDefinedAt stamped.value ⇒ stamped map collect }
+            .collect { case stamped if collect isDefinedAt stamped.value ⇒
+              stamped map collect }
             .take(limit)
           if (eventIterator.isEmpty) {
             eventIterator.close()
@@ -205,7 +206,8 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler) =
+  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler)
+  : Vector[Stamped[KeyedEvent[E1]]] =
     when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.seconds match {
       case EventSeq.NonEmpty(events) ⇒
         try events.toVector

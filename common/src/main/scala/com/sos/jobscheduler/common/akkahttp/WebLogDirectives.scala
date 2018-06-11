@@ -1,25 +1,25 @@
 package com.sos.jobscheduler.common.akkahttp
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
+import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
-import akka.http.scaladsl.model.headers.{CustomHeader, `Remote-Address`}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, RemoteAddress}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
-import akka.http.scaladsl.server.directives.LoggingMagnet
-import akka.http.scaladsl.server.{Directive0, ExceptionHandler, RejectionHandler, RouteResult}
+import akka.http.scaladsl.server.{Directive0, ExceptionHandler, RejectionHandler}
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{addHeader, passIf}
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives._
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
+import io.circe.parser.{parse ⇒ parseJson}
 import java.time.Duration
 import scala.collection.JavaConverters._
 
@@ -32,37 +32,41 @@ trait WebLogDirectives {
   protected def actorSystem: ActorSystem
 
   private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
-  private lazy val withTimestamp = config.getBoolean("jobscheduler.webserver.log.elapsed-time")
+  private lazy val respondWithException = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
-  def handleErrorAndLog: Directive0 =
+  def handleErrorAndLog(userId: Option[UserId] = None): Directive0 =
     mapInnerRoute { inner ⇒
-      (passIf(!withTimestamp) | addHeader(`X-JobScheduler-Request-Started-At`(System.nanoTime))) {
-        logRequestResult(LoggingMagnet(_ ⇒ log(logLevel, hasRemoteAddress = hasRemoteAddress))) {
-          handleError {
-            inner
-          }
+      webLog(userId) {
+        handleError {
+          inner
         }
       }
     }
 
-  private lazy val verboseErrorMessages = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
+  private def webLog(userId: Option[UserId]): Directive0 = extractRequest.flatMap { request ⇒
+    val start = System.nanoTime
+    mapResponse { response ⇒
+      log(request, response, logLevel, userId, System.nanoTime - start, hasRemoteAddress = hasRemoteAddress)
+      response
+    }
+  }
+
   private val exceptionHandler = ExceptionHandler {
+    case e: HttpStatusCodeException ⇒
+      complete((e.statusCode, e.problem))
+
     case e: PublicException ⇒
       extractRequest { request ⇒
         webLogger.warn(toLogMessage(request, e), e)
-        complete((BadRequest, e.publicMessage + "\n"))
+        complete((BadRequest, Problem.fromEagerThrowable(e)))
       }
-
-    case e: HttpStatusCodeException ⇒
-      complete((e.statusCode, e.message + "\n"))
 
     case e ⇒
       extractRequest { request ⇒
-        logger.warn(toLogMessage(request, e), e)
-        webLogger.debug(toLogMessage(request, e), e)
-        if (verboseErrorMessages)
-          complete((InternalServerError, e.toStringWithCauses + "\n"))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
+        webLogger.warn(toLogMessage(request, e), e)
+        if (respondWithException)
+          complete((InternalServerError, Problem.fromEagerThrowable(e)))
         else
           complete(InternalServerError)
       }
@@ -82,60 +86,49 @@ trait WebLogDirectives {
     }
   }
 
-  private def log(logLevel: LogLevel, hasRemoteAddress: Boolean)(request: HttpRequest)(routeResult: RouteResult): Unit = {
-    val isFailure = PartialFunction.cond(routeResult) {
-      case _: RouteResult.Rejected ⇒ true //rejected.status.isFailure
-      case _: RouteResult.Complete ⇒ false
-    }
+  private def log(request: HttpRequest, response: HttpResponse, logLevel: LogLevel, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)(): Unit = {
+    val isFailure = response.status.isFailure
     webLogger.log(
       if (isFailure) Warn else logLevel,
-      requestResponseToLine(request, routeResult, hasRemoteAddress = hasRemoteAddress))
+      requestResponseToLine(request, response, userId, nanos, hasRemoteAddress = hasRemoteAddress))
   }
 
-  private def requestResponseToLine(request: HttpRequest, response: Any, hasRemoteAddress: Boolean) = {
-    val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
-    val sb = new StringBuilder(500)
-    sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
-    sb.append(" ")
+  private def requestResponseToLine(request: HttpRequest, response: HttpResponse, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean) = {
+    val sb = new StringBuilder(200)
+    sb.append(response.status.intValue)
+    //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
+    //sb.append(' ')
+    //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
+    sb.append(' ')
+    sb.append(userId.fold("-")(_.string))
+    sb.append(' ')
     sb.append(request.method.value)
     sb.append(' ')
     sb.append(request.uri)
     sb.append(' ')
-    sb.append(request.protocol.value)
-    response match {
-      case response: HttpResponse ⇒
-        sb.append(' ')
-        sb.append(response.status.intValue)
-        if (response.status.isFailure) {
-            sb.append(' ')
-          response.entity match {
-            case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) ⇒  // Error message body is only logged if encoded as "text/plain; charset=UTF-8". Don't rely on this !!!
-              sb.append(entity.data.utf8String take 200 takeWhile { c ⇒ !c.isControl } truncateWithEllipsis 200)
-            case _ ⇒
-              sb.append(response.status.reason)
-          }
-        } else {
-          response.entity match {
-            case entity: HttpEntity.Strict ⇒
-              sb.append(' ')
-              sb.append(entity.data.length)
-            case _ ⇒
-          }
-        }
-      case _ ⇒
-    }
-    for (`X-JobScheduler-Request-Started-At`(startedAt) ← request.header[`X-JobScheduler-Request-Started-At`]) {
-      sb.append(' ')
-      sb.append(Duration.ofNanos(System.nanoTime - startedAt).pretty)
-    }
-    sb.toString
-  }
+    if (response.status.isFailure)
+      response.entity match {  // Try to extract error message
+        case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) ⇒
+          appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c ⇒ !c.isControl } truncateWithEllipsis 200)
 
-  private case class `X-JobScheduler-Request-Started-At`(nanos: Long) extends CustomHeader {
-    def name = "X-JobScheduler-Request-Started-At"
-    def value = nanos.toString
-    def renderInRequests = false
-    def renderInResponses = false
+        case entity @ HttpEntity.Strict(`application/json`, _) ⇒
+          parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
+            case Left(_) ⇒ appendQuotedString(sb, response.status.reason)
+            case Right(problem) ⇒ appendQuotedString(sb, problem.toString)
+          }
+
+        case _ ⇒
+          appendQuotedString(sb, response.status.reason)
+      }
+    else response.entity match {
+      case entity: HttpEntity.Strict ⇒
+        sb.append(entity.data.length)
+      case _ ⇒
+        sb.append("STREAM")
+    }
+    sb.append(' ')
+    sb.append(Duration.ofNanos(nanos).pretty)
+    sb.toString
   }
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
@@ -144,11 +137,9 @@ trait WebLogDirectives {
 
 object WebLogDirectives {
   private val webLogger = Logger("Web")
-  private val logger = Logger(getClass)
 
   val TestConfig = ConfigFactory.parseMap(Map(
     "jobscheduler.webserver.log.level" → "debug",
-    "jobscheduler.webserver.log.elapsed-time" → false.toString,
     "jobscheduler.webserver.verbose-error-messages" → true.toString)
     .asJava)
 
@@ -159,5 +150,14 @@ object WebLogDirectives {
       def config = c
       def actorSystem = a
     }
+  }
+
+  private def appendQuotedString(sb: StringBuilder, string: String) = {
+    sb.append('"')
+    string foreach {
+      case '"' ⇒ sb.append('\\').append('"')
+      case ch ⇒ sb.append(ch)
+    }
+    sb.append('"')
   }
 }
