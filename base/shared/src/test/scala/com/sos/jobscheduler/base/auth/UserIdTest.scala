@@ -8,6 +8,7 @@ import org.scalatest.FreeSpec
 final class UserIdTest extends FreeSpec {
 
   "Invalid UserId" in {
+    intercept[IllegalArgumentException] { UserId("") }
     intercept[IllegalArgumentException] { UserId("a?") }
     intercept[IllegalArgumentException] { UserId("a?b") }
     intercept[IllegalArgumentException] { UserId("a/b") }
@@ -18,7 +19,6 @@ final class UserIdTest extends FreeSpec {
   }
 
   "Valid UserId" in {
-    UserId("")  // Bad ???
     UserId("a")
     UserId("å")
     UserId("0")
