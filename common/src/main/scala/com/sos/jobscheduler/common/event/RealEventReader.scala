@@ -114,7 +114,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   final def whenKeyedEvent[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Task[E1] =
     whenKey[E1](request.copy[E1](limit = 1), key, predicate) map {
       case eventSeq: EventSeq.NonEmpty[CloseableIterator, E1] ⇒
-        try eventSeq.stampeds.next().value
+        try eventSeq.stamped.next().value
         finally eventSeq.close()
       case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
       case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")

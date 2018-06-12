@@ -67,9 +67,9 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
 
       //implicit val x = JsonSeqStreamSupport
       //implicit val y = CirceJsonSeqSupport
-      //val stampeds = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
+      //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
       //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
-      //assert(stampeds == TestEvents)
+      //assert(stamped == TestEvents)
     }
   }
 

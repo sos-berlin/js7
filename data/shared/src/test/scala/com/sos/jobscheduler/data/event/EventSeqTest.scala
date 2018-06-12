@@ -25,7 +25,7 @@ final class EventSeqTest extends FreeSpec {
         Stamped(1, Timestamp.ofEpochMilli(123), KeyedEvent(TestEvent)("KEY")))),
       """{
         "TYPE": "NonEmpty",
-        "stampeds": [
+        "stamped": [
           {
             "eventId": 1,
             "timestamp": 123,

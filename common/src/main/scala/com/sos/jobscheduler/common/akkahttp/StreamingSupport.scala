@@ -35,7 +35,7 @@ object StreamingSupport
       .json(maxObjectLength = JsonObjectMaxSize)
       .withParallelMarshalling(parallelism = sys.runtime.availableProcessors, unordered = false)
       .withFramingRenderer(Flow[ByteString].intersperse(
-        ByteString("""{"TYPE":"NonEmpty","stampeds":["""),
+        ByteString("""{"TYPE":"NonEmpty","stamped":["""),
         ByteString(","),
         ByteString("]}")))
 

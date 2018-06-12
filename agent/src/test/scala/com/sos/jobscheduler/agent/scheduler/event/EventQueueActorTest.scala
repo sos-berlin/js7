@@ -45,8 +45,8 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     val aKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
     actor ! Stamped(111, Timestamp.ofEpochMilli(0), aKeyedEvent)
     val aEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((aEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
-    val aEventId = aEventSeq.stampeds.last.eventId
+    assert((aEventSeq.stamped map { _.value }) == List(aKeyedEvent))
+    val aEventId = aEventSeq.stamped.last.eventId
     assert(aEventId == 111)
 
     val whenBEventSeq = requestEvents(after = aEventId, timeout = 99.s).mapTo[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
@@ -54,18 +54,18 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     val bKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
     actor ! Stamped(222, Timestamp.ofEpochMilli(0), bKeyedEvent)
     val bEventSeq = whenBEventSeq await 99.s
-    assert((bEventSeq.stampeds map { _.value }) == List(bKeyedEvent))
-    assert(bEventSeq.stampeds.last.eventId > EventId.BeforeFirst)
+    assert((bEventSeq.stamped map { _.value }) == List(bKeyedEvent))
+    assert(bEventSeq.stamped.last.eventId > EventId.BeforeFirst)
 
     val cEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((cEventSeq.stampeds map { _.value }) == List(aKeyedEvent, bKeyedEvent))
+    assert((cEventSeq.stamped map { _.value }) == List(aKeyedEvent, bKeyedEvent))
 
     val dEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s, limit = 1) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((dEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
+    assert((dEventSeq.stamped map { _.value }) == List(aKeyedEvent))
 
     val eEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((eEventSeq.stampeds map { _.value }) == List(aKeyedEvent, bKeyedEvent))
-    lastEventId = eEventSeq.stampeds.last.eventId
+    assert((eEventSeq.stamped map { _.value }) == List(aKeyedEvent, bKeyedEvent))
+    lastEventId = eEventSeq.stamped.last.eventId
   }
 
   "Many events" in {
@@ -75,10 +75,10 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
       val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, Timestamp.ofEpochMilli(i), keyedEvent)
       sent foreach actor.!
       val received = mutable.Buffer[Stamped[KeyedEvent[OrderEvent]]]()
-      received ++= (whenAEventSeq await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
+      received ++= (whenAEventSeq await 99.s).asInstanceOf[MyNonEmptyEventSeq].stamped
       lastEventId = received.last.eventId
       while (lastEventId < sent.last.eventId) {
-        received ++= (requestEvents(after = lastEventId, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
+        received ++= (requestEvents(after = lastEventId, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq].stamped
         lastEventId = received.last.eventId
       }
       assert(received.toVector == sent)

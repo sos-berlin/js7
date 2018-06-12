@@ -332,7 +332,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateEventsForTest(events) == json"""{
       "TYPE": "NonEmpty",
-      "stampeds": [
+      "stamped": [
         {
           "eventId": 1001,
           "TYPE": "VersionAdded",
@@ -467,7 +467,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }))
       }
       eventResponse.hcursor
-        .downField("stampeds").withFocus(_.mapArray(_ map changeEvent)).up
+        .downField("stamped").withFocus(_.mapArray(_ map changeEvent)).up
         .top.get
     }
   }
