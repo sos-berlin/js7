@@ -256,20 +256,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   }
 
   "/master/api/order" - {
-    "POST order with missing workflow" in {
-      val order = json"""{
-        "id": "ORDER-ID",
-        "workflowPath": "/MISSING"
-      }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
-      val exception = intercept[HttpException] {
-        httpClient.post[Json, Json](s"$uri/master/api/order", order, headers) await 99.s
-      }
-      assert(exception.status.intValue == 400/*BadRequest*/)
-      assert(exception.dataAsString contains "No such key 'Workflow:/MISSING'")  // Or similar
-    }
-
     "POST" - {
+      "Order with missing workflow is rejected" in {
+        val order = json"""{
+          "id": "ORDER-ID",
+          "workflowPath": "/MISSING"
+        }"""
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+        val exception = intercept[HttpException] {
+          httpClient.post[Json, Json](s"$uri/master/api/order", order, headers) await 99.s
+        }
+        assert(exception.status.intValue == 400/*BadRequest*/)
+        assert(exception.dataAsString contains "No such key 'Workflow:/MISSING'")  // Or similar
+      }
+
       val order = json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW"
@@ -292,15 +292,38 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       }
     }
 
-    "GET" in {
+    testGet("master/api/order",
+      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      json"""{
+        "count": 1
+      }""")
+
+    testGet("master/api/order/",
+      RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
+      json"""{
+        "eventId": 1000006,
+        "array": [
+          "ORDER-ID"
+        ]
+      }""")
+
+    "master/api/order/?return=Order" in {
+      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+      val response = httpClient.get[Json](s"$uri/master/api/order/?return=Order", headers) await 99.s
+      val orders = response.fieldOrThrow("array").asArray.get
+      assert(orders.length == 1)
+      assert(orders(0).fieldOrThrow("id").stringOrThrow == "ORDER-ID")
+    }
+
+    "master/api/order/ORDER-ID" in {
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       val order = httpClient.get[Json](s"$uri/master/api/order/ORDER-ID", headers) await 99.s
       assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
     }
+  }
 
-    "(await OrderFinished)" in {
-      eventCollector.await[OrderFinished]()  // Needed for test /master/api/events
-    }
+  "(await OrderFinished)" in {
+    eventCollector.await[OrderFinished]()  // Needed for test /master/api/events
   }
 
   "/master/api/event (only JSON)" in {

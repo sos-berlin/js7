@@ -15,6 +15,8 @@ trait OrderApi {
 
   def orders: Task[Stamped[Seq[Order[Order.State]]]]
 
+  def orderIds = orders map (_ map (_ map (_.id)))
+
   def ordersOverview: Task[OrdersOverview] =
     for (c ← orderCount) yield
       OrdersOverview(count = c)

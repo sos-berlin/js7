@@ -47,6 +47,16 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
     }
   }
 
+  // Seq[OrderId]
+  for (uri ← List("/master/api/order/")) {
+    s"$uri" in {
+      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+        val Stamped(_, _, orders) = responseAs[Stamped[Seq[OrderId]]]
+        assert(status == OK && orders == TestOrders.values.map(_.id).toList)
+      }
+    }
+  }
+
   // Seq[Order]
   for (uri ← List("/master/api/order/?return=Order")) {
     s"$uri" in {

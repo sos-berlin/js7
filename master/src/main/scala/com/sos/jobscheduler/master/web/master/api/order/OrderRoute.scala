@@ -54,7 +54,9 @@ trait OrderRoute extends MasterRouteProvider
         } ~
         pathSingleSlash {
           parameter("return".?) {
-            case Some("Order") | None ⇒
+            case None ⇒
+              complete(orderApi.orderIds)
+            case Some("Order") ⇒
               complete(orderApi.orders)
             case Some(unrecognized) ⇒
               complete(Problem(s"Unrecognized return=$unrecognized"))
