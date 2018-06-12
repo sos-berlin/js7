@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, 
 import akka.http.scaladsl.model.headers.{RawHeader, `Cache-Control`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.auth.KnownUserPermission
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute
@@ -37,7 +38,7 @@ with SessionRoute
       pathSegments("session") {
         sessionRoute
       } ~
-      authorizedUser() { _ ⇒
+      authorizedUser(KnownUserPermission) { _ ⇒
         pathSegments("event") {
           eventRoute
         } ~

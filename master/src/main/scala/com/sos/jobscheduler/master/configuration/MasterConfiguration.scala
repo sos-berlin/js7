@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Path
@@ -22,6 +23,7 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 final case class MasterConfiguration(
+  masterId: MasterId,
   dataDirectory: Path,
   configDirectory: Path,
   webServerBindings: Vector[WebServerBinding],
@@ -65,15 +67,15 @@ object MasterConfiguration {
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, extraDefaultConfig)
-    val masterConfig = config.getConfig("jobscheduler.master")
     new MasterConfiguration(
+      masterId = MasterId(config.getString("jobscheduler.master.id")),
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerBindings = Vector[WebServerBinding]() ++
-        (masterConfig.optionAs("webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http),
+        (config.optionAs("jobscheduler.master.webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http),
       timeZone = ZoneId.systemDefault,
-      akkaAskTimeout = masterConfig.getDuration("akka-ask-timeout").toFiniteDuration,
-      journalSyncOnCommit = masterConfig.getBoolean("journal.sync"),
+      akkaAskTimeout = config.getDuration("jobscheduler.master.akka-ask-timeout").toFiniteDuration,
+      journalSyncOnCommit = config.getBoolean("jobscheduler.master.journal.sync"),
       config = config)
   }
 

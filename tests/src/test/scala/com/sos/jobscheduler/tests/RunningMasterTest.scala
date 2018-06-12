@@ -2,10 +2,8 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -13,25 +11,21 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
-import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.tests.RunningMasterTest._
-import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -48,26 +42,22 @@ import scala.reflect.ClassTag
 final class RunningMasterTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "RunningMasterTest")) { env ⇒
-      val agentConfigs = AgentPaths map { agentPath ⇒
-        env.agentFile(agentPath, JobPath("/test"), SourceType.Xml).xml =
-          <job>
-            <params>
-              <param name="var1" value={s"VALUE-${agentPath.withoutStartingSlash}"}/>
-            </params>
-            <script language="shell">{TestScript}</script>
-          </job>
-        AgentConfiguration.forTest(Some(env.agentDir(agentPath)))
+    autoClosing(new DirectoryProvider(AgentPaths)) { provider ⇒
+      for (agentPath ← AgentPaths) {
+        provider.agentToTree(agentPath).writeJson(
+          JobConfiguration(
+            JobPath("/test") % VersionId.Anonymous,
+            JobScript(TestScript),
+            Map("var1" → s"VALUE-${agentPath.withoutStartingSlash}")))
       }
 
-      val agent0 = RunningAgent.startForTest(agentConfigs(0)) await 10.s
-      env.file(TestWorkflowPath, SourceType.Xml).xml =
-        <job_chain>
-          <job_chain_node state="100" agent="test-agent-111" job="/test"/>
-          <job_chain_node state="200" agent="test-agent-222" job="/test"/>
-          <job_chain_node.end state="END"/>
-        </job_chain>
-      env.file(ScheduledOrderGeneratorPath("/test"), SourceType.Xml).xml =
+      val agent0 = provider.startAgent(AgentPaths(0)) await 10.s
+      provider.master.writeJson(
+        Workflow(TestWorkflowPath % VersionId.Anonymous,
+          Vector(
+            Job(JobPath("/test"), AgentPaths(0)),
+            Job(JobPath("/test"), AgentPaths(1)))))
+      (provider.master.orderGenerators / "test.order.xml").xml =
         <order job_chain="test">
           <params>
             <param name="x" value="XXX"/>
@@ -76,16 +66,13 @@ final class RunningMasterTest extends FreeSpec {
             <period absolute_repeat="1"/>
           </run_time>
         </order>
-      env.file(AgentPath("/test-agent-111"), SourceType.Xml).xml = <agent uri={agent0.localUri.toString}/>
-      val agent1Port = FreeTcpPortFinder.findRandomFreeTcpPort()
-      env.file(AgentPath("/test-agent-222"), SourceType.Xml).xml = <agent uri={s"http://127.0.0.1:$agent1Port"}/>
 
-      RunningMaster.run(MasterConfiguration.forTest(configAndData = env.masterDir)) { master ⇒
+      RunningMaster.run(MasterConfiguration.forTest(configAndData = provider.master.directory)) { master ⇒
         import master.{injector, orderApi}
         val eventGatherer = new TestEventGatherer(injector)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
-        val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
+        val agent1 = provider.startAgent(AgentPaths(1)) await 10.s  // Start early to recover orders
         master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
         master.eventReader.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), _.key == TestOrderId) await 99.s

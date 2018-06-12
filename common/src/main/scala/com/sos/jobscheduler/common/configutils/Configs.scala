@@ -28,7 +28,7 @@ object Configs {
       logger.info(s"Reading configuration file $file")
       ConfigFactory.parseFile(file, Required)
     } else {
-      logger.trace(s"No configuration file $file")
+      logger.debug(s"No configuration file $file")
       ConfigFactory.empty
     }
   }

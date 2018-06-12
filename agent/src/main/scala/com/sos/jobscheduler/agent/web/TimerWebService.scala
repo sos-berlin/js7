@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
+import com.sos.jobscheduler.base.auth.KnownUserPermission
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -19,7 +20,7 @@ trait TimerWebService extends AgentRouteProvider {
   protected implicit def scheduler: Scheduler
 
   protected final val timerRoute: Route =
-    authorizedUser() { _ ⇒
+    authorizedUser(KnownUserPermission) { _ ⇒
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {

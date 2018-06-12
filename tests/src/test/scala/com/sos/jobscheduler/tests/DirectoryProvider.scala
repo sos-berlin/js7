@@ -7,13 +7,14 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
@@ -22,6 +23,7 @@ import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
+import com.typesafe.config.ConfigUtil.quoteString
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
@@ -32,6 +34,7 @@ import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
@@ -41,15 +44,46 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
   val master = new Tree(directory / "master")
   val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o) }.toMap
-  val agents = agentPaths.toVector map agentToTree
+  val agents: Vector[AgentTree] = agentToTree.values.toVector
+
   closeOnError(this) {
     master.createDirectories()
-    for (a ← agentToTree.values) {
+    for (a ← agents) {
       a.createDirectories()
+    }
+    provideAgentsPrivateConf()      // Agent: config/private/private.conf with Master's password
+    provideMastersPrivateConf()     // Master: config/private/private.conf with Master's passwords for Agents
+    provideMastersAgentJsonConf()   // Master: xx.agent.json - Reads provided agent configuration files!
+  }
+
+  def provideMastersAgentJsonConf(): Unit =
+    for (a ← agents) {
       val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
       Files.createDirectories(file.getParent)
       file.contentString = Agent(AgentPath.NoId, uri = a.conf.localUri.toString).asJson.toPrettyString
     }
+
+  def provideAgentsPrivateConf(): Unit =
+    for (a ← agents) {
+      val file = a.config / "private" / "private.conf"
+      val content =
+        s"""jobscheduler.auth.users {
+           |  Master = ${quoteString("plain:" + a.password.string)}
+           |}
+           |""".stripMargin
+      file.contentString = content
+      logger.debug(file + ":\n" +  content)
+    }
+
+  def provideMastersPrivateConf(): Unit = {
+    val file = master.config / "private" / "private.conf"
+    val content =
+      s"""jobscheduler.auth.agents {
+         |${agentPaths.map(a ⇒ "  " + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string)) mkString "\n"}
+         |}
+         |""".stripMargin
+    file.contentString = content
+    logger.debug(file + ":\n" +  content)
   }
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit s: Scheduler): Unit =
@@ -70,12 +104,15 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     }
 
   def startAgents()(implicit ec: ExecutionContext): Future[Seq[RunningAgent]] =
-    Future.sequence(agents map (_.conf) map RunningAgent.startForTest)
+    Future.sequence(agents map (_.agentPath) map startAgent)
 
-  def agent(agentName: String) = new Tree(directory / agentName)
+  def startAgent(agentPath: AgentPath)(implicit ec: ExecutionContext): Future[RunningAgent] =
+    RunningAgent.startForTest(agentToTree(agentPath).conf)
 }
 
 object DirectoryProvider {
+  private val logger = Logger(getClass)
+
   trait ForScalaTest extends BeforeAndAfterAll with HasCloser {
     this: org.scalatest.Suite ⇒
 
@@ -114,7 +151,7 @@ object DirectoryProvider {
     }
     val data = directory / "data"
 
-    def createDirectories(): Unit = {
+    private[DirectoryProvider] def createDirectories(): Unit = {
       Files.createDirectories(fileBasedDirectory)
       Files.createDirectory(config / "private")
       Files.createDirectory(data)
@@ -137,6 +174,7 @@ object DirectoryProvider {
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
     lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = agentPath.name)
     lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
+    lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
   }
 
   def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =

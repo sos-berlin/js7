@@ -11,7 +11,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer
-import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
+import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
@@ -42,12 +42,14 @@ final class RunningAgent private(
   mainActor: ActorRef,
   val terminated: Future[Completed],
   val commandHandler: CommandHandler,
+  val sessionToken: SessionToken,
   closer: Closer,
   @TestOnly val injector: Injector)
   (implicit ec: ExecutionContext)
 extends AutoCloseable {
 
   val localUri: Uri = webServer.localUri
+  //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)
 
   logger.debug("Ready")
 
@@ -109,7 +111,7 @@ object RunningAgent {
     implicit val scheduler = injector.instance[Scheduler]
 
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
-    sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+    val sessionToken = sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
       .runAsync await agentConfiguration.akkaAskTimeout.duration
     closer onClose { sessionTokenFile.delete() }
 
@@ -129,7 +131,7 @@ object RunningAgent {
         //.andThen {
         //  case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
         //}
-      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, closer, injector)
+      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, sessionToken, closer, injector)
     }
   }
 }

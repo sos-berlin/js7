@@ -46,30 +46,39 @@ object IdToUser {
   private val logger = Logger(getClass)
   private val EntryRegex = "([^:]+):(.*)".r
   private val PermissionSplitter = Splitter.on("""[ \t]+""".r.pattern)
+  private val UsersConfigPath = "jobscheduler.auth.users"
 
   def fromConfig[U <: User](
     config: Config,
     toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
   : IdToUser[U] = {
-    val cfg = config.getConfig("jobscheduler.auth.users")
+    val cfg = config.getConfig(UsersConfigPath)
+
     def userIdToRaw(userId: UserId) =
       if (cfg.hasPath(userId.string))
-        Try(cfg.getConfig(userId.string)) match {
-          case Success(c) ⇒
-            for {
-              encodedPassword ← c.optionAs[SecretString]("password")
-              permissions = c.optionAs[String]("permissions") map PermissionSplitter.split map (_.asScala.toSet) getOrElse Set.empty
-            } yield RawUserAccount(encodedPassword = encodedPassword, permissions = permissions)
-
-          case Failure(_: com.typesafe.config.ConfigException.WrongType) ⇒
-            cfg.optionAs[SecretString](userId.string) map (o ⇒ RawUserAccount(encodedPassword = o, permissions = Set.empty))
-
-          case Failure(t) ⇒
-            throw t
-        }
-      else
+        existentUserIdToRaw(userId)
+      else {
+        logger.debug(s"""Configuration file ("private.conf") does not have an entry '$UsersConfigPath.${userId.string}'""")
         None
+      }
+
+    def existentUserIdToRaw(userId: UserId) =
+      Try(cfg.getConfig(userId.string)) match {
+        case Failure(_: com.typesafe.config.ConfigException.WrongType) ⇒  // Entry is not a configuration object {...} but a string (the password)
+          cfg.optionAs[SecretString](userId.string) map (o ⇒
+            RawUserAccount(encodedPassword = o, permissions = Set.empty))
+
+        case Failure(t) ⇒
+          throw t
+
+        case Success(c) ⇒
+          for {
+            encodedPassword ← c.optionAs[SecretString]("password")
+            permissions = c.optionAs[String]("permissions") map PermissionSplitter.split map (_.asScala.toSet) getOrElse Set.empty
+          } yield RawUserAccount(encodedPassword = encodedPassword, permissions = permissions)
+      }
+
     new IdToUser(userIdToRaw, toUser, toPermission)
   }
 

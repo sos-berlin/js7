@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider.LoginWWWAuthenticate
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
@@ -28,7 +29,9 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 final class LoginTest extends FreeSpec with BeforeAndAfterAll with TestAgentProvider {
 
   override def beforeAll() =
-    (configDirectory resolve "private/private.conf").contentString = """jobscheduler.auth.users.USER = "plain:PASSWORD" """
+    (configDirectory resolve "private/private.conf").append(
+      """jobscheduler.auth.users.USER = "plain:PASSWORD"
+        |""".stripMargin)
 
   override def afterAll() = closer closeThen { super.afterAll() }
 
@@ -64,8 +67,10 @@ final class LoginTest extends FreeSpec with BeforeAndAfterAll with TestAgentProv
     withClient { client ⇒
       assert(!client.hasSession)
 
-      // Access without Login (LoginSession) is permitted
-      client.executeCommand(NoOperation) await 99.s shouldEqual AgentCommand.Accepted
+      // Access without Login (LoginSession) is rejected
+      intercept[HttpException] {
+        client.executeCommand(NoOperation) await 99.s
+      }.status shouldEqual Unauthorized
       assert(!client.hasSession)
 
       // Login and Logout

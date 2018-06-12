@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.configuration
 
+import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Paths
 import java.time.ZoneId
@@ -15,6 +16,7 @@ final class MasterConfigurationTest extends FreeSpec {
 
   "Empty argument list" in {
     assert(configuration.copy(config = ConfigFactory.empty) == MasterConfiguration(
+      masterId = MasterId("Master"),
       dataDirectory = Paths.get("DATA").toAbsolutePath,
       configDirectory = Paths.get("CONFIG").toAbsolutePath,
       webServerBindings = Vector(),

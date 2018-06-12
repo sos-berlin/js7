@@ -327,7 +327,7 @@ with KeyedEventJournalingActor[Event] {
 
   private def registerAgent(agent: Agent): AgentEntry = {
     val actor = context.actorOf(
-      Props { new AgentDriver(agent.id, agent.uri, masterConfiguration.config) },
+      AgentDriver.props(agent.id, agent.uri, masterConfiguration),
       encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/")))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.id → entry)

@@ -19,11 +19,11 @@ with TimerWebService
 with SessionRoute
 {
   protected final val apiRoute: Route =
-    pathSegments("command") {
-      commandRoute
-    } ~
     pathSegments("master/event") {
       masterEventRoute
+    } ~
+    pathSegments("command") {
+      commandRoute
     } ~
     pathSegments("order") {
       orderRoute

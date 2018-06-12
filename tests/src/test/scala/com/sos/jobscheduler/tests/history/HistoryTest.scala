@@ -34,7 +34,9 @@ final class HistoryTest extends FreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
       withCloser { implicit closer ⇒
-        (provider.master.config / "private/private.conf").contentString = """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
+        (provider.master.config / "private/private.conf").append(
+          """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+            |""".stripMargin )
         provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
         for (a ← provider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(0.s)
 

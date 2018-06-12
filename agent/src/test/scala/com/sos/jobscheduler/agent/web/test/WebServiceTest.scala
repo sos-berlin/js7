@@ -1,16 +1,20 @@
 package com.sos.jobscheduler.agent.web.test
 
 import akka.actor.ActorRefFactory
+import akka.http.scaladsl.model.HttpHeader
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import monix.execution.Scheduler
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
 
@@ -35,6 +39,12 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected val config = WebLogDirectives.TestConfig
 
   implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
+
+  protected lazy val testSessionHeader: HttpHeader = {
+    val token = sessionRegister.login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), None)
+      .await(99.seconds)(Scheduler.global)
+    RawHeader(SessionToken.HeaderName, token.secret.string)
+  }
 
   /** Provide ActorRefFactory for some Routes. */
   protected final def actorRefFactory: ActorRefFactory = system

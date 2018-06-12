@@ -1,13 +1,17 @@
 package com.sos.jobscheduler.master.agent
 
-import akka.actor.{Actor, DeadLetterSuppression, Stash}
+import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.pipe
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
+import com.sos.jobscheduler.base.problem.Checked.CheckedOption
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -18,7 +22,8 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
-import com.typesafe.config.Config
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.typesafe.config.ConfigUtil
 import java.time.Instant.now
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -29,12 +34,13 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver(agentId: AgentId, uri: Uri, config: Config)
+final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration)
 (implicit timerService: TimerService, scheduler: Scheduler)
 extends Actor
 with Stash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
+  private val config = masterConfiguration.config
   private val client = AgentClient(uri)(context.system)
   private var startInputReceived = false
   private var eventFetcher: EventFetcher[OrderEvent] = null
@@ -75,16 +81,23 @@ with Stash {
   private def disconnected: Receive = {
     case Internal.Connect ⇒
       reconnectPause.onConnect()
-      ( for {
-          _ ← client.login(Some(UserId.Anonymous → SecretString("")))  // Separate commands because AgentClient catches the SessionToken of Login.Response
-          _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
-        } yield Internal.Connected
-      ).runAsync
-        .recover {
-          case t ⇒ Internal.ConnectFailed(t)
-        } pipeTo self
-      unstashAll()
-      become(connecting)
+      agentUserAndPassword match {
+        case Invalid(problem) ⇒
+          logger.error(problem.toString)
+          // Actor freezes here. TODO 1) reflect state in web service /api/agent; 2) publish an event to notify about this error
+
+        case Valid(userAndPassword) ⇒
+          ( for {
+              _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.Response
+              _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
+            } yield Internal.Connected
+          ).runAsync
+            .recover {
+              case t ⇒ Internal.ConnectFailed(t)
+            } pipeTo self
+          unstashAll()
+          become(connecting)
+      }
 
     case _ ⇒
       stash
@@ -144,6 +157,13 @@ with Stash {
     eventFetcher.start() onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
     }
+  }
+
+  private def agentUserAndPassword: Checked[UserAndPassword] = {
+    val configPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
+    config.optionAs[SecretString](configPath)
+      .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
+      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $configPath"))
   }
 
   private def onConnectionError(error: String): Unit = {
@@ -217,7 +237,10 @@ with Stash {
   override def toString = s"AgentDriver(${agentId.toSimpleString}: $uri)"
 }
 
-private[master] object AgentDriver {
+private[master] object AgentDriver
+{
+  def props(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration)(implicit ts: TimerService, s: Scheduler) =
+    Props { new AgentDriver(agentId, uri, masterConfiguration) }
 
   private class ReconnectPause {
     private val ShortPause = 1.s

@@ -23,33 +23,32 @@ trait SessionRoute extends RouteProvider {
 
   protected implicit def scheduler: Scheduler
 
-  protected final val sessionRoute: Route =
-    Route.seal {
-      pathEnd {
-        post {
-          gateKeeper.authenticate { user ⇒
-            sessionOption(user.id) { sessionOption ⇒
-              entity(as[SessionCommand]) { command ⇒
-                val u = sessionOption.fold(user)(_.user)
-                val s = sessionOption map (_.sessionToken)
-                onSuccess(execute(command, u, s).runAsync) {
-                  case Invalid(AnonymousLoginProblem) ⇒
-                    // No credentials via Authorization header or Login(Some(...))
-                    // Let a browser show authentication dialog!
-                    reject(gateKeeper.credentialsMissing)
+  protected final val sessionRoute = Route.seal {
+    pathEnd {
+      post {
+        gateKeeper.authenticate { user ⇒
+          sessionOption(user.id) { sessionOption ⇒
+            entity(as[SessionCommand]) { command ⇒
+              val u = sessionOption.fold(user)(_.user)
+              val s = sessionOption map (_.sessionToken)
+              onSuccess(execute(command, u, s).runAsync) {
+                case Invalid(AnonymousLoginProblem) ⇒
+                  // No credentials via Authorization header or Login(Some(...))
+                  // Let a browser show authentication dialog!
+                  reject(gateKeeper.credentialsMissing)
 
-                  case Invalid(p @ InvalidLoginProblem) ⇒
-                    completeUnauthenticatedLogin(p)
+                case Invalid(p @ InvalidLoginProblem) ⇒
+                  completeUnauthenticatedLogin(p)
 
-                  case checked ⇒
-                    complete(checked)
-                }
+                case checked ⇒
+                  complete(checked)
               }
             }
           }
         }
       }
     }
+  }
 
   private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken]): Task[Checked[SessionCommand.Response]] =
     command match {

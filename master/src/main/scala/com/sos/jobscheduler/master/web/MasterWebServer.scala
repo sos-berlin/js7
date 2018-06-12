@@ -55,6 +55,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def newRoute(binding: WebServerBinding): Route =
     new AllRoute {
+      protected val masterId            = masterConfiguration.masterId
       protected val injector            = MasterWebServer.this.injector
       protected val actorSystem         = injector.instance[ActorSystem]
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem

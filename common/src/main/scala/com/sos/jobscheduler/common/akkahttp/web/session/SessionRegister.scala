@@ -22,14 +22,14 @@ final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef,
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
 
-  def createSystemSession(user: S#User, file: Path): Task[Completed] =
+  def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
     for (sessionToken ← login(user)/*TODO No session timeout*/) yield {
       file.delete()
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
       file.contentString = sessionToken.secret.string
-      logger.info(s"Session for user '${user.id.string}' token placed in file $file")
+      logger.info(s"Session for internal user '${user.id.string}' token placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(Some(user.id), sessionToken))
-      Completed
+      sessionToken
     }
 
   def login(user: S#User, sessionTokenOption: Option[SessionToken] = None): Task[SessionToken] =

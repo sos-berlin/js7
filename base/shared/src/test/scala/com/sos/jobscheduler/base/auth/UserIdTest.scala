@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.auth
 
+import com.sos.jobscheduler.base.problem.ProblemException
 import org.scalatest.FreeSpec
 
 /**
@@ -8,14 +9,14 @@ import org.scalatest.FreeSpec
 final class UserIdTest extends FreeSpec {
 
   "Invalid UserId" in {
-    intercept[IllegalArgumentException] { UserId("") }
-    intercept[IllegalArgumentException] { UserId("a?") }
-    intercept[IllegalArgumentException] { UserId("a?b") }
-    intercept[IllegalArgumentException] { UserId("a/b") }
-    intercept[IllegalArgumentException] { UserId("/root") }
-    intercept[IllegalArgumentException] { UserId(".") }
-    intercept[IllegalArgumentException] { UserId("..") }
-    intercept[IllegalArgumentException] { UserId(".hidden") }
+    intercept[ProblemException] { UserId("") }
+    intercept[ProblemException] { UserId("a?") }
+    intercept[ProblemException] { UserId("a?b") }
+    intercept[ProblemException] { UserId("a/b") }
+    intercept[ProblemException] { UserId("/root") }
+    intercept[ProblemException] { UserId(".") }
+    intercept[ProblemException] { UserId("..") }
+    intercept[ProblemException] { UserId(".hidden") }
   }
 
   "Valid UserId" in {

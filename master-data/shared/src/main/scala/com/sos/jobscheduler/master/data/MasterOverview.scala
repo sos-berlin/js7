@@ -3,12 +3,14 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.system.SystemInformation
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.system.JavaInformation
 
 /**
   * @author Joacim Zschimmer
   */
 final case class MasterOverview(
+  id: MasterId,
   version: String,
   buildId: String,
   startedAt: Timestamp,

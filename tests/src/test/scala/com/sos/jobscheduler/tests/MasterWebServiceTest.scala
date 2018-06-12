@@ -19,7 +19,6 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -64,10 +63,12 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   override def beforeAll() = {
     (directoryProvider.master.config / "master.conf").contentString =
       """jobscheduler.webserver.test = true
-        |jobscheduler.auth.users {
+        |""".stripMargin
+    (directoryProvider.master.config / "private" / "private.conf").append(
+      """jobscheduler.auth.users {
         |  TEST-USER: "plain:TEST-PASSWORD"
         |}
-        |""".stripMargin
+        |""".stripMargin)
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
     directoryProvider.master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])

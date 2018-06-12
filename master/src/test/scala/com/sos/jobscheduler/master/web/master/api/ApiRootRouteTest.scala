@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRe
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
@@ -26,6 +27,7 @@ import scala.concurrent.duration._
   */
 final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRootRoute {
 
+  protected val masterId = MasterId("TEST-MASTER")
   protected implicit def scheduler = Scheduler.global
   protected val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(DefaultConfig, SimpleUser.apply),
@@ -49,6 +51,7 @@ final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRo
   "/api" in {
     Get("/api") ~> Accept(`application/json`) ~> route ~> check {
       val overview = responseAs[MasterOverview]
+      assert(overview.id == masterId)
       assert(overview.version == BuildInfo.buildVersion)
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
