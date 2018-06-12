@@ -19,7 +19,7 @@ final case class JavaChecked[A](checked: Checked[A])
     try checked.orThrow
     catch { // Don't throw undeclared unchecked exception
       case t @ (_: RuntimeException | _: Error) ⇒ throw t
-      case t ⇒ throw new RuntimeException(t.toSimplifiedString, t)
+      case t: Throwable ⇒ throw new RuntimeException(t.toSimplifiedString, t)
     }
 
   def toOptional: Optional[A] =
