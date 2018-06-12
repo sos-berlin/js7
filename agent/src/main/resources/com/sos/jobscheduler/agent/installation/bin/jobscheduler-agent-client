@@ -1,2 +1,11 @@
 #!/usr/bin/env bash
-exec "$0".sh" "$@"
+set -e
+
+. "$(cd "$(dirname -- "$0")" && pwd || kill $$)/internal/set-context.sh"
+declare java classpathString
+
+"$java"\
+  -classpath "$classpathString"\
+  -Dlog4j.configurationFile="com/sos/jobscheduler/agent/client/main/log4j2.xml"\
+  com.sos.jobscheduler.agent.client.main.AgentClientMain\
+  "$@"

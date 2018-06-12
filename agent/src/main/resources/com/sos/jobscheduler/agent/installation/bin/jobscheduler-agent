@@ -119,7 +119,7 @@ function terminate() {
     -classpath "$classpathString" \
     com.sos.jobscheduler.agent.client.main.AgentClientMain \
     -data-directory="$normalizedData" \
-    http://127.0.0.1:$httpPort \
+    http://127.0.0.1:"$httpPort" \
     "$terminateCommand" >/dev/null &
   (sleep $terminateTimeout && kill $pid) &
   killer=$!
