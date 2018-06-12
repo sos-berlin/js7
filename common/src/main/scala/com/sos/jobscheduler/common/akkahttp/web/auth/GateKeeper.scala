@@ -8,24 +8,25 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissin
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, RejectionHandler, Route}
-import com.sos.jobscheduler.base.auth.{HashedPassword, KnownUserPermission, PermissionBundle, User, UserAndPassword, UserId}
+import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
+import java.net.InetSocketAddress
 import java.time.Duration
 import scala.concurrent._
 
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService, isHttps: Boolean = false)(implicit ec: ExecutionContext) {
+final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService, isLoopback: Boolean = false)(implicit ec: ExecutionContext) {
 
-  import configuraton.{getIsPublic, httpIsPublic, idToUser, realm}
+  import configuraton.realm
 
-  private val authenticator = new OurMemoizingAuthenticator(idToUser)
+  private val authenticator = new OurMemoizingAuthenticator(configuraton.idToUser)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, HttpChallenges.basic(realm))
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
@@ -63,7 +64,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
     mapInnerRoute(inner ⇒
       seal {
         extractMethod { method ⇒
-          if (isAllowed(user, method, requiredPermissions) && user.hasPermissions(requiredPermissions))
+          if (isAllowed(user, method, requiredPermissions))
             inner
           else if (user.id == UserId.Anonymous)
             reject(credentialsMissing)  // Let a browser show its authentication dialog
@@ -72,16 +73,34 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
         }
       })
 
-  /** If KnownUserPermission is not required (meaning Anonymous is allowed)
-    * then httpIsPublic and getIsPublic determine the allowance.
+  /** If ValidUserPermission is not required (meaning Anonymous is allowed)
+    * then loopbackIsPublic and getIsPublic determine the allowance.
     */
-  private[auth] def isAllowed(user: U, method: HttpMethod, requiredPermissions: PermissionBundle) =
-    user.hasPermissions(KnownUserPermission) ||  // Only Anonymous does not have KnownUserPermission
-      !requiredPermissions.contains(KnownUserPermission) && (
-        httpIsPublic && !isHttps ||
-        getIsPublic && (method == GET || method == HEAD))
+  private[auth] def isAllowed(user: U, method: HttpMethod, requiredPermissions: PermissionBundle) = {
+    import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
+    user.hasPermissions(ValidUserPermission) ||  // Only Anonymous does not have ValidUserPermission
+      isPublic ||                        // Any access, even POST, is allowed !
+      loopbackIsPublic && isLoopback ||  // Any access, even POST, is allowed !
+      (method == GET || method == HEAD) &&
+        (getIsPublic || !requiredPermissions.contains(ValidUserPermission))
+  }
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
+
+  def boundMessage(address: InetSocketAddress, scheme: String): String =
+    s"$scheme:// is bound to TCP port ${address.getPort} at interface ${address.getAddress.getHostAddress}. $secureStateString"
+
+  def secureStateString: String =
+    if (configuraton.isPublic)
+      "ACCESS IS PUBLIC - EVERYONE HAS ACCESS (is-public = true)"
+    else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
+      "ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
+    else if (configuraton.loopbackIsPublic)
+      "LOOPBACK ACCESS IS PUBLIC (loopback-is-public = true)"
+    else if (configuraton.getIsPublic)
+      "ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
+    else
+      "Access is secured"
 }
 
 object GateKeeper {
@@ -92,10 +111,12 @@ object GateKeeper {
     realm: String,
     /** To hamper an attack */
     invalidAuthenticationDelay: Duration,
-    /** HTTP is open (assuming local access only) */
-    httpIsPublic: Boolean,
-    /** HTTP GET is open */
-    getIsPublic: Boolean,
+    /* Anything is allowed for Anonymous */
+    isPublic: Boolean = false,
+    /** HTTP bound to a loopback interface is allowed for Anonymous */
+    loopbackIsPublic: Boolean = false,
+    /** HTTP GET is allowed for Anonymous */
+    getIsPublic: Boolean = false,
     idToUser: UserId ⇒ Option[U])
 
   object Configuration {
@@ -103,7 +124,8 @@ object GateKeeper {
       Configuration[U](
         realm                       = config.getString  ("jobscheduler.webserver.auth.realm"),
         invalidAuthenticationDelay  = config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay"),
-        httpIsPublic                = config.getBoolean ("jobscheduler.webserver.auth.http-is-public"),
+        isPublic                    = config.getBoolean ("jobscheduler.webserver.auth.public"),
+        loopbackIsPublic            = config.getBoolean ("jobscheduler.webserver.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("jobscheduler.webserver.auth.get-is-public"),
         idToUser = IdToUser.fromConfig(config, toUser))
   }

@@ -44,7 +44,7 @@ trait RouteProvider
         }
     }
 
-  private def maybeSession(requiredPermissions: PermissionBundle = PermissionBundle.empty): Directive1[(Session#User, Option[Session])] =
+  private def maybeSession(requiredPermissions: PermissionBundle): Directive1[(Session#User, Option[Session])] =
     new Directive[Tuple1[(Session#User, Option[Session])]]
     {
       def tapply(inner: Tuple1[(Session#User, Option[Session])] ⇒ Route) =

@@ -33,14 +33,11 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",
       invalidAuthenticationDelay = 1.s,
-      httpIsPublic = true,
-      getIsPublic = false,
       idToUser = {
         case TestUser.id ⇒ Some(TestUser)
         case SimpleUser.Anonymous.id ⇒ Some(SimpleUser.Anonymous)
       }),
-    new TimerService(Some(1.s)),
-    isHttps = false)
+    new TimerService(Some(1.s)))
 
   private var sessionToken = SessionToken(SecretString("INVALID"))
 

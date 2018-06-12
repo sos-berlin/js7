@@ -11,7 +11,7 @@ import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
-import com.sos.jobscheduler.base.auth.{HashedPassword, KnownUserPermission, PermissionBundle, SimpleUser, User, UserId}
+import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, SimpleUser, User, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -31,8 +31,6 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
     invalidAuthenticationDelay = 2.s,
-    httpIsPublic = false,
-    getIsPublic = false,
     idToUser = {   // Like master.conf and agent.conf
       case UserId("USER")      ⇒ Some(TestUser)
       case UserId("Anonymous") ⇒ Some(SimpleUser.Anonymous)
@@ -41,100 +39,124 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private lazy val timerService = TimerService(idleTimeout = Some(1.s))
 
   "isAllowed" - {
-    "!getIsPublic !httpIsPublic isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, httpIsPublic = false), isHttps = true)
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
-    }
-
-    "!getIsPublic !httpIsPublic !isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, httpIsPublic = false), isHttps = false)
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
-    }
-
-    "!getIsPublic httpIsPublic isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, httpIsPublic = true), isHttps = true)
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
-    }
-
-    "!getIsPublic httpIsPublic !isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, httpIsPublic = true), isHttps = false)
+    "isPublic" in {
+      val gateKeeper = newGateKeeper(defaultConf.copy(isPublic = true), isLoopback = false)
       assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
+      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
       assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
+      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
       assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
+      assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
       assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
+      assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
     }
 
-    "getIsPublic !httpIsPublic isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, httpIsPublic = false), isHttps = true)
-      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
+    "!getIsPublic" - {
+      "!loopbackIsPublic" - {
+        "!isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = false), isLoopback = false)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+
+        "isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = false), isLoopback = true)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+      }
+
+      "loopbackIsPublic" - {
+        "!isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = true), isLoopback = false)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+
+        "isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = true), isLoopback = true)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+      }
     }
 
-    "getIsPublic !httpIsPublic !isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, httpIsPublic = false), isHttps = false)
-      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
-    }
+    "getIsPublic" - {
+      "!loopbackIsPublic" - {
+        "!isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = false)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
 
-    "getIsPublic httpIsPublic isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, httpIsPublic = true), isHttps = true)
-      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
-    }
+        "isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = true)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+      }
 
-    "getIsPublic httpIsPublic !isHttps" in {
-      val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, httpIsPublic = true), isHttps = false)
-      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
-      assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, GET, KnownUserPermission))
-      assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
-      assert(gateKeeper.isAllowed(TestUser, POST, KnownUserPermission))
+      "loopbackIsPublic" - {
+        "!isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = true), isLoopback = false)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(!gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+
+        "isLoopback" in {
+          val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = true), isLoopback = true)
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(SimpleUser.Anonymous, POST, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, GET, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, GET, ValidUserPermission))
+          assert(gateKeeper.isAllowed(TestUser, POST, PermissionBundle.empty))
+          assert(gateKeeper.isAllowed(TestUser, POST, ValidUserPermission))
+        }
+      }
     }
   }
 
@@ -143,7 +165,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private def route(gateKeeper: GateKeeper[SimpleUser]): Route =
     gateKeeper.authenticate { user ⇒
       path("CLOSED") {
-        gateKeeper.authorize(user, PermissionBundle(Set(KnownUserPermission))) {
+        gateKeeper.authorize(user, PermissionBundle(Set(ValidUserPermission))) {
           (get | post) {
             complete(user.id.toString)
           }
@@ -161,68 +183,122 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private val closedUri = Uri("/CLOSED")
   private val openUri = Uri("/OPEN")
 
-  "httpIsPublic" - {
-    val conf = defaultConf.copy(httpIsPublic = true)
-
-    "Request via secure HTTP" - {
+  "!loopbackIsPublic" - {
+    "Request via HTTP (!isLoopback)" - {
       "GET /CLOSED without authentication is rejected" in {
-        Get(closedUri) ~> route(newGateKeeper(conf, isHttps = true)) ~> check {
+        Get(closedUri) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
       "POST /CLOSED JSON without authentication is rejected" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isHttps = true)) ~> check {
+        Post(closedUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "GET /OPEN without authentication is rejected" in {
-        Get(openUri) ~> route(newGateKeeper(conf, isHttps = true)) ~> check {
-          assertPlainStatus(Unauthorized)
+      "GET /OPEN without authentication is allowed" in {
+        Get(openUri) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
+          assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication is rejected" in {
-        Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isHttps = true)) ~> check {
+      "POST /OPEN JSON without authentication rejected" in {
+        Post(openUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
     }
 
-    "Request via HTTP (!isHttps)" - {
+    "Request via loopback" - {
       "GET /CLOSED without authentication is rejected" in {
-        Get(closedUri) ~> route(newGateKeeper(conf, isHttps = false)) ~> check {
+        Get(closedUri) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
       "POST /CLOSED JSON without authentication is rejected" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isHttps = false)) ~> check {
+        Post(closedUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "GET /OPEN without authentication is accepted" in {
-        Get(openUri) ~> route(newGateKeeper(conf, isHttps = false)) ~> check {
+      "GET /OPEN without authentication is allowed" in {
+        Get(openUri) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication is accepted" in {
-        Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isHttps = false)) ~> check {
+      "POST /OPEN JSON without authentication is rejected" in {
+        Post(openUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
+          assertPlainStatus(Unauthorized)
+        }
+      }
+    }
+  }
+
+  "loopbackIsPublic" - {
+    val conf = defaultConf.copy(loopbackIsPublic = true)
+
+    "Request via HTTP (!isLoopback)" - {
+      "GET /CLOSED without authentication is rejected" in {
+        Get(closedUri) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+          assertPlainStatus(Unauthorized)
+        }
+      }
+
+      "POST /CLOSED JSON without authentication is rejected" in {
+        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+          assertPlainStatus(Unauthorized)
+        }
+      }
+
+      "GET /OPEN without authentication is allowed" in {
+        Get(openUri) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+          assert(responseAs[String] == "Anonymous")
+        }
+      }
+
+      "POST /OPEN JSON without authentication rejected" in {
+        Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+          assertPlainStatus(Unauthorized)
+        }
+      }
+    }
+
+    "Request via loopback" - {
+      "GET /CLOSED without authentication is allowed" in {
+        Get(closedUri) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
+          assert(responseAs[String] == "Anonymous")
+        }
+      }
+
+      "POST /CLOSED JSON without authentication is allowed" in {
+        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
+          assert(responseAs[String] == "Anonymous")
+        }
+      }
+
+      "GET /OPEN without authentication is allowed" in {
+        Get(openUri) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
+          assert(responseAs[String] == "Anonymous")
+        }
+      }
+
+      "POST /OPEN JSON without authentication is allowed" in {
+        Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
     }
   }
 
-  "getIsPublic - HTTP GET is open for everybody" - {
+  "getIsPublic - HTTP GET is open for Anonymous" - {
     val conf = defaultConf.copy(getIsPublic = true)
 
-    "GET /CLOSED is rejected" in {
+    "GET /CLOSED is allowed" in {
       Get(closedUri) ~> route(conf) ~> check {
-        assertPlainStatus(Unauthorized)
+        assert(responseAs[String] == "Anonymous")
       }
     }
 
@@ -265,7 +341,6 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   }
 
   "Access token" - (if (false) {  // TODO Not implemented - do we need this?
-
     "Access with valid access token" in {
       Get(closedUri) ~> Authorization(BasicHttpCredentials("", "GRETA-TOKEN")) ~> route(defaultConf) ~> check {
         assert(status == OK)
@@ -292,19 +367,18 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
   })
 
-  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isHttps: Boolean = true)(implicit ec: ExecutionContext) =
-    new GateKeeper(conf, timerService, isHttps = isHttps)
+  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) =
+    new GateKeeper(conf, timerService, isLoopback = isLoopback)
 
   /** Error message does not contain a hint. */
   private def assertPlainStatus(statusCode: StatusCode): Unit = {
     assert(status == statusCode)
-    val responseString = Unmarshaller.stringUnmarshaller.forContentTypes(`text/plain`)(response.entity).await(99.s)
     status match {
+      case OK ⇒
       case Unauthorized ⇒
         assert(headers contains `WWW-Authenticate`(HttpChallenges.basic(defaultConf.realm)))
+        val responseString = Unmarshaller.stringUnmarshaller.forContentTypes(`text/plain`)(response.entity).await(99.s)
         assert(responseString == "The resource requires authentication, which was not supplied with the request")  // Akka message, by reject(AuthenticationFailedRejection(CredentialsMissing, ...)
-      case _ ⇒
-        assert(responseString == statusCode.defaultMessage)
     }
   }
 }

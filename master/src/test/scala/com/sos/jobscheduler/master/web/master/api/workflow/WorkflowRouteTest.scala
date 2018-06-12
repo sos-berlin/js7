@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -15,6 +14,7 @@ import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
@@ -23,7 +23,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with WorkflowRoute {
+final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRoute {
 
   protected implicit def scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)

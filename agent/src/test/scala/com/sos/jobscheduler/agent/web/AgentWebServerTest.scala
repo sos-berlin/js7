@@ -83,7 +83,7 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
       "due to missing credentials" in {
         assert(uri.scheme == "https")
         intercept[HttpException] {
-          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/agent/api/order/"), password = None) await 99.s
+          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/agent/api/order"), password = None) await 99.s
         }
         .status shouldEqual Unauthorized
       }
@@ -91,7 +91,7 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
       "due to wrong credentials" in {
         val t = now
         val e = intercept[HttpException] {
-          executeRequest[AgentOverview](HttpRequest(GET, s"$uri/agent/api"), Some("WRONG-PASSWORD")) await 10.s
+          executeRequest[AgentOverview](HttpRequest(GET, s"$uri/agent/api/order"), Some("WRONG-PASSWORD")) await 10.s
         }
         assert(now - t >= expectedInvalidAuthenticationDelay)
         e.status shouldEqual Unauthorized
@@ -115,12 +115,14 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
   }
 
   "HTTP" - {
-    lazy val uri = Uri(s"${agent.webServer.localHttpUriOption.get}/agent/api")
+    lazy val uri = Uri(s"${agent.webServer.localHttpUriOption.get}/agent/api/order")
 
     "Without credentials" in {
       assert(uri.scheme == "http")
-      val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), password = None) await 10.s
-      assert(overview.version == AgentStartInformation.VersionString)
+      val e = intercept[HttpException] {
+        executeRequest[AgentOverview](HttpRequest(GET, uri), password = None) await 10.s
+      }
+      assert(e.status == Unauthorized)
     }
 
     "Invalid credentials are rejected despite event though Anonymous is allowed" in {  // Behavior changed with JobScheduler 2

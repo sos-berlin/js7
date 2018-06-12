@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Problem
@@ -23,6 +22,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -31,7 +31,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRoute {
+final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
 
   private implicit val timeout = 9.seconds
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))

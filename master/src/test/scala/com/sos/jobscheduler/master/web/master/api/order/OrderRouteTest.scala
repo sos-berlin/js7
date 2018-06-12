@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
@@ -16,6 +15,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOvervi
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
@@ -24,7 +24,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRoute {
+final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
 
   protected implicit def scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator

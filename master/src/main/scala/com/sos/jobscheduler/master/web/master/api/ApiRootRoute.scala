@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.auth.KnownUserPermission
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
@@ -30,12 +30,10 @@ trait ApiRootRoute extends MasterRouteProvider {
   final val apiRootRoute: Route =
     pathEnd {
       get {
-        authorizedUser() { _ ⇒
-          complete(overview)
-        }
+        complete(overview)
       } ~
       post {
-        authorizedUser(KnownUserPermission) { user ⇒
+        authorizedUser(ValidUserPermission) { user ⇒
           entity(as[MasterCommand]) { command ⇒
             complete {
               executeCommand(command, CommandMeta(user))

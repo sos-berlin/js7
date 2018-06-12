@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.task.TaskRegister
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import scala.concurrent.ExecutionContext
@@ -20,7 +21,7 @@ trait TaskWebService extends AgentRouteProvider {
   protected implicit def executionContext: ExecutionContext
 
   protected final val taskRoute: Route =
-    authorizedUser() { user ⇒
+    authorizedUser(ValidUserPermission) { _ ⇒
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {

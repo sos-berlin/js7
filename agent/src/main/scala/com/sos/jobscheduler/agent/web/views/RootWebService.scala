@@ -19,13 +19,11 @@ trait RootWebService extends AgentRouteProvider {
   protected implicit def scheduler: Scheduler
 
   protected final val apiRootRoute: Route =
-    authorizedUser() { _ ⇒
-      pathEnd {
-        get {
-          respondWithHeader(`Cache-Control`(`max-age`(0))) {
-            complete {
-              agentOverview
-            }
+    pathEnd {
+      get {
+        respondWithHeader(`Cache-Control`(`max-age`(0))) {
+          complete {
+            agentOverview
           }
         }
       }

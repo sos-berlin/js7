@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route}
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -26,6 +27,7 @@ import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.{`application/json-s
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.master.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
+import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.EventRoute._
 import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler
@@ -35,7 +37,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait EventRoute
+trait EventRoute extends MasterRouteProvider
 {
   protected def eventReader: EventReader[Event]
   protected implicit def scheduler: Scheduler
@@ -59,16 +61,18 @@ trait EventRoute
   final val eventRoute: Route =
     get {
       pathEnd {
-        htmlPreferred {
+        authorizedUser(ValidUserPermission) { _ ⇒
+          htmlPreferred {
+            oneShot
+          } ~
+          accept(`application/json-seq`) {
+            jsonSeqEvents
+          } ~
+          accept(`text/event-stream`) {
+            serverSentEvents
+          } ~
           oneShot
-        } ~
-        accept(`application/json-seq`) {
-          jsonSeqEvents
-        } ~
-        accept(`text/event-stream`) {
-          serverSentEvents
-        } ~
-        oneShot
+        }
       }
     }
 

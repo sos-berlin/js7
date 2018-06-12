@@ -7,11 +7,16 @@ trait Permission
 
 /**
   * Anonymous does not have this permission, while all other users have this permission.
-  *
+  * <p>
   * If required, access is permitted if
-  * - the user has this permission (user is not Anonymous)
-  * - or the user is Anonymous and
-  *   - httpIsPublic is set and access is via HTTP but not HTTPS
-  *   - getIsPublic is set and access is via GET
+  * <ul>
+  * <li> the user has this permission (user is not Anonymous)
+  * <li> or the user is Anonymous and
+  *   <ul>
+  *   <li> loopbackAllowsAnonymous is set and access via a TCP port bound to a loopback interface (like localhost)
+  *   <li> getAllowsAnonymous is set and access is via GET
+  *   </ul>
+  * </ul>
+  * For implementation, see GateKeeper.isAllowed
   */
-case object KnownUserPermission extends Permission
+case object ValidUserPermission extends Permission

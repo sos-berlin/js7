@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
@@ -12,6 +11,7 @@ import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.master.web.master.api.AgentRouteTest._
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -19,7 +19,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRouteTest extends FreeSpec with ScalatestRouteTest with AgentRoute {
+final class AgentRouteTest extends FreeSpec with RouteTester with AgentRoute {
 
   protected implicit def scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToAgent)

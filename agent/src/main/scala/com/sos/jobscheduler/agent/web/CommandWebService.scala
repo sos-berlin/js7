@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.{KnownUserPermission, SessionToken}
+import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import monix.execution.Scheduler
@@ -21,7 +21,7 @@ trait CommandWebService extends AgentRouteProvider {
   protected implicit def scheduler: Scheduler
 
   val commandRoute: Route =
-    authorizedUser(KnownUserPermission) { user ⇒
+    authorizedUser(ValidUserPermission) { user ⇒
       post {
         pathEnd {
           optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption ⇒

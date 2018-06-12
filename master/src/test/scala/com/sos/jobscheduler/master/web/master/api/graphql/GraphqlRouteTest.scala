@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/html`, `te
 import akka.http.scaladsl.model.StatusCodes.NotAcceptable
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -20,6 +20,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRouteTest._
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import io.circe.Json
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -29,7 +30,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GraphqlRouteTest extends FreeSpec with ScalatestRouteTest with GraphqlRoute {
+final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute {
 
   private implicit val timeout = RouteTestTimeout(10.seconds)
   protected implicit def scheduler = Scheduler.Implicits.global

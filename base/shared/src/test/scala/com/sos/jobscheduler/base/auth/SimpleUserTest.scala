@@ -13,11 +13,11 @@ final class SimpleUserTest extends FreeSpec
     assert(SimpleUser(UserId.Anonymous, HashedPassword.newEmpty).grantedPermissions == PermissionBundle.empty)
 
     intercept[RuntimeException] {
-      SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, PermissionBundle(Set(KnownUserPermission)))
+      SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, PermissionBundle(Set(ValidUserPermission)))
     }
   }
 
   "Not Anonymous" in {
-    SimpleUser(UserId.Anonymous, HashedPassword.newEmpty).grantedPermissions == PermissionBundle(Set(KnownUserPermission))
+    SimpleUser(UserId.Anonymous, HashedPassword.newEmpty).grantedPermissions == PermissionBundle(Set(ValidUserPermission))
   }
 }

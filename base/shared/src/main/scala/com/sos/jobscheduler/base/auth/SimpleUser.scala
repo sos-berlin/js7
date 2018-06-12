@@ -9,8 +9,8 @@ final case class SimpleUser private(
   grantedPermissions: PermissionBundle)
 extends User
 {
-  if (id == UserId.Anonymous && grantedPermissions.contains(KnownUserPermission))
-    throw new IllegalArgumentException("Anonymous must not have KnownUserPermission")
+  if (id == UserId.Anonymous && grantedPermissions.contains(ValidUserPermission))
+    throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
 }
 
 object SimpleUser {
@@ -26,5 +26,5 @@ object SimpleUser {
       id,
       hashedPassword,
       PermissionBundle(grantedPermissions.permissions ++
-        (if (id != UserId.Anonymous) Set(KnownUserPermission) else Set.empty)))
+        (if (id != UserId.Anonymous) Set(ValidUserPermission) else Set.empty)))
 }

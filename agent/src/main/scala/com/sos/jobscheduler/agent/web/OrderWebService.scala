@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.KnownUserPermission
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.data.order.OrderId
 import monix.execution.Scheduler
@@ -19,7 +19,7 @@ trait OrderWebService extends AgentRouteProvider {
   protected implicit def scheduler: Scheduler
 
   protected final val orderRoute: Route =
-    authorizedUser(KnownUserPermission) { user ⇒
+    authorizedUser(ValidUserPermission) { user ⇒
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)
         complete {

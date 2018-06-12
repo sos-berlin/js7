@@ -28,8 +28,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   protected final val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply),
-    TimerService(idleTimeout = Some(1.s)),
-    isHttps = false)
+    TimerService(idleTimeout = Some(1.s)))
 
   protected final val sessionRegister = SessionRegister.start[LoginSession.Simple](
     actorRefFactory, LoginSession.Simple.apply, akkaAskTimeout = 99.seconds)

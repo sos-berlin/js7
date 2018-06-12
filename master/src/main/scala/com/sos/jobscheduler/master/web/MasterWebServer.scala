@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.EventReaderProvider
 import com.sos.jobscheduler.core.filebased.FileBasedApi
@@ -19,6 +19,7 @@ import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.web.MasterWebServer._
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import monix.eval.Task
@@ -60,7 +61,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val actorSystem         = injector.instance[ActorSystem]
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem
       protected val config              = injector.instance[Config]
-      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService, isHttps = binding.isHttps)
+      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected val sessionRegister     = injector.instance[SessionRegister[LoginSession.Simple]]
       protected val eventReader         = injector.instance[EventReaderProvider[Event]]
       protected val scheduler           = injector.instance[Scheduler]
@@ -68,6 +69,12 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val orderApi = orderApiOnce()
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = executeCommandOnce()(command, meta)
+
+      logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
     }
     .allRoutes
+}
+
+object MasterWebServer {
+  private val logger = Logger(getClass)
 }

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.web.master.api.fatevent
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -16,6 +16,7 @@ import com.sos.jobscheduler.data.order.OrderFatEvent.{KeyedOrderFatEventJsonCode
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderFatEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
+import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -24,7 +25,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class FatEventRouteTest extends FreeSpec with ScalatestRouteTest with FatEventRoute {
+final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute {
 
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)

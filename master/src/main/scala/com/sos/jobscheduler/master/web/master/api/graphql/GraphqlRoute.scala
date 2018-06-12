@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -13,6 +14,7 @@ import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.OrderApi
+import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute._
 import io.circe.parser.{parse ⇒ parseJson}
 import io.circe.syntax.EncoderOps
@@ -28,7 +30,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-trait GraphqlRoute {
+trait GraphqlRoute extends MasterRouteProvider {
 
   protected def orderApi: OrderApi
   protected def fileBasedApi: FileBasedApi
@@ -61,46 +63,51 @@ trait GraphqlRoute {
       fileBasedApi.idTo[A](id).map(_.value).runAsync
   }
 
-  final def graphqlRoute: Route =
+  final val graphqlRoute: Route =
     pathEnd {
-      htmlPreferred {
-        getFromResource(GraphiqlResource.path)
-      } ~
-      get {
-        parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) ⇒
-          parseJson(variables getOrElse "{}") match {
-            case Left(t) ⇒ completeWithFailure(t)
-            case Right(json) ⇒ executeGraphql(queryString, operationName, json)
-          }
-        }
-      } ~
-      post {
-        parameters(("query".?, "operationName".?, "variables".?)) { (queryParam, operationNameParam, variablesParam) ⇒
-          entity(as[JsonObject]) { body ⇒
-            // GraphiQL GUI may send both query parameter and JSON content. For GraphiQL, POST content has precedence
-            val queryString = body("query") flatMap (_.asString) orElse queryParam
-            val operationName = body("operationName") flatMap (_.asString) orElse operationNameParam
-            val checkedVariables = body("variables")
-              .map(json ⇒ if (json.isNull) EmptyObject else json)
-              .map(Valid.apply)
-              .orElse(variablesParam map (parseJson(_).toChecked))
-              .getOrElse(Valid(EmptyObject))
-
-            queryString match {
-              case None ⇒ completeWithFailure("Missing query")
-              case Some(q) ⇒
-                checkedVariables match {
-                  case Invalid(problem) ⇒ completeWithFailure(problem.toString)
-                  case Valid(variables) ⇒
-                    executeGraphql(q, operationName, variables)
-                }
-            }
-          }
-        }
+      authorizedUser(ValidUserPermission) { _ ⇒
+        standardGraphqlRoute
       }
     } ~
     path("schema") {
       completeWith(StringMarshaller)(_(MasterGraphqlSchema.schema.renderPretty))
+    }
+
+  private def standardGraphqlRoute: Route =
+    htmlPreferred {
+      getFromResource(GraphiqlResource.path)
+    } ~
+    get {
+      parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) ⇒
+        parseJson(variables getOrElse "{}") match {
+          case Left(t) ⇒ completeWithFailure(t)
+          case Right(json) ⇒ executeGraphql(queryString, operationName, json)
+        }
+      }
+    } ~
+    post {
+      parameters(("query".?, "operationName".?, "variables".?)) { (queryParam, operationNameParam, variablesParam) ⇒
+        entity(as[JsonObject]) { body ⇒
+          // GraphiQL GUI may send both query parameter and JSON content. For GraphiQL, POST content has precedence
+          val queryString = body("query") flatMap (_.asString) orElse queryParam
+          val operationName = body("operationName") flatMap (_.asString) orElse operationNameParam
+          val checkedVariables = body("variables")
+            .map(json ⇒ if (json.isNull) EmptyObject else json)
+            .map(Valid.apply)
+            .orElse(variablesParam map (parseJson(_).toChecked))
+            .getOrElse(Valid(EmptyObject))
+
+          queryString match {
+            case None ⇒ completeWithFailure("Missing query")
+            case Some(q) ⇒
+              checkedVariables match {
+                case Invalid(problem) ⇒ completeWithFailure(problem.toString)
+                case Valid(variables) ⇒
+                  executeGraphql(q, operationName, variables)
+              }
+          }
+        }
+      }
     }
 
   private def executeGraphql(queryString: String, operationName: Option[String], variables: Json): Route = {
