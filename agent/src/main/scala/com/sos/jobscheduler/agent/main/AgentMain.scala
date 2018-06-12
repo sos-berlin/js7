@@ -27,8 +27,8 @@ object AgentMain {
   private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.seconds
 
   def main(args: Array[String]): Unit = {
+    logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
     val exitCode = try {
-      logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
       val agentConfiguration = AgentConfiguration(args)
       val (conf, dotnet) = tryProvideDotnet(agentConfiguration)
       try run(conf).awaitInfinite
