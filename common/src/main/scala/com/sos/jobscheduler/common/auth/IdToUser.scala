@@ -34,8 +34,13 @@ final class IdToUser[U <: User](
   toPermission: PartialFunction[String, Permission])
 extends (UserId ⇒ Option[U]) {
 
+  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, PermissionBundle.empty))
+
   def apply(userId: UserId) =
-    userIdToRaw(userId).flatMap(o ⇒ rawToUser(userId, o))
+    if (userId == UserId.Anonymous)
+      someAnonymous
+    else
+      userIdToRaw(userId).flatMap(o ⇒ rawToUser(userId, o))
 
   private def rawToUser(userId: UserId, raw: RawUserAccount): Option[U] =
     for (hashedPassword ← toHashedPassword(userId, raw.encodedPassword))

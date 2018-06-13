@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
+import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
@@ -36,6 +36,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   protected def actorSystem: ActorSystem
   protected def baseUri: Uri
   protected def uriPrefixPath: String
+  protected def standardHeaders: List[HttpHeader] = Nil
 
   implicit lazy val materializer = ActorMaterializer()(actorSystem)
   private lazy val http = Http(actorSystem)
@@ -92,7 +93,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   final def sendReceive(request: HttpRequest, logData: ⇒ Option[String] = None): Task[HttpResponse] =
     withCheckedAgentUri(request) { request ⇒
       val headers = sessionToken map (token ⇒ RawHeader(SessionToken.HeaderName, token.secret.string))
-      val req = encodeGzip(request.withHeaders(headers ++: request.headers))
+      val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       Task.deferFuture {
         logRequest(req, logData)
         http.singleRequest(req, httpsConnectionContext)

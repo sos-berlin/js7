@@ -7,6 +7,8 @@ import com.sos.jobscheduler.base.web.HttpClient
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 
+// Test in SessionRouteTest
+
 /**
   * @author Joacim Zschimmer
   */
@@ -44,7 +46,7 @@ trait SessionApi extends HasSessionToken
     sessionTokenRef.set(Some(sessionToken))
 
   // Used by AkkaHttpClient and JsHttpClient
-  protected final def sessionToken: Option[SessionToken] =
+  final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get
 
   def hasSession = sessionTokenRef.get.nonEmpty
