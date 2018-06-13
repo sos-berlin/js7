@@ -69,13 +69,6 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
   "workflow" in {
     assert(api.workflows.await(99.s).value == List(TestWorkflow))
   }
-
-  //"AddOrderIfNew" in {
-  //  // Deprecated
-  //  val freshOrder = FreshOrder(OrderId("ORDER-2"), TestWorkflowId.path)
-  //  api.executeCommand(MasterCommand.AddOrderIfNew.fromFreshOrder(freshOrder)) await 10.s
-  //  assert(api.orders.await(99.s).value.toSet == Set(TestOrder, freshOrder.toOrder(VersionId("(initial)"))))
-  //}
 }
 
 private object AkkaHttpMasterApiTest {

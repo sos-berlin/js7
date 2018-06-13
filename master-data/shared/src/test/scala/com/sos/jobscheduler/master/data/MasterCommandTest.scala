@@ -9,28 +9,6 @@ import scala.concurrent.duration._
 
 final class MasterCommandTest extends FreeSpec {
 
-  //"AddOrderIfNew" in {
-  //  testJson[MasterCommand](
-  //    AddOrderIfNew(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledAt = None, Payload.empty),
-  //    json"""{
-  //      "TYPE": "AddOrderIfNew",
-  //      "id": "ORDER-ID",
-  //      "workflowPath": "/WORKFLOW"
-  //    }""")
-  //
-  //  testJson[MasterCommand](
-  //    AddOrderIfNew(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" → "VALUE"))),
-  //    json"""{
-  //      "TYPE": "AddOrderIfNew",
-  //      "id": "ORDER-ID",
-  //      "workflowPath": "/WORKFLOW",
-  //      "scheduledAt": 1488888000000,
-  //      "variables": {
-  //        "KEY": "VALUE"
-  //      }
-  //    }""")
-  //}
-
   "EmergencyStop" in {
     testJson[MasterCommand](EmergencyStop,
       json"""{
