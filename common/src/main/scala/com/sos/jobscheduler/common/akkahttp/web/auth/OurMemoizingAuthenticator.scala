@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Memoizer
 final class OurMemoizingAuthenticator[U <: User](toUser: UserId ⇒ Option[U])
 extends Authenticator[U] {
 
-  private val memoizedToUser = Memoizer.nonStrict(toUser)  // Only cache for short time if source will be a changing database !!!
+  private val memoizedToUser = Memoizer.strict(toUser)  // Only cache for short time if source will be a changing database !!!
 
   def apply(credentials: Credentials) =
     credentials match {

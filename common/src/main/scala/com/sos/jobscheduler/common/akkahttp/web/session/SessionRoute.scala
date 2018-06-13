@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.Completed
@@ -23,15 +22,14 @@ trait SessionRoute extends RouteProvider {
 
   protected implicit def scheduler: Scheduler
 
-  protected final val sessionRoute = Route.seal {
+  protected final val sessionRoute =
     pathEnd {
       post {
-        gateKeeper.authenticate { user ⇒
-          sessionOption(user.id) { sessionOption ⇒
+        gateKeeper.authenticate { httpUser ⇒
+          sessionOption(httpUser.id) { sessionOption ⇒
             entity(as[SessionCommand]) { command ⇒
-              val u = sessionOption.fold(user)(_.user)
-              val s = sessionOption map (_.sessionToken)
-              onSuccess(execute(command, u, s).runAsync) {
+              val token = sessionOption map (_.sessionToken)
+              onSuccess(execute(command, httpUser, token).runAsync) {
                 case Invalid(AnonymousLoginProblem) ⇒
                   // No credentials via Authorization header or Login(Some(...))
                   // Let a browser show authentication dialog!
@@ -48,7 +46,6 @@ trait SessionRoute extends RouteProvider {
         }
       }
     }
-  }
 
   private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken]): Task[Checked[SessionCommand.Response]] =
     command match {
@@ -70,7 +67,12 @@ trait SessionRoute extends RouteProvider {
   private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =
     userAndPasswordOption match {
       case Some(userAndPassword) ⇒
-        gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
+        if (httpUser.id != UserId.Anonymous)
+          Invalid(Problem("Double Login"))  // Already authenticated via Authentication header
+        else if (userAndPassword.userId == UserId.Anonymous)
+          Invalid(InvalidLoginProblem)  // Anonymous is used only if there is no authentication at all
+        else
+          gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
       case None ⇒
         if (httpUser.id == UserId.Anonymous)  // No HTTP credentials (header `Authorization`)

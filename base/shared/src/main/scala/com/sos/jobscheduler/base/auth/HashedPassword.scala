@@ -29,9 +29,10 @@ object HashedPassword
   private val RehashSaltLength = 20
   /** No clear-text password matches this unknown password. */
   val MatchesNothing = HashedPassword(SecretString("MatchesNothing"), _ ⇒ "")
+  private val Empty = HashedPassword(SecretString(""), identity)
 
   /** The empty clear-text password, differently hashed at each invocation. */
-  def newEmpty = HashedPassword(SecretString(""), identity).hashAgainRandom
+  def newEmpty = Empty.hashAgainRandom
 
   private def sha(string: String) = {
     val digest = MessageDigest.getInstance("SHA-256")  // Not thread-safe

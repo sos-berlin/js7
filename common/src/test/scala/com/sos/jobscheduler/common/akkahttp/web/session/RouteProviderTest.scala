@@ -9,10 +9,12 @@ import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser,
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProviderTest._
+import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.typesafe.config.ConfigFactory
 import java.time.Instant.now
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
@@ -32,27 +34,47 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
   protected val gateKeeper = new GateKeeper(
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",
-      invalidAuthenticationDelay = 1.s,
-      idToUser = {
-        case TestUser.id ⇒ Some(TestUser)
-        case SimpleUser.Anonymous.id ⇒ Some(SimpleUser.Anonymous)
-      }),
+      invalidAuthenticationDelay = 100.ms,
+      idToUser = IdToUser.fromConfig(
+        ConfigFactory.parseString("""jobscheduler.auth.users.TEST-USER: "plain:123" """),
+        SimpleUser.apply)),
     new TimerService(Some(1.s)))
 
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   private val route = Route.seal(
+    path("authorizedUser") {
+      authorizedUser() { user ⇒
+        complete("authorizedUser=" + user.id.string)
+      }
+    } ~
     path("sessionOption") {
       sessionOption() {
         case None ⇒ complete("NO SESSION")
         case Some(session) ⇒ complete("userId=" + session.user.id.string)
       }
-    } ~
-    path("authorizedUser") {
-      authorizedUser() { user ⇒
-        complete(user.id.string)
-      }
     })
+
+  "authenticatedUser" - {
+    "Anonymous" in {
+      Get("/authorizedUser") ~> route ~> check {
+        assert(status == OK)
+        assert(responseAs[String] == "authorizedUser=Anonymous")
+      }
+    }
+
+    "TEST-USER, wrong password" in {
+      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "xxx")) ~> route ~> check {
+        assert(status == Unauthorized)
+      }
+    }
+    "TEST-USER, right password" in {
+      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "123")) ~> route ~> check {
+        assert(status == OK)
+        assert(responseAs[String] == "authorizedUser=TEST-USER")
+      }
+    }
+  }
 
   "sessionOption" - {
     "No session header" in {
@@ -78,28 +100,7 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
       }
       Get("/authorizedUser") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[String] == "TEST-USER")
-      }
-    }
-  }
-
-  "authenticatedUser" - {
-    "Anonymous" in {
-      Get("/authorizedUser") ~> route ~> check {
-        assert(status == OK)
-        assert(responseAs[String] == "Anonymous")
-      }
-    }
-
-    "TEST-USER, wrong password" in {
-      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "xxx")) ~> route ~> check {
-        assert(status == Unauthorized)
-      }
-    }
-    "TEST-USER, right password" in {
-      Get("/authorizedUser") ~> Authorization(BasicHttpCredentials("TEST-USER", "123")) ~> route ~> check {
-        assert(status == OK)
-        assert(responseAs[String] == "TEST-USER")
+        assert(responseAs[String] == "authorizedUser=TEST-USER")
       }
     }
   }

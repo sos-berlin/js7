@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.model.{StatusCode, Uri}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
@@ -30,7 +30,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
-    invalidAuthenticationDelay = 2.s,
+    invalidAuthenticationDelay = 100.ms,
     idToUser = {   // Like master.conf and agent.conf
       case UserId("USER")      ⇒ Some(TestUser)
       case UserId("Anonymous") ⇒ Some(SimpleUser.Anonymous)
@@ -164,7 +164,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private def route(gateKeeper: GateKeeper[SimpleUser]): Route =
     gateKeeper.authenticate { user ⇒
-      path("CLOSED") {
+      path("ValidUserPermission") {
         gateKeeper.authorize(user, PermissionBundle(Set(ValidUserPermission))) {
           (get | post) {
             complete(user.id.toString)
@@ -172,7 +172,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
         }
       } ~
       path("OPEN") {
-        gateKeeper.authorize(user, PermissionBundle.empty) {
+        gateKeeper.authorize(user, PermissionBundle.empty) {  // GET is public, POST is public only with loopbackIsPublic on loopback interface
           (get | post) {
             complete(user.id.toString)
           }
@@ -180,30 +180,30 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
       }
     }
 
-  private val closedUri = Uri("/CLOSED")
+  private val validUserUri = Uri("/ValidUserPermission")
   private val openUri = Uri("/OPEN")
 
   "!loopbackIsPublic" - {
     "Request via HTTP (!isLoopback)" - {
-      "GET /CLOSED without authentication is rejected" in {
-        Get(closedUri) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
+      "GET /ValidUserPermission without authentication is rejected" in {
+        Get(validUserUri) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "POST /CLOSED JSON without authentication is rejected" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
+      "POST /ValidUserPermission without authentication is rejected" in {
+        Post(validUserUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "GET /OPEN without authentication is allowed" in {
+      "GET /OPEN without authentication" in {
         Get(openUri) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication rejected" in {
+      "POST /OPEN without authentication rejected" in {
         Post(openUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
@@ -211,25 +211,25 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
 
     "Request via loopback" - {
-      "GET /CLOSED without authentication is rejected" in {
-        Get(closedUri) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
+      "GET /ValidUserPermission without authentication is rejected" in {
+        Get(validUserUri) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "POST /CLOSED JSON without authentication is rejected" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
+      "POST /ValidUserPermission without authentication is rejected" in {
+        Post(validUserUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "GET /OPEN without authentication is allowed" in {
+      "GET /OPEN without authentication" in {
         Get(openUri) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication is rejected" in {
+      "POST /OPEN without authentication is rejected" in {
         Post(openUri, Json.obj()) ~> route(newGateKeeper(defaultConf, isLoopback = true)) ~> check {
           assertPlainStatus(Unauthorized)
         }
@@ -241,25 +241,25 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     val conf = defaultConf.copy(loopbackIsPublic = true)
 
     "Request via HTTP (!isLoopback)" - {
-      "GET /CLOSED without authentication is rejected" in {
-        Get(closedUri) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+      "GET /ValidUserPermission without authentication is rejected" in {
+        Get(validUserUri) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "POST /CLOSED JSON without authentication is rejected" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
+      "POST /ValidUserPermission without authentication is rejected" in {
+        Post(validUserUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
       }
 
-      "GET /OPEN without authentication is allowed" in {
+      "GET /OPEN without authentication" in {
         Get(openUri) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication rejected" in {
+      "POST /OPEN without authentication rejected" in {
         Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = false)) ~> check {
           assertPlainStatus(Unauthorized)
         }
@@ -267,25 +267,25 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
 
     "Request via loopback" - {
-      "GET /CLOSED without authentication is allowed" in {
-        Get(closedUri) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
+      "GET /ValidUserPermission without authentication" in {
+        Get(validUserUri) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /CLOSED JSON without authentication is allowed" in {
-        Post(closedUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
+      "POST /ValidUserPermission without authentication" in {
+        Post(validUserUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "GET /OPEN without authentication is allowed" in {
+      "GET /OPEN without authentication" in {
         Get(openUri) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
 
-      "POST /OPEN JSON without authentication is allowed" in {
+      "POST /OPEN without authentication" in {
         Post(openUri, Json.obj()) ~> route(newGateKeeper(conf, isLoopback = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
@@ -296,8 +296,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   "getIsPublic - HTTP GET is open for Anonymous" - {
     val conf = defaultConf.copy(getIsPublic = true)
 
-    "GET /CLOSED is allowed" in {
-      Get(closedUri) ~> route(conf) ~> check {
+    "GET /ValidUserPermission" in {
+      Get(validUserUri) ~> route(conf) ~> check {
         assert(responseAs[String] == "Anonymous")
       }
     }
@@ -308,64 +308,37 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
       }
     }
 
-    "POST JSON" in {
-      Post(closedUri, Json.obj()) ~> route(conf) ~> check {
+    "POST /ValidUserPermission is rejected" in {
+      Post(validUserUri, Json.obj()) ~> route(conf) ~> check {
         assertPlainStatus(Unauthorized)
       }
     }
   }
 
   "User ID and password" - {
-    "Access with valid credentials" in {
-      Get(closedUri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
+    "GET /ValidUserPermission with valid credentials" in {
+      Get(validUserUri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
         assert(responseAs[String] == "USER")
       }
     }
 
-    "No access with missing credentials" in {
-      Get(closedUri) ~> route(defaultConf) ~> check {
+    "GET /ValidUserPermission without credentials is rejected" in {
+      Get(validUserUri) ~> route(defaultConf) ~> check {
         assertPlainStatus(Unauthorized)
       }
     }
 
-    "No access with invalid credentials" in {
+    "GET /ValidUserPermission with invalid credentials is rejected" in {
       implicit def default(implicit system: ActorSystem) =
         RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
 
       val t = now
-      Get(closedUri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
+      Get(validUserUri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
         assert(status == Unauthorized)
       }
-      assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+      assert(now - t >= defaultConf.invalidAuthenticationDelay)
     }
   }
-
-  "Access token" - (if (false) {  // TODO Not implemented - do we need this?
-    "Access with valid access token" in {
-      Get(closedUri) ~> Authorization(BasicHttpCredentials("", "GRETA-TOKEN")) ~> route(defaultConf) ~> check {
-        assert(status == OK)
-        assert(responseAs[String] == "SimpleUser(GRETA)")
-      }
-    }
-
-    "No access with missing credentials" in {
-      Get(closedUri) ~> route(defaultConf) ~> check {
-        assert(!handled)
-        assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
-      }
-    }
-
-    "No access with invalid credentials" in {
-      implicit def default(implicit system: ActorSystem) =
-        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
-
-      val t = now
-      Get(closedUri) ~> Authorization(BasicHttpCredentials("", "WRONG")) ~> route(defaultConf) ~> check {
-        assert(status == Unauthorized)
-      }
-      assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
-    }
-  })
 
   private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) =
     new GateKeeper(conf, timerService, isLoopback = isLoopback)

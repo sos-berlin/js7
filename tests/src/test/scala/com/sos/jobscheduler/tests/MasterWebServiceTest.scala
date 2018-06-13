@@ -38,7 +38,7 @@ import io.circe.{Json, JsonObject}
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -301,11 +301,11 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/order/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000006,
         "array": [
           "ORDER-ID"
         ]
-      }""")
+      }""",
+      _.remove("eventId"))
 
     "master/api/order/?return=Order" in {
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -666,21 +666,21 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     }
   }
 
-  private def testGets(suburis: Iterable[String], headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: Json ⇒ Json = identity): Unit =
+  private def testGets(suburis: Iterable[String], headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: JsonObject ⇒ JsonObject = identity): Unit =
     for (suburi ← suburis) testGet(suburi, headers, expected, manipulateResponse)
 
-  private def testGet(suburi: String, headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: Json ⇒ Json = identity): Unit =
+  private def testGet(suburi: String, headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: JsonObject ⇒ JsonObject = identity): Unit =
     suburi - {
       "JSON" in {
         testJson(
-          manipulateResponse(httpClient.get[Json](s"$uri/$suburi", Duration.Inf, headers) await 99.s),
+          manipulateResponse(httpClient.get[JsonObject](s"$uri/$suburi", Duration.Inf, headers) await 99.s),
           expected)
       }
 
       "YAML" in {
         val yamlString = httpClient.get_[String](s"$uri/$suburi", headers ::: Accept(`text/plain`) :: Nil) await 99.s
         assert(yamlString.head.isLetter)  // A YAML object starts with the first field name
-        testJson(manipulateResponse(yamlToJson(yamlString).orThrow), expected)
+        testJson(manipulateResponse(yamlToJson(yamlString).orThrow.asObject.get), expected)
       }
     }
 }
