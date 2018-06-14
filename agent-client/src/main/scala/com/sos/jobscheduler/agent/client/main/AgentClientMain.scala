@@ -35,9 +35,9 @@ object AgentClientMain {
     }
 
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
-    val (agentUri, dataDir, operations) = parseArgs(args)
+    val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new TextAgentClient(agentUri, print)) { client ⇒
+    autoClosing(new TextAgentClient(agentUri, print, configDirectory)) { client ⇒
       client.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (client.checkIsResponding()) 0 else 1
@@ -55,6 +55,7 @@ object AgentClientMain {
   private def parseArgs(args: Seq[String]) =
     CommandLineArguments.parse(args) { arguments ⇒
       val agentUri = AgentAddress.normalized(arguments.keylessValue(0))
+      val configDirectory = arguments.optionAs[Path]("-config-directory=")
       val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
         case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
@@ -62,7 +63,7 @@ object AgentClientMain {
         case command ⇒ StringCommand(command)
       }
       if((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      (agentUri, dataDirectory, operations)
+      (agentUri, configDirectory, dataDirectory, operations)
     }
 
   private sealed trait Operation

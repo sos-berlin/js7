@@ -7,7 +7,8 @@ import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.Https.toHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
@@ -15,7 +16,7 @@ import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-se
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -38,7 +39,7 @@ trait AkkaWebServer extends AutoCloseable {
    */
   def start(): Future[Completed] =
     if (bindings.isEmpty)
-      Future.failed(newPortNeededException)
+      Future.failed(new IllegalArgumentException("Web server needs a configured HTTP or HTTPS port"))
     else {
       logger.debug(s"Binding to ${bindings mkString ", "}")
       activeBindings = bindings map {
@@ -52,7 +53,7 @@ trait AkkaWebServer extends AutoCloseable {
     bind(http, akkaHttp.defaultServerHttpContext)
 
   private def bindHttps(https: WebServerBinding.Https): Future[Http.ServerBinding] = {
-    logger.info(s"Using HTTPS certificate in ${https.keystoreReference.url}")
+    logger.info(s"Using HTTPS certificate in ${https.keystoreReference.url} for $https")
     bind(https, toHttpsConnectionContext(https.keystoreReference))
   }
 
@@ -80,14 +81,27 @@ object AkkaWebServer {
 
   trait HasUri {
     this: AkkaWebServer ⇒
-    lazy val localHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocallyUsableUri("http", o.address) }
-    lazy val localHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocallyUsableUri("https", o.address) }
-    lazy val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
+    lazy val localHttpUri: Checked[Uri] = locallyUsableUri("http")
+    lazy val localHttpsUri: Checked[Uri] = locallyUsableUri("https")
+    lazy val localUri: Uri = (localHttpUri findValid localHttpsUri).orThrow
+
+    def locallyUsableUri(scheme: String): Checked[Uri] =
+      bindings.collectFirst { case o: WebServerBinding if o.scheme == scheme ⇒ toLocallyUsableUri(scheme, o.address) }
+      .toChecked(Problem(s"No locally usable '$scheme' address: $bindings"))
 
     private def toLocallyUsableUri(scheme: String, address: InetSocketAddress) = {
-      val host = address.getAddress.getHostAddress.substitute("0.0.0.0", "127.0.0.1")
+      val localhost = scheme match {
+        case "http" ⇒ "127.0.0.1"
+        case "https" ⇒
+          assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
+          "localhost"
+      }
+      val host = address.getAddress.getHostAddress match {
+        case "0.0.0.0" | "127.0.0.1" ⇒ localhost
+        case o ⇒ o
+      }
       val port = address.getPort
-      Uri(s"$scheme://$host:$port")
+      Uri(scheme, Uri.Authority(Uri.Host(host), port))
     }
   }
 
@@ -95,6 +109,4 @@ object AkkaWebServer {
     s"$prefix-${binding.scheme}-${inetSocketAddressToName(binding.address)}"
 
   private def inetSocketAddressToName(o: InetSocketAddress): String = o.getAddress.getHostAddress + s":${o.getPort}"
-
-  private def newPortNeededException = new IllegalArgumentException("HTTP or HTTPS port is needed")
 }

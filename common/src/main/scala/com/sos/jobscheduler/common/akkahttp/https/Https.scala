@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Logger
-import java.security.KeyStore
+import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory}
 import scala.collection.JavaConverters._
 
@@ -20,7 +20,7 @@ import scala.collection.JavaConverters._
   *
   * @author Joacim Zschimmer
   * @see http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
-  *      https://doc.akka.io/docs/akka-http/current/scala/http/server-side/server-https-support.html
+  *      https://doc.akka.io/docs/akka-http/current/server-side/server-https-support.html
   *      https://tools.ietf.org/html/rfc5246
   */
 object Https {
@@ -54,7 +54,7 @@ object Https {
       _.init(keystore)
     }
     SSLContext.getInstance("TLS") sideEffect {
-      _.init(keyManagers, trustManagerFactory.getTrustManagers, null)
+      _.init(keyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
     }
   }
 

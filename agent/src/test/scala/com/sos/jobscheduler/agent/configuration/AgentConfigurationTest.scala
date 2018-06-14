@@ -28,13 +28,13 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
     deleteDirectoryRecursively(tmp)
     super.afterAll()
   }
+
   "Empty argument list" in {
     val c = AgentConfiguration(List(s"-data-directory=$tmp")).finishAndProvideFiles
     assert(c.copy(config = ConfigFactory.empty, dataDirectory = Some(tmp)) == AgentConfiguration(
       dataDirectory = Some(tmp),
       configDirectory = Some(tmp / "config"),
-      http = None,
-      https = None,
+      webServerBindings = Nil,
       workingDirectory = WorkingDirectory,
       logDirectory = tmp / "logs",
       environment = Map(),
@@ -50,16 +50,15 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "-https-port=" in {
-    intercept[IllegalArgumentException] { conf("-https-port=1234").https }
-    intercept[IllegalArgumentException] { conf("-https-port=1234").https }
+    intercept[IllegalArgumentException] { conf("-https-port=1234") }
     intercept[IllegalArgumentException] { conf("-data-directory=/TEST/DATA", "-https-port=65536") }
-    assert(conf("-data-directory=/TEST/DATA", "-https-port=1234").https == Some(WebServerBinding.Https(
+    assert(conf("-data-directory=/TEST/DATA", "-https-port=1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
         storePassword = Some(SecretString("jobscheduler")),
         keyPassword = Some(SecretString("jobscheduler"))))))
-    assert(conf("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234").https == Some(WebServerBinding.Https(
+    assert(conf("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
@@ -69,11 +68,15 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
 
   "-http-port=" in {
     intercept[IllegalArgumentException] { conf("-http-port=65536") }
-    assert(conf("-http-port=1234"              ).http == Some(WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234))))
-    assert(conf("-http-port=11.22.33.44:1234"  ).http == Some(WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234))))
-    assert(conf("-http-port=[1:2:3:4:5:6]:1234").http == Some(WebServerBinding.Http(new InetSocketAddress("1:2:3:4:5:6", 1234))))
-    assert(conf("-http-port=[::1]:1234"        ).http == Some(WebServerBinding.Http(new InetSocketAddress("::1", 1234))))
+    assert(conf("-http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
+    assert(conf("-http-port=11.22.33.44:1234"  ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234)) :: Nil)
+    assert(conf("-http-port=[1:2:3:4:5:6]:1234").webServerBindings == WebServerBinding.Http(new InetSocketAddress("1:2:3:4:5:6", 1234)) :: Nil)
+    assert(conf("-http-port=[::1]:1234"        ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("::1", 1234)) :: Nil)
+    assert(conf("-http-port=1111", "-http-port=2222").webServerBindings ==
+      WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1111)) ::
+      WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 2222)) :: Nil)
   }
+
   "-log-directory=" in {
     assert(conf("-data-directory=TEST/DATA").logDirectory == Paths.get("TEST/DATA/logs").toAbsolutePath)
     assert(conf("-data-directory=TEST/DATA", "-log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
@@ -81,43 +84,25 @@ final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "-kill-script= is missing (default)" - {
-    //Deprecated:
-    //"Without -data-directory" in {
-    //  assert(conf().logDirectory == conf().temporaryDirectory)
-    //  assert(conf().logDirectory == temporaryDirectory)
-    //  val generatedFile = conf().logDirectory / s"kill_task.$shellExt"
-    //  assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
-    //  delete(generatedFile)
-    //}
-
-    "With -data-directory" in {
-      val data = createTempDirectory("AgentConfigurationTest-")
-      val expectedFile = data / s"tmp/kill_task.$shellExt"
-      val myConf = conf(s"-data-directory=$data").finishAndProvideFiles
-      assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
-      delete(expectedFile)
-      delete(data / "logs")
-      delete(data / "state")
-      delete(data / "tmp")
-      delete(data)
-    }
+    val data = createTempDirectory("AgentConfigurationTest-")
+    val expectedFile = data / s"tmp/kill_task.$shellExt"
+    val myConf = conf(s"-data-directory=$data").finishAndProvideFiles
+    assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
+    delete(expectedFile)
+    delete(data / "logs")
+    delete(data / "state")
+    delete(data / "tmp")
+    delete(data)
   }
 
   "-kill-script= (empty)" - {
-    "Without -data-directory" in {
-      val myConf = conf("-kill-script=").finishAndProvideFiles
-      assert(myConf.killScript == None)
-    }
-
-    "With -data-directory" in {
-      val data = createTempDirectory("AgentConfigurationTest-")
-      val myConf = conf(s"-data-directory=$data", "-kill-script=").finishAndProvideFiles
-      assert(myConf.killScript == None)
-      delete(data / "logs")
-      delete(data / "state")
-      delete(data / "tmp")
-      delete(data)
-    }
+    val data = createTempDirectory("AgentConfigurationTest-")
+    val myConf = conf(s"-data-directory=$data", "-kill-script=").finishAndProvideFiles
+    assert(myConf.killScript == None)
+    delete(data / "logs")
+    delete(data / "state")
+    delete(data / "tmp")
+    delete(data)
   }
 
   "-kill-script=FILE" in {

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.akkahttp.https
 
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.typesafe.config.Config
@@ -22,9 +23,13 @@ final case class KeystoreReference(
 }
 
 object KeystoreReference {
-  def fromSubConfig(config: Config, configDirectory: Path) =
-    KeystoreReference(
-      url = config.as[Path]("file", configDirectory / "private/private-https.jks").toURI.toURL,
-      storePassword = config.optionAs[SecretString]("password"),
-      keyPassword = Some(config.as[SecretString]("key-password")))
+  private val JksPath = "private/private-https.jks"
+
+  def fromConfig(config: Config, configDirectory: Option[Path]): Checked[KeystoreReference] =
+    config.checkedAs[Path]("jobscheduler.webserver.https.keystore.file", default = configDirectory map (_ resolve JksPath))
+      .map(path ⇒
+        KeystoreReference(
+          url = path.toAbsolutePath.toURI.toURL,
+          storePassword = config.optionAs[SecretString]("jobscheduler.webserver.https.keystore.password"),
+          keyPassword = Some(config.as[SecretString]("jobscheduler.webserver.https.keystore.key-password"))))
 }

@@ -4,8 +4,8 @@ import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
-import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -29,7 +29,7 @@ import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
-import scala.collection.immutable
+import scala.collection.immutable.Seq
 
 /**
  * @author Joacim Zschimmer
@@ -37,12 +37,11 @@ import scala.collection.immutable
 final case class AgentConfiguration(
   dataDirectory: Option[Path],
   configDirectory: Option[Path],
-  http: Option[WebServerBinding.Http],
-  https: Option[WebServerBinding.Https],
+  webServerBindings: Seq[WebServerBinding],
   workingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
   environment: Map[String, String],
-  jobJavaOptions: immutable.Seq[String],
+  jobJavaOptions: Seq[String],
   dotnet: DotnetConfiguration,
   rpcKeepaliveDuration: Option[Duration],
   killScript: Option[ProcessKillScript],
@@ -56,8 +55,9 @@ final case class AgentConfiguration(
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     var v = copy(
-      http = a.optionAs("-http-port=", http)(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
-      https = a.optionAs("-https-port=")(StringToServerInetSocketAddress) map { o ⇒ inetSocketAddressToHttps(o) } orElse https,
+      webServerBindings = webServerBindings ++
+        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(o ⇒ inetSocketAddressToHttps(o)) ++
+        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(o ⇒ WebServerBinding.Http(o)),
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
       jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
@@ -75,21 +75,20 @@ final case class AgentConfiguration(
     case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
 
-  def withHttpsInetSocketAddress(addr: InetSocketAddress) = copy(https = Some(inetSocketAddressToHttps(addr)))
+  def addHttpsInetSocketAddress(addr: InetSocketAddress) = copy(webServerBindings = webServerBindings :+ inetSocketAddressToHttps(addr))
 
-  private def inetSocketAddressToHttps(addr: InetSocketAddress) = WebServerBinding.Https(
-    addr,
-    https match {
-      case Some(o) ⇒ o.keystoreReference
-      case None ⇒ newKeyStoreReference()
-    })
+  private def inetSocketAddressToHttps(addr: InetSocketAddress): WebServerBinding.Https =
+    WebServerBinding.Https(addr, newKeyStoreReference().orThrow)
 
   private def newKeyStoreReference() =
-    KeystoreReference.fromSubConfig(
-      config.getConfig("jobscheduler.webserver.https.keystore"),
-      configDirectory = configDirectory getOrElse {
-        throw new IllegalArgumentException("For HTTPS, agentDirectory is required")
-      })
+    KeystoreReference.fromConfig(
+      config,
+      configDirectory = Some(configDirectory getOrElse (
+        throw new IllegalArgumentException("For HTTPS, agentDirectory is required"))))
+
+  def http: Seq[WebServerBinding.Http] = webServerBindings collect { case o: WebServerBinding.Http ⇒ o }
+
+  def https: Seq[WebServerBinding.Https] = webServerBindings collect { case o: WebServerBinding.Https ⇒ o }
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
@@ -138,10 +137,9 @@ final case class AgentConfiguration(
       case None ⇒ logDirectory  // Usage of logDirectory is compatible with v1.10.4
   }
 
-  def localUri: Uri =
-    http map { o ⇒ Uri(s"http://${o.address.getAddress.getHostAddress}:${o.address.getPort}") } getOrElse {
-      throw sys.error("No HTTP binding for localUri")
-    }
+  def httpUri: Uri =
+    http.headOption.map(o ⇒ Uri(s"http://${o.address.getAddress.getHostAddress}:${o.address.getPort}"))
+      .getOrElse(sys.error("No HTTP binding for agentConfiguration.httpUri"))
 }
 
 object AgentConfiguration {
@@ -161,26 +159,25 @@ object AgentConfiguration {
     val dataDir = dataDirectory map { _.toAbsolutePath }
     val configDir = configDirectory orElse (dataDir map { _ / "config" })
     val config = resolvedConfig(configDir, extraDefaultConfig)
-    val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
       dataDirectory = dataDir,
       configDirectory = configDir,
-      http = c.optionAs("webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http,
-      https = None,  // Changed below
-      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (dataDir map defaultLogDirectory) getOrElse temporaryDirectory,
+      webServerBindings = Nil,
+        //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
+      logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) orElse (dataDir map defaultLogDirectory) getOrElse temporaryDirectory,
       environment = Map(),
-      dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
-      rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
-      jobJavaOptions = c.stringSeq("task.java.options"),
+      dotnet = DotnetConfiguration(classDllDirectory = config.optionAs("jobscheduler.agent.task.dotnet.class-directory")(asAbsolutePath)),
+      rpcKeepaliveDuration = config.durationOption("jobscheduler.agent.task.rpc.keepalive.duration"),
+      jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      commandTimeout = c.getDuration("command-timeout"),
-      akkaAskTimeout = c.getDuration("akka-ask-timeout").toFiniteDuration,
+      commandTimeout = config.getDuration("jobscheduler.agent.command-timeout"),
+      akkaAskTimeout = config.getDuration("jobscheduler.agent.akka-ask-timeout").toFiniteDuration,
       name = "Agent",
-      journalSyncOnCommit = c.getBoolean("journal.sync"),
+      journalSyncOnCommit = config.getBoolean("jobscheduler.journal.sync"),
       config = config)
-    v = v.withKillScript(c.optionAs[String]("task.kill.script"))
-    for (o ← c.optionAs("webserver.https.port")(StringToServerInetSocketAddress)) {
-      v = v withHttpsInetSocketAddress o
+    v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
+    for (o ← config.optionAs("jobscheduler.webserver.https.port")(StringToServerInetSocketAddress)) {
+      v = v addHttpsInetSocketAddress o
     }
     v
   }
@@ -207,7 +204,9 @@ object AgentConfiguration {
         configDirectory = configAndData map { _ / "config" },
         config)
       .copy(
-        http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))),
-        jobJavaOptions = List(s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}") ++ sys.props.get("agent.job.javaOptions"))
+        webServerBindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) :: Nil,
+        jobJavaOptions =
+          s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
+            sys.props.get("agent.job.javaOptions").toList)
   }
 }

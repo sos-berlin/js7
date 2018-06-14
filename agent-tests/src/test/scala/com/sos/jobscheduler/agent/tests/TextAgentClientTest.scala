@@ -36,9 +36,8 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
 
   override protected lazy val agentConfiguration = {
     val c = newAgentConfiguration()
-    c.copy(
-      http = None)
-      .withHttpsInetSocketAddress(c.http.get.address)
+    c.copy(webServerBindings = Nil)
+     .addHttpsInetSocketAddress(c.webServerBindings.head.address)
   }
 
   override protected def extraAgentModule = new AbstractModule {
@@ -62,6 +61,11 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
         case TestUserId ⇒ Some(SimpleUser(TestUserId, HashedPassword(Password, identity)))
         case _ ⇒ None
       })
+  }
+
+  override def beforeAll() = {
+    provideHttpsFiles()
+    super.beforeAll()
   }
 
   override def afterAll() = closer closeThen { super.afterAll() }
@@ -114,7 +118,7 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
   }
 
   private def newTextAgentClient(output: String ⇒ Unit) =
-    new TextAgentClient(agentUri = AgentAddress(agent.localUri.toString), output, Some(keystoreReference))
+    new TextAgentClient(agentUri = AgentAddress(agent.localUri.toString), output, configDirectory = Some(configDirectory))
 }
 
 private object TextAgentClientTest {

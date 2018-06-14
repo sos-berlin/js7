@@ -53,7 +53,7 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
     .forTest(Some(agentDirectory))
-    .copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
+    .copy(webServerBindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) :: Nil)
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
   private lazy val agent = RunningAgent(agentConfiguration) await 10.s
   private implicit lazy val actorSystem = {

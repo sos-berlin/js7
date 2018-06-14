@@ -35,7 +35,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   closer.registerAutoCloseable(this)
 
-  protected val bindings = (conf.http ++ conf.https).toVector
+  protected val bindings = conf.webServerBindings.toVector
   private val commandHandler = new SetOnce[CommandHandler]("CommandHandler")
   private val agentHandle = new SetOnce[AgentHandle]("Agent")
 

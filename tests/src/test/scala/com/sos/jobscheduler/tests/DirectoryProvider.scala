@@ -60,7 +60,7 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     for (a ← agents) {
       val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
       Files.createDirectories(file.getParent)
-      file.contentString = Agent(AgentPath.NoId, uri = a.conf.localUri.toString).asJson.toPrettyString
+      file.contentString = Agent(AgentPath.NoId, uri = a.conf.httpUri.toString).asJson.toPrettyString
     }
 
   def provideAgentsPrivateConf(): Unit =
@@ -173,7 +173,7 @@ object DirectoryProvider {
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
     lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = agentPath.name)
-    lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
+    lazy val localUri = Uri("http://127.0.0.1:" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
   }
 

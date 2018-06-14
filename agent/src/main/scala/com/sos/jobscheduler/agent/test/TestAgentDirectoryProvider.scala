@@ -3,7 +3,6 @@ package com.sos.jobscheduler.agent.test
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils._
@@ -22,9 +21,8 @@ trait TestAgentDirectoryProvider extends HasCloser {
       deleteDirectoryRecursively(dir)
     }
     try {
-      val privateDir = createDirectories(agentDirectory / "config/private")
-      PrivateHttpJksResource.copyToFile(agentDirectory / KeystoreJksLocation) withCloser delete
-      PrivateConfResource.copyToFile(privateDir / "private.conf") withCloser delete
+      createDirectories(agentDirectory / "config/private")
+      PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
     } catch { case NonFatal(t) ⇒
       deleteDirectoryRecursively(agentDirectory)
       throw t
@@ -36,10 +34,11 @@ trait TestAgentDirectoryProvider extends HasCloser {
   final lazy val configDirectory = agentDirectory / "config"
   final lazy val dataDirectory = agentDirectory / "data"
 
-  final lazy val keystoreReference = KeystoreReference(
-    (agentDirectory / KeystoreJksLocation).toURI.toURL,
-    storePassword = Some(SecretString("jobscheduler")),
-    keyPassword = Some(SecretString("jobscheduler")))
+  protected[agent] def provideHttpsFiles(): Unit = {
+    // Certificate files are under src/test/resources and only available for module "agent".
+    PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/private-https.jks") withCloser delete
+    PublicHttpJksResource.copyToFile(agentDirectory / "config/public-https.jks") withCloser delete
+  }
 }
 
 object TestAgentDirectoryProvider {
@@ -49,7 +48,6 @@ object TestAgentDirectoryProvider {
   val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/public-https.jks")
   val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")
   val TestUserAndPassword = UserAndPassword(UserId("SHA512-USER"), SecretString("SHA512-PASSWORD"))
-  private val KeystoreJksLocation = "config/private/private-https.jks"
   private val logger = Logger(getClass)
 
   def provideAgentDirectory[A](body: Path ⇒ A): A =
