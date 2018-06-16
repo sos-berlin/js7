@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Generates a test TLS certificate
 set -e
 
-# Tested only with -host=localhost. Then "-ext SAN=IP:127.0.0.1" is added to the certificate.
+# Generates a test TLS certificate
+# Tested only with -host=localhost.
 
 # The source code test keystores has been generated with:
-# common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=agent/src/main/resources/com/sos/jobscheduler/agent/test/config
+#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/com/sos/jobscheduler/common/akkahttp/https
+#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
 
 configDirectory=
 host=
 distinguishedName=
-days=3660
+days=36500
 privateKeystore="private/private-https.jks"
 publicKeystore="public-https.jks"
 alias=
@@ -67,8 +68,6 @@ rm -vf "$privateKeystore" "$publicKeystore" "$publicCertFile"
 keytool -genkey \
   -alias "$alias" \
   -dname "$distinguishedName" \
-  -ext SAN=DNS:$host \
-  $([ "$host" != "localhost" ] || echo "-ext SAN=IP:127.0.0.1") \
   -validity "$days" \
   -keyalg RSA \
   -keysize 1024 \

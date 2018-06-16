@@ -25,16 +25,16 @@ import scala.collection.JavaConverters._
   */
 object Https {
   private val logger = Logger(getClass)
-  private lazy val KeyManagerAlgorithm = {
-    val r = KeyManagerFactory.getDefaultAlgorithm
-    logger.debug(s"KeyManagerFactory.getDefaultAlgorithm=$r")
-    r
-  }
-  private lazy val TrustManagerAlgorithm = {
-    val r = TrustManagerFactory.getDefaultAlgorithm
-    logger.debug(s"TrustManagerFactory.getDefaultAlgorithm=$r")
-    r
-  }
+  private lazy val KeyManagerAlgorithm = "SunX509"  // Or use default provided by Java ??? {
+  //  val r = KeyManagerFactory.getDefaultAlgorithm
+  //  logger.debug(s"KeyManagerFactory.getDefaultAlgorithm=$r")
+  //  r
+  //}
+  private lazy val TrustManagerAlgorithm = "SunX509" // Or use default provided by Java ??? {
+  //  val r = TrustManagerFactory.getDefaultAlgorithm
+  //  logger.debug(s"TrustManagerFactory.getDefaultAlgorithm=$r")
+  //  r
+  //}
 
   def toHttpsConnectionContext(keystore: KeystoreReference): HttpsConnectionContext =
     new HttpsConnectionContext(newSSLContext(keystore))
@@ -59,7 +59,7 @@ object Https {
   }
 
   private def loadKeyStore(keystoreRef: KeystoreReference): KeyStore = {
-    val keystore = KeyStore.getInstance(KeyStore.getDefaultType)
+    val keystore = KeyStore.getInstance("jks")  // TODO PKCS12
     logger.info(s"Loading $keystoreRef")
     autoClosing(keystoreRef.url.openStream()) { in ⇒
       val pw = (keystoreRef.storePassword map { _.string.toCharArray }).orNull
