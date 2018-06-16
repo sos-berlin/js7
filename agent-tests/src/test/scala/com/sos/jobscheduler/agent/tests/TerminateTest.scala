@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.{EventId, EventRequest}
@@ -79,14 +79,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
 }
 
 object TerminateTest {
-  private val AScript =
-    if (isWindows) """
-      |@echo off
-      |ping -n 11 127.0.0.1 >nul
-      |""".stripMargin
-    else """
-      |sleep 10
-      |""".stripMargin
+  private val AScript = operatingSystem.sleepingShellScript(10.seconds)
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒

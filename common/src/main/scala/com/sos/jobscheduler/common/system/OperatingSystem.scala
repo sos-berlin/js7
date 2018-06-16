@@ -8,6 +8,7 @@ import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable
+import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
 import scala.util.Try
 
@@ -27,6 +28,8 @@ trait OperatingSystem {
   def distributionNameAndVersionOption: Option[String]
 
   def cpuModel: Option[String]
+
+  def sleepingShellScript(duration: FiniteDuration): String
 
   protected def alternativeHostname: String
 }
@@ -66,6 +69,9 @@ object OperatingSystem {
     def distributionNameAndVersionOption = None
 
     def cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
+
+    def sleepingShellScript(duration: FiniteDuration) =
+      s"@ping -n ${(duration + 999.milliseconds).toSeconds + 1} 127.0.0.1 >nul"
   }
 
   final class Unix private[system] extends OperatingSystem {
@@ -127,6 +133,9 @@ object OperatingSystem {
             }
           }
         } .toOption.flatten
+
+    def sleepingShellScript(duration: FiniteDuration) =
+      s"sleep ${(duration + 999.milliseconds).toSeconds}\n"
   }
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {
