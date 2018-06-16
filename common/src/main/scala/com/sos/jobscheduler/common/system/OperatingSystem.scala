@@ -93,13 +93,13 @@ object OperatingSystem {
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
           }
         }
-        .getOrElse { sys.error(s"Key PRETTY_NAME not found in file $file")}
+        .getOrElse(sys.error(s"Key PRETTY_NAME not found in file $file"))
       }
 
       def readFileAnyRelease() = {
         val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream ⇒
           val iterator = stream.iterator
-          if (!iterator.hasNext) throw sys.error("No file matches /etc/*-release")
+          if (!iterator.hasNext) sys.error("No file matches /etc/*-release")
           iterator.next
         }
         readFirstLine(anyFile)

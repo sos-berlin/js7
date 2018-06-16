@@ -23,9 +23,9 @@ final class ConfigsTest extends FreeSpec {
     assert(TestConfig.as[Int]("int") == 42)
     assert(TestConfig.seqAs[String]("seq") == List("1", "2", "3"))
     assert(TestConfig.seqAs[Int]("seq") == List(1, 2, 3))
-    assert(TestConfig.seqAs[Int]("emptySeq") == Nil)
+    assert(TestConfig.seqAs[Int]("emptySeq") == Vector.empty)
     intercept[ConfigException.Missing] { TestConfig.seqAs[Int]("missing") }
-    assert(TestConfig.seqAs[Int]("missing", Nil) == Nil)
+    assert(TestConfig.seqAs[Int]("missing", Nil) == Vector.empty)
     assert(TestConfig.seqAs[Int]("missing", List(7)) == List(7))
     intercept[ConfigException.WrongType] { TestConfig.seqAs[Int]("int") }
   }
@@ -58,5 +58,4 @@ object ConfigsTest {
     yes = yes
     seq = [1, 2, 3]
     emptySeq = []""".stripMargin)
-
 }
