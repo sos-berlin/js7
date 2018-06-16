@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
@@ -20,12 +21,11 @@ import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
@@ -70,10 +70,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         |}
         |""".stripMargin)
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
-    directoryProvider.master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/A" on "/AGENT"; job "/MISSING" on "/AGENT";""")
+    directoryProvider.master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/B" on "/AGENT"; job "/MISSING" on "/AGENT";""")
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
-    directoryProvider.agents(0).file(JobPath("/A"), SourceType.Xml).xml =
-      <job><script language="shell">{if (isWindows) "@exit" else "exit"}</script></job>
+    directoryProvider.agents(0).writeJson(JobConfiguration(
+      JobPath("/A") % VersionId.Anonymous,
+      JobScript(operatingSystem.sleepingShellScript(1.second))))  // Allow some time to check web service before order finishes
+    directoryProvider.agents(0).writeJson(JobConfiguration(
+      JobPath("/B") % VersionId.Anonymous,
+      JobScript(operatingSystem.sleepingShellScript(0.seconds))))
     super.beforeAll()
   }
 
@@ -148,7 +152,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "instructions": [
           {
             "TYPE": "Job",
-            "jobPath": "/A",
+            "jobPath": "/B",
             "agentPath": "/AGENT"
           }, {
             "TYPE": "Job",
@@ -156,7 +160,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "agentPath": "/AGENT"
           }
         ],
-        "source": "job \"/A\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+        "source": "job \"/B\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
       }""")
   }
 
@@ -371,7 +375,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "instructions": [
               {
                 "TYPE": "Job",
-                "jobPath": "/A",
+                "jobPath": "/B",
                 "agentPath": "/AGENT"
               }, {
                 "TYPE": "Job",
@@ -379,7 +383,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 "agentPath": "/AGENT"
               }
             ],
-            "source": "job \"/A\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+            "source": "job \"/B\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
           }
         }, {
           "eventId": 1005,
