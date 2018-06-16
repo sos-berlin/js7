@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.agent
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
 import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.JobPath
@@ -15,11 +16,10 @@ import com.sos.jobscheduler.master.agent.CommandQueueTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import scala.concurrent.duration._
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 
 /**
@@ -85,6 +85,7 @@ object CommandQueueTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") % "VERSION",
     Job(JobPath("/JOB"), TestAgentPath))
+
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow), Batch.Succeeded(Accepted))
 

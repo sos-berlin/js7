@@ -10,7 +10,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 /**
@@ -57,7 +57,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       Future.successful(Completed)
   }
 
-  final def maySend(): Future[Completed] =
+  final def maySend(): Future[Completed]/*Future for test only*/ =
     if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0)) {
       val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
       if (inputs.nonEmpty) {
