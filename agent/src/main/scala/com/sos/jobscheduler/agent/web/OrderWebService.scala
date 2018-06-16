@@ -18,7 +18,7 @@ trait OrderWebService extends AgentRouteProvider {
   protected def commandHandler: CommandHandler
   protected implicit def scheduler: Scheduler
 
-  protected final val orderRoute: Route =
+  protected final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)

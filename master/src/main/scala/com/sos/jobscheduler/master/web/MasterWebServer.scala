@@ -55,7 +55,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
     executeCommandOnce := executeCommand
 
   protected def newRoute(binding: WebServerBinding): Route =
-    new AllRoute {
+    new CompleteRoute {
       protected val masterId            = masterConfiguration.masterId
       protected val injector            = MasterWebServer.this.injector
       protected val actorSystem         = injector.instance[ActorSystem]
@@ -72,7 +72,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
       logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
     }
-    .allRoutes
+    .completeRoute
 }
 
 object MasterWebServer {

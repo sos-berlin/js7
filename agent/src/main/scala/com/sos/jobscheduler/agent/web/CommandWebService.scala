@@ -20,7 +20,7 @@ trait CommandWebService extends AgentRouteProvider {
   protected def commandHandler: CommandHandler
   protected implicit def scheduler: Scheduler
 
-  val commandRoute: Route =
+  final lazy val commandRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒
       post {
         pathEnd {

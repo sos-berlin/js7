@@ -19,7 +19,7 @@ trait TimerWebService extends AgentRouteProvider {
   protected def timerService: TimerService
   protected implicit def scheduler: Scheduler
 
-  protected final val timerRoute: Route =
+  protected final lazy val timerRoute: Route =
     authorizedUser(ValidUserPermission) { _ ⇒
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {

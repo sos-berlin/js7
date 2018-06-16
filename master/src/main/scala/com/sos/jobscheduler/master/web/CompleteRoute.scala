@@ -17,14 +17,14 @@ import com.typesafe.config.Config
 /**
   * @author Joacim Zschimmer
   */
-trait AllRoute extends ServiceProviderRoute with MasterRoute with WebLogDirectives {
+trait CompleteRoute extends ServiceProviderRoute with MasterRoute with WebLogDirectives {
 
   override protected def gateKeeper: GateKeeper[SimpleUser]
   protected implicit def actorRefFactory: ActorRefFactory
   protected def config: Config
   protected def actorSystem: ActorSystem
 
-  final lazy val allRoutes: Route =
+  final lazy val completeRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
       WebLogDirectives(config, actorSystem).handleErrorAndLog() {
         forbidCSRF {

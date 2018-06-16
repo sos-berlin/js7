@@ -12,11 +12,13 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.akkahttp.{HttpStatusCodeException, WebServerBinding}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.timer.TimerService
+import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
 
 /**
@@ -45,20 +47,27 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   def setAgentActor(agentHandle: AgentHandle) =
     this.agentHandle := agentHandle
 
-  protected def newRoute(binding: WebServerBinding) = {  // TODO Sollte aussehen wie in MasterWebServer
-    val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
-    val result = injector.instance[RouteProvider.Factory].toRoute(
-      gateKeeper,
-      () ⇒ commandHandler getOrElse newServiceUnavailable(),
-      () ⇒ agentHandle getOrElse newServiceUnavailable())
-    logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
-    result
-  }
+  protected def newRoute(binding: WebServerBinding) =
+    new CompleteRoute {
+      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
+      protected def sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+      //protected val taskRegister = Factory.this.taskRegister
+      protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceServiceUnavailable)
+      protected def agentOverview = agentHandle.overview
+      protected def agentHandle = AgentWebServer.this.agentHandle getOrElse (throw ServiceServiceUnavailable)
+      protected def timerService = AgentWebServer.this.timerService
+      protected def akkaAskTimeout = conf.akkaAskTimeout
+      protected def config = AgentWebServer.this.conf.config
+      protected def actorSystem = AgentWebServer.this.actorSystem
+      protected def scheduler = injector.instance[Scheduler]
+
+      logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
+    }.completeRoute
 }
 
 object AgentWebServer {
   private val logger = Logger(getClass)
 
-  private def newServiceUnavailable() =
-    throw new HttpStatusCodeException(ServiceUnavailable, Problem("Agent CommandHandler is not yet ready"))
+  private val ServiceServiceUnavailable =
+    new HttpStatusCodeException(ServiceUnavailable, Problem("Agent is not yet completely ready"))
 }

@@ -22,7 +22,7 @@ trait SessionRoute extends RouteProvider {
 
   protected implicit def scheduler: Scheduler
 
-  protected final val sessionRoute =
+  protected final lazy val sessionRoute =
     pathEnd {
       post {
         gateKeeper.authenticate { httpUser ⇒

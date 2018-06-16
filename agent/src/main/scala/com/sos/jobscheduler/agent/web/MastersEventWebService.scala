@@ -24,7 +24,7 @@ trait MastersEventWebService extends AgentRouteProvider {
   protected def agentHandle: AgentHandle
   implicit protected def akkaAskTimeout: Timeout
 
-  protected final val masterEventRoute: Route =
+  protected final lazy val masterEventRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒
       pathEnd {
         eventRequest[OrderEvent](defaultReturnType = Some("OrderEvent")).apply {
