@@ -110,10 +110,10 @@ object TestMasterAgent {
             Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
             taskLimit = conf.tasksPerJob
           ).asJson.toPrettyString
-        val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
-            configAndData = Some(env.agentDir(agentPath))).copy(
-            journalSyncOnCommit = conf.syncAgent))
-          .map { _.closeWithCloser } await 99.s
+        val agent = RunningAgent.startForTest(
+          AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
+            .copy(journalSyncOnCommit = conf.syncAgent)
+        ) map { _.closeWithCloser } await 99.s
         env.file(agentPath, SourceType.Xml).xml = <agent uri={agent.localUri.toString}/>
         agent
       }

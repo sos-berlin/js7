@@ -29,7 +29,7 @@ object AgentMain {
   def main(args: Array[String]): Unit = {
     logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
     val exitCode = try {
-      val agentConfiguration = AgentConfiguration(args.toVector)
+      val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
       val (conf, dotnet) = tryProvideDotnet(agentConfiguration)
       try run(conf).awaitInfinite
       finally dotnet.close()

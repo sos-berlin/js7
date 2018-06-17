@@ -20,7 +20,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider {
 
   protected lazy val agentConfiguration = newAgentConfiguration()
 
-  protected final def newAgentConfiguration() = AgentConfiguration.forTest(configAndData = Some(agentDirectory))
+  protected final def newAgentConfiguration() = AgentConfiguration.forTest(configAndData = agentDirectory)
 
   protected lazy final val agent: RunningAgent = {
     val confModule = new AgentModule(agentConfiguration)

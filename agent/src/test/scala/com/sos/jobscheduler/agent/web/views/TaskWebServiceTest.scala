@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.web.views
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
@@ -30,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
 
   protected lazy val taskRegister = {
-    val actor = actorSystem.actorOf(TaskRegisterActor.props(AgentConfiguration.forTest(), new TimerService(idleTimeout = Some(1.s))))
+    val actor = actorSystem.actorOf(TaskRegisterActor.props(None, new TimerService(idleTimeout = Some(1.s))))
     new TaskRegister(actor)(99.seconds)
   }
 

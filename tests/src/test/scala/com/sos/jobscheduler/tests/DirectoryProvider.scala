@@ -172,7 +172,7 @@ object DirectoryProvider {
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
-    lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = agentPath.name)
+    lazy val conf = AgentConfiguration.forTest(directory).copy(name = agentPath.name)
     lazy val localUri = Uri("http://127.0.0.1:" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
   }

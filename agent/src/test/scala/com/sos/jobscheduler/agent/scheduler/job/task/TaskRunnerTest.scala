@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, ShellReturnValuesProvider}
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -28,12 +29,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll {
+final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
-  private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest()))
+  private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(agentDirectory)))
 
   override protected def afterAll() = {
     injector.instance[Closer].close()
+    closer.close()
     super.afterAll()
   }
 

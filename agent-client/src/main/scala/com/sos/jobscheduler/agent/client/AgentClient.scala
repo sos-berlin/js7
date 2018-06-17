@@ -10,7 +10,6 @@ import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskR
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import monix.eval.Task
@@ -31,15 +30,12 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
 
   protected lazy val sessionUri = agentUris.session.toString()
 
-  private lazy val logger = Logger.withPrefix[AgentClient](baseUri.toString)
   protected lazy val agentUris = AgentUris(baseUri.toString)
   protected lazy val uriPrefixPath = "/agent"
 
-  final def executeCommand(command: AgentCommand): Task[command.Response] = {
-    logger.debug(s"Execute $command")
+  final def executeCommand(command: AgentCommand): Task[command.Response] =
     post[AgentCommand, AgentCommand.Response](agentUris.command, command)
       .map(_.asInstanceOf[command.Response])
-  }
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
 

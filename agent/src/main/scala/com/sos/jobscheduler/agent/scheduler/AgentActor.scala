@@ -52,7 +52,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     JournalActor.props(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus),
     "Journal")
   private val jobKeeper = {
-    val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
+    val taskRegister = new TaskRegister(actorOf(
+      TaskRegisterActor.props(agentConfiguration.killScriptConf, timerService),
+      "TaskRegister"))
     watch(actorOf(Props { new JobKeeper(fileBasedDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper"))
   }
   private val masterToOrderKeeper = new MasterRegister

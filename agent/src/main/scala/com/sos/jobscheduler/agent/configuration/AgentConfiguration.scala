@@ -3,8 +3,9 @@ package com.sos.jobscheduler.agent.configuration
 import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
-import com.sos.jobscheduler.agent.data.ProcessKillScript
+import com.sos.jobscheduler.agent.data.{KillScriptConf, ProcessKillScript}
 import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
@@ -15,7 +16,6 @@ import com.sos.jobscheduler.common.internet.IP._
 import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -26,7 +26,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
 import scala.collection.immutable.Seq
@@ -35,8 +35,8 @@ import scala.collection.immutable.Seq
  * @author Joacim Zschimmer
  */
 final case class AgentConfiguration(
-  dataDirectory: Option[Path],
-  configDirectory: Option[Path],
+  configDirectory: Path,
+  dataDirectory: Path,
   webServerBindings: Seq[WebServerBinding],
   workingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
@@ -78,13 +78,10 @@ final case class AgentConfiguration(
   def addHttpsInetSocketAddress(addr: InetSocketAddress) = copy(webServerBindings = webServerBindings :+ inetSocketAddressToHttps(addr))
 
   private def inetSocketAddressToHttps(addr: InetSocketAddress): WebServerBinding.Https =
-    WebServerBinding.Https(addr, newKeyStoreReference().orThrow)
+    WebServerBinding.Https(addr, keyStoreReference.orThrow)
 
-  private def newKeyStoreReference() =
-    KeystoreReference.fromConfig(
-      config,
-      configDirectory = Some(configDirectory getOrElse (
-        throw new IllegalArgumentException("For HTTPS, agentDirectory is required"))))
+  private lazy val keyStoreReference: Checked[KeystoreReference] =
+    KeystoreReference.fromConfig(config, configDirectory = Some(configDirectory))
 
   def http: Seq[WebServerBinding.Http] = webServerBindings collect { case o: WebServerBinding.Http ⇒ o }
 
@@ -93,27 +90,25 @@ final case class AgentConfiguration(
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
   def fileBasedDirectory: Path =
-    configDirectory map { _ / "live" } getOrElse { throw new NoSuchElementException("Missing data directory") }
+    configDirectory / "live"
 
   def stateDirectory: Path =
-    dataDirectory map { _ / "state" } getOrElse { throw new NoSuchElementException("Missing data directory")}
+    dataDirectory / "state"
 
   def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
       .provideKillScript()
 
   private def provideDataSubdirectories(): AgentConfiguration = {
-    for (data ← dataDirectory) {
-      if (logDirectory == defaultLogDirectory(data) && !exists(logDirectory)) {
-        createDirectory(logDirectory)
-      }
-      if (!exists(stateDirectory)) {
-        createDirectory(stateDirectory)
-      }
-      if (!exists(temporaryDirectory)) {
-        assert(temporaryDirectory == data / "tmp")
-        createDirectory(temporaryDirectory)
-      }
+    if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
+      createDirectory(logDirectory)
+    }
+    if (!exists(stateDirectory)) {
+      createDirectory(stateDirectory)
+    }
+    if (!exists(temporaryDirectory)) {
+      assert(temporaryDirectory == dataDirectory / "tmp")
+      createDirectory(temporaryDirectory)
     }
     this
   }
@@ -127,15 +122,11 @@ final case class AgentConfiguration(
     }
   }
 
-  def crashKillScriptEnabled = dataDirectory.isDefined   // Suppressed when using a escalate temporary directory to allow concurrent runs (and tests)
-
-  def crashKillScriptFile: Path = temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"
+  def killScriptConf: Option[KillScriptConf] =
+    killScript map (o ⇒ KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
   lazy val temporaryDirectory: Path =
-    dataDirectory match {
-      case Some(data) ⇒ data / "tmp"
-      case None ⇒ logDirectory  // Usage of logDirectory is compatible with v1.10.4
-  }
+    dataDirectory  / "tmp"
 
   def httpUri: Uri =
     http.headOption.map(o ⇒ Uri(s"http://${o.address.getAddress.getHostAddress}:${o.address.getPort}"))
@@ -148,23 +139,22 @@ object AgentConfiguration {
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
-  def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
+  def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDirectories(
-      dataDirectory = a.optionAs[Path]("-data-directory="),
-      configDirectory = a.optionAs[Path]("-config-directory=")
+      configDirectory = a.as[Path]("-config-directory="),
+      dataDirectory = a.as[Path]("-data-directory=")
     ) withCommandLineArguments a
   }
 
-  def fromDirectories(dataDirectory: Option[Path], configDirectory: Option[Path] = None, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
-    val dataDir = dataDirectory map { _.toAbsolutePath }
-    val configDir = configDirectory orElse (dataDir map { _ / "config" })
-    val config = resolvedConfig(configDir, extraDefaultConfig)
+  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
+    val configDir = configDirectory.toAbsolutePath
+    val dataDir = dataDirectory.toAbsolutePath
+    val config = resolvedConfig(configDirectory, extraDefaultConfig)
     var v = new AgentConfiguration(
-      dataDirectory = dataDir,
       configDirectory = configDir,
+      dataDirectory = dataDir,
       webServerBindings = Nil,
-        //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
-      logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) orElse (dataDir map defaultLogDirectory) getOrElse temporaryDirectory,
+      logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDir),
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = config.optionAs("jobscheduler.agent.task.dotnet.class-directory")(asAbsolutePath)),
       rpcKeepaliveDuration = config.durationOption("jobscheduler.agent.task.rpc.keepalive.duration"),
@@ -182,8 +172,8 @@ object AgentConfiguration {
     v
   }
 
-  private def resolvedConfig(configDirectory: Option[Path], extraDefaultConfig: Config): Config = {
-    val config = configDirectory map configDirectoryConfig getOrElse ConfigFactory.empty
+  private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
+    val config = configDirectoryConfig(configDirectory)
     (config withFallback extraDefaultConfig withFallback DefaultsConfig).resolve
   }
 
@@ -198,10 +188,10 @@ object AgentConfiguration {
   object forTest {
     private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j2.xml")
 
-    def apply(configAndData: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
+    def apply(configAndData: Path, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
       fromDirectories(
-        dataDirectory = configAndData map { _ / "data" } filter { o ⇒ Files.exists(o) },
-        configDirectory = configAndData map { _ / "config" },
+        configDirectory = configAndData / "config",
+        dataDirectory = configAndData / "data",
         config)
       .copy(
         webServerBindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) :: Nil,

@@ -2,9 +2,8 @@ package com.sos.jobscheduler.agent.task
 
 import akka.actor.{Actor, ActorSystem, Cancellable, DeadLetterSuppression, PoisonPill, Props, Status}
 import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.TaskRegisterOverview
+import com.sos.jobscheduler.agent.data.{AgentTaskId, KillScriptConf}
 import com.sos.jobscheduler.agent.task.TaskRegisterActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
@@ -26,14 +25,14 @@ import scala.util.control.NonFatal
   *
   * @author Joacim Zschimmer
   */
-final class TaskRegisterActor(agentConfiguration: AgentConfiguration, timerService: TimerService) extends Actor {
+final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf], timerService: TimerService) extends Actor {
 
   import context.dispatcher
 
   private val idToTask = mutable.Map[AgentTaskId, BaseAgentTask]()
   private var totalCount = 0
-  private val crashKillScriptOption = for (script ← agentConfiguration.killScript if agentConfiguration.crashKillScriptEnabled)
-    yield new CrashKillScript(script, agentConfiguration.crashKillScriptFile)
+  private val crashKillScriptOption =
+    for (conf ← killScriptConf) yield new CrashKillScript(conf.killScript, conf.crashKillScriptFile)
   private var killAllSchedule: Cancellable = null
   private var terminating = false
 
@@ -132,8 +131,8 @@ final class TaskRegisterActor(agentConfiguration: AgentConfiguration, timerServi
 object TaskRegisterActor {
   private val logger = Logger(getClass)
 
-  def props(agentConfiguration: AgentConfiguration, timerService: TimerService) =
-    Props { new TaskRegisterActor(agentConfiguration, timerService) }
+  def props(killScriptConf: Option[KillScriptConf], timerService: TimerService) =
+    Props { new TaskRegisterActor(killScriptConf, timerService) }
       .withDispatcher("jobscheduler.agent.internal.TaskRegisterActor.mailbox")
 
   sealed trait Input

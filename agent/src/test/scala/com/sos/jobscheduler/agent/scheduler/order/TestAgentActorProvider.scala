@@ -49,7 +49,7 @@ object TestAgentActorProvider {
     autoClosing(new TestAgentActorProvider)(body)
 
   private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
-    implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
+    implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
     implicit val newTaskRunner = injector.instance[TaskRunner.Factory]

@@ -24,7 +24,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
-import java.nio.file.Paths
 import java.time.Duration
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -96,7 +95,7 @@ object RunningAgent {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]
-    StartUp.logStartUp(agentConfiguration.configDirectory getOrElse Paths.get(""), agentConfiguration.dataDirectory getOrElse Paths.get(""))
+    StartUp.logStartUp(agentConfiguration.configDirectory, agentConfiguration.dataDirectory)
 
     val actorSystem = injector.instance[ActorSystem]
     val closer = injector.instance[Closer]

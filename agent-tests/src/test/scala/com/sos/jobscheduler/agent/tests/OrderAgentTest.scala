@@ -41,7 +41,7 @@ final class OrderAgentTest extends FreeSpec {
       val jobDir = directory / "config" / "live"
       (jobDir resolve AJob.jobPath.toFile(SourceType.Json)).contentString = AJobConfiguration.asJson.toPrettyString
       (jobDir resolve BJob.jobPath.toFile(SourceType.Json)).contentString = BJobConfiguration.asJson.toPrettyString
-      val agentConf = AgentConfiguration.forTest(Some(directory))
+      val agentConf = AgentConfiguration.forTest(directory)
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
         withCloser { implicit closer ⇒
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
@@ -72,7 +72,7 @@ final class OrderAgentTest extends FreeSpec {
       val jobDir = directory / "config" / "live"
       (jobDir / "a.job.json").contentString = AJobConfiguration.asJson.toPrettyString
       (jobDir / "b.job.json").contentString = BJobConfiguration.asJson.toPrettyString
-      val agentConf = AgentConfiguration.forTest(Some(directory))
+      val agentConf = AgentConfiguration.forTest(directory)
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒
         withCloser { implicit closer ⇒

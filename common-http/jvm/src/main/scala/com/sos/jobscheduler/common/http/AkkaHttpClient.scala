@@ -84,7 +84,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[HttpResponse] =
     for {
       entity ← Task.deferFutureAction(implicit scheduler ⇒ Marshal(data).to[RequestEntity])
-      response ← sendReceive(HttpRequest(POST, uri, headers, entity), logData = Some(data.getClass.scalaName stripPrefix "com.sos.jobscheduler."))
+      response ← sendReceive(
+        HttpRequest(POST, uri, headers, entity),
+        logData = Some(data.getClass.scalaName stripPrefix "com.sos.jobscheduler."))
     } yield response
 
   def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
@@ -107,7 +109,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       b.append(' ')
       b.append(request.uri)
       if (!request.entity.isKnownEmpty) {
-        b.append(' ')
+        b.append(": ")
         b.append(request.entity.contentType)
         for (o ← logData) {
           b.append(' ')

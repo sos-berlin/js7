@@ -53,7 +53,7 @@ import scala.concurrent.duration.DurationInt
 final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val directoryProvider = new TestAgentDirectoryProvider {}
-  private lazy val config = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory)).finishAndProvideFiles.config
+  private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config
   private lazy val actorSystem = newActorSystem("OrderActorTest")
 
   override def afterAll() = {
@@ -153,7 +153,7 @@ private object OrderActorTest {
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
       new StandardRichProcessStartSynchronizer()(context.system),
-      AgentConfiguration.forTest(configAndData = Some(dir)))
+      AgentConfiguration.forTest(configAndData = dir))
 
     private val journalActor = actorOf(
       JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, keyedEventBus),

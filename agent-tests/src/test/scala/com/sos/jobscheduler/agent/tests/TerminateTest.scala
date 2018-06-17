@@ -91,7 +91,7 @@ object TerminateTest {
           Map.empty,
           taskLimit = 10
         ).asJson.toPrettyString
-      val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
+      val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = agentDirectory)) map (_.closeWithCloser) await 10.s
       implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString)

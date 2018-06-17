@@ -27,6 +27,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration._
+import scala.io
 
 /**
   * @author Joacim Zschimmer
@@ -37,9 +38,9 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
     ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
-  private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
+  private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles
   private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
-  private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration, timerService) )
+  private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf, timerService) )
   private lazy val handle = new TaskRegister(actor)
   private lazy val aTask = new TestTask(AgentTaskId(1, 11))
   private lazy val bTask = new TestTask(AgentTaskId(2, 22))
@@ -123,7 +124,8 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
     terminated.future await 99.s
   }
 
-  private def crashKillScript = autoClosing(scala.io.Source.fromFile(agentConfiguration.crashKillScriptFile)) { _.getLines.toSet }
+  private def crashKillScript =
+    autoClosing(io.Source.fromFile(agentConfiguration.killScriptConf.get.crashKillScriptFile)) { _.getLines.toSet }
 
   private def killFile = agentConfiguration.killScript.get.file
 }
