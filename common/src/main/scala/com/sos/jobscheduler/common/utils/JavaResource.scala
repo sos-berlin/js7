@@ -70,7 +70,7 @@ final case class JavaResource(path: String) {
    * @throws RuntimeException, if the resource does not exists.
    */
   lazy val url: URL =
-    getResource(path) sideEffect { u ⇒ logger.trace(s"Using Resource $u") }
+    getResource(path) sideEffect { u ⇒ logger.trace(s"Using JavaResource $u") }
 
   /**
    * @throws RuntimeException, if the resource does not exists.

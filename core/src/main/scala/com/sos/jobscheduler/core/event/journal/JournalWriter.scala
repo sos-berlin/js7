@@ -39,7 +39,7 @@ extends AutoCloseable
 
   def logStatistics(): Unit = {
     logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written. $statistics")
-    logger.debug(statistics.timingString)
+    logTiming()
   }
 
   def logTiming(): Unit =

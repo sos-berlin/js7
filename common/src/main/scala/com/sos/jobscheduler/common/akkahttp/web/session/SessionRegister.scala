@@ -27,7 +27,7 @@ final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef,
       file.delete()
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
       file.contentString = sessionToken.secret.string
-      logger.info(s"Session for internal user '${user.id.string}' token placed in file $file")
+      logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(Some(user.id), sessionToken))
       sessionToken
     }

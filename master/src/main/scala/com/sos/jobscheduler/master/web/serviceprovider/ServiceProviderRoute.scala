@@ -46,7 +46,7 @@ private[web] object ServiceProviderRoute {
         case duplicates if duplicates.nonEmpty ⇒ sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(_.toString).mkString(", "))
         case _ ⇒
       }
-      if (routes.isEmpty) logger.debug(s"No service provider for $InterfaceName")
+      if (routes.isEmpty) logger.trace(s"No service provider for $InterfaceName")
       else for (r ← routes) logger.debug(s"Service provider for $InterfaceName: $r")
       routes
     }

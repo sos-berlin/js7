@@ -560,12 +560,13 @@ private[master] object MasterOrderKeeper {
   }
 
   private def logNotableEvent(stamped: Stamped[AnyKeyedEvent]): Unit =
-    stamped.value.event match {
+    if (false)
+      stamped.value.event match {
       case _ @ (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
                 _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting | _: OrderStdWritten |
                 _: RepoEvent ) ⇒
         def string = if (stamped.value.key == NoKey) stamped.value.event.toString else stamped.value.toString
-        logger.debug(Logger.Event, s"${stamped.timestamp} 🔶 $string")
+        logger.debug(Logger.Event, s"${stamped.timestamp} $string")
       case _ ⇒
     }
 }

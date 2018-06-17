@@ -332,7 +332,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit = {
-    logger.trace(s"$orderId is queuing for ${jobEntry.jobPath}")
+    logger.debug(s"$orderId is queuing for ${jobEntry.jobPath}")
     jobEntry.queue += orderId
     if (jobEntry.waitingForOrder) {
       tryStartProcessing(jobEntry)
@@ -360,7 +360,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     }
 
   private def startProcessing(orderEntry: OrderEntry, job: Job, jobEntry: JobEntry): Unit = {
-    logger.trace(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobPath}")
+    logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobPath}")
     assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
     orderEntry.actor ! OrderActor.Input.StartProcessing(job, jobEntry.actor)
@@ -386,9 +386,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       case Terminated(actorRef) if jobRegister contains actorRef ⇒
         val jobPath = jobRegister.actorToKey(actorRef)
         if (terminating) {
-          logger.debug(s"Actor $jobPath has stopped")
+          logger.debug(s"Actor $jobPath stopped")
         } else {
-          logger.error(s"Actor '$jobPath' has stopped unexpectedly")
+          logger.error(s"Actor '$jobPath' stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
         checkActorStop()

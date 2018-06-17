@@ -62,7 +62,7 @@ extends Actor with Stash {
   def receive = {
     case Command.StartWithConfiguration(conf) ⇒
       jobConfiguration = conf
-      logger.debug("Job is ready")
+      logger.trace("Job is ready")
       context.become(ready)
       sender() ! Response.Ready
 
