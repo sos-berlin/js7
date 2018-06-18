@@ -4,10 +4,8 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventReader
 import com.sos.jobscheduler.common.event.collector.EventCollector._
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
-import java.time.Duration
 import monix.eval.Task
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,7 +15,6 @@ import scala.concurrent.{ExecutionContext, Future}
 abstract class EventCollector(configuration: Configuration)(implicit protected val timerService: TimerService)
 extends RealEventReader[Event]
 {
-  protected def timeoutLimit = configuration.timeoutLimit.toFiniteDuration
   protected val started = Future.successful(Completed)
   private[collector] val keyedEventQueue = new MemoryKeyedEventQueue(sizeLimit = configuration.queueSize)
 
@@ -38,13 +35,10 @@ extends RealEventReader[Event]
 
 object EventCollector
 {
-  final case class Configuration(
-    queueSize: Int,
-    /** Limits open requests, and avoids arithmetic overflow. */
-    timeoutLimit: Duration)
+  final case class Configuration(queueSize: Int)
 
   object Configuration {
-    val ForTest = Configuration(queueSize = 1000, timeoutLimit = 600.s)
+    val ForTest = Configuration(queueSize = 1000)
   }
 
   final class ForTest(

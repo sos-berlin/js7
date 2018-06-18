@@ -26,8 +26,6 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 {
   protected def timerService: TimerService
 
-  protected def timeoutLimit: Duration
-
   protected def oldestEventId: EventId
 
   @VisibleForTesting
@@ -134,8 +132,10 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       })
 
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
-  : Task[TearableEventSeq[CloseableIterator, A]] =
-    whenAnyKeyedEvents2(request.after, now + (request.timeout min timeoutLimit), request.delay, collect, request.limit)
+  : Task[TearableEventSeq[CloseableIterator, A]] = {
+    val until = now + (request.timeout min 365.days)  // Protected agains Timestamp overflow
+    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit)
+  }
 
   private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : Task[TearableEventSeq[CloseableIterator, A]] =

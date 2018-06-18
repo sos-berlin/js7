@@ -41,7 +41,6 @@ object RealEventReaderTest {
 
   private class TestEventReader extends RealEventReader[TestEvent] {
     protected val timerService = new TimerService(Some(1.s))
-    protected val timeoutLimit = 1.hour
     protected val oldestEventId = 0
 
     protected def reverseEventsAfter(after: EventId) = Task.now(CloseableIterator.empty)

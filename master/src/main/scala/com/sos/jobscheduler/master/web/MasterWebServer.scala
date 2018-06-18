@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding

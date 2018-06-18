@@ -11,7 +11,6 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
 import monix.eval.Task
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -19,8 +18,7 @@ import scala.concurrent.duration._
 final class JournalEventReader[E <: Event](
   journalMeta: JournalMeta[E],
   private[journal] val journalFile: Path,
-  startPositionAndEventId: PositionAnd[EventId],
-  protected val timeoutLimit: FiniteDuration)
+  startPositionAndEventId: PositionAnd[EventId])
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)

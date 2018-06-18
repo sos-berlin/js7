@@ -129,7 +129,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
 
   private def withJournal(lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventReaderProvider[MyEvent]) ⇒ Unit): Unit =
     withTemporaryFile { journalFile ⇒
-      val eventReaderProvider = new JournalEventReaderProvider[MyEvent](TestJournalMeta, journalFile, 99.seconds)
+      val eventReaderProvider = new JournalEventReaderProvider[MyEvent](TestJournalMeta, journalFile)
       val writer = new JournalWriter[MyEvent](TestJournalMeta, journalFile, eventReaderProvider = Some(eventReaderProvider))
       writer.startSnapshots(lastEventId = lastEventId)
       writer.startEvents()

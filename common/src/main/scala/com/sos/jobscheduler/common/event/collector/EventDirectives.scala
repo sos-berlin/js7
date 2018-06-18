@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
+import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
@@ -19,6 +20,7 @@ object EventDirectives {
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
   private val MinimumDelay = 100.milliseconds   // TODO To let JournalEventReader less often open and close the journal
+  private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
@@ -73,9 +75,16 @@ object EventDirectives {
             case Some(after) ⇒
               parameter("timeout" ? defaultTimeout) { timeout ⇒
                 parameter("delay" ? defaultDelay) { delay ⇒
-                  val eventRequest = EventRequest[E](eventClasses, after = after,
-                    timeout = timeout, delay = delay max MinimumDelay, limit = limit)
-                  inner(Tuple1(eventRequest))
+                  optionalHeaderValueByType[`Timeout-Access`](()) { timeoutAccess ⇒
+                    val akkaTimeout = timeoutAccess map (_.timeoutAccess.timeout) match {   // Setting akka.http.server.request-timeout
+                      case None ⇒ timeout
+                      case Some(Duration.Inf) ⇒ timeout
+                      case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
+                    }
+                    val eventRequest = EventRequest[E](eventClasses, after = after,
+                      timeout = timeout min akkaTimeout , delay = delay max MinimumDelay, limit = limit)
+                    inner(Tuple1(eventRequest))
+                  }
                 }
               }
           }

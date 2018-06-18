@@ -4,7 +4,6 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
@@ -12,8 +11,7 @@ import scala.concurrent.{ExecutionContext, Promise}
   */
 final class JournalEventReaderProvider[E <: Event](
   journalMeta: JournalMeta[E],
-  private[journal] val journalFile: Path,
-  protected val timeoutLimit: FiniteDuration)
+  private[journal] val journalFile: Path)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
@@ -24,7 +22,7 @@ extends EventReaderProvider[E]
   val whenRealEventReader = eventReaderPromise.future
 
   private[journal] def onJournalingStarted(positionAndEventId: PositionAnd[EventId]): JournalEventReader[E] = {
-    val eventReader = new JournalEventReader[E](journalMeta, journalFile, positionAndEventId, timeoutLimit)
+    val eventReader = new JournalEventReader[E](journalMeta, journalFile, positionAndEventId)
     eventReaderPromise.success(eventReader)
     eventReader
   }
