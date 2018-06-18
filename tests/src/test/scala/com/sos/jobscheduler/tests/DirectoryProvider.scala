@@ -17,6 +17,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import com.sos.jobscheduler.data.job.JobPath
@@ -92,10 +93,12 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
         body(master, agents)))
 
   def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
-    RunningMaster.runForTest(directory, eventCollector)(body)
+    RunningMaster.runForTest(master.directory, eventCollector)(body)
 
-  def startMaster(module: Module = EMPTY_MODULE)(implicit s: Scheduler): Task[RunningMaster] =
-    RunningMaster(RunningMaster.newInjector(directory, module))
+  def startMaster(module: Module = EMPTY_MODULE, httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None)
+    (implicit s: Scheduler): Task[RunningMaster]
+  =
+    RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -124,7 +127,13 @@ object DirectoryProvider {
     protected lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
     protected lazy val agent: RunningAgent = agents.head
     protected val masterModule: Module = EMPTY_MODULE
-    protected lazy val master: RunningMaster = directoryProvider.startMaster(masterModule) await 99.s
+    protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
+    protected lazy val masterHttpsPort: Option[Int] = None
+    protected lazy val master: RunningMaster = directoryProvider.startMaster(
+      masterModule,
+      httpPort = masterHttpPort,
+      httpsPort = masterHttpsPort
+    ) await 99.s
 
     override def beforeAll() = {
       super.beforeAll()

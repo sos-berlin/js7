@@ -9,9 +9,9 @@ import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.Https.toHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -81,18 +81,18 @@ object AkkaWebServer {
 
   trait HasUri {
     this: AkkaWebServer ⇒
-    lazy val localHttpUri: Checked[Uri] = locallyUsableUri("http")
-    lazy val localHttpsUri: Checked[Uri] = locallyUsableUri("https")
+    lazy val localHttpUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Http)
+    lazy val localHttpsUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Https)
     lazy val localUri: Uri = (localHttpUri findValid localHttpsUri).orThrow
 
-    def locallyUsableUri(scheme: String): Checked[Uri] =
+    def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
       bindings.collectFirst { case o: WebServerBinding if o.scheme == scheme ⇒ toLocallyUsableUri(scheme, o.address) }
       .toChecked(Problem(s"No locally usable '$scheme' address: $bindings"))
 
-    private def toLocallyUsableUri(scheme: String, address: InetSocketAddress) = {
+    private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress) = {
       val localhost = scheme match {
-        case "http" ⇒ "127.0.0.1"
-        case "https" ⇒
+        case WebServerBinding.Http ⇒ "127.0.0.1"
+        case WebServerBinding.Https ⇒
           assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
           "localhost"
       }
@@ -101,7 +101,7 @@ object AkkaWebServer {
         case o ⇒ o
       }
       val port = address.getPort
-      Uri(scheme, Uri.Authority(Uri.Host(host), port))
+      Uri(scheme.toString, Uri.Authority(Uri.Host(host), port))
     }
   }
 

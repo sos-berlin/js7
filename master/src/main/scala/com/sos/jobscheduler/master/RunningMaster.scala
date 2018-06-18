@@ -28,6 +28,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.{EventReaderProvider, JournalEventReaderProvider}
@@ -104,7 +105,7 @@ object RunningMaster {
   }
 
   def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit = {
-    val injector = newInjector(directory)
+    val injector = newInjectorForTest(directory)
     eventCollector foreach (_.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus]))
     runForTest(injector)(body)
   }
@@ -121,11 +122,15 @@ object RunningMaster {
       }
     }
 
-  def newInjector(directory: Path, module: Module = EMPTY_MODULE): Injector =
-    Guice.createInjector(DEVELOPMENT, Modules `override` newModule(directory) `with` module)
-
-  private def newModule(directory: Path): Module =
-    new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master"))
+  def newInjectorForTest(directory: Path, module: Module = EMPTY_MODULE,
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None
+  ): Injector =
+    Guice.createInjector(DEVELOPMENT,
+      Modules `override` new MasterModule(MasterConfiguration.forTest(
+        configAndData = directory,
+        httpPort = httpPort,
+        httpsPort = httpsPort))
+      `with` module)
 
   def apply(configuration: MasterConfiguration): Task[RunningMaster] =
     apply(new MasterModule(configuration))

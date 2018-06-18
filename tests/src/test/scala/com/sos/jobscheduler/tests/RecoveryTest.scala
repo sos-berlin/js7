@@ -111,7 +111,7 @@ final class RecoveryTest extends FreeSpec {
   }
 
   private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(directoryProvider.directory, Some(eventCollector)) { master ⇒
+    RunningMaster.runForTest(directoryProvider.master.directory, Some(eventCollector)) { master ⇒
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)) await 99.s  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")

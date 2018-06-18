@@ -48,7 +48,7 @@ extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
   protected def apiUri(tail: String) = agentUris.api(tail)
 
   protected override val httpsConnectionContext =
-    keystoreReferenceOption map Https.toHttpsConnectionContext getOrElse super.httpsConnectionContext
+    keystoreReferenceOption.fold(super.httpsConnectionContext)(Https.toHttpsConnectionContext)
 
   closer.onClose { super.close() }
 

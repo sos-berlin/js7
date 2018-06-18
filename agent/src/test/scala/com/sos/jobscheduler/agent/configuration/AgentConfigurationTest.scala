@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.agent.configuration
 
+import com.google.common.io.Files.touch
 import com.sos.jobscheduler.agent.configuration.AgentConfigurationTest._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -12,7 +13,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
-import java.nio.file.Files.createTempDirectory
+import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
@@ -30,7 +31,7 @@ final class AgentConfigurationTest extends FreeSpec  {
       assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
         configDirectory = config,
         dataDirectory = data,
-        webServerBindings = Nil,
+        webServerPorts = Nil,
         workingDirectory = WorkingDirectory,
         logDirectory = data / "logs",
         environment = Map(),
@@ -46,22 +47,6 @@ final class AgentConfigurationTest extends FreeSpec  {
     }
   }
 
-  "-https-port=" in {
-    intercept[IllegalArgumentException] { unfinishedConf("-https-port=65536") }
-    assert(unfinishedConf("-https-port=1234").webServerBindings == List(WebServerBinding.Https(
-      new InetSocketAddress("0.0.0.0", 1234),
-      KeystoreReference(
-        url = (Paths.get("CONFIG").toAbsolutePath / "private/private-https.jks").toUri.toURL,
-        storePassword = Some(SecretString("jobscheduler")),
-        keyPassword = Some(SecretString("jobscheduler"))))))
-    assert(unfinishedConf("-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
-      new InetSocketAddress("11.22.33.44", 1234),
-      KeystoreReference(
-        url = (Paths.get("CONFIG").toAbsolutePath / "private/private-https.jks").toUri.toURL,
-        storePassword = Some(SecretString("jobscheduler")),
-        keyPassword = Some(SecretString("jobscheduler"))))))
-  }
-
   "-http-port=" in {
     intercept[IllegalArgumentException] { unfinishedConf("-http-port=65536") }
     assert(unfinishedConf("-http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
@@ -71,6 +56,26 @@ final class AgentConfigurationTest extends FreeSpec  {
     assert(unfinishedConf("-http-port=1111", "-http-port=2222").webServerBindings ==
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1111)) ::
       WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 2222)) :: Nil)
+  }
+
+  "-https-port=" in {
+    provideConfigAndData { (config, data) ⇒
+      createDirectory(config / "private")
+      touch(config / "private/private-https.jks")
+      intercept[IllegalArgumentException] { conf(s"-config-directory=$config", s"-data-directory=$data", "-https-port=65536") }
+      assert(conf(s"-config-directory=$config", s"-data-directory=$data", "-https-port=1234").webServerBindings == List(WebServerBinding.Https(
+        new InetSocketAddress("0.0.0.0", 1234),
+        KeystoreReference(
+          url = (config.toAbsolutePath / "private/private-https.jks").toUri.toURL,
+          storePassword = Some(SecretString("jobscheduler")),
+          keyPassword = Some(SecretString("jobscheduler"))))))
+      assert(conf(s"-config-directory=$config", s"-data-directory=$data", "-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
+        new InetSocketAddress("11.22.33.44", 1234),
+        KeystoreReference(
+          url = (config.toAbsolutePath / "private/private-https.jks").toUri.toURL,
+          storePassword = Some(SecretString("jobscheduler")),
+          keyPassword = Some(SecretString("jobscheduler"))))))
+    }
   }
 
   "-log-directory=" in {

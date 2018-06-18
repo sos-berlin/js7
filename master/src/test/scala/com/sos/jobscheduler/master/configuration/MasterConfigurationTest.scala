@@ -19,7 +19,7 @@ final class MasterConfigurationTest extends FreeSpec {
       masterId = MasterId("Master"),
       dataDirectory = Paths.get("DATA").toAbsolutePath,
       configDirectory = Paths.get("CONFIG").toAbsolutePath,
-      webServerBindings = Vector(),
+      webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
       journalSyncOnCommit = true,

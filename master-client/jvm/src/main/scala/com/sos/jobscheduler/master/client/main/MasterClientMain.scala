@@ -36,9 +36,9 @@ object MasterClientMain {
     }
 
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
-    val (masterUri, dataDir, operations) = parseArgs(args)
+    val (masterUri, configDir, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new TextMasterClient(masterUri, print)) { client ⇒
+    autoClosing(new TextMasterClient(masterUri, print, configDir)) { client ⇒
       client.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (client.checkIsResponding()) 0 else 1
@@ -53,9 +53,10 @@ object MasterClientMain {
     }
   }
 
-  private def parseArgs(args: Seq[String]): (Uri, Path, Vector[Operation]) =
+  private def parseArgs(args: Seq[String]): (Uri, Option[Path], Path, Vector[Operation]) =
     CommandLineArguments.parse(args) { arguments ⇒
       val masterUri = Uri(arguments.keylessValue(0))
+      val configDirectory = arguments.optionAs[Path]("-config-directory=")
       val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
         case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
@@ -63,7 +64,7 @@ object MasterClientMain {
         case command ⇒ StringCommand(command)
       }
       if ((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
-      (masterUri, dataDirectory, operations)
+      (masterUri, configDirectory, dataDirectory, operations)
     }
 
   private sealed trait Operation

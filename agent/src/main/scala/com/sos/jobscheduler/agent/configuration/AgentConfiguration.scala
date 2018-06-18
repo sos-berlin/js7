@@ -1,14 +1,10 @@
 package com.sos.jobscheduler.agent.configuration
 
-import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.{KillScriptConf, ProcessKillScript}
 import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
-import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
@@ -20,6 +16,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
@@ -37,7 +34,7 @@ import scala.collection.immutable.Seq
 final case class AgentConfiguration(
   configDirectory: Path,
   dataDirectory: Path,
-  webServerBindings: Seq[WebServerBinding],
+  webServerPorts: Seq[(WebServerBinding.Scheme, InetSocketAddress)],
   workingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
   environment: Map[String, String],
@@ -50,14 +47,15 @@ final case class AgentConfiguration(
   name: String,
   journalSyncOnCommit: Boolean,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
+extends CommonConfiguration
 {
   require(workingDirectory.isAbsolute)
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     var v = copy(
-      webServerBindings = webServerBindings ++
-        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(o ⇒ inetSocketAddressToHttps(o)) ++
-        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(o ⇒ WebServerBinding.Http(o)),
+      webServerPorts = webServerPorts ++
+        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Http → _) ++
+        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Https → _),
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
       jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
@@ -74,18 +72,6 @@ final case class AgentConfiguration(
     case Some("") ⇒ copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
     case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
-
-  def addHttpsInetSocketAddress(addr: InetSocketAddress) = copy(webServerBindings = webServerBindings :+ inetSocketAddressToHttps(addr))
-
-  private def inetSocketAddressToHttps(addr: InetSocketAddress): WebServerBinding.Https =
-    WebServerBinding.Https(addr, keyStoreReference.orThrow)
-
-  private lazy val keyStoreReference: Checked[KeystoreReference] =
-    KeystoreReference.fromConfig(config, configDirectory = Some(configDirectory))
-
-  def http: Seq[WebServerBinding.Http] = webServerBindings collect { case o: WebServerBinding.Http ⇒ o }
-
-  def https: Seq[WebServerBinding.Https] = webServerBindings collect { case o: WebServerBinding.Https ⇒ o }
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
@@ -127,10 +113,6 @@ final case class AgentConfiguration(
 
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
-
-  def httpUri: Uri =
-    http.headOption.map(o ⇒ Uri(s"http://${o.address.getAddress.getHostAddress}:${o.address.getPort}"))
-      .getOrElse(sys.error("No HTTP binding for agentConfiguration.httpUri"))
 }
 
 object AgentConfiguration {
@@ -153,7 +135,7 @@ object AgentConfiguration {
     var v = new AgentConfiguration(
       configDirectory = configDir,
       dataDirectory = dataDir,
-      webServerBindings = Nil,
+      webServerPorts = Nil,
       logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDir),
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = config.optionAs("jobscheduler.agent.task.dotnet.class-directory")(asAbsolutePath)),
@@ -166,9 +148,9 @@ object AgentConfiguration {
       journalSyncOnCommit = config.getBoolean("jobscheduler.journal.sync"),
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
-    for (o ← config.optionAs("jobscheduler.webserver.https.port")(StringToServerInetSocketAddress)) {
-      v = v addHttpsInetSocketAddress o
-    }
+    //for (o ← config.optionAs("jobscheduler.webserver.https.port")(StringToServerInetSocketAddress)) {
+    //  v = v addHttps o
+    //}
     v
   }
 
@@ -188,13 +170,20 @@ object AgentConfiguration {
   object forTest {
     private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j2.xml")
 
-    def apply(configAndData: Path, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
+    def apply(
+      configAndData: Path,
+      httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+      httpsPort: Option[Int] = None,
+      config: Config = ConfigFactory.empty
+    ) =
       fromDirectories(
         configDirectory = configAndData / "config",
         dataDirectory = configAndData / "data",
         config)
       .copy(
-        webServerBindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) :: Nil,
+        webServerPorts  =
+          httpPort.map(WebServerBinding.Http → new InetSocketAddress("127.0.0.1", _)) ++:
+          httpsPort.map(WebServerBinding.Https → new InetSocketAddress("127.0.0.1", _)).toList,
         jobJavaOptions =
           s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
             sys.props.get("agent.job.javaOptions").toList)

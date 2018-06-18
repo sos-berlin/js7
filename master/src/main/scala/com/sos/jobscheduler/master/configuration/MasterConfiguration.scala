@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
-import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
@@ -12,6 +11,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
@@ -26,16 +26,18 @@ final case class MasterConfiguration(
   masterId: MasterId,
   dataDirectory: Path,
   configDirectory: Path,
-  webServerBindings: Seq[WebServerBinding],
+  webServerPorts: Seq[(WebServerBinding.Scheme, InetSocketAddress)],
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
   journalSyncOnCommit: Boolean,
   config: Config)
+extends CommonConfiguration
 {
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
     copy(
-      webServerBindings = webServerBindings ++
-        a.optionAs("-http-port=")(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
+      webServerPorts = webServerPorts ++
+        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Http → _) ++
+        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Https → _),
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
 
   def fileBasedDirectory: Path = configDirectory / "live"
@@ -49,9 +51,18 @@ final case class MasterConfiguration(
 
 object MasterConfiguration {
 
-  def forTest(configAndData: Path, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-    fromDataDirectory(dataDirectory = configAndData / "data", configDirectory = configAndData / "config", config).copy(
-      webServerBindings = Vector(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
+  def forTest(configAndData: Path,
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpsPort: Option[Int] = None,
+    config: Config = ConfigFactory.empty
+  ) =
+    fromDataDirectory(
+      dataDirectory = configAndData / "data",
+      configDirectory = configAndData / "config", config)
+    .copy(
+      webServerPorts =
+        httpPort.map(o ⇒ WebServerBinding.Http → new InetSocketAddress("127.0.0.1", o)) ++:
+        httpsPort.map(o ⇒ WebServerBinding.Https → new InetSocketAddress("127.0.0.1", o)).toList)
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
@@ -71,7 +82,7 @@ object MasterConfiguration {
       masterId = MasterId(config.getString("jobscheduler.master.id")),
       dataDirectory = dataDir,
       configDirectory = configDir,
-      webServerBindings = Nil,
+      webServerPorts = Nil,
         //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.master.akka-ask-timeout").toFiniteDuration,

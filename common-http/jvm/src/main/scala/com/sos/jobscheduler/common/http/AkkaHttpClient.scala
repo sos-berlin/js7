@@ -15,6 +15,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
+import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.HttpClient
@@ -38,12 +39,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   protected def uriPrefixPath: String
   protected def standardHeaders: List[HttpHeader] = Nil
 
-  implicit lazy val materializer = ActorMaterializer()(actorSystem)
   private lazy val http = Http(actorSystem)
+  private val materializerLazy = Lazy(ActorMaterializer()(actorSystem))
+
+  implicit final def materializer = materializerLazy()
 
   protected def httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext
 
-  def close() = materializer.shutdown()
+  def close() = for (o ← materializerLazy) o.shutdown()
 
   def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)
@@ -104,7 +107,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private def logRequest(request: HttpRequest, logData: ⇒ Option[String]): Unit =
     if (logger.underlying.isDebugEnabled) {
-      val b = new StringBuilder
+      val b = new StringBuilder(100)
       b.append(request.method.value)
       b.append(' ')
       b.append(request.uri)

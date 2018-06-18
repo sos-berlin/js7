@@ -34,11 +34,8 @@ import scala.concurrent.duration._
  */
 final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
 
-  override protected lazy val agentConfiguration = {
-    val c = newAgentConfiguration()
-    c.copy(webServerBindings = Nil)
-     .addHttpsInetSocketAddress(c.webServerBindings.head.address)
-  }
+  override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
+    httpPort = None, httpsPort = Some(findRandomFreeTcpPort()))
 
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton

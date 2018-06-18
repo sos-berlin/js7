@@ -13,7 +13,8 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
-import com.sos.jobscheduler.common.akkahttp.{HttpStatusCodeException, WebServerBinding}
+import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}

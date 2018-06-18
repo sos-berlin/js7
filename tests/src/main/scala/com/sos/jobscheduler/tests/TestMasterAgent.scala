@@ -84,9 +84,7 @@ object TestMasterAgent {
   private def run(conf: Conf): Unit = {
     val env = new TestEnvironment(conf.agentPaths, conf.directory)
     withCloser { implicit closer ⇒
-      val masterConfiguration = MasterConfiguration.forTest(
-              configAndData = env.masterDir,
-              httpPort = 4444)
+      val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
         journalSyncOnCommit = conf.syncMaster,
         config = masterConfiguration.config)))

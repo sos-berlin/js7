@@ -13,9 +13,9 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider.LoginWWWAuthenticate
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRouteTest._
 import com.sos.jobscheduler.common.http.AkkaHttpClient

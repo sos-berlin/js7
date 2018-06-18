@@ -10,6 +10,7 @@ import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, RejectionHandler, Route}
 import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -87,8 +88,8 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
-  def boundMessage(address: InetSocketAddress, scheme: String): String =
-    s"$scheme:// is bound to TCP port ${address.getPort} at interface ${address.getAddress.getHostAddress}. $secureStateString"
+  def boundMessage(address: InetSocketAddress, scheme: WebServerBinding.Scheme): String =
+    s"Access via $scheme:// is bound to interface ${address.getAddress.getHostAddress}, TCP port ${address.getPort} - $secureStateString"
 
   def secureStateString: String =
     if (configuraton.isPublic)
@@ -98,7 +99,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
     else if (configuraton.loopbackIsPublic)
       "LOOPBACK ACCESS IS PUBLIC (loopback-is-public = true)"
     else if (configuraton.getIsPublic)
-      "ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
+      "ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
     else
       "Access is secured"
 }

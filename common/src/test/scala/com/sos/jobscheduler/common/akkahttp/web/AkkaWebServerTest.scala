@@ -6,12 +6,11 @@ import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer.HasUri
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServerTest._
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkautils.Akkas
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -44,17 +43,18 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
 
     implicit def executionContext = ExecutionContext.global
 
-    private val keystoreReference: Checked[KeystoreReference] = {
+    private val keystoreReference: KeystoreReference = {
       createDirectory(directory / "private")
       PrivateHttpJksResource copyToFile directory / "private" / "private-https.jks"
-      KeystoreReference.fromConfig(ConfigFactory.parseString(
-        """ jobscheduler.webserver.https.keystore.key-password = jobscheduler """
-      ), Some(directory))
+      KeystoreReference.fromConfig(
+        ConfigFactory.parseString(""" jobscheduler.webserver.https.keystore.key-password = jobscheduler """),
+        directory
+      ).orThrow
     }
 
     val bindings =
       WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
-      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keystoreReference.orThrow) :: Nil
+      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keystoreReference) :: Nil
 
     def newRoute(binding: WebServerBinding) =
       path("TEST") {
