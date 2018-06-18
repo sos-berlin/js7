@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
+import akka.util.Timeout
 import com.google.common.io.Closer
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
@@ -96,13 +97,12 @@ object RunningMaster {
   val StartedAt = Timestamp.now
   private val logger = Logger(getClass)
 
-  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit = {
+  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
     autoClosing(apply(configuration) await timeout) { master ⇒
       for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(master)
       master.terminated await timeout
     }
-  }
 
   def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit = {
     val injector = newInjectorForTest(directory)
@@ -132,114 +132,122 @@ object RunningMaster {
         httpsPort = httpsPort))
       `with` module)
 
-  def apply(configuration: MasterConfiguration): Task[RunningMaster] =
+  def apply(configuration: MasterConfiguration): Future[RunningMaster] =
     apply(new MasterModule(configuration))
 
-  private def apply(module: Module): Task[RunningMaster] =
+  private def apply(module: Module): Future[RunningMaster] =
     apply(Guice.createInjector(PRODUCTION, module))
 
-  def apply(injector: Injector): Task[RunningMaster] =
-    Task.deferAction { implicit scheduler ⇒
-      val masterConfiguration = injector.instance[MasterConfiguration]
+  def apply(injector: Injector): Future[RunningMaster] =
+    new Starter(injector).start()
 
-      StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
+  private class Starter(injector: Injector) {
+    private val closer = injector.instance[Closer]
+    private val masterConfiguration = injector.instance[MasterConfiguration]
+    private val actorSystem = injector.instance[ActorSystem]
+    implicit private val scheduler = injector.instance[Scheduler]
+
+    private def createDirectories(): Unit =
       masterConfiguration.stateDirectory match {
         case o if !exists(o) ⇒ createDirectory(o)
         case _ ⇒
       }
 
-      val actorSystem = injector.instance[ActorSystem]
-      val eventIdClock = injector.instance[EventIdClock]
-      val eventReaderProvider = injector.instance[JournalEventReaderProvider[Event]]
-      val closer = injector.instance[Closer]
-      val webServer = injector.instance[MasterWebServer]
-      val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
-
+    private def createSessionTokenFile(sessionRegister: SessionRegister[LoginSession.Simple]): Unit = {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
       sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
         .runAsync await masterConfiguration.akkaAskTimeout.duration
       closer onClose { sessionTokenFile.delete() }
+    }
 
-      val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
+    private def startMasterOrderKeeper(): (ActorRef, Future[Completed]) =
+      CatchingActor.actorOf[Completed](
           _ ⇒ Props {
             new MasterOrderKeeper(
               masterConfiguration,
-              eventIdClock)(
+              injector.instance[EventIdClock])(
               injector.instance[TimerService],
-              eventReaderProvider,
+              injector.instance[JournalEventReaderProvider[Event]],
               injector.instance[StampedKeyedEventBus],
-              scheduler) },
+              scheduler)
+          },
           onStopped = _ ⇒ Success(Completed)
         )(actorSystem)
 
-      val fileBasedApi: FileBasedApi = new FileBasedApi {
-        def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-          for (stamped ← getRepo) yield
-            for (repo ← stamped) yield
-              O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
+    private[RunningMaster] def start(): Future[RunningMaster] = {
+      StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
+      createDirectories()
 
-        def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-          for (stamped ← getRepo) yield
-            for (repo ← stamped) yield
-              repo.idTo[A](id)
+      val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+      createSessionTokenFile(sessionRegister)
 
-        def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
-          for (stamped ← getRepo) yield
-            for (repo ← stamped) yield
-              repo.currentTyped[A].values.toImmutableSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
+      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper()
+      val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
+      val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
+      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper = orderKeeper)
 
-        def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
-          for (stamped ← getRepo; repo = stamped.value) yield
-            for (a ← repo.currentTyped[A].checked(path)) yield
-              stamped.copy(value = a)
-
-        private def getRepo: Task[Stamped[Repo]] = {
-          import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
-          Task.deferFuture(
-            (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])
-        }
-      }
-
-      val orderApi = new OrderApi.WithCommands {
-        import masterConfiguration.akkaAskTimeout
-
-        def addOrder(order: FreshOrder) =
-          Task.deferFuture(
-            (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order)).mapTo[MasterOrderKeeper.Response.ForAddOrder])
-            .map(_.created)
-
-        def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
-          Task.deferFuture(
-            (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]])
-
-        def orders: Task[Stamped[Seq[Order[Order.State]]]] =
-          Task.deferFuture(
-            (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]])
-
-        def orderCount =
-          Task.deferFuture(
-            (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int])
-      }
-
-      webServer.setClients(fileBasedApi, orderApi)
-      val webServerReady = webServer.start()
-
-      val terminated = actorStopped
-        .andThen { case Failure(t) ⇒
-          logger.error(t.toStringWithCauses, t)
-        }
+      val terminated = orderKeeperStopped
+        .andThen { case Failure(t) ⇒ logger.error(t.toStringWithCauses, t) }
         .andThen { case _ ⇒
           blocking {
-            logger.debug("Delaying close to let HTTP server respond open requests")
+            logger.debug("Delaying to let HTTP server respond open requests")
             sleep(500.ms)
           }
           closer.close()  // Close automatically after termination
         }
-      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper = orderKeeper)
-      for (_ ← Task.fromFuture(webServerReady)) yield {
-        val master = new RunningMaster(sessionRegister, commandExecutor, webServer, orderApi, orderKeeper, terminated, closer, injector)
-        webServer.setExecuteCommand((command, meta) ⇒ master.executeCommand(command, meta))
-        master
-      }
+
+      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
+      for (_ ← webServer.start()) yield
+        new RunningMaster(sessionRegister, commandExecutor, webServer, orderApi, orderKeeper, terminated, closer, injector)
     }
+  }
+
+  private class MainFileBasedApi(masterConfiguration: MasterConfiguration, orderKeeper: ActorRef) extends FileBasedApi
+  {
+    def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
+      for (stamped ← getRepo) yield
+        for (repo ← stamped) yield
+          O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
+
+    def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
+      for (stamped ← getRepo) yield
+        for (repo ← stamped) yield
+          repo.idTo[A](id)
+
+    def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
+      for (stamped ← getRepo) yield
+        for (repo ← stamped) yield
+          repo.currentTyped[A].values.toImmutableSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
+
+    def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
+      for (stamped ← getRepo; repo = stamped.value) yield
+        for (a ← repo.currentTyped[A].checked(path)) yield
+          stamped.copy(value = a)
+
+    private def getRepo: Task[Stamped[Repo]] = {
+      import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
+      Task.deferFuture(
+        (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])
+    }
+  }
+
+  private class MainOrderApi(orderKeeper: ActorRef, implicit private val akkaAskTimeout: Timeout) extends OrderApi.WithCommands
+  {
+    def addOrder(order: FreshOrder) =
+      Task.deferFuture(
+        (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order)).mapTo[MasterOrderKeeper.Response.ForAddOrder])
+        .map(_.created)
+
+    def order(orderId: OrderId): Task[Option[Order[Order.State]]] =
+      Task.deferFuture(
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]])
+
+    def orders: Task[Stamped[Seq[Order[Order.State]]]] =
+      Task.deferFuture(
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]])
+
+    def orderCount =
+      Task.deferFuture(
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int])
+  }
 }

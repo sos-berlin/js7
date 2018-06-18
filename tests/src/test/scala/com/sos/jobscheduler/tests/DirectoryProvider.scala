@@ -98,7 +98,8 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   def startMaster(module: Module = EMPTY_MODULE, httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None)
     (implicit s: Scheduler): Task[RunningMaster]
   =
-    RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort))
+    Task.deferFuture(
+      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort)))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
