@@ -149,11 +149,17 @@ with Stash {
   private def startEventFetcher(): Unit = {
     assert(eventFetcher == null)
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
+
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
-      def config = AgentDriver.this.config
-      def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request).runAsync
-      def onEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]]) = self ! Internal.AgentEvents(stamped)
+      protected lazy val delay = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
+
+      protected def fetchEvents(request: EventRequest[OrderEvent]) =
+        client.mastersEvents(request).runAsync
+
+      protected def onEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]]) =
+        self ! Internal.AgentEvents(stamped)
     }
+
     eventFetcher.start() onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
     }
