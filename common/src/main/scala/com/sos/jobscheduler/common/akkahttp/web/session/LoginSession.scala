@@ -9,6 +9,10 @@ trait LoginSession
 {
   type User <: User_
 
+  private[session] var timeoutAt: Long = Long.MaxValue
+
+  private[session] def isEternalSession = timeoutAt == Long.MaxValue
+
   protected def sessionInit: SessionInit[User]
 
   final def sessionNumber = sessionInit.sessionNumber

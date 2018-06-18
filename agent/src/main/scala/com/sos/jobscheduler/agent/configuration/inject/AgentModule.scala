@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
 import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
@@ -28,8 +29,10 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration)
 extends AbstractModule {
 
   @Provides @Singleton
-  def sessionRegister(actorSystem: ActorSystem, conf: AgentConfiguration): SessionRegister[LoginSession.Simple] =
-    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply, akkaAskTimeout = conf.akkaAskTimeout)
+  def sessionRegister(actorSystem: ActorSystem, conf: AgentConfiguration)(implicit s: Scheduler): SessionRegister[LoginSession.Simple] =
+    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply,
+      sessionTimeout = conf.config.getDuration("jobscheduler.auth.session.timeout").toFiniteDuration,
+      akkaAskTimeout = conf.akkaAskTimeout)
 
   @Provides @Singleton
   def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =

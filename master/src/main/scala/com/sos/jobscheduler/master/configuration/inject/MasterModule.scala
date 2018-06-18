@@ -44,8 +44,10 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     EventIdClock.Default
 
   @Provides @Singleton
-  def sessionRegister(actorSystem: ActorSystem, conf: MasterConfiguration): SessionRegister[LoginSession.Simple] =
-    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply, conf.akkaAskTimeout)
+  def sessionRegister(actorSystem: ActorSystem, conf: MasterConfiguration)(implicit s: Scheduler): SessionRegister[LoginSession.Simple] =
+    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply,
+      sessionTimeout = conf.config.getDuration("jobscheduler.auth.session.timeout").toFiniteDuration,
+      conf.akkaAskTimeout)
 
   @Provides @Singleton
   def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =

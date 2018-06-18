@@ -12,6 +12,8 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import java.nio.file.{Files, Path}
 import monix.eval.Task
+import monix.execution.Scheduler
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -23,7 +25,7 @@ final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef,
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
-    for (sessionToken ← login(user)/*TODO No session timeout*/) yield {
+    for (sessionToken ← login(user, isEternalSession = true)) yield {
       file.delete()
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
       file.contentString = sessionToken.secret.string
@@ -32,9 +34,9 @@ final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef,
       sessionToken
     }
 
-  def login(user: S#User, sessionTokenOption: Option[SessionToken] = None): Task[SessionToken] =
+  def login(user: S#User, sessionTokenOption: Option[SessionToken] = None, isEternalSession: Boolean = false): Task[SessionToken] =
     Task.deferFuture(
-      (actor ? SessionActor.Command.Login(user, sessionTokenOption)).mapTo[SessionToken])
+      (actor ? SessionActor.Command.Login(user, sessionTokenOption, isEternalSession = isEternalSession)).mapTo[SessionToken])
 
   def logout(sessionToken: SessionToken): Task[Completed] =
     Task.deferFuture(
@@ -46,6 +48,10 @@ final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef,
 
   private[session] def sessionFuture(userId: Option[UserId], sessionToken: SessionToken): Future[Checked[S]] =
     (actor ? SessionActor.Command.Get(sessionToken, userId)).mapTo[Checked[S]]
+
+  private[session] def count: Task[Int] =
+    Task.deferFuture(
+      (actor ? SessionActor.Command.GetCount).mapTo[Int])
 }
 
 object SessionRegister
@@ -55,9 +61,11 @@ object SessionRegister
   def start[S <: LoginSession](
     actorRefFactory: ActorRefFactory,
     newSession: SessionInit[S#User] ⇒ S,
+    sessionTimeout: FiniteDuration,
     akkaAskTimeout: Timeout)
+    (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
-    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession), "session")
+    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, sessionTimeout), "session")
     new SessionRegister[S](sessionActor, akkaAskTimeout = akkaAskTimeout)
   }
 }

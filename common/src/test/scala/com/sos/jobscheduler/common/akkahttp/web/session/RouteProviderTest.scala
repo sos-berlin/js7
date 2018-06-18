@@ -27,8 +27,9 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
 
   protected type Session = MySession
 
-  protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, akkaAskTimeout = 99.seconds)
-  protected def scheduler = Scheduler.global
+  implicit protected def scheduler = Scheduler.global
+  protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply,
+    sessionTimeout = 1.hour, akkaAskTimeout = 99.seconds)
   private implicit val timeout = RouteTestTimeout(10.seconds)
 
   protected val gateKeeper = new GateKeeper(

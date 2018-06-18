@@ -50,7 +50,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     TimerService(Some(1.s)))
 
   protected lazy val sessionRegister =
-    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply, akkaAskTimeout = 60.seconds)
+    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply, sessionTimeout = 1.hour, akkaAskTimeout = 60.seconds)
 
   private val route = Route.seal(
     decodeRequest {

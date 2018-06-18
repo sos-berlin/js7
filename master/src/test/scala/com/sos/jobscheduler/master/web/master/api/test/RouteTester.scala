@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
+import monix.execution.Scheduler
 import org.scalatest.Suite
 import scala.concurrent.duration._
 
@@ -26,5 +27,6 @@ trait RouteTester extends ScalatestRouteTest {
     isLoopback = true)
 
   protected final lazy val sessionRegister =
-    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply, akkaAskTimeout = 60.seconds)
+    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply,
+      sessionTimeout = 1.hour, akkaAskTimeout = 60.seconds)(Scheduler.global)
 }

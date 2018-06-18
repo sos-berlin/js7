@@ -31,7 +31,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     TimerService(idleTimeout = Some(1.s)))
 
   protected final val sessionRegister = SessionRegister.start[LoginSession.Simple](
-    actorRefFactory, LoginSession.Simple.apply, akkaAskTimeout = 99.seconds)
+    actorRefFactory, LoginSession.Simple.apply, sessionTimeout = 1.hour, akkaAskTimeout = 99.seconds)(Scheduler.global)
 
   override def testConfig = AgentConfiguration.DefaultsConfig
   protected final def actorSystem = system
