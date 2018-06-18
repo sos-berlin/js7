@@ -35,7 +35,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration)
-(implicit timerService: TimerService, scheduler: Scheduler)
+  (implicit scheduler: Scheduler)
 extends Actor
 with Stash {
 
@@ -46,11 +46,13 @@ with Stash {
   private var eventFetcher: EventFetcher[OrderEvent] = null
   private var lastEventId = EventId.BeforeFirst
   private val reconnectPause = new ReconnectPause
+  private val batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size")
+  private val batchDelay = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
 
   become(disconnected)
   self ! Internal.Connect
 
-  private val commandQueue = new CommandQueue(logger, batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size")) {
+  private val commandQueue = new CommandQueue(logger, batchSize = batchSize) {
     protected def executeCommand(command: AgentCommand.Batch) =
       client.executeCommand(command)
 
@@ -105,7 +107,6 @@ with Stash {
 
   private def connecting: Receive = {
     case Internal.Connected ⇒
-      logger.info("Connected")
       reconnectPause.onConnectSucceeded()
       commandQueue.onReconnected()
       unstashAll()
@@ -130,7 +131,6 @@ with Stash {
       commandQueue.maySend()
       unstashAll()
       become(ready)
-      logger.info("Ready")
 
     case _ ⇒
       stash
@@ -192,7 +192,9 @@ with Stash {
   private def handleOtherMessage: Receive = {
     case input: Input.QueueableInput if sender() == context.parent ⇒
       commandQueue.enqueue(input)
-      self ! Internal.CommandQueueReady  // Delay maySend() such that QueuableInput pending in actor's mailbox can be queued
+      scheduler.scheduleOnce(batchDelay) {
+        self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueuableInput pending in actor's mailbox can be queued
+      }
 
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)

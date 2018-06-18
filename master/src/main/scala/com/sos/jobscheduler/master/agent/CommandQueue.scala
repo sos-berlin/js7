@@ -51,31 +51,29 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   final def enqueue(input: Input.QueueableInput): Future[Completed] = {
     queue.enqueue(input)
-    if (queue.size == batchSize || freshReconnected) {
+    if (queue.size == batchSize || freshReconnected)
       maySend()
-    } else
+    else
       Future.successful(Completed)
   }
 
-  final def maySend(): Future[Completed]/*Future for test only*/ =
-    if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0)) {
-      val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
-      if (inputs.nonEmpty) {
-        executingInputs ++= inputs
-        openRequestCount += 1
-        executeCommand(Batch(inputs map inputToAgentCommand))
-          .runAsync
-          .andThen {
-            case Success(Batch.Response(responses)) ⇒
-              asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
+  final def maySend(): Future[Completed]/*Future for test only*/ = {
+    lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
+    if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
+      executingInputs ++= inputs
+      openRequestCount += 1
+      executeCommand(Batch(inputs map inputToAgentCommand))
+        .runAsync
+        .andThen {
+          case Success(Batch.Response(responses)) ⇒
+            asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
 
-            case Failure(t) ⇒
-              asyncOnBatchFailed(inputs, t)
-          } map (_ ⇒ Completed)
-      } else
-        Future.successful(Completed)
+          case Failure(t) ⇒
+            asyncOnBatchFailed(inputs, t)
+        } map (_ ⇒ Completed)
     } else
       Future.successful(Completed)
+  }
 
   private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =
     input match {
