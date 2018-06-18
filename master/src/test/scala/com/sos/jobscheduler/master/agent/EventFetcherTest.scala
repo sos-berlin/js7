@@ -3,28 +3,26 @@ package com.sos.jobscheduler.master.agent
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Stamped}
 import com.sos.jobscheduler.master.agent.EventFetcherTest._
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.CountDownLatch
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventFetcherTest extends FreeSpec {
 
-  private implicit val executionContext = ExecutionContext.global
-
   "test" in {
-    implicit val timerService = TimerService(idleTimeout = Some(1.s))
     val collector = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val aBarrier, bBarrier, cBarrier, dBarrier = new CountDownLatch(1)
+    implicit val scheduler = Scheduler.global
     val fetcher = new EventFetcher[TestEvent](after = 100) {
       protected val config = ConfigFactory.parseMap(Map("jobscheduler.master.agent-driver.event-fetcher.delay" → "0ms").asJava)
       var step = 0
