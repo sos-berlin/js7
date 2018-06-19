@@ -21,8 +21,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
 
   private val testScheduler = TestScheduler()
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
-  private lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply,
-    sessionTimeout = TestSessionTimeout, akkaAskTimeout = 99.seconds)(testScheduler)
+  private lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)(testScheduler)
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   "Logout unknown SessionToken" in {
@@ -76,7 +75,7 @@ private object SessionRegisterTest
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty)
   private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty)
 
-  final case class MySession(sessionInit: SessionInit[SimpleUser]) extends LoginSession {
+  final case class MySession(sessionInit: SessionInit[SimpleUser]) extends Session {
     type User = SimpleUser
   }
 }

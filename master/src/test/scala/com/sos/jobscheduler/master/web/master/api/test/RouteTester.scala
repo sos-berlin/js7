@@ -3,14 +3,13 @@ package com.sos.jobscheduler.master.web.master.api.test
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import org.scalatest.Suite
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -27,6 +26,5 @@ trait RouteTester extends ScalatestRouteTest {
     isLoopback = true)
 
   protected final lazy val sessionRegister =
-    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply,
-      sessionTimeout = 1.hour, akkaAskTimeout = 60.seconds)(Scheduler.global)
+    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)(Scheduler.global)
 }

@@ -85,7 +85,7 @@ object MasterConfiguration {
       webServerPorts = Nil,
         //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
-      akkaAskTimeout = config.getDuration("jobscheduler.master.akka-ask-timeout").toFiniteDuration,
+      akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
       journalSyncOnCommit = config.getBoolean("jobscheduler.master.journal.sync"),
       config = config)
   }

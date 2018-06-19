@@ -13,6 +13,9 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   def toEpochSecond = toEpochMilli / 1000
 
+  /** Returns an ISO-8601 string with milliseconds.
+    * For example "2017-12-04T11:22:33.456Z".
+    */
   def toIsoString: String
 
   //Problem with sbt: def toIsoStringBuilder: StringBuilder

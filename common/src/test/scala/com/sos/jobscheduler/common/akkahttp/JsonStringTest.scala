@@ -26,7 +26,7 @@ final class JsonStringTest extends FreeSpec with ScalatestRouteTest {
   }
 
   "Web service" - {
-    "Simple Post" in {
+    "SimpleSession Post" in {
       Post("/", jsonString) ~> testRoute(testString) ~> check {
         assert(status == OK)
         assert(contentType == ContentType(`application/json`))

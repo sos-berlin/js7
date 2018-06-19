@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
+import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Files.exists
@@ -33,8 +35,14 @@ trait JournalRecoverer[E <: Event] {
         logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
         autoClosing(new JournalReader(journalMeta, journalFile)) { journalReader ⇒
           untilNoneIterator { journalReader.recoverNext() } foreach {
-            case JournalReader.RecoveredSnapshot(snapshot) ⇒ recoverSnapshot(snapshot)
-            case JournalReader.RecoveredEvent(stampedEvent) ⇒ recoverEvent(stampedEvent)
+            case JournalReader.RecoveredSnapshot(snapshot) ⇒
+              wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
+                recoverSnapshot(snapshot)
+              }
+            case JournalReader.RecoveredEvent(stampedEvent) ⇒
+              wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.getClass.scalaName} '${stampedEvent.value.key}'") {
+                recoverEvent(stampedEvent)
+              }
           }
           _eventsAcceptedUntil = journalReader.eventsAcceptedUntil
           _lastEventId = journalReader.lastReadEventId

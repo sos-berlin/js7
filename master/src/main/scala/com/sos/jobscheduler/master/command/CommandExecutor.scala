@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.command.CommandExecutor._
@@ -18,7 +18,7 @@ import monix.eval.Task
   */
 private[master] final class CommandExecutor(
   masterConfiguration: MasterConfiguration,
-  sessionRegister: SessionRegister[LoginSession.Simple],
+  sessionRegister: SessionRegister[SimpleSession],
   orderKeeper: ActorRef)
 {
   import masterConfiguration.akkaAskTimeout

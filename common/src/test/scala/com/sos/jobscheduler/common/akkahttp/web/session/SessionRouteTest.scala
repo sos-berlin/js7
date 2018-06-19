@@ -33,14 +33,13 @@ import java.time.Instant.now
 import monix.execution.Scheduler
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRoute {
 
-  protected type Session = LoginSession.Simple
+  protected type Session = SimpleSession
 
   implicit protected def scheduler = Scheduler.global
   private lazy val actorSystem = ActorSystem("SessionRouteTest")
@@ -50,7 +49,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     TimerService(Some(1.s)))
 
   protected lazy val sessionRegister =
-    SessionRegister.start[LoginSession.Simple](system, LoginSession.Simple.apply, sessionTimeout = 1.hour, akkaAskTimeout = 60.seconds)
+    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
   private val route = Route.seal(
     decodeRequest {
@@ -182,7 +181,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     withClient() { client ⇒
       assert(!client.hasSession)
 
-      // Access without Login (LoginSession) is rejected
+      // Access without Login (Session) is rejected
       intercept[HttpException] {
         client.get_[String](s"$localUri/test") await 99.s
       }.status shouldEqual Unauthorized

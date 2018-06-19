@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -51,7 +51,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem
       protected val config              = injector.instance[Config]
       protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
-      protected val sessionRegister     = injector.instance[SessionRegister[LoginSession.Simple]]
+      protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
       protected val eventReader         = injector.instance[EventReaderProvider[Event]]
       protected val scheduler           = injector.instance[Scheduler]
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi

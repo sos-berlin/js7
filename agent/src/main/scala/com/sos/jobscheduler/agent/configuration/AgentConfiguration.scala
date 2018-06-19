@@ -143,7 +143,7 @@ object AgentConfiguration {
       jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       commandTimeout = config.getDuration("jobscheduler.agent.command-timeout"),
-      akkaAskTimeout = config.getDuration("jobscheduler.agent.akka-ask-timeout").toFiniteDuration,
+      akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
       name = "Agent",
       journalSyncOnCommit = config.getBoolean("jobscheduler.journal.sync"),
       config = config)

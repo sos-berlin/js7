@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -30,8 +30,8 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
     GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply),
     TimerService(idleTimeout = Some(1.s)))
 
-  protected final val sessionRegister = SessionRegister.start[LoginSession.Simple](
-    actorRefFactory, LoginSession.Simple.apply, sessionTimeout = 1.hour, akkaAskTimeout = 99.seconds)(Scheduler.global)
+  protected final val sessionRegister = SessionRegister.start[SimpleSession](
+    actorRefFactory, SimpleSession.apply, SessionRegister.TestConfig)(Scheduler.global)
 
   override def testConfig = AgentConfiguration.DefaultsConfig
   protected final def actorSystem = system

@@ -12,6 +12,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
+import com.sos.jobscheduler.common.akkahttp.web.session.{Session ⇒ Session_}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import monix.eval.Task
@@ -22,7 +23,7 @@ import monix.execution.Scheduler
   */
 trait RouteProvider
 {
-  protected type Session <: LoginSession
+  protected type Session <: Session_
 
   protected def gateKeeper: GateKeeper[Session#User]
 

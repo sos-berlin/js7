@@ -16,7 +16,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventReader}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -62,7 +62,7 @@ import scala.util.{Failure, Success}
  * @author Joacim Zschimmer
  */
 final class RunningMaster private(
-  val sessionRegister: SessionRegister[LoginSession.Simple],
+  val sessionRegister: SessionRegister[SimpleSession],
   val commandExecutor: CommandExecutor,
   val webServer: MasterWebServer,
   val orderApi: OrderApi.WithCommands,
@@ -153,7 +153,7 @@ object RunningMaster {
         case _ ⇒
       }
 
-    private def createSessionTokenFile(sessionRegister: SessionRegister[LoginSession.Simple]): Unit = {
+    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
       sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
         .runAsync await masterConfiguration.akkaAskTimeout.duration
@@ -178,7 +178,7 @@ object RunningMaster {
       StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
       createDirectories()
 
-      val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       createSessionTokenFile(sessionRegister)
 
       val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper()

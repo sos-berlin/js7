@@ -5,7 +5,7 @@ import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -44,10 +44,8 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     EventIdClock.Default
 
   @Provides @Singleton
-  def sessionRegister(actorSystem: ActorSystem, conf: MasterConfiguration)(implicit s: Scheduler): SessionRegister[LoginSession.Simple] =
-    SessionRegister.start[LoginSession.Simple](actorSystem, LoginSession.Simple.apply,
-      sessionTimeout = conf.config.getDuration("jobscheduler.auth.session.timeout").toFiniteDuration,
-      conf.akkaAskTimeout)
+  def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
+    SessionRegister.start[SimpleSession](actorSystem, SimpleSession.apply, config)
 
   @Provides @Singleton
   def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =

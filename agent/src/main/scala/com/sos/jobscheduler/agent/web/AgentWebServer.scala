@@ -10,11 +10,11 @@ import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.AgentWebServer._
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
-import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
@@ -51,7 +51,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   protected def newRoute(binding: WebServerBinding) =
     new CompleteRoute {
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
-      protected def sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+      protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       //protected val taskRegister = Factory.this.taskRegister
       protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceServiceUnavailable)
       protected def agentOverview = agentHandle.overview

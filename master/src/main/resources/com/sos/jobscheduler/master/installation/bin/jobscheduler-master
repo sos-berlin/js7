@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Simple JobScheduler Master starter
+# SimpleSession JobScheduler Master starter
 
 # Example usage:
 #   cd /tmp

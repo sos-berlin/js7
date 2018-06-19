@@ -14,7 +14,7 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, SessionRegister}
+import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
@@ -101,7 +101,7 @@ object RunningAgent {
     val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
-    val sessionRegister = injector.instance[SessionRegister[LoginSession.Simple]]
+    val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
     val readyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
     val mainActor = actorSystem.actorOf(

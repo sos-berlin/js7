@@ -10,16 +10,17 @@ import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.{RichPath, pathToFile}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.{Files, Path}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[S <: LoginSession] private[session](actor: ActorRef, implicit private val akkaAskTimeout: Timeout)
+final class SessionRegister[S <: Session] private[session](actor: ActorRef, implicit private val akkaAskTimeout: Timeout)
 {
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
@@ -58,14 +59,16 @@ object SessionRegister
 {
   private val logger = Logger(getClass)
 
-  def start[S <: LoginSession](
-    actorRefFactory: ActorRefFactory,
-    newSession: SessionInit[S#User] ⇒ S,
-    sessionTimeout: FiniteDuration,
-    akkaAskTimeout: Timeout)
+  def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] ⇒ S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
-    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, sessionTimeout), "session")
-    new SessionRegister[S](sessionActor, akkaAskTimeout = akkaAskTimeout)
+    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, config), "session")
+    new SessionRegister[S](sessionActor,
+      akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration)
   }
+
+  val TestConfig: Config = ConfigFactory.parseString(
+    """jobscheduler.akka-ask-timeout = 99.s
+      |jobscheduler.auth.session.timeout = 1 minute
+      |""".stripMargin)
 }

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.web.common
 
-import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, RouteProvider}
+import com.sos.jobscheduler.common.akkahttp.web.session.{RouteProvider, SimpleSession}
 
 /**
  * Standard trait for Agent web services.
@@ -11,5 +11,5 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{LoginSession, RouteProv
  */
 trait AgentRouteProvider extends RouteProvider
 {
-  protected type Session = LoginSession.Simple
+  protected type Session = SimpleSession
 }
