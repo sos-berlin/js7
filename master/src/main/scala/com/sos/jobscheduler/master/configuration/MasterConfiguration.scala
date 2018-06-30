@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
@@ -26,7 +26,7 @@ final case class MasterConfiguration(
   masterId: MasterId,
   dataDirectory: Path,
   configDirectory: Path,
-  webServerPorts: Seq[(WebServerBinding.Scheme, InetSocketAddress)],
+  webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
   journalSyncOnCommit: Boolean,
@@ -36,8 +36,8 @@ extends CommonConfiguration
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
     copy(
       webServerPorts = webServerPorts ++
-        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Http → _) ++
-        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(WebServerBinding.Https → _),
+        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
+        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_, mutual = false)),
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
 
   def fileBasedDirectory: Path = configDirectory / "live"
@@ -58,21 +58,24 @@ object MasterConfiguration {
   ) =
     fromDataDirectory(
       dataDirectory = configAndData / "data",
-      configDirectory = configAndData / "config", config)
+      configDirectory = configAndData / "config",
+      config)
     .copy(
       webServerPorts =
-        httpPort.map(o ⇒ WebServerBinding.Http → new InetSocketAddress("127.0.0.1", o)) ++:
-        httpsPort.map(o ⇒ WebServerBinding.Https → new InetSocketAddress("127.0.0.1", o)).toList)
+        httpPort.map(o ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
+        httpsPort.map(o ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = false)).toList)
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
 
-  def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
-    fromDataDirectory(
-      dataDirectory = a.as[Path]("-data-directory="),
-      configDirectory = a.as[Path]("-config-directory=")
-    ) withCommandLineArguments a
-  }
+  def fromCommandLine(args: Seq[String], config: Config = ConfigFactory.empty) =
+    CommandLineArguments.parse(args) { a ⇒
+      fromDataDirectory(
+        dataDirectory = a.as[Path]("-data-directory="),
+        configDirectory = a.as[Path]("-config-directory="),
+        config)
+      .withCommandLineArguments(a)
+    }
 
   def fromDataDirectory(dataDirectory: Path, configDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
@@ -95,6 +98,7 @@ object MasterConfiguration {
     (config withFallback extraDefaultConfig withFallback DefaultConfig).resolve
   }
 
+  // Same code in TextMasterClient.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty

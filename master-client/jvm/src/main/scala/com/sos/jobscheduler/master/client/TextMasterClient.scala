@@ -1,15 +1,17 @@
 package com.sos.jobscheduler.master.client
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
+import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
+import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextClient}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import java.nio.file.Files.exists
+import com.sos.jobscheduler.master.client.TextMasterClient._
+import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 
 /**
@@ -35,20 +37,22 @@ extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient wi
 
   protected def apiUri(tail: String) = masterUris.api(tail)
 
-  private lazy val keystoreReferenceOption =
-    for {
-      dir ← configDirectory
-      file = dir / "public-https.jks" if exists(file)
-    } yield
-      KeystoreReference(
-        file.toURI.toURL,
-        storePassword = Some(SecretString("jobscheduler")),
-        keyPassword = Some(SecretString("jobscheduler")))
-
-  protected override val httpsConnectionContext =
-    keystoreReferenceOption.fold(super.httpsConnectionContext)(Https.toHttpsConnectionContext)
+  protected override lazy val httpsConnectionContextOption =
+    for (configDir ← configDirectory) yield
+      Https.toHttpsConnectionContext(
+        KeyStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir resolve "private/https-keystore.p12").orThrow)
 
   closer.onClose { super.close() }
 
   override def close() = closer.close()
+}
+
+object TextMasterClient
+{
+  // Like MasterConfiguration.configDirectoryConfig
+  private def configDirectoryConfig(configDirectory: Path): Config =
+    ConfigFactory
+      .empty
+      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
+      .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
 }

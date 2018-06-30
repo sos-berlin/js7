@@ -45,12 +45,15 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def newRoute(binding: WebServerBinding): Route =
     new CompleteRoute {
+      protected val masterConfiguration = MasterWebServer.this.masterConfiguration
       protected val masterId            = masterConfiguration.masterId
       protected val injector            = MasterWebServer.this.injector
       protected val actorSystem         = injector.instance[ActorSystem]
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem
       protected val config              = injector.instance[Config]
-      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
+      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService,
+        isLoopback = binding.address.getAddress.isLoopbackAddress,
+        mutual = binding.mutual)
       protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
       protected val eventReader         = injector.instance[EventReaderProvider[Event]]
       protected val scheduler           = injector.instance[Scheduler]

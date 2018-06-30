@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.monix.MonixForCats._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.Stamped
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
@@ -28,6 +29,7 @@ trait AgentProxyRoute extends MasterRouteProvider
   protected implicit def scheduler: Scheduler
   protected implicit def actorSystem: ActorSystem
   protected def fileBasedApi: FileBasedApi
+  protected def masterConfiguration: MasterConfiguration
 
   final val agentProxyRoute: Route =
     get {
@@ -54,7 +56,7 @@ trait AgentProxyRoute extends MasterRouteProvider
   }
 
   private def forwardTo(agentUri: Uri, forwardUri: Uri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
-    val agentClient = AgentClient(agentUri)
+    val agentClient = AgentClient(agentUri, masterConfiguration.keyStoreRef.toOption)  // TODO Reuse AgentClient of AgentDriver
     agentClient.sendReceive(
       HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
         .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))

@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJso
 import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -24,12 +25,14 @@ import scala.collection.immutable.Seq
  */
 trait AgentClient extends SessionApi with AkkaHttpClient {
 
-  protected def actorSystem: ActorSystem
-
   protected def httpClient = this
 
-  protected lazy val sessionUri = agentUris.session.toString()
+  protected def keyStoreRef: Option[KeyStoreRef]
 
+  override protected lazy val httpsConnectionContextOption =
+    keyStoreRef map Https.toHttpsConnectionContext
+
+  protected lazy val sessionUri = agentUris.session.toString()
   protected lazy val agentUris = AgentUris(baseUri.toString)
   protected lazy val uriPrefixPath = "/agent"
 
@@ -72,11 +75,12 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
 object AgentClient {
   val ErrorMessageLengthMaximum = 10000
 
-  def apply(agentUri: Uri)(implicit actorSystem: ActorSystem): AgentClient =
-    new Standard(actorSystem, agentUri)
+  def apply(agentUri: Uri, keyStoreRef: Option[KeyStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient =
+    new Standard(actorSystem, agentUri, keyStoreRef)
 
   private class Standard(
     protected val actorSystem: ActorSystem,
-    val baseUri: Uri)
+    val baseUri: Uri,
+    protected val keyStoreRef: Option[KeyStoreRef] = None)
   extends AgentClient
 }

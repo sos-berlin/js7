@@ -23,11 +23,13 @@ import scala.concurrent._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService, isLoopback: Boolean = false)(implicit ec: ExecutionContext) {
+final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService,
+  isLoopback: Boolean = false, mutual: Boolean = false)
+  (implicit ec: ExecutionContext)
+{
+  import configuraton.{idToUser, realm}
 
-  import configuraton.realm
-
-  private val authenticator = new OurMemoizingAuthenticator(configuraton.idToUser)
+  private val authenticator = new OurMemoizingAuthenticator(idToUser)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, HttpChallenges.basic(realm))
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
@@ -52,10 +54,19 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
     new Directive1[U] {
       def tapply(inner: Tuple1[U] ⇒ Route) =
         seal {
-          handleRejections(credentialRejectionHandler) {
-            authenticateBasic(realm, authenticator).apply { user ⇒
-              inner(Tuple1(user))
-            }
+          httpAuthenticate { httpUser ⇒
+            inner(Tuple1(httpUser))
+          }
+        }
+    }
+
+  /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
+  private def httpAuthenticate: Directive1[U] =
+    new Directive1[U] {
+      def tapply(inner: Tuple1[U] ⇒ Route) =
+        handleRejections(credentialRejectionHandler) {
+          authenticateBasic(realm, authenticator).apply { user ⇒
+            inner(Tuple1(user))
           }
         }
     }
@@ -89,19 +100,20 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
   def boundMessage(address: InetSocketAddress, scheme: WebServerBinding.Scheme): String =
-    s"Access via $scheme:// is bound to interface ${address.getAddress.getHostAddress}, TCP port ${address.getPort} - $secureStateString"
+    s"Access via $scheme:// is bound to interface ${address.getAddress.getHostAddress}, TCP port ${address.getPort}" +
+      secureStateString
 
-  def secureStateString: String =
+  private def secureStateString: String =
     if (configuraton.isPublic)
-      "ACCESS IS PUBLIC - EVERYONE HAS ACCESS (is-public = true)"
+      " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (is-public = true)"
     else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
-      "ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
+      " - ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
     else if (configuraton.loopbackIsPublic)
-      "LOOPBACK ACCESS IS PUBLIC (loopback-is-public = true)"
+      " - LOOPBACK ACCESS IS PUBLIC (loopback-is-public = true)"
     else if (configuraton.getIsPublic)
-      "ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
+      " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
     else
-      "Access is secured"
+      ""
 }
 
 object GateKeeper {

@@ -50,7 +50,9 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def newRoute(binding: WebServerBinding) =
     new CompleteRoute {
-      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService, isLoopback = binding.address.getAddress.isLoopbackAddress)
+      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService,
+        isLoopback = binding.address.getAddress.isLoopbackAddress,
+        mutual = binding.mutual)
       protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       //protected val taskRegister = Factory.this.taskRegister
       protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceServiceUnavailable)

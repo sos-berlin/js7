@@ -43,6 +43,7 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
+import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
 import java.time.Duration
@@ -123,13 +124,14 @@ object RunningMaster {
     }
 
   def newInjectorForTest(directory: Path, module: Module = EMPTY_MODULE,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None
-  ): Injector =
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None, config: Config = ConfigFactory.empty)
+  : Injector =
     Guice.createInjector(DEVELOPMENT,
       Modules `override` new MasterModule(MasterConfiguration.forTest(
         configAndData = directory,
         httpPort = httpPort,
-        httpsPort = httpsPort))
+        httpsPort = httpsPort,
+        config))
       `with` module)
 
   def apply(configuration: MasterConfiguration): Future[RunningMaster] =

@@ -41,7 +41,8 @@ with Stash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
   private val config = masterConfiguration.config
-  private val client = AgentClient(uri)(context.system)
+  private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
+  private val client = AgentClient(uri, masterConfiguration.keyStoreRef.toOption)(context.system)
   private var startInputReceived = false
   private var eventFetcher: EventFetcher[OrderEvent] = null
   private var lastEventId = EventId.BeforeFirst
@@ -117,6 +118,7 @@ with Stash {
 
     case msg: Internal.ConnectFailed ⇒
       reconnectPause.onConnectFailed()
+      logger.debug(msg.toString, msg.throwable)
       onConnectionError(msg.toString)
 
     case _ ⇒
@@ -165,12 +167,10 @@ with Stash {
     }
   }
 
-  private def agentUserAndPassword: Checked[UserAndPassword] = {
-    val configPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
-    config.optionAs[SecretString](configPath)
+  private def agentUserAndPassword: Checked[UserAndPassword] =
+    config.optionAs[SecretString](authConfigPath)
       .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
-      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $configPath"))
-  }
+      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $authConfigPath"))
 
   private def onConnectionError(error: String): Unit = {
     logger.warn(error)
@@ -289,7 +289,9 @@ private[master] object AgentDriver
   private object Internal {
     final case object Connect
     final case object Connected
-    final case class ConnectFailed(throwable: Throwable)
+    final case class ConnectFailed(throwable: Throwable) {
+      override def toString = s"ConnectFailed(${throwable.toStringWithCauses})"
+    }
     final case object LoggedOut
     final case object Ready
     final case object CommandQueueReady

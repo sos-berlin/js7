@@ -44,7 +44,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   implicit final def materializer = materializerLazy()
 
-  protected def httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext
+  protected def httpsConnectionContextOption: Option[HttpsConnectionContext] = None
+
+  private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
   def close() = for (o ← materializerLazy) o.shutdown()
 
@@ -101,7 +103,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       Task.deferFuture {
         logRequest(req, logData)
-        http.singleRequest(req, httpsConnectionContext)
+        val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
+        http.singleRequest(req, httpsContext)
       } map decodeResponse  // Decompress
     }
 

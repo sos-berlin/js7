@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.master.configuration
 
+import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
+import java.net.InetSocketAddress
 import java.nio.file.Paths
 import java.time.ZoneId
 import org.scalatest.FreeSpec
@@ -24,6 +26,17 @@ final class MasterConfigurationTest extends FreeSpec {
       akkaAskTimeout = 60.seconds,
       journalSyncOnCommit = true,
       config = ConfigFactory.empty))
+  }
+
+  "-http-port=" in {
+    // For more tests see CommonConfigurationTest
+    intercept[IllegalArgumentException] { conf("-http-port=65536") }
+    assert(conf("-http-port=1234").webServerPorts == WebServerPort.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
+  }
+
+  "-https-port=" in {
+    // For more tests see CommonConfigurationTest
+    assert(conf("-https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
   }
 
   "-sync-journal" in {

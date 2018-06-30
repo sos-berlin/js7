@@ -6,64 +6,65 @@ set -e
 
 # The source code test keystores has been generated with:
 #   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=test -config-directory=common/src/test/resources/com/sos/jobscheduler/common/akkahttp/https
-#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
+#   common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
 
 configDirectory=
 host=
 distinguishedName=
 days=36500
-privateKeystore="private/private-https.jks"
-publicKeystore="public-https.jks"
+keyStore="private/https-keystore.p12"
+trustStore="export/https-truststore.p12"
+trustPem="export/https-truststore.pem"
 alias=
 keyPassword="jobscheduler"
 storePassword="jobscheduler"
-publicCertFile="public-https.pem"
 
 for arg in "$@"; do
-    case "$arg" in
-        -alias=*)
-            alias="${arg#*=}"
-            shift
-            ;;
-        -host=*)
-            host="${arg#*=}"
-            distinguishedName="CN=$host"
-            shift
-            ;;
-        -distinguished-name=*)
-            distinguishedName="${arg#*=}"
-            shift
-            ;;
-        -config-directory=*)
-            configDirectory="${arg#*=}"
-            shift
-            ;;
-        -days=*)
-            days="${arg#*=}"
-            shift
-            ;;
-        *)
-            echo Unknown argument: $arg
-            exit 1
-            ;;
-    esac
+  case "$arg" in
+    -alias=*)
+      alias="${arg#*=}"
+      shift
+      ;;
+    -host=*)
+      host="${arg#*=}"
+      distinguishedName="CN=$host"
+      shift
+      ;;
+    -distinguished-name=*)
+      distinguishedName="${arg#*=}"
+      shift
+      ;;
+    -config-directory=*)
+      configDirectory="${arg#*=}"
+      shift
+      ;;
+    -days=*)
+      days="${arg#*=}"
+      shift
+      ;;
+    *)
+      echo Unknown argument: $arg
+      exit 1
+      ;;
+  esac
 done
 
 [ -n "$host" ] || {
-    echo Missing argument for -host=
-    exit 1
+  echo Missing argument for -host=
+  exit 1
 }
 [ -n "$alias" ] || {
-    echo Missing argument for -alias=
-    exit 1
+  echo Missing argument for -alias=
+  exit 1
 }
 [ -n "$configDirectory" ] || {
-    echo Missing argument for -config-directory=
-    exit 1
+  echo Missing argument for -config-directory=
+  exit 1
 }
 cd "$configDirectory"
 
-rm -vf "$privateKeystore" "$publicKeystore" "$publicCertFile"
+mkdir -p $(dirname "$trustStore")
+rm -vf "$keyStore" "$trustStore" "$trustPem"
 
 keytool -genkey \
   -alias "$alias" \
@@ -72,30 +73,32 @@ keytool -genkey \
   -keyalg RSA \
   -keysize 1024 \
   -keypass "$keyPassword" \
-  -keystore "$privateKeystore" \
+  -keystore "$keyStore" \
+  -storetype pkcs12 \
   -storepass "$storePassword"
 
 echo "----------------------------------------------------------------------"
-echo File $privateKeystore:
-keytool -list -keystore "$privateKeystore" -deststorepass "$storePassword"
+echo File $keyStore:
+keytool -list -keystore "$keyStore" -deststorepass "$storePassword"
 
 keytool -exportcert -rfc -noprompt \
-  -keystore "$privateKeystore" \
+  -keystore "$keyStore" \
   -storepass "$storePassword" \
   -alias "$alias" \
-  -file "$publicCertFile"
+  -file "$trustPem"
 keytool -importcert -noprompt \
-  -file "$publicCertFile" \
-  -keystore "$publicKeystore" \
+  -file "$trustPem"  \
+  -keystore "$trustStore" \
+  -storetype pkcs12 \
   -storepass "$storePassword" \
   -alias "$alias"
 
 echo "----------------------------------------------------------------------"
-echo File $publicKeystore:
+echo File $trustStore:
 keytool -list \
-  -keystore "$publicKeystore" \
+  -keystore "$trustStore" \
   -deststorepass "$storePassword"
 echo "----------------------------------------------------------------------"
-echo File $publicCertFile:
+echo File $trustPem:
 keytool -printcert \
-  -file "$publicCertFile"
+  -file "$trustPem"

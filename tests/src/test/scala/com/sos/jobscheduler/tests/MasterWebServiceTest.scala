@@ -33,6 +33,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import com.sos.jobscheduler.tests.MasterWebServiceTest._
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import javax.inject.Singleton
@@ -46,11 +47,14 @@ import scala.concurrent.duration._
 final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
-  protected val agentPaths = TestAgentPath :: AgentPath("/FOLDER/AGENT-A") :: Nil
+
   private lazy val uri = master.localUri
+
+  protected val agentPaths = TestAgentPath :: AgentPath("/FOLDER/AGENT-A") :: Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri.toString
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest", uri, "/master")
+
   private lazy val eventCollector = new TestEventCollector
   private var sessionToken: String = "INVALID"
 
@@ -61,23 +65,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   import httpClient.materializer
 
   override def beforeAll() = {
-    (directoryProvider.master.config / "master.conf").contentString =
-      """jobscheduler.webserver.test = true
-        |""".stripMargin
-    (directoryProvider.master.config / "private" / "private.conf").append(
-      """jobscheduler.auth.users {
-        |  TEST-USER: "plain:TEST-PASSWORD"
-        |}
-        |""".stripMargin)
-    directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
-    directoryProvider.master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/B" on "/AGENT"; job "/MISSING" on "/AGENT";""")
+    writeMasterConfiguration(directoryProvider.master)
+    writeAgentConfiguration(directoryProvider.agents(0))
     eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
-    directoryProvider.agents(0).writeJson(JobConfiguration(
-      JobPath("/A") % VersionId.Anonymous,
-      JobScript(operatingSystem.sleepingShellScript(1.second))))  // Allow some time to check web service before order finishes
-    directoryProvider.agents(0).writeJson(JobConfiguration(
-      JobPath("/B") % VersionId.Anonymous,
-      JobScript(operatingSystem.sleepingShellScript(0.seconds))))
     super.beforeAll()
   }
 
@@ -687,4 +677,29 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         testJson(manipulateResponse(yamlToJson(yamlString).orThrow.asObject.get), expected)
       }
     }
+}
+
+object MasterWebServiceTest
+{
+  private def writeMasterConfiguration(master: DirectoryProvider.Tree): Unit = {
+    (master.config / "master.conf").contentString =
+      """jobscheduler.webserver.test = true
+        |""".stripMargin
+    (master.config / "private" / "private.conf").append(
+      """jobscheduler.auth.users {
+        |  TEST-USER: "plain:TEST-PASSWORD"
+        |}
+        |""".stripMargin)
+    master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
+    master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/B" on "/AGENT"; job "/MISSING" on "/AGENT";""")
+  }
+
+  private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
+    agent.writeJson(JobConfiguration(
+      JobPath("/A") % VersionId.Anonymous,
+      JobScript(operatingSystem.sleepingShellScript(1.second))))  // Allow some time to check web service before order finishes
+    agent.writeJson(JobConfiguration(
+      JobPath("/B") % VersionId.Anonymous,
+      JobScript(operatingSystem.sleepingShellScript(0.seconds))))
+  }
 }

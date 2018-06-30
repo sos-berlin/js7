@@ -8,16 +8,18 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import com.sos.jobscheduler.data.job.JobPath
@@ -25,11 +27,14 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
+import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, ObjectEncoder}
+import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
 import java.time.Duration
+import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
@@ -40,51 +45,41 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
+final class DirectoryProvider(agentPaths: Seq[AgentPath], agentHttps: Boolean = false) extends HasCloser {
 
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-  val master = new Tree(directory / "master")
-  val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o) }.toMap
+  val master = new MasterTree(directory / "master")
+  val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o, https = agentHttps) }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
 
   closeOnError(this) {
     master.createDirectories()
     for (a ← agents) {
       a.createDirectories()
-    }
-    provideAgentsPrivateConf()      // Agent: config/private/private.conf with Master's password
-    provideMastersPrivateConf()     // Master: config/private/private.conf with Master's passwords for Agents
-    provideMastersAgentJsonConf()   // Master: xx.agent.json - Reads provided agent configuration files!
-  }
-
-  def provideMastersAgentJsonConf(): Unit =
-    for (a ← agents) {
-      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
-      Files.createDirectories(file.getParent)
-      file.contentString = Agent(AgentPath.NoId, uri = a.conf.httpUri.toString).asJson.toPrettyString
-    }
-
-  def provideAgentsPrivateConf(): Unit =
-    for (a ← agents) {
-      val file = a.config / "private" / "private.conf"
-      val content =
+      (a.config / "private" / "private.conf").append(
         s"""jobscheduler.auth.users {
            |  Master = ${quoteString("plain:" + a.password.string)}
            |}
-           |""".stripMargin
-      file.contentString = content
-      logger.debug(file + ":\n" +  content)
+           |jobscheduler.webserver.https.keystore {
+           |  store-password = "jobscheduler"
+           |  key-password = "jobscheduler"
+           |}
+         """.stripMargin)
     }
-
-  def provideMastersPrivateConf(): Unit = {
-    val file = master.config / "private" / "private.conf"
-    val content =
-      s"""jobscheduler.auth.agents {
-         |${agentPaths.map(a ⇒ "  " + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string)) mkString "\n"}
+    (master.config / "private" / "private.conf").append(
+      agentPaths.map(a ⇒
+        "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
+      ).mkString +
+      s"""jobscheduler.webserver.https.keystore {
+         |  store-password = "jobscheduler"
+         |  key-password = "jobscheduler"
          |}
-         |""".stripMargin
-    file.contentString = content
-    logger.debug(file + ":\n" +  content)
+         """.stripMargin)
+    for (a ← agents) {
+      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
+      Files.createDirectories(file.getParent)
+      file.contentString = Agent(AgentPath.NoId, uri = a.conf.localUri.toString).asJson.toPrettyString
+    }
   }
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit s: Scheduler): Unit =
@@ -95,11 +90,11 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
     RunningMaster.runForTest(master.directory, eventCollector)(body)
 
-  def startMaster(module: Module = EMPTY_MODULE, httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None)
-    (implicit s: Scheduler): Task[RunningMaster]
-  =
+  def startMaster(module: Module = EMPTY_MODULE, httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None,
+    config: Config = ConfigFactory.empty)(implicit s: Scheduler)
+  : Task[RunningMaster] =
     Task.deferFuture(
-      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort)))
+      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort, config)))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -107,33 +102,39 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
       agents map (_.terminate()) await 99.s
     }
 
-  def startAgents()(implicit ec: ExecutionContext): Future[Seq[RunningAgent]] =
-    Future.sequence(agents map (_.agentPath) map startAgent)
+  def startAgents(config: Config = ConfigFactory.empty)(implicit ec: ExecutionContext): Future[Seq[RunningAgent]] =
+    Future.sequence(agents map (_.agentPath) map (startAgent(_, config)))
 
-  def startAgent(agentPath: AgentPath)(implicit ec: ExecutionContext): Future[RunningAgent] =
+  def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty)(implicit ec: ExecutionContext): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentPath).conf)
 }
 
-object DirectoryProvider {
-  private val logger = Logger(getClass)
-
+object DirectoryProvider
+{
   trait ForScalaTest extends BeforeAndAfterAll with HasCloser {
     this: org.scalatest.Suite ⇒
 
     protected def agentPaths: Seq[AgentPath]
+    protected def agentHttps = false
 
     import Scheduler.Implicits.global
 
-    protected lazy val directoryProvider = new DirectoryProvider(agentPaths)
-    protected lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
-    protected lazy val agent: RunningAgent = agents.head
+    protected final lazy val directoryProvider = new DirectoryProvider(agentPaths, agentHttps = agentHttps)
+
+    protected def agentConfig: Config = ConfigFactory.empty
+    protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
+    protected final lazy val agent: RunningAgent = agents.head
+
     protected val masterModule: Module = EMPTY_MODULE
     protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
     protected lazy val masterHttpsPort: Option[Int] = None
-    protected lazy val master: RunningMaster = directoryProvider.startMaster(
+    protected val masterConfig: Config = ConfigFactory.empty
+
+    protected final lazy val master: RunningMaster = directoryProvider.startMaster(
       masterModule,
       httpPort = masterHttpPort,
-      httpsPort = masterHttpsPort
+      httpsPort = masterHttpsPort,
+      masterConfig
     ) await 99.s
 
     override def beforeAll() = {
@@ -151,15 +152,16 @@ object DirectoryProvider {
     }
   }
 
-  sealed class Tree(val directory: Path) {
-    val config = directory / "config"
-    val fileBasedDirectory = config / "live"
+  sealed trait Tree {
+    val directory: Path
+    lazy val config = directory / "config"
+    lazy val fileBasedDirectory = config / "live"
     lazy val orderGenerators = {
       val dir = config / "order-generators"
       Files.createDirectory(dir)
       dir
     }
-    val data = directory / "data"
+    lazy val data = directory / "data"
 
     private[DirectoryProvider] def createDirectories(): Unit = {
       Files.createDirectories(fileBasedDirectory)
@@ -181,13 +183,33 @@ object DirectoryProvider {
       fileBasedDirectory resolve path.toFile(t)
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
-    lazy val conf = AgentConfiguration.forTest(directory).copy(name = agentPath.name)
-    lazy val localUri = Uri("http://127.0.0.1:" + conf.http.head.address.getPort)
-    lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
+  final class MasterTree(val directory: Path) extends Tree {
+    def provideMastersHttpsCertificate(): Unit = {
+      val keyStore = config / "private/https-keystore.p12"
+      keyStore.contentBytes = MasterKeyStoreResource.contentBytes
+      importKeyStore(keyStore, AgentTrustStoreResource)
+      // KeyStore passwords has been provided by DirectoryProvider (must happen early)
+    }
   }
 
-  def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean) extends Tree {
+    val directory = rootDirectory / agentPath.name
+    lazy val conf = AgentConfiguration.forTest(directory,
+        httpPort = !https ? findRandomFreeTcpPort(),
+        httpsPort = https ? findRandomFreeTcpPort())
+      .copy(name = agentPath.name)
+    lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
+    lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
+
+    def provideHttpsCertificate(): Unit = {
+      val keyStore = config / "private/https-keystore.p12"
+      keyStore.contentBytes = AgentKeyStoreResource.contentBytes
+      importKeyStore(keyStore, MasterTrustStoreResource)
+      // KeyStore passwords has been provided by DirectoryProvider (must happen early)
+    }
+  }
+
+  final def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
     JobConfiguration(
       JobPath.NoId,
       JobScript(script(duration, resultVariable)),
@@ -195,20 +217,50 @@ object DirectoryProvider {
       taskLimit = 10
     ).asJson.toPrettyString
 
-  val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
+  final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
   private def script(duration: Duration, resultVariable: Option[String]) =
     if (isWindows)
-      (s"""
-        |@echo off
-        |echo ${StdoutOutput.trim}
-        |ping -n ${1 + (duration + 999999.µs).toMillis / 1000} 127.0.0.1 >nul""" +
-        resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
+      (s"""@echo off
+          |echo ${StdoutOutput.trim}
+          |ping -n ${1 + (duration + 999999.µs).toMillis / 1000} 127.0.0.1 >nul""" +
+          resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
       ).stripMargin
     else
-      (s"""
-        |echo ${StdoutOutput.trim}
-        |sleep ${duration.toSecondsString}""" +
-        resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
+      (s"""echo ${StdoutOutput.trim}
+          |sleep ${duration.toSecondsString}""" +
+          resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
+
+  // Following resources have been generated with the command line:
+  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/master/config
+  private val MasterKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/private/https-keystore.p12")
+  val MasterTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
+
+  // Following resources have been generated with the command line:
+  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/agent/config
+  private val AgentKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/private/https-keystore.p12")
+  private val AgentTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/export/https-truststore.p12")
+
+  private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
+    FileUtils.withTemporaryFile("test-", ".p12") { file ⇒
+      file.contentBytes = add.contentBytes
+      importKeyStore(keyStore, file)
+    }
+
+  private def importKeyStore(keyStore: Path, add: Path): Unit = {
+    val p = new ProcessBuilder("keytool", "-noprompt",
+      "-importkeystore",
+      "-destkeystore", keyStore.toString,
+      "-deststoretype", "pkcs12",
+      "-srckeystore", add.toString,
+      "-srcstorepass", "jobscheduler",
+      "-storepass", "jobscheduler")
+    p.redirectOutput(INHERIT)
+    p.redirectError(INHERIT)
+    val process = p.start()
+    val finished = process.waitFor(9, SECONDS)
+    assert(finished)
+    assert(process.exitValue == 0)
+  }
 }

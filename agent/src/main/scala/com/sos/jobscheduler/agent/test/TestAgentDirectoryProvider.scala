@@ -36,16 +36,22 @@ trait TestAgentDirectoryProvider extends HasCloser {
 
   protected[agent] def provideHttpsFiles(): Unit = {
     // Certificate files are under src/test/resources and only available for module "agent".
-    PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/private-https.jks") withCloser delete
-    PublicHttpJksResource.copyToFile(agentDirectory / "config/public-https.jks") withCloser delete
+    PrivateHttpJksResource.copyToFile(agentDirectory / "config/private/https-keystore.p12") withCloser delete
+    (agentDirectory / "config/private/private.conf").append(
+      s"""jobscheduler.webserver.https.keystore {
+         |  store-password = "jobscheduler"
+         |  key-password = "jobscheduler"
+         |}
+         |""".stripMargin)
   }
 }
 
 object TestAgentDirectoryProvider {
-  // Following resources have been generated with the command line:
-  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
-  private val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private-https.jks")
-  private val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/public-https.jks")
+  /* Following resources have been generated with the command lines:
+     common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
+
+  */
+  private val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/https-keystore.p12")
   private val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")
   val TestUserAndPassword = UserAndPassword(UserId("SHA512-USER"), SecretString("SHA512-PASSWORD"))
   private val logger = Logger(getClass)
