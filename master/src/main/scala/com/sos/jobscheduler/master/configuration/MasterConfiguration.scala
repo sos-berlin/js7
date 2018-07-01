@@ -52,9 +52,10 @@ extends CommonConfiguration
 object MasterConfiguration {
 
   def forTest(configAndData: Path,
+    config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    config: Config = ConfigFactory.empty
+    mutualHttps: Boolean = false
   ) =
     fromDataDirectory(
       dataDirectory = configAndData / "data",

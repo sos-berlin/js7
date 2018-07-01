@@ -32,7 +32,7 @@ import scala.concurrent.duration._
   *
   * @author Joacim Zschimmer
   */
-final class HttpsServerSideTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
+class HttpsServerSideTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   override protected lazy val masterHttpPort = None
   override protected lazy val masterHttpsPort = Some(findRandomFreeTcpPort())

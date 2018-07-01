@@ -168,9 +168,10 @@ object AgentConfiguration {
 
     def apply(
       configAndData: Path,
+      config: Config = ConfigFactory.empty,
       httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
       httpsPort: Option[Int] = None,
-      config: Config = ConfigFactory.empty
+      mutualHttps: Boolean = false
     ) =
       fromDirectories(
         configDirectory = configAndData / "config",
@@ -179,7 +180,7 @@ object AgentConfiguration {
       .copy(
         webServerPorts  =
           httpPort.map(port ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", port))) ++:
-          httpsPort.map(port ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = false)).toList,
+          httpsPort.map(port ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = mutualHttps)).toList,
         jobJavaOptions =
           s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
             sys.props.get("agent.job.javaOptions").toList)

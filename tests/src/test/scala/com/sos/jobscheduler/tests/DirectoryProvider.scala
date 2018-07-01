@@ -45,11 +45,17 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryProvider(agentPaths: Seq[AgentPath], agentHttps: Boolean = false) extends HasCloser {
+final class DirectoryProvider(
+  agentPaths: Seq[AgentPath],
+  agentHttps: Boolean = false,
+  agentHttpsMutual: Boolean = false,
+  masterHttpsMutual: Boolean = false)
+extends HasCloser {
 
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-  val master = new MasterTree(directory / "master")
-  val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o, https = agentHttps) }.toMap
+  val master = new MasterTree(directory / "master", mutualHttps = masterHttpsMutual)
+  val agentToTree: Map[AgentPath, AgentTree] =
+    agentPaths.map { o ⇒ o → new AgentTree(directory, o, https = agentHttps, mutualHttps = agentHttpsMutual) }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
 
   closeOnError(this) {
@@ -90,11 +96,17 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath], agentHttps: Boolean = 
   def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
     RunningMaster.runForTest(master.directory, eventCollector)(body)
 
-  def startMaster(module: Module = EMPTY_MODULE, httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None,
-    config: Config = ConfigFactory.empty)(implicit s: Scheduler)
+  def startMaster(
+    module: Module = EMPTY_MODULE,
+    config: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpsPort: Option[Int] = None,
+    mutualHttps: Boolean = false)
+    (implicit s: Scheduler)
   : Task[RunningMaster] =
     Task.deferFuture(
-      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, httpPort = httpPort, httpsPort = httpsPort, config)))
+      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
+        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps)))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -119,7 +131,8 @@ object DirectoryProvider
 
     import Scheduler.Implicits.global
 
-    protected final lazy val directoryProvider = new DirectoryProvider(agentPaths, agentHttps = agentHttps)
+    protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
+      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual, masterHttpsMutual = masterHttpsMutual)
 
     protected def agentConfig: Config = ConfigFactory.empty
     protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
@@ -128,13 +141,16 @@ object DirectoryProvider
     protected val masterModule: Module = EMPTY_MODULE
     protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
     protected lazy val masterHttpsPort: Option[Int] = None
+    protected def masterHttpsMutual = false
+    protected def agentHttpsMutual = false
     protected val masterConfig: Config = ConfigFactory.empty
 
     protected final lazy val master: RunningMaster = directoryProvider.startMaster(
       masterModule,
+      masterConfig,
       httpPort = masterHttpPort,
       httpsPort = masterHttpsPort,
-      masterConfig
+      mutualHttps = masterHttpsMutual
     ) await 99.s
 
     override def beforeAll() = {
@@ -183,7 +199,7 @@ object DirectoryProvider
       fileBasedDirectory resolve path.toFile(t)
   }
 
-  final class MasterTree(val directory: Path) extends Tree {
+  final class MasterTree(val directory: Path, mutualHttps: Boolean) extends Tree {
     def provideMastersHttpsCertificate(): Unit = {
       val keyStore = config / "private/https-keystore.p12"
       keyStore.contentBytes = MasterKeyStoreResource.contentBytes
@@ -192,11 +208,12 @@ object DirectoryProvider
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean) extends Tree {
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean) extends Tree {
     val directory = rootDirectory / agentPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
         httpPort = !https ? findRandomFreeTcpPort(),
-        httpsPort = https ? findRandomFreeTcpPort())
+        httpsPort = https ? findRandomFreeTcpPort(),
+        mutualHttps = mutualHttps)
       .copy(name = agentPath.name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
@@ -204,7 +221,9 @@ object DirectoryProvider
     def provideHttpsCertificate(): Unit = {
       val keyStore = config / "private/https-keystore.p12"
       keyStore.contentBytes = AgentKeyStoreResource.contentBytes
-      importKeyStore(keyStore, MasterTrustStoreResource)
+      if (mutualHttps) {
+        importKeyStore(keyStore, MasterTrustStoreResource)
+      }
       // KeyStore passwords has been provided by DirectoryProvider (must happen early)
     }
   }

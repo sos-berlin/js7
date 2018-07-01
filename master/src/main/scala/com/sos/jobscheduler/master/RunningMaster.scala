@@ -124,14 +124,18 @@ object RunningMaster {
     }
 
   def newInjectorForTest(directory: Path, module: Module = EMPTY_MODULE,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()), httpsPort: Option[Int] = None, config: Config = ConfigFactory.empty)
+    config: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpsPort: Option[Int] = None,
+    mutualHttps: Boolean = false)
   : Injector =
     Guice.createInjector(DEVELOPMENT,
       Modules `override` new MasterModule(MasterConfiguration.forTest(
         configAndData = directory,
+        config,
         httpPort = httpPort,
         httpsPort = httpsPort,
-        config))
+        mutualHttps = mutualHttps))
       `with` module)
 
   def apply(configuration: MasterConfiguration): Future[RunningMaster] =
