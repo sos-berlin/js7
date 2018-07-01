@@ -19,7 +19,7 @@ with ProvideActorSystem
   protected val baseUriString = baseUri.toString
 
   override protected lazy val httpsConnectionContextOption =
-    keyStoreRef map Https.toHttpsConnectionContext
+    keyStoreRef map Https.loadHttpsConnectionContext
 
   protected def httpClient = this
 

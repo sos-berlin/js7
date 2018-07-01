@@ -63,7 +63,7 @@ object MasterConfiguration {
     .copy(
       webServerPorts =
         httpPort.map(o ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
-        httpsPort.map(o ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = false)).toList)
+        httpsPort.map(o ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
@@ -98,7 +98,7 @@ object MasterConfiguration {
     (config withFallback extraDefaultConfig withFallback DefaultConfig).resolve
   }
 
-  // Same code in TextMasterClient.configDirectoryConfig
+  // Same code in AkkaHttpMasterTextApi.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty

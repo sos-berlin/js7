@@ -39,10 +39,10 @@ object Https
   //  r
   //}
 
-  def toHttpsConnectionContext(keyStoreRef: KeyStoreRef): HttpsConnectionContext =
-    ConnectionContext.https(newSSLContext(keyStoreRef))
+  def loadHttpsConnectionContext(keyStoreRef: KeyStoreRef): HttpsConnectionContext =
+    ConnectionContext.https(loadSSLContext(keyStoreRef))
 
-  def newSSLContext(keyStoreRef: KeyStoreRef): SSLContext =
+  def loadSSLContext(keyStoreRef: KeyStoreRef): SSLContext =
     toSSLContext(loadKeyStore(keyStoreRef), keyStoreRef.keyPassword)
 
   private def toSSLContext(keyStore: KeyStore, keyPassword: Option[SecretString]): SSLContext = {

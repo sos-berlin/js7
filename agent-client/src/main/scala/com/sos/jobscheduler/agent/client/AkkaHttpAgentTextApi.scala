@@ -1,13 +1,14 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.agent.client.TextAgentClient._
+import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi._
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
-import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextClient}
+import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -18,18 +19,18 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-private[agent] final class TextAgentClient(
+private[agent] final class AkkaHttpAgentTextApi(
   agentUri: AgentAddress,
   protected val print: String ⇒ Unit,
   configDirectory: Option[Path] = None)
-extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
+extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
 
   private val agentUris = AgentUris(agentUri)
 
   protected override lazy val httpsConnectionContextOption =
     for (configDir ← configDirectory) yield
-      Https.toHttpsConnectionContext(
-        KeyStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir resolve "private/https-keystore.p12").orThrow)
+      Https.loadHttpsConnectionContext(
+        KeyStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").orThrow)
 
   protected def baseUri = Uri(agentUri.string)
 
@@ -50,7 +51,7 @@ extends HasCloser with AkkaHttpClient with ProvideActorSystem with TextClient {
   override def close() = closer.close()
 }
 
-object TextAgentClient
+object AkkaHttpAgentTextApi
 {
   // Like AgentConfiguration.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =

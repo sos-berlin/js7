@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.client.main
 
-import com.sos.jobscheduler.agent.client.TextAgentClient
+import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
@@ -37,15 +37,15 @@ object AgentClientMain {
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new TextAgentClient(agentUri, print, configDirectory)) { client ⇒
-      client.setSessionToken(sessionToken)
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, print, configDirectory)) { textApi ⇒
+      textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
-        if (client.checkIsResponding()) 0 else 1
+        if (textApi.checkIsResponding()) 0 else 1
       else {
         operations foreach {
-          case StringCommand(command) ⇒ client.executeCommand(command)
-          case StdinCommand ⇒ client.executeCommand(scala.io.Source.stdin.mkString)
-          case Get(uri) ⇒ client.getApi(uri)
+          case StringCommand(command) ⇒ textApi.executeCommand(command)
+          case StdinCommand ⇒ textApi.executeCommand(scala.io.Source.stdin.mkString)
+          case Get(uri) ⇒ textApi.getApi(uri)
         }
         0
       }

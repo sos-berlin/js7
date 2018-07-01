@@ -88,7 +88,7 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
         http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST")) await 99.seconds }
     }
 
-    lazy val httpsConnectionContext = Https.toHttpsConnectionContext(ClientKeyStoreRef)
+    lazy val httpsConnectionContext = Https.loadHttpsConnectionContext(ClientKeyStoreRef)
 
     "Hostname verification rejects 127.0.0.1" in {
       val e = intercept[akka.stream.ConnectionException] {

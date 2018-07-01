@@ -7,7 +7,7 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.{ActorMaterializer, TLSClientAuth}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.https.Https.newSSLContext
+import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
@@ -54,7 +54,7 @@ trait AkkaWebServer extends AutoCloseable {
     logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for ${https.toWebServerPort}")
     bind(
       https,
-      ConnectionContext.https(newSSLContext(https.keyStoreRef),
+      ConnectionContext.https(loadSSLContext(https.keyStoreRef),
         clientAuth = https.mutual ? TLSClientAuth.Need))
   }
 

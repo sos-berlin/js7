@@ -3,13 +3,13 @@ package com.sos.jobscheduler.agent.tests
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.client.TextAgentClient
+import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.TestUserAndPassword
 import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentProvider}
-import com.sos.jobscheduler.agent.tests.TextAgentClientTest._
+import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
 import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator
@@ -32,7 +32,8 @@ import scala.concurrent.duration._
 /**
  * @author Joacim Zschimmer
  */
-final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
+final class AkkaHttpAgentTextApiTest
+extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
 
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
     httpPort = None, httpsPort = Some(findRandomFreeTcpPort()))
@@ -107,7 +108,7 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
     }
     assert(output == List("JobScheduler Agent is responding"))
     val agentUri = AgentAddress(s"http://127.0.0.1:${findRandomFreeTcpPort()}")
-    autoClosing(new TextAgentClient(agentUri, _ ⇒ Unit)) { client ⇒
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ ⇒ Unit)) { client ⇒
       intercept[akka.stream.StreamTcpException] {
         client.requireIsResponding()
       }
@@ -115,10 +116,10 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
   }
 
   private def newTextAgentClient(output: String ⇒ Unit) =
-    new TextAgentClient(agentUri = AgentAddress(agent.localUri.toString), output, configDirectory = Some(configDirectory))
+    new AkkaHttpAgentTextApi(agentUri = AgentAddress(agent.localUri.toString), output, configDirectory = Some(configDirectory))
 }
 
-private object TextAgentClientTest {
+private object AkkaHttpAgentTextApiTest {
   private val ExpectedTerminate = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password

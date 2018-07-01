@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.master.client.TextMasterClient
+import com.sos.jobscheduler.master.client.AkkaHttpMasterTextApi
 import java.nio.file.{Files, Path}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -38,15 +38,15 @@ object MasterClientMain {
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
     val (masterUri, configDir, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new TextMasterClient(masterUri, print, configDir)) { client ⇒
-      client.setSessionToken(sessionToken)
+    autoClosing(new AkkaHttpMasterTextApi(masterUri, print, configDir)) { textApi ⇒
+      textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
-        if (client.checkIsResponding()) 0 else 1
+        if (textApi.checkIsResponding()) 0 else 1
       else {
         operations foreach {
-          case StringCommand(command) ⇒ client.executeCommand(command)
-          case StdinCommand ⇒ client.executeCommand(scala.io.Source.stdin.mkString)
-          case Get(uri) ⇒ client.getApi(uri)
+          case StringCommand(command) ⇒ textApi.executeCommand(command)
+          case StdinCommand ⇒ textApi.executeCommand(scala.io.Source.stdin.mkString)
+          case Get(uri) ⇒ textApi.getApi(uri)
         }
         0
       }

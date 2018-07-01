@@ -2,7 +2,6 @@ package com.sos.jobscheduler.common.http
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.Json
@@ -13,29 +12,30 @@ import scala.concurrent.{Await, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait TextClient extends AkkaHttpClient with SessionApi {
+trait TextApi {
 
   protected val print: String ⇒ Unit
   protected def serverName: String
   protected def sessionUri: String
   protected def commandUri: Uri
   protected def apiUri(tail: String): Uri
+  protected def httpClient: AkkaHttpClient
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      post[Json, Json](commandUri, yamlToJson(command).orThrow).runAsync)
+      httpClient.post[Json, Json](commandUri, yamlToJson(command).orThrow).runAsync)
     printer.doPrint(response.toYamlString)
   }
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = get[Json](apiUri(u), 60.seconds).runAsync
+    val whenResponded = httpClient.get[Json](apiUri(u), 60.seconds).runAsync
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit = {
-    val whenResponded = get[Json](apiUri(""), 60.seconds).runAsync
+    val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runAsync
     awaitResult(whenResponded)
     print(s"$serverName is responding")
   }

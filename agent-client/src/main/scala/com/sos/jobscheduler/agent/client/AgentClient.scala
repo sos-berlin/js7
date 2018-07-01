@@ -30,7 +30,7 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
   protected def keyStoreRef: Option[KeyStoreRef]
 
   override protected lazy val httpsConnectionContextOption =
-    keyStoreRef map Https.toHttpsConnectionContext
+    keyStoreRef map Https.loadHttpsConnectionContext
 
   protected lazy val sessionUri = agentUris.session.toString()
   protected lazy val agentUris = AgentUris(baseUri.toString)
