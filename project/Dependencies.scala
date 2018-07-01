@@ -13,7 +13,7 @@ object Dependencies {
   val catsVersion = "1.1.0"
   val catsEffectVersion = "0.10"
   val fastparseVersion = "1.0.0"
-  val kittensVersion = "1.0.0-RC3"
+  val kittensVersion = "1.1.0"
   val circeVersion = "0.9.3"
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.12.0"
