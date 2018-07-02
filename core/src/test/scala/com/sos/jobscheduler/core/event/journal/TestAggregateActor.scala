@@ -65,7 +65,7 @@ extends KeyedJournalingActor[TestEvent] {
 
         case Command.AppendAsync(string) ⇒
           for (c ← string) {
-            persistAsync(TestEvent.Appended(c))(update)
+            persist(TestEvent.Appended(c), async = true)(update)
           }
           deferAsync {
             sender() ! Response.Completed(disturbance)
@@ -86,7 +86,7 @@ extends KeyedJournalingActor[TestEvent] {
         case Command.AppendNestedAsync(string) ⇒
           def append(string: List[Char]): Unit = string match {
             case char :: tail ⇒
-              persistAsync(TestEvent.Appended(char)) { e ⇒
+              persist(TestEvent.Appended(char), async = true) { e ⇒
                 update(e)
                 append(tail)
               }

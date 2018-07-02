@@ -75,11 +75,17 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   def receive = journaling orElse {
+    case Input.Recover(o) ⇒
+      assert(order == null)
+      order = o
+
     case Input.AddChild(o) ⇒
+      assert(order == null)
       order = o
       context.become(idle)
 
     case Input.AddPublished(o) ⇒
+      assert(order == null)
       order = o
       context.become(offered)
 
@@ -301,6 +307,7 @@ private[order] object OrderActor
 
   sealed trait Input
   object Input {
+    final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddPublished(order: Order[Order.Offered]) extends Input
     final case class StartProcessing(job: Job, jobActor: ActorRef) extends Input

@@ -101,7 +101,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
           case (None, Deferred(_, callback)) ⇒
             callback()
 
-          case x ⇒ sys.error(s"Bad Stored message received: $x")
+          case x ⇒ sys.error(s"Bad 'JournalActor.Output.Stored' message received: $x")
         }
       }
 

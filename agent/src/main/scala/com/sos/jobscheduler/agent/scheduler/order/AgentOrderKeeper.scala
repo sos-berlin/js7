@@ -96,7 +96,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
         val actor = newOrderActor(order)
         orderRegister.recover(order, workflow, actor)
-        actor ! KeyedJournalingActor.Input.Recover(order)
+        actor ! OrderActor.Input.Recover(order)
       }
     recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }

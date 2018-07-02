@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 
 /**
@@ -17,10 +18,8 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   protected def recoverFromEvent(event: E): Unit
   protected def finishRecovery() = {}
 
-  protected final def snapshots = Future.successful(snapshot.toList)
-
-  protected final def persistAsync[EE <: E, A](event: EE, noSync: Boolean = false)(callback: EE ⇒ A): Future[A] =
-    persist(event, noSync = noSync, async = true)(callback)
+  protected final def snapshots: Future[Iterable[Any]] =
+    Future.successful(snapshot.toList)
 
   protected final def persist[EE <: E, A](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ A): Future[A] = {
     registerMe()
@@ -30,9 +29,6 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   }
 
   override def unhandled(msg: Any) = msg match {
-    case Input.Recover(snapshot) ⇒
-      recoverFromSnapshot(snapshot)
-
     case Input.RecoverFromSnapshot(o) ⇒
       registered = true
       recoverFromSnapshot(o)
@@ -49,12 +45,11 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     case _ ⇒ super.unhandled(msg)
   }
 
-  private def registerMe(): Unit = {
+  private def registerMe(): Unit =
     if (!registered) {
       journalActor ! JournalActor.Input.RegisterMe(Some(key))
       registered = true
     }
-  }
 
   private def callFinishRecovery(): Unit = {
     finishRecovery()
@@ -67,8 +62,6 @@ object KeyedJournalingActor {
   object Input {
     final case class RecoverFromSnapshot(snapshot: Any)
     final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
-    @deprecated
-    final case class Recover(snapshot: Any)
     final case object FinishRecovery
   }
 
