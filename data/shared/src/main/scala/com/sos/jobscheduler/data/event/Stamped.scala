@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.event
 
 import cats.{Eq, Functor}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.event.Stamped._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject, ObjectEncoder}
@@ -44,7 +45,8 @@ object Stamped
         case Some(o) ⇒
           fields ++= o.toIterable
         case None ⇒
-          fields += (if (json.isArray) "array" else "value") → json
+          if (!json.isArray) sys.error(s"Stamped[A], A must serialze to a JSON object or array, not: ${json.getClass.simpleScalaName}")
+          fields += "array" → json
       }
       JsonObject.fromIterable(fields)
     }
@@ -54,13 +56,9 @@ object Stamped
       for {
         eventId ← cursor.get[EventId]("eventId")
         timestamp = cursor.get[Long]("timestamp") map Timestamp.ofEpochMilli getOrElse EventId.toTimestamp(eventId)
-        a ← cursor.get[A]("value") match {
+        a ← cursor.get[A]("array") match {  // stamped.value must not contain a field named "array" !!!
           case o if o.isRight ⇒ o
-          case _ ⇒
-            cursor.get[A]("array") match {
-              case o if o.isRight ⇒ o
-              case _ ⇒ cursor.as[A]
-            }
+          case _ ⇒ cursor.as[A]
         }
       } yield Stamped(eventId, timestamp, a)
 }

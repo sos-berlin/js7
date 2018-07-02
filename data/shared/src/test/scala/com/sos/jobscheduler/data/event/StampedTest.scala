@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.event
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
 /**
@@ -46,12 +47,17 @@ final class StampedTest extends FreeSpec {
       }""")
   }
 
-  "JSON with String" in {
-    testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE"),
-      """{
-        "eventId": 777,
-        "timestamp": 123,
-        "value": "VALUE"
-      }""")
+  "Stamped[simple type] is not supported" in {
+    // Rejected because a field "value" may duplicate an object field "value".
+    // Stamped is used only for objects and arrays, not for simple values.
+    intercept[RuntimeException] {
+      Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE").asJson.as[Stamped[String]]
+    }
+    //testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE"),
+    //  """{
+    //    "eventId": 777,
+    //    "timestamp": 123,
+    //    "value": "VALUE"
+    //  }""")
   }
 }
