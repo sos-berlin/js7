@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.agent
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import akka.http.scaladsl.model.Uri
-import akka.pattern.pipe
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -10,27 +9,27 @@ import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked.CheckedOption
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentId
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.typesafe.config.ConfigUtil
-import java.time.Instant.now
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Keeps connection to an Agent, sends orders, and fetches events (using `EventFetcher`).
+  * Keeps connection to an Agent, sends orders, and fetches events.
   *
   * @author Joacim Zschimmer
   */
@@ -41,14 +40,24 @@ with Stash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
   private val config = masterConfiguration.config
+  private val batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size")
+  private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
+  private val eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration
+  private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
   private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
-  private val client = AgentClient(uri, masterConfiguration.keyStoreRef.toOption)(context.system)
-  private var startInputReceived = false
-  private var eventFetcher: EventFetcher[OrderEvent] = null
-  private var lastEventId = EventId.BeforeFirst
   private val reconnectPause = new ReconnectPause
-  private val batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size")
-  private val batchDelay = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
+  private val client = AgentClient(uri, masterConfiguration.keyStoreRef.toOption)(context.system)
+
+  private val agentUserAndPassword: Checked[UserAndPassword] =
+    config.optionAs[SecretString](authConfigPath)
+      .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
+      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $authConfigPath"))
+
+  private var startInputReceived = false
+  private var isConnected = false
+  private var isAwaitingEventResponse = false
+  private var lastEventId = EventId.BeforeFirst
+  private var logCount = 0
 
   become(disconnected)
   self ! Internal.Connect
@@ -65,16 +74,8 @@ with Stash {
   }
 
   override def postStop() = {
-    if (eventFetcher != null) {
-      eventFetcher.close()
-    }
-    if (client.hasSession) {
-      client.logout().runAsync onComplete {
-        _ ⇒ client.close()
-      }
-      // Don't await response
-    } else {
-      client.close()
+    client.logout().runAsync onComplete {
+      _ ⇒ client.close()  // Don't await response
     }
     super.postStop()
   }
@@ -93,11 +94,10 @@ with Stash {
           ( for {
               _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.Response
               _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
-            } yield Internal.Connected
-          ).runAsync
-            .recover {
-              case t ⇒ Internal.ConnectFailed(t)
-            } pipeTo self
+            } yield Completed
+          ).runAsync.onComplete { tried ⇒
+            self ! Internal.AfterConnect(tried)
+          }
           unstashAll()
           become(connecting)
       }
@@ -107,7 +107,8 @@ with Stash {
   }
 
   private def connecting: Receive = {
-    case Internal.Connected ⇒
+    case Internal.AfterConnect(Success(Completed)) ⇒
+      isConnected = true
       reconnectPause.onConnectSucceeded()
       commandQueue.onReconnected()
       unstashAll()
@@ -116,10 +117,9 @@ with Stash {
         self ! Input.Start(lastEventId)
       }
 
-    case msg: Internal.ConnectFailed ⇒
-      reconnectPause.onConnectFailed()
-      logger.debug(msg.toString, msg.throwable)
-      onConnectionError(msg.toString)
+    case Internal.AfterConnect(Failure(throwable)) ⇒
+      onConnectionError(throwable)
+      reconnect()
 
     case _ ⇒
       stash
@@ -129,71 +129,43 @@ with Stash {
     case Input.Start(eventId) ⇒
       lastEventId = eventId
       startInputReceived = true
-      startEventFetcher()
+      logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
       commandQueue.maySend()
       unstashAll()
       become(ready)
+      self ! Internal.FetchEvents(lastEventId)
 
     case _ ⇒
       stash
   }
 
   private def ready: Receive = {
-    case msg @ Internal.EventFetcherTerminated(Failure(_)) ⇒
-      onConnectionError(msg.toString)
+    case Internal.FetchEvents(after) if !isAwaitingEventResponse ⇒
+      lastEventId = after
+      isAwaitingEventResponse = true
+      client.mastersEvents(EventRequest.singleClass(after = after, eventFetchTimeout)).runAsync
+        .andThen { case _ ⇒
+          isAwaitingEventResponse = false
+        }
+        .onComplete {
+          // Asynchronous!
+          case Failure(t) ⇒
+            self ! Internal.Fetched(Failure(t))
+
+          case Success(EventSeq.Empty(lastEventId_)) ⇒  // No events after timeout
+            if (isConnected) scheduler.scheduleOnce(1.second) {
+              self ! Internal.FetchEvents(lastEventId_)
+            }
+
+          case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
+            self ! Internal.Fetched(Success(stampedEvents))
+        }
 
     case Internal.CommandQueueReady ⇒
       commandQueue.maySend()
   }
 
-  private def become(r: Receive) = context.become(r orElse handleOtherMessage)
-
-  private def startEventFetcher(): Unit = {
-    assert(eventFetcher == null)
-    logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
-
-    eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
-      protected lazy val delay = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
-
-      protected def fetchEvents(request: EventRequest[OrderEvent]) =
-        client.mastersEvents(request).runAsync
-
-      protected def onEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]]) =
-        self ! Internal.AgentEvents(stamped)
-    }
-
-    eventFetcher.start() onComplete {
-      o ⇒ self ! Internal.EventFetcherTerminated(o)
-    }
-  }
-
-  private def agentUserAndPassword: Checked[UserAndPassword] =
-    config.optionAs[SecretString](authConfigPath)
-      .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
-      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $authConfigPath"))
-
-  private def onConnectionError(error: String): Unit = {
-    logger.warn(error)
-    if (eventFetcher != null) {
-      eventFetcher.close()
-      eventFetcher = null
-    }
-    become(disconnecting)
-    if (client.hasSession) {
-      client.logout().runAsync onComplete { _ ⇒
-        self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent has been restarted) or Agent shutdown
-      }
-    } else {
-      self ! Internal.LoggedOut
-    }
-  }
-
-  private def disconnecting: Receive = {
-    case Internal.LoggedOut ⇒
-      client.clearSession()
-      context.system.scheduler.scheduleOnce(reconnectPause.pause.toFiniteDuration, self, Internal.Connect)
-      become(disconnected)
-  }
+  private def become(recv: Receive) = context.become(recv orElse handleOtherMessage)
 
   private def handleOtherMessage: Receive = {
     case input: Input.QueueableInput if sender() == context.parent ⇒
@@ -201,9 +173,6 @@ with Stash {
       scheduler.scheduleOnce(batchDelay) {
         self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueuableInput pending in actor's mailbox can be queued
       }
-
-    case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
-      logger.debug(msg.toString)
 
     case Internal.BatchSucceeded(responses) ⇒
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
@@ -214,32 +183,66 @@ with Stash {
 
     case Internal.BatchFailed(inputs, throwable) ⇒
       commandQueue.handleBatchFailed(inputs)
-      throwable match {
-        case t: AkkaHttpClient.HttpException ⇒
-          onConnectionError(t.toStringWithCauses)
-
-        case t ⇒
-          logger.error(s"$t", t)
-          onConnectionError(t.toStringWithCauses)
-          // TODO Retry several times, finally inform commander about failure (dropping the order)
-          // 1) Wenn es ein Verbindungsfehler ist (oder ein HTTP-Fehlercode eines Proxys), dann versuchen wir endlos weiter.
-          // Der Verbindungsfehler kann die eine TCP-Verbindung betreffen. Dann genügt ein neuer Versuch.
-          // Wenn wir einige (zwei?) Fehler in Folge ohne Erfolg zwischendurch erhalten, dann unterbrechen wir die Verbindung zum Agenten
-          // für kurze Zeit, bevor wir sie wiederaufleben lassen.
-          // Diesen Mechanisms haben wir schon.
-          // 2) akka.stream.BufferOverflowException: Später wieder versuchen
-          // 3) Mehrere Inputs (alle in inputQueue, doch limitiert) gebündelt dem Agenten schicken,
-          // Agent antwortet mit entsprechened vielen Okays oder Fehlermeldungen
-          // 4) Prüfen, ob akka.http.host-connection-pool.client.max-retries von 0 auf 5 (die Voreinstellung) erhöht werden kann.
+      onConnectionError(throwable)
+      if (isConnected) {
+        reconnect()
+        //throwable match {
+        //  case t: AkkaHttpClient.HttpException ⇒
+        //    onConnectionError(t)
+        //
+        //  case t ⇒
+        //    onConnectionError(t)
+        //    // TODO Retry several times, finally inform commander about failure (dropping the order)
+        //    // 1) Wenn es ein Verbindungsfehler ist (oder ein HTTP-Fehlercode eines Proxys), dann versuchen wir endlos weiter.
+        //    // Der Verbindungsfehler kann die eine TCP-Verbindung betreffen. Dann genügt ein neuer Versuch.
+        //    // Wenn wir einige (zwei?) Fehler in Folge ohne Erfolg zwischendurch erhalten, dann unterbrechen wir die Verbindung zum Agenten
+        //    // für kurze Zeit, bevor wir sie wiederaufleben lassen.
+        //    // Diesen Mechanisms haben wir schon.
+        //    // 2) akka.stream.BufferOverflowException: Später wieder versuchen
+        //    // 3) Mehrere Inputs (alle in inputQueue, doch limitiert) gebündelt dem Agenten schicken,
+        //    // Agent antwortet mit entsprechened vielen Okays oder Fehlermeldungen
+        //    // 4) Prüfen, ob akka.http.host-connection-pool.client.max-retries von 0 auf 5 (die Voreinstellung) erhöht werden kann.
+        //}
       }
 
     case Internal.CommandQueueReady ⇒
 
-    case Internal.AgentEvents(stamped) ⇒
-      context.parent ! Output.EventsFromAgent(stamped)  // TODO Possible OutOfMemoryError. Use reactive stream ?
-      for (last ← stamped.lastOption) {
+    case Internal.Fetched(Failure(throwable)) ⇒
+      onConnectionError(throwable)
+      if (isConnected) {
+        reconnect()
+      }
+
+    case Internal.Fetched(Success(stampedEvents)) ⇒
+      if (logger.underlying.isTraceEnabled) for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") }
+
+      context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream ?
+
+      for (last ← stampedEvents.lastOption) {
         lastEventId = last.eventId
       }
+      if (isConnected) scheduler.scheduleOnce(eventFetchDelay) {
+        self ! Internal.FetchEvents(lastEventId)
+      }
+  }
+
+  private def onConnectionError(throwable: Throwable): Unit = {
+    logger.warn(throwable.toStringWithCauses)
+    if (throwable.getStackTrace.nonEmpty) logger.debug("", throwable)
+  }
+
+  private def reconnect() = {
+    isConnected = false
+    client.logout().runAsync onComplete { _ ⇒
+      self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
+    }
+    become {
+      case Internal.LoggedOut ⇒
+        scheduler.scheduleOnce(reconnectPause.nextPause()) {
+          self ! Internal.Connect
+        }
+        become(disconnected)
+    }
   }
 
   override def toString = s"AgentDriver(${agentId.toSimpleString}: $uri)"
@@ -251,15 +254,16 @@ private[master] object AgentDriver
     Props { new AgentDriver(agentId, uri, masterConfiguration) }
 
   private class ReconnectPause {
-    private val ShortPause = 1.s
-    private val LongPause = 10.s
-    private var nextPause = ShortPause
+    private val Minimum = 1.second
+    private var pauses = initial
     private var lastConnect = now
 
     def onConnect() = lastConnect = now
-    def onConnectSucceeded() = nextPause = ShortPause
-    def onConnectFailed() = nextPause = 2 * nextPause min LongPause
-    def pause = (lastConnect + nextPause - now) max ShortPause
+    def onConnectSucceeded() = pauses = initial
+    def nextPause() = (lastConnect + pauses.next() - now) max Minimum
+
+    private def initial = Iterator(Minimum, Minimum, Minimum, Minimum, 2.seconds, 5.seconds) ++
+      Iterator.continually(10.seconds)
   }
 
   sealed trait Input
@@ -288,16 +292,13 @@ private[master] object AgentDriver
 
   private object Internal {
     final case object Connect
-    final case object Connected
-    final case class ConnectFailed(throwable: Throwable) {
-      override def toString = s"ConnectFailed(${throwable.toStringWithCauses})"
-    }
+    final case class AfterConnect(result: Try[Completed])
     final case object LoggedOut
     final case object Ready
     final case object CommandQueueReady
-    final case class AgentEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]])
-    final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse])
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
+    final case class FetchEvents(after: EventId) extends DeadLetterSuppression
+    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[OrderEvent]]]])
   }
 }

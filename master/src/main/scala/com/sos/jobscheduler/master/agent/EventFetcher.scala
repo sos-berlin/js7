@@ -12,11 +12,12 @@ import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
+// TODO Unused - Könnte für Trennung von Event-Empfang und Auftragsversad wieder verwendet werden.
+
 /**
   * @author Joacim Zschimmer
   */
-abstract class EventFetcher[E <: Event: ClassTag](after: EventId)
-  (implicit protected val scheduler: Scheduler)
+private[agent] abstract class EventFetcher[E <: Event: ClassTag](after: EventId)(implicit protected val scheduler: Scheduler)
 extends AutoCloseable {
 
   protected def fetchEvents(request: EventRequest[E]): Future[EventSeq[Seq, KeyedEvent[E]]]
