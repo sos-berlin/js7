@@ -198,7 +198,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         case Valid(_) ⇒
           val workflowResponse = workflowRegister.get(order.workflowId) match {
             case None ⇒
-              persist(KeyedEvent(WorkflowAttached(workflow))) { stampedEvent ⇒
+              persist(WorkflowAttached(workflow)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 Accepted
               }

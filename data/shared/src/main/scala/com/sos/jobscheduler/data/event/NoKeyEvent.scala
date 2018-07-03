@@ -11,6 +11,6 @@ trait NoKeyEvent extends Event {
 }
 
 object NoKeyEvent {
-  implicit def toKeyedEvent(e: NoKeyEvent): KeyedEvent[NoKeyEvent] =
-    KeyedEvent(e)
+  implicit def toKeyedEvent[E <: NoKeyEvent](event: E): KeyedEvent[E] =
+    KeyedEvent(event)
 }

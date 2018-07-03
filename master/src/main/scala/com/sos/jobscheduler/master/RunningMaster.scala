@@ -54,6 +54,8 @@ import scala.collection.immutable.Seq
 import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
+import shapeless.tag
+import shapeless.tag.@@
 
 /**
  * JobScheduler Agent.
@@ -166,19 +168,22 @@ object RunningMaster {
       closer onClose { sessionTokenFile.delete() }
     }
 
-    private def startMasterOrderKeeper(): (ActorRef, Future[Completed]) =
-      CatchingActor.actorOf[Completed](
-          _ ⇒ Props {
-            new MasterOrderKeeper(
-              masterConfiguration,
-              injector.instance[EventIdClock])(
-              injector.instance[TimerService],
-              injector.instance[JournalEventReaderProvider[Event]],
-              injector.instance[StampedKeyedEventBus],
-              scheduler)
-          },
-          onStopped = _ ⇒ Success(Completed)
-        )(actorSystem)
+    private def startMasterOrderKeeper(): (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
+      val (actor, whenCompleted) =
+        CatchingActor.actorOf[Completed](
+            _ ⇒ Props {
+              new MasterOrderKeeper(
+                masterConfiguration,
+                injector.instance[EventIdClock])(
+                injector.instance[TimerService],
+                injector.instance[JournalEventReaderProvider[Event]],
+                injector.instance[StampedKeyedEventBus],
+                scheduler)
+            },
+            onStopped = _ ⇒ Success(Completed)
+          )(actorSystem)
+      (tag[MasterOrderKeeper.type](actor), whenCompleted)
+    }
 
     private[RunningMaster] def start(): Future[RunningMaster] = {
       StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
@@ -190,7 +195,7 @@ object RunningMaster {
       val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper()
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
-      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper = orderKeeper)
+      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper)
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) ⇒ logger.error(t.toStringWithCauses, t) }
