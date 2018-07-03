@@ -203,6 +203,14 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     }
   }
 
+  "Logout without SessionToken is short-circuited" in {
+    withClient() { client ⇒
+      assert(!client.hasSession)
+      client.logout() await 99.s shouldEqual Completed
+      assert(!client.hasSession)
+    }
+  }
+
   "Use of discarded SessionToken is unauthorized, clearSession" in {
     // This applies to all commands, also Login and Logout.
     // With Unauthorized or Forbidden, the client learns about the invalid session.
@@ -211,11 +219,23 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
       val exception = requireAccessIsUnauthorized(client)
       assert(exception.header[`WWW-Authenticate`] == Some(LoginWWWAuthenticate))
       assert(AkkaHttpClient.sessionMayBeLost(exception))
+      assert(client.hasSession)
 
       client.clearSession()
       client.login(Some(AUserAndPassword)) await 99.s
       assert(client.hasSession)
       client.logout() await 99.s
+    }
+  }
+
+  "logout clears SessionToken even after failure" in {
+    withClient() { client ⇒
+      client.setSessionToken(SessionToken(SecretString("DISCARDED")))
+      assert(client.hasSession)
+      intercept[AkkaHttpClient.HttpException] {
+        client.logout() await 99.s
+      } .status shouldEqual Unauthorized
+      assert(!client.hasSession)
     }
   }
 
