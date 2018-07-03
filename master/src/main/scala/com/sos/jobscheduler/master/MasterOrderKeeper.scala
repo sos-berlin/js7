@@ -39,6 +39,7 @@ import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.{MasterFileBasedJsonCodec, MasterKeyedEventJsonCodec, MasterTypedPathJsonCodec}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -155,9 +156,9 @@ with KeyedEventJournalingActor[Event] {
   }
 
   private def ready: Receive = journaling orElse {
-    case command: MasterCommand ⇒
+    case Command.Execute(command, meta) ⇒
       val sender = this.sender()
-      executeMasterCommand(command) onComplete {
+      executeMasterCommand(command, meta) onComplete {
         case Success(response) ⇒ sender ! response
         case Failure(t) ⇒ sender ! Status.Failure(t)
       }
@@ -258,7 +259,7 @@ with KeyedEventJournalingActor[Event] {
       context.stop(self)
   }
 
-  private def executeMasterCommand(command: MasterCommand): Future[MasterCommand.Response] =
+  private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
     command match {
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
         val checkedSideEffect = for {
@@ -507,6 +508,7 @@ private[master] object MasterOrderKeeper {
 
   sealed trait Command
   object Command {
+    final case class Execute(command: MasterCommand, meta: CommandMeta)
     final case class AddOrderSchedule(orders: Seq[FreshOrder]) extends Command
     final case object GetRepo extends Command
     final case class GetWorkflow(path: WorkflowPath) extends Command

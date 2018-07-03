@@ -7,11 +7,13 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.master.MasterOrderKeeper
 import com.sos.jobscheduler.master.command.CommandExecutor._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.EmergencyStop
 import monix.eval.Task
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
@@ -19,7 +21,7 @@ import monix.eval.Task
 private[master] final class CommandExecutor(
   masterConfiguration: MasterConfiguration,
   sessionRegister: SessionRegister[SimpleSession],
-  orderKeeper: ActorRef)
+  orderKeeper: ActorRef @@ MasterOrderKeeper.type)
 {
   import masterConfiguration.akkaAskTimeout
 
@@ -33,10 +35,13 @@ private[master] final class CommandExecutor(
         logger.error(msg)
         Log4j.shutdown()
         sys.runtime.halt(99)
-        Task.pure(Valid(MasterCommand.Response.Accepted))  // unreachable
+        throw new Error("sys.runtime.halt failed")
 
       case _ ⇒
-        Task.deferFuture((orderKeeper ? command).mapTo[MasterCommand.Response]) map Valid.apply  // TODO MasterOrderKeeper should return Checked
+        Task.deferFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.Execute(command, meta))
+            .mapTo[MasterCommand.Response]) map Valid.apply
+        // TODO MasterOrderKeeper should return Checked
     }
 }
 
