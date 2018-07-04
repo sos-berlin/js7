@@ -119,7 +119,7 @@ object RunningMaster {
         body(master)
         master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
         master.terminated await 99.s
-      } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
+      } catch { case NonFatal(t) if master.terminated.failed.isCompleted && t != master.terminated.failed.successValue ⇒
         t.addSuppressed(master.terminated.failed.successValue)
         throw t
       }
