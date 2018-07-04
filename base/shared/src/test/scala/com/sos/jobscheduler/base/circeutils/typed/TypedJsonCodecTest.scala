@@ -37,6 +37,12 @@ final class TypedJsonCodecTest extends FreeSpec {
   "Nested TypedJsonCodec" in {
     testJson[A](AA1(7)  , """{ "TYPE": "AA1", "int": 7 }""")
   }
+
+  "Union" in {
+    implicit val ab: TypedJsonCodec[Any] = AJsonCodec | BJsonCodec
+    testJson[Any](A0, json"""{ "TYPE": "A0" }""")
+    testJson[Any](B0, json"""{ "TYPE": "B0" }""")
+  }
 }
 
 object TypedJsonCodecTest {
@@ -57,4 +63,10 @@ object TypedJsonCodecTest {
     Subtype[A1],
     Subtype[A2],
     Subtype[AA])
+
+  sealed trait B
+  case object B0 extends B
+
+  private implicit val BJsonCodec: TypedJsonCodec[B] = TypedJsonCodec[B](
+    Subtype(B0))
 }

@@ -15,6 +15,21 @@ final class TypedJsonCodec[A](
   val nameToClass: Map[String, Class[_ <: A]])
 extends ObjectEncoder[A] with Decoder[A] {
 
+  /** Union. */
+  def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] = {
+    val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
+    if (sameClasses.nonEmpty) throw new IllegalArgumentException(s"Union of TypedJsonCodec has non-unique classes: $sameClasses")
+    val sameClassNames = nameToClass.keySet & other.nameToClass.keySet
+    if (sameClassNames.nonEmpty) throw new IllegalArgumentException(s"Union of TypedJsonCodec has non-unique decoder names: $sameClassNames")
+    val sameDecoderNames = nameToDecoder.keySet & other.nameToDecoder.keySet
+    if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of TypedJsonCodec has non-unique class names: $sameDecoderNames")
+
+    new TypedJsonCodec[Any](
+      classToEncoder ++ other.classToEncoder,
+      nameToDecoder ++ other.nameToDecoder,
+      nameToClass ++ other.nameToClass)
+  }
+
   def apply(c: HCursor) = decode(c)
 
   def encodeObject(a: A): JsonObject =
