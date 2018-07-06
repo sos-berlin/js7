@@ -17,7 +17,7 @@ object UserId extends GenericString.Companion[UserId] {
   def apply(o: String) = UserId.checked(o).orThrow
 
   override def checked(o: String) =
-    if (NamePattern.matcher(o).matches)
+    if (NamePattern.matcher(o).matches && !o.contains("--"))
       Valid(new UserId(o))
     else
       Invalid(Problem("Not a valid UserId: '$string'"))

@@ -17,11 +17,13 @@ final class UserIdTest extends FreeSpec {
     intercept[ProblemException] { UserId(".") }
     intercept[ProblemException] { UserId("..") }
     intercept[ProblemException] { UserId(".hidden") }
+    intercept[ProblemException] { UserId("Master--100") }  // "--" is used for history journal files
   }
 
   "Valid UserId" in {
     UserId("a")
     UserId("å")
+    UserId("テスト")
     UserId("0")
     UserId("ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÅÜabcdefghijklmnopqrstuvwxyzäöåüß0123456789.-_")
     UserId("a.")
