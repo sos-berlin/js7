@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.master.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
@@ -10,7 +9,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 /**
@@ -49,15 +47,14 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   final def onReconnected() =
     freshReconnected = true
 
-  final def enqueue(input: Input.QueueableInput): Future[Completed] = {
+  final def enqueue(input: Input.QueueableInput): Unit = {
     queue.enqueue(input)
-    if (queue.size == batchSize || freshReconnected)
+    if (queue.size == batchSize || freshReconnected) {
       maySend()
-    else
-      Future.successful(Completed)
+    }
   }
 
-  final def maySend(): Future[Completed]/*Future for test only*/ = {
+  final def maySend(): Unit = {
     lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
     if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
       executingInputs ++= inputs
@@ -70,9 +67,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
           case Failure(t) ⇒
             asyncOnBatchFailed(inputs, t)
-        } map (_ ⇒ Completed)
-    } else
-      Future.successful(Completed)
+        }
+    }
   }
 
   private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =

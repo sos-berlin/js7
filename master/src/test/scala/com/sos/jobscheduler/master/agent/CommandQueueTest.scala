@@ -3,8 +3,9 @@ package com.sos.jobscheduler.master.agent
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
 import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -19,7 +20,6 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 
 /**
@@ -49,32 +49,38 @@ final class CommandQueueTest extends FreeSpec {
 
     // The first Input is sent alone to the Agent regardless of batchSize.
     val aOrder = toOrder("A")
-    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
+    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath % "(initial)", TestWorkflow))
     expected += toQueuedInputResponse(aOrder) :: Nil
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
+    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow))
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath % "(initial)", TestWorkflow))
     expected += twoOrders map toQueuedInputResponse
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow)) await 99.seconds
+    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow))
     expected += fiveOrders take 1 map toQueuedInputResponse
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o ⇒ Input.AttachOrder(o, TestAgentPath % "(initial)", TestWorkflow))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // Finally, the last queued Input is processed
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last)
     expected += fiveOrders drop 4 map toQueuedInputResponse
+    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
     assert(commandQueue.failed.isEmpty)
   }
