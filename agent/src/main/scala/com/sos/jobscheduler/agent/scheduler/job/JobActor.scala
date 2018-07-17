@@ -40,12 +40,16 @@ extends Actor with Stash {
   private var terminating = false
   private var jobConfiguration: JobConfiguration = null
   private lazy val filePool = new FilePool(jobConfiguration)
-  private lazy val shellFile = newTemporaryShellFile(jobConfiguration.path.name) sideEffect { file ⇒
-    autoClosing(new OutputStreamWriter(new FileOutputStream(file), FileEncoding)) { w ⇒
-      val content = jobConfiguration.script.string.trim
-      if (content.nonEmpty) {
-        w.write(jobConfiguration.script.string.trim)
-        w.write("\n")
+  private var shellFileUsed = false
+  private lazy val shellFile = {
+    shellFileUsed = true
+    newTemporaryShellFile(jobConfiguration.path.name) sideEffect { file ⇒
+      autoClosing(new OutputStreamWriter(new FileOutputStream(file), FileEncoding)) { w ⇒
+        val content = jobConfiguration.script.string.trim
+        if (content.nonEmpty) {
+          w.write(jobConfiguration.script.string.trim)
+          w.write("\n")
+        }
       }
     }
   }
@@ -53,7 +57,7 @@ extends Actor with Stash {
   override def postStop() = {
     killAll(SIGKILL)
     filePool.close()
-    if (shellFile != null) {  // TODO Always true
+    if (shellFileUsed) {
       tryDeleteFile(shellFile)
     }
     super.postStop()
