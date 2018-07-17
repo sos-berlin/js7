@@ -5,5 +5,5 @@ package com.sos.jobscheduler.base.utils
   */
 object IntelliJUtils {
   /** Das Scala-Plugin erkennt nicht alle nötigen Imports impliziter Namen und organisiert sie weg. */
-  def intelliJuseImport(o: Any): Unit = {}
+  def intelliJuseImport(o: ⇒ Any): Unit = {}
 }
