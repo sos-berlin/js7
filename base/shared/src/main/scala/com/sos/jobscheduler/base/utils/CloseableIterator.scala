@@ -12,7 +12,35 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
     try super.toVector
     finally close()
 
+  /** Automatically closes the `CloseableIterator` when `hasNext` becomes false. */
+  def closeAtEnd: CloseableIterator[A] = {
+    val base = this
+    new CloseableIterator[A] {
+      def hasNext = base.hasNext || {
+        base.close()
+        false
+      }
+
+      def next() = base.next()
+
+      def close() = base.close()
+    }
+  }
+
   def :+[B >: A](b: ⇒ B) = wrap(this ++ Iterator(b))
+
+  def ++[B >: A](b: ⇒ CloseableIterator[B]): CloseableIterator[B] = {
+    val a = this
+    new CloseableIterator[B] {
+      val concatenated = (a: Iterator[A]) ++ b
+      def close() = {
+        try a.close()
+        finally b.close()
+      }
+      def hasNext = concatenated.hasNext
+      def next() = concatenated.next()
+    }
+  }
 
   override def take(n: Int): CloseableIterator[A] =
     wrap(super.take(n))
