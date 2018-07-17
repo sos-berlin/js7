@@ -3,11 +3,12 @@ package com.sos.jobscheduler.core.event.journal
 import akka.pattern.ask
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.core.event.journal.TestActor.TestJournalMeta
+import com.sos.jobscheduler.core.event.journal.JournalTest._
 import java.nio.file.Files.{delete, deleteIfExists}
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -18,8 +19,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournalMixin {
 
-  protected val journalMeta = TestJournalMeta
-
   "First run" in {
     withTestActor { (actorSystem, actor) ⇒
       for ((key, cmd) ← testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
@@ -29,86 +28,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"))
     }
-    assert(journalJsons == Vector(
-      json"""{
-        "TYPE": "JobScheduler.Journal",
-        "version": "0.12",
-        "softwareVersion": "2.0.0-SNAPSHOT",
-        "buildId": "${BuildInfo.buildId}",
-        "timestamp": "TIMESTAMP"
-      }""",
-      json""""-------SNAPSHOTS-------"""",
-      json"""{ "TYPE": "SnapshotMeta", "eventId": 0 }""",
-      json""""-------EVENTS-------"""",
-      json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
-        "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-      json"""{ "eventId": 1000001, "key": "TEST-B", "TYPE": "Added", "string": "(B.Add)",
-        "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-      json"""{ "eventId": 1000002, "key": "TEST-C", "TYPE": "Added", "string": "(C.Add)",
-        "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-      json"""{ "eventId": 1000003, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-      json"""{ "eventId": 1000004, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000005, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-      json"""{ "eventId": 1000006, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000007, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000008, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000009, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000010, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000011, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000012, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-      json"""{ "eventId": 1000013, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-      json"""{ "eventId": 1000014, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000015, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-      json"""{ "eventId": 1000016, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000017, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000018, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000019, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000020, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000021, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000022, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000023, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-      json"""{ "eventId": 1000024, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
-      json"""{ "eventId": 1000025, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000026, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
-      json"""{ "eventId": 1000027, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-      json"""{ "eventId": 1000028, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-      json"""{ "eventId": 1000029, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000030, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-      json"""{ "eventId": 1000031, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000032, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000033, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000034, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000035, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000036, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000037, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
-      json"""{ "eventId": 1000038, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000039, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-      json"""{ "eventId": 1000040, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
-      json"""{ "eventId": 1000041, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000042, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000043, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-      json"""{ "eventId": 1000044, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-      json"""{ "eventId": 1000045, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000046, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-      json"""{ "eventId": 1000047, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000048, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000049, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-      json"""{ "eventId": 1000050, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000051, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000052, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000053, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
-      json"""{ "eventId": 1000054, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000055, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-      json"""{ "eventId": 1000056, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
-      json"""{ "eventId": 1000057, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-      json"""{ "eventId": 1000058, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-      json"""{ "eventId": 1000059, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-      json"""{ "eventId": 1000060, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-      json"""{ "eventId": 1000061, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
-      json"""{ "eventId": 1000062, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-      json"""{ "eventId": 1000063, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
-      json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-      json"""{ "eventId": 1000065, "key": "TEST-B", "TYPE": "Removed" }"""))
+    assert(journalJsons == FirstJournal)
   }
 
   "Second run, recovering from journal, then taking snapshot" in {
@@ -123,26 +43,18 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       locally {
         val jsons = journalJsons
-        val orderedJsons = jsons.slice(1, 3) ++  // Drop JsonHeader
-          jsons.slice(3, 6).sortBy(_.asObject.map(_("key").map(_.asString))) ++
-          jsons.drop(6)
-        assert(orderedJsons == Vector(
-          // Skipped: json"""{ "TYPE": "JobScheduler.Journal", ... }""",
-          json""""-------SNAPSHOTS-------"""",
-          json"""{ "TYPE": "SnapshotMeta", "eventId": 1000066 }""",
-          json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",
-            "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-          json"""{ "TYPE": "TestAggregate", "key": "TEST-C", "string": "(C.Add)",
-            "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-          json"""{ "TYPE": "TestAggregate", "key": "TEST-D", "string": "DDD",
-            "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-          json""""-------EVENTS-------""""))
+        val orderedJsons = jsons.slice(0, 3) ++  // Drop JsonHeader
+          jsons.slice(3, 7).sortBy(_.asObject.map(_("key").map(_.asString))) ++
+          jsons.drop(7)
+        assert(orderedJsons == SecondJournal)
       }
       assert(journalAggregates == Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD")))
       assert(journalKeyedEvents.isEmpty)
+
+      assert(journalJsons(directory / "test--0.journal") == FirstJournal)  // Archived journal for history
 
       execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
@@ -159,7 +71,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   "noSync" in {
     withTestActor { (actorSystem, actor) ⇒
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A"))  await 99.s
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendNoSync('B')) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = false))
@@ -172,10 +84,16 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
     }
   }
 
+  "CurrentJournalEventReader history" in {
+    withTestActor { (actorSystem, actor) ⇒
+      // ???
+    }
+  }
+
   "Massive parallel" - {
     val n = 1  // TODO More iterations for long-running test (tagged test or system property?)
     for (runIndex ← 1 to n) s"#$runIndex" in {
-      delete(journalFile)
+      JournalFiles.listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
       withTestActor { (_, actor) ⇒
         val prefixes = for (i ← 1 to 1000) yield i.toString
         // Add "$p-A"
@@ -204,7 +122,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
 
   if (sys.props contains "test.speed")
   "Speed test" in {
-    deleteIfExists(journalFile)
+    deleteIfExists(journalMeta.fileBase)
     val keys = for (i ← 1 to 100000) yield s"TEST-$i"
     withTestActor { (_, actor) ⇒
       val stopwatch = new Stopwatch
@@ -222,4 +140,107 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       }
     }
   }
+}
+
+object JournalTest {
+  private val FirstJournal = Vector(
+    json"""{
+      "TYPE": "JobScheduler.Journal",
+      "version": "0.13",
+      "softwareVersion": "2.0.0-SNAPSHOT",
+      "buildId": "${BuildInfo.buildId}",
+      "timestamp": "TIMESTAMP"
+    }""",
+    json""""-------SNAPSHOTS-------"""",
+    json"""{ "TYPE": "SnapshotMeta", "eventId": 0 }""",
+    json"""{ "TYPE": "JournalState", "eventsAcceptedUntil": 0 }""",
+    json""""-------EVENTS-------"""",
+    json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json"""{ "eventId": 1000001, "key": "TEST-B", "TYPE": "Added", "string": "(B.Add)",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json"""{ "eventId": 1000002, "key": "TEST-C", "TYPE": "Added", "string": "(C.Add)",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json"""{ "eventId": 1000003, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000004, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000005, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000006, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000007, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000008, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000009, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000010, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000011, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000012, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000013, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000014, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000015, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000016, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000017, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000018, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000019, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000020, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000021, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000022, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000023, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000024, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
+    json"""{ "eventId": 1000025, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000026, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
+    json"""{ "eventId": 1000027, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000028, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000029, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000030, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000031, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000032, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000033, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000034, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000035, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000036, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000037, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
+    json"""{ "eventId": 1000038, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000039, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000040, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
+    json"""{ "eventId": 1000041, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000042, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000043, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000044, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000045, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000046, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000047, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000048, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000049, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000050, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000051, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000052, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000053, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
+    json"""{ "eventId": 1000054, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000055, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000056, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
+    json"""{ "eventId": 1000057, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000058, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000059, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000060, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000061, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
+    json"""{ "eventId": 1000062, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000063, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
+    json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000065, "key": "TEST-B", "TYPE": "Removed" }""")
+
+  private val SecondJournal = Vector(
+    json"""{
+      "TYPE": "JobScheduler.Journal",
+      "version": "0.13",
+      "softwareVersion": "2.0.0-SNAPSHOT",
+      "buildId": "${BuildInfo.buildId}",
+      "timestamp": "TIMESTAMP"
+    }""",
+    json""""-------SNAPSHOTS-------"""",
+    json"""{ "TYPE": "SnapshotMeta", "eventId": 1000066 }""",
+    json"""{ "TYPE": "JournalState", "eventsAcceptedUntil": 0 }""",
+    json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json"""{ "TYPE": "TestAggregate", "key": "TEST-C", "string": "(C.Add)",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json"""{ "TYPE": "TestAggregate", "key": "TEST-D", "string": "DDD",
+      "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json""""-------EVENTS-------"""")
 }

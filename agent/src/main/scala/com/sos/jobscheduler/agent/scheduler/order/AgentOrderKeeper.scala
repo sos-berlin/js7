@@ -28,7 +28,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
@@ -40,6 +40,7 @@ import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import com.typesafe.config.Config
 import java.nio.file.Path
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
@@ -51,11 +52,12 @@ import shapeless.tag
   * @author Joacim Zschimmer
   */
 final class AgentOrderKeeper(
-  journalFile: Path,
+  journalFileBase: Path,
   implicit private val askTimeout: Timeout,
   syncOnCommit: Boolean,
   keyedEventBus: StampedKeyedEventBus,
   config: Config,
+  scheduler: Scheduler,
   implicit private val timerService: TimerService)
 extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
@@ -63,10 +65,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
   protected val journalActor = actorOf(
-    JournalActor.props(
-      journalMeta,
-      journalFile, syncOnCommit = syncOnCommit, keyedEventBus),
+    JournalActor.props(journalMeta, syncOnCommit = syncOnCommit, keyedEventBus, scheduler),
     "Journal")
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
@@ -84,7 +85,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
+    val recoverer = new OrderJournalRecoverer(journalMeta, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
     for (workflow ← recoverer.workflows)
       wrapException(s"Error when recovering ${workflow.path}") {
@@ -419,8 +420,6 @@ object AgentOrderKeeper {
     Subtype[Workflow],
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
-
-  private[order] val journalMeta = new JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec)
 
   sealed trait Input
   object Input {

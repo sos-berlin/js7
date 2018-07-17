@@ -45,8 +45,6 @@ extends CommonConfiguration
   def orderGeneratorsDirectory: Path = configDirectory / "order-generators"
 
   def stateDirectory: Path = dataDirectory / "state"
-
-  def journalFile: Path = stateDirectory / "journal"
 }
 
 object MasterConfiguration {

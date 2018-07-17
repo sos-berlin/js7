@@ -27,8 +27,9 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, Journ
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
 import javax.inject.Inject
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +39,7 @@ private[agent] final class AgentActor @Inject private(
   newTaskRunner: TaskRunner.Factory,
   keyedEventBus: StampedKeyedEventBus,
   timerService: TimerService)
-  (implicit executionContext: ExecutionContext)
+  (implicit scheduler: Scheduler)
 extends KeyedEventJournalingActor[AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, fileBasedDirectory, stateDirectory}
@@ -46,10 +47,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val journalMeta = new JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec)
-  private val journalFile = stateDirectory / "journal"
+  private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = actorOf(
-    JournalActor.props(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus),
+    JournalActor.props(journalMeta, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus, scheduler),
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(
@@ -78,7 +78,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
   private class MyJournalRecoverer extends JournalRecoverer[AgentEvent] {
     protected val sender = AgentActor.this.sender()
     protected val journalMeta = AgentActor.this.journalMeta
-    protected val journalFile = AgentActor.this.journalFile
 
     def recoverSnapshot = {
       case AgentSnapshot.Master(userId) ⇒
@@ -205,11 +204,12 @@ extends KeyedEventJournalingActor[AgentEvent] {
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
-          journalFile = stateDirectory / s"master-$userId.journal",
+          journalFileBase = stateDirectory / s"master-$userId",
           askTimeout = akkaAskTimeout,
           syncOnCommit = agentConfiguration.journalSyncOnCommit,
           keyedEventBus,
           agentConfiguration.config,
+          scheduler,
           timerService)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$userId"))

@@ -15,12 +15,14 @@ trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
   protected def snapshotToKey: Any ⇒ Any
   protected def isDeletedEvent: E ⇒ Boolean
+  protected def journalEventReader: JournalEventReader[E]
 
   private val keyToActor = mutable.Map[Any, ActorRef]()
 
   final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
     recoverAll()
-    startJournalAndFinishRecovery(journalActor = journalActor, recoveredJournalingActors)
+    startJournalAndFinishRecovery(journalActor = journalActor, recoveredJournalingActors,
+      Some(journalEventReader))
   }
 
   protected final def recoverEvent = {
@@ -28,7 +30,7 @@ trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
       keyToActor.get(key) match {
         case None ⇒
           recoverNewKey.getOrElse(stamped,
-            sys.error(s"Uncoverable event for a new key in journal '$journalFile': $stamped"))
+            sys.error(s"Uncoverable event for a new key in journal '${journalFileOption getOrElse journalMeta.fileBase}': $stamped"))
         case Some(a) ⇒
           a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO OutOfMemoryError
           if (isDeletedEvent(event.asInstanceOf[E])) {

@@ -7,24 +7,22 @@ import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.{JournalMeta, JournalRecoverer}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
-import java.nio.file.Path
 import scala.collection.mutable
 import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class OrderJournalRecoverer(protected val journalFile: Path, eventsForMaster: ActorRef @@ EventQueueActor)
+private[order] final class OrderJournalRecoverer(protected val journalMeta: JournalMeta[Event], eventsForMaster: ActorRef @@ EventQueueActor)
 (implicit askTimeout: Timeout)
 extends JournalRecoverer[Event] {
 
-  protected val journalMeta = AgentOrderKeeper.journalMeta
   private val workflowRegister = new WorkflowRegister
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
@@ -78,7 +76,6 @@ extends JournalRecoverer[Event] {
         for (childOrder ← idToOrder(orderId).newForkedOrders(event)) {
           idToOrder.insert(childOrder.id → childOrder)
         }
-        idToOrder(orderId) = idToOrder(orderId).update(event)
 
       case event: OrderJoined ⇒
         idToOrder(orderId).state match {

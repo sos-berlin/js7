@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -41,17 +40,17 @@ object RealEventReaderTest {
 
   private class TestEventReader extends RealEventReader[TestEvent] {
     protected val timerService = new TimerService(Some(1.s))
-    protected val oldestEventId = 0
+    val tornEventId = 0
 
-    protected def reverseEventsAfter(after: EventId) = Task.now(CloseableIterator.empty)
+    protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty
 
-    onEventAdded(1)
+    onEventsAdded(1)
 
     def eventsAfter(after: EventId) =
-      Task.now(Some(CloseableIterator.fromIterator(
+      Some(CloseableIterator.fromIterator(
         Iterator.from(1) take EventsPerIteration map { i ⇒
-          onEventAdded(after + i + 1)  // Announce following event
+          onEventsAdded(after + i + 1)  // Announce following event
           toStampedEvent(after + i)
-        })))
+        }))
   }
 }

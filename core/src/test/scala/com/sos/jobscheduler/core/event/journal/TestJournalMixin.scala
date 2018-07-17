@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
@@ -17,11 +18,13 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.TestJournalMixin._
 import com.sos.jobscheduler.core.event.journal.TestJsonCodecs.TestKeyedEventJsonCodec
+import com.sos.jobscheduler.core.event.journal.TestMeta.testJournalMeta
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import java.io.EOFException
 import java.nio.file.Files.createTempDirectory
+import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
@@ -35,10 +38,9 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected implicit val askTimeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")
-  protected lazy val journalFile = directory / "journal"
   private val disturbanceCounter = new AtomicInteger
 
-  protected def journalMeta: JournalMeta[TestEvent]
+  protected val journalMeta = testJournalMeta(directory / "test")
 
   override def afterAll() = {
     deleteDirectoryRecursively(directory)
@@ -50,10 +52,9 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
-      val actor = actorSystem.actorOf(Props { new TestActor(journalMeta, journalFile, whenJournalStopped) }, "TestActor")
+      val actor = actorSystem.actorOf(Props { new TestActor(journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       (actor ? TestActor.Input.Terminate) await 99.s
-      actorSystem.stop(actor)
       assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped(keyedEventJournalingActorCount = 0))  // No memory leak
     }
     finally actorSystem.terminate() await 99.s
@@ -120,23 +121,16 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected final def journalAggregates =
     (journalJsons collect {
-      case o if TestActor.SnapshotJsonFormat canDeserialize o ⇒
+      case o if TestMeta.SnapshotJsonFormat canDeserialize o ⇒
         o.as[TestAggregate].orThrow
     }).toSet
 
-  protected final def journalJsons: Vector[Json] =
-    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader ⇒
-      val iterator = reader.iterator
-      //if (iterator.hasNext) {
-      //  val header = iterator.next()
-      //  assert(header.value.asObject.get.remove("timestamp") == JsonObject(
-      //    "TYPE" → Json.fromString("JobScheduler.Journal"),
-      //    "version" → Json.fromString(JournalMeta.header.version),
-      //    "softwareVersion" → Json.fromString(BuildInfo.version),
-      //    "buildId" → Json.fromString(BuildInfo.buildId)))
-      //}
+  protected final def journalJsons: Vector[Json] = journalJsons(JournalFiles.currentFile(journalMeta.fileBase).orThrow)
+
+  protected final def journalJsons(file: Path): Vector[Json] =
+    autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
       Vector.build[Json] { builder ⇒
-        try iterator foreach (o ⇒ builder += normalizeTimestamp(o.value))
+        try reader.iterator foreach (o ⇒ builder += normalizeTimestamp(o.value))
         catch {
           case _: EOFException ⇒ None
           case _: java.util.zip.ZipException ⇒ None

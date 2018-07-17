@@ -28,7 +28,6 @@ import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
 import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
@@ -47,7 +46,6 @@ final class RecoveryTest extends FreeSpec {
 
   "test" in {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
-      val eventCollector = new TestEventCollector
       var lastEventId = EventId.BeforeFirst
       autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
         for ((agentPath, tree) ← directoryProvider.agentToTree)
@@ -56,12 +54,12 @@ final class RecoveryTest extends FreeSpec {
           for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
           (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
-          runMaster(directoryProvider, eventCollector) { master ⇒
+          runMaster(directoryProvider) { master ⇒
             if (lastEventId == EventId.BeforeFirst) {
-              lastEventId = eventCollector.oldestEventId
+              lastEventId = master.eventReader.tornEventId
             }
-            eventCollector.await[MasterEvent.MasterReady](after = lastEventId)
-            assert(eventCollector.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
+            master.eventReader.await[MasterEvent.MasterReady](after = lastEventId)
+            assert(master.eventReader.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
               Vector(
                 NoKey <-: VersionAdded(VersionId("(initial)")),
                 NoKey <-: FileBasedAdded(TestWorkflow),
@@ -71,15 +69,15 @@ final class RecoveryTest extends FreeSpec {
               .sortBy(_.toString))
             runAgents(directoryProvider) { _ ⇒
               master.addOrderBlocking(QuickOrder)
-              lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
-              lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
-              lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+              lastEventId = lastEventIdOf(master.eventReader.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+              lastEventId = lastEventIdOf(master.eventReader.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+              lastEventId = lastEventIdOf(master.eventReader.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
             }
-            assert((readEvents(directoryProvider.agents(0).data / "state/journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
+            assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
               Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId("Master")/*see default master.conf*/)))
             logger.info("\n\n*** RESTARTING AGENTS ***\n")
             runAgents(directoryProvider) { _ ⇒
-              lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+              lastEventId = lastEventIdOf(master.eventReader.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
             }
           }
 
@@ -88,9 +86,9 @@ final class RecoveryTest extends FreeSpec {
             sys.runtime.gc()  // For a clean memory view
             logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
             runAgents(directoryProvider) { _ ⇒
-              runMaster(directoryProvider, eventCollector) { _ ⇒
-                val orderId = eventCollector.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
-                val orderStampeds = eventCollector.await[Event](_.key == orderId)
+              runMaster(directoryProvider) { master ⇒
+                val orderId = master.eventReader.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
+                val orderStampeds = master.eventReader.await[Event](_.key == orderId)
                 withClue(s"$orderId") {
                   try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
                       case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledAt = Some(SomeTimestamp))
@@ -110,8 +108,8 @@ final class RecoveryTest extends FreeSpec {
     }
   }
 
-  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(directoryProvider.master.directory, Some(eventCollector)) { master ⇒
+  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
+    RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)) await 99.s  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")

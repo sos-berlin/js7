@@ -162,14 +162,6 @@ object Collections {
       underlying map { case (k, v) ⇒ k → f(v) }
   }
 
-  implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {
-    def mapValuesStrict[W](f: V ⇒ W): mutable.Map[K, W] =
-      underlying map { case (k, v) ⇒ k → f(v) }
-  }
-
-  // To satisfy IntelliJ IDEA 2016.2.5
-  //implicit final class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
-
   implicit final class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](private val delegate: GenMapFactory[CC]) extends AnyVal {
     def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] ⇒ Unit): CC[A, B] = {
       val b = delegate.newBuilder[A, B]

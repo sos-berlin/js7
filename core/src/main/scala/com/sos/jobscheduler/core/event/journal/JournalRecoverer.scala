@@ -8,8 +8,7 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import java.nio.file.Files.exists
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
 import scala.concurrent.blocking
 
 /**
@@ -18,48 +17,50 @@ import scala.concurrent.blocking
 trait JournalRecoverer[E <: Event] {
 
   protected val journalMeta: JournalMeta[E]
-  protected def journalFile: Path
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
 
-  private var _eventsAcceptedUntil = EventId.BeforeFirst
+  private var _journalState = JournalState.empty
   private var _lastEventId = EventId.BeforeFirst
-  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalFile.getFileName.toString)
-  protected lazy val hasJournal = exists(journalFile)
+  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalMeta.fileBase.getFileName.toString)
+  protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
+
+  protected final def hasJournal = journalFileOption.isDefined
 
   final def recoverAll(): Unit =
-    if (!hasJournal) {
-      logger.info(s"No journal journalFile '$journalFile' left")
-    } else
-      blocking {  // May take a long time
-        logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
-        autoClosing(new JournalReader(journalMeta, journalFile)) { journalReader ⇒
-          untilNoneIterator { journalReader.recoverNext() } foreach {
-            case JournalReader.RecoveredSnapshot(snapshot) ⇒
-              wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
-                recoverSnapshot(snapshot)
-              }
-            case JournalReader.RecoveredEvent(stampedEvent) ⇒
-              wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.getClass.scalaName} '${stampedEvent.value.key}'") {
-                recoverEvent(stampedEvent)
-              }
+    journalFileOption match {
+      case None ⇒
+      case Some(file) ⇒
+        blocking {  // May take a long time
+          logger.info(s"Recovering from journal '$file' (${toMB(Files.size(file))})")
+          autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
+            untilNoneIterator { journalReader.recoverNext() } foreach {
+              case JournalReader.RecoveredSnapshot(snapshot) ⇒
+                wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
+                  recoverSnapshot(snapshot)
+                }
+              case JournalReader.RecoveredEvent(stampedEvent) ⇒
+                wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
+                  recoverEvent(stampedEvent)
+                }
+            }
+            _journalState = journalReader.journalState
+            _lastEventId = journalReader.lastReadEventId
+            journalReader.logStatistics()
           }
-          _eventsAcceptedUntil = journalReader.eventsAcceptedUntil
-          _lastEventId = journalReader.lastReadEventId
-          journalReader.logStatistics()
         }
       }
 
-  def startJournalAndFinishRecovery(
+  final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReaderProvider: Option[JournalEventReaderProvider[E]] = None)
+    eventReader: Option[JournalEventReader[E]] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReaderProvider,
-      eventsAcceptedUntil = _eventsAcceptedUntil, lastEventId = _lastEventId)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReader,
+      _journalState, lastEventId = _lastEventId)
 
-  val lastRecoveredEventId = _lastEventId
+  final def lastRecoveredEventId = _lastEventId
 }
 
 object JournalRecoverer {
@@ -68,8 +69,8 @@ object JournalRecoverer {
   private def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReaderProvider: Option[JournalEventReaderProvider[E]] = None,
-    eventsAcceptedUntil: EventId,
+    eventReader: Option[JournalEventReader[E]] = None,
+    journalState: JournalState,
     lastEventId: EventId)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
@@ -78,7 +79,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, eventReaderProvider, eventsAcceptedUntil = eventsAcceptedUntil, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, eventReader, journalState, lastEventId = lastEventId)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

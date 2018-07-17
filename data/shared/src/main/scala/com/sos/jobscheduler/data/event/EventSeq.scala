@@ -40,10 +40,9 @@ sealed trait TearableEventSeq[+M[_], +E]
 
 object TearableEventSeq {
   /** Requested event is no longer available.
-    * `oldestKnownEventId` is for testing only.
-    * @param oldestKnownEventId
+    * `tornEventId` is for testing only.
     */
-  final case class Torn(oldestKnownEventId: EventId)
+  final case class Torn(after: EventId)
   extends TearableEventSeq[Nothing, Nothing]
 
   implicit final class Closed[E](private val underlying: TearableEventSeq[CloseableIterator, E]) extends AnyVal {
@@ -52,6 +51,7 @@ object TearableEventSeq {
       case _ ⇒
     }
 
+    /** Converts a lazy `NonEmpty[Traversable]` to a strict `NonEmpty[Vector]`. */
     def strict: TearableEventSeq[Seq, E] = underlying match {
       case Torn(eventId) ⇒ Torn(eventId)
       case Empty(eventId) ⇒ Empty(eventId)

@@ -78,4 +78,6 @@ final class StrictEventReader[E <: Event](eventReader: EventReader[E])
   @inline
   private def delegate[A](body: EventReader[E] ⇒ Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
     body(eventReader) map (_.strict)
+
+  def tornEventId = eventReader.tornEventId
 }

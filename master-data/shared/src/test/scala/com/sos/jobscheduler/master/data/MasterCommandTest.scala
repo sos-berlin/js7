@@ -16,6 +16,15 @@ final class MasterCommandTest extends FreeSpec {
       }""")
   }
 
+  "KeepEvents" in {
+    testJson[MasterCommand](
+      KeepEvents(123),
+      json"""{
+        "TYPE": "KeepEvents",
+        "after": 123
+      }""")
+  }
+
   "ReadConfigurationDirectory" - {
     "with versionId" in {
       testJson[MasterCommand](ReadConfigurationDirectory(Some(VersionId("VERSION"))),

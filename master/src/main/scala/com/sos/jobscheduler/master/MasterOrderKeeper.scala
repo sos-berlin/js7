@@ -2,14 +2,14 @@ package com.sos.jobscheduler.master
 
 import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
-import akka.pattern.pipe
+import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
 import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
@@ -23,7 +23,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReaderProvider, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReader, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -38,13 +38,12 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
-import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
 import com.sos.jobscheduler.master.command.CommandMeta
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.{MasterFileBasedJsonCodec, MasterKeyedEventJsonCodec, MasterTypedPathJsonCodec}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
+import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -57,10 +56,11 @@ import scala.util.{Failure, Success}
   */
 final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
+  journalMeta: JournalMeta[Event],
   eventIdClock: EventIdClock)
   (implicit
     timerService: TimerService,
-    eventReaderProvider: JournalEventReaderProvider[Event],
+    eventReader: JournalEventReader[Event],
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
 extends Stash
@@ -70,13 +70,13 @@ with KeyedEventJournalingActor[Event] {
 
   import context.become
 
-  private val journalFile = masterConfiguration.journalFile
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
-      journalMeta, journalFile,
+      journalMeta,
       syncOnCommit = masterConfiguration.journalSyncOnCommit,
-      keyedEventBus, eventIdGenerator = eventIdGenerator),
+      keyedEventBus, scheduler,
+      eventIdGenerator = eventIdGenerator),
     "Journal"))
   private var hasRecovered = false
   private val repoReader = new MasterRepoReader(masterConfiguration.fileBasedDirectory)
@@ -110,7 +110,7 @@ with KeyedEventJournalingActor[Event] {
     .toSnapshots)
 
   private def recover() = {
-    val recoverer = new MasterJournalRecoverer(journalFile)
+    val recoverer = new MasterJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     for (masterState ← recoverer.masterState) {
       hasRecovered = true
@@ -131,7 +131,7 @@ with KeyedEventJournalingActor[Event] {
     recoverer.startJournalAndFinishRecovery(
       journalActor = journalActor,
       RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)),
-      Some(eventReaderProvider))
+      Some(eventReader))
   }
 
   def receive = journaling orElse {
@@ -261,6 +261,14 @@ with KeyedEventJournalingActor[Event] {
 
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
     command match {
+      case MasterCommand.KeepEvents(eventId) ⇒
+        import masterConfiguration.akkaAskTimeout
+        (journalActor ? JournalActor.Input.EventsAccepted(eventId)).mapTo[Checked[Completed]]
+          .map {
+            case Valid(Completed) ⇒ MasterCommand.Response.Accepted
+            case Invalid(problem) ⇒ throw problem.throwable
+          }
+
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
         val checkedSideEffect = for {
           a ← readConfiguration(versionId)  // Persists events
@@ -493,16 +501,6 @@ with KeyedEventJournalingActor[Event] {
 private[master] object MasterOrderKeeper {
   @deprecated
   private val InitialVersion = VersionId("(initial)")  // ???
-
-  private val SnapshotJsonCodec =
-    TypedJsonCodec[Any](
-      Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[Agent],
-      Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
-      Subtype[OrderScheduleEndedAt],
-      Subtype[Order[Order.State]])
-
-  val journalMeta = new JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec)
 
   private val logger = Logger(getClass)
 

@@ -18,10 +18,11 @@ private[journal] final class StatisticsCounter {
   private var syncs = 0
   private var syncNanos = 0L
 
-  def countWillBeCommittedEvents(eventCount: Int): Unit = {
-    events += eventCount
-    commits += 1
-  }
+  def countEventsToBeCommitted(eventCount: Int): Unit =
+    if (eventCount > 0) {  // Count only commits with events
+      events += eventCount
+      commits += 1
+    }
 
   def beforeFlush(): Unit = {
     flushNanos -= nanoTime
@@ -52,7 +53,7 @@ private[journal] final class StatisticsCounter {
       val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
       factorFormat.setMaximumFractionDigits(1)
       (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ") +
-        ", " + factorFormat.format(commits.toDouble / flushes) + " commits/flush)"
+        ", " + factorFormat.format(commits.toDouble / flushes) + " commits/flush"
     }
 
   def flushCount = flushes

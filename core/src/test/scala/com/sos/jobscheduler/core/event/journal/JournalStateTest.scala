@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.event
+package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -7,12 +7,14 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class EventsAcceptedUntilTest extends FreeSpec {
-
+final class JournalStateTest extends FreeSpec
+{
   "JSON" in {
-    testJson(EventsAcceptedUntil(untilEventId = 1000),
+    testJson(
+      JournalState(eventsAcceptedUntil = 123),
       json"""{
-        "untilEventId": 1000
+        "TYPE": "JournalState",
+        "eventsAcceptedUntil": 123
       }""")
   }
 }

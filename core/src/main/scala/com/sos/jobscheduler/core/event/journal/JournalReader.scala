@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -11,7 +10,7 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.core.event.journal.JournalReader._
 import com.sos.jobscheduler.core.event.journal.JournalWriter.{EventsHeader, SnapshotsHeader}
-import com.sos.jobscheduler.data.event.{Event, EventId, EventsAcceptedUntil, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalStateEvent, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
@@ -19,7 +18,7 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path) extends HasCloser
+private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path) extends HasCloser
 {
   import journalMeta.{eventJsonCodec, snapshotJsonCodec}
 
@@ -28,7 +27,7 @@ final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: 
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile).closeWithCloser
   private var snapshotSeparatorRead = false
   private var eventSeparatorRead = false
-  private var _eventAcceptedUntil = EventId.BeforeFirst
+  private var _journalState = JournalState.empty
   private var _lastReadEventId = EventId.BeforeFirst
   private var _completelyRead = false
   private var snapshotCount = 0
@@ -51,25 +50,36 @@ final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: 
           sys.error(s"Unexpected JSON value in '$journalFile': $positionAndJson")
         else if (!eventSeparatorRead) {
           snapshotCount += 1
-          Some(RecoveredSnapshot(snapshotJsonCodec.decodeJson(positionAndJson.value).orThrow))
+          val snapshot = positionAndJson.value
+          if (handleJournalStateSnapshot(snapshot))
+            recoverNext()
+          else
+            Some(RecoveredSnapshot(snapshotJsonCodec.decodeJson(snapshot).orThrow))
         } else if (!eventSeparatorRead)
           throw new IllegalStateException("JournalReader.readEvent but snapshots have not been read")
-        else if (positionAndJson.value.asObject.flatMap(_(TypedJsonCodec.TypeFieldName)) contains EventsAcceptedUntilTypeName) {
-          val stamped = positionAndJson.value.as[Stamped[EventsAcceptedUntil]].orThrow
-          if (stamped.eventId <= _lastReadEventId)
-            sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(_lastReadEventId)}")
-          _eventAcceptedUntil = stamped.value.untilEventId
-          _lastReadEventId = stamped.eventId
-          recoverNext()
-        } else {
+        else {
           eventCount += 1
-          val stamped = positionAndJson.value.as[Stamped[KeyedEvent[E]]].orThrow
-          _lastReadEventId = stamped.eventId
-          if (_eventAcceptedUntil == EventId.BeforeFirst) {
-            _eventAcceptedUntil = stamped.eventId
-          }
-          Some(RecoveredEvent(stamped))
+          val stampedEvent = positionAndJson.value.as[Stamped[Json]].orThrow
+          if (stampedEvent.eventId <= _lastReadEventId)
+            sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_lastReadEventId)}")
+          _lastReadEventId = stampedEvent.eventId
+          if (handleJournalStateEvent(stampedEvent.value))
+            recoverNext()
+          else
+            Some(RecoveredEvent(stampedEvent.copy(value = stampedEvent.value.as[KeyedEvent[E]].orThrow)))
         }
+    }
+
+  private def handleJournalStateSnapshot(snapshot: Json): Boolean =
+    JournalState.jsonCodec.canDeserialize(snapshot) && {
+      _journalState = snapshot.as[JournalState].orThrow
+      true
+    }
+
+  private def handleJournalStateEvent(event: Json): Boolean =
+    JournalStateEvent.jsonCodec.canDeserialize(event) && {
+      _journalState = _journalState.handleEvent(event.as[JournalStateEvent].orThrow)
+      true
     }
 
   @tailrec
@@ -104,14 +114,12 @@ final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: 
 
   def isCompletelyRead = _completelyRead
 
-  def eventsAcceptedUntil: EventId = _eventAcceptedUntil
+  def journalState = _journalState
 
   def lastReadEventId = _lastReadEventId
 }
 
-object JournalReader {
-  private val EventsAcceptedUntilTypeName = Json.fromString(classOf[EventsAcceptedUntil].simpleScalaName)
-
+private[journal] object JournalReader {
   sealed trait Recovered[+E <: Event]
   final case class RecoveredSnapshot private(snapshot: Any) extends Recovered[Nothing]
   final case class RecoveredEvent[E <: Event] private[JournalReader](stamped: Stamped[KeyedEvent[E]]) extends Recovered[E]

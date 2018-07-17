@@ -49,7 +49,7 @@ final class EventSeqTest extends FreeSpec {
     checkTearableEventSeq[TestEvent.type](TearableEventSeq.Torn(7),
       """{
         "TYPE": "Torn",
-        "oldestKnownEventId": 7
+        "after": 7
       }""")
   }
 

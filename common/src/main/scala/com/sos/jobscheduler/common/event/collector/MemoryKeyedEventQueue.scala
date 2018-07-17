@@ -35,7 +35,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
     * Returns an Some[Iterator] of events or None if the first requested EventId has gone by.
     * The Iterator ends with the end of the queue when the queue has torn, if at least one event has been returned.
     * <p>
-    *   None is returned if the queue has torn at its front (`after` < `oldestEventId`).
+    *   None is returned if the queue has torn at its front (`after` < `tornEventId`).
     */
   def after(after: EventId): Option[Iterator[Stamped[AnyKeyedEvent]]] = {
     val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, false).iterator.asScala map queue.get)
@@ -43,7 +43,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
       // hasNext and peek may throw NoSuchElementException in case of race condition ?
       if (result.hasNext) result.peek
       // result is empty or has the first Stamped in its head buffer.
-      after >= oldestEventId option result.asScala
+      after >= tornEventId option result.asScala
     } catch { case _: NoSuchElementException ⇒
       None
     }
@@ -54,10 +54,10 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
       .asScala
 
   def lastEventId: EventId =
-    if (queue.isEmpty) oldestEventId else queue.lastKey
+    if (queue.isEmpty) tornEventId else queue.lastKey
 
-  /** Events before this EventId are lost. */
-  def oldestEventId: EventId =
+  /** Events until this EventId are lost. */
+  def tornEventId: EventId =
     lastRemovedFirstId
 
   private class EventIterator(firstEventId: EventId, stampedIterator: Iterator[Stamped[AnyKeyedEvent]])
@@ -68,7 +68,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
       try
         if (stampedIterator.hasNext) {
           val stamped = stampedIterator.next()  // May throw NoSuchElementException in case of race condition ?
-          if (lastReturnedEventId >= oldestEventId && stamped != null) {
+          if (lastReturnedEventId >= tornEventId && stamped != null) {
             lastReturnedEventId = stamped.eventId
             stamped
           } else

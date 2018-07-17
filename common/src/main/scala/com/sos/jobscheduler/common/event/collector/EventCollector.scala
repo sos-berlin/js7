@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.event.RealEventReader
 import com.sos.jobscheduler.common.event.collector.EventCollector._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
-import monix.eval.Task
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -20,17 +19,17 @@ extends RealEventReader[Event]
 
   final def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
     keyedEventQueue.add(stamped)
-    onEventAdded(stamped.eventId)
+    onEventsAdded(stamped.eventId)
   }
 
-  final def oldestEventId: EventId =
-    keyedEventQueue.oldestEventId
+  final def tornEventId: EventId =
+    keyedEventQueue.tornEventId
 
   def eventsAfter(after: EventId) =
-    Task.pure(keyedEventQueue.after(after) map CloseableIterator.fromIterator)
+    keyedEventQueue.after(after) map CloseableIterator.fromIterator
 
   protected final def reverseEventsAfter(after: EventId) =
-    Task.pure(CloseableIterator.fromIterator(keyedEventQueue.reverseEvents(after = after)))
+    CloseableIterator.fromIterator(keyedEventQueue.reverseEvents(after = after))
 }
 
 object EventCollector

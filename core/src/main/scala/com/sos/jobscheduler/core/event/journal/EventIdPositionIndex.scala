@@ -14,22 +14,28 @@ private[journal] final class EventIdPositionIndex(size: Int)
   private val positions = new Array[Long]((size + 1) / 2 * 2)
   private val eventIds = new Array[Long](positions.length)
   private var length = 0
-  private var highestEventId = EventId.BeforeFirst - 1
+  private var _highestEventId = EventId.BeforeFirst - 1
 
   require(positions.nonEmpty)
 
   def addAfter(eventId: EventId, position: Long): Unit =
-    synchronized {
-      if (eventId <= highestEventId)
-        throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} > ${EventId.toString(highestEventId)}")
-      highestEventId = eventId
-      if (length == positions.length) {
-        halve()
+    if (!tryAddAfter(eventId, position))
+      throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} > ${EventId.toString(_highestEventId)}")
+
+  def tryAddAfter(eventId: EventId, position: Long): Boolean =
+    (eventId > _highestEventId) &&
+      synchronized {
+        (eventId > _highestEventId) && {
+          _highestEventId = eventId
+          if (length == positions.length) {
+            halve()
+          }
+          positions(length) = position
+          eventIds(length) = eventId
+          length += 1
+          true
+        }
       }
-      positions(length) = position
-      eventIds(length) = eventId
-      length += 1
-    }
 
   private def halve(): Unit = {
     for (i ← 1 until length / 2) {
@@ -53,8 +59,10 @@ private[journal] final class EventIdPositionIndex(size: Int)
     }
 
   @TestOnly
-  private[journal] def positionAndEventIds: Seq[PositionAnd[EventId]] =
+  def positionAndEventIds: Seq[PositionAnd[EventId]] =
     synchronized {
       for (i ← 0 until length) yield PositionAnd(positions(i), eventIds(i))
     }
+
+  def highestEvenId = _highestEventId
 }

@@ -89,7 +89,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(stampeds == fatEventsAfter(60).take(3))
       assert(stampeds.head.eventId == 70)
       assert(stampeds.last.eventId == 90)
-      assert(eventReader.lastEventsAfter == eventReader.oldestEventId)  // Rewound to oldestEventId == BeforeFirst (no snapshot taken)
+      assert(eventReader.lastEventsAfter == eventReader.tornEventId)  // Rewound to tornEventId == BeforeFirst (no snapshot taken)
       assert(eventReader.lastEventsAfter == EventId.BeforeFirst)
     }
 

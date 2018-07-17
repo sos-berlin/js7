@@ -27,7 +27,7 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
   private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, StampedEvent]
   private val orderToEventIds = mutable.Map[OrderId, mutable.Buffer[java.lang.Long]]()
   private val requestors = mutable.Map[Promise[MyEventSeq], Timer[Unit]]()
-  private var oldestKnownEventId = EventId.BeforeFirst
+  private var tornEventId = EventId.BeforeFirst
   private var firstResponse = NoFirstResponse
 
   def receive = {
@@ -54,8 +54,8 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
       }
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
-      if (after != oldestKnownEventId && !eventQueue.containsKey(after)) {
-        val error = s"RequestEvents: unknown EventId after=${EventId.toString(after)} (oldestKnownEventId=$oldestKnownEventId)"
+      if (after != tornEventId && !eventQueue.containsKey(after)) {
+        val error = s"RequestEvents: unknown EventId after=${EventId.toString(after)} (tornEventId=$tornEventId)"
         logger.debug(error)
         sender() ! Status.Failure(new IllegalArgumentException(error))  // TODO Does requester handle Status.Failure ?
       } else {
@@ -92,13 +92,13 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
     case Input.GetSnapshots ⇒
       sender() ! Output.GotSnapshots(Vector.build[Snapshot] { b ⇒
         b.sizeHint(1 + eventQueue.values.size)
-        b += Snapshot.HeaderSnapshot(oldestKnownEventId)
+        b += Snapshot.HeaderSnapshot(tornEventId)
         b ++= eventQueue.values.asScala map Snapshot.EventSnapshot.apply
       })
 
     case Snapshot.HeaderSnapshot(eventId) ⇒
-      logger.debug(s"oldestKnownEventId=${EventId.toString(oldestKnownEventId)}")
-      oldestKnownEventId = eventId
+      logger.debug(s"tornEventId=${EventId.toString(tornEventId)}")
+      tornEventId = eventId
 
     case Snapshot.EventSnapshot(stampedEvent) ⇒
       add(stampedEvent)
@@ -125,8 +125,8 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
     for (eventIds ← orderToEventIds.get(orderId)) {
       for (eventId ← eventIds) {
         eventQueue.remove(eventId)
-        if (oldestKnownEventId < eventId) {
-          oldestKnownEventId = eventId   // TODO Ist das immer die richtige oldestKnownEventId?
+        if (tornEventId < eventId) {
+          tornEventId = eventId   // TODO Ist das immer die richtige tornEventId?
         }
       }
       orderToEventIds -= orderId

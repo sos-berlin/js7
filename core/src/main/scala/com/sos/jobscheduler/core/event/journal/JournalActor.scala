@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.core.event.journal
 
-import akka.actor._
+import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import cats.data.Validated.Invalid
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -14,8 +16,9 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Files.move
-import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.{Files, Path}
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -26,25 +29,28 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 final class JournalActor[E <: Event] private(
-  meta: JournalMeta[E],
-  file: Path,
+  journalMeta: JournalMeta[E],
   syncOnCommit: Boolean,
   keyedEventBus: StampedKeyedEventBus,
+  scheduler: Scheduler,
   stopped: Promise[Stopped],
   eventIdGenerator: EventIdGenerator)
 extends Actor with Stash {
 
-  import meta.snapshotJsonCodec
+  import context.{actorOf, become, stop, watch}
+  import journalMeta.snapshotJsonCodec
 
-  private val logger = Logger.withPrefix[JournalActor[_]](file.getFileName.toString)
+  private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private var stateActor: ActorRef = null
   private var journalWriter: JournalWriter[E] = null
-  private var eventReaderOptionProvider: Option[JournalEventReaderProvider[E]] = None
+  private var eventReaderOption: Option[JournalEventReader[E]] = None
   private var temporaryJournalWriter: JournalWriter[E] = null
   private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
   private val keylessJournalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
+  private var lastWrittenEventId = EventId.BeforeFirst
   private var dontSync = true
 
   override def postStop() = {
@@ -65,21 +71,25 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderProviderOption_, eventsAcceptedUntil, lastEventId) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderOption_, state, lastEventId) ⇒
+      lastWrittenEventId = lastEventId
+      eventReaderOption = eventReaderOption_ map (_.asInstanceOf[JournalEventReader[E]]/*restore erased type argument, not checked*/)
+      stateActor = watch(actorOf(JournalStateActor.props(journalActor = self, state, eventReaderOption), "State"))
+      keylessJournalingActors += stateActor   // TODO StateActor sendet RegisterMe, aber das kann zu spät nach Start kommen.
       eventIdGenerator.updateLastEventId(lastEventId)
       keyToJournalingActor ++= keyToActor
-      keyToJournalingActor.values foreach context.watch
-      eventReaderOptionProvider = eventReaderProviderOption_ map (_.asInstanceOf[JournalEventReaderProvider[E]]/*restore erased type argument, not checked*/)
+      keyToJournalingActor.values foreach watch
       val sender = this.sender()
-      becomeTakingSnapshotThen(lastEventId = lastEventId) {
+      becomeTakingSnapshotThen() {
         unstashAll()
         becomeReady()
         sender ! Output.Ready
       }
 
     case Input.StartWithoutRecovery ⇒
-      journalWriter = newJsonWriter(file, appendToSnapshots = false)
+      journalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId))
       unstashAll()
+      journalWriter.beginSnapshotSection()  // Empty snapshot section
       becomeReady()
       sender() ! Output.Ready
 
@@ -91,12 +101,18 @@ extends Actor with Stash {
   }
 
   private def becomeReady(): Unit = {
-    context.become(ready)
+    become(ready)
     logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${journalWriter.file}'")
-    journalWriter.startEvents()
+    journalWriter.beginEventSection()
   }
 
-  private def ready: Receive = {
+  private def ready: Receive = receiveTerminated orElse {
+    case Input.EventsAccepted(untilEventId) ⇒
+      if (untilEventId > lastWrittenEventId)
+        sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
+      else
+        stateActor.forward(JournalStateActor.Input.EventsAccepted(untilEventId))
+
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
@@ -134,7 +150,10 @@ extends Actor with Stash {
         logWrittenAsStored(sync)
         for (Written(stampedOptions, replyTo, sender, item) ← writtenBuffer) {
           replyTo.!(Output.Stored(stampedOptions, item))(sender)
-          for (stampedOption ← stampedOptions; stamped ← stampedOption) {
+          for (lastStamped ← stampedOptions.reverseIterator.flatten.buffered.headOption) {
+            lastWrittenEventId = lastStamped.eventId
+          }
+          for (stamped ← stampedOptions.iterator.flatten) {
             keyedEventBus.publish(stamped)
           }
         }
@@ -152,14 +171,22 @@ extends Actor with Stash {
         journalWriter.close()
         journalWriter.logStatistics()
         val sender = this.sender()
-        becomeTakingSnapshotThen(lastEventId = journalWriter.lastEventId) {
+        becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
           sender ! Output.SnapshotTaken
         }
       }
 
     case Input.Terminate ⇒
-      context.stop(self)
+      if (keylessJournalingActors.contains(stateActor)) {
+        stop(stateActor)
+        become(receiveTerminated andThen { _ ⇒
+          if (!keylessJournalingActors.contains(stateActor)) {
+            stop(self)
+          }
+        })
+      } else
+        stop(self)
 
     case Input.GetState ⇒
       sender() ! (
@@ -167,12 +194,16 @@ extends Actor with Stash {
           Output.State(isFlushed = false, isSynced = false)
         else
           Output.State(isFlushed = journalWriter.isFlushed, isSynced = journalWriter.isSynced))
+  }
 
-    case Terminated(a) ⇒
+  private def receiveTerminated: Receive = {
+    case Terminated(a) if keylessJournalingActors contains a ⇒
+      keylessJournalingActors -= a
+
+    case Terminated(a) if keyToJournalingActor.values.exists(_ == a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
       logger.trace(s"Terminated: ${keys mkString "?"} -> ${a.path}")
       keyToJournalingActor --= keys
-      keylessJournalingActors -= a
   }
 
   private def logWrittenAsStored(synced: Boolean) =
@@ -185,18 +216,18 @@ extends Actor with Stash {
       }
     }
 
-  private def becomeTakingSnapshotThen(lastEventId: EventId)(andThen: ⇒ Unit) = {
-    logger.debug(s"Taking snapshot lastEventId=${EventId.toString(lastEventId)}")
+  private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
     if (journalWriter != null) {
       journalWriter.close()
     }
-    temporaryJournalWriter = newJsonWriter(Paths.get(s"$file.tmp"), appendToSnapshots = false)
-    temporaryJournalWriter.startSnapshots(lastEventId = lastEventId)
+    temporaryJournalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"))
+    temporaryJournalWriter.beginSnapshotSection()
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
-    context.actorOf(
-      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors, snapshotJsonCodec) },
+    actorOf(
+      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors, snapshotJsonCodec | JournalState.jsonCodec) },
       uniqueActorName("SnapshotWriter"))
-    context.become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
+    become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
+    // Ist der Schnappschuss vollständig, wenn ein journalingActor (von dem ein Schnappschuss geholt wird) sich jetzt beendet ???
   }
 
   private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
@@ -209,12 +240,9 @@ extends Actor with Stash {
       if (snapshotCount > 0) {
         logger.info(s"$snapshotCount snapshots written to journal")
       }
-      if (journalWriter != null) {
-        journalWriter.close()
-      }
-      move(temporaryJournalWriter.file, file, REPLACE_EXISTING, ATOMIC_MOVE)   // TODO Gibt es für kurze Zeit nur das journal.tmp ?
+      val file = journalMeta.file(after = lastWrittenEventId)
+      move(temporaryJournalWriter.file, file, ATOMIC_MOVE)
       temporaryJournalWriter = null
-
       journalWriter = newJsonWriter(file, appendToSnapshots = true)
       unstashAll()
       andThen()
@@ -223,43 +251,44 @@ extends Actor with Stash {
       stash()
   }
 
-  private def newJsonWriter(file: Path, appendToSnapshots: Boolean) =
-    new JournalWriter[E](meta, file, appendToSnapshots = appendToSnapshots, eventReaderOptionProvider)
+  private def newJsonWriter(file: Path, appendToSnapshots: Boolean = false) =
+    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventReaderOption, appendToSnapshots = appendToSnapshots)
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
       keylessJournalingActors.add(sender())
-      context.watch(sender())
+      watch(sender())
 
     case Input.RegisterMe(Some(key)) ⇒
       keyToJournalingActor += key → sender()
-      context.watch(sender())
+      watch(sender())
   }
 }
 
 object JournalActor
 {
   def props[E <: Event](
-    meta: JournalMeta[E],
-    file: Path,
+    journalMeta: JournalMeta[E],
     syncOnCommit: Boolean,
     keyedEventBus: StampedKeyedEventBus,
+    scheduler: Scheduler,
     stopped: Promise[Stopped] = Promise(),
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   =
-    Props { new JournalActor(meta, file, syncOnCommit, keyedEventBus, stopped, eventIdGenerator) }
+    Props { new JournalActor(journalMeta, syncOnCommit, keyedEventBus, scheduler, stopped, eventIdGenerator) }
 
   trait CallersItem
 
   object Input {
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
-      eventReader: Option[JournalEventReaderProvider[_ <: Event]],
-      eventsAcceptedUntil: EventId,
+      eventReader: Option[JournalEventReader[_ <: Event]],
+      journalState: JournalState,
       lastEventId: EventId)
     final case object StartWithoutRecovery
-    final case class RegisterMe(key: Option[Any])
-    final case class Store(
+    final case class EventsAccepted(untilEventId: EventId)
+    private[journal] final case class RegisterMe(key: Option[Any])
+    private[journal] final case class Store(
       keyedEventOptions: Seq[Option[AnyKeyedEvent]],
       journalingActor: ActorRef,
       timestamp: Option[Timestamp],
@@ -291,4 +320,8 @@ object JournalActor
     replyTo: ActorRef,
     sender: ActorRef,
     item: CallersItem)
+  {
+    def lastStamped: Option[Stamped[AnyKeyedEvent]] =
+      stampeds.reverseIterator.flatten.buffered.headOption
+  }
 }

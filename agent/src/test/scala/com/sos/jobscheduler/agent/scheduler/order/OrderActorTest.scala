@@ -37,8 +37,9 @@ import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.time.Instant.now
+import monix.execution.Scheduler
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
@@ -68,6 +69,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
     testActor ! PoisonPill
+    Files.delete(directoryProvider.dataDirectory / "state/agent--0.journal")
   }
 
   "Shell script with big stdout and stderr" in {
@@ -134,9 +136,6 @@ private object OrderActorTest {
         |""".stripMargin),
     Map("VAR1" → "FROM-JOB"))
 
-  private val TestJournalMeta = new JournalMeta[OrderEvent](
-    snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
-    eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
   private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String])
@@ -148,15 +147,19 @@ private object OrderActorTest {
     import context.{actorOf, become}
     override val supervisorStrategy = SupervisorStrategies.escalate
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
-    private val journalFile = dir / "data" / "state" / "journal"
     private val keyedEventBus = new StampedKeyedEventBus
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
       new StandardRichProcessStartSynchronizer()(context.system),
       AgentConfiguration.forTest(configAndData = dir))
 
+    private val journalMeta = JournalMeta(
+      snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
+      eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]),
+      dir / "data" / "state" / "agent")
+
     private val journalActor = actorOf(
-      JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, keyedEventBus),
+      JournalActor.props(journalMeta, syncOnCommit = true, keyedEventBus, Scheduler.global),
       "Journal")
     private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
     private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")

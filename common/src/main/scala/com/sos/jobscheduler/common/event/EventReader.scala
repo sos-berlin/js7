@@ -67,6 +67,8 @@ trait EventReader[E <: Event] {
   /** TEST ONLY - Blocking. */
   @TestOnly
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
+
+  def tornEventId: EventId
 }
 
 object EventReader

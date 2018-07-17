@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.event.journal.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
@@ -17,6 +18,7 @@ import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinish
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderFatEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
 import com.sos.jobscheduler.tests.history.HistoryTest._
@@ -40,13 +42,20 @@ final class HistoryTest extends FreeSpec
         provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
         for (a ← provider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(0.s)
 
+        def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
+
         provider.runAgents() { runningAgents ⇒
           provider.runMaster() { master ⇒
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
               masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
               master.addOrderBlocking(TestOrder)
               master.eventReader.await[OrderFinished](_.key == TestOrder.id)
-
+              assert(listJournalFiles == Vector("master--0.journal"))
+            }
+          }
+          provider.runMaster() { master ⇒
+            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
               val history = new InMemoryHistory
               var lastEventId = EventId.BeforeFirst
               var finished = false
@@ -63,6 +72,14 @@ final class HistoryTest extends FreeSpec
               assert(rounds > 2)
               assert(history.orderEntries.map(normalizeTimestampsInEntry) ==
                 expectedOrderEntries(runningAgents map (_.localUri.toString)))
+
+              assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))
+
+              masterApi.executeCommand(MasterCommand.KeepEvents(lastEventId -1)) await 99.s
+              assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))  // Nothing deleted
+
+              masterApi.executeCommand(MasterCommand.KeepEvents(lastEventId)) await 99.s
+              assert(listJournalFiles.length == 1 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
             }
           }
         }
