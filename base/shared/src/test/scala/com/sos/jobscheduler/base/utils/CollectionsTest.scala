@@ -72,6 +72,34 @@ final class CollectionsTest extends FreeSpec {
     intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
   }
 
+  "mapValuesStrict" - {
+    def newF = new (Int ⇒ Int) {
+      var called = 0
+      def apply(i: Int) = {
+        called += 1
+        2 * i
+      }
+    }
+
+    "Scala's mapValues is lazy" in {
+      val f = newF
+      val a = Map(1 → 10).mapValues(f)
+      assert(f.called == 0)
+      a(1)
+      assert(f.called == 1)
+      a(1)
+      assert(f.called == 2)
+    }
+
+    "mapValuesStrict is strict" in {
+      val f = newF
+      val a = Map(1 → 10).mapValuesStrict(f)
+      assert(f.called == 1)
+      a(1)
+      assert(f.called == 1)
+    }
+  }
+
   "uniqueToSet" in {
     List(1, 2, 3).uniqueToSet shouldEqual Set(1, 2, 3)
     intercept[DuplicateKeyException] { List(1, 2, 1).uniqueToSet }

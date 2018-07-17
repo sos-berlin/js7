@@ -152,6 +152,19 @@ object Collections {
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def withNoSuchKey(noSuchKey: K ⇒ Nothing): Map[K, V] =
       underlying withDefault (k ⇒ noSuchKey(k))
+
+    def mapValuesStrict[W](f: V ⇒ W): Map[K, W] =
+      underlying map { case (k, v) ⇒ k → f(v) }
+  }
+
+  implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {
+    def mapValuesStrict[W](f: V ⇒ W): mutable.Map[K, W] =
+      underlying map { case (k, v) ⇒ k → f(v) }
+  }
+
+  implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {
+    def mapValuesStrict[W](f: V ⇒ W): mutable.Map[K, W] =
+      underlying map { case (k, v) ⇒ k → f(v) }
   }
 
   // To satisfy IntelliJ IDEA 2016.2.5

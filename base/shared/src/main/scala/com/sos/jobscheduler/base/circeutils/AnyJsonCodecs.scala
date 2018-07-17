@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.circeutils
 
+import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.JavaConverters._
@@ -67,7 +68,7 @@ object AnyJsonCodecs {
               case None if json.isNull ⇒ null
               case None ⇒
                 json.asObject match {
-                  case Some(o) ⇒ o.toMap filter (!_._2.isNull)/*remove None*/ mapValues jsonToAny
+                  case Some(o) ⇒ o.toMap filter (!_._2.isNull)/*remove None*/ mapValuesStrict jsonToAny
                   case None ⇒
                     json.asArray match {
                       case Some(o) ⇒ o map jsonToAny: Seq[Any]

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import io.circe.syntax.EncoderOps
@@ -50,8 +51,8 @@ object KeyedEventTypedJsonCodec {
     val cls = implicitClass[E]
     new KeyedEventTypedJsonCodec[E](
       cls.simpleScalaName,
-      subtypes.flatMap(_.classToEncoder mapValues (_.asInstanceOf[ObjectEncoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownClassForJsonException(o, cls)),
-      subtypes.flatMap(_.nameToDecoder.mapValues (_.asInstanceOf[Decoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)),
+      subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[ObjectEncoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownClassForJsonException(o, cls)),
+      subtypes.flatMap(_.nameToDecoder.mapValuesStrict (_.asInstanceOf[Decoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)),
       subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)))
   }
 
@@ -87,11 +88,11 @@ object KeyedEventTypedJsonCodec {
 
     def of[E <: Event: ClassTag](name: String)(implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E]): KeyedSubtype[E] = {
       new KeyedSubtype[E](
-        classToEncoder = codec.classToEncoder.mapValues { encoder ⇒
+        classToEncoder = codec.classToEncoder.mapValuesStrict { encoder ⇒
           implicit val x = encoder.asInstanceOf[ObjectEncoder[E]]
           KeyedEvent.jsonEncoder[E]
         },
-        nameToDecoder = codec.nameToDecoder.mapValues { decoder ⇒
+        nameToDecoder = codec.nameToDecoder.mapValuesStrict { decoder ⇒
           implicit val x = decoder.asInstanceOf[Decoder[E]]
           KeyedEvent.jsonDecoder[E]
         },

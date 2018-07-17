@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.gui.browser.components.state
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -29,7 +30,7 @@ final case class OrdersState(
     copy(
       content = OrdersState.FetchedContent(
         idToEntry = updatedIdToEntry,
-        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowId) mapValues (_.map(_.order.id).toVector.sorted),
+        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowId) mapValuesStrict (_.map(_.order.id).toVector.sorted),
         eventId = stamped.eventId, eventCount = 0),
       error = None,
       step = step + 1)
@@ -186,7 +187,7 @@ object OrdersState {
     if (deleted.isEmpty)
       wToO
     else
-      wToO.mapValues {
+      wToO.mapValuesStrict {
         case v if v exists deleted ⇒ v filterNot deleted
         case v ⇒ v
       }

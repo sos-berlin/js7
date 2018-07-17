@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.common
 import akka.actor.ActorRef
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.core.event.journal.RecoveredJournalingActors
 import java.util.NoSuchElementException
@@ -80,7 +81,7 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
   override def toString = s"ActorRegister(${keyToValue.size} items)"
 
   final def recoveredJournalingActors: RecoveredJournalingActors =
-    RecoveredJournalingActors((keyToValue mapValues valueToActorRef).toMap)
+    RecoveredJournalingActors((keyToValue mapValuesStrict valueToActorRef).toMap)
 
   final def keys: Vector[K] = keyToValue.keys.toVector
 

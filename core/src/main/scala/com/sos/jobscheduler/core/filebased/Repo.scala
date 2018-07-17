@@ -4,7 +4,8 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
+import com.sos.jobscheduler.base.utils.Collections._
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Memoizer
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
@@ -25,7 +26,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
   lazy val pathToVersionToFileBased: Map[TypedPath, Map[VersionId, Option[FileBased]]] =
     idToFileBased.map { case (id, fileBased) ⇒ (id.path, id.versionId, fileBased) }
       .groupBy (_._1)
-      .mapValues (_ toKeyedMap (_._2) mapValues (_._3))
+      .mapValuesStrict (_ toKeyedMap (_._2) mapValuesStrict (_._3))
 
   lazy val currentVersion: Map[TypedPath, FileBased] =
     for {

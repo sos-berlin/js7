@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.minicom.idispatch
 
+import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.minicom.idispatch.OverridingInvocableIDispatch._
 import com.sos.jobscheduler.minicom.types.HRESULT._
@@ -44,8 +45,8 @@ trait OverridingInvocableIDispatch extends Invocable with IDispatch {
       }).flatten
     }
     val dispIdToDispatchTypeToMethod: Map[DISPID, Map[DispatchType, Method]] =
-      methodMetas groupBy { _.dispId } mapValues { _ groupBy { _.typ }} map { case (dispId, dispatchTypeToMethodMetas) ⇒
-        dispId → (dispatchTypeToMethodMetas mapValues { metas ⇒
+      methodMetas groupBy { _.dispId } mapValuesStrict { _ groupBy { _.typ }} map { case (dispId, dispatchTypeToMethodMetas) ⇒
+        dispId → (dispatchTypeToMethodMetas mapValues/*lazy*/ { metas ⇒
           if (metas.size == 1)
             metas.head.method
           else
