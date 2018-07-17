@@ -20,7 +20,7 @@ object Dependencies {
   val disciplineVersion = "0.8"
   val monixVersion = "2.3.3"
   val monocleVersion = "1.5.0"
-  val scalaJsDomVersion = "0.9.5"
+  val scalaJsDomVersion = "0.9.6"
   val scajaJsJQueryVersion = "0.9.3"
   val bootstrapVersion = "4.0.0"
   val sangriaVersion = "1.4.1"
