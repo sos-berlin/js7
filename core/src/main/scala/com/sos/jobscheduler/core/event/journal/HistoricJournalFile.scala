@@ -21,7 +21,7 @@ final case class HistoricJournalFile private[journal](afterEventId: EventId, fil
   def eventReader[E <: Event](journalMeta: JournalMeta[E]): HistoricJournalEventReader[E] = {
     historicJournalEventReader.get match {
       case null ⇒
-        val r = new HistoricJournalEventReader[E](journalMeta, afterEventId = afterEventId, file)
+        val r = new HistoricJournalEventReader[E](journalMeta, tornEventId = afterEventId, file)
         if (historicJournalEventReader.compareAndSet(null, r))
           r
         else {

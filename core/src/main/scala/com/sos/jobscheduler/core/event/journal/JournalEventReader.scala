@@ -49,10 +49,7 @@ with WriterReaderAdapter
     // Die bekommen dann einen leeren CloseableIterator und wiederholen den Aufruf, dann mit dem neuen CurrentJournalEventReader.
     // Siehe auch onEventsAdded.
     currentJournalEventReaderOption = Some(
-      new CurrentJournalEventReader[E](
-        journalMeta,
-        journalMeta.file(after = flushedLengthAndEventId.value),
-        flushedLengthAndEventId))
+      new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId))
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
   }
 
@@ -128,5 +125,4 @@ with WriterReaderAdapter
 
 private[journal] object JournalEventReader {
   private val logger = Logger(getClass)
-
 }

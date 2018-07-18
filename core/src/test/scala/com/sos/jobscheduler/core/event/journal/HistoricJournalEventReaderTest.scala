@@ -23,7 +23,7 @@ final class HistoricJournalEventReaderTest extends FreeSpec
         writer.flush()
       }
 
-      autoClosing(new HistoricJournalEventReader[TestEvent](journalMeta, afterEventId = After, journalMeta.file(After))) { reader ⇒
+      autoClosing(new HistoricJournalEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After))) { reader ⇒
         locally {
           val closeableIterator = reader.eventsAfter(After)
           assert(closeableIterator.toList == TestEvents)

@@ -158,7 +158,7 @@ final class CurrentJournalEventReaderTest extends FreeSpec with BeforeAndAfterAl
           def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]) = {
             assert(file == journalFile)
             assert(flushedLengthAndEventId.value == lastEventId)
-            eventReader := new CurrentJournalEventReader[MyEvent](journalMeta, file, flushedLengthAndEventId)
+            eventReader := new CurrentJournalEventReader[MyEvent](journalMeta, flushedLengthAndEventId)
           }
           def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]) = eventReader().onEventsAdded(flushedPositionAndEventId)
         }))
