@@ -46,16 +46,16 @@ final class TimerServiceExclusiveTest extends FreeSpec with ScalaFutures {
       val results = new ConcurrentLinkedQueue[(String, Instant)]()
       val t = now
       timerService.at(t + 0.ms, "test") onElapsed { results.add("A" → now) }
-      timerService.at(t + 400.ms, "test") onElapsed { results.add("C" → now) }
-      timerService.at(t + 200.ms, "test") onElapsed { results.add("B" → now) }
-      sleep(500.ms)
+      timerService.at(t + 800.ms, "test") onElapsed { results.add("C" → now) }
+      timerService.at(t + 400.ms, "test") onElapsed { results.add("B" → now) }
+      sleep(1000.ms)
       withClue(s"Run $nr: ") {
         val r = results.asScala.toVector
         logger.info((r map { case (s, i) ⇒ (s, (i - t).pretty) } mkString " ") + s" $timerService")
         assert((r map { _._1 }) == Vector("A", "B", "C"))
-        assert(r(0)._2 >= t && r(0)._2 <= t + 200.ms)
-        assert(r(1)._2 >= t && r(1)._2 <= t + 400.ms)
-        assert(r(2)._2 >= t && r(2)._2 <= t + 600.ms)
+        assert(r(0)._2 >= t && r(0)._2 <= t + 400.ms)
+        assert(r(1)._2 >= t && r(1)._2 <= t + 800.ms)
+        assert(r(2)._2 >= t && r(2)._2 <= t + 1200.ms)
         assert(timerService.overview == TimerServiceOverview(count = 0, completeCount = nr * 3, wakeCount = nr * 2))
       }
     }
@@ -112,10 +112,10 @@ final class TimerServiceExclusiveTest extends FreeSpec with ScalaFutures {
 
   "completeWith" in {
     autoClosing(TimerService()) { timerService ⇒
-      val a = timerService.addTimer(new Timer(now + 100.ms, "test", completeWith = () ⇒ Success(777)))
+      val a = timerService.addTimer(new Timer(now + 200.ms, "test", completeWith = () ⇒ Success(777)))
       sleep(10.ms)
       assert(!a.isCompleted)
-      a await 1.s shouldEqual 777
+      a await 2.s shouldEqual 777
     }
   }
 
