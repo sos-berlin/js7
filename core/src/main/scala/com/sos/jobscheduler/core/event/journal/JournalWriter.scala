@@ -43,7 +43,7 @@ extends AutoCloseable
   def close() = jsonWriter.close()
 
   def logStatistics(): Unit = {
-    logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written. $statistics")
+    logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written: $statistics")
     logTiming()
   }
 

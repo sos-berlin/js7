@@ -43,7 +43,7 @@ private[journal] final class StatisticsCounter {
   }
 
   override def toString =
-    if (events == 0) ""
+    if (events == 0) "no events"
     else f"$events events, $commits commits ($flushes flushes, $syncs syncs)"
 
   def timingString =

@@ -56,7 +56,7 @@ extends Actor with Stash {
   override def postStop() = {
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = keyToJournalingActor.size))
     for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped but a KeyedJournalingActor is still running for key=$key")
-    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running for $a")
+    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running: $a")
     if (temporaryJournalWriter != null) {
       logger.debug(s"Deleting temporary journal file due to termination: ${temporaryJournalWriter.file}")
       temporaryJournalWriter.close()
@@ -202,7 +202,7 @@ extends Actor with Stash {
 
     case Terminated(a) if keyToJournalingActor.values.exists(_ == a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
-      logger.trace(s"Terminated: ${keys mkString "?"} -> ${a.path}")
+      logger.trace(s"Terminated: ${keys mkString " ?"} -> ${a.path}")
       keyToJournalingActor --= keys
   }
 
@@ -256,10 +256,12 @@ extends Actor with Stash {
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
+      logger.trace(s"RegisterMe(${sender()})")
       keylessJournalingActors.add(sender())
       watch(sender())
 
     case Input.RegisterMe(Some(key)) ⇒
+      logger.trace(s"RegisterMe($key)")
       keyToJournalingActor += key → sender()
       watch(sender())
   }
