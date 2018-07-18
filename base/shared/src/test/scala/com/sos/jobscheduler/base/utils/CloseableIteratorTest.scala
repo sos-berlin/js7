@@ -42,6 +42,28 @@ final class CloseableIteratorTest extends FreeSpec
   }
 
   "closeAtEnd" in {
+    val a = new TestIterator(Iterator(1, 2))
+    val b = a.closeAtEnd
+    assert(b.next() == 1)
+    assert(!a.closed)
+    assert(b.next() == 2)
+    assert(!a.closed)
+    assert(!b.hasNext)  // closes automatically
+    assert(a.closed)
+  }
+
+  "closeAtEnd with NoSuchElementException" in {
+    val a = new TestIterator(Iterator(1, 2))
+    val b = a.closeAtEnd
+    assert(b.next() == 1)
+    assert(!a.closed)
+    assert(b.next() == 2)
+    assert(!a.closed)
+    intercept[NoSuchElementException] { b.next() }  // closes automatically
+    assert(a.closed)
+  }
+
+  "closeAtEnd ++" in {
     val a = new TestIterator(Iterator(1, 2, 3))
     val b = new TestIterator(Iterator(11, 12))
     val c = a.closeAtEnd ++ b.closeAtEnd
@@ -57,6 +79,12 @@ final class CloseableIteratorTest extends FreeSpec
     assert(a.closed && !b.closed)
     assert(!c.hasNext)
     assert(a.closed && b.closed)
+
+  }
+
+  "closeAtEnd is idempotent" in {
+    val a = new TestIterator(Iterator(1, 2, 3)).closeAtEnd
+    assert(a.closeAtEnd eq a)
   }
 }
 

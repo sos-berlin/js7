@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.CloseableIterator._
+import java.util.NoSuchElementException
 import scala.collection.immutable.Seq
 import scala.collection.{GenTraversableOnce, Iterator}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -15,7 +17,10 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
 
   /** Automatically closes the `CloseableIterator` when `hasNext` becomes false. */
   def closeAtEnd: CloseableIterator[A] =
-    new CloseAtEnd[A](this)
+    this match {
+      case _: CloseAtEnd[A] ⇒ this
+      case _ ⇒ new CloseAtEnd[A](this)
+    }
 
   def :+[B >: A](b: ⇒ B) = wrap(this ++ Iterator(b))
 
@@ -78,7 +83,16 @@ object CloseableIterator {
       false
     }
 
-    def next() = underlying.next()
+    def next() =
+      try underlying.next()
+      catch {
+        case t: NoSuchElementException ⇒
+          try underlying.close()
+          catch {
+            case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt)
+          }
+          throw t
+      }
 
     def close() = underlying.close()
 

@@ -19,7 +19,6 @@ trait EventReader[E <: Event] {
   def strict: StrictEventReader[E] = new StrictEventReader(this)
 
   def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
-    (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]]
 
   def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)

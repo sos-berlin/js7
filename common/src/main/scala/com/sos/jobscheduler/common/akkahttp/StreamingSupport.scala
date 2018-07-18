@@ -10,7 +10,6 @@ import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
@@ -55,6 +54,10 @@ object StreamingSupport
     closeableIteratorToObservable(iterator).toAkkaSource
     // How to close without Monix??? Source.fromIterator(() ⇒ iterator).__onTerminate__(iterator.close()
 
-  def closeableIteratorToObservable[A](iterator: CloseableIterator[A])(implicit scheduler: Scheduler): Observable[A] =
-    Observable.fromIterator(iterator).doOnTerminateEval(_ ⇒ Task.eval(iterator.close()))
+  def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
+    Observable.fromIterator(iterator.closeAtEnd)
+      .doOnTerminate(_ ⇒
+        iterator.close())
+      .doOnSubscriptionCancel(() ⇒
+        iterator.close())
 }

@@ -20,7 +20,6 @@ import scala.reflect.ClassTag
 final class StrictEventReader[E <: Event](eventReader: EventReader[E])
 {
   def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
-    (implicit scheduler: Scheduler)
   : Observable[Stamped[KeyedEvent[E1]]]
   = eventReader.observe(request, predicate)
 

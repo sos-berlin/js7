@@ -42,8 +42,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     sync.onEventAdded(eventId)
   }
 
-  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)(implicit s: Scheduler)
-  : Observable[Stamped[KeyedEvent[E1]]] =
+  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     def next(lazyRequest: () ⇒ EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () ⇒ EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in last iteration computed values lastEventId and limit (see below)
