@@ -21,12 +21,18 @@ final class CloseableIteratorTest extends FreeSpec
 
   "++" in {
     val a = new TestIterator(Iterator(1, 2, 3))
-    val b = new TestIterator(Iterator(11, 12))
+    var lazyBTouched = false
+    lazy val b = {
+      lazyBTouched = true
+      new TestIterator(Iterator(11, 12))
+    }
     val c = a ++ b
     assert(c.next() == 1)
     assert(c.next() == 2)
     assert(c.next() == 3)
+    assert(!lazyBTouched)
     assert(c.next() == 11)
+    assert(lazyBTouched)
     assert(c.next() == 12)
     assert(!a.closed)
     assert(!b.closed)
