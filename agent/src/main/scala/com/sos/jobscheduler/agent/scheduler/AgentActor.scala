@@ -26,6 +26,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.master.MasterId
 import javax.inject.Inject
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -80,12 +81,12 @@ extends KeyedEventJournalingActor[AgentEvent] {
     protected val journalMeta = AgentActor.this.journalMeta
 
     def recoverSnapshot = {
-      case AgentSnapshot.Master(userId) ⇒
-        addOrderKeeper(userId)
+      case AgentSnapshot.Master(masterId) ⇒
+        addOrderKeeper(masterId)
     }
 
     def recoverEvent = {
-      case Stamped(_, _, e @ KeyedEvent(_: UserId, AgentEvent.MasterAdded)) ⇒
+      case Stamped(_, _, e @ KeyedEvent(_: MasterId, AgentEvent.MasterAdded)) ⇒
         val keyedEvent = e.asInstanceOf[KeyedEvent[AgentEvent.MasterAdded.type]]
         update(keyedEvent)
     }
@@ -120,9 +121,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     case cmd: Input.ExternalCommand ⇒
       executeExternalCommand(cmd, jobs)
 
-    case Input.RequestEvents(userId, input) ⇒
-      masterToOrderKeeper.checked(userId) match {
-        case Valid(actor) ⇒ actor ! (input: AgentOrderKeeper.Input)
+    case Input.GetEventReader(masterId) ⇒
+      masterToOrderKeeper.checked(masterId) match {
+        case Valid(actor) ⇒ actor.forward(AgentOrderKeeper.Input.GetEventReader)
         case Invalid(problem) ⇒ sender() ! Status.Failure(problem.throwable)
       }
 
@@ -152,6 +153,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   private def executeExternalCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
     import externalCommand.{command, response, userId}
+    val masterId = MasterId.fromUserId(userId)
     command match {
       case command: AgentCommand.Terminate ⇒
         terminating = true
@@ -164,19 +166,19 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
       case AgentCommand.RegisterAsMaster if !terminating ⇒
         //??? require(sessionToken.isDefined)
-        if (masterToOrderKeeper contains userId) {
+        if (masterToOrderKeeper contains masterId) {
           response.success(AgentCommand.Accepted)
         } else {
           response completeWith
-            persist(userId <-: AgentEvent.MasterAdded) { case Stamped(_, _, keyedEvent) ⇒
+            persist(masterId <-: AgentEvent.MasterAdded) { case Stamped(_, _, keyedEvent) ⇒
               update(keyedEvent)
-              masterToOrderKeeper(userId) ! AgentOrderKeeper.Input.Start(jobs)
+              masterToOrderKeeper(masterId) ! AgentOrderKeeper.Input.Start(jobs)
               AgentCommand.Accepted
             }
         }
 
       case command: AgentCommand.OrderCommand ⇒
-        masterToOrderKeeper.checked(userId) match {
+        masterToOrderKeeper.checked(masterId) match {
           case Valid(actor) ⇒
             actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
           case Invalid(problem) ⇒
@@ -196,15 +198,15 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   private def update(keyedEvent: KeyedEvent[MasterEvent]): Unit =
     keyedEvent match {
-      case KeyedEvent(userId: UserId, AgentEvent.MasterAdded) ⇒
-        addOrderKeeper(userId)
+      case KeyedEvent(masterId: MasterId, AgentEvent.MasterAdded) ⇒
+        addOrderKeeper(masterId)
     }
 
-  private def addOrderKeeper(userId: UserId): ActorRef = {
+  private def addOrderKeeper(masterId: MasterId): ActorRef = {
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
-          journalFileBase = stateDirectory / s"master-$userId",
+          journalFileBase = stateDirectory / s"master-$masterId",
           askTimeout = akkaAskTimeout,
           syncOnCommit = agentConfiguration.journalSyncOnCommit,
           keyedEventBus,
@@ -212,8 +214,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
           scheduler,
           timerService)
         },
-      Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$userId"))
-    masterToOrderKeeper.insert(userId → actor)
+      Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
+    masterToOrderKeeper.insert(masterId → actor)
     watch(actor)
   }
 
@@ -236,17 +238,17 @@ object AgentActor {
   object Input {
     final case object Start
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
-    final case class RequestEvents(usedId: UserId, input: AgentOrderKeeper.Input.RequestEvents)
+    final case class GetEventReader(masterId: MasterId)
   }
 
   object Output {
     case object Ready
   }
 
-  private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
-    override def noSuchKeyMessage(userId: UserId) = s"No master registered for user '$userId'"
+  private final class MasterRegister extends ActorRegister[MasterId, ActorRef](identity) {
+    override def noSuchKeyMessage(masterId: MasterId) = s"No master registered for master '$masterId'"
 
-    override def insert(kv: (UserId, ActorRef)) = super.insert(kv)
+    override def insert(kv: (MasterId, ActorRef)) = super.insert(kv)
 
     override def -=(a: ActorRef) = super.-=(a)
   }

@@ -1,39 +1,36 @@
 package com.sos.jobscheduler.agent.web
 
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
-import com.sos.jobscheduler.data.event.{EventRequest, ReverseEventRequest}
+import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.core.event.AbstractEventRoute
+import com.sos.jobscheduler.data.event.KeyedEvent
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent
-import monix.execution.Scheduler
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 
 /**
   * @author Joacim Zschimmer
   */
-trait MastersEventWebService extends AgentRouteProvider {
-
-  protected implicit def scheduler: Scheduler
+trait MastersEventWebService extends AgentRouteProvider with AbstractEventRoute[OrderEvent]
+{
   protected def agentHandle: AgentHandle
   implicit protected def akkaAskTimeout: Timeout
 
-  protected final lazy val masterEventRoute: Route =
-    authorizedUser(ValidUserPermission) { user ⇒
-      pathEnd {
-        eventRequest[OrderEvent](defaultReturnType = Some("OrderEvent")).apply {
-          case _: ReverseEventRequest[OrderEvent] ⇒
-            complete(Problem("ReverseEventRequest is not supported here"))
+  protected def eventClass =
+    classOf[OrderEvent]
 
-          case request: EventRequest[OrderEvent] ⇒
-            complete(agentHandle.fetchEvents(user.id, request))
-        }
-      }
-    }
+  protected def keyedEventTypedJsonCodec =
+    KeyedEventJsonFormats.keyedEventJsonCodec
+
+  protected def eventReaderFor(userId: UserId) =
+    agentHandle.eventReader(MasterId.fromUserId(userId))
+
+  override protected def isRelevantEvent(keyedEvent: KeyedEvent[OrderEvent]) =
+    keyedEvent.event != OrderDetached  // Master knows about detached order by successful executed AgentCommand.DetachOrder
+
+  protected final def masterEventRoute =
+    abstractEventRoute
 }

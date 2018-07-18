@@ -171,7 +171,7 @@ with Stash {
     case input: Input.QueueableInput if sender() == context.parent ⇒
       commandQueue.enqueue(input)
       scheduler.scheduleOnce(batchDelay) {
-        self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueuableInput pending in actor's mailbox can be queued
+        self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueueableInput pending in actor's mailbox can be queued
       }
 
     case Internal.BatchSucceeded(responses) ⇒

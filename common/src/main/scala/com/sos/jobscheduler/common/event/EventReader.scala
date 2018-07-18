@@ -8,7 +8,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -16,8 +15,6 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 trait EventReader[E <: Event] {
-
-  def whenRealEventReader: Future[RealEventReader[E]]
 
   def strict: StrictEventReader[E] = new StrictEventReader(this)
 
@@ -69,6 +66,8 @@ trait EventReader[E <: Event] {
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
 
   def tornEventId: EventId
+
+  def lastAddedEventId: EventId
 }
 
 object EventReader

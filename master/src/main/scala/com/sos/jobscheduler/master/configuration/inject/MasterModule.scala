@@ -36,7 +36,7 @@ import scala.util.control.NonFatal
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
   @Provides @Singleton
-  def eventReaderProvider(p: JournalEventReader[Event]): EventReader[Event] =
+  def eventReader(p: JournalEventReader[Event]): EventReader[Event] =
     p
 
   @Provides @Singleton

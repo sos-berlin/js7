@@ -2,7 +2,6 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
-import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
@@ -21,6 +20,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, SourceType, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Job
@@ -74,7 +74,7 @@ final class RecoveryTest extends FreeSpec {
               lastEventId = lastEventIdOf(master.eventReader.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
             }
             assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
-              Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId("Master")/*see default master.conf*/)))
+              Vector(KeyedEvent(AgentEvent.MasterAdded)(MasterId("Master")/*see default master.conf*/)))
             logger.info("\n\n*** RESTARTING AGENTS ***\n")
             runAgents(directoryProvider) { _ ⇒
               lastEventId = lastEventIdOf(master.eventReader.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))

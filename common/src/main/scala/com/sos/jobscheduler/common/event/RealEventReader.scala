@@ -16,7 +16,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -36,8 +35,6 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   private var _lastEventId = EventId.BeforeFirst
   private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)
-
-  final val whenRealEventReader = Future.successful(this)
 
   protected final def onEventsAdded(eventId: EventId): Unit = {
     if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")

@@ -1,14 +1,13 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.Done
-import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
+import akka.actor.{ActorRef, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
-import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
@@ -20,20 +19,17 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReader, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
-import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Job
@@ -42,9 +38,7 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
-import shapeless.tag
 
 /**
   * Keeper of one Master's orders.
@@ -66,6 +60,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
+  private val eventReader = new JournalEventReader[Event](journalMeta)
   protected val journalActor = actorOf(
     JournalActor.props(journalMeta, syncOnCommit = syncOnCommit, keyedEventBus, scheduler),
     "Journal")
@@ -73,19 +68,15 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
-  private val eventsForMaster = tag[EventQueueActor](
-    actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster"))
-
   private var terminating = false
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
-    keyedEventBus.subscribe(self, classOf[OrderEvent])
     recover()
   }
 
   private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalMeta, eventsForMaster)(askTimeout)
+    val recoverer = new OrderJournalRecoverer(journalMeta)(askTimeout)
     recoverer.recoverAll()
     for (workflow ← recoverer.workflows)
       wrapException(s"Error when recovering ${workflow.path}") {
@@ -99,19 +90,15 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
-    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
+    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors, Some(eventReader))
   }
 
   override def postStop() = {
-    keyedEventBus.unsubscribe(self)
+    eventReader.close()
     super.postStop()
   }
 
-  def snapshots = {
-    val workflowSnapshots = workflowRegister.workflows
-    for (got ← (eventsForMaster ? EventQueueActor.Input.GetSnapshots).mapTo[EventQueueActor.Output.GotSnapshots])
-      yield workflowSnapshots ++ got.snapshots  // Future: don't use mutable `this`
-  }
+  def snapshots = Future.successful(workflowRegister.workflows)
 
   def receive = journaling orElse {
     case Input.Start(jobPathsAndActors) ⇒
@@ -145,8 +132,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case Input.ExternalCommand(cmd, response) ⇒
       response.completeWith(processOrderCommand(cmd))
 
-    case Input.RequestEvents(after, timeout, limit, promise) ⇒
-      eventsForMaster.forward(EventQueueActor.Input.RequestEvents(after, timeout, limit, promise))
+    case Input.GetEventReader ⇒
+      sender() ! eventReader
 
     case Input.Terminate ⇒
       if (!terminating) {
@@ -155,7 +142,6 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           o.actor ! OrderActor.Input.Terminate
         }
       }
-      eventsForMaster ! PoisonPill
       checkActorStop()
       sender() ! Done
 
@@ -182,14 +168,6 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
-
-    case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, event: OrderEvent)) if !terminating ⇒
-      event match {
-        case OrderDetached ⇒
-          (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
-        case _ ⇒
-          eventsForMaster ! stamped
-      }
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
@@ -418,13 +396,12 @@ object AgentOrderKeeper {
 
   private val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[Workflow],
-    Subtype[Order[Order.State]],
-    Subtype[EventQueueActor.Snapshot])
+    Subtype[Order[Order.State]])
 
   sealed trait Input
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
-    final case class RequestEvents(after: EventId, timeout: FiniteDuration, limit: Int, result: Promise[EventQueueActor.MyEventSeq]) extends Input
+    final case object GetEventReader
     final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
     final case object Terminate
   }

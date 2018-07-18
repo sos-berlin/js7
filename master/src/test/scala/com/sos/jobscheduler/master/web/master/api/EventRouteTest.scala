@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
+import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Problem
@@ -34,6 +35,7 @@ import scala.concurrent.duration._
 final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
 
   private implicit val timeout = 9.seconds
+  private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventReader = new EventCollector.ForTest
   protected implicit def scheduler = Scheduler.global
