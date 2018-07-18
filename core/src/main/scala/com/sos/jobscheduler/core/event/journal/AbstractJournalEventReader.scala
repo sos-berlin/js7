@@ -31,37 +31,51 @@ private[journal] trait AbstractJournalEventReader[E <: Event]
     if (position >= endPosition)  // Data behind endPosition is not flushed and probably incomplete
       CloseableIterator.empty
     else {
-      val jsonFileReader = InputStreamJsonSeqReader.open(journalFile)  // Exception when file has been deleted
-      val iterator = closeOnError(jsonFileReader) {
-        logger.trace(s"'$journalFile' opened. Seek $position after=${EventId.toString(after)}")
-        jsonFileReader.seek(position)
-        new CloseableIterator[Stamped[KeyedEvent[E]]] {
-          def close() = {
-            jsonFileReader.close()
-            logger.trace(s"'$journalFile' closed")
-          }
-
-          def hasNext = jsonFileReader.position != endPosition
-
-          def next() = {
-            val stamped = jsonFileReader.read().map(_.value)
-              .getOrElse(sys.error(s"Unexpected end of journal file '$journalFile' at position ${jsonFileReader.position}, after=${EventId.toString(after)}"))
-              .as[Stamped[KeyedEvent[E]]]
-              .orThrow
-            eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricJournalEventReader
-            stamped
-          }
-
-          override def toString = s"CloseableIterator(after = ${EventId.toString(after)})"
-        }.closeAtEnd
-      }
-      var dropped = 0
-      iterator.dropWhile { stamped ⇒
-        val drop = stamped.eventId <= after
-        if (drop) dropped += 1 else if (dropped > 0) { logger.trace(s"'$journalFile' $dropped events dropped"); dropped = 0 }
-        drop
-      }
+      val iterator = newCloseableIterator(position = position, after = after).closeAtEnd
+      skip(iterator, after = after)
     }
+  }
+
+  private def skip(iterator: CloseableIterator[Stamped[KeyedEvent[E]]], after: EventId) = {
+    var skipped = 0
+    iterator.dropWhile { stamped ⇒
+      val drop = stamped.eventId <= after
+      if (drop) skipped += 1 else if (skipped > 0) { logger.trace(s"'$journalFile' $skipped events skipped"); skipped = 0 }
+      drop
+    }
+  }
+
+  private def newCloseableIterator(position: Long, after: EventId) = {
+    val jsonFileReader = InputStreamJsonSeqReader.open(journalFile)  // Exception when file has been deleted
+    closeOnError(jsonFileReader) {
+      logger.trace(s"'$journalFile' opened. Seek $position after=${EventId.toString(after)}")
+      jsonFileReader.seek(position)
+      new EventCloseableIterator(jsonFileReader, after)
+    }
+  }
+
+  private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
+    var closed = false
+
+    def close() =
+      if (!closed) {
+        jsonFileReader.close()
+        logger.trace(s"'$journalFile' closed")
+        closed = true
+      }
+
+    def hasNext = jsonFileReader.position != endPosition
+
+    def next() = {
+      val stamped = jsonFileReader.read().map(_.value)
+        .getOrElse(sys.error(s"Unexpected end of journal file '$journalFile' at position ${jsonFileReader.position}, after=${EventId.toString(after)}"))
+        .as[Stamped[KeyedEvent[E]]]
+        .orThrow
+      eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricJournalEventReader
+      stamped
+    }
+
+    override def toString = s"CloseableIterator(after = ${EventId.toString(after)})"
   }
 }
 
