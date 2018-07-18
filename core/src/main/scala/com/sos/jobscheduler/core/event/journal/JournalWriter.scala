@@ -114,6 +114,8 @@ extends AutoCloseable
   def isSynced = jsonWriter.isSynced
 
   def isEventWritten = _eventWritten
+
+  override def toString = s"JournalWriter(${file.getFileName})"
 }
 
 private[journal] object JournalWriter {

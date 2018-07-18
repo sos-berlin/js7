@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.CollectionsTest._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.{immutable, mutable}
+import scala.language.reflectiveCalls
 
 final class CollectionsTest extends FreeSpec {
 

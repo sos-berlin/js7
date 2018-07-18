@@ -26,7 +26,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 {
   protected def timerService: TimerService
 
-  def tornEventId: EventId
+  def whenStarted: Task[this.type] = Task.pure(this)
 
   @VisibleForTesting
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
@@ -34,7 +34,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   protected def reverseEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]]
 
   private var _lastEventId = EventId.BeforeFirst
-  private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)
+  private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)  // Initialize not before whenStarted!
 
   protected final def onEventsAdded(eventId: EventId): Unit = {
     if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
@@ -135,8 +135,9 @@ trait RealEventReader[E <: Event] extends EventReader[E]
 
   private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    Task.deferFutureAction(implicit s ⇒
-      sync.whenEventIsAvailable(after, until, delay))
+    whenStarted.flatMap (_ ⇒
+      Task.deferFutureAction(implicit s ⇒
+        sync.whenEventIsAvailable(after, until, delay))
         .flatMap (_ ⇒
           collectEventsSince(after, collect, limit) match {
             case o @ EventSeq.NonEmpty(_) ⇒
@@ -147,7 +148,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
               Task.pure(EventSeq.Empty(lastEventId))
             case o: TearableEventSeq.Torn ⇒
               Task.pure(o)
-          })
+          }))
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : TearableEventSeq[CloseableIterator, A] = {
@@ -206,7 +207,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       case EventSeq.NonEmpty(events) ⇒
         try events.toVector
         finally events.close()
-      case o ⇒ sys.error(s"RealEventReader.await[${implicitClass[E1].scalaName}] unexpected EventSeq: $o")
+      case o ⇒ sys.error(s"RealEventReader.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
     }
 
   /** TEST ONLY - Blocking. */

@@ -3,10 +3,8 @@ package com.sos.jobscheduler.core.event.journal
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventReader
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
-import com.sos.jobscheduler.core.event.journal.CurrentJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import scala.concurrent.ExecutionContext
 
@@ -28,8 +26,6 @@ with AbstractJournalEventReader[E]
   protected def tornPosition = flushedLengthAndEventId.position
   protected var endPosition = flushedLengthAndEventId.position  // Initially, the file contains no events
 
-  logger.debug(s"journalFile=$journalFile tornEventId=$tornEventId")
-
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < endPosition)
@@ -48,8 +44,6 @@ with AbstractJournalEventReader[E]
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
-}
 
-object CurrentJournalEventReader {
-  private val logger = Logger(getClass)
+  override def toString = s"CurrentJournalEventReader(${journalFile.getFileName})"
 }

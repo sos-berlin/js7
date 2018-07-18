@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import io.circe.generic.JsonCodec
@@ -74,6 +75,14 @@ object AgentCommand {
   case object EmergencyStop extends TerminateOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
+  }
+
+  /** Some outer component has accepted the events until (including) the given `eventId`.
+    * JobScheduler may delete these events to reduce the journal, keeping all events after `after`.
+    */
+  @JsonCodec
+  final case class KeepEvents(after: EventId) extends OrderCommand {
+    type Response = Accepted.type
   }
 
   case object NoOperation extends AgentCommand {
@@ -147,6 +156,7 @@ object AgentCommand {
     TypedJsonCodec[AgentCommand](
       Subtype[Batch],
       Subtype(EmergencyStop),
+      Subtype[KeepEvents],
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype[Terminate],

@@ -31,6 +31,14 @@ final class AgentCommandTest extends FreeSpec {
       json"""{ "TYPE": "EmergencyStop" }""")
   }
 
+  "KeepEvents" in {
+    check(AgentCommand.KeepEvents(123),
+      json"""{
+        "TYPE": "KeepEvents",
+        "after": 123
+      }""")
+  }
+
   "NoOperation" in {
     check(AgentCommand.NoOperation,
       json"""{

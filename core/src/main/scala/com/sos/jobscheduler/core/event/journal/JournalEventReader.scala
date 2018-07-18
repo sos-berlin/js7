@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -13,9 +14,10 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
+import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -32,18 +34,25 @@ with WriterReaderAdapter
   @volatile
   private var afterEventIdToFile: Map[EventId, HistoricJournalFile] =
     listJournalFiles(journalMeta.fileBase) toKeyedMap (_.afterEventId)
+  private val started = Promise[Completed]()
   @volatile
   private var currentJournalEventReaderOption: Option[CurrentJournalEventReader[E]] = None
   private val eventsAcceptedUntil = AtomicLong(EventId.BeforeFirst)
 
-  def close() = afterEventIdToFile.values foreach (_.close)
+  def close() = {
+    afterEventIdToFile.values foreach (_.close())
+    currentJournalEventReaderOption foreach (_.close())
+  }
+
+  override def whenStarted: Task[this.type] =
+    Task.deferFuture(started.future) map (_ ⇒ this)
 
   private def currentJournalEventReader =
-    currentJournalEventReaderOption getOrElse (throw new IllegalStateException("currentJournalEventReader not yet set"))
+    currentJournalEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
 
   def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
     // TODO For properly working TakeSnapshot, remember current CurrentJournalEventReader as HistoricJournalEventReader
-    // Wenn currentJournalEventReader erneuert wird, dann kann die Benachrichtung über das nächste neue Event verloren gehen,
+    // Wenn currentJournalEventReader erneuert wird, dann kann die Meldung des nächsten neuen Events verloren gehen,
     // wenn noch dem alten CurrentJournalEventReader gelauscht wird.
     // Also: Alten CurrentJournalEventReader schließen und Lauscher benachrichtigen.
     // Die bekommen dann einen leeren CloseableIterator und wiederholen den Aufruf, dann mit dem neuen CurrentJournalEventReader.
@@ -51,6 +60,7 @@ with WriterReaderAdapter
     currentJournalEventReaderOption = Some(
       new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId))
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
+    started.trySuccess(Completed)
   }
 
   def tornEventId =

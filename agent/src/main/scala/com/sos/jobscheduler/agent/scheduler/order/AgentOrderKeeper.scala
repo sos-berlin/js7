@@ -6,7 +6,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -14,6 +14,7 @@ import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -221,6 +222,13 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case GetOrders ⇒
       Future.successful(GetOrders.Response(
         for (orderEntry ← orderRegister.values) yield orderEntry.order))
+
+    case KeepEvents(after) ⇒
+      (journalActor ? JournalActor.Input.EventsAccepted(after)).mapTo[Checked[Completed]]
+        .map {
+          case Valid(Completed) ⇒ AgentCommand.Accepted
+          case Invalid(problem) ⇒ throw problem.throwable
+        }
 
     case _ if terminating ⇒
       Future.failed(new IllegalStateException(s"Agent is terminating"))

@@ -33,7 +33,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   private var snapshotCount = 0
   private var eventCount = 0
 
-  logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
+  logger.info(s"Recovering from journal journalFile '${journalFile.getFileName}' (${toMB(Files.size(journalFile))})")
 
   JournalHeader.checkHeader(
     readJson() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"),

@@ -23,7 +23,7 @@ import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.typesafe.config.ConfigUtil
-import monix.execution.Scheduler
+import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -44,6 +44,7 @@ with Stash {
   private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
   private val eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration
   private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
+  private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
   private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
   private val reconnectPause = new ReconnectPause
   private val client = AgentClient(uri, masterConfiguration.keyStoreRef.toOption)(context.system)
@@ -57,6 +58,9 @@ with Stash {
   private var isConnected = false
   private var isAwaitingEventResponse = false
   private var lastEventId = EventId.BeforeFirst
+  @volatile
+  private var keepEventsCancelable: Option[Cancelable] = None
+  private var delayKeepEvents = false
   private var logCount = 0
 
   become(disconnected)
@@ -77,6 +81,7 @@ with Stash {
     client.logout().runAsync onComplete {
       _ ⇒ client.close()  // Don't await response
     }
+    keepEventsCancelable foreach (_.cancel())
     super.postStop()
   }
 
@@ -84,6 +89,7 @@ with Stash {
 
   private def disconnected: Receive = {
     case Internal.Connect ⇒
+      delayKeepEvents = false
       reconnectPause.onConnect()
       agentUserAndPassword match {
         case Invalid(problem) ⇒
@@ -161,6 +167,12 @@ with Stash {
             self ! Internal.Fetched(Success(stampedEvents))
         }
 
+    case Internal.EventsAccepted(eventId) ⇒
+      client.executeCommand(AgentCommand.KeepEvents(after = eventId)).runOnComplete { tried ⇒
+        tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
+        keepEventsCancelable = None  // Asynchronous!
+      }
+
     case Internal.CommandQueueReady ⇒
       commandQueue.maySend()
   }
@@ -172,6 +184,22 @@ with Stash {
       commandQueue.enqueue(input)
       scheduler.scheduleOnce(batchDelay) {
         self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueueableInput pending in actor's mailbox can be queued
+      }
+
+    case Input.EventsAccepted(eventId) ⇒
+      assert(eventId == lastEventId)
+      if (isConnected) {
+        if (keepEventsCancelable.isEmpty) {
+          val delay = if (delayKeepEvents) keepEventsPeriod else Duration.Zero
+          delayKeepEvents = true
+          keepEventsCancelable = Some(
+            scheduler.scheduleOnce(delay) {
+              self ! Internal.EventsAccepted(eventId)
+            })
+        }
+        scheduler.scheduleOnce(eventFetchDelay) {
+          self ! Internal.FetchEvents(lastEventId)
+        }
       }
 
     case Internal.BatchSucceeded(responses) ⇒
@@ -220,9 +248,6 @@ with Stash {
 
       for (last ← stampedEvents.lastOption) {
         lastEventId = last.eventId
-      }
-      if (isConnected) scheduler.scheduleOnce(eventFetchDelay) {
-        self ! Internal.FetchEvents(lastEventId)
       }
   }
 
@@ -283,6 +308,8 @@ private[master] object AgentDriver
     final case class DetachOrder(orderId: OrderId) extends QueueableInput {
       def toShortString = s"DetachOrder($orderId)"
     }
+
+    final case class EventsAccepted(agentEventId: EventId)
   }
 
   object Output {
@@ -300,5 +327,6 @@ private[master] object AgentDriver
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression
     final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[OrderEvent]]]])
+    final case class EventsAccepted(agentEventId: EventId) extends DeadLetterSuppression
   }
 }

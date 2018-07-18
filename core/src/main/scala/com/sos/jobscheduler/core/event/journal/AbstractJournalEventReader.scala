@@ -8,11 +8,13 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.AbstractJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
+import monix.execution.atomic.AtomicLong
 
 /**
   * @author Joacim Zschimmer
   */
 private[journal] trait AbstractJournalEventReader[E <: Event]
+extends AutoCloseable
 {
   protected val journalMeta: JournalMeta[E]
   protected def journalFile: Path
@@ -23,8 +25,15 @@ private[journal] trait AbstractJournalEventReader[E <: Event]
   import journalMeta.eventJsonCodec
 
   protected val eventIdToPositionIndex = new EventIdPositionIndex(size = 1000)
+  private val openFilesCount = AtomicLong(0)
 
   eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
+
+  def close() =
+    openFilesCount.get match {
+      case n if n > 0 ⇒ logger.debug(s"Closing '$toString' while $n× opened")
+      case _ ⇒
+    }
 
   protected def untornEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]] = {
     val position = eventIdToPositionIndex.positionAfter(after)
@@ -40,15 +49,16 @@ private[journal] trait AbstractJournalEventReader[E <: Event]
     var skipped = 0
     iterator.dropWhile { stamped ⇒
       val drop = stamped.eventId <= after
-      if (drop) skipped += 1 else if (skipped > 0) { logger.trace(s"'$journalFile' $skipped events skipped"); skipped = 0 }
+      if (drop) skipped += 1 else if (skipped > 0) { logger.trace(s"'${journalFile.getFileName}' $skipped events skipped"); skipped = 0 }
       drop
     }
   }
 
   private def newCloseableIterator(position: Long, after: EventId) = {
     val jsonFileReader = InputStreamJsonSeqReader.open(journalFile)  // Exception when file has been deleted
+    openFilesCount.increment()
     closeOnError(jsonFileReader) {
-      logger.trace(s"'$journalFile' opened. Seek $position after=${EventId.toString(after)}")
+      logger.trace(s"'${journalFile.getFileName}' opened. Seek $position after=${EventId.toString(after)}")
       jsonFileReader.seek(position)
       new EventCloseableIterator(jsonFileReader, after)
     }
@@ -60,8 +70,9 @@ private[journal] trait AbstractJournalEventReader[E <: Event]
     def close() =
       if (!closed) {
         jsonFileReader.close()
-        logger.trace(s"'$journalFile' closed")
+        openFilesCount.decrement()
         closed = true
+        logger.trace(s"'${journalFile.getFileName}' closed")
       }
 
     def hasNext = jsonFileReader.position != endPosition
@@ -75,7 +86,7 @@ private[journal] trait AbstractJournalEventReader[E <: Event]
       stamped
     }
 
-    override def toString = s"CloseableIterator(after = ${EventId.toString(after)})"
+    override def toString = s"CloseableIterator(after = ${EventId.toString(after)}, ${openFilesCount.get}× open)"
   }
 }
 

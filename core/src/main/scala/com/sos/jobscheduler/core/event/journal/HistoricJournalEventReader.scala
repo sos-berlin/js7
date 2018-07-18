@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.core.event.journal.HistoricJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId}
@@ -18,19 +17,14 @@ final class HistoricJournalEventReader[E <: Event](
 extends AutoCloseable
 with AbstractJournalEventReader[E]
 {
-  protected def tornPosition = firstEventPosition(journalFile)
+  protected lazy val tornPosition = firstEventPosition(journalFile)
   protected val endPosition = Files.size(journalFile)
-
-  logger.debug(s"journalFile=$journalFile tornEventId=$tornEventId")
-
-  def close() = {}
 
   def eventsAfter(after: EventId) = untornEventsAfter(after)
 }
 
-object HistoricJournalEventReader {
-  private val logger = Logger(getClass)
-
+object HistoricJournalEventReader
+{
   private def firstEventPosition(journalFile: Path) =
     autoClosing(InputStreamJsonSeqReader.open(journalFile)) { jsonFileReader ⇒
       @tailrec def loop(): Long =

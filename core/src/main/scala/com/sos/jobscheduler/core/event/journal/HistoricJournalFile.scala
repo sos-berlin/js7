@@ -31,4 +31,6 @@ final case class HistoricJournalFile private[journal](afterEventId: EventId, fil
       case r ⇒ r.asInstanceOf[HistoricJournalEventReader[E]]
     }
   }
+
+  override def toString = file.getFileName.toString
 }

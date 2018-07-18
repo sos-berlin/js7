@@ -32,7 +32,7 @@ trait JournalRecoverer[E <: Event] {
       case None ⇒
       case Some(file) ⇒
         blocking {  // May take a long time
-          logger.info(s"Recovering from journal '$file' (${toMB(Files.size(file))})")
+          logger.info(s"Recovering from journal '${file.getFileName}' (${toMB(Files.size(file))})")
           autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
             untilNoneIterator { journalReader.recoverNext() } foreach {
               case JournalReader.RecoveredSnapshot(snapshot) ⇒
