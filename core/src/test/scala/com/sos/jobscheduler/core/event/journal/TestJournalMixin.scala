@@ -54,6 +54,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       val whenJournalStopped = Promise[JournalActor.Stopped]()
       val actor = actorSystem.actorOf(Props { new TestActor(journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
+      sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (?)
       (actor ? TestActor.Input.Terminate) await 99.s
       assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped(keyedEventJournalingActorCount = 0))  // No memory leak
     }
