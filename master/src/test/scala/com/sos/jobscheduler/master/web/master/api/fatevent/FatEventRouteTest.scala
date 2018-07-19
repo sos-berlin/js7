@@ -153,7 +153,7 @@ object FatEventRouteTest
   private val TestFatEvents =
     for (events ← TestEvents; event = events.head) yield
       Stamped(event.eventId, event.timestamp,
-        event.value.key <-: OrderAddedFat(None, OrderAddedFat.Cause.UNKNOWN, TestWorkflowId, None, Map.empty))
+        event.value.key <-: OrderAddedFat(TestWorkflowId, None, Map.empty))
 
   private def fatEventsAfter(after: EventId) = TestFatEvents dropWhile (_.eventId <= after)
 }

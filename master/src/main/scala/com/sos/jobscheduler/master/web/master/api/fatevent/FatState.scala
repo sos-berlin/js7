@@ -7,17 +7,16 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
 private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
 {
-  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Seq[Stamped[KeyedEvent[OrderFatEvent]]]) = {
+  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[OrderFatEvent]]]) = {
     if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
     stamped.value match {
       case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
@@ -27,14 +26,14 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
         val updatedConverter = copy(
           eventId = stamped.eventId,
           repo = repo.applyEvent(event).orThrow)
-        (updatedConverter, Nil)
+        (updatedConverter, None)
 
       case _ ⇒
-        (this, Nil)
+        (this, None)
     }
   }
 
-  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): (FatState, Seq[Stamped[KeyedEvent[OrderFatEvent]]]) = {
+  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): (FatState, Option[Stamped[KeyedEvent[OrderFatEvent]]]) = {
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
     val order = event match {
       case event: OrderAdded ⇒ Order.fromOrderAdded(orderId, event)
@@ -49,36 +48,37 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _ ⇒ this
     }
-    val fatEvents = toFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, e))
+    val fatEvents = toFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, order.id <-: e))
     (updatedFatState, fatEvents)
   }
 
-  private def toFatEvent(order: Order[Order.State], event: OrderEvent): Seq[KeyedEvent[OrderFatEvent]] =
+  private def toFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
     event match {
       case added: OrderAdded ⇒
-        (order.id <-: OrderAddedFat(None, OrderAddedFat.Cause.UNKNOWN, added.workflowId /: Position(0), added.scheduledAt, order.variables)) :: Nil
+        Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledAt, order.variables))
 
       case _: OrderProcessingStarted ⇒
         val jobPath = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedJob(order.position)).orThrow.jobPath
         val agentUri = order.attachedToAgent.flatMap(a ⇒ repo.idTo[Agent](a)).orThrow.uri
-        (order.id <-: OrderProcessingStartedFat(order.workflowPosition, agentUri, jobPath, order.variables)) :: Nil
+        Some(OrderProcessingStartedFat(order.workflowPosition, agentUri, jobPath, order.variables))
 
       case OrderStdWritten(stdoutOrStderr, chunk) ⇒
-        (order.id <-: OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk)) :: Nil
+        Some(OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk))
 
       case event: OrderProcessed ⇒
-        (order.id <-: OrderProcessedFat(event.outcome, order.variables)) :: Nil
+        Some(OrderProcessedFat(event.outcome, order.variables))
 
       case OrderFinished ⇒
-        val event = order.id <-: OrderFinishedFat(order.workflowPosition)
-        event :: Nil
+        Some(OrderFinishedFat(order.workflowPosition))
 
-      case event: OrderForked ⇒
-        for (childOrder ← order.newForkedOrders(event)) yield
-          childOrder.id <-: OrderAddedFat(Some(order.id), OrderAddedFat.Cause.Forked, childOrder.workflowPosition, None, childOrder.variables)
+      case OrderForked(children) ⇒
+        Some(OrderForkedFat(
+          order.workflowId /: order.position,
+          for (ch ← children) yield
+            OrderForkedFat.Child(ch.branchId, ch.orderId, ch.variablesDiff.applyTo(order.variables))))
 
       case _ ⇒
-        Nil
+        None
     }
 }
 

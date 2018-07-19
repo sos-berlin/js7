@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat}
+import com.sos.jobscheduler.data.order.OrderFatEvent.OrderFinishedFat
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderFatEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
@@ -115,15 +115,15 @@ object HistoryTest
     implicit def toSome[A](a: A): Option[A] = Some(a)
     Vector(
       OrderEntry(
-        TestOrder.id, None, OrderAddedFat.Cause.UNKNOWN, TestWorkflowId /: Position(0), None, TestTimestamp, endedAt = TestTimestamp, TestWorkflowId /: Position(3),
+        TestOrder.id, None, OrderEntry.Cause.Added, TestWorkflowId /: Position(0), None, TestTimestamp, endedAt = TestTimestamp, TestWorkflowId /: Position(3),
         Vector(
           OrderStepEntry(TestOrder.id, TestWorkflowId /: Position(0), agentUri = agentUris(0), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"),
           OrderStepEntry(OrderId("🔺"), TestWorkflowId /: Position(2), agentUris(0), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"))),
-      OrderEntry(OrderId("🔺/🥕"), OrderId("🔺"), OrderAddedFat.Cause.Forked, TestWorkflowId /: Position(1, "🥕", 0), None, TestTimestamp, None, None,
+      OrderEntry(OrderId("🔺/🥕"), OrderId("🔺"), OrderEntry.Cause.Forked, TestWorkflowId /: Position(1, "🥕", 0), None, TestTimestamp, None, None,
         steps = Vector(
           OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: Position(1, "🥕", 0), agentUris(0), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"),
           OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: Position(1, "🥕", 1), agentUris(0), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"))),
-      OrderEntry(OrderId("🔺/🍋"), OrderId("🔺"), OrderAddedFat.Cause.Forked, TestWorkflowId /: Position(1, "🍋", 0), None, TestTimestamp, None, None,
+      OrderEntry(OrderId("🔺/🍋"), OrderId("🔺"), OrderEntry.Cause.Forked, TestWorkflowId /: Position(1, "🍋", 0), None, TestTimestamp, None, None,
         steps = Vector(
           OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: Position(1, "🍋", 0), agentUris(0), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"),
           OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: Position(1, "🍋", 1), agentUris(1), TestJobPath, Map("VARIABLE" → "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" → "VALUE"), s"stdout: $StdoutOutput"))))

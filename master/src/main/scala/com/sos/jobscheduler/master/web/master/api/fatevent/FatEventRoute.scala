@@ -114,7 +114,7 @@ object FatEventRoute
               EventSeq.NonEmpty(closeableIterator)
         }
 
-      def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): Seq[Stamped[KeyedEvent[OrderFatEvent]]] = {
+      def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): Option[Stamped[KeyedEvent[OrderFatEvent]]] = {
         val (s, fatEvents) = state.toFatOrderEvents(stamped)
         if (s.eventId <= after) {
           _lastRequestedState = s

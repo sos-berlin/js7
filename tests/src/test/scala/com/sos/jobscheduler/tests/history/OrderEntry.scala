@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.order.Outcome.Undisrupted
-import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutOrStderr
 import com.sos.jobscheduler.data.workflow.WorkflowPosition
+import com.sos.jobscheduler.tests.history.OrderEntry._
+import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.Seq
 
 /**
@@ -13,7 +16,7 @@ import scala.collection.immutable.Seq
 final case class OrderEntry(
   orderId: OrderId,
   parent: Option[OrderId] = None,
-  cause: OrderFatEvent.OrderAddedFat.Cause,
+  cause: Cause,
   startWorkflowPosition: Option[WorkflowPosition] = None,
   scheduledAt: Option[Timestamp] = None,
   startedAt: Option[Timestamp] = None,
@@ -42,5 +45,19 @@ final case class OrderEntry(
       steps = steps.take(steps.size - 1) :+
         lastStep.copy(
           log = Some(lastStep.log.getOrElse("") + chunk)))
+  }
+}
+
+object OrderEntry {
+  sealed trait Cause
+  object Cause {
+    case object Added extends Cause
+    case object Forked extends Cause
+  }
+
+  implicit val jsonEncoder: Encoder[Cause] = o ⇒ Json.fromString(o.getClass.simpleScalaName)
+  implicit val jsonDecoder: Decoder[Cause] = _.as[String] map {
+    case "Added" ⇒ Cause.Added
+    case "Forked" ⇒ Cause.Forked
   }
 }

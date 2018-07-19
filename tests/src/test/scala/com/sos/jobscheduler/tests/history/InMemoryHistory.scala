@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -15,19 +15,34 @@ final class InMemoryHistory {
   def handleHistoryEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
     val Stamped(_, timestamp, KeyedEvent(orderId, event)) = stampedEvent
     event match {
-      case OrderAddedFat(parent, cause, workflowPosition, scheduledAt, variables) ⇒
+      case OrderAddedFat(workflowPosition, scheduledAt, variables) ⇒
         idToOrderEntry.get(orderId) match {
           case None ⇒
-            idToOrderEntry(orderId) = OrderEntry(orderId, parent, cause, Some(workflowPosition), scheduledAt)
+            idToOrderEntry(orderId) = OrderEntry(orderId, None, OrderEntry.Cause.Added, Some(workflowPosition), scheduledAt)
 
           case Some(existing) ⇒
             idToOrderEntry(orderId) = existing.copy(
-              parent = parent,
-              cause = cause,
+              parent = None,
               startWorkflowPosition = Some(workflowPosition),
               scheduledAt = scheduledAt,
               endedAt = None,
               endWorkflowPosition = None)
+        }
+
+      case OrderForkedFat(workflowPosition, children) ⇒
+        for (child ← children) {
+          idToOrderEntry.get(child.orderId) match {
+            case None ⇒
+              idToOrderEntry(child.orderId) = OrderEntry(child.orderId, Some(orderId), OrderEntry.Cause.Forked, Some(workflowPosition), None)
+
+            case Some(existing) ⇒
+              idToOrderEntry(child.orderId) = existing.copy(
+                parent = Some(orderId),
+                startWorkflowPosition = Some(workflowPosition),
+                scheduledAt = None,
+                endedAt = None,
+                endWorkflowPosition = None)
+          }
         }
 
       case OrderFinishedFat(workflowPosition) ⇒
