@@ -628,18 +628,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     }
   }
 
-  "Commands" - {
-    "Terminate" in {
-      val cmd = json"""{ "TYPE": "Terminate" }"""
-      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
-      testJson(
-        httpClient.post[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
-        json"""{
-          "TYPE": "Accepted"
-        }""")
-    }
-  }
-
   "Unknown path returns 404 Not found" in {
     val response = httpClient.post_(s"$uri/master/UNKNOWN", Json.obj(), Nil) await 99.s
     assert(response.status == NotFound)
@@ -657,6 +645,18 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       val forbidden = httpClient.postRaw(testUri, Nil, HttpEntity(`text/plain(UTF-8)`, "STRING")) await 99.s
       assert(forbidden.status == Forbidden)
       assert(forbidden.utf8StringFuture.await(99.s) == Forbidden.defaultMessage)  //"HTML form POST is forbidden")
+    }
+  }
+
+  "Commands" - {
+    "Terminate" in {
+      val cmd = json"""{ "TYPE": "Terminate" }"""
+      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      testJson(
+        httpClient.post[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
+        json"""{
+          "TYPE": "Accepted"
+        }""")
     }
   }
 
