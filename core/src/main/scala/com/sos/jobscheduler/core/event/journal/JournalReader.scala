@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.core.event.journal.JournalReader._
 import com.sos.jobscheduler.core.event.journal.JournalWriter.{EventsHeader, SnapshotsHeader}
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalStateEvent, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
@@ -27,7 +27,6 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile).closeWithCloser
   private var snapshotSeparatorRead = false
   private var eventSeparatorRead = false
-  private var _journalState = JournalState.empty
   private var _lastReadEventId = EventId.BeforeFirst
   private var _completelyRead = false
   private var snapshotCount = 0
@@ -39,7 +38,6 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     readJson() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"),
     journalFile)
 
-  @tailrec
   private[journal] def recoverNext(): Option[Recovered[E]] =
     readJson() match {
       case None ⇒   // End of file
@@ -50,11 +48,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           sys.error(s"Unexpected JSON value in '$journalFile': $positionAndJson")
         else if (!eventSeparatorRead) {
           snapshotCount += 1
-          val snapshot = positionAndJson.value
-          if (handleJournalStateSnapshot(snapshot))
-            recoverNext()
-          else
-            Some(RecoveredSnapshot(snapshotJsonCodec.decodeJson(snapshot).orThrow))
+          Some(RecoveredSnapshot(snapshotJsonCodec.decodeJson(positionAndJson.value).orThrow))
         } else if (!eventSeparatorRead)
           throw new IllegalStateException("JournalReader.readEvent but snapshots have not been read")
         else {
@@ -63,23 +57,8 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           if (stampedEvent.eventId <= _lastReadEventId)
             sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_lastReadEventId)}")
           _lastReadEventId = stampedEvent.eventId
-          if (handleJournalStateEvent(stampedEvent.value))
-            recoverNext()
-          else
-            Some(RecoveredEvent(stampedEvent.copy(value = stampedEvent.value.as[KeyedEvent[E]].orThrow)))
+          Some(RecoveredEvent(stampedEvent.copy(value = stampedEvent.value.as[KeyedEvent[E]].orThrow)))
         }
-    }
-
-  private def handleJournalStateSnapshot(snapshot: Json): Boolean =
-    JournalState.jsonCodec.canDeserialize(snapshot) && {
-      _journalState = snapshot.as[JournalState].orThrow
-      true
-    }
-
-  private def handleJournalStateEvent(event: Json): Boolean =
-    JournalStateEvent.jsonCodec.canDeserialize(event) && {
-      _journalState = _journalState.handleEvent(event.as[JournalStateEvent].orThrow)
-      true
     }
 
   @tailrec
@@ -113,8 +92,6 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   }
 
   def isCompletelyRead = _completelyRead
-
-  def journalState = _journalState
 
   def lastReadEventId = _lastReadEventId
 }

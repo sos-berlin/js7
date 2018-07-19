@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, JournalStateEvent, KeyedEventTypedJsonCodec}
+import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
@@ -37,6 +37,5 @@ object KeyedEventJsonCodecs
       KeyedSubtype[OrderEvent],
       KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
       KeyedSubtype.singleEvent[AgentEventIdEvent],
-      KeyedSubtype[JournalStateEvent],
       KeyedSubtype[OrderScheduleEvent])
 }

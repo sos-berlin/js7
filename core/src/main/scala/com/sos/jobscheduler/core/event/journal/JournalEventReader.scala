@@ -75,7 +75,7 @@ with WriterReaderAdapter
   def onEventsAcceptedUntil(eventId: EventId): Unit = {
     val old = eventsAcceptedUntil()
     if (eventId < old)
-      logger.warn(s"EventsAcceptedUntil with already accepted EventId $eventId < $old ?")  // Not expected to happen. No exception here!
+      logger.warn(s"onEventsAcceptedUntil with already accepted EventId $eventId < $old ?")  // Not expected to happen. No exception here!
     else
     if (eventId > old) {
       if (!eventsAcceptedUntil.compareAndSet(old, eventId))

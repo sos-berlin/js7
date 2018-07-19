@@ -20,7 +20,6 @@ trait JournalRecoverer[E <: Event] {
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
 
-  private var _journalState = JournalState.empty
   private var _lastEventId = EventId.BeforeFirst
   private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalMeta.fileBase.getFileName.toString)
   protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
@@ -44,7 +43,6 @@ trait JournalRecoverer[E <: Event] {
                   recoverEvent(stampedEvent)
                 }
             }
-            _journalState = journalReader.journalState
             _lastEventId = journalReader.lastReadEventId
             journalReader.logStatistics()
           }
@@ -57,8 +55,7 @@ trait JournalRecoverer[E <: Event] {
     eventReader: Option[JournalEventReader[E]] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReader,
-      _journalState, lastEventId = _lastEventId)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReader, lastEventId = _lastEventId)
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -70,7 +67,6 @@ object JournalRecoverer {
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
     eventReader: Option[JournalEventReader[E]] = None,
-    journalState: JournalState,
     lastEventId: EventId)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
@@ -79,7 +75,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, eventReader, journalState, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, eventReader, lastEventId = lastEventId)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

@@ -41,12 +41,11 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s  // 1000066
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
-      locally {
+      assertResult(SecondJournal) {
         val jsons = journalJsons
-        val orderedJsons = jsons.slice(0, 3) ++  // Drop JsonHeader
-          jsons.slice(3, 7).sortBy(_.asObject.map(_("key").map(_.asString))) ++
-          jsons.drop(7)
-        assert(orderedJsons == SecondJournal)
+        jsons.slice(0, 3) ++  // Drop JsonHeader
+          jsons.slice(3, 6).sortBy(_.asObject.map(_("key").map(_.asString))) ++
+          jsons.drop(6)
       }
       assert(journalAggregates == Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
@@ -81,12 +80,6 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ABCc"))
-    }
-  }
-
-  "CurrentJournalEventReader history" in {
-    withTestActor { (actorSystem, actor) ⇒
-      // ???
     }
   }
 
@@ -146,14 +139,13 @@ object JournalTest {
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.14",
+      "version": "0.15",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
     json"""{ "TYPE": "SnapshotMeta", "eventId": 0 }""",
-    json"""{ "TYPE": "JournalState", "eventsAcceptedUntil": 0 }""",
     json""""-------EVENTS-------"""",
     json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
@@ -228,14 +220,13 @@ object JournalTest {
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.14",
+      "version": "0.15",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
     json"""{ "TYPE": "SnapshotMeta", "eventId": 1000066 }""",
-    json"""{ "TYPE": "JournalState", "eventsAcceptedUntil": 0 }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-C", "string": "(C.Add)",

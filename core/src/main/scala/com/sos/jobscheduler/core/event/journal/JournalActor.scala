@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import cats.data.Validated.Invalid
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -43,7 +44,6 @@ extends Actor with Stash {
   private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private var stateActor: ActorRef = null
   private var journalWriter: JournalWriter[E] = null
   private var eventReaderOption: Option[JournalEventReader[E]] = None
   private var temporaryJournalWriter: JournalWriter[E] = null
@@ -71,11 +71,9 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderOption_, state, lastEventId) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderOption_, lastEventId) ⇒
       lastWrittenEventId = lastEventId
       eventReaderOption = eventReaderOption_ map (_.asInstanceOf[JournalEventReader[E]]/*restore erased type argument, not checked*/)
-      stateActor = watch(actorOf(JournalStateActor.props(journalActor = self, state, eventReaderOption), "State"))
-      keylessJournalingActors += stateActor   // TODO StateActor sendet RegisterMe, aber das kann zu spät nach Start kommen.
       eventIdGenerator.updateLastEventId(lastEventId)
       keyToJournalingActor ++= keyToActor
       keyToJournalingActor.values foreach watch
@@ -110,8 +108,10 @@ extends Actor with Stash {
     case Input.EventsAccepted(untilEventId) ⇒
       if (untilEventId > lastWrittenEventId)
         sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
-      else
-        stateActor.forward(JournalStateActor.Input.EventsAccepted(untilEventId))
+      else {
+        for (r ← eventReaderOption) r.onEventsAcceptedUntil(untilEventId)
+        sender() ! Valid(Completed)
+      }
 
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
@@ -178,15 +178,7 @@ extends Actor with Stash {
       }
 
     case Input.Terminate ⇒
-      if (keylessJournalingActors.contains(stateActor)) {
-        stop(stateActor)
-        become(receiveTerminated andThen { _ ⇒
-          if (!keylessJournalingActors.contains(stateActor)) {
-            stop(self)
-          }
-        })
-      } else
-        stop(self)
+      stop(self)
 
     case Input.GetState ⇒
       sender() ! (
@@ -224,7 +216,7 @@ extends Actor with Stash {
     temporaryJournalWriter.beginSnapshotSection()
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     actorOf(
-      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors, snapshotJsonCodec | JournalState.jsonCodec) },
+      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors, snapshotJsonCodec) },
       uniqueActorName("SnapshotWriter"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
     // Ist der Schnappschuss vollständig, wenn ein journalingActor (von dem ein Schnappschuss geholt wird) sich jetzt beendet ???
@@ -285,7 +277,6 @@ object JournalActor
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
       eventReader: Option[JournalEventReader[_ <: Event]],
-      journalState: JournalState,
       lastEventId: EventId)
     final case object StartWithoutRecovery
     final case class EventsAccepted(untilEventId: EventId)

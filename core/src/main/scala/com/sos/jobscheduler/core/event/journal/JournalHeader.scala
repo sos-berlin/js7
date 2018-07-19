@@ -19,7 +19,7 @@ final case class JournalHeader(
 object JournalHeader
 {
   val Singleton = JournalHeader(
-    version = "0.14",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+    version = "0.15",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version,
     buildId = BuildInfo.buildId,
     Timestamp.now.toIsoString)
