@@ -16,7 +16,8 @@ import scala.concurrent.Future
 trait RootWebService extends AgentRouteProvider {
 
   protected def agentOverview: Future[AgentOverview]
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   protected final lazy val apiRootRoute: Route =
     pathEnd {

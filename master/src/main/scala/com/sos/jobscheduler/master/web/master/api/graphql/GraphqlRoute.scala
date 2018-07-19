@@ -34,7 +34,8 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   protected def orderApi: OrderApi
   protected def fileBasedApi: FileBasedApi
-  implicit protected def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   private val context = new QueryContext {
     def executionContext = scheduler

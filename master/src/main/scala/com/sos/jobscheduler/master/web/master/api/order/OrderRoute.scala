@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
-import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
@@ -24,7 +23,8 @@ import monix.execution.Scheduler
 trait OrderRoute extends MasterRouteProvider
 {
   protected def orderApi: OrderApi.WithCommands
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { _ ⇒

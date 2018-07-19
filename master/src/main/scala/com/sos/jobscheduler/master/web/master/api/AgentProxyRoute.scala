@@ -26,10 +26,11 @@ import scala.collection.immutable.Seq
   */
 trait AgentProxyRoute extends MasterRouteProvider
 {
-  protected implicit def scheduler: Scheduler
   protected implicit def actorSystem: ActorSystem
   protected def fileBasedApi: FileBasedApi
   protected def masterConfiguration: MasterConfiguration
+
+  private implicit def implicitScheduler = scheduler
 
   final val agentProxyRoute: Route =
     get {

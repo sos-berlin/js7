@@ -17,7 +17,8 @@ import monix.execution.Scheduler
 trait TimerWebService extends AgentRouteProvider {
 
   protected def timerService: TimerService
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   protected final lazy val timerRoute: Route =
     authorizedUser(ValidUserPermission) { _ ⇒

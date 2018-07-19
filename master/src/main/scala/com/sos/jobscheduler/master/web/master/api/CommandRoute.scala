@@ -18,7 +18,8 @@ import monix.execution.Scheduler
 trait CommandRoute extends MasterRouteProvider {
 
   protected def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[MasterCommand.Response]]
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   final val commandRoute: Route =
     pathEnd {

@@ -17,8 +17,9 @@ import monix.execution.Scheduler
   */
 trait AgentRoute extends MasterRouteProvider
 {
-  protected implicit def scheduler: Scheduler
   protected def fileBasedApi: FileBasedApi
+
+  private implicit def implicitScheduler = scheduler
 
   final val agentRoute: Route =
     get {

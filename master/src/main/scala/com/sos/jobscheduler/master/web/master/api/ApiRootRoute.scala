@@ -21,7 +21,8 @@ trait ApiRootRoute extends MasterRouteProvider {
 
   protected def masterId: MasterId
   protected def orderCount: Task[Int]
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   final val apiRootRoute: Route =
     pathEnd {

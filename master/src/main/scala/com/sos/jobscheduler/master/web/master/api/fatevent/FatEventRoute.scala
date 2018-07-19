@@ -26,7 +26,8 @@ import scala.collection.immutable.Seq
 trait FatEventRoute extends MasterRouteProvider
 {
   protected def eventReader: EventReader[Event]
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   private val fatStateCache = new FatStateCache
 

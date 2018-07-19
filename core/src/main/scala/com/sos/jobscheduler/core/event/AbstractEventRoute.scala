@@ -44,7 +44,8 @@ trait AbstractEventRoute[E <: Event] extends RouteProvider
   protected implicit def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E]
   protected def eventReaderFor(userId: UserId): Task[EventReader[E]]
   protected def isRelevantEvent(keyedEvent: KeyedEvent[E]): Boolean = true
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   private implicit def eventClassTag = ClassTag[E](eventClass)
 

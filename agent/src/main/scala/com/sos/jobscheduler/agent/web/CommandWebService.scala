@@ -18,7 +18,8 @@ import monix.execution.Scheduler
 trait CommandWebService extends AgentRouteProvider {
 
   protected def commandHandler: CommandHandler
-  protected implicit def scheduler: Scheduler
+
+  private implicit def implicitScheduler = scheduler
 
   final lazy val commandRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒

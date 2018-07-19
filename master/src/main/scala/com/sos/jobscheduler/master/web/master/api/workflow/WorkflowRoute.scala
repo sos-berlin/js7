@@ -16,8 +16,9 @@ import monix.execution.Scheduler
   */
 trait WorkflowRoute extends MasterRouteProvider {
 
-  protected implicit def scheduler: Scheduler
   protected def fileBasedApi: FileBasedApi
+
+  private implicit def implicitScheduler = scheduler
 
   final val workflowRoute: Route =
     get {
