@@ -17,7 +17,7 @@ final class MasterUris private(masterUri: String) {
 
   def overview = api()
 
-  val command = api()
+  val command = api("/command")
 
   val session = api("/session")
 

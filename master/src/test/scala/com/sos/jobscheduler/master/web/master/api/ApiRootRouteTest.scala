@@ -3,13 +3,11 @@ package com.sos.jobscheduler.master.web.master.api
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.command.CommandMeta
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
+import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -22,12 +20,6 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
 
   protected val masterId = MasterId("TEST-MASTER")
   protected implicit def scheduler = Scheduler.global
-
-  protected def executeCommand(command: MasterCommand, meta: CommandMeta) =
-    command match {
-      case MasterCommand.Terminate ⇒ Task.pure(Valid(MasterCommand.Response.Accepted))
-      case _ ⇒ fail()
-    }
 
   protected def orderCount = Task.pure(7)
 
@@ -44,13 +36,6 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
       assert(overview.orderCount == 7)
-    }
-  }
-
-  "POST /api" in {
-    Post("/api", MasterCommand.Terminate: MasterCommand) ~> route → check {
-      val response = responseAs[MasterCommand.Response]
-      assert(response == MasterCommand.Response.Accepted)
     }
   }
 }

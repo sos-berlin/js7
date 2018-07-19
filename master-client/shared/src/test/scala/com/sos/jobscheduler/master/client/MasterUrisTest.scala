@@ -21,6 +21,10 @@ final class MasterUrisTest extends FreeSpec {
     assert(masterUris.overview == "http://example.com/master/api")
   }
 
+  "command" in {
+    assert(masterUris.command == "http://example.com/master/api/command")
+  }
+
   "event" in {
     assert(masterUris.events(EventRequest.singleClass[OrderEvent](after = 7, timeout = 1230.millis)) ==
       "http://example.com/master/api/event?return=OrderEvent&timeout=1.23&after=7")

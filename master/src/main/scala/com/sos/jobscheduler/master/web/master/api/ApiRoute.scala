@@ -22,6 +22,7 @@ extends MasterRouteProvider
 with ApiRootRoute
 with EventRoute
 with FatEventRoute
+with CommandRoute
 with GraphqlRoute
 with OrderRoute
 with WorkflowRoute
@@ -39,6 +40,9 @@ with SessionRoute
       } ~
       pathSegments("event") {
         eventRoute
+      } ~
+      pathSegments("command") {
+        commandRoute
       } ~
       pathSegments("fatEvent") {
         fatEventRoute
