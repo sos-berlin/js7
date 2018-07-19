@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderFatEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 
@@ -75,7 +75,12 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
         Some(OrderForkedFat(
           order.workflowId /: order.position,
           for (ch ← children) yield
-            OrderForkedFat.Child(ch.branchId, ch.orderId, ch.variablesDiff.applyTo(order.variables))))
+            OrderForkedFat.Child(ch.branchId, ch.orderId, ch.variablesDiff applyTo order.variables)))
+
+      case OrderJoined(variablesDiff, outcome) ⇒
+        Some(OrderJoinedFat(
+          childOrderIds = idToOrder(order.id).ifState[Order.Join] map (_.state.joinOrderIds) getOrElse Nil/*failure*/,
+          variables = variablesDiff applyTo order.variables, outcome))
 
       case _ ⇒
         None

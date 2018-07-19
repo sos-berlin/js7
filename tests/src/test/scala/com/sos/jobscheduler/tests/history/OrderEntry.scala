@@ -16,11 +16,12 @@ import scala.collection.immutable.Seq
 final case class OrderEntry(
   orderId: OrderId,
   parent: Option[OrderId] = None,
+  variables: Map[String, String],
   cause: Cause,
   startWorkflowPosition: Option[WorkflowPosition] = None,
   scheduledAt: Option[Timestamp] = None,
   startedAt: Option[Timestamp] = None,
-  endedAt: Option[Timestamp] = None,
+  finishedAt: Option[Timestamp] = None,
   endWorkflowPosition: Option[WorkflowPosition] = None,
   steps: Seq[OrderStepEntry] = Vector.empty)
 {

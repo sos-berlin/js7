@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -35,7 +34,7 @@ object OrderFatEvent
     final case class Child(branchId: Position.BranchId.Named, orderId: OrderId, variables: Map[String, String])
   }
 
-  final case class OrderJoinedFat(variablesDiff: MapDiff[String, String], outcome: Outcome)
+  final case class OrderJoinedFat(childOrderIds: Seq[OrderId], variables: Map[String, String], outcome: Outcome)
   extends OrderFatEvent
 
   final case class OrderFinishedFat(
@@ -86,6 +85,7 @@ object OrderFatEvent
   implicit val OrderEventJsonCodec = TypedJsonCodec[OrderFatEvent](
     Subtype(deriveCodec[OrderAddedFat]),
     Subtype(deriveCodec[OrderForkedFat]),
+    Subtype(deriveCodec[OrderJoinedFat]),
     Subtype(deriveCodec[OrderFinishedFat]),
     Subtype(deriveCodec[OrderProcessingStartedFat]),
     Subtype(deriveCodec[OrderProcessedFat]),

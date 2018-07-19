@@ -2,8 +2,8 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderProcessedFat, OrderProcessingStartedFat}
+import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -65,6 +65,28 @@ final class OrderFatEventTest extends FreeSpec {
             "variables": {}
           }
         ]
+      }""")
+  }
+
+  "OrderJoinedFat" in {
+    testJson[OrderFatEvent](
+      OrderJoinedFat(
+        OrderId("A/1") :: OrderId("A/2") :: Nil,
+        Map("KEY" → "VALUE"), Outcome.Undisrupted(ReturnCode(0), success = true)),
+      json"""
+      {
+        "TYPE": "OrderJoinedFat",
+        "childOrderIds": [
+          "A/1",
+          "A/2"
+        ],
+        "outcome": {
+          "TYPE": "Succeeded",
+          "returnCode": 0
+        },
+        "variables": {
+          "KEY": "VALUE"
+        }
       }""")
   }
 
