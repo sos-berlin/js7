@@ -104,7 +104,7 @@ extends Actor with Stash {
     journalWriter.beginEventSection()
   }
 
-  private def ready: Receive = receiveTerminated orElse {
+  private def ready: Receive = receiveTerminatedOrGet orElse {
     case Input.EventsAccepted(untilEventId) ⇒
       if (untilEventId > lastWrittenEventId)
         sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
@@ -180,15 +180,18 @@ extends Actor with Stash {
     case Input.Terminate ⇒
       stop(self)
 
-    case Input.GetState ⇒
-      sender() ! (
-        if (journalWriter == null)
-          Output.State(isFlushed = false, isSynced = false)
-        else
-          Output.State(isFlushed = journalWriter.isFlushed, isSynced = journalWriter.isSynced))
+    case Input.AwaitAndTerminate ⇒  // For testing
+      if (keyToJournalingActor.isEmpty && keylessJournalingActors.isEmpty)
+        stop(self)
+      else
+        become(receiveTerminatedOrGet andThen { _ ⇒
+          if (keyToJournalingActor.isEmpty && keylessJournalingActors.isEmpty) {
+            stop(self)
+          }
+        })
   }
 
-  private def receiveTerminated: Receive = {
+  private def receiveTerminatedOrGet: Receive = {
     case Terminated(a) if keylessJournalingActors contains a ⇒
       keylessJournalingActors -= a
 
@@ -196,6 +199,13 @@ extends Actor with Stash {
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
       logger.trace(s"Terminated: ${keys mkString " ?"} -> ${a.path}")
       keyToJournalingActor --= keys
+
+    case Input.GetState ⇒
+      sender() ! (
+        if (journalWriter == null)
+          Output.State(isFlushed = false, isSynced = false)
+        else
+          Output.State(isFlushed = journalWriter.isFlushed, isSynced = journalWriter.isSynced))
   }
 
   private def logWrittenAsStored(synced: Boolean) =
@@ -289,6 +299,7 @@ object JournalActor
       item: CallersItem)
     final case object TakeSnapshot
     final case object Terminate
+    final case object AwaitAndTerminate
     private[journal] case object GetState
   }
 

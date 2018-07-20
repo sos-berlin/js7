@@ -130,7 +130,7 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
     case Input.Terminate ⇒
       terminator = sender()
       if (keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
+        journalActor ! JournalActor.Input.AwaitAndTerminate
       } else {
         keyToAggregate.values foreach context.stop
       }
@@ -143,7 +143,7 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
       val key = keyToAggregate collectFirst { case (k, `actorRef`) ⇒ k }
       keyToAggregate --= key
       if (terminator != null && keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
+        journalActor ! JournalActor.Input.AwaitAndTerminate
       }
   }
 
