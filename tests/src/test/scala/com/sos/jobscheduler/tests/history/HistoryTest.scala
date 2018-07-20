@@ -10,12 +10,13 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.fatevent.FatEvent
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.OrderFinishedFat
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.OrderFatEvent.OrderFinishedFat
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderFatEvent, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -59,15 +60,19 @@ final class HistoryTest extends FreeSpec
               val history = new InMemoryHistory
               var lastEventId = EventId.BeforeFirst
               var finished = false
+              var finishedEventId = -1L
               var rounds = 0
               while (!finished) {
                 rounds += 1
-                val request = EventRequest.singleClass[OrderFatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
+                val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
                 val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(request) await 99.s
                 val chunk = stampeds take 2
-                chunk foreach history.handleHistoryEvent
+                chunk foreach history.handleFatEvent
                 lastEventId = chunk.last.eventId
-                finished = chunk.last.value.event.isInstanceOf[OrderFinishedFat]
+                chunk collectFirst { case Stamped(eventId, _, KeyedEvent(_, _: OrderFinishedFat)) ⇒
+                  finished = true
+                  finishedEventId = eventId  // EventId of the first Master run (MasterReady of second Master run follows)
+                }
               }
               assert(rounds > 2)
               assert(history.orderEntries.map(normalizeTimestampsInEntry) ==
@@ -75,10 +80,10 @@ final class HistoryTest extends FreeSpec
 
               assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))
 
-              masterApi.executeCommand(MasterCommand.KeepEvents(lastEventId -1)) await 99.s
+              masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId - 1)) await 99.s
               assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))  // Nothing deleted
 
-              masterApi.executeCommand(MasterCommand.KeepEvents(lastEventId)) await 99.s
+              masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId)) await 99.s
               assert(listJournalFiles.length == 1 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
             }
           }

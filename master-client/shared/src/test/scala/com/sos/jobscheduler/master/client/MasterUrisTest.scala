@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderFatEvent, OrderId}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._

@@ -46,7 +46,7 @@ extends JournalRecoverer[Event]
   protected def recoverEvent = {
     case Stamped(_, _, keyedEvent) ⇒
       keyedEvent match {
-        case KeyedEvent(_: NoKey, MasterEvent.MasterReady) ⇒
+        case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) ⇒
         case KeyedEvent(_: NoKey, OrderScheduleEvent.GeneratedUntil(instant)) ⇒
           orderScheduleEndedAt = Some(instant)
 

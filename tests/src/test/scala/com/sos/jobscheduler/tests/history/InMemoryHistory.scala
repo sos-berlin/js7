@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.tests.history
 
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
-import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
+import com.sos.jobscheduler.data.event.{<-:, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import com.sos.jobscheduler.data.fatevent.{FatEvent, OrderFatEvent}
+import com.sos.jobscheduler.data.order.OrderId
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
@@ -12,7 +13,14 @@ import scala.collection.mutable
 final class InMemoryHistory {
   private val idToOrderEntry = mutable.LinkedHashMap[OrderId, OrderEntry]()
 
-  def handleHistoryEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
+  def handleFatEvent(stampedEvent: Stamped[KeyedEvent[FatEvent]]): Unit = {
+    stampedEvent.value match {
+      case (orderId: OrderId) <-: (event: OrderFatEvent) ⇒ handleOrderFatEvent(stampedEvent.copy(value = orderId <-: event))
+      case _ ⇒
+    }
+  }
+
+  private def handleOrderFatEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
     val Stamped(_, timestamp, KeyedEvent(orderId, event)) = stampedEvent
     event match {
       case OrderAddedFat(workflowPosition, scheduledAt, variables) ⇒

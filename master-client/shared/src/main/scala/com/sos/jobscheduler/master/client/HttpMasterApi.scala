@@ -3,7 +3,8 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderFatEvent, OrdersOverview}
+import com.sos.jobscheduler.data.fatevent.FatEvent
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
@@ -48,7 +49,7 @@ trait HttpMasterApi extends MasterApi with SessionApi
       uris.events[E](request),
       timeout = request.timeout + ToleratedEventDelay)
 
-  final def fatEvents[E <: OrderFatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.fatEvents[E](request),

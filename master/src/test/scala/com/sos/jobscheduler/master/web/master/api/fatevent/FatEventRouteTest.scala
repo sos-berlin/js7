@@ -11,9 +11,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{KeyedOrderFatEventJsonCodec, OrderAddedFat, OrderFinishedFat}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderFatEvent, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester

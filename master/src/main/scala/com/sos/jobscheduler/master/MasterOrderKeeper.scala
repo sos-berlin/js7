@@ -45,6 +45,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
+import java.time.ZoneId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -143,7 +144,7 @@ with KeyedEventJournalingActor[Event] {
         readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
-      persist(MasterEvent.MasterReady)(_ ⇒
+      persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault))(_ ⇒
         self ! Internal.Ready
       )
 

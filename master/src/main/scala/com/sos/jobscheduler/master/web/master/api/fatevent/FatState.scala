@@ -5,18 +5,21 @@ import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
+import com.sos.jobscheduler.data.fatevent.{FatEvent, MasterFatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderFatEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
+import com.sos.jobscheduler.master.data.events.MasterEvent
 
 /**
   * @author Joacim Zschimmer
   */
 private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
 {
-  def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[OrderFatEvent]]]) = {
+  def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[FatEvent]]]) = {
     if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
     stamped.value match {
       case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
@@ -27,6 +30,9 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           eventId = stamped.eventId,
           repo = repo.applyEvent(event).orThrow)
         (updatedConverter, None)
+
+      case KeyedEvent(_: NoKey, event: MasterEvent) ⇒
+        (this, toMasterFatEvent(event) map (e ⇒ stamped.copy(value = NoKey <-: e)))
 
       case _ ⇒
         (this, None)
@@ -48,11 +54,11 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _ ⇒ this
     }
-    val fatEvents = toFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, order.id <-: e))
+    val fatEvents = toOrderFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, order.id <-: e))
     (updatedFatState, fatEvents)
   }
 
-  private def toFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
+  private def toOrderFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
     event match {
       case added: OrderAdded ⇒
         Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledAt, order.variables))
@@ -81,6 +87,15 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
         Some(OrderJoinedFat(
           childOrderIds = idToOrder(order.id).ifState[Order.Join] map (_.state.joinOrderIds) getOrElse Nil/*failure*/,
           variables = variablesDiff applyTo order.variables, outcome))
+
+      case _ ⇒
+        None
+    }
+
+  private def toMasterFatEvent(event: MasterEvent): Option[MasterFatEvent] =
+    event match {
+      case MasterEvent.MasterReady(masterId, timezone) ⇒
+        Some(MasterReadyFat(masterId, timezone))
 
       case _ ⇒
         None

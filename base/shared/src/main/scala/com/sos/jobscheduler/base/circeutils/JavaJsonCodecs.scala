@@ -2,10 +2,11 @@ package com.sos.jobscheduler.base.circeutils
 
 import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.base.circeutils.CirceUtils.toStringJsonCodec
-import io.circe.{Decoder, Encoder, HCursor, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter
-import java.time.{Duration, Instant}
+import java.time.{Duration, Instant, ZoneId}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -58,4 +59,14 @@ object JavaJsonCodecs {
 
     implicit val InstantJsonCodec = NumericInstantJsonCodec
   }
+
+  implicit val zoneIdJsonEncoder: Encoder[ZoneId] =
+    o ⇒ Json.fromString(o.getId)
+
+  implicit val zoneIdJsonDecoder: Decoder[ZoneId] =
+    _.as[String] flatMap (string ⇒
+      try Right(ZoneId.of(string))
+      catch {
+        case NonFatal(e) ⇒ Left(DecodingFailure(e.toString, Nil))
+      })
 }

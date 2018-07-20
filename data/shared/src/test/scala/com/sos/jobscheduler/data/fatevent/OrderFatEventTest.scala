@@ -1,9 +1,10 @@
-package com.sos.jobscheduler.data.order
+package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat}
+import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec

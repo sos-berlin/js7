@@ -3,7 +3,8 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.event.{Event, EventRequest}
-import com.sos.jobscheduler.data.order.{OrderFatEvent, OrderId}
+import com.sos.jobscheduler.data.fatevent.FatEvent
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
 import scala.reflect.ClassTag
@@ -24,7 +25,7 @@ final class MasterUris private(masterUri: String) {
   def events[E <: Event: ClassTag](request: EventRequest[E]): String =
     events_[E]("/event", request)
 
-  def fatEvents[E <: OrderFatEvent: ClassTag](request: EventRequest[E]): String =
+  def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
     events_[E]("/fatEvent", request)
 
   def events_[E <: Event: ClassTag](path: String, request: EventRequest[E]): String =

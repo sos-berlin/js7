@@ -1,13 +1,12 @@
-package com.sos.jobscheduler.data.order
+package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
@@ -16,7 +15,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-sealed trait OrderFatEvent extends Event {
+sealed trait OrderFatEvent extends FatEvent {
   type Key = OrderId
 }
 
@@ -82,7 +81,7 @@ object OrderFatEvent
     def stdoutOrStderr = Stderr
   }
 
-  implicit val OrderEventJsonCodec = TypedJsonCodec[OrderFatEvent](
+  implicit val jsonCodec = TypedJsonCodec[OrderFatEvent](
     Subtype(deriveCodec[OrderAddedFat]),
     Subtype(deriveCodec[OrderForkedFat]),
     Subtype(deriveCodec[OrderJoinedFat]),
@@ -91,8 +90,4 @@ object OrderFatEvent
     Subtype(deriveCodec[OrderProcessedFat]),
     Subtype(deriveCodec[OrderStdoutWrittenFat]),
     Subtype(deriveCodec[OrderStderrWrittenFat]))
-
-  implicit val KeyedOrderFatEventJsonCodec: KeyedEventTypedJsonCodec[OrderFatEvent] =
-    KeyedEventTypedJsonCodec[OrderFatEvent](
-      KeyedSubtype[OrderFatEvent])
 }

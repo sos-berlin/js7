@@ -11,8 +11,10 @@ import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.event.EventReader
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderFatEvent}
+import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
 import monix.execution.Scheduler
@@ -35,21 +37,21 @@ trait FatEventRoute extends MasterRouteProvider
     pathEnd {
       get {
         authorizedUser(ValidUserPermission) { _ ⇒
-          eventRequest[OrderFatEvent](defaultReturnType = Some("OrderFatEvent")).apply {
-            case request: EventRequest[OrderFatEvent] ⇒
+          eventRequest[FatEvent](defaultReturnType = Some("OrderFatEvent")).apply {
+            case request: EventRequest[FatEvent] ⇒
               val stateAccessor = fatStateCache.newAccessor(request.after)
               val underlyingRequest = EventRequest[Event](
-                Set(classOf[OrderEvent], classOf[RepoEvent]),
+                Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent]),
                 after = stateAccessor.eventId,
                 timeout = request.timeout,
                 delay = request.delay,
                 limit = Int.MaxValue)
               val marshallable = eventReader.read[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
                 case o: TearableEventSeq.Torn ⇒
-                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]])
+                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
                 case o: EventSeq.Empty ⇒
-                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]])
+                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
                 case EventSeq.NonEmpty(stampedIterator) ⇒
                   implicit val x = NonEmptyEventSeqJsonStreamingSupport
@@ -92,10 +94,10 @@ object FatEventRoute
       def eventId = state.eventId
 
       def toFatEventSeq(
-        request: EventRequest[OrderFatEvent],
+        request: EventRequest[FatEvent],
         eventSeq: TearableEventSeq[CloseableIterator, KeyedEvent[Event]])
         (implicit scheduler: Scheduler)
-      : TearableEventSeq[CloseableIterator, KeyedEvent[OrderFatEvent]]
+      : TearableEventSeq[CloseableIterator, KeyedEvent[FatEvent]]
       =
         eventSeq match {
           case o: TearableEventSeq.Torn ⇒ o
@@ -105,7 +107,7 @@ object FatEventRoute
             val closeableIterator = stampedIterator
               .flatMap { stamped ⇒
                 lastEventId = stamped.eventId
-                toFatOrderEvents(stamped)
+                toFatEvents(stamped)
               }
               .dropWhile(_.eventId <= request.after)
               .take(request.limit)
@@ -115,8 +117,8 @@ object FatEventRoute
               EventSeq.NonEmpty(closeableIterator)
         }
 
-      def toFatOrderEvents(stamped: Stamped[KeyedEvent[Event]]): Option[Stamped[KeyedEvent[OrderFatEvent]]] = {
-        val (s, fatEvents) = state.toFatOrderEvents(stamped)
+      def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): Option[Stamped[KeyedEvent[FatEvent]]] = {
+        val (s, fatEvents) = state.toFatEvents(stamped)
         if (s.eventId <= after) {
           _lastRequestedState = s
         }

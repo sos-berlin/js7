@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.data.events
+package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.data.fatevent.MasterFatEvent._
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.data.events.MasterEvent._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.time.ZoneId
 import org.scalatest.FreeSpec
@@ -10,12 +10,12 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class MasterEventTest extends FreeSpec
+final class MasterFatEventTest extends FreeSpec
 {
-  "MasterReady" in {
-    testJson[MasterEvent](MasterReady(MasterId("MASTER"), ZoneId.of("Europe/Berlin")),
+  "MasterReadyFat" in {
+    testJson[MasterFatEvent](MasterReadyFat(MasterId("MASTER"), ZoneId.of("Europe/Berlin")),
       json"""{
-        "TYPE": "MasterReady",
+        "TYPE": "MasterReadyFat",
         "masterId": "MASTER",
         "timezone": "Europe/Berlin"
       }""")

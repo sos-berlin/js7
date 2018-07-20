@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.data.events
+package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
@@ -11,13 +11,15 @@ import java.time.ZoneId
 /**
   * @author Joacim Zschimmer
   */
-sealed trait MasterEvent extends NoKeyEvent
+sealed trait MasterFatEvent extends FatEvent with NoKeyEvent
 
-object MasterEvent {
-  final case class MasterReady(masterId: MasterId, timezone: ZoneId) extends MasterEvent
+object MasterFatEvent
+{
+  final case class MasterReadyFat(masterId: MasterId, timezone: ZoneId) extends MasterFatEvent
   case object MasterReady
 
   intelliJuseImport(zoneIdJsonDecoder)
-  implicit val jsonCodec: TypedJsonCodec[MasterEvent] = TypedJsonCodec(
-    Subtype(deriveCodec[MasterReady]))
+
+  implicit val jsonCodec: TypedJsonCodec[MasterFatEvent] = TypedJsonCodec(
+    Subtype(deriveCodec[MasterReadyFat]))
 }

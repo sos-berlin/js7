@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.{Order, OrderFatEvent, OrdersOverview}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent
+import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
 import io.circe.{Decoder, ObjectEncoder}

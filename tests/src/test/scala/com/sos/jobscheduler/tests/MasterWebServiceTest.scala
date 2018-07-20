@@ -36,6 +36,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
+import java.time.ZoneId
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -395,7 +396,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         }, {
           "eventId": 1006,
-          "TYPE": "MasterReady"
+          "TYPE": "MasterReady",
+          "masterId": "Master",
+          "timezone": "${ZoneId.systemDefault.getId}"
         }, {
           "eventId": 1007,
           "TYPE": "OrderAdded",
