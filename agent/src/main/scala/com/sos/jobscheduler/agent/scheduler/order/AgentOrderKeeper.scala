@@ -62,9 +62,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
   private val eventReader = new JournalEventReader[Event](journalMeta)
-  protected val journalActor = actorOf(
+  protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, syncOnCommit = syncOnCommit, keyedEventBus, scheduler),
-    "Journal")
+    "Journal"))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
@@ -137,13 +137,14 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       sender() ! eventReader
 
     case Input.Terminate ⇒
+      logger.debug("### Terminate")
       if (!terminating) {
         terminating = true
         for (o ← orderRegister.values if !o.detaching) {
           o.actor ! OrderActor.Input.Terminate
         }
       }
-      checkActorStop()
+      handleTermination()
       sender() ! Done
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
@@ -378,21 +379,25 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           logger.error(s"Actor '$jobPath' stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-        checkActorStop()
+        handleTermination()
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
         val orderId = orderRegister(actorRef).order.id
         logger.debug(s"Actor '$orderId' stopped")
         orderRegister.onActorTerminated(actorRef)
-        checkActorStop()
+        handleTermination()
+
+      case Terminated(`journalActor`) if terminating ⇒
+        context.stop(self)
 
       case _ ⇒
         super.unhandled(message)
     }
 
-  private def checkActorStop() = {
+  private def handleTermination() = {
     if (terminating && orderRegister.isEmpty && jobRegister.isEmpty) {
-      context.stop(self)
+      logger.debug("### JournalActor.Input.Terminate")
+      journalActor ! JournalActor.Input.Terminate
     }
   }
 

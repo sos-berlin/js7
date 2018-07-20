@@ -49,9 +49,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
-  protected val journalActor = actorOf(
+  protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus, scheduler),
-    "Journal")
+    "Journal"))
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(
       TaskRegisterActor.props(agentConfiguration.killScriptConf, timerService),
@@ -134,12 +134,15 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
     case Terminated(`jobKeeper`) ⇒
       jobKeeperStopped = true
-      checkActorStop()
+      handleTermination()
 
     case Terminated(a) if masterToOrderKeeper.contains(a) ⇒
       logger.debug("Actor for master " + masterToOrderKeeper.actorToKey(a) + " terminated")
       masterToOrderKeeper -= a
-      checkActorStop()
+      handleTermination()
+
+    case Terminated(`journalActor`) if terminating ⇒
+      for (_ ← terminateCompleted.future) context.self ! PoisonPill
 
     case Command.GetOverview ⇒
       sender() ! AgentOverview(
@@ -219,9 +222,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     watch(actor)
   }
 
-  private def checkActorStop(): Unit = {
+  private def handleTermination(): Unit = {
     if (terminating && masterToOrderKeeper.isEmpty && jobKeeperStopped) {
-      for (_ ← terminateCompleted.future) context.self ! PoisonPill
+      journalActor ! JournalActor.Input.Terminate
     }
   }
 
