@@ -11,11 +11,11 @@ sealed trait AgentEvent extends Event
 
 object AgentEvent {
 
-  sealed trait MasterEvent extends AgentEvent {
+  sealed trait AgentMasterEvent extends AgentEvent {
     type Key = MasterId
   }
 
-  final case object MasterAdded extends MasterEvent
+  final case object MasterAdded extends AgentMasterEvent
 
   implicit val KeyedEventJsonCodec = KeyedEventTypedJsonCodec[AgentEvent](
     KeyedSubtype(MasterAdded))
