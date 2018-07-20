@@ -29,6 +29,8 @@ extends AutoCloseable
 
   import journalMeta.eventJsonCodec
 
+  private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
+
   if (!appendToSnapshots && Files.exists(file)) sys.error(s"JournalWriter: Not expecting existent file '$file'")
   if (appendToSnapshots && !Files.exists(file)) sys.error(s"JournalWriter: Missing file '$file'")
 
@@ -43,12 +45,12 @@ extends AutoCloseable
   def close() = jsonWriter.close()
 
   def logStatistics(): Unit = {
-    logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written: $statistics")
+    logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written: ${statistics.infoString}")
     logTiming()
   }
 
   def logTiming(): Unit =
-    logger.debug(statistics.timingString)
+    logger.debug(statistics.debugString + " " + statistics.timingString)
 
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("JournalWriter: duplicate beginSnapshotSection()")
@@ -121,7 +123,6 @@ extends AutoCloseable
 private[journal] object JournalWriter {
   val SnapshotsHeader = Json.fromString("-------SNAPSHOTS-------")
   val EventsHeader    = Json.fromString("-------EVENTS-------")
-  private val logger = Logger(getClass)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)
 }

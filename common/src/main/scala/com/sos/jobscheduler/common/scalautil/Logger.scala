@@ -24,9 +24,9 @@ object Logger {
     ScalaLogger(name)
 
   def withPrefix[A: ClassTag](prefix: String): ScalaLogger =
-    withClassAndPrefix(implicitClass[A], prefix)
+    withPrefix(implicitClass[A], prefix)
 
-  def withClassAndPrefix(c: Class[_], prefix: String): ScalaLogger =
+  def withPrefix(c: Class[_], prefix: String): ScalaLogger =
     if (prefix.isEmpty)
       apply(c)
     else

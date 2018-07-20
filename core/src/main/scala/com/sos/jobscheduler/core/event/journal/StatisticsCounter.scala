@@ -42,7 +42,13 @@ private[journal] final class StatisticsCounter {
     syncNanos += nanoTime
   }
 
-  override def toString =
+  override def toString = infoString
+
+  def infoString =
+    if (events == 0) "no events"
+    else f"$events events"
+
+  def debugString =
     if (events == 0) "no events"
     else f"$events events, $commits commits ($flushes flushes, $syncs syncs)"
 
@@ -52,6 +58,7 @@ private[journal] final class StatisticsCounter {
     else {
       val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
       factorFormat.setMaximumFractionDigits(1)
+      factorFormat.setGroupingUsed(false)  // For MacOS
       (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ") +
         ", " + factorFormat.format(commits.toDouble / flushes) + " commits/flush"
     }
