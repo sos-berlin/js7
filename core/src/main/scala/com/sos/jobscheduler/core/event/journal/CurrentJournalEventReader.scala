@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.event.RealEventReader
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.data.event.{Event, EventId}
@@ -11,15 +10,14 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class CurrentJournalEventReader[E <: Event](
+private[journal] final class CurrentJournalEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId])
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
-extends RealEventReader[E]
-with AbstractJournalEventReader[E]
+extends AbstractJournalEventReader[E]
 {
   val tornEventId = flushedLengthAndEventId.value
   protected val journalFile = journalMeta.file(after = tornEventId)
@@ -32,7 +30,6 @@ with AbstractJournalEventReader[E]
       throw new IllegalArgumentException(s"CurrentJournalEventReader: Added file position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
     eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position)
     endPosition = flushedPosition
-    super.onEventsAdded(eventId)
   }
 
   /**

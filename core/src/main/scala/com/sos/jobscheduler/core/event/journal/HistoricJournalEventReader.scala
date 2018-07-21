@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-final class HistoricJournalEventReader[E <: Event](
+private[journal] final class HistoricJournalEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   val tornEventId: EventId,
   protected val journalFile: Path)
@@ -23,7 +23,7 @@ with AbstractJournalEventReader[E]
   def eventsAfter(after: EventId) = untornEventsAfter(after)
 }
 
-object HistoricJournalEventReader
+private[journal] object HistoricJournalEventReader
 {
   private def firstEventPosition(journalFile: Path) =
     autoClosing(InputStreamJsonSeqReader.open(journalFile)) { jsonFileReader ⇒

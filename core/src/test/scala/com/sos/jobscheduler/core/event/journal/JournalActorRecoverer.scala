@@ -9,7 +9,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
+private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
 
   protected implicit def sender: ActorRef
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]

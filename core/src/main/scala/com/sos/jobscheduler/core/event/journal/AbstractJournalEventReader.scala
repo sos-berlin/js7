@@ -90,6 +90,6 @@ extends AutoCloseable
   }
 }
 
-object AbstractJournalEventReader {
+private object AbstractJournalEventReader {
   private val logger = Logger(getClass)
 }
