@@ -14,7 +14,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.journal.{JournalEventWatch, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.filebased.RepoEvent

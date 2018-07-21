@@ -26,7 +26,10 @@ import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventWatch, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}

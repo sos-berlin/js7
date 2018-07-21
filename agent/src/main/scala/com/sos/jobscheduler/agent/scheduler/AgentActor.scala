@@ -23,7 +23,9 @@ import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.master.MasterId

@@ -5,7 +5,8 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.core.event.journal.{JournalMeta, JournalRecoverer}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey

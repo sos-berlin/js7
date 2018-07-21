@@ -160,7 +160,7 @@ object RichProcess {
     var allFilesDeleted = true
     for (file ← files) {
       try {
-        logger.debug(s"Delete file '$file'")
+        logger.debug(s"Delete files '$file'")
         delete(file)
       }
       catch { case NonFatal(t) ⇒

@@ -188,6 +188,6 @@ private object ShellProcessTask {
 
   private def lineToKeyValue(line: String): (String, String) = line match {
     case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim
-    case _ ⇒ throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in file denoted by environment variable $ReturnValuesFileEnvironmentVariableName: $line")
+    case _ ⇒ throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable $ReturnValuesFileEnvironmentVariableName: $line")
   }
 }

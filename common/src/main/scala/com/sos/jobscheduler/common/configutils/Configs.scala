@@ -25,10 +25,10 @@ object Configs {
 
   def parseConfigIfExists(file: Path): Config =
     if (exists(file)) {
-      logger.info(s"Reading configuration file $file")
+      logger.info(s"Reading configuration files $file")
       ConfigFactory.parseFile(file, Required)
     } else {
-      logger.debug(s"No configuration file $file")
+      logger.debug(s"No configuration files $file")
       ConfigFactory.empty
     }
 

@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.SnapshotWriter._
+import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipeline
 import io.circe.Encoder
 import scala.collection.immutable
 import scala.util.control.NonFatal

@@ -15,6 +15,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
+import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.write.JournalWriter
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -58,7 +62,7 @@ extends Actor with Stash {
     for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped but a KeyedJournalingActor is still running for key=$key")
     for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running: $a")
     if (temporaryJournalWriter != null) {
-      logger.debug(s"Deleting temporary journal file due to termination: ${temporaryJournalWriter.file}")
+      logger.debug(s"Deleting temporary journal files due to termination: ${temporaryJournalWriter.file}")
       temporaryJournalWriter.close()
       Files.delete(temporaryJournalWriter.file)
     }

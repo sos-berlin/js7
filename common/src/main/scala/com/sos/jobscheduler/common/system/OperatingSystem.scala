@@ -99,7 +99,7 @@ object OperatingSystem {
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
           }
         }
-        .getOrElse(sys.error(s"Key PRETTY_NAME not found in file $file"))
+        .getOrElse(sys.error(s"Key PRETTY_NAME not found in files $file"))
       }
 
       def readFileAnyRelease() = {

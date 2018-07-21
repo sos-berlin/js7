@@ -23,7 +23,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventWatch, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -308,8 +311,8 @@ with KeyedEventJournalingActor[Event] {
         })
 
     def onlyAdditionPossible[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of configuration file is not supported: $o"))) ++:
-        diff.changed.map(o ⇒ Invalid(Problem(s"Change of configuration file is not supported: ${o.path}")))
+      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of configuration files is not supported: $o"))) ++:
+        diff.changed.map(o ⇒ Invalid(Problem(s"Change of configuration files is not supported: ${o.path}")))
 
     for {
       eventsAndRepo ← repoReader.readConfiguration(repo, versionId)

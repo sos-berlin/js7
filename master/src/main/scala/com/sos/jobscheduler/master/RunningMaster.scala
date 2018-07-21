@@ -32,7 +32,8 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalEventWatch, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}

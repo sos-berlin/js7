@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
-import com.sos.jobscheduler.core.event.journal.RecoveredJournalingActors
+import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
 import java.util.NoSuchElementException
 import scala.collection.mutable
 

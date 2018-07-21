@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.JournalFiles
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.FatEvent

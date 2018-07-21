@@ -64,7 +64,7 @@ object IdToUser {
       if (cfg.hasPath(userId.string))
         existentUserIdToRaw(userId)
       else {
-        logger.debug(s"""Configuration file ("private.conf") does not have an entry '$UsersConfigPath.${userId.string}'""")
+        logger.debug(s"""Configuration files ("private.conf") does not have an entry '$UsersConfigPath.${userId.string}'""")
         None
       }
 

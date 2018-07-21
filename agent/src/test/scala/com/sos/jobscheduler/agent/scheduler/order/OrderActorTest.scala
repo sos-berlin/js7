@@ -24,7 +24,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.JournalActor
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}

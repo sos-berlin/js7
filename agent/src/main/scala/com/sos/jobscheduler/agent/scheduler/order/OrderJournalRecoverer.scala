@@ -2,7 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.util.Timeout
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
-import com.sos.jobscheduler.core.event.journal.{JournalMeta, JournalRecoverer}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
