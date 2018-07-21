@@ -19,7 +19,7 @@ object EventDirectives {
 
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
-  private val MinimumDelay = 100.milliseconds   // TODO To let JournalEventReader less often open and close the journal
+  private val MinimumDelay = 100.milliseconds   // TODO To let JournalEventWatch less often open and close the journal
   private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 

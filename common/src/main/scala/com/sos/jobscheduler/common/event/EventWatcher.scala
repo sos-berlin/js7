@@ -1,63 +1,55 @@
 package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.EventReader.Every
+import com.sos.jobscheduler.base.utils.ScalaUtils.function1WithToString
+import com.sos.jobscheduler.common.event.EventWatch.Every
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.collection.immutable.Seq
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 /**
-  * Strict delegator for lazy `CloseableIterator` `EventReader`.
-  * Converts `CloseableIterator` to a `Seq` and closes the iterator.
-  *
   * @author Joacim Zschimmer
   */
-final class StrictEventReader[E <: Event](eventReader: EventReader[E])
-{
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = (_: KeyedEvent[E1]) ⇒ true)
+trait EventWatch[E <: Event] {
+
+  def strict: StrictEventWatch[E] = new StrictEventWatch(this)
+
+  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
   : Observable[Stamped[KeyedEvent[E1]]]
-  = eventReader.observe(request, predicate)
 
   def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
-  = delegate(_.read(request, predicate))
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
-  = delegate(_.when(request, predicate))
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def whenAny[E1 <: E](
     request: EventRequest[E1],
     eventClasses: Set[Class[_ <: E1]],
     predicate: KeyedEvent[E1] ⇒ Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
-  = delegate(_.whenAny[E1](request, eventClasses, predicate))
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def byKey[E1 <: E](
     request: SomeEventRequest[E1],
     key: E1#Key,
     predicate: E1 ⇒ Boolean = Every)
-  : Task[TearableEventSeq[Seq, E1]]
-  = delegate(_.byKey(request, key, predicate))
+  : Task[TearableEventSeq[CloseableIterator, E1]]
 
   def whenKeyedEvent[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
     predicate: E1 ⇒ Boolean = Every)
   : Task[E1]
-  = eventReader.whenKeyedEvent(request, key, predicate)
 
   def whenKey[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
     predicate: E1 ⇒ Boolean = Every)
-  : Task[TearableEventSeq[Seq, E1]]
-  = delegate(_.whenKey(request, key, predicate))
+  : Task[TearableEventSeq[CloseableIterator, E1]]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -67,16 +59,17 @@ final class StrictEventReader[E <: Event](eventReader: EventReader[E])
     timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]]
-  = eventReader.await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[Seq, KeyedEvent[E1]] =
-    eventReader.all[E1].strict
+  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
 
-  @inline
-  private def delegate[A](body: EventReader[E] ⇒ Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
-    body(eventReader) map (_.strict)
+  def tornEventId: EventId
 
-  def tornEventId = eventReader.tornEventId
+  def lastAddedEventId: EventId
+}
+
+object EventWatch
+{
+  private[event] val Every: Any ⇒ Boolean = function1WithToString("Every")(_ ⇒ true)
 }

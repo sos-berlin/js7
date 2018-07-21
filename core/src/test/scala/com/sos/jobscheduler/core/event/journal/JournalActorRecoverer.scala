@@ -15,14 +15,14 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
   protected def snapshotToKey: Any ⇒ Any
   protected def isDeletedEvent: E ⇒ Boolean
-  protected def journalEventReader: JournalEventReader[E]
+  protected def journalEventWatch: JournalEventWatch[E]
 
   private val keyToActor = mutable.Map[Any, ActorRef]()
 
   final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
     recoverAll()
     startJournalAndFinishRecovery(journalActor = journalActor, recoveredJournalingActors,
-      Some(journalEventReader))
+      Some(journalEventWatch))
   }
 
   protected final def recoverEvent = {

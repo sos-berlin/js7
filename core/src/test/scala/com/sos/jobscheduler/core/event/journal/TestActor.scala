@@ -49,7 +49,7 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
   private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {
     protected val sender = TestActor.this.sender()
     protected val journalMeta = TestActor.this.journalMeta
-    protected val journalEventReader = new JournalEventReader[TestEvent](journalMeta)(
+    protected val journalEventWatch = new JournalEventWatch[TestEvent](journalMeta)(
       Scheduler.global, TimerService(Some(1.s)))
 
     protected def snapshotToKey = {

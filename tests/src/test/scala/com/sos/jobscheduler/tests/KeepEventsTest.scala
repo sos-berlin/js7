@@ -37,9 +37,9 @@ final class KeepEventsTest extends FreeSpec {
 
       RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
         RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
-          master.eventReader.await[MasterEvent.MasterReady]()
+          master.eventWatch.await[MasterEvent.MasterReady]()
           master.addOrderBlocking(TestOrder)
-          master.eventReader.await[OrderFinished](predicate = _.key == TestOrder.id)
+          master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
         }
         agent.terminate() await 99.s
       }
@@ -51,7 +51,7 @@ final class KeepEventsTest extends FreeSpec {
 
       RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
         RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
-          val finished = master.eventReader.await[OrderFinished](predicate = _.key == TestOrder.id)
+          val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(masterJournalCount == 2)
           assert(agentJournalCount == 2)
           master.executeCommandAsSystemUser(MasterCommand.KeepEvents(finished.head.eventId)) await 99.s
@@ -59,7 +59,7 @@ final class KeepEventsTest extends FreeSpec {
 
           // Master sends KeepOrder after some events from Agent have arrived. So we start an order.
           master.addOrderBlocking(TestOrder)
-          master.eventReader.await[OrderFinished](after = finished.head.eventId, predicate = _.key == TestOrder.id)
+          master.eventWatch.await[OrderFinished](after = finished.head.eventId, predicate = _.key == TestOrder.id)
           // Master send AgentCommand.KeepEvents asynchronously, not waiting for response. So we wait a little.
           waitForCondition(5.s, 100.ms) { agentJournalCount == 1 }
           assert(agentJournalCount == 1)

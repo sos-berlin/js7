@@ -20,12 +20,12 @@ private[journal] final class JournalWriter[E <: Event](
   journalMeta: JournalMeta[E],
   val file: Path,
   after: EventId,
-  readerAdapter: Option[WriterReaderAdapter],
+  observer: Option[JournalWriterObserver],
   appendToSnapshots: Boolean)
 extends AutoCloseable
 {
-  def this(journalMeta: JournalMeta[E], after: EventId, readerAdapter: Option[WriterReaderAdapter] = None, appendToSnapshots: Boolean = false) =
-    this(journalMeta, journalMeta.file(after), after, readerAdapter, appendToSnapshots)
+  def this(journalMeta: JournalMeta[E], after: EventId, observer: Option[JournalWriterObserver] = None, appendToSnapshots: Boolean = false) =
+    this(journalMeta, journalMeta.file(after), after, observer, appendToSnapshots)
 
   import journalMeta.eventJsonCodec
 
@@ -72,7 +72,7 @@ extends AutoCloseable
     jsonWriter.write(ByteString(EventsHeader.compactPrint))
     flush()
     eventsStarted = true
-    for (r ← readerAdapter) {
+    for (r ← observer) {
       r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId))
     }
   }
@@ -98,7 +98,7 @@ extends AutoCloseable
       statistics.beforeFlush()
       jsonWriter.flush()
       statistics.afterFlush()
-      for (r ← readerAdapter if eventAdded) {
+      for (r ← observer if eventAdded) {
         eventAdded = false
         r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId))
       }

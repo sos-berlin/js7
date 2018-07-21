@@ -25,8 +25,8 @@ trait MastersEventWebService extends AgentRouteProvider with AbstractEventRoute[
   protected def keyedEventTypedJsonCodec =
     KeyedEventJsonFormats.keyedEventJsonCodec
 
-  protected def eventReaderFor(userId: UserId) =
-    agentHandle.eventReader(MasterId.fromUserId(userId))
+  protected def eventWatchFor(userId: UserId) =
+    agentHandle.eventWatch(MasterId.fromUserId(userId))
 
   override protected def isRelevantEvent(keyedEvent: KeyedEvent[OrderEvent]) =
     keyedEvent.event != OrderDetached  // Master knows about detached order by successful executed AgentCommand.DetachOrder

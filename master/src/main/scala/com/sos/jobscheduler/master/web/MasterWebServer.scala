@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.event.EventReader
+import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -55,7 +55,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
-      protected val eventReader         = injector.instance[EventReader[Event]]
+      protected val eventWatch         = injector.instance[EventWatch[Event]]
       protected val scheduler           = injector.instance[Scheduler]
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventReader, StrictEventReader}
+import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.monix.MonixForCats._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -32,7 +32,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalEventReader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.{JournalEventWatch, JournalMeta}
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
@@ -91,7 +91,7 @@ extends AutoCloseable
     orderApi.addOrder(order).runAsync.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
-  val eventReader: StrictEventReader[Event] = injector.instance[EventReader[Event]].strict
+  val eventWatch: StrictEventWatch[Event] = injector.instance[EventWatch[Event]].strict
 
   def close() = closer.close()
 }
@@ -177,7 +177,7 @@ object RunningMaster {
                 injector.instance[JournalMeta[Event]],
                 injector.instance[EventIdClock])(
                 injector.instance[TimerService],
-                injector.instance[JournalEventReader[Event]],
+                injector.instance[JournalEventWatch[Event]],
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },

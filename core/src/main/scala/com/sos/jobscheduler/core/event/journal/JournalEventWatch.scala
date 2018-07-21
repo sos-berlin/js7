@@ -4,11 +4,11 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.event.RealEventReader
+import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
-import com.sos.jobscheduler.core.event.journal.JournalEventReader._
+import com.sos.jobscheduler.core.event.journal.JournalEventWatch._
 import com.sos.jobscheduler.core.event.journal.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.io.IOException
@@ -22,13 +22,13 @@ import scala.concurrent.{ExecutionContext, Promise}
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventReader[E <: Event](journalMeta: JournalMeta[E])
+final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E])
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
 extends AutoCloseable
-with RealEventReader[E]
-with WriterReaderAdapter
+with RealEventWatch[E]
+with JournalWriterObserver
 {
   // Read journal file names from directory while constructing
   @volatile
@@ -133,6 +133,6 @@ with WriterReaderAdapter
     afterEventIdToFile.toVector.sortBy(_._1).reverseIterator find (_._1 <= after) map (_._2)
 }
 
-private[journal] object JournalEventReader {
+private[journal] object JournalEventWatch {
   private val logger = Logger(getClass)
 }

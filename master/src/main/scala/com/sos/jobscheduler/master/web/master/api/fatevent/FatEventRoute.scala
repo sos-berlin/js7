@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
-import com.sos.jobscheduler.common.event.EventReader
+import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
@@ -27,7 +27,7 @@ import scala.collection.immutable.Seq
   */
 trait FatEventRoute extends MasterRouteProvider
 {
-  protected def eventReader: EventReader[Event]
+  protected def eventWatch: EventWatch[Event]
 
   private implicit def implicitScheduler = scheduler
 
@@ -46,7 +46,7 @@ trait FatEventRoute extends MasterRouteProvider
                 timeout = request.timeout,
                 delay = request.delay,
                 limit = Int.MaxValue)
-              val marshallable = eventReader.read[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
+              val marshallable = eventWatch.read[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
                 case o: TearableEventSeq.Torn ⇒
                   ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 

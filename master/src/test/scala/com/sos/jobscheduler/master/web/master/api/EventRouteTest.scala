@@ -37,10 +37,10 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
   private implicit val timeout = 9.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
-  protected val eventReader = new EventCollector.ForTest
+  protected val eventWatch = new EventCollector.ForTest
   protected implicit def scheduler = Scheduler.global
 
-  TestEvents foreach eventReader.addStamped
+  TestEvents foreach eventWatch.addStamped
 
   private def route = pathSegments("event")(eventRoute)
 

@@ -7,7 +7,7 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait WriterReaderAdapter
+private[journal] trait JournalWriterObserver
 {
   private[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit
 

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport.closeableIteratorToObservable
-import com.sos.jobscheduler.common.event.RealEventReader._
+import com.sos.jobscheduler.common.event.RealEventWatch._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-trait RealEventReader[E <: Event] extends EventReader[E]
+trait RealEventWatch[E <: Event] extends EventWatch[E]
 {
   protected def timerService: TimerService
 
@@ -37,7 +37,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
   private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)  // Initialize not before whenStarted!
 
   protected final def onEventsAdded(eventId: EventId): Unit = {
-    if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventReader: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
+    if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventWatch: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
     _lastEventId = eventId
     sync.onEventAdded(eventId)
   }
@@ -207,7 +207,7 @@ trait RealEventReader[E <: Event] extends EventReader[E]
       case EventSeq.NonEmpty(events) ⇒
         try events.toVector
         finally events.close()
-      case o ⇒ sys.error(s"RealEventReader.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
+      case o ⇒ sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
     }
 
   /** TEST ONLY - Blocking. */
@@ -216,10 +216,10 @@ trait RealEventReader[E <: Event] extends EventReader[E]
     when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.seconds), _ ⇒ true) await 99.s
 }
 
-object RealEventReader {
+object RealEventWatch {
   private val NoMoreObservable = Task.pure((None, () ⇒ throw new NoSuchElementException/*dead code*/))
 
-  final class TornException private[RealEventReader](val after: EventId, val tornEventId: EventId)
+  final class TornException private[RealEventWatch](val after: EventId, val tornEventId: EventId)
   extends RuntimeException {
     override def getMessage = s"EventSeq is torn - after=$after tornEventId=$tornEventId"
   }

@@ -52,10 +52,10 @@ trait JournalRecoverer[E <: Event] {
   final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReader: Option[JournalEventReader[E]] = None)
+    eventWatch: Option[JournalEventWatch[E]] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventReader, lastEventId = _lastEventId)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventWatch, lastEventId = _lastEventId)
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -66,7 +66,7 @@ object JournalRecoverer {
   private def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventReader: Option[JournalEventReader[E]] = None,
+    eventWatch: Option[JournalEventWatch[E]] = None,
     lastEventId: EventId)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
@@ -75,7 +75,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, eventReader, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, eventWatch, lastEventId = lastEventId)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

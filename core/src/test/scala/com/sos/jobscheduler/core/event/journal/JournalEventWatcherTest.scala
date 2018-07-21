@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
-import com.sos.jobscheduler.common.event.RealEventReader
+import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.HistoricJournalEventReaderTest.writeJournal
-import com.sos.jobscheduler.core.event.journal.JournalEventReaderTest._
+import com.sos.jobscheduler.core.event.journal.JournalEventWatchTest._
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
@@ -24,15 +24,15 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
+final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
   private implicit lazy val timerService = TimerService(idleTimeout = Some(1.s))
 
-  "eventReader.when, .onEventsAcceptedUntil" in {
+  "eventWatch.when, .onEventsAcceptedUntil" in {
     withJournalMeta { journalMeta ⇒
       writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1)
-      withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventReader) ⇒
-        def when(after: EventId) = eventReader.when(EventRequest.singleClass[MyEvent](after = after, timeout = 30.seconds)).await(99.s).strict
+      withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventWatch) ⇒
+        def when(after: EventId) = eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = 30.seconds)).await(99.s).strict
 
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
 
@@ -42,21 +42,21 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
         assert(when(11) == EventSeq.NonEmpty(MyEvents1.tail ++ MyEvents2))
         assert(when(12) == EventSeq.NonEmpty(MyEvents2))
         assert(when(21) == EventSeq.NonEmpty(MyEvents2.tail))
-        assert(eventReader.when(EventRequest.singleClass[MyEvent](after = 22, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(22))
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 22, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(22))
 
-        eventReader.onEventsAcceptedUntil(0)
+        eventWatch.onEventsAcceptedUntil(0)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(12)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventReader.onEventsAcceptedUntil(11)
+        eventWatch.onEventsAcceptedUntil(11)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(12)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventReader.onEventsAcceptedUntil(12)
+        eventWatch.onEventsAcceptedUntil(12)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(12)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(12))
 
-        eventReader.onEventsAcceptedUntil(22)
+        eventWatch.onEventsAcceptedUntil(22)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(12)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(12))
       }
@@ -64,35 +64,35 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "CurrentJournalEventReader only" - {
-    "eventReader.when" in {
-      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
-        assert(eventReader.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)
+    "eventWatch.when" in {
+      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) ⇒
+        assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)
 
         val events = Stamped(1, "1" <-: A1) :: Stamped(2, "2" <-: A1) :: Nil
         writer.writeEvents(events)
-        assert(eventReader.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)  // Not flushed, so nothing has been read
+        assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)  // Not flushed, so nothing has been read
 
         writer.flush()
-        val stampedEventSeq = eventReader.eventsAfter(after = EventId.BeforeFirst).get.strict
+        val stampedEventSeq = eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict
         assert(stampedEventSeq == events)
-        assert(eventReader.eventsAfter(after = stampedEventSeq(0).eventId).get.strict == events.tail)
-        assert(eventReader.eventsAfter(after = stampedEventSeq(1).eventId).get.strict.isEmpty)
+        assert(eventWatch.eventsAfter(after = stampedEventSeq(0).eventId).get.strict == events.tail)
+        assert(eventWatch.eventsAfter(after = stampedEventSeq(1).eventId).get.strict.isEmpty)
 
-        assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
           EventSeq.NonEmpty(events))
       }
     }
 
-    "eventReader.when with torn event stream" in {
-      withCurrentJournal(lastEventId = EventId(1000)) { (writer, eventReader) ⇒
-        assert(eventReader.eventsAfter(after = EventId.BeforeFirst) == None)
-        assert(eventReader.eventsAfter(after = 999) == None)
-        assert(eventReader.eventsAfter(after = 1000).map(_.toVector) == Some(Nil))
+    "eventWatch.when with torn event stream" in {
+      withCurrentJournal(lastEventId = EventId(1000)) { (writer, eventWatch) ⇒
+        assert(eventWatch.eventsAfter(after = EventId.BeforeFirst) == None)
+        assert(eventWatch.eventsAfter(after = 999) == None)
+        assert(eventWatch.eventsAfter(after = 1000).map(_.toVector) == Some(Nil))
 
-        assert(eventReader.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
           TearableEventSeq.Torn(after = 1000))
 
-        val anyFuture = eventReader.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
         writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
         writer.flush()
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
@@ -100,10 +100,10 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       }
     }
 
-    "eventReader.when for selected event subclasses" in {
-      withCurrentJournal(lastEventId = EventId(1000)) { (writer, eventReader) ⇒
-        val anyFuture = eventReader.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
-        val bFuture = eventReader.when(EventRequest.singleClass[BEvent](after = 1000, timeout = 30.seconds)).runAsync
+    "eventWatch.when for selected event subclasses" in {
+      withCurrentJournal(lastEventId = EventId(1000)) { (writer, eventWatch) ⇒
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
+        val bFuture = eventWatch.when(EventRequest.singleClass[BEvent](after = 1000, timeout = 30.seconds)).runAsync
 
         writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
         writer.flush()
@@ -115,13 +115,13 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
         val EventSeq.NonEmpty(bEventsIterator) = bFuture.await(99.s).strict
         assert(bEventsIterator == Stamped(1002, "2" <-: B1) :: Nil)
 
-        assert(eventReader.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).await(99.s).strict ==
           EventSeq.NonEmpty(Stamped(1001, "1" <-: A1) :: Stamped(1002, "2" <-: B1) :: Nil))
       }
     }
 
-    "eventReader.whenKey, whenKeyedEvent" in {
-      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
+    "eventWatch.whenKey, whenKeyedEvent" in {
+      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) ⇒
         writer.writeEvents(
           Stamped(1, "1" <-: A1) ::
           Stamped(2, "1" <-: B1) ::
@@ -131,7 +131,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
         writer.flush()
 
         def eventsForKey[E <: MyEvent: ClassTag](key: E#Key) = {
-          val EventSeq.NonEmpty(eventIterator) = eventReader.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key).await(10.s).strict
+          val EventSeq.NonEmpty(eventIterator) = eventWatch.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key).await(10.s).strict
           eventIterator.toVector map { _.value }
         }
         assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
@@ -139,7 +139,7 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
         def keyedEvent[E <: MyEvent: ClassTag](key: E#Key) =
-          eventReader.whenKeyedEvent[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key) await 10.s
+          eventWatch.whenKeyedEvent[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key) await 10.s
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)
         assert(keyedEvent[BEvent]("1") == B1)
@@ -147,9 +147,9 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
     }
 
     "observe" in {
-      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventReader) ⇒
+      withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) ⇒
         val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
-        val observed = eventReader.observe(EventRequest.singleClass[AEvent](after = EventId.BeforeFirst, limit = 3, timeout = 99.seconds))
+        val observed = eventWatch.observe(EventRequest.singleClass[AEvent](after = EventId.BeforeFirst, limit = 3, timeout = 99.seconds))
           .foreach(stampeds.+=)
         assert(stampeds.isEmpty)
 
@@ -170,9 +170,9 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
 
     "observe Torn" in {
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
-      withCurrentJournal(lastEventId = EventId(1000)) { (_, eventReader) ⇒
-        val e = intercept[RealEventReader.TornException] {
-          eventReader.observe(EventRequest.singleClass[AEvent](after = 10, timeout = 99.seconds)).countL await 9.s
+      withCurrentJournal(lastEventId = EventId(1000)) { (_, eventWatch) ⇒
+        val e = intercept[RealEventWatch.TornException] {
+          eventWatch.observe(EventRequest.singleClass[AEvent](after = 10, timeout = 99.seconds)).countL await 9.s
         }
         assert(e.after == 10 && e.tornEventId == 1000)
       }
@@ -184,14 +184,14 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
     // Mit TakeSnapshot prüfen
   }
 
-  private def withCurrentJournal(lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventReader[MyEvent]) ⇒ Unit): Unit = {
+  private def withCurrentJournal(lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
     withJournalMeta { journalMeta ⇒
       withJournal(journalMeta, lastEventId)(body)
     }
   }
 
   private def withJournalMeta(body: JournalMeta[MyEvent] ⇒ Unit): Unit =
-    withTemporaryDirectory("JournalEventReaderTest") { directory ⇒
+    withTemporaryDirectory("JournalEventWatchTest") { directory ⇒
       val journalMeta = JournalMeta(
         TypedJsonCodec(),  // No snapshots
         keyedEventTypedJsonCodec,
@@ -199,18 +199,18 @@ final class JournalEventReaderTest extends FreeSpec with BeforeAndAfterAll {
       body(journalMeta)
     }
 
-  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventReader[MyEvent]) ⇒ Unit): Unit = {
-    autoClosing(new JournalEventReader[MyEvent](journalMeta)) { eventReader ⇒
-      autoClosing(new JournalWriter[MyEvent](journalMeta, after = lastEventId, Some(eventReader))) { writer ⇒
+  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
+    autoClosing(new JournalEventWatch[MyEvent](journalMeta)) { eventWatch ⇒
+      autoClosing(new JournalWriter[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
         writer.beginSnapshotSection()
         writer.beginEventSection()
-        body(writer, eventReader)
+        body(writer, eventWatch)
       }
     }
   }
 }
 
-private object JournalEventReaderTest
+private object JournalEventWatchTest
 {
   private val MyEvents1 =
     Stamped(11, "A1" <-: A1) ::

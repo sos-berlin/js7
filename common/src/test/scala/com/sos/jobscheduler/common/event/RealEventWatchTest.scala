@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.RealEventReaderTest._
+import com.sos.jobscheduler.common.event.RealEventWatchTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -13,13 +13,13 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventReaderTest extends FreeSpec {
+final class RealEventWatchTest extends FreeSpec {
 
   "observe without stack overflow" in {
-    val eventReader = new TestEventReader().strict
+    val eventWatch = new TestEventWatch().strict
     var expectedNext = Stamped(1, 1 <-: TestEvent(1))
     val n = 100000
-    val observed = eventReader.observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst, limit = n, timeout = 99.seconds))
+    val observed = eventWatch.observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst, limit = n, timeout = 99.seconds))
       .foreach { stamped ⇒
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
@@ -29,7 +29,7 @@ final class RealEventReaderTest extends FreeSpec {
   }
 }
 
-object RealEventReaderTest {
+object RealEventWatchTest {
   private val EventsPerIteration = 3
 
   private case class TestEvent(number: Long) extends Event {
@@ -38,7 +38,7 @@ object RealEventReaderTest {
 
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
-  private class TestEventReader extends RealEventReader[TestEvent] {
+  private class TestEventWatch extends RealEventWatch[TestEvent] {
     protected val timerService = new TimerService(Some(1.s))
     val tornEventId = 0
 

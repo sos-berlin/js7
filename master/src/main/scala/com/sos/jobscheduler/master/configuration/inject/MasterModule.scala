@@ -8,13 +8,13 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventReader}
+import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.journal.{JournalEventReader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.{JournalEventWatch, JournalMeta}
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -36,12 +36,12 @@ import scala.util.control.NonFatal
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
   @Provides @Singleton
-  def eventReader(p: JournalEventReader[Event]): EventReader[Event] =
+  def eventWatch(p: JournalEventWatch[Event]): EventWatch[Event] =
     p
 
   @Provides @Singleton
-  def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, ts: TimerService, config: Config, closer: Closer): JournalEventReader[Event] =
-    new JournalEventReader[Event](journalMeta)
+  def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, ts: TimerService, config: Config, closer: Closer): JournalEventWatch[Event] =
+    new JournalEventWatch[Event](journalMeta)
       .closeWithCloser
 
   @Provides @Singleton

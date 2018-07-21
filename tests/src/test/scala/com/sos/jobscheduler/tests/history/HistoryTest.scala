@@ -50,7 +50,7 @@ final class HistoryTest extends FreeSpec
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
               masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
               master.addOrderBlocking(TestOrder)
-              master.eventReader.await[OrderFinished](_.key == TestOrder.id)
+              master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
               assert(listJournalFiles == Vector("master--0.journal"))
             }
           }

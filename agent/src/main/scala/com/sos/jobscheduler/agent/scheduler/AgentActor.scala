@@ -121,9 +121,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     case cmd: Input.ExternalCommand ⇒
       executeExternalCommand(cmd, jobs)
 
-    case Input.GetEventReader(masterId) ⇒
+    case Input.GetEventWatch(masterId) ⇒
       masterToOrderKeeper.checked(masterId) match {
-        case Valid(actor) ⇒ actor.forward(AgentOrderKeeper.Input.GetEventReader)
+        case Valid(actor) ⇒ actor.forward(AgentOrderKeeper.Input.GetEventWatch)
         case Invalid(problem) ⇒ sender() ! Status.Failure(problem.throwable)
       }
 
@@ -241,7 +241,7 @@ object AgentActor {
   object Input {
     final case object Start
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
-    final case class GetEventReader(masterId: MasterId)
+    final case class GetEventWatch(masterId: MasterId)
   }
 
   object Output {

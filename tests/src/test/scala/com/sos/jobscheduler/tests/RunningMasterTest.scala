@@ -75,7 +75,7 @@ final class RunningMasterTest extends FreeSpec {
         val agent1 = provider.startAgent(AgentPaths(1)) await 10.s  // Start early to recover orders
         master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
-        master.eventReader.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), _.key == TestOrderId) await 99.s
+        master.eventWatch.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), _.key == TestOrderId) await 99.s
         //Order has been deleted after OrderFinished:
         //orderApi.order(TestOrderId) await 10.s shouldEqual
         //  Some(Order(

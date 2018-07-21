@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.RealEventReader
+import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.event.collector.EventCollector._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * @author Joacim Zschimmer
   */
 abstract class EventCollector(configuration: Configuration)(implicit protected val timerService: TimerService)
-extends RealEventReader[Event]
+extends RealEventWatch[Event]
 {
   protected val started = Future.successful(Completed)
   private[collector] val keyedEventQueue = new MemoryKeyedEventQueue(sizeLimit = configuration.queueSize)

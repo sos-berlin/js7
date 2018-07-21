@@ -45,7 +45,7 @@ extends Actor with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private var journalWriter: JournalWriter[E] = null
-  private var eventReaderOption: Option[JournalEventReader[E]] = None
+  private var eventWatchOption: Option[JournalEventWatch[E]] = None
   private var temporaryJournalWriter: JournalWriter[E] = null
   private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
   private val keylessJournalingActors = mutable.Set[ActorRef]()
@@ -71,9 +71,9 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), eventReaderOption_, lastEventId) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), eventWatchOption_, lastEventId) ⇒
       lastWrittenEventId = lastEventId
-      eventReaderOption = eventReaderOption_ map (_.asInstanceOf[JournalEventReader[E]]/*restore erased type argument, not checked*/)
+      eventWatchOption = eventWatchOption_ map (_.asInstanceOf[JournalEventWatch[E]]/*restore erased type argument, not checked*/)
       eventIdGenerator.updateLastEventId(lastEventId)
       keyToJournalingActor ++= keyToActor
       keyToJournalingActor.values foreach watch
@@ -109,7 +109,7 @@ extends Actor with Stash {
       if (untilEventId > lastWrittenEventId)
         sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
       else {
-        for (r ← eventReaderOption) r.onEventsAcceptedUntil(untilEventId)
+        for (r ← eventWatchOption) r.onEventsAcceptedUntil(untilEventId)
         sender() ! Valid(Completed)
       }
 
@@ -254,7 +254,7 @@ extends Actor with Stash {
   }
 
   private def newJsonWriter(file: Path, appendToSnapshots: Boolean = false) =
-    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventReaderOption, appendToSnapshots = appendToSnapshots)
+    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots)
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
@@ -286,7 +286,7 @@ object JournalActor
   object Input {
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
-      eventReader: Option[JournalEventReader[_ <: Event]],
+      eventWatch: Option[JournalEventWatch[_ <: Event]],
       lastEventId: EventId)
     final case object StartWithoutRecovery
     final case class EventsAccepted(untilEventId: EventId)

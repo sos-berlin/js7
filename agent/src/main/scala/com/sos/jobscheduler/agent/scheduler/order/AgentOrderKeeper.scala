@@ -26,7 +26,7 @@ import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventReader, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalEventWatch, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
@@ -61,7 +61,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
-  private val eventReader = new JournalEventReader[Event](journalMeta)
+  private val eventWatch = new JournalEventWatch[Event](journalMeta)
   protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, syncOnCommit = syncOnCommit, keyedEventBus, scheduler),
     "Journal"))
@@ -91,11 +91,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
-    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors, Some(eventReader))
+    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors, Some(eventWatch))
   }
 
   override def postStop() = {
-    eventReader.close()
+    eventWatch.close()
     super.postStop()
   }
 
@@ -133,8 +133,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case Input.ExternalCommand(cmd, response) ⇒
       response.completeWith(processOrderCommand(cmd))
 
-    case Input.GetEventReader ⇒
-      sender() ! eventReader
+    case Input.GetEventWatch ⇒
+      sender() ! eventWatch
 
     case Input.Terminate ⇒
       logger.debug("### Terminate")
@@ -414,7 +414,7 @@ object AgentOrderKeeper {
   sealed trait Input
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
-    final case object GetEventReader
+    final case object GetEventWatch
     final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
     final case object Terminate
   }

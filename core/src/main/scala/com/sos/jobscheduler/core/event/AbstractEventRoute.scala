@@ -22,7 +22,7 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider
-import com.sos.jobscheduler.common.event.EventReader
+import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.{`application/json-seq`, jsonSeqMarshaller}
@@ -30,7 +30,6 @@ import com.sos.jobscheduler.core.event.AbstractEventRoute._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, SomeEventRequest, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
-import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -42,7 +41,7 @@ trait AbstractEventRoute[E <: Event] extends RouteProvider
 {
   protected def eventClass: Class[E]
   protected implicit def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E]
-  protected def eventReaderFor(userId: UserId): Task[EventReader[E]]
+  protected def eventWatchFor(userId: UserId): Task[EventWatch[E]]
   protected def isRelevantEvent(keyedEvent: KeyedEvent[E]): Boolean = true
 
   private implicit def implicitScheduler = scheduler
@@ -54,26 +53,26 @@ trait AbstractEventRoute[E <: Event] extends RouteProvider
       pathEnd {
         authorizedUser(ValidUserPermission) { user ⇒
           routeFuture(
-            eventReaderFor(user.id).runAsync.map { eventReader ⇒
+            eventWatchFor(user.id).runAsync.map { eventWatch ⇒
               htmlPreferred {
-                oneShot(eventReader)
+                oneShot(eventWatch)
               } ~
               accept(`application/json-seq`) {
-                jsonSeqEvents(eventReader)
+                jsonSeqEvents(eventWatch)
               } ~
               accept(`text/event-stream`) {
-                serverSentEvents(eventReader)
+                serverSentEvents(eventWatch)
               } ~
-              oneShot(eventReader)
+              oneShot(eventWatch)
             })
         }
       }
     }
 
-  private def oneShot(eventReader: EventReader[E]): Route =
-    eventDirective(eventReader.lastAddedEventId) { request ⇒
+  private def oneShot(eventWatch: EventWatch[E]): Route =
+    eventDirective(eventWatch.lastAddedEventId) { request ⇒
       intelliJuseImport(jsonOrYamlMarshaller)
-      val marshallable = eventReader.read[E](request, predicate = isRelevantEvent) map {
+      val marshallable = eventWatch.read[E](request, predicate = isRelevantEvent) map {
         case o: TearableEventSeq.Torn ⇒
           ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[E]])
 
@@ -87,31 +86,31 @@ trait AbstractEventRoute[E <: Event] extends RouteProvider
       complete(marshallable)
     }
 
-  private def jsonSeqEvents(eventReader: EventReader[E]): Route =
-    eventDirective(eventReader.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) {
+  private def jsonSeqEvents(eventWatch: EventWatch[E]): Route =
+    eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) {
       case request: EventRequest[E] ⇒
         implicit val x = JsonSeqStreamSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[E]]]
-        complete(eventReader.observe(request, predicate = isRelevantEvent))
+        complete(eventWatch.observe(request, predicate = isRelevantEvent))
 
       case _ ⇒
         reject
     }
 
-  private def serverSentEvents(eventReader: EventReader[E]): Route =
+  private def serverSentEvents(eventWatch: EventWatch[E]): Route =
     parameter("v" ? BuildInfo.buildId) { requestedBuildId ⇒
       if (requestedBuildId != BuildInfo.buildId)
         complete(HttpEntity(
           `text/event-stream`,
           s"data:${Problem("BUILD-CHANGED").asJson.pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
       else
-        eventDirective(eventReader.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) {
+        eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) {
           case request: EventRequest[E] ⇒
             optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader ⇒
               val req = lastEventIdHeader.fold(request)(header ⇒
                 request.copy[E](after = toLastEventId(header)))
               val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-              val source = eventReader.observe(req, predicate = isRelevantEvent)
+              val source = eventWatch.observe(req, predicate = isRelevantEvent)
                 .map(stamped ⇒ ServerSentEvent(
                   data = stamped.asJson.pretty(mutableJsonPrinter),
                   id = Some(stamped.eventId.toString)))
