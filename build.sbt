@@ -111,8 +111,7 @@ val commonSettings = Seq(
 
 val universalPluginSettings = Seq(
   universalArchiveOptions in (Universal, packageZipTarball) :=
-    Seq("--force-local") .filter { _ ⇒ !isMac } ++
-      (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
+    (universalArchiveOptions in (Universal, packageZipTarball)).value)
 
 resolvers += Resolver.mavenLocal
 
