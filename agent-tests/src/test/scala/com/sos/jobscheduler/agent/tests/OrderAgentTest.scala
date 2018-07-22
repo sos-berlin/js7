@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
+import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -10,6 +11,7 @@ import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import com.sos.jobscheduler.agent.tests.OrderAgentTest._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -46,6 +48,9 @@ final class OrderAgentTest extends FreeSpec {
         withCloser { implicit closer ⇒
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
+          intercept[AkkaHttpClient.HttpException] {  // Login is required
+            agentClient.executeCommand(RegisterAsMaster) await 99.s
+          } .status shouldEqual Unauthorized
           agentClient.login(Some(TestUserAndPassword)) await 99.s
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 

@@ -170,7 +170,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
         }
 
       case AgentCommand.RegisterAsMaster if !terminating ⇒
-        //??? require(sessionToken.isDefined)
         if (masterToOrderKeeper contains masterId) {
           response.success(AgentCommand.Accepted)
         } else {

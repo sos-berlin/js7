@@ -10,7 +10,6 @@ import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import monix.execution.Scheduler
 
 /**
  * @author Joacim Zschimmer
