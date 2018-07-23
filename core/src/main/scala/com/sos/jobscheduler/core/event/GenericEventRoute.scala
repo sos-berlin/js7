@@ -28,7 +28,7 @@ import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.{`application/json-seq`, jsonSeqMarshaller}
 import com.sos.jobscheduler.core.event.GenericEventRoute._
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, SomeEventRequest, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import scala.collection.immutable.Seq
@@ -75,7 +75,7 @@ trait GenericEventRoute extends RouteProvider
     private def oneShot(eventWatch: EventWatch[Event]): Route =
       eventDirective(eventWatch.lastAddedEventId) { request ⇒
         intelliJuseImport(jsonOrYamlMarshaller)
-        val marshallable = eventWatch.read[Event](request, predicate = isRelevantEvent) map {
+        val marshallable = eventWatch.when[Event](request, predicate = isRelevantEvent) map {
           case o: TearableEventSeq.Torn ⇒
             ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
 
@@ -109,22 +109,18 @@ trait GenericEventRoute extends RouteProvider
             `text/event-stream`,
             s"data:${Problem("BUILD-CHANGED").asJson.pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
-          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) {
-            case request: EventRequest[Event] ⇒
-              optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader ⇒
-                val req = lastEventIdHeader.fold(request)(header ⇒
-                  request.copy[Event](after = toLastEventId(header)))
-                val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-                val source = eventWatch.observe(req, predicate = isRelevantEvent)
-                  .map(stamped ⇒ ServerSentEvent(
-                    data = stamped.asJson.pretty(mutableJsonPrinter),
-                    id = Some(stamped.eventId.toString)))
-                  .toAkkaSource
-                complete(source)
-              }
-
-            case _ ⇒
-              reject
+          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) { request ⇒
+            optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader ⇒
+              val req = lastEventIdHeader.fold(request)(header ⇒
+                request.copy[Event](after = toLastEventId(header)))
+              val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
+              val source = eventWatch.observe(req, predicate = isRelevantEvent)
+                .map(stamped ⇒ ServerSentEvent(
+                  data = stamped.asJson.pretty(mutableJsonPrinter),
+                  id = Some(stamped.eventId.toString)))
+                .toAkkaSource
+              complete(source)
+            }
           }
       }
 
@@ -133,8 +129,8 @@ trait GenericEventRoute extends RouteProvider
       defaultTimeout: FiniteDuration = EventDirectives.DefaultTimeout,
       defaultDelay: FiniteDuration = EventDirectives.DefaultDelay)
     =
-      new Directive1[SomeEventRequest[Event]] {
-        def tapply(inner: Tuple1[SomeEventRequest[Event]] ⇒ Route) =
+      new Directive1[EventRequest[Event]] {
+        def tapply(inner: Tuple1[EventRequest[Event]] ⇒ Route) =
           eventRequest[Event](
             defaultAfter = Some(defaultAfter),
             defaultDelay = defaultDelay,

@@ -49,7 +49,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       if (request.limit <= 0)
         NoMoreObservable
       else
-        read[E1](request, predicate) map {
+        when[E1](request, predicate) map {
           case _: TearableEventSeq.Torn ⇒
             throw new TornException(after = request.after, tornEventId = tornEventId)
 
@@ -78,13 +78,14 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
     request match {
       case request: EventRequest[E1] ⇒
         when[E1](request, predicate)
+
       case request: ReverseEventRequest[E1] ⇒
         Task(reverse[E1](request, predicate))
     }
 
   final def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
-    whenAny[E1](request, request.eventClasses, predicate)
+      whenAny[E1](request, request.eventClasses, predicate)
 
   final def whenAny[E1 <: E](request: EventRequest[E1], eventClasses: Set[Class[_ <: E1]], predicate: KeyedEvent[E1] ⇒ Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]

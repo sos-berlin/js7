@@ -5,7 +5,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import com.google.common.base.Splitter
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.event._
 import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
@@ -23,10 +25,29 @@ object EventDirectives {
   private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
-  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
+  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =
     eventRequest[E](None)
 
   def eventRequest[E <: Event](
+    defaultAfter: Option[EventId] = None,
+    defaultTimeout: FiniteDuration = DefaultTimeout,
+    defaultDelay: FiniteDuration = DefaultDelay,
+    defaultReturnType: Option[String] = None)
+    (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
+      classTag: ClassTag[E])
+  : Directive1[EventRequest[E]] =
+    new Directive1[EventRequest[E]] {
+      def tapply(inner: Tuple1[EventRequest[E]] ⇒ Route) =
+        someEventRequest[E](defaultAfter, defaultTimeout, defaultDelay, defaultReturnType)(keyedEventTypedJsonCodec, classTag) {
+          case request: EventRequest[E] ⇒ inner(Tuple1(request))
+          case _ ⇒ complete(Problem("Parameter limit must be positive here"))
+        }
+    }
+
+  def someEventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
+    someEventRequest[E](None)
+
+  def someEventRequest[E <: Event](
     defaultAfter: Option[EventId] = None,
     defaultTimeout: FiniteDuration = DefaultTimeout,
     defaultDelay: FiniteDuration = DefaultDelay,

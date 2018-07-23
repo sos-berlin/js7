@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.server.Directives.{complete, get, pathEnd, reject}
+import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.utils.CloseableIterator
@@ -37,30 +37,26 @@ trait FatEventRoute extends MasterRouteProvider
     pathEnd {
       get {
         authorizedUser(ValidUserPermission) { _ ⇒
-          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply {
-            case request: EventRequest[FatEvent] ⇒
-              val stateAccessor = fatStateCache.newAccessor(request.after)
-              val underlyingRequest = EventRequest[Event](
-                Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
-                after = stateAccessor.eventId,
-                timeout = request.timeout,
-                delay = request.delay,
-                limit = Int.MaxValue)
-              val marshallable = eventWatch.read[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
-                case o: TearableEventSeq.Torn ⇒
-                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
+          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { request ⇒
+            val stateAccessor = fatStateCache.newAccessor(request.after)
+            val underlyingRequest = EventRequest[Event](
+              Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
+              after = stateAccessor.eventId,
+              timeout = request.timeout,
+              delay = request.delay,
+              limit = Int.MaxValue)
+            val marshallable = eventWatch.when[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
+              case o: TearableEventSeq.Torn ⇒
+                ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-                case o: EventSeq.Empty ⇒
-                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
+              case o: EventSeq.Empty ⇒
+                ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-                case EventSeq.NonEmpty(stampedIterator) ⇒
-                  implicit val x = NonEmptyEventSeqJsonStreamingSupport
-                  ToResponseMarshallable(closeableIteratorToAkkaSource(stampedIterator))
-              }
-              complete(marshallable)
-
-            case _ ⇒
-              reject
+              case EventSeq.NonEmpty(stampedIterator) ⇒
+                implicit val x = NonEmptyEventSeqJsonStreamingSupport
+                ToResponseMarshallable(closeableIteratorToAkkaSource(stampedIterator))
+            }
+            complete(marshallable)
           }
         }
       }
