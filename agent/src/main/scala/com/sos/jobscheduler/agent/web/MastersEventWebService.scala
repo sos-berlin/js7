@@ -1,36 +1,32 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.core.event.AbstractEventRoute
-import com.sos.jobscheduler.data.event.KeyedEvent
+import com.sos.jobscheduler.core.event.GenericEventRoute
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 
 /**
   * @author Joacim Zschimmer
   */
-trait MastersEventWebService extends AgentRouteProvider with AbstractEventRoute[OrderEvent]
+trait MastersEventWebService extends AgentRouteProvider with GenericEventRoute
 {
   protected def agentHandle: AgentHandle
   implicit protected def akkaAskTimeout: Timeout
 
-  protected def eventClass =
-    classOf[OrderEvent]
+  protected final lazy val masterEventRoute = new RouteProvider().route
 
-  protected def keyedEventTypedJsonCodec =
-    KeyedEventJsonFormats.keyedEventJsonCodec
+  private class RouteProvider extends GenericEventRouteProvider
+  {
+    def keyedEventTypedJsonCodec = keyedEventJsonCodec
 
-  protected def eventWatchFor(userId: UserId) =
-    agentHandle.eventWatch(MasterId.fromUserId(userId))
+    def eventWatchFor(userId: UserId) = agentHandle.eventWatch(MasterId.fromUserId(userId))
 
-  override protected def isRelevantEvent(keyedEvent: KeyedEvent[OrderEvent]) =
-    keyedEvent.event != OrderDetached  // Master knows about detached order by successful executed AgentCommand.DetachOrder
-
-  protected final def masterEventRoute =
-    abstractEventRoute
+    override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) =
+      keyedEvent.event != OrderDetached  // Master knows about detached order by successful executed AgentCommand.DetachOrder
+  }
 }
