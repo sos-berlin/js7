@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
-import com.sos.jobscheduler.master.data.events.MasterEvent
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleEvent}
 import scala.collection.mutable
 
@@ -71,6 +71,8 @@ extends JournalRecoverer[Event]
 
         case KeyedEvent(FileBasedId(a: AgentPath, v), AgentEventIdEvent(agentEventId)) ⇒
           agentToEventId(a % v) = agentEventId
+
+        case KeyedEvent(_, _: MasterAgentEvent) ⇒
       }
   }
 

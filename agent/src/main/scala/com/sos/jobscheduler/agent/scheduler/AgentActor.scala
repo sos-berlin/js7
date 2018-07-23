@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartI
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
-import com.sos.jobscheduler.agent.scheduler.AgentEvent.AgentMasterEvent
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobKeeper}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -26,6 +25,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.master.MasterId
@@ -88,9 +88,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
     }
 
     def recoverEvent = {
-      case Stamped(_, _, e @ KeyedEvent(_: MasterId, AgentEvent.MasterAdded)) ⇒
-        val keyedEvent = e.asInstanceOf[KeyedEvent[AgentEvent.MasterAdded.type]]
-        update(keyedEvent)
+      case Stamped(_, _, KeyedEvent(NoKey, event: AgentEvent)) ⇒
+        update(event)
     }
   }
 
@@ -174,8 +173,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
           response.success(AgentCommand.Accepted)
         } else {
           response completeWith
-            persist(masterId <-: AgentEvent.MasterAdded) { case Stamped(_, _, keyedEvent) ⇒
-              update(keyedEvent)
+            persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) ⇒
+              update(event)
               masterToOrderKeeper(masterId) ! AgentOrderKeeper.Input.Start(jobs)
               AgentCommand.Accepted
             }
@@ -200,9 +199,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
         (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done])
     .map { _ ⇒ AgentCommand.Accepted }
 
-  private def update(keyedEvent: KeyedEvent[AgentMasterEvent]): Unit =
-    keyedEvent match {
-      case KeyedEvent(masterId: MasterId, AgentEvent.MasterAdded) ⇒
+  private def update(event: AgentEvent): Unit =
+    event match {
+      case AgentEvent.MasterAdded(masterId) ⇒
         addOrderKeeper(masterId)
     }
 
@@ -210,6 +209,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
+          masterId,
           journalFileBase = stateDirectory / s"master-$masterId",
           askTimeout = akkaAskTimeout,
           syncOnCommit = agentConfiguration.journalSyncOnCommit,

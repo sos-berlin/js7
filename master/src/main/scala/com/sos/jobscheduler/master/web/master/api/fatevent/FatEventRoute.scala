@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, 
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
-import com.sos.jobscheduler.master.data.events.MasterEvent
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
 import monix.execution.Scheduler
@@ -37,11 +37,11 @@ trait FatEventRoute extends MasterRouteProvider
     pathEnd {
       get {
         authorizedUser(ValidUserPermission) { _ ⇒
-          eventRequest[FatEvent](defaultReturnType = Some("OrderFatEvent")).apply {
+          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply {
             case request: EventRequest[FatEvent] ⇒
               val stateAccessor = fatStateCache.newAccessor(request.after)
               val underlyingRequest = EventRequest[Event](
-                Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent]),
+                Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
                 after = stateAccessor.eventId,
                 timeout = request.timeout,
                 delay = request.delay,

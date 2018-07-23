@@ -5,8 +5,8 @@ import akka.http.scaladsl.model.Uri.{Path, Query}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.web.AgentUris._
 import com.sos.jobscheduler.data.agent.AgentAddress
-import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import com.sos.jobscheduler.data.event.{Event, EventRequest}
+import com.sos.jobscheduler.data.order.OrderId
 
 /**
  * URIs of the JobScheduler Agent.
@@ -42,7 +42,7 @@ final class AgentUris private(agentUri: AgentAddress) {
       toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "Order"))
   }
 
-  def mastersEvents(request: EventRequest[OrderEvent]) =
+  def mastersEvents[E <: Event](request: EventRequest[E]) =
     toUri(Uri(path = Uri.Path("api/master/event")) withQuery Query(request.toQueryParameters: _*))
 
   def apply(relativeUri: String) = toUri(Path(stripLeadingSlash(relativeUri)))

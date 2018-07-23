@@ -26,11 +26,13 @@ object EventDirectives {
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
     eventRequest[E](None)
 
-  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag](
+  def eventRequest[E <: Event](
     defaultAfter: Option[EventId] = None,
     defaultTimeout: FiniteDuration = DefaultTimeout,
     defaultDelay: FiniteDuration = DefaultDelay,
     defaultReturnType: Option[String] = None)
+    (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
+      classTag: ClassTag[E])
   : Directive1[SomeEventRequest[E]] =
     new Directive1[SomeEventRequest[E]] {
       def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
@@ -41,7 +43,7 @@ object EventDirectives {
               val eventSuperclass = implicitClass[E]
               val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
               val eventClasses = returnTypeNames flatMap { t ⇒
-                implicitly[KeyedEventTypedJsonCodec[E]].typenameToClassOption(t)
+                keyedEventTypedJsonCodec.typenameToClassOption(t)
               } collect {
                 case eventClass_ if eventSuperclass isAssignableFrom eventClass_ ⇒ eventClass_
                 case eventClass_ if eventClass_ isAssignableFrom eventSuperclass ⇒ eventSuperclass

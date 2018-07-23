@@ -11,8 +11,8 @@ import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
 import scala.collection.immutable
 import scala.collection.immutable.Seq
@@ -59,14 +59,14 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
   final def orders(): Task[Seq[Order[Order.State]]] =
     get[Seq[Order[Order.State]]](agentUris.order.orders)
 
-  final def mastersEvents(request: EventRequest[OrderEvent]): Task[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {
+  final def mastersEvents[E <: Event](request: EventRequest[E]): Task[EventSeq[Seq, KeyedEvent[E]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
     //  case o: EventRequest[_] ⇒ o.timeout + 10.s
     //  case _ ⇒ akka configured default value
     //}
-    get[EventSeq[Seq, KeyedEvent[OrderEvent]]](agentUris.mastersEvents(request))
+    get[EventSeq[Seq, KeyedEvent[E]]](agentUris.mastersEvents(request))
   }
 
   override def toString = s"AgentClient($baseUri)"

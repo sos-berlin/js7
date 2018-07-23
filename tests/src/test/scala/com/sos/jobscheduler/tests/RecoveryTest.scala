@@ -74,7 +74,7 @@ final class RecoveryTest extends FreeSpec {
               lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
             }
             assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
-              Vector(KeyedEvent(AgentEvent.MasterAdded)(MasterId("Master")/*see default master.conf*/)))
+              Vector(KeyedEvent(AgentEvent.MasterAdded(MasterId("Master")/*see default master.conf*/))))
             logger.info("\n\n*** RESTARTING AGENTS ***\n")
             runAgents(directoryProvider) { _ ⇒
               lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))

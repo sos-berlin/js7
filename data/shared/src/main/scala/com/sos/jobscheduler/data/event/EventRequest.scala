@@ -16,7 +16,7 @@ final case class EventRequest[E <: Event](
   after: EventId,
   timeout: FiniteDuration,
   delay: FiniteDuration = DefaultDelay,
-  limit: Int)
+  limit: Int = DefaultLimit)
 extends SomeEventRequest[E] {
   require(eventClasses.nonEmpty, "Missing Event class")
   require(limit >= 0, "Limit must not be below zero")

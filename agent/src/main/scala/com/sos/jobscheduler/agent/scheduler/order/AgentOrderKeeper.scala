@@ -7,6 +7,7 @@ import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -34,12 +35,14 @@ import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import com.typesafe.config.Config
 import java.nio.file.Path
+import java.time.ZoneId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
@@ -50,6 +53,7 @@ import scala.concurrent.{Future, Promise}
   * @author Joacim Zschimmer
   */
 final class AgentOrderKeeper(
+  masterId: MasterId,
   journalFileBase: Path,
   implicit private val askTimeout: Timeout,
   syncOnCommit: Boolean,
@@ -57,7 +61,7 @@ final class AgentOrderKeeper(
   config: Config,
   scheduler: Scheduler,
   implicit private val timerService: TimerService)
-extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
+extends KeyedEventJournalingActor[Event] with Stash {
 
   import context.{actorOf, dispatcher, watch}
 
@@ -124,9 +128,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
     case JournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${workflowRegister.size} Workflows and ${orderRegister.size} Orders recovered")
-      context.become(ready)
-      unstashAll()
-      logger.info("Ready")
+      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault)) { _ ⇒
+        context.become(ready)
+        unstashAll()
+        logger.info("Ready")
+      }
 
     case _ ⇒
       stash()

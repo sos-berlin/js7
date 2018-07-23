@@ -9,6 +9,7 @@ import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -45,7 +46,7 @@ import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
 import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.events.MasterEvent
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
@@ -229,14 +230,20 @@ with KeyedEventJournalingActor[Event] {
       //TODO journal transaction {
       var lastAgentEventId = none[EventId]
       stampeds foreach {
-        case Stamped(agentEventId, timestamp, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
-          // OrderForked is (as all events) persisted and processed asynchronously,
-          // so events for child orders will probably arrive before OrderForked has registered the child orderId.
-          val ownEvent = event match {
-            case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-            case _ ⇒ event
+        case Stamped(agentEventId, timestamp, keyedEvent) ⇒
+          keyedEvent match {
+            case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+              // OrderForked is (as all events) persisted and processed asynchronously,
+              // so events for child orders will probably arrive before OrderForked has registered the child orderId.
+              val ownEvent = event match {
+                case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                case _ ⇒ event
+              }
+              persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
+
+            case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
+              persist(agentEntry.agentId.path <-: MasterAgentEvent.AgentReady(timezone), Some(timestamp)) { _ ⇒ }
           }
-          persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
           lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {

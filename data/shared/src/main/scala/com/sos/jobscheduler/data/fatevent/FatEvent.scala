@@ -13,5 +13,6 @@ object FatEvent
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[FatEvent] =
     KeyedEventTypedJsonCodec[FatEvent](
       KeyedSubtype[MasterFatEvent],
+      KeyedSubtype[AgentFatEvent],
       KeyedSubtype[OrderFatEvent])
 }

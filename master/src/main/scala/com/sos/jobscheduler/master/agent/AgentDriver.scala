@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.Uri
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked.CheckedOption
@@ -16,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentId
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
@@ -149,7 +150,7 @@ with Stash {
     case Internal.FetchEvents(after) if !isAwaitingEventResponse ⇒
       lastEventId = after
       isAwaitingEventResponse = true
-      client.mastersEvents(EventRequest.singleClass(after = after, eventFetchTimeout)).runAsync
+      client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout)).runAsync
         .andThen { case _ ⇒
           isAwaitingEventResponse = false
         }
@@ -275,6 +276,8 @@ with Stash {
 
 private[master] object AgentDriver
 {
+  private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
+
   def props(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration)(implicit ts: TimerService, s: Scheduler) =
     Props { new AgentDriver(agentId, uri, masterConfiguration) }
 
@@ -326,7 +329,7 @@ private[master] object AgentDriver
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse])
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression
-    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[OrderEvent]]]])
+    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]])
     final case class EventsAccepted(agentEventId: EventId) extends DeadLetterSuppression
   }
 }

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -35,6 +36,8 @@ extends JournalRecoverer[Event] {
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       handleEvent(orderId, event)
+
+    case Stamped(_, _, KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster)) ⇒
   }
 
   private def handleEvent(orderId: OrderId, event: OrderEvent) =

@@ -4,22 +4,23 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.event.NoKeyEvent
-import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.data.agent.AgentPath
 import java.time.ZoneId
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait MasterFatEvent extends FatEvent with NoKeyEvent
+sealed trait AgentFatEvent extends FatEvent {
+  type Key = AgentPath
+}
 
-object MasterFatEvent
+object AgentFatEvent
 {
   intelliJuseImport(zoneIdJsonDecoder)
 
-  final case class MasterReadyFat(masterId: MasterId, timezone: ZoneId) extends MasterFatEvent
+  final case class AgentReadyFat(timezone: ZoneId) extends AgentFatEvent
   case object MasterReady
 
-  implicit val jsonCodec: TypedJsonCodec[MasterFatEvent] = TypedJsonCodec(
-    Subtype(deriveCodec[MasterReadyFat]))
+  implicit val jsonCodec: TypedJsonCodec[AgentFatEvent] = TypedJsonCodec(
+    Subtype(deriveCodec[AgentReadyFat]))
 }

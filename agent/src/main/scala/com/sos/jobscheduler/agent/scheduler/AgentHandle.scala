@@ -8,8 +8,8 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor.Command
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.common.event.EventWatch
+import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent
 import monix.eval.Task
 import scala.concurrent.{Future, Promise}
 
@@ -23,9 +23,9 @@ final class AgentHandle(actor: ActorRef)(implicit askTimeout: Timeout) {
   : Unit =
     actor ! AgentActor.Input.ExternalCommand(userId, command, response)
 
-  def eventWatch(masterId: MasterId): Task[EventWatch[OrderEvent]] =
+  def eventWatch(masterId: MasterId): Task[EventWatch[Event]] =
     Task.deferFuture(
-      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[EventWatch[OrderEvent]])
+      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[EventWatch[Event]])
 
   def overview: Future[AgentOverview] =
     (actor ? Command.GetOverview).mapTo[AgentOverview]

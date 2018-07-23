@@ -2,17 +2,17 @@ package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.agent.Agent
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
-import com.sos.jobscheduler.data.fatevent.{FatEvent, MasterFatEvent, OrderFatEvent}
+import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
-import com.sos.jobscheduler.master.data.events.MasterEvent
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 
 /**
   * @author Joacim Zschimmer
@@ -30,6 +30,9 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           eventId = stamped.eventId,
           repo = repo.applyEvent(event).orThrow)
         (updatedConverter, None)
+
+      case KeyedEvent(agentPath: AgentPath, event: MasterAgentEvent) ⇒
+        (this, toMasterAgentFatEvent(event) map (e ⇒ stamped.copy(value = agentPath <-: e)))
 
       case KeyedEvent(_: NoKey, event: MasterEvent) ⇒
         (this, toMasterFatEvent(event) map (e ⇒ stamped.copy(value = NoKey <-: e)))
@@ -96,6 +99,15 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
     event match {
       case MasterEvent.MasterReady(masterId, timezone) ⇒
         Some(MasterReadyFat(masterId, timezone))
+
+      case _ ⇒
+        None
+    }
+
+  private def toMasterAgentFatEvent(event: MasterAgentEvent): Option[AgentFatEvent] =
+    event match {
+      case MasterAgentEvent.AgentReady(zoneId) ⇒
+        Some(AgentFatEvent.AgentReadyFat(zoneId))
 
       case _ ⇒
         None

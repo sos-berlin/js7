@@ -11,10 +11,10 @@ import org.scalatest.FreeSpec
 final class AgentEventTest extends FreeSpec {
 
   "JSON" in {
-    testJson[KeyedEvent[AgentEvent]](KeyedEvent(AgentEvent.MasterAdded)(MasterId("MASTER")), """
+    testJson[KeyedEvent[AgentEvent]](AgentEvent.MasterAdded(MasterId("MASTER")), """
       {
         "TYPE": "MasterAdded",
-        "key": "MASTER"
+        "masterId": "MASTER"
       }""")
   }
 }
