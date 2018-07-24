@@ -19,7 +19,7 @@ private[watch] final class CurrentJournalEventReader[E <: Event](
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
-extends AbstractJournalEventReader[E]
+extends GenericJournalEventReader[E]
 {
   val tornEventId = flushedLengthAndEventId.value
   protected val journalFile = journalMeta.file(after = tornEventId)

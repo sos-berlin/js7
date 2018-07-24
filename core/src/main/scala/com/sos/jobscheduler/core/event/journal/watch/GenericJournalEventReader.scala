@@ -6,14 +6,16 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashSet}
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.AbstractJournalEventReader._
+import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentLinkedQueue
+import scala.collection.JavaConverters._
 
 /**
   * @author Joacim Zschimmer
   */
-private[watch] trait AbstractJournalEventReader[E <: Event]
+private[watch] trait GenericJournalEventReader[E <: Event]
 extends AutoCloseable
 {
   protected val journalMeta: JournalMeta[E]
@@ -25,16 +27,12 @@ extends AutoCloseable
   import journalMeta.eventJsonCodec
 
   protected val eventIdToPositionIndex = new EventIdPositionIndex(size = 10000)
-  private val openReaders = new ScalaConcurrentHashSet[InputStreamJsonSeqReader]
+  private lazy val cache = new Cache(journalFile)
 
   eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
 
   def close() = {
-    val readers = openReaders.toVector
-    if (readers.nonEmpty) {
-      logger.debug(s"Closing '$toString' while ${readers.length}× opened")
-      readers foreach (_.close())  // Force close readers, for Windows to unlock the file
-    }
+    cache.close()
   }
 
   protected def untornEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]] = {
@@ -57,8 +55,7 @@ extends AutoCloseable
   }
 
   private def newCloseableIterator(position: Long, after: EventId) = {
-    val jsonFileReader = InputStreamJsonSeqReader.open(journalFile, onClose = openReaders -= _)  // Exception when file has been deleted
-    openReaders += jsonFileReader
+    val jsonFileReader = borrowReader()
     logger.trace(s"'${journalFile.getFileName}' opened, seek $position after=${EventId.toString(after)}")
     closeOnError(jsonFileReader) {
       jsonFileReader.seek(position)
@@ -66,13 +63,16 @@ extends AutoCloseable
     }
   }
 
+  protected final def borrowReader() = cache.borrowReader()
+
+  protected final def returnReader(reader: InputStreamJsonSeqReader) = cache.returnReader(reader)
+
   private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
     var closed = false
 
     def close() =
       if (!closed) {
-        jsonFileReader.close()
-        openReaders -= jsonFileReader
+        returnReader(jsonFileReader)
         closed = true
         logger.trace(s"'${journalFile.getFileName}' closed")
       }
@@ -88,10 +88,60 @@ extends AutoCloseable
       stamped
     }
 
-    override def toString = s"CloseableIterator(after = ${EventId.toString(after)}, ${openReaders.size}× open)"
+    override def toString = s"CloseableIterator(after = ${EventId.toString(after)}, ${cache.size}× open)"
   }
 }
 
-private object AbstractJournalEventReader {
+private object GenericJournalEventReader {
   private val logger = Logger(getClass)
+
+  private class Cache(file: Path) {
+    private val availableReaders = new ConcurrentLinkedQueue[InputStreamJsonSeqReader]
+    private val lentReaders = new ScalaConcurrentHashSet[InputStreamJsonSeqReader]
+    @volatile
+    private var closed = false
+
+    def close(): Unit = {
+      closed = true
+      val (availables, lent): (Set[InputStreamJsonSeqReader], Set[InputStreamJsonSeqReader]) =
+        synchronized {
+          (availableReaders.asScala.toSet, lentReaders.toSet)
+        }
+      if (lent.nonEmpty) {
+        logger.debug(s"Closing '$toString' while ${lent.size}× opened")
+      }
+      (availables ++ lent) foreach (_.close())  // Force close readers, for Windows to unlock the file - required for testing
+    }
+
+    def borrowReader(): InputStreamJsonSeqReader = {
+      if (closed) throw new IllegalStateException("GenericJournalEventReader has been closed")
+
+      var result: InputStreamJsonSeqReader = null
+      synchronized {
+        result = availableReaders.poll()
+        if (result != null) {
+          lentReaders += result
+        }
+      }
+      if (result == null) {
+        result = InputStreamJsonSeqReader.open(file,  // Exception when file has been deleted
+          onClose = { me ⇒
+            availableReaders.remove(me)
+            lentReaders -= me
+          })
+        // When close is called here the reader will not be closed. Good enough for JobScheduler use case.
+        lentReaders += result
+      }
+      result
+    }
+
+    def returnReader(reader: InputStreamJsonSeqReader): Unit = {
+      availableReaders.synchronized {
+        availableReaders.add(reader)
+        lentReaders -= reader
+      }
+    }
+
+    def size = availableReaders.size + lentReaders.size
+  }
 }

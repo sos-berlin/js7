@@ -21,6 +21,8 @@ import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
+  * Watches a complete journal consisting of n `JournalFile`.
+  * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
 final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E])

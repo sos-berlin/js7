@@ -1,10 +1,8 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
+import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.EventsHeader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.HistoricJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
@@ -17,18 +15,16 @@ private[journal] final class HistoricJournalEventReader[E <: Event](
   val tornEventId: EventId,
   protected val journalFile: Path)
 extends AutoCloseable
-with AbstractJournalEventReader[E]
+with GenericJournalEventReader[E]
 {
   protected lazy val tornPosition = firstEventPosition(journalFile)
   protected val endPosition = Files.size(journalFile)
 
   def eventsAfter(after: EventId) = untornEventsAfter(after)
-}
 
-private[journal] object HistoricJournalEventReader
-{
-  private def firstEventPosition(journalFile: Path) =
-    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { jsonFileReader ⇒
+  private def firstEventPosition(journalFile: Path) = {
+    val jsonFileReader = borrowReader()
+    try {
       @tailrec def loop(): Long =
         jsonFileReader.read() match {
           case Some(PositionAnd(_, EventsHeader)) ⇒ jsonFileReader.position
@@ -37,4 +33,6 @@ private[journal] object HistoricJournalEventReader
         }
       loop()
     }
+    finally returnReader(jsonFileReader)
+  }
 }

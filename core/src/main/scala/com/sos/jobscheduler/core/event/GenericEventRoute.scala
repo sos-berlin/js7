@@ -101,7 +101,6 @@ trait GenericEventRoute extends RouteProvider
           reject
       }
 
-
     private def serverSentEvents(eventWatch: EventWatch[Event]): Route =
       parameter("v" ? BuildInfo.buildId) { requestedBuildId ⇒
         if (requestedBuildId != BuildInfo.buildId)
