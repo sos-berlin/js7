@@ -26,19 +26,19 @@ class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSi
 extends AutoCloseable {
 
   private val block = new Array[Byte](blockSize)
+  private var blockPos = 0L
   private var blockLength = 0
   private var blockRead = 0
   private val byteStringBuilder = ByteString.newBuilder
 
   private var lineNumber = 0  // -1 for unknown line number after seek
-  private var _position = 0L
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
 
   /** Closes underlying `SeekableInputStream`. */
   def close() = in.close()
 
   final def read(): Option[PositionAnd[Json]] = {
-    val pos = _position
+    val pos = position
     readByteString() map (o ⇒ PositionAnd(pos, o.decodeString(UTF_8).parseJson))
   }
 
@@ -67,13 +67,13 @@ extends AutoCloseable {
     if (rsReached && !lfReached) throwCorrupted("Missing ASCII LF at end of JSON sequence record")
     lfReached ? {
       val result = byteStringBuilder.result()
-      _position += byteStringBuilder.length + 2
       byteStringBuilder.clear()
       result
     }
   }
 
   private def fillByteBuffer(): Boolean = {
+    blockPos = position
     blockRead = 0
     val length = in.read(block)
     logger.trace(s"position=$position: $length bytes read")
@@ -86,16 +86,21 @@ extends AutoCloseable {
     }
   }
 
-  final def seek(position: Long): Unit =
-    if (position != _position) {
-      in.seek(position)
-      _position = position
-      blockLength = 0
-      blockRead = 0
+  final def seek(pos: Long): Unit =
+    if (pos != position) {
+      if (pos >= blockPos && pos <= blockPos + blockLength) {
+        blockRead = (pos - blockPos).toInt  // May be == blockLength
+      } else {
+        logger.trace(s"seek $pos")
+        in.seek(pos)
+        blockPos = pos
+        blockLength = 0
+        blockRead = 0
+      }
       lineNumber = -1
     }
 
-  final def position = _position
+  final def position = blockPos + blockRead
 
   private def throwCorrupted(extra: String) = {
     val where = if (lineNumber != -1) s"line $lineNumber" else s"position $position"

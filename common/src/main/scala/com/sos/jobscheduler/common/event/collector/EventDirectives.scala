@@ -21,7 +21,7 @@ object EventDirectives {
 
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
-  private val MinimumDelay = 100.milliseconds   // TODO To let JournalEventWatch less often open and close the journal
+  private val MinimumDelay = 100.milliseconds
   private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
@@ -105,7 +105,7 @@ object EventDirectives {
                       case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
                     }
                     val eventRequest = EventRequest[E](eventClasses, after = after,
-                      timeout = timeout min akkaTimeout , delay = delay max MinimumDelay, limit = limit)
+                      timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit)
                     inner(Tuple1(eventRequest))
                   }
                 }

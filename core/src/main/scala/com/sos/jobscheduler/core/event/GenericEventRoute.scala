@@ -143,6 +143,7 @@ trait GenericEventRoute extends RouteProvider
 object GenericEventRoute
 {
   private val DefaultJsonSeqChunkTimeout = 24.hours  // Renewed for each chunked
+  private val DefaultDelay = 50.milliseconds
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =
     try java.lang.Long.parseLong(header.id)
