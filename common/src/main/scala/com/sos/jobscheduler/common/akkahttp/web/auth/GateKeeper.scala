@@ -43,6 +43,14 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
             }
           }
         }
+
+      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) ⇒
+        // Handling of this case too avoids Akka-streams message "Substream Source cannot be materialized more than once"
+        respondWithHeader(`WWW-Authenticate`(challenge)) {
+          complete {
+            Unauthorized
+          }
+        }
     }
     .result()
 
