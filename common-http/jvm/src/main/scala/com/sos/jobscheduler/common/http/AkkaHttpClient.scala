@@ -110,7 +110,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private def logRequest(request: HttpRequest, logData: ⇒ Option[String]): Unit =
     if (logger.underlying.isDebugEnabled) {
-      val b = new StringBuilder(100)
+      val b = new StringBuilder(200)
       b.append(request.method.value)
       b.append(' ')
       b.append(request.uri)

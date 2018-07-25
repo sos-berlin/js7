@@ -20,7 +20,7 @@ import monix.execution.Scheduler
   */
 trait SessionRoute extends RouteProvider {
 
-  protected implicit def scheduler: Scheduler
+  private implicit def implictScheduler = scheduler
 
   protected final lazy val sessionRoute =
     pathEnd {
@@ -68,7 +68,7 @@ trait SessionRoute extends RouteProvider {
     userAndPasswordOption match {
       case Some(userAndPassword) ⇒
         if (httpUser.id != UserId.Anonymous)
-          Invalid(Problem("Double Login"))  // Already authenticated via Authentication header
+          Invalid(Problem("Both command Login and HTTP header Authentication?"))
         else if (userAndPassword.userId == UserId.Anonymous)
           Invalid(InvalidLoginProblem)  // Anonymous is used only if there is no authentication at all
         else

@@ -135,7 +135,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
         client.login(Some(AUserAndPassword)) await 99.s
       }
       assert(exception.status == BadRequest)
-      assert(exception.dataAsString.parseJson.as[Problem] == Right(Problem("Double Login")))
+      assert(exception.dataAsString.parseJson.as[Problem] == Right(Problem("Both command Login and HTTP header Authentication?")))
       requireAccess(client)
     }
   }
