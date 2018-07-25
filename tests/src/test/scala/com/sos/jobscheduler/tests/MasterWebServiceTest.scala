@@ -677,6 +677,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         json"""{
           "TYPE": "Accepted"
         }""")
+      master.terminated await 99.s
     }
   }
 
