@@ -2,13 +2,13 @@ package com.sos.jobscheduler.core.event
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
-import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`text/event-stream`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
+import akka.http.scaladsl.model.{HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, Route}
+import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import com.sos.jobscheduler.base.auth.{UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
@@ -51,23 +51,30 @@ trait GenericEventRoute extends RouteProvider
 
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
+    private val exceptionHandler = ExceptionHandler {
+      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException ⇒
+        complete((StatusCodes.ServiceUnavailable, Problem.fromEager(t.getMessage)))
+    }
+
     final val route: Route =
       get {
         pathEnd {
           authorizedUser(ValidUserPermission) { user ⇒
-            routeFuture(
-              eventWatchFor(user.id).runAsync.map { eventWatch ⇒
-                htmlPreferred {
+            handleExceptions(exceptionHandler) {
+              routeFuture(
+                eventWatchFor(user.id).runAsync.map { eventWatch ⇒
+                  htmlPreferred {
+                    oneShot(eventWatch)
+                  } ~
+                  accept(`application/json-seq`) {
+                    jsonSeqEvents(eventWatch)
+                  } ~
+                  accept(`text/event-stream`) {
+                    serverSentEvents(eventWatch)
+                  } ~
                   oneShot(eventWatch)
-                } ~
-                accept(`application/json-seq`) {
-                  jsonSeqEvents(eventWatch)
-                } ~
-                accept(`text/event-stream`) {
-                  serverSentEvents(eventWatch)
-                } ~
-                oneShot(eventWatch)
-              })
+                })
+              }
           }
         }
       }

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashSet}
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
+import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, SeekableInputStream}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -114,7 +114,7 @@ private object GenericJournalEventReader {
     }
 
     def borrowReader(): InputStreamJsonSeqReader = {
-      if (closed) throw new IllegalStateException("GenericJournalEventReader has been closed")
+      if (closed) throw new ClosedException(file)
 
       var result: InputStreamJsonSeqReader = null
       synchronized {
