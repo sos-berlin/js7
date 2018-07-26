@@ -20,7 +20,7 @@ object Akkas {
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
     logger.debug(s"new ActorSystem('$name')")
-    ActorSystem(name, config resolveWith Configs.loadResource(ConfigResource))
+    ActorSystem(name, config withFallback Configs.loadResource(ConfigResource))
   }
 
   /**
