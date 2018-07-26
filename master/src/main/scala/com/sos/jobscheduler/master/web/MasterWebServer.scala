@@ -55,14 +55,14 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
-      protected val eventWatch         = injector.instance[EventWatch[Event]]
+      protected val eventWatch          = injector.instance[EventWatch[Event]]
       protected val scheduler           = injector.instance[Scheduler]
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
 
-      logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
+      logger.info(gateKeeper.boundMessage(binding))
     }
     .completeRoute
 }

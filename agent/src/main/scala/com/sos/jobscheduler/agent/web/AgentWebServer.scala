@@ -64,7 +64,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected def actorSystem = AgentWebServer.this.actorSystem
       protected def scheduler = injector.instance[Scheduler]
 
-      logger.info(gateKeeper.boundMessage(binding.address, binding.scheme))
+      logger.info(gateKeeper.boundMessage(binding))
     }.completeRoute
 }
 

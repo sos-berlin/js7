@@ -107,6 +107,11 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
+  def boundMessage(binding: WebServerBinding): String =
+    s"Access via ${binding.scheme}:// is bound to interface ${binding.address}, TCP port ${binding.address.getPort}" +
+      (if (binding.mutual) ", client certificate is required" else "") +
+      secureStateString
+
   def boundMessage(address: InetSocketAddress, scheme: WebServerBinding.Scheme): String =
     s"Access via $scheme:// is bound to interface ${address.getAddress.getHostAddress}, TCP port ${address.getPort}" +
       secureStateString
