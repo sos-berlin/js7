@@ -182,6 +182,7 @@ object RunningMaster {
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },
+            "MasterOrderKeeper",
             onStopped = _ ⇒ Success(Completed)
           )(actorSystem)
       (tag[MasterOrderKeeper.type](actor), whenCompleted)
