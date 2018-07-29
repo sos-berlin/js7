@@ -12,6 +12,7 @@ object Logger {
 
   val Timing: Marker = MarkerFactory.getMarker("timing")
   val Event: Marker = MarkerFactory.getMarker("event")
+  val Actor: Marker = MarkerFactory.getMarker("actor")
   val Java: Marker = MarkerFactory.getMarker("java")
 
   def apply[A: ClassTag]: ScalaLogger =
