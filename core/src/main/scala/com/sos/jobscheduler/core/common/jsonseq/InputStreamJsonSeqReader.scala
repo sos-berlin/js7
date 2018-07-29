@@ -76,7 +76,7 @@ extends AutoCloseable {
     blockPos = position
     blockRead = 0
     val length = in.read(block)
-    logger.trace(s"position=$position: $length bytes read")
+    //logger.trace(s"position=$position: $length bytes read")
     if (length == -1) {
       blockLength = 0
       false  // EOF

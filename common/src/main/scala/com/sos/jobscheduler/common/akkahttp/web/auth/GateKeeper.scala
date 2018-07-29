@@ -16,7 +16,6 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
-import java.net.InetSocketAddress
 import java.time.Duration
 import scala.concurrent._
 
@@ -108,12 +107,8 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
   def boundMessage(binding: WebServerBinding): String =
-    s"Access via ${binding.scheme}:// is bound to interface ${binding.address}, TCP port ${binding.address.getPort}" +
+    s"Access via ${binding.scheme}:// is bound to ${binding.address.getAddress.getHostAddress}:${binding.address.getPort}" +
       (if (binding.mutual) ", client certificate is required" else "") +
-      secureStateString
-
-  def boundMessage(address: InetSocketAddress, scheme: WebServerBinding.Scheme): String =
-    s"Access via $scheme:// is bound to interface ${address.getAddress.getHostAddress}, TCP port ${address.getPort}" +
       secureStateString
 
   private def secureStateString: String =

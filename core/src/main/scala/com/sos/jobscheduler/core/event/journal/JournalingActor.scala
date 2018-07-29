@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -10,7 +10,6 @@ import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import scala.collection.immutable.Iterable
 import scala.concurrent.Future
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -39,7 +38,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
   : Future[A] =
     promiseFuture[A] { promise ⇒
       start(async = async)
-      logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
+      logger.trace(s"“$toString” Store ${keyedEvent.key} <-: ${typeName(keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync,
           EventCallback(
@@ -55,12 +54,12 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 
   private def defer_(async: Boolean, callback: ⇒ Unit): Unit = {
     start(async = async)
-    journalActor.forward(JournalActor.Input.Store(None :: Nil, self, timestamp = None, noSync = false,
+    journalActor.forward(JournalActor.Input.Store(None :: Nil, self, timestamp = None, noSync = true,
       Deferred(async = async, () ⇒ callback)))
   }
 
   private def start(async: Boolean): Unit = {
-    if (stashingCount == Inhibited) throw new IllegalStateException("Journaling has been stopped")  // Avoid deadlock when waiting for response of dead JournalActor
+    if (stashingCount == Inhibited) throw new IllegalStateException("Journaling is inhibited")  // Avoid deadlock when waiting for response of dead JournalActor
     if (!async) {
       // async = false (default) lets Actor stash all messages but JournalActor.Output.Stored.
       // async = true means, message Store is intermixed with other messages.
@@ -86,24 +85,23 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
           unstashAll()
         }
       }
-      logger.trace(s"“$toString” Stored, stashingCount=$stashingCount")
-      for (stampedOption ← stampedOptions) {
-        (stampedOption, item) match {
-          case (Some(stamped), EventCallback(_, callback)) ⇒
-            logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} ${stamped.value.event.getClass.simpleScalaName} -> $item")
-            try callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
-            catch { case NonFatal(t) ⇒
-              logger.error(t.toStringWithCauses, t)
-              logger.error(s"Actor stop - $toString")
-              context.stop(self)
-            }
+      def remaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
+      if (stampedOptions.isEmpty)
+        logger.trace(s"“$toString” Stored(empty)$remaining")
+      else
+        for (stampedOption ← stampedOptions) {
+          (stampedOption, item) match {
+            case (Some(stamped), EventCallback(_, callback)) ⇒
+              logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} <-: ${typeName(stamped.value.event.getClass)}$remaining")
+              callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
 
-          case (None, Deferred(_, callback)) ⇒
-            callback()
+            case (None, Deferred(_, callback)) ⇒
+              logger.trace(s"“$toString” Stored (no event)$remaining")
+              callback()
 
-          case x ⇒ sys.error(s"Bad 'JournalActor.Output.Stored' message received: $x")
+            case x ⇒ sys.error(s"Bad 'JournalActor.Output.Stored' message received: $x")
+          }
         }
-      }
 
     case Input.GetSnapshot ⇒
       val sender = this.sender()
@@ -120,8 +118,13 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
       super.stash()
   }
 
-  private case class EventCallback(async: Boolean, callback: Stamped[KeyedEvent[E]] ⇒ Unit) extends Item
-  private case class Deferred(async: Boolean, callback: () ⇒ Unit) extends Item
+  private case class EventCallback(async: Boolean, callback: Stamped[KeyedEvent[E]] ⇒ Unit) extends Item {
+    override def toString = s"EventCallback(${if (async) "async" else ""})"
+  }
+
+  private case class Deferred(async: Boolean, callback: () ⇒ Unit) extends Item {
+    override def toString = s"Deferred${if (async) "async" else ""}"
+  }
 }
 
 object JournalingActor {

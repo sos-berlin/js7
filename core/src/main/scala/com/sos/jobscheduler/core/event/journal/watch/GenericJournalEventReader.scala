@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashSet}
-import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, SeekableInputStream}
+import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -31,9 +31,7 @@ extends AutoCloseable
 
   eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
 
-  def close() = {
-    cache.close()
-  }
+  def close() = cache.close()
 
   protected def untornEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]] = {
     val position = eventIdToPositionIndex.positionAfter(after)
@@ -56,7 +54,6 @@ extends AutoCloseable
 
   private def newCloseableIterator(position: Long, after: EventId) = {
     val jsonFileReader = borrowReader()
-    logger.trace(s"'${journalFile.getFileName}' opened, seek $position after=${EventId.toString(after)}")
     closeOnError(jsonFileReader) {
       jsonFileReader.seek(position)
       new EventCloseableIterator(jsonFileReader, after)
@@ -74,7 +71,6 @@ extends AutoCloseable
       if (!closed) {
         returnReader(jsonFileReader)
         closed = true
-        logger.trace(s"'${journalFile.getFileName}' closed")
       }
 
     def hasNext = jsonFileReader.position != endPosition
@@ -135,12 +131,11 @@ private object GenericJournalEventReader {
       result
     }
 
-    def returnReader(reader: InputStreamJsonSeqReader): Unit = {
+    def returnReader(reader: InputStreamJsonSeqReader): Unit =
       availableReaders.synchronized {
         availableReaders.add(reader)
         lentReaders -= reader
       }
-    }
 
     def size = availableReaders.size + lentReaders.size
   }
