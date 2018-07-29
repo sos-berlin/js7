@@ -64,7 +64,7 @@ object Https
     sslContext
   }
 
-  private[https] def loadKeyStore(keyStoreRef: KeyStoreRef): KeyStore = {
+  private def loadKeyStore(keyStoreRef: KeyStoreRef): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
     autoClosing(keyStoreRef.url.openStream()) { inputStream ⇒
       keyStore.load(inputStream, keyStoreRef.storePassword.string.toCharArray)

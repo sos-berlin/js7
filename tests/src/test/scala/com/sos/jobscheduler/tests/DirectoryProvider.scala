@@ -49,13 +49,20 @@ final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
-  masterHttpsMutual: Boolean = false)
+  provideAgentClientCertificate: Boolean = false,
+  masterHttpsMutual: Boolean = false,
+  masterClientCertificate: Option[JavaResource] = None)
 extends HasCloser {
 
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-  val master = new MasterTree(directory / "master", mutualHttps = masterHttpsMutual)
+  val master = new MasterTree(directory / "master",
+    mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentPath, AgentTree] =
-    agentPaths.map { o ⇒ o → new AgentTree(directory, o, https = agentHttps, mutualHttps = agentHttpsMutual) }.toMap
+    agentPaths.map { o ⇒ o →
+      new AgentTree(directory, o, https = agentHttps,
+        mutualHttps = agentHttpsMutual,
+        provideClientCertificate = provideAgentClientCertificate)
+    }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
 
   closeOnError(this) {
@@ -132,7 +139,8 @@ object DirectoryProvider
     import Scheduler.Implicits.global
 
     protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
-      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual, masterHttpsMutual = masterHttpsMutual)
+      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual, provideAgentClientCertificate = provideAgentClientCertificate,
+      masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate)
 
     protected def agentConfig: Config = ConfigFactory.empty
     protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
@@ -141,8 +149,10 @@ object DirectoryProvider
     protected val masterModule: Module = EMPTY_MODULE
     protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
     protected lazy val masterHttpsPort: Option[Int] = None
-    protected def masterHttpsMutual = false
     protected def agentHttpsMutual = false
+    protected def masterHttpsMutual = false
+    protected def provideAgentClientCertificate = false
+    protected def masterClientCertificate: Option[JavaResource] = None
     protected val masterConfig: Config = ConfigFactory.empty
 
     protected final lazy val master: RunningMaster = directoryProvider.startMaster(
@@ -199,16 +209,18 @@ object DirectoryProvider
       fileBasedDirectory resolve path.toFile(t)
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean) extends Tree {
-    def provideMastersHttpsCertificate(): Unit = {
+  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
+    def provideHttpsCertificate(): Unit = {
       val keyStore = config / "private/https-keystore.p12"
       keyStore.contentBytes = MasterKeyStoreResource.contentBytes
       importKeyStore(keyStore, AgentTrustStoreResource)
-      // KeyStore passwords has been provided by DirectoryProvider (must happen early)
+      for (o ← clientCertificate) importKeyStore(keyStore, o)
+      // KeyStore passwords has been provided
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean) extends Tree {
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean, provideClientCertificate: Boolean)
+  extends Tree {
     val directory = rootDirectory / agentPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
         httpPort = !https ? findRandomFreeTcpPort(),
@@ -221,7 +233,7 @@ object DirectoryProvider
     def provideHttpsCertificate(): Unit = {
       val keyStore = config / "private/https-keystore.p12"
       keyStore.contentBytes = AgentKeyStoreResource.contentBytes
-      if (mutualHttps) {
+      if (provideClientCertificate) {
         importKeyStore(keyStore, MasterTrustStoreResource)
       }
       // KeyStore passwords has been provided by DirectoryProvider (must happen early)
@@ -261,7 +273,7 @@ object DirectoryProvider
   private val AgentKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/private/https-keystore.p12")
   private val AgentTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/export/https-truststore.p12")
 
-  private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
+  private[tests] def importKeyStore(keyStore: Path, add: JavaResource): Unit =
     FileUtils.withTemporaryFile("test-", ".p12") { file ⇒
       file.contentBytes = add.contentBytes
       importKeyStore(keyStore, file)

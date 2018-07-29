@@ -1,29 +1,27 @@
-package com.sos.jobscheduler.tests
+package com.sos.jobscheduler.tests.https
 
 import akka.actor.ActorRefFactory
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
-import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
-import com.sos.jobscheduler.tests.HttpsServerSideTest._
+import com.sos.jobscheduler.tests.DirectoryProvider
+import com.sos.jobscheduler.tests.DirectoryProvider.importKeyStore
+import com.sos.jobscheduler.tests.https.HttpsTestBase._
 import com.typesafe.config.ConfigUtil.quoteString
-import monix.execution.Scheduler.Implicits.global
+import java.nio.file.Files.{createTempFile, delete}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration._
 
@@ -32,17 +30,23 @@ import scala.concurrent.duration._
   *
   * @author Joacim Zschimmer
   */
-class HttpsServerSideTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
+private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
-  override protected lazy val masterHttpPort = None
-  override protected lazy val masterHttpsPort = Some(findRandomFreeTcpPort())
-  private lazy val masterApi = new AkkaHttpMasterApi(master.localUri,
-    keyStoreRef = Some(KeyStoreRef(DirectoryProvider.MasterTrustStoreResource.url, SecretString("jobscheduler"))))
+  protected def provideMasterClientCertificate = false
+
+  override protected final lazy val masterHttpPort = None
+  override protected final lazy val masterHttpsPort = Some(findRandomFreeTcpPort())
+  override protected final def masterClientCertificate = provideMasterClientCertificate ? ClientTrustStoreResource
+
+  private lazy val keyStore = createTempFile(getClass.getSimpleName + "-", ".p12")
+
+  protected lazy val masterApi = new AkkaHttpMasterApi(master.localUri,
+    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = Some(SecretString("jobscheduler")))))
 
   protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
   override protected def agentHttps = true
 
-  private lazy val eventCollector = new TestEventCollector
+  protected lazy val eventCollector = new TestEventCollector
 
   override def beforeAll() = {
     // Reference to agents implicitly starts them (before master)
@@ -50,31 +54,30 @@ class HttpsServerSideTest extends FreeSpec with BeforeAndAfterAll with Directory
     provideAgentConfiguration(directoryProvider.agents(0))
     assert(agents.forall(_.localUri.scheme == "https"))
 
-    directoryProvider.master.provideMastersHttpsCertificate()
+    directoryProvider.master.provideHttpsCertificate()
     provideMasterConfiguration(directoryProvider.master)
-    eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     assert(master.localUri.scheme == "https")
 
+    keyStore.contentBytes = ClientKeyStoreResource.contentBytes
+    importKeyStore(keyStore, DirectoryProvider.MasterTrustStoreResource)
+
+    eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     super.beforeAll()
   }
 
-  "Login" in {
-    masterApi.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
-  }
-
-  "Run a job" in {
-    masterApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("/TEST-WORKFLOW"))) await 99.s
-    eventCollector.await[OrderFinished]()
-  }
-
-  "Terminate" in {
-    masterApi.executeCommand(MasterCommand.Terminate) await 99.s
-    masterApi.clearSession()  // To avoid automatic logoff because Master is terminating now.
+  override def afterAll() = {
+    super.afterAll()
+    delete(keyStore)
   }
 }
 
-object HttpsServerSideTest
+private[https] object HttpsTestBase
 {
+  // Following resources have been generated with the command line:
+  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=client -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/client
+  private val ClientKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/client/private/https-keystore.p12")
+  private val ClientTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/client/export/https-truststore.p12")
+
   private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
     (agent.config / "private/private.conf").append(
       s"""jobscheduler.auth.users {
