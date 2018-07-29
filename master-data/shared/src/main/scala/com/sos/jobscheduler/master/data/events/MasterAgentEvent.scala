@@ -19,9 +19,11 @@ object MasterAgentEvent
 {
   intelliJuseImport(zoneIdJsonEncoder)
 
+  final case class AgentCouplingFailed(message: String) extends MasterAgentEvent
+
   final case class AgentReady(timezone: ZoneId) extends MasterAgentEvent
 
   implicit val jsonCodec = TypedJsonCodec[MasterAgentEvent](
-    Subtype(deriveCodec[AgentReady])
-  )
+    Subtype(deriveCodec[AgentCouplingFailed]),
+    Subtype(deriveCodec[AgentReady]))
 }

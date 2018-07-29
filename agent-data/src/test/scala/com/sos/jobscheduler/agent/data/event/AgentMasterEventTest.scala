@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.data.event
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.time.ZoneId
 import org.scalatest.FreeSpec

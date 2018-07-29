@@ -79,4 +79,6 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
     body(eventWatch) map (_.strict)
 
   def tornEventId = eventWatch.tornEventId
+
+  def lastAddedEventId = eventWatch.lastAddedEventId
 }

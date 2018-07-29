@@ -46,7 +46,8 @@ import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
 import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
@@ -242,7 +243,7 @@ with KeyedEventJournalingActor[Event] {
               persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
 
             case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
-              persist(agentEntry.agentId.path <-: MasterAgentEvent.AgentReady(timezone), Some(timestamp)) { _ ⇒ }
+              persist(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)) { _ ⇒ }
           }
           lastAgentEventId = agentEventId.some
       }
@@ -345,7 +346,7 @@ with KeyedEventJournalingActor[Event] {
 
   private def registerAgent(agent: Agent): AgentEntry = {
     val actor = context.actorOf(
-      AgentDriver.props(agent.id, agent.uri, masterConfiguration),
+      AgentDriver.props(agent.id, agent.uri, masterConfiguration, journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/")))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.id → entry)

@@ -12,6 +12,7 @@ import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -25,6 +26,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
@@ -124,14 +126,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/workflow",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "count": 2
       }""")
 
     testGet("master/api/workflow/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "array": [
           "/FOLDER/WORKFLOW-2",
           "/WORKFLOW"
@@ -143,7 +145,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
              "master/api/workflow/%2FFOLDER%2FWORKFLOW-2" :: Nil,
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "id": {
           "path": "/FOLDER/WORKFLOW-2",
           "versionId": "(initial)"
@@ -167,14 +169,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "count": 2
       }""")
 
     testGet("master/api/agent/",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "array": [
           "/AGENT",
           "/FOLDER/AGENT-A"
@@ -184,7 +186,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent/?return=Agent",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "array": [
           {
             "id": {
@@ -205,7 +207,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent/FOLDER/AGENT-A?return=Agent",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -216,7 +218,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     testGet("master/api/agent/FOLDER%2FAGENT-A?return=Agent",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
-        "eventId": 1000009,
+        "eventId": ${master.eventWatch.lastAddedEventId},
         "id": {
           "path": "/FOLDER/AGENT-A",
           "versionId": "(initial)"
@@ -468,7 +470,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     def manipulateEventsForTest(eventResponse: Json): Json = {
       def ignoreIt(json: Json): Boolean = {
         val obj = json.asObject.get.toMap
-        obj("TYPE") == Json.fromString("AgentReady") && obj("key") != Json.fromString("/AGENT")  // Let through only AgentReady for one Agent, because ordering is undefined
+        obj("TYPE") == Json.fromString("AgentReady") && json.as[KeyedEvent[MasterAgentEvent]].orThrow.key != TestAgentPath || // Let through only AgentReady for one Agent, because ordering is undefined
+          obj("TYPE") == Json.fromString("AgentCouplingFailed")
       }
       val eventIds = Iterator.from(1001)
       def changeEvent(json: Json): Json = {
