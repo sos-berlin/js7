@@ -55,9 +55,9 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
         mutual = binding.mutual)
       protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       //protected val taskRegister = Factory.this.taskRegister
-      protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceServiceUnavailable)
+      protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceUnavailableException)
       protected def agentOverview = agentHandle.overview
-      protected def agentHandle = AgentWebServer.this.agentHandle getOrElse (throw ServiceServiceUnavailable)
+      protected def agentHandle = AgentWebServer.this.agentHandle getOrElse (throw ServiceUnavailableException)
       protected def timerService = AgentWebServer.this.timerService
       protected def akkaAskTimeout = conf.akkaAskTimeout
       protected def config = AgentWebServer.this.conf.config
@@ -71,6 +71,6 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 object AgentWebServer {
   private val logger = Logger(getClass)
 
-  private val ServiceServiceUnavailable =
+  private val ServiceUnavailableException =
     new HttpStatusCodeException(ServiceUnavailable, Problem("Agent is not yet completely ready"))
 }

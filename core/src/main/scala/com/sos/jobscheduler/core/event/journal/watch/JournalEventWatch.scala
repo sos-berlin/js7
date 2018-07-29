@@ -35,7 +35,7 @@ with JournalingObserver
 {
   // Read journal file names from directory while constructing
   @volatile
-  private var afterEventIdToFile: Map[EventId, HistoricJournalFile] =
+  private var afterEventIdToHistoric: Map[EventId, HistoricJournalFile] =
     listJournalFiles(journalMeta.fileBase) map (o ⇒ HistoricJournalFile(o.afterEventId, o.file)) toKeyedMap (_.afterEventId)
   private val started = Promise[Completed]()
   @volatile
@@ -43,7 +43,7 @@ with JournalingObserver
   private val eventsAcceptedUntil = AtomicLong(EventId.BeforeFirst)
 
   def close() = {
-    afterEventIdToFile.values foreach (_.close())
+    afterEventIdToHistoric.values foreach (_.close())
     currentJournalEventReaderOption foreach (_.close())
   }
 
@@ -68,8 +68,8 @@ with JournalingObserver
 
   def tornEventId =
     synchronized {
-      if (afterEventIdToFile.nonEmpty)
-        afterEventIdToFile.keys.min
+      if (afterEventIdToHistoric.nonEmpty)
+        afterEventIdToHistoric.keys.min
       else
         currentJournalEventReader.tornEventId
     }
@@ -92,15 +92,16 @@ with JournalingObserver
     val untilEventId = eventsAcceptedUntil()
     val keepAfter = currentJournalEventReader.tornEventId match {
       case current if untilEventId >= current ⇒ current
-      case _ ⇒ journalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
+      case _ ⇒ historicAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
     }
-    for ((afterEventId, file) ← afterEventIdToFile if afterEventId < keepAfter) {
+    for ((afterEventId, historicJournalFile) ← afterEventIdToHistoric if afterEventId < keepAfter) {
       try {
-        logger.info(s"Deleting obsolete journal files '$file'")
-        delete(file.file)
-        afterEventIdToFile -= afterEventId
+        logger.info(s"Deleting obsolete journal files '$historicJournalFile'")
+        historicJournalFile.close()
+        delete(historicJournalFile.file)
+        afterEventIdToHistoric -= afterEventId
       } catch {
-        case e: IOException ⇒ logger.error(s"Cannot delete files '$file': ${e.toStringWithCauses}")
+        case e: IOException ⇒ logger.error(s"Cannot delete file '$historicJournalFile': ${e.toStringWithCauses}")
       }
     }
   }
@@ -116,9 +117,9 @@ with JournalingObserver
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
     currentJournalEventReader.eventsAfter(after) orElse ( // Torn
-      journalFileAfter(after) map { journalFile ⇒
+      historicAfter(after) map { historicJournalFile ⇒
         var last = after
-        journalFile.eventReader.eventsAfter(after).map { stamped ⇒
+        historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
           last = stamped.eventId
           stamped
         } ++
@@ -132,8 +133,8 @@ with JournalingObserver
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
 
-  private def journalFileAfter(after: EventId): Option[HistoricJournalFile] =
-    afterEventIdToFile.toVector.sortBy(_._1).reverseIterator find (_._1 <= after) map (_._2)
+  private def historicAfter(after: EventId): Option[HistoricJournalFile] =
+    afterEventIdToHistoric.toVector.sortBy(_._1).reverseIterator find (_._1 <= after) map (_._2)
 
   private final case class HistoricJournalFile(afterEventId: EventId, file: Path)
   {

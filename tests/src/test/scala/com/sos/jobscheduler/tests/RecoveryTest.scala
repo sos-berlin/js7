@@ -44,6 +44,8 @@ import scala.util.control.NonFatal
   */
 final class RecoveryTest extends FreeSpec {
 
+  // TODO Starte Master und Agenten in eigenen Prozessen, die wir abbrechen können.
+
   "test" in {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
