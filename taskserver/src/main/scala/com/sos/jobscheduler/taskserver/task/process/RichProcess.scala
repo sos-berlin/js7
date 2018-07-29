@@ -72,7 +72,7 @@ extends HasCloser with ClosedFuture {
           logger.info("destroy (SIGTERM)")
           process.destroy()
         case SIGKILL ⇒
-          processConfiguration.toCommandArgumentsOption(pidOption) match {
+          processConfiguration.toKillScriptCommandArgumentsOption(pidOption) match {
             case Some(args) ⇒
               val pidArgs = pidOption map { o ⇒ s"-pid=${o.string}" }
               executeKillScript(args ++ pidArgs) recover {
@@ -86,17 +86,21 @@ extends HasCloser with ClosedFuture {
       }
     }
 
-  private def executeKillScript(args: Seq[String]) = {
-    logger.info("Executing kill script: " + args.mkString("  "))
-    val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
-    namedThreadFuture("Kill script") {
-      waitForProcessTermination(onKillProcess)
-      onKillProcess.exitValue match {
-        case 0 ⇒
-        case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
+  private def executeKillScript(args: Seq[String]): Future[Unit] =
+    if (isMac) {
+      logger.warn("Execution of kill script is suppressed on MacOS")  // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
+      Future.successful(())
+    } else {
+      logger.info("Executing kill script: " + args.mkString("  "))
+      val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
+      namedThreadFuture("Kill script") {
+        waitForProcessTermination(onKillProcess)
+        onKillProcess.exitValue match {
+          case 0 ⇒
+          case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
+        }
       }
     }
-  }
 
   private def killNow(): Unit = {
     if (process.isAlive) {

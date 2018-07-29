@@ -26,6 +26,6 @@ final case class ProcessConfiguration(
 
   def idArgumentOption = agentTaskIdOption map { o ⇒ s"-agent-task-id=${o.string}" }
 
-  def toCommandArgumentsOption(pid: Option[Pid]) =
+  def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
     for (id ← agentTaskIdOption; killScript ← killScriptOption) yield killScript.toCommandArguments(id, pid)
 }
