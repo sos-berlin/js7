@@ -385,7 +385,7 @@ with KeyedEventJournalingActor[Event] {
         repo.idTo[Workflow](order.workflowId) match {
           case Invalid(problem) ⇒ Future.successful(Invalid(problem))
           case Valid(workflow) ⇒
-            persistAsync(order.id <-: OrderAdded(workflow.id, order.state.scheduledAt, order.payload)) { stamped ⇒
+            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledAt, order.payload)) { stamped ⇒
               handleOrderEvent(stamped)
               Valid(true)
             }
@@ -473,7 +473,7 @@ with KeyedEventJournalingActor[Event] {
     }
 
     for (keyedEvent ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
-      persistAsync(keyedEvent)(handleOrderEvent)
+      persist/*Async?*/(keyedEvent)(handleOrderEvent)
     }
   }
 

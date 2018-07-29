@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
@@ -75,14 +75,8 @@ final class RunningMasterTest extends FreeSpec {
         val agent1 = provider.startAgent(AgentPaths(1)) await 10.s  // Start early to recover orders
         master.addOrderBlocking(FreshOrder(TestOrderId, TestWorkflowId.path))
 
-        master.eventWatch.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), _.key == TestOrderId) await 99.s
-        //Order has been deleted after OrderFinished:
-        //orderApi.order(TestOrderId) await 10.s shouldEqual
-        //  Some(Order(
-        //    TestOrderId,
-        //    TestWorkflowId /: Position(2),
-        //    Order.Finished,
-        //    payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
+        master.eventWatch.await[OrderEvent.OrderFinished](_.key == TestOrderId, timeout = 20.seconds)
+        //waitForCondition(10.s, 10.ms) { orderApi.orderCount.await(99.s) == 0 }   // MasterOrderKeeper updates orderCount with persitAsync
         assert(orderApi.orderCount.await(99.s) == 0)
 
         master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations

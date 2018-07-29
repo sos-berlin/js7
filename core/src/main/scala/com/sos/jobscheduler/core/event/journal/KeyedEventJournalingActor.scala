@@ -14,11 +14,11 @@ trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
     super.preStart()
   }
 
-  protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
+  protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE], noSync: Boolean = false)(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
     persist(keyedEvent, async = true)(callback)
 
-  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false)
+  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false, noSync: Boolean = false)
     (callback: Stamped[KeyedEvent[EE]] ⇒ A)
   : Future[A] =
-    super.persistKeyedEvent(keyedEvent, timestamp, async)(callback)
+    super.persistKeyedEvent(keyedEvent, timestamp, noSync = noSync, async = async)(callback)
 }
