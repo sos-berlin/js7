@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.configuration
 
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
@@ -49,7 +50,20 @@ object CommonConfiguration
   private val AddressAndMutual: As[String, (InetSocketAddress, Boolean)] =
     string ⇒ (StringToServerInetSocketAddress.apply(string stripSuffix ",mutual"), string endsWith ",mutual")
 
-  def webServerPorts(a: CommandLineArguments): Seq[WebServerPort] =
-    a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
-    a.seqAs("-https-port=")(AddressAndMutual).map { case (address, mutual) ⇒ WebServerPort.Https(address, mutual = mutual) }
+  final case class Common(
+    configDirectory: Path,
+    dataDirectory: Path,
+    webServerPorts: Seq[WebServerPort])
+
+  object Common {
+    def fromCommandLineArguments(a: CommandLineArguments): Common =
+      Common(
+        dataDirectory = a.as[Path]("-data-directory=").toAbsolutePath,
+        configDirectory = a.as[Path]("-config-directory=").toAbsolutePath,
+        webServerPorts =
+          a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
+          a.seqAs("-https-port=")(AddressAndMutual).map {
+            case (address, mutual) ⇒ WebServerPort.Https(address, mutual = mutual)
+          })
+  }
 }

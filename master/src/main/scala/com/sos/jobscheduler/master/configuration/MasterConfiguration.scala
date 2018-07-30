@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
-import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.internet.IP.StringToServerInetSocketAddress
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -34,11 +32,7 @@ final case class MasterConfiguration(
 extends CommonConfiguration
 {
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
-    copy(
-      webServerPorts = webServerPorts ++
-        a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
-        a.seqAs("-https-port=")(StringToServerInetSocketAddress).map(WebServerPort.Https(_, mutual = false)),
-      journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
+    copy(journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
 
   def fileBasedDirectory: Path = configDirectory / "live"
 
@@ -47,17 +41,17 @@ extends CommonConfiguration
   def stateDirectory: Path = dataDirectory / "state"
 }
 
-object MasterConfiguration {
-
+object MasterConfiguration
+{
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false
   ) =
-    fromDataDirectory(
-      dataDirectory = configAndData / "data",
+    fromDirectories(
       configDirectory = configAndData / "config",
+      dataDirectory = configAndData / "data",
       config)
     .copy(
       webServerPorts =
@@ -69,14 +63,16 @@ object MasterConfiguration {
 
   def fromCommandLine(args: Seq[String], config: Config = ConfigFactory.empty) =
     CommandLineArguments.parse(args) { a ⇒
-      fromDataDirectory(
-        dataDirectory = a.as[Path]("-data-directory="),
-        configDirectory = a.as[Path]("-config-directory="),
+      val common = CommonConfiguration.Common.fromCommandLineArguments(a)
+      val c = fromDirectories(
+        configDirectory = common.configDirectory,
+        dataDirectory = common.dataDirectory,
         config)
+      c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
       .withCommandLineArguments(a)
     }
 
-  def fromDataDirectory(dataDirectory: Path, configDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
+  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, extraDefaultConfig)

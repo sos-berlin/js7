@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.configuration
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.{KillScriptConf, ProcessKillScript}
-import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
+import com.sos.jobscheduler.base.convert.AsJava.asAbsolutePath
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
@@ -51,8 +51,9 @@ extends CommonConfiguration
   require(workingDirectory.isAbsolute)
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
+    val common = CommonConfiguration.Common.fromCommandLineArguments(a)
     var v = copy(
-      webServerPorts = CommonConfiguration.webServerPorts(a),
+      webServerPorts = common.webServerPorts,
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
       jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
@@ -119,10 +120,12 @@ object AgentConfiguration {
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
-    fromDirectories(
-      configDirectory = a.as[Path]("-config-directory=").toAbsolutePath,
-      dataDirectory = a.as[Path]("-data-directory=").toAbsolutePath
-    ) withCommandLineArguments a
+    val common = CommonConfiguration.Common.fromCommandLineArguments(a)
+    val c = fromDirectories(
+      configDirectory = common.configDirectory,
+      dataDirectory = common.dataDirectory)
+    c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
+    .withCommandLineArguments(a)
   }
 
   private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {

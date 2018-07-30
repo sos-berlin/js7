@@ -17,6 +17,14 @@ import scala.collection.immutable.Seq
   */
 final class CommonConfigurationTest extends FreeSpec
 {
+  "-config-directory=" in {
+    assert(conf().configDirectory == Paths.get("CONFIG").toAbsolutePath)
+  }
+
+  "-data-directory=" in {
+    assert(conf().dataDirectory == Paths.get("DATA").toAbsolutePath)
+  }
+
   "-http-port=" in {
     intercept[IllegalArgumentException] { conf("-http-port=65536") }
     assert(conf("-http-port=1234"              ).webServerBindings == WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234)) :: Nil)
@@ -69,15 +77,20 @@ final class CommonConfigurationTest extends FreeSpec
 }
 
 private object CommonConfigurationTest {
-  private case class TestConf(configDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
+  private case class TestConf(configDirectory: Path, dataDirectory: Path, webServerPorts: Seq[WebServerPort], config: Config)
   extends CommonConfiguration
 
-  private def conf(args: String*) = TestConf(
-    Paths.get("CONFIG"),
-    webServerPorts = CommonConfiguration.webServerPorts(CommandLineArguments(args)),
-    ConfigFactory.parseString(
-      """jobscheduler.webserver.https.keystore {
-        |  key-password = "KEY-PASSWORD"
-        |  store-password = "STORE-PASSWORD"
-        |}""".stripMargin))
+  private def conf(args: String*) = {
+    val common = CommonConfiguration.Common.fromCommandLineArguments(CommandLineArguments(
+      Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args))
+    TestConf(
+      configDirectory = common.configDirectory,
+      dataDirectory = common.dataDirectory,
+      webServerPorts = common.webServerPorts,
+      ConfigFactory.parseString(
+        """jobscheduler.webserver.https.keystore {
+          |  key-password = "KEY-PASSWORD"
+          |  store-password = "STORE-PASSWORD"
+          |}""".stripMargin))
+  }
 }
