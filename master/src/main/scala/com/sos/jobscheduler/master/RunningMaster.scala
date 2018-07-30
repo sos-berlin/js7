@@ -38,6 +38,7 @@ import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
+import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -76,6 +77,17 @@ final class RunningMaster private(
   @TestOnly val injector: Injector)
 extends AutoCloseable
 {
+  def terminate(): Task[Completed] =
+    if (terminated.isCompleted)  // Works only if previous termination has been completed
+      Task.fromFuture(terminated)
+    else {
+      logger.debug("terminate")
+      for {
+        _ ← executeCommandAsSystemUser(MasterCommand.Terminate)
+        t ← Task.fromFuture(terminated)
+      } yield t
+    }
+
   def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.MyResponse]] =
     for {
       checkedSession ← sessionRegister.systemSession

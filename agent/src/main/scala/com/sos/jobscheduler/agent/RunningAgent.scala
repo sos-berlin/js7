@@ -57,18 +57,26 @@ extends AutoCloseable {
 
   def close() = closer.close()
 
-  def terminate(): Future[Completed] = {
-    logger.debug("terminate")
-    for {
-      _ ← executeCommand(AgentCommand.Terminate())
-      t ← terminated
-    } yield t
-  }
+  def terminate(): Task[Completed] =
+    if (terminated.isCompleted)  // Works only if previous termination has been completed
+      Task.fromFuture(terminated)
+    else {
+      logger.debug("terminate")
+      for {
+        _ ← directExecuteCommand(AgentCommand.Terminate(sigtermProcesses = true,  sigkillProcessesAfter = Some(5.seconds)))
+        t ← Task.fromFuture(terminated)
+      } yield t
+    }
 
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
-  private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
-    promiseFuture[AgentCommand.Response](promise ⇒
-      mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise))
+  private def directExecuteCommand(command: AgentCommand): Task[AgentCommand.Response] =
+    Task.deferFuture(
+      promiseFuture[AgentCommand.Response](promise ⇒
+        mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
+
+  def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Default): Task[Checked[AgentCommand.Response]] =
+    Task.deferFuture(
+      commandHandler.execute(command, meta)).materialize map Checked.fromTry
 }
 
 object RunningAgent {

@@ -93,8 +93,7 @@ final class RunningMasterTest extends FreeSpec {
         assert(addedOrderIds.size == orderIds.size)
         assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished] == addedOrderIds)
 
-        master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
-        master.terminated await 99.s
+        master.terminate() await 99.s
         agent1.terminate() await 99.s
         agent1.close()
       }

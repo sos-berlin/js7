@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests.https
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -33,5 +34,6 @@ private[https] trait HttpsStandardTests extends HttpsTestBase
   "Terminate" in {
     masterApi.executeCommand(MasterCommand.Terminate) await 99.s
     masterApi.clearSession()  // To avoid automatic logoff because Master is terminating now.
+    master.terminated await 99.s
   }
 }

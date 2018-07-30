@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.tests.TestEventCollector
@@ -36,10 +36,10 @@ import java.nio.file.{Files, Path}
 import java.time.Duration
 import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.util.Random
 
 /**
@@ -95,12 +95,12 @@ extends HasCloser {
     }
   }
 
-  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit s: Scheduler): Unit =
+  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit): Unit =
     runAgents()(agents ⇒
       runMaster()(master ⇒
         body(master, agents)))
 
-  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
+  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit): Unit =
     RunningMaster.runForTest(master.directory, eventCollector)(body)
 
   def startMaster(
@@ -109,22 +109,21 @@ extends HasCloser {
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false)
-    (implicit s: Scheduler)
   : Task[RunningMaster] =
     Task.deferFuture(
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps)))
 
-  def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+  def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
       agents map (_.terminate()) await 99.s
     }
 
-  def startAgents(config: Config = ConfigFactory.empty)(implicit ec: ExecutionContext): Future[Seq[RunningAgent]] =
+  def startAgents(config: Config = ConfigFactory.empty): Future[Seq[RunningAgent]] =
     Future.sequence(agents map (_.agentPath) map (startAgent(_, config)))
 
-  def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty)(implicit ec: ExecutionContext): Future[RunningAgent] =
+  def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentPath).conf)
 }
 
@@ -135,8 +134,6 @@ object DirectoryProvider
 
     protected def agentPaths: Seq[AgentPath]
     protected def agentHttps = false
-
-    import Scheduler.Implicits.global
 
     protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
       agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual, provideAgentClientCertificate = provideAgentClientCertificate,
@@ -170,9 +167,11 @@ object DirectoryProvider
     }
 
     override def afterAll() = {
+      master.terminate() await 15.s
+      master.close()
+      agents.map(_.terminate()) await 15.s
       closer.close()
       for (a ← agents) a.close()
-      master.close()
       super.afterAll()
       directoryProvider.close()
     }
