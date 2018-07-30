@@ -241,12 +241,14 @@ object DirectoryProvider
   }
 
   final def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
+    jobConfiguration(JobPath.NoId.path, duration, variables).asJson.toPrettyString
+
+  final def jobConfiguration(jobPath: JobPath, duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
     JobConfiguration(
-      JobPath.NoId,
+      jobPath % VersionId.Anonymous,
       JobScript(script(duration, resultVariable)),
       variables,
-      taskLimit = 10
-    ).asJson.toPrettyString
+      taskLimit = 10)
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 

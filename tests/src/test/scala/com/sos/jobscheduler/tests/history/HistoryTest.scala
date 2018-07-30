@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.fatevent.AgentFatEvent.AgentReadyFat
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -27,7 +26,7 @@ import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.DirectoryProvider
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobConfiguration}
 import com.sos.jobscheduler.tests.history.HistoryTest._
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
@@ -49,7 +48,7 @@ final class HistoryTest extends FreeSpec
           """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
             |""".stripMargin )
         provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
-        for (a ← provider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(0.s)
+        for (a ← provider.agents) a.writeJson(jobConfiguration(TestJobPath))
 
         def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
 

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{RepoEvent, SourceType, VersionId}
+import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -28,7 +28,7 @@ import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobConfiguration}
 import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
 import java.time.Instant
@@ -51,7 +51,7 @@ final class RecoveryTest extends FreeSpec {
       var lastEventId = EventId.BeforeFirst
       autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
         for ((agentPath, tree) ← directoryProvider.agentToTree)
-          tree.file(TestJobPath, SourceType.Json).contentString = jobJson(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
+          tree.writeJson(jobConfiguration(TestJobPath, 1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1")))
         withCloser { implicit closer ⇒
           for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
           (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem

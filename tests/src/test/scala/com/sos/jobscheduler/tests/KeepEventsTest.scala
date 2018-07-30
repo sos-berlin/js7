@@ -3,13 +3,11 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
@@ -18,7 +16,7 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.jobJson
+import com.sos.jobscheduler.tests.DirectoryProvider.jobConfiguration
 import com.sos.jobscheduler.tests.KeepEventsTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -31,7 +29,7 @@ final class KeepEventsTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentId.path :: Nil)) { directoryProvider ⇒
       for ((_, tree) ← directoryProvider.agentToTree) {
-        tree.file(TestJobPath, SourceType.Json).contentString = jobJson()
+        tree.writeJson(jobConfiguration(TestJobPath))
       }
       directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
 
