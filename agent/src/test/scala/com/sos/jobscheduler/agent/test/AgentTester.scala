@@ -8,7 +8,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 /**
  * @author Joacim Zschimmer
  */
-trait AgentTest extends BeforeAndAfterAll with TestAgentProvider {
+trait AgentTester extends BeforeAndAfterAll with TestAgentProvider {
   this: Suite ⇒
 
   private var started = false

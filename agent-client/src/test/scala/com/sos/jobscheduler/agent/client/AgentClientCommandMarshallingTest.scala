@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, EmergencyStop, Terminate}
-import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -22,7 +22,7 @@ import scala.concurrent.duration._
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends FreeSpec with ScalaFutures with AgentTest {
+extends FreeSpec with ScalaFutures with AgentTester {
 
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton

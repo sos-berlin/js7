@@ -132,7 +132,6 @@ lazy val jobscheduler = (project in file("."))
     //Requires node.js for testing: `master-gui-browser`,
     `agent-client`,
     `agent-data`,
-    `agent-test`,
     `agent-tests`,
     `engine-job-api`,
     minicom,
@@ -191,7 +190,7 @@ lazy val tester = crossProject
 lazy val baseJVM = base.jvm
 lazy val baseJS = base.js
 lazy val base = crossProject
-  .dependsOn(tester % "test->compile")
+  .dependsOn(tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -211,7 +210,7 @@ lazy val base = crossProject
 lazy val dataJVM = data.jvm
 lazy val dataJS = data.js
 lazy val data = crossProject
-  .dependsOn(base, tester % "test->compile")
+  .dependsOn(base, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -224,7 +223,7 @@ lazy val data = crossProject
       "org.typelevel" %%% "discipline" % disciplineVersion % "test"
   }
 
-lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, tester.jvm % "test->compile")
+lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, tester.jvm % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -264,7 +263,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
 lazy val `common-httpJVM` = `common-http`.jvm
 lazy val `common-httpJS` = `common-http`.js
 lazy val `common-http` = crossProject
-  .dependsOn(base, tester % "test->compile")
+  .dependsOn(base, tester % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -286,7 +285,7 @@ lazy val `common-http` = crossProject
     //scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
-lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core, common, `agent-client`, tester.jvm % "test->compile")
+lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core, common, `agent-client`, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
@@ -305,7 +304,7 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
 lazy val `master-dataJVM` = `master-data`.jvm
 lazy val `master-dataJS` = `master-data`.js
 lazy val `master-data` = crossProject
-  .dependsOn(data, tester % "test->compile")
+  .dependsOn(data, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
@@ -318,7 +317,7 @@ lazy val `master-data` = crossProject
 lazy val `master-clientJVM` = `master-client`.jvm
 lazy val `master-clientJS` = `master-client`.js
 lazy val `master-client` = crossProject
-  .dependsOn(`master-data`, `common-http`, tester % "test->compile")
+  .dependsOn(`master-data`, `common-http`, tester % "test")
   .jvmConfigure(_.dependsOn(common))
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -440,7 +439,7 @@ def provideJarEntryAsResource(jarName: String, entryToResource: Seq[(String, Str
   copyJarEntries(jar, entryToResource map (o ⇒ o._1 → ((Compile / resourceManaged).value / o._2)))
 }
 
-lazy val core = project.dependsOn(common, tester.jvm % "test->compile")
+lazy val core = project.dependsOn(common, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -451,7 +450,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test->compile")
       log4j % "test"
   }
 
-lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tunnel, tester.jvm % "test->compile")
+lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tunnel, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -474,7 +473,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
   }
 
 lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common, `agent-data`,
-    `agent-test` % "test->compile", tester.jvm % "test->compile")
+    `agent` % "test->test", tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -488,7 +487,7 @@ lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common,
       log4j % "test"
   }
 
-lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test->compile")
+lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
@@ -503,17 +502,7 @@ lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test->
       log4j % "test"
   }
 
-lazy val `agent-test` = project.dependsOn(agent, common, tester.jvm % "test->compile")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTest ++
-      log4j % "test"
-  }
-
-lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", tester.jvm % "test->compile")
+lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
@@ -526,7 +515,7 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
       log4j % "test"
   }
 
-lazy val `engine-job-api` = project.dependsOn(common, tester.jvm % "test->compile")
+lazy val `engine-job-api` = project.dependsOn(common, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
@@ -544,7 +533,7 @@ lazy val `engine-job-api` = project.dependsOn(common, tester.jvm % "test->compil
       log4j % "test"
   }
 
-lazy val minicom = project.dependsOn(common, `engine-job-api`, tester.jvm % "test->compile")
+lazy val minicom = project.dependsOn(common, `engine-job-api`, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -559,7 +548,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`, tester.jvm % "tes
       log4j % "test"
   }
 
-lazy val tunnel = project.dependsOn(common, data.jvm, tester.jvm % "test->compile")
+lazy val tunnel = project.dependsOn(common, data.jvm, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
@@ -584,7 +573,7 @@ lazy val taskserver = project
     `agent-data`,
     common,
     data.jvm,
-    tester.jvm % "test->compile")
+    tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -600,7 +589,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester.jvm % "test->compile")
+lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -610,7 +599,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester.jvm 
       log4j % "test"
   }
 
-lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, tester.jvm % "test->compile")
+lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -679,7 +668,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
       }
     }.taskValue)
 
-lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test->compile")
+lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

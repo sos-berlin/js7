@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.tests
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.{AgentStartInformation, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import monix.execution.Scheduler.Implicits.global
@@ -13,7 +13,7 @@ import org.scalatest.concurrent.ScalaFutures
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTest {
+final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTester {
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
 
