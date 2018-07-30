@@ -12,8 +12,10 @@ trait ActorReceiveLogging {
 
   protected val isReceiveLoggingEnabled = context.system.settings.config.getBoolean("jobscheduler.logging.actor")
 
+  protected[ActorReceiveLogging] def isLoggingEnabled = isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)
+
   protected def become(state: String)(recv: Receive): Unit =
-    if (isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)) {
+    if (isLoggingEnabled) {
       logger.debug(Logger.Actor, s"${context.self.path} becomes $state")
       context.become(debugReceive(recv))
     } else
@@ -37,7 +39,7 @@ object ActorReceiveLogging {
   trait WithStash extends akka.actor.Stash with ActorReceiveLogging
   {
     override def stash() = {
-      if (logger.underlying.isDebugEnabled(Logger.Actor)) {
+      if (isLoggingEnabled) {
         logger.debug(Logger.Actor, s"${context.self.path} stash")
       }
       super.stash()
