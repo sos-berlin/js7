@@ -214,7 +214,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   /** TEST ONLY - Blocking. */
   @TestOnly
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
-    when[E1](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.seconds), _ ⇒ true) await 99.s
+    when[E1](EventRequest.singleClass(), _ ⇒ true) await 99.s
 }
 
 object RealEventWatch {

@@ -83,7 +83,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(eventWatch.eventsAfter(after = stampedEventSeq(0).eventId).get.strict == events.tail)
         assert(eventWatch.eventsAfter(after = stampedEventSeq(1).eventId).get.strict.isEmpty)
 
-        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](timeout = 30.seconds)).await(99.s).strict ==
           EventSeq.NonEmpty(events))
       }
     }
@@ -94,7 +94,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(eventWatch.eventsAfter(after = 999) == None)
         assert(eventWatch.eventsAfter(after = 1000).map(_.toVector) == Some(Nil))
 
-        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = EventId.BeforeFirst, timeout = 30.seconds)).await(99.s).strict ==
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](timeout = 30.seconds)).await(99.s).strict ==
           TearableEventSeq.Torn(after = 1000))
 
         val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
@@ -136,7 +136,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         writer.flush()
 
         def eventsForKey[E <: MyEvent: ClassTag](key: E#Key) = {
-          val EventSeq.NonEmpty(eventIterator) = eventWatch.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key).await(10.s).strict
+          val EventSeq.NonEmpty(eventIterator) = eventWatch.whenKey[E](EventRequest.singleClass(timeout = 99.seconds), key).await(10.s).strict
           eventIterator.toVector map { _.value }
         }
         assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
@@ -144,7 +144,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
         def keyedEvent[E <: MyEvent: ClassTag](key: E#Key) =
-          eventWatch.whenKeyedEvent[E](EventRequest.singleClass(after = EventId.BeforeFirst, 99.seconds), key) await 10.s
+          eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = 99.seconds), key) await 10.s
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)
         assert(keyedEvent[BEvent]("1") == B1)
@@ -154,7 +154,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     "observe" in {
       withCurrentJournal(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) ⇒
         val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
-        val observed = eventWatch.observe(EventRequest.singleClass[AEvent](after = EventId.BeforeFirst, limit = 3, timeout = 99.seconds))
+        val observed = eventWatch.observe(EventRequest.singleClass[AEvent](limit = 3, timeout = 99.seconds))
           .foreach(stampeds.+=)
         assert(stampeds.isEmpty)
 

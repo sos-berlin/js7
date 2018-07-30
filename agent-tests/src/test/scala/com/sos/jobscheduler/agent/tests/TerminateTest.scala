@@ -24,7 +24,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
-import com.sos.jobscheduler.data.event.{EventId, EventRequest}
+import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
@@ -64,7 +64,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
             for (orderId ← orderIds) yield
-              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = EventId.BeforeFirst, 90.seconds), orderId)
+              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = 90.seconds), orderId)
                 .runAsync: Future[OrderEvent.OrderProcessed])
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)

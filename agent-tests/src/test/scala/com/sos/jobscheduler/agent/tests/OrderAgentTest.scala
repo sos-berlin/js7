@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
@@ -57,7 +57,7 @@ final class OrderAgentTest extends FreeSpec {
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
-          EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.seconds)
+          EventRequest.singleClass[OrderEvent](timeout = 10.seconds)
             .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync)
             {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
@@ -97,7 +97,7 @@ final class OrderAgentTest extends FreeSpec {
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
           while (
-            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = timeout)) await 99.s match {
+            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](timeout = timeout)) await 99.s match {
               case EventSeq.NonEmpty(stampeds) ⇒
                 ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) ⇒ orderId }
                 ready != awaitedOrderIds

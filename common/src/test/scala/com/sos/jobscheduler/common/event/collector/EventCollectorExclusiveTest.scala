@@ -40,8 +40,8 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
 
   "eventCollector.when with torn event stream" in {
     val eventCollector = new MyEventCollector(EventCollector.Configuration.ForTest.copy(queueSize = 2))
-    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](after = EventId.BeforeFirst, 30.seconds)).runAsync
-    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 30.seconds)).runAsync
+    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](timeout = 30.seconds)).runAsync
+    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](timeout = 30.seconds)).runAsync
     assert(!anyFuture.isCompleted)
     eventCollector.putEvent_("1" <-: A1)
     val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms
@@ -59,7 +59,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     val EventSeq.NonEmpty(cEventIterator) = eventCollector.when(EventRequest.singleClass[BEvent](after = bEvents.last.eventId, 1.second)) await 100.ms
     assert((cEventIterator.toList map { _.value }) == List("2" <-: B1))
 
-    assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.second)) await 500.ms).isInstanceOf[TearableEventSeq.Torn])
+    assert((eventCollector.when(EventRequest.singleClass[BEvent](timeout = 1.second)) await 500.ms).isInstanceOf[TearableEventSeq.Torn])
   }
 
   "eventCollector.whenKey, whenKeyedEvent" in {
@@ -71,7 +71,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     eventCollector.putEvent_("1" <-: B2)
 
     def eventsForKey[E <: Event: ClassTag](key: E#Key) = {
-      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), key) await 10.s
+      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenKey[E](EventRequest.singleClass(timeout = 20.seconds), key) await 10.s
       eventIterator.toVector map { _.value }
     }
     assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
@@ -79,7 +79,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
     def keyedEvent[E <: Event: ClassTag](key: E#Key) =
-      eventCollector.whenKeyedEvent[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.seconds), key) await 10.s
+      eventCollector.whenKeyedEvent[E](EventRequest.singleClass(timeout = 20.seconds), key) await 10.s
     assert(keyedEvent[AEvent]("1") == A1)
     assert(keyedEvent[AEvent]("2") == A2)
     assert(keyedEvent[BEvent]("1") == B1)

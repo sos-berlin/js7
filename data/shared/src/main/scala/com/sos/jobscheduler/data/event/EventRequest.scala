@@ -60,7 +60,12 @@ object EventRequest {
   /**
     * Convenience for only one Event class.
     */
-  def singleClass[E <: Event: ClassTag](after: EventId, timeout: FiniteDuration, delay: FiniteDuration = DefaultDelay, limit: Int = DefaultLimit): EventRequest[E] =
+  def singleClass[E <: Event: ClassTag](
+    after: EventId = EventId.BeforeFirst,
+    timeout: FiniteDuration = Duration.Zero,
+    delay: FiniteDuration = DefaultDelay,
+    limit: Int = DefaultLimit)
+  : EventRequest[E] =
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit)
 
   private def durationToString(duration: FiniteDuration): String =

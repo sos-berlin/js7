@@ -19,7 +19,7 @@ final class RealEventWatchTest extends FreeSpec {
     val eventWatch = new TestEventWatch().strict
     var expectedNext = Stamped(1, 1 <-: TestEvent(1))
     val n = 100000
-    val observed = eventWatch.observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst, limit = n, timeout = 99.seconds))
+    val observed = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = 99.seconds))
       .foreach { stamped ⇒
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
