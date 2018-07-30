@@ -136,6 +136,10 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.HandleEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
+    case Input.HandleEvent(event: OrderStopped) ⇒
+      context.become(stopped)
+      persist(event)(update)
+
     case Input.Terminate ⇒
       context.stop(self)
   }

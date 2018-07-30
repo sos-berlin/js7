@@ -20,7 +20,7 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
     s"No such key '$k'"
 
   protected def insert(kv: (K, V)): Unit = {
-    if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}")
+    if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
     this += kv
   }
 

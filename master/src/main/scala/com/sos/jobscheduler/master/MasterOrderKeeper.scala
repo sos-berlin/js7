@@ -17,6 +17,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableM
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
@@ -95,6 +96,7 @@ with KeyedEventJournalingActor[Event] {
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, masterConfiguration)},
     "OrderScheduleGenerator")
+  private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -369,9 +371,15 @@ with KeyedEventJournalingActor[Event] {
   }
 
   private def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
-    order.id.checkedNameSyntax match {
-      case Invalid(problem) ⇒ Future.successful(Invalid(problem))
-      case Valid(_) ⇒ addOrderWithUncheckedId(order)
+    suppressOrderIdCheckFor match {
+      case Some(order.id.string) ⇒  // Test only
+        addOrderWithUncheckedId(order)
+
+      case _ ⇒
+        order.id.checkedNameSyntax match {
+          case Invalid(problem) ⇒ Future.successful(Invalid(problem))
+          case Valid(_) ⇒ addOrderWithUncheckedId(order)
+        }
     }
 
   private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] = {

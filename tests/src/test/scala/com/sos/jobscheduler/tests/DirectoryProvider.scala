@@ -150,7 +150,7 @@ object DirectoryProvider
     protected def masterHttpsMutual = false
     protected def provideAgentClientCertificate = false
     protected def masterClientCertificate: Option[JavaResource] = None
-    protected val masterConfig: Config = ConfigFactory.empty
+    protected def masterConfig: Config = ConfigFactory.empty
 
     protected final lazy val master: RunningMaster = directoryProvider.startMaster(
       masterModule,

@@ -34,7 +34,6 @@ final case class OrderId(string: String) extends GenericString
 
 object OrderId extends GenericString.Companion[OrderId] {
   val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
-  private val nameValidator = new NameValidator(Set('-', '.', ':'))
 
   final case class ChildId(string: String) extends GenericString {
     if (string.isEmpty) throw new IllegalArgumentException("OrderId.ChildId must not be empty")

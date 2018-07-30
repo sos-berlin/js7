@@ -1,52 +1,51 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.ActorSystem
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.event.EventSeq
+import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.Position
+import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.master.tests.TestEventCollector
+import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobJson}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobConfiguration}
 import com.sos.jobscheduler.tests.ForkTest._
+import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 import scala.language.higherKinds
 
-final class ForkTest extends FreeSpec {
+final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
+{
+  protected val agentPaths = AAgentPath :: BAgentPath :: Nil
+  override protected val masterConfig = ConfigFactory.parseString(
+    s"""jobscheduler.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """)
 
-  "test" in {
-    autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
-      withCloser { implicit closer ⇒
-        directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
-        for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Json).contentString = jobJson(100.ms)
-
-        directoryProvider.runAgents() { _ ⇒
-          directoryProvider.runMaster() { master ⇒
-            val eventCollector = new TestEventCollector
-            eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.addOrderBlocking(TestOrder)
-            eventCollector.await[OrderFinished](_.key == TestOrder.id)
-            checkEventSeq(eventCollector.all[OrderEvent])
-          }
-        }
-      }
-    }
+  override def beforeAll() = {
+    directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
+    directoryProvider.master.writeJson(Workflow(
+      DuplicateWorkflowPath % VersionId.Anonymous,
+      Vector(
+        Job(JobPath("/SLOW"), AAgentPath))))
+    for (a ← directoryProvider.agents) a.writeJson(jobConfiguration(TestJobPath, 100.ms))
+    directoryProvider.agents(0).writeJson(jobConfiguration(JobPath("/SLOW"), 60.s))
+    super.beforeAll()
   }
 
-  private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]]): Unit = {
-    eventSeq match {
+  "test" in {
+    master.addOrderBlocking(TestOrder)
+    master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
+    master.eventWatch.all[OrderEvent] match {
       case EventSeq.NonEmpty(stampeds) ⇒
         val keyedEvents = stampeds.map(_.value).toVector
         for (orderId ← Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
@@ -56,6 +55,18 @@ final class ForkTest extends FreeSpec {
       case o ⇒
         fail(s"Unexpected EventSeq received: $o")
     }
+  }
+
+  "Existing child OrderId" in {
+    val myOrderId = TestOrder.copy(id = OrderId("DUPLICATE"))
+    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId
+    master.addOrderBlocking(myOrderId)
+    assert(master.eventWatch.await[OrderStopped](_.key == myOrderId.id).head.value.event ==
+      OrderStopped(Outcome.Disrupted("Forked OrderIds duplicates existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,InProcess,Some(Agent(Agent:/AGENT-A (initial))),None,Payload())")))
+
+    // Kill SLOW job
+    agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
+    agents(0).terminated await 99.s
   }
 
   "JSON" in {
@@ -142,6 +153,7 @@ final class ForkTest extends FreeSpec {
 }
 
 object ForkTest {
+  private val DuplicateWorkflowPath = WorkflowPath("/DUPLICATE")
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
