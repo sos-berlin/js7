@@ -6,13 +6,14 @@ import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
-import com.sos.jobscheduler.agent.command.CommandHandler
+import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
@@ -25,8 +26,10 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
 import java.time.Duration
+import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
 /**
