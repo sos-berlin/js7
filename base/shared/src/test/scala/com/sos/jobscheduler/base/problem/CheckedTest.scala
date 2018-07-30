@@ -6,6 +6,7 @@ import cats.syntax.all._
 import cats.{Applicative, Apply}
 import com.sos.jobscheduler.base.problem.Checked._
 import org.scalatest.FreeSpec
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -20,6 +21,12 @@ final class CheckedTest extends FreeSpec  {
   "fromOption" in {
     assert(Checked.fromOption(1.some, Problem("PROBLEM")) == Valid(1))
     assert(Checked.fromOption(none, Problem("PROBLEM")) == Invalid(Problem("PROBLEM")))
+  }
+
+  "fromTry" in {
+    assert(Checked.fromTry(Success(1)) == Valid(1))
+    val throwable = new RuntimeException("EXCEPTION")
+    assert(Checked.fromTry(Failure(throwable)) == Invalid(Problem("EXCEPTION")))
   }
 
   "catchNonFatal" in {

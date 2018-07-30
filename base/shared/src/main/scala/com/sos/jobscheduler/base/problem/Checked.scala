@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -16,10 +17,16 @@ object Checked
 
   def apply[A](a: A): Checked[A] = Valid(a)
 
-  def fromOption[A](a: Option[A], problem: Problem) =
+  def fromOption[A](a: Option[A], problem: Problem): Checked[A] =
     a match {
       case Some(o) ⇒ Valid(o)
       case None ⇒ Invalid(problem)
+    }
+
+  def fromTry[A](tried: Try[A]): Checked[A] =
+    tried match {
+      case Success(o) ⇒ Valid(o)
+      case Failure(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
     }
 
   def catchNonFatal[A](f: ⇒ A): Checked[A] =
