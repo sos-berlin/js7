@@ -73,7 +73,7 @@ with ActorReceiveLogging.WithStash {
 
   private val commandQueue = new CommandQueue(logger, batchSize = batchSize) {
     protected def executeCommand(command: AgentCommand.Batch) =
-      client.executeCommand(command)
+      client.commandExecute(command)
 
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
       self ! Internal.BatchSucceeded(queuedInputResponses)
@@ -106,7 +106,7 @@ with ActorReceiveLogging.WithStash {
         case Valid(userAndPassword) ⇒
           ( for {
               _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.Response
-              _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
+              _ ← client.commandExecute(AgentCommand.RegisterAsMaster)
             } yield Completed
           ).runAsync.onComplete { tried ⇒
             self ! Internal.AfterConnect(tried)
@@ -179,7 +179,7 @@ with ActorReceiveLogging.WithStash {
         }
 
     case Internal.EventsAccepted(eventId) ⇒
-      client.executeCommand(AgentCommand.KeepEvents(after = eventId)).runOnComplete { tried ⇒
+      client.commandExecute(AgentCommand.KeepEvents(after = eventId)).runOnComplete { tried ⇒
         tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
         keepEventsCancelable = None  // Asynchronous!
       }

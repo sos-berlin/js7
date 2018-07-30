@@ -2,20 +2,22 @@ package com.sos.jobscheduler.agent.web
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.DirectAgentApi
+import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.auth.{SimpleUser, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.data.order.OrderId
-import monix.execution.Scheduler
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.data.order.{Order, OrderId}
+import monix.eval.Task
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
 trait OrderWebService extends AgentRouteProvider {
 
-  protected def commandHandler: CommandHandler
+  protected def agentApi(meta: CommandMeta): DirectAgentApi
 
   private implicit def implicitScheduler = scheduler
 
@@ -24,18 +26,18 @@ trait OrderWebService extends AgentRouteProvider {
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)
         complete {
-          commandHandler.typedExecute(AgentCommand.GetOrder(orderId), CommandMeta(user)) map { _.order }
+          agentApi(CommandMeta(user)).order(orderId): Task[Order[Order.State]]
         }
       } ~
       pathSingleSlash {
         parameter("return" ? "Order") {
           case "OrderId" ⇒
             complete {
-              commandHandler.typedExecute(AgentCommand.GetOrderIds, CommandMeta(user)) map { _.orderIds }
+              agentApi(CommandMeta(user)).orderIds: Task[Seq[OrderId]]
             }
           case "Order" ⇒
             complete {
-              commandHandler.typedExecute(AgentCommand.GetOrders, CommandMeta(user)) map { _.orders }
+              agentApi(CommandMeta(user)).orders: Task[Seq[Order[Order.State]]]
             }
         }
       }

@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.DirectAgentApi
+import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
-import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.core.event.GenericEventRoute
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.master.MasterId
@@ -15,7 +16,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
   */
 trait MastersEventWebService extends AgentRouteProvider with GenericEventRoute
 {
-  protected def agentHandle: AgentHandle
+  protected def agentApi(meta: CommandMeta): DirectAgentApi
   implicit protected def akkaAskTimeout: Timeout
 
   protected final lazy val masterEventRoute = new RouteProvider().route
@@ -24,7 +25,7 @@ trait MastersEventWebService extends AgentRouteProvider with GenericEventRoute
   {
     def keyedEventTypedJsonCodec = keyedEventJsonCodec
 
-    def eventWatchFor(userId: UserId) = agentHandle.eventWatch(MasterId.fromUserId(userId))
+    def eventWatchFor(user: SimpleUser) = agentApi(CommandMeta(user)).eventWatchForMaster(MasterId.fromUserId(user.id))
 
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) =
       keyedEvent.event != OrderDetached  // Master knows about detached order by successful executed AgentCommand.DetachOrder

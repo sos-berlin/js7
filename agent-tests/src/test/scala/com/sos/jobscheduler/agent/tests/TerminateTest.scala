@@ -51,7 +51,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
 
         val orderIds = for (i ← 0 until 3) yield OrderId(s"TEST-ORDER-$i")
         (for (orderId ← orderIds) yield
-          client.executeCommand(AttachOrder(
+          client.commandExecute(AttachOrder(
             Order(
               orderId,
               SimpleTestWorkflow.id,
@@ -69,7 +69,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 
-        client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
+        client.commandExecute(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
         val stepEnded = whenStepEnded await 99.s
         assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Undisrupted].isFailed })
         agent.terminated await 99.s
@@ -97,7 +97,7 @@ object TerminateTest {
         agentUri = agent.localUri.toString)
         //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
       client.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
-      client.executeCommand(RegisterAsMaster) await 99.s
+      client.commandExecute(RegisterAsMaster) await 99.s
       body(client, agent)
       agent.close()
     }

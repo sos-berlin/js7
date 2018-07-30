@@ -9,7 +9,7 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.model.{HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
-import com.sos.jobscheduler.base.auth.{UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -45,7 +45,7 @@ trait GenericEventRoute extends RouteProvider
   {
     implicit protected def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event]
 
-    protected def eventWatchFor(userId: UserId): Task[EventWatch[Event]]
+    protected def eventWatchFor(user: Session#User): Task[EventWatch[Event]]
 
     protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]):Boolean = true
 
@@ -62,7 +62,7 @@ trait GenericEventRoute extends RouteProvider
           authorizedUser(ValidUserPermission) { user ⇒
             handleExceptions(exceptionHandler) {
               routeFuture(
-                eventWatchFor(user.id).runAsync.map { eventWatch ⇒
+                eventWatchFor(user).runAsync.map { eventWatch ⇒
                   htmlPreferred {
                     oneShot(eventWatch)
                   } ~

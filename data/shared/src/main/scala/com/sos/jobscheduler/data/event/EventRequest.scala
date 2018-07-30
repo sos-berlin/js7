@@ -36,7 +36,7 @@ extends SomeEventRequest[E] {
     * Blocking - for testing.
     */
   @tailrec
-  def repeat[A](fetchEvents: EventRequest[E] ⇒ Future[EventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
+  def repeat[A](fetchEvents: EventRequest[E] ⇒ Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
     val waitTimeout = duration.Duration(timeout.toMillis + 10000, duration.MILLISECONDS)
     Await.result(fetchEvents(this), waitTimeout) match {
       case EventSeq.NonEmpty(stampeds) ⇒
@@ -46,6 +46,9 @@ extends SomeEventRequest[E] {
         }
       case EventSeq.Empty(lastEventId) ⇒
         copy[E](after = lastEventId).repeat(fetchEvents)(collect)
+
+      case torn: TearableEventSeq.Torn ⇒
+        sys.error(s"Unexpected $torn")
     }
   }
 }

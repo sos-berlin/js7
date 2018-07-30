@@ -118,7 +118,7 @@ object TestMasterAgent {
       JavaShutdownHook.add("TestMasterAgent") {
         print('\n')
         (for (agent ← agents) yield {
-          agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+          agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
           val r = agent.terminated
           agent.close()
           r
@@ -183,7 +183,7 @@ object TestMasterAgent {
       })
       master.terminated await 365 * 24.h
       master.close()
-      for (agent ← agents) agent.commandHandler.execute(AgentCommand.Terminate())
+      for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())
       agents map (_.terminated) await 60.s
       agents foreach (_.close())
     }

@@ -1,5 +1,6 @@
-package com.sos.jobscheduler.agent.command
+package com.sos.jobscheduler.agent.data.command
 
+import com.sos.jobscheduler.common.scalautil.Logger
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 
@@ -8,3 +9,7 @@ import scala.collection.immutable.Seq
  */
 @JsonCodec
 final case class CommandHandlerDetailed(commandRuns: Seq[CommandRunOverview])
+
+object CommandHandlerDetailed {
+  private val logger = Logger(getClass)
+}

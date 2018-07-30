@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.command
 
+import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
 import scala.concurrent.Future

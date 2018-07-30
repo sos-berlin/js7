@@ -7,15 +7,15 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import monix.execution.Scheduler
-import scala.concurrent.Future
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import monix.eval.Task
 
 /**
  * @author Joacim Zschimmer
  */
 trait RootWebService extends AgentRouteProvider {
 
-  protected def agentOverview: Future[AgentOverview]
+  protected def agentOverview: Task[AgentOverview]
 
   private implicit def implicitScheduler = scheduler
 

@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.command.CommandActor._
+import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle

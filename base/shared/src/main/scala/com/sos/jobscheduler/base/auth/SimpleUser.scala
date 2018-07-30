@@ -20,7 +20,7 @@ object SimpleUser {
 
   def apply(
     id: UserId,
-    hashedPassword: HashedPassword,
+    hashedPassword: HashedPassword = HashedPassword.MatchesNothing,
     grantedPermissions: PermissionBundle = PermissionBundle.empty)
   = new SimpleUser(
       id,

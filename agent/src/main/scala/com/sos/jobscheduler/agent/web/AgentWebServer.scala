@@ -4,9 +4,10 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import com.google.common.io.Closer
 import com.google.inject.Injector
-import com.sos.jobscheduler.agent.command.CommandHandler
+import com.sos.jobscheduler.agent.RunningAgent
+import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.scheduler.AgentHandle
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer._
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.problem.Problem
@@ -20,7 +21,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.timer.TimerService
 import monix.execution.Scheduler
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -39,25 +40,31 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   closer.registerAutoCloseable(this)
 
   protected val bindings = conf.webServerBindings.toVector
-  private val commandHandler = new SetOnce[CommandHandler]("CommandHandler")
-  private val agentHandle = new SetOnce[AgentHandle]("Agent")
+  private val runningAgentOnce = new SetOnce[RunningAgent]("RunningAgent")
 
-  def setCommandHandler(commandHandler: CommandHandler) =
-    this.commandHandler := commandHandler
+  def setRunningAgent(runningAgent: RunningAgent): Unit =
+    this.runningAgentOnce := runningAgent
 
-  def setAgentActor(agentHandle: AgentHandle) =
-    this.agentHandle := agentHandle
+  private def runningAgent = runningAgentOnce.getOrElse(throw ServiceUnavailableException)
 
   protected def newRoute(binding: WebServerBinding) =
     new CompleteRoute {
+      private lazy val anonymousApi = runningAgent.api(CommandMeta())
+
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
-      //protected val taskRegister = Factory.this.taskRegister
-      protected def commandHandler = AgentWebServer.this.commandHandler getOrElse (throw ServiceUnavailableException)
-      protected def agentOverview = agentHandle.overview
-      protected def agentHandle = AgentWebServer.this.agentHandle getOrElse (throw ServiceUnavailableException)
+
+      protected def agentApi(meta: CommandMeta) = runningAgent.api(meta)
+      protected def agentOverview = anonymousApi.overview
+
+      protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
+        agentApi(meta).commandExecute(command)
+
+      protected def commandOverview = anonymousApi.commandOverview
+      protected def commandDetailed = anonymousApi.commandDetailed
+
       protected def timerService = AgentWebServer.this.timerService
       protected def akkaAskTimeout = conf.akkaAskTimeout
       protected def config = AgentWebServer.this.conf.config

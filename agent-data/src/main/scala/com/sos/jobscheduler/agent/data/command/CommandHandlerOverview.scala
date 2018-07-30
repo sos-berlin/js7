@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.command
+package com.sos.jobscheduler.agent.data.command
 
 import io.circe.generic.JsonCodec
 

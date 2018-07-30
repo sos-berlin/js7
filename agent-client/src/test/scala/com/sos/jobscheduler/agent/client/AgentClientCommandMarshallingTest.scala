@@ -50,7 +50,7 @@ extends FreeSpec with ScalaFutures with AgentTester {
     EmergencyStop → Accepted)
   .foreach { case (command, response) ⇒
     command.getClass.simpleScalaName in {
-      assert(client.executeCommand(command).await(99.s) == response)
+      assert(client.commandExecute(command).await(99.s) == response)
     }
   }
 }

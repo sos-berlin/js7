@@ -50,13 +50,13 @@ final class OrderAgentTest extends FreeSpec {
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
-            agentClient.executeCommand(RegisterAsMaster) await 99.s
+            agentClient.commandExecute(RegisterAsMaster) await 99.s
           } .status shouldEqual Unauthorized
           agentClient.login(Some(TestUserAndPassword)) await 99.s
-          agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
+          agentClient.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.executeCommand(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.seconds)
             .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync)
             {
@@ -64,9 +64,9 @@ final class OrderAgentTest extends FreeSpec {
             }
           val processedOrder = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
-          agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
-          agentClient.executeCommand(AgentCommand.Terminate()) await 99.s
+          agentClient.commandExecute(AgentCommand.Terminate()) await 99.s
         }
       }
     }
@@ -85,14 +85,14 @@ final class OrderAgentTest extends FreeSpec {
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
           agentClient.login(Some(TestUserAndPassword)) await 99.s
-          agentClient.executeCommand(RegisterAsMaster) await 99.s
+          agentClient.commandExecute(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
               Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Batch(orders map { AttachOrder(_, SimpleTestWorkflow) })) await 99.s
+          agentClient.commandExecute(Batch(orders map { AttachOrder(_, SimpleTestWorkflow) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
@@ -105,10 +105,10 @@ final class OrderAgentTest extends FreeSpec {
                 true
             }
           ) {}
-          agentClient.executeCommand(Batch(orders map { o ⇒ DetachOrder(o.id) })) await 99.s
+          agentClient.commandExecute(Batch(orders map { o ⇒ DetachOrder(o.id) })) await 99.s
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
-          agentClient.executeCommand(AgentCommand.Terminate()) await 99.s
+          agentClient.commandExecute(AgentCommand.Terminate()) await 99.s
         }
       }
     }

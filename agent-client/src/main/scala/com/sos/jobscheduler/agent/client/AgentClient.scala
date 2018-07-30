@@ -2,12 +2,12 @@ package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
+import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
@@ -23,7 +23,7 @@ import scala.collection.immutable.Seq
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient extends SessionApi with AkkaHttpClient {
+trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 
   protected def httpClient = this
 
@@ -36,7 +36,7 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
   protected lazy val agentUris = AgentUris(baseUri.toString)
   protected lazy val uriPrefixPath = "/agent"
 
-  final def executeCommand(command: AgentCommand): Task[command.Response] =
+  final def commandExecute(command: AgentCommand): Task[command.Response] =
     post[AgentCommand, AgentCommand.Response](agentUris.command, command)
       .map(_.asInstanceOf[command.Response])
 
@@ -53,10 +53,10 @@ trait AgentClient extends SessionApi with AkkaHttpClient {
   final def order(orderId: OrderId): Task[Order[Order.State]] =
     get[Order[Order.State]](agentUris.order(orderId))
 
-  final def orderIds(): Task[Seq[OrderId]] =
+  final def orderIds: Task[Seq[OrderId]] =
     get[Seq[OrderId]](agentUris.order.ids)
 
-  final def orders(): Task[Seq[Order[Order.State]]] =
+  final def orders: Task[Seq[Order[Order.State]]] =
     get[Seq[Order[Order.State]]](agentUris.order.orders)
 
   final def mastersEvents[E <: Event](request: EventRequest[E]): Task[EventSeq[Seq, KeyedEvent[E]]] = {

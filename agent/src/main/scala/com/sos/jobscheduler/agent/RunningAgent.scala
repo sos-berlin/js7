@@ -10,6 +10,7 @@ import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
@@ -43,12 +44,15 @@ final class RunningAgent private(
   val webServer: AgentWebServer,
   mainActor: ActorRef,
   val terminated: Future[Completed],
-  val commandHandler: CommandHandler,
+  private[agent] val commandHandler: CommandHandler,
+  agentHandle: AgentHandle,
   val sessionToken: SessionToken,
   closer: Closer,
   @TestOnly val injector: Injector)
   (implicit ec: ExecutionContext)
 extends AutoCloseable {
+
+  webServer.setRunningAgent(this)
 
   val localUri: Uri = webServer.localUri
   //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)
@@ -57,13 +61,13 @@ extends AutoCloseable {
 
   def close() = closer.close()
 
-  def terminate(): Task[Completed] =
+  def terminate(sigkillProcessesAfter: Option[FiniteDuration] = Some(5.seconds)): Task[Completed] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
     else {
       logger.debug("terminate")
       for {
-        _ ← directExecuteCommand(AgentCommand.Terminate(sigtermProcesses = true,  sigkillProcessesAfter = Some(5.seconds)))
+        _ ← directExecuteCommand(AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
         t ← Task.fromFuture(terminated)
       } yield t
     }
@@ -73,6 +77,9 @@ extends AutoCloseable {
     Task.deferFuture(
       promiseFuture[AgentCommand.Response](promise ⇒
         mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
+
+  def api(meta: CommandMeta): DirectAgentApi =
+    new DirectAgentApi(commandHandler, agentHandle, meta)
 
   def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Default): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
@@ -127,8 +134,6 @@ object RunningAgent {
 
     for (ready ← readyPromise.future) yield {
       webServerReady await WebServerReadyTimeout
-      webServer.setCommandHandler(ready.commandHandler)
-      webServer.setAgentActor(ready.agentHandle)
       val terminated = stoppedPromise.future
         .map(identity)  // Change to implicit ExecutionContext (needed?)
         .andThen { case _ ⇒
@@ -141,7 +146,7 @@ object RunningAgent {
         //.andThen {
         //  case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
         //}
-      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, sessionToken, closer, injector)
+      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, ready.agentHandle, sessionToken, closer, injector)
     }
   }
 }

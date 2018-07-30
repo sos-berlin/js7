@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api
 
-import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.event.GenericEventRoute
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
@@ -22,7 +22,7 @@ trait EventRoute extends MasterRouteProvider with GenericEventRoute
   {
     def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec
 
-    def eventWatchFor(userId: UserId) = Task.pure(eventWatch)
+    def eventWatchFor(user: SimpleUser) = Task.pure(eventWatch)
 
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = EventRoute.isRelevantEvent(keyedEvent)
   }

@@ -71,7 +71,7 @@ object AgentMain {
 
   private def onJavaShutdown(agent: RunningAgent): Unit = {
     logger.info("Terminating Agent due to Java shutdown")
-    agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
+    agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
     agent.terminated await ShutdownTimeout.toJavaDuration
     agent.close()
     Log4j.shutdown()

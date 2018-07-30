@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.command
+package com.sos.jobscheduler.agent.data.command
 
 import com.sos.jobscheduler.base.generic.GenericString
 
