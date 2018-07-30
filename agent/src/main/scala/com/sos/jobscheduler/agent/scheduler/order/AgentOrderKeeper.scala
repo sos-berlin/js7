@@ -146,7 +146,6 @@ extends KeyedEventJournalingActor[Event] with Stash {
       sender() ! eventWatch
 
     case Input.Terminate ⇒
-      logger.debug("### Terminate")
       if (!terminating) {
         terminating = true
         for (o ← orderRegister.values if !o.detaching) {
@@ -405,7 +404,6 @@ extends KeyedEventJournalingActor[Event] with Stash {
 
   private def handleTermination() = {
     if (terminating && orderRegister.isEmpty && jobRegister.isEmpty) {
-      logger.debug("### JournalActor.Input.Terminate")
       journalActor ! JournalActor.Input.Terminate
     }
   }
