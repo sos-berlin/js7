@@ -32,7 +32,9 @@ final case class MasterConfiguration(
 extends CommonConfiguration
 {
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
-    copy(journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
+    copy(
+      journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
+      masterId = a.as("-id=", masterId))
 
   def fileBasedDirectory: Path = configDirectory / "live"
 
@@ -64,12 +66,12 @@ object MasterConfiguration
   def fromCommandLine(args: Seq[String], config: Config = ConfigFactory.empty) =
     CommandLineArguments.parse(args) { a ⇒
       val common = CommonConfiguration.Common.fromCommandLineArguments(a)
-      val c = fromDirectories(
+      val conf = fromDirectories(
         configDirectory = common.configDirectory,
         dataDirectory = common.dataDirectory,
         config)
-      c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
-      .withCommandLineArguments(a)
+      conf.copy(webServerPorts = common.webServerPorts ++ conf.webServerPorts)
+        .withCommandLineArguments(a)
     }
 
   private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {

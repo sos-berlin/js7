@@ -28,6 +28,11 @@ final class MasterConfigurationTest extends FreeSpec {
       config = ConfigFactory.empty))
   }
 
+  "-id=" in {
+    assert(conf().masterId == MasterId("Master"))
+    assert(conf("-id=MASTER").masterId == MasterId("MASTER"))
+  }
+
   "-http-port=" in {
     // For more tests see CommonConfigurationTest
     intercept[IllegalArgumentException] { conf("-http-port=65536") }
