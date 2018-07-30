@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenge, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
@@ -33,6 +33,7 @@ import java.time.Instant.now
 import monix.execution.Scheduler
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -50,6 +51,8 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 
   protected lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
+
+  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
   private val route = Route.seal(
     decodeRequest {

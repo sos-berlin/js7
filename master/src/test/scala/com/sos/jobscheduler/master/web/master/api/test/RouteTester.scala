@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api.test
 
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -10,12 +10,15 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConf
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import org.scalatest.Suite
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 trait RouteTester extends ScalatestRouteTest {
   this: Suite ⇒
+
+  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
   protected final lazy val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(

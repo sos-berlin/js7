@@ -22,11 +22,14 @@ import io.circe.Json
 import java.time.Instant.now
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
+
+  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
@@ -329,7 +332,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
 
     "GET /ValidUserPermission with invalid credentials is rejected" in {
-      implicit def default(implicit system: ActorSystem) =
+      implicit def routeTestTimeout(implicit system: ActorSystem) =
         RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
 
       val t = now

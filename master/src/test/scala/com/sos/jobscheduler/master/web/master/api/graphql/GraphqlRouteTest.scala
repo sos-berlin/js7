@@ -32,7 +32,8 @@ import scala.concurrent.duration._
   */
 final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute {
 
-  private implicit val timeout = RouteTestTimeout(10.seconds)
+  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
+
   protected implicit def scheduler = Scheduler.Implicits.global
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
   private val eventIdGenerator = new EventIdGenerator
