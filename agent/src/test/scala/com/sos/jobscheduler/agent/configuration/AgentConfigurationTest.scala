@@ -29,7 +29,7 @@ final class AgentConfigurationTest extends FreeSpec  {
         configDirectory = config,
         dataDirectory = data,
         webServerPorts = Nil,
-        workingDirectory = WorkingDirectory,
+        jobWorkingDirectory = WorkingDirectory,
         logDirectory = data / "logs",
         environment = Map(),
         jobJavaOptions = Nil,
@@ -59,6 +59,10 @@ final class AgentConfigurationTest extends FreeSpec  {
     assert(dummyDirectoriesConf().logDirectory == Paths.get("DATA/logs").toAbsolutePath)
     assert(dummyDirectoriesConf("-log-directory=LOGS").logDirectory == Paths.get("LOGS").toAbsolutePath)
     assert(dummyDirectoriesConf("-log-directory=test").logDirectory == Paths.get("test").toAbsolutePath)
+  }
+
+  "-job-working-directory=" in {
+    assert(dummyDirectoriesConf("-job-working-directory=DIR").jobWorkingDirectory == Paths.get("DIR").toAbsolutePath)
   }
 
   "-kill-script= is missing (default)" in {

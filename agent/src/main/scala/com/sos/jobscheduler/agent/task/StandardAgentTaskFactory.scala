@@ -49,7 +49,7 @@ extends AgentTaskFactory {
     val arguments = TaskServerArguments(
       agentTaskId,
       jobPath = command.jobPath,
-      workingDirectory = agentConfiguration.workingDirectory,
+      workingDirectory = agentConfiguration.jobWorkingDirectory,
       logDirectory = agentConfiguration.logDirectory,
       dotnet = agentConfiguration.dotnet,
       environment = agentConfiguration.environment,

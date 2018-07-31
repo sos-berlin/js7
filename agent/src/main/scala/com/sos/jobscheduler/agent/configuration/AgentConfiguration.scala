@@ -34,7 +34,7 @@ final case class AgentConfiguration(
   configDirectory: Path,
   dataDirectory: Path,
   webServerPorts: Seq[WebServerPort],
-  workingDirectory: Path = WorkingDirectory,
+  jobWorkingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
   environment: Map[String, String],
   jobJavaOptions: Seq[String],
@@ -48,7 +48,7 @@ final case class AgentConfiguration(
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 extends CommonConfiguration
 {
-  require(workingDirectory.isAbsolute)
+  require(jobWorkingDirectory.isAbsolute)
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
@@ -56,8 +56,9 @@ extends CommonConfiguration
       webServerPorts = common.webServerPorts,
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
-      jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
-      rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration))
+      jobJavaOptions = a.optionAs[String]("-job-java-options=").fold(jobJavaOptions) { _ :: Nil },
+      rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration),
+      jobWorkingDirectory = a.as("-job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
     v = v withKillScript a.optionAs[String]("-kill-script=")
     for (o ← a.optionAs("-dotnet-class-directory=")(asAbsolutePath)) {
       v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o)))

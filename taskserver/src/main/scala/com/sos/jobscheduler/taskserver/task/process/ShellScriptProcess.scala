@@ -60,6 +60,7 @@ object ShellScriptProcess {
     (implicit executionContext: ExecutionContext): ShellScriptProcess =
   {
     val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, processConfiguration.idArgumentOption.toList).asJava)
+    for (o ← processConfiguration.workingDirectory) processBuilder.directory(o)
     processBuilder.environment.putAll(processConfiguration.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
     import stdChannels.{charBufferSize, stderrWriter, stdoutWriter}

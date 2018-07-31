@@ -14,6 +14,7 @@ import scala.collection.immutable.Seq
 final case class ProcessConfiguration(
   stdFileMap: Map[StdoutOrStderr, Path] = Map(),
   encoding: Charset = Encoding,
+  workingDirectory: Option[Path] = None,
   additionalEnvironment: Map[String, String] = Map(),
   agentTaskIdOption: Option[AgentTaskId] = None,
   killScriptOption: Option[ProcessKillScript] = None)
