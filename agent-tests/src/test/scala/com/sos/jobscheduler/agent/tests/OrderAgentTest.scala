@@ -19,6 +19,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
@@ -75,8 +76,8 @@ final class OrderAgentTest extends FreeSpec {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
-      (jobDir / "a.job.json").contentString = AJobConfiguration.asJson.toPrettyString
-      (jobDir / "b.job.json").contentString = BJobConfiguration.asJson.toPrettyString
+      (jobDir / "A.job.json").contentString = AJobConfiguration.asJson.toPrettyString
+      (jobDir / "B.job.json").contentString = BJobConfiguration.asJson.toPrettyString
       val agentConf = AgentConfiguration.forTest(directory)
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒
@@ -87,7 +88,8 @@ final class OrderAgentTest extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
+            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
+              Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.executeCommand(Batch(orders map { AttachOrder(_, SimpleTestWorkflow) })) await 99.s
