@@ -2,6 +2,8 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
+import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
@@ -9,6 +11,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -37,10 +40,21 @@ extends FileBased
     numberedInstructions.flatMap { case (nr, Labeled(labels, _)) ⇒ labels map (_ → nr) }
       .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  labeledInstructions foreach {
-    case _ @: (jump: JumpInstruction) ⇒
-      _labelToNumber.getOrElse(jump.to, throw new IllegalArgumentException(s"Unknown label '${jump.to}'"))
-    case _ ⇒
+  private def checked: Checked[Workflow] = {
+    val problems = instructions collect {
+      case jump: JumpInstruction if !_labelToNumber.contains(jump.to) ⇒
+        Problem.fromEager(s"Unknown label '${jump.to}'")
+
+      case job: Job if job.jobPath == JobPath.Anonymous ⇒
+        Problem.fromEager("Anonymous Job in Workflow?")
+
+      case job: Job if job.agentPath == AgentPath.Anonymous ⇒
+        Problem.fromEager("Anonymous Agent in Workflow?")
+    }
+    if (problems.nonEmpty)
+      Invalid(Problem.Multiple(problems))
+    else
+      Valid(this)
   }
 
   def firstExecutablePosition = Position(0)
@@ -179,10 +193,14 @@ object Workflow extends FileBased.Companion[Workflow] {
   private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty") % VersionId.Anonymous, Vector.empty)
 
   def apply(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Workflow =
+    checked(id, labeledInstructions, source).orThrow
+
+  def checked(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Checked[Workflow] =
     new Workflow(
       id,
       labeledInstructions = labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd),
       source)
+    .checked
 
   def of(instructions: Instruction.Labeled*): Workflow =
     if (instructions.isEmpty)
@@ -210,5 +228,6 @@ object Workflow extends FileBased.Companion[Workflow] {
       id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.NoId)
       instructions ← cursor.get[IndexedSeq[Labeled]]("instructions")
       source ← cursor.get[Option[String]]("source")
-    } yield Workflow(id, instructions, source)
+      workflow ← Workflow.checked(id, instructions, source).toDecoderResult
+    } yield workflow
 }

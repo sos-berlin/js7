@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.workflow
 
+import cats.data.Validated.Invalid
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
@@ -10,6 +12,7 @@ import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, G
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
+import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -116,6 +119,19 @@ final class WorkflowTest extends FreeSpec {
     intercept[RuntimeException] {
       Workflow.of(IfNonZeroReturnCodeGoto(Label("A")))
     }
+  }
+
+  "Anonymous Job is rejected" in {
+    assert(Workflow.checked(WorkflowPath.NoId, Vector(Job(JobPath.Anonymous, TestAgentPath))) ==
+      Invalid(Problem("Anonymous Job in Workflow?")))
+    intercept[ProblemException] {
+      Workflow.of(Job(JobPath.Anonymous, TestAgentPath))
+    } .getMessage shouldEqual "Anonymous Job in Workflow?"
+  }
+
+  "Anonymous Agent is rejected" in {
+    assert(Workflow.checked(WorkflowPath.NoId, Vector(Job(JobPath("/JOB"), AgentPath.Anonymous))) ==
+      Invalid(Problem("Anonymous Agent in Workflow?")))
   }
 
   "jobOption" in {
