@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
@@ -112,6 +113,7 @@ final class OrderFatEventTest extends FreeSpec {
     testJson[OrderFatEvent](
       OrderProcessingStartedFat(
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
+        AgentPath("/AGENT"),
         "https://agent-1",
         JobPath("/JOB"),
         Map("KEY" → "VALUE")),
@@ -124,6 +126,7 @@ final class OrderFatEventTest extends FreeSpec {
           },
           "position": [ 0 ]
         },
+        "agentPath": "/AGENT",
         "agentUri": "https://agent-1",
         "jobPath": "/JOB",
         "variables": {

@@ -97,32 +97,34 @@ final class HistoryTest extends FreeSpec
 
             }
           }
+          val aAgentUri = runningAgents(0).localUri.toString
+          val bAgentUri = runningAgents(1).localUri.toString
           assert(fatEvents.toSet == Set(
             NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault),
             OrderId("🔺") <-: OrderAddedFat(TestWorkflowId,None,Map("VARIABLE" → "VALUE")),
             AAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
             BAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
-            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, runningAgents(0).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentPath, aAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderForkedFat(
               TestWorkflowId /: Position(1),Vector(
                 OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("VARIABLE" → "VALUE")),
                 OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("VARIABLE" → "VALUE")))),
-            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 0), runningAgents(0).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 0), runningAgents(0).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 0), AAgentPath, aAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 0), AAgentPath, aAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
             OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 1), runningAgents(0).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 1), runningAgents(1).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 1), AAgentPath, aAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 1), BAgentPath, bAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
             OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Map("VARIABLE" → "VALUE"), Succeeded(ReturnCode(0))),
-            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), runningAgents(0).localUri.toString, TestJobPath, Map("VARIABLE" → "VALUE")),
+            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentPath, aAgentUri, TestJobPath, Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
             OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
