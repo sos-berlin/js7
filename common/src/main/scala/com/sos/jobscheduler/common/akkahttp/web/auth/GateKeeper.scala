@@ -107,7 +107,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
   def boundMessage(binding: WebServerBinding): String =
-    s"Access via ${binding.scheme}:// is bound to ${binding.address.getAddress.getHostAddress}:${binding.address.getPort}" +
+    s"Bound ${binding.scheme}://${binding.address.getAddress.getHostAddress}:${binding.address.getPort}" +
       (if (binding.mutual) ", client certificate is required" else "") +
       secureStateString
 
@@ -115,9 +115,9 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
     if (configuraton.isPublic)
       " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (is-public = true)"
     else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
-      " - ACCESS VIA LOOPBACK INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
+      " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
     else if (configuraton.loopbackIsPublic)
-      " - LOOPBACK ACCESS IS PUBLIC (loopback-is-public = true)"
+      " - ACCESS OVER LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
     else if (configuraton.getIsPublic)
       " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
     else
