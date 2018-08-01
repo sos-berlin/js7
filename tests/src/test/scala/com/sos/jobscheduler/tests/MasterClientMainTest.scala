@@ -51,6 +51,8 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "main with Master URI only checks wether Master is responding (it is not)" in {
     val port = findRandomFreeTcpPort()
+    // In case the port is now opened by a foreign application, the test will fail with for example
+    // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1: Connection was shutdown.
     val output = mutable.Buffer[String]()
     assertResult(1) {
       MasterClientMain.run(
