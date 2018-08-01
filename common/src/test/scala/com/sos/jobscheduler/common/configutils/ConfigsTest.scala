@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.common.configutils
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.configutils.ConfigsTest._
 import com.typesafe.config.{ConfigException, ConfigFactory}
@@ -42,6 +44,11 @@ final class ConfigsTest extends FreeSpec {
       assert(TestConfig.getBoolean(k) == v)
       assert(TestConfig.as[Boolean](k) == v)
     }
+  }
+
+  "forExistingPath" in {
+    assert(TestConfig.forExistingPath("string") (path ⇒ Valid(TestConfig.getString(path))) == Valid("STRING"))
+    assert(TestConfig.forExistingPath("MISSING") (path ⇒ Valid(TestConfig.getString(path))) == Invalid(Problem(s"Missing configuration key 'MISSING'")))
   }
 }
 

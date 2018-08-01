@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.common.configutils
 
+import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.ClassLoaders.currentClassLoader
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -37,23 +39,34 @@ object Configs {
     ConfigFactory.load(resource.path, Required.setClassLoader(currentClassLoader), ConfigResolveOptions.defaults)
   }
 
-  implicit final class ConvertibleConfig(private val delegate: Config) extends ConvertiblePartialFunction[String, String] {
-    def isDefinedAt(path: String) = delegate.hasPath(path)
+  implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]
+  {
+    def apply(path: String): String =
+      underlying.getString(path)
 
-    def apply(path: String): String = delegate.getString(path)
+    def isDefinedAt(path: String) =
+      underlying.hasPath(path)
+  }
 
+  implicit final class RichConfig(private val underlying: Config) extends AnyVal
+  {
     def seqAs[W](path: String, default: ⇒ Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
-      if (delegate.hasPath(path)) seqAs(path)(convert) else default.toVector
+      if (underlying.hasPath(path)) seqAs(path)(convert) else default.toVector
 
     def seqAs[W](path: String)(implicit convert: As[String, W]): IndexedSeq[W] =
       stringSeq(path) map wrappedConvert(convert.apply, path)
 
     def stringSeq(path: String, default: ⇒ Iterable[String]): IndexedSeq[String] =
-      if (delegate.hasPath(path)) stringSeq(path) else default.toVector
+      if (underlying.hasPath(path)) stringSeq(path) else default.toVector
 
     def stringSeq(path: String): IndexedSeq[String] =
-      delegate.getStringList(path).asScala.toVector
+      underlying.getStringList(path).asScala.toVector
+    def durationOption(path: String): Option[Duration] = underlying.hasPath(path) option underlying.getDuration(path)
 
-    def durationOption(path: String): Option[Duration] = delegate.hasPath(path) option delegate.getDuration(path)
+    def forExistingPath[A](path: String)(f: String ⇒ Checked[A]): Checked[A] =
+      if (!underlying.hasPath(path))
+        Invalid(Problem(s"Missing configuration key '$path'"))
+      else
+        f(path)
   }
 }
