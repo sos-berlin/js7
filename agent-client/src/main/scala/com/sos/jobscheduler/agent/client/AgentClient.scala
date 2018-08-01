@@ -9,12 +9,13 @@ import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskR
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
 import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
-import scala.collection.immutable
 import scala.collection.immutable.Seq
 
 /**
@@ -28,9 +29,10 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
   protected def httpClient = this
 
   protected def keyStoreRef: Option[KeyStoreRef]
+  protected def trustStoreRef: Option[TrustStoreRef]
 
   override protected lazy val httpsConnectionContextOption =
-    keyStoreRef map Https.loadHttpsConnectionContext
+    (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
 
   protected lazy val sessionUri = agentUris.session.toString()
   protected lazy val agentUris = AgentUris(baseUri.toString)
@@ -45,7 +47,7 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
   object task {
     final def overview: Task[TaskRegisterOverview] = get[TaskRegisterOverview](agentUris.task.overview)
 
-    final def tasks: Task[immutable.Seq[TaskOverview]] = get[immutable.Seq[TaskOverview]](agentUris.task.tasks)
+    final def tasks: Task[Seq[TaskOverview]] = get[Seq[TaskOverview]](agentUris.task.tasks)
 
     final def apply(id: AgentTaskId): Task[TaskOverview] = get[TaskOverview](agentUris.task(id))
   }
@@ -75,12 +77,13 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 object AgentClient {
   val ErrorMessageLengthMaximum = 10000
 
-  def apply(agentUri: Uri, keyStoreRef: Option[KeyStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient =
-    new Standard(actorSystem, agentUri, keyStoreRef)
+  def apply(agentUri: Uri, keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient =
+    new Standard(actorSystem, agentUri, keyStoreRef, trustStoreRef)
 
   private class Standard(
     protected val actorSystem: ActorSystem,
     val baseUri: Uri,
-    protected val keyStoreRef: Option[KeyStoreRef] = None)
+    protected val keyStoreRef: Option[KeyStoreRef],
+    protected val trustStoreRef: Option[TrustStoreRef])
   extends AgentClient
 }

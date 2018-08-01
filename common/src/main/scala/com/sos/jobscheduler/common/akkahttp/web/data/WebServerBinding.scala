@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.akkahttp.web.data
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.immutable.Seq
 
@@ -34,7 +34,7 @@ object WebServerBinding {
     override def toString = "http"
   }
 
-  final case class Https(address: InetSocketAddress, keyStoreRef: KeyStoreRef, mutual: Boolean)
+  final case class Https(address: InetSocketAddress, keyStoreRef: KeyStoreRef, trustStoreRef: Option[TrustStoreRef] = None,  mutual: Boolean)
   extends WebServerBinding {
     def scheme = Https
     def toWebServerPort = WebServerPort.Https(address, mutual)
@@ -63,7 +63,7 @@ object WebServerBinding {
         case WebServerBinding.Http ⇒ "127.0.0.1"
         case WebServerBinding.Https ⇒
           assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
-          "localhost"
+          "localhost"  // To match TLS host name verification
       }
       val host = address.getAddress.getHostAddress match {
         case "0.0.0.0" | "127.0.0.1" ⇒ localhost

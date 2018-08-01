@@ -17,7 +17,6 @@ import scala.concurrent.duration._
 final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 {
   override protected def agentHttpsMutual = true
-
   override protected def provideAgentClientCertificate = false
 
   "Login" in {

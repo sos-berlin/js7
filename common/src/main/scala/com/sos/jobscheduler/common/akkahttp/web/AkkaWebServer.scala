@@ -54,7 +54,8 @@ trait AkkaWebServer extends AutoCloseable {
     logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for ${https.toWebServerPort}")
     bind(
       https,
-      ConnectionContext.https(loadSSLContext(https.keyStoreRef),
+      ConnectionContext.https(
+        loadSSLContext(Some(https.keyStoreRef), https.trustStoreRef),
         clientAuth = https.mutual ? TLSClientAuth.Need))
   }
 

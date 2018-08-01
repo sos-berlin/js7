@@ -18,7 +18,6 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
-import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 
 /**
@@ -57,7 +56,10 @@ trait AgentProxyRoute extends MasterRouteProvider
   }
 
   private def forwardTo(agentUri: Uri, forwardUri: Uri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
-    val agentClient = AgentClient(agentUri, masterConfiguration.keyStoreRef.toOption)  // TODO Reuse AgentClient of AgentDriver
+    val agentClient = AgentClient(  // TODO Reuse AgentClient of AgentDriver
+      agentUri,
+      masterConfiguration.keyStoreRefOption,
+      masterConfiguration.trustStoreRefOption)
     agentClient.sendReceive(
       HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
         .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))

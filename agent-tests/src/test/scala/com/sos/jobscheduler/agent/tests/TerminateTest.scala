@@ -83,7 +83,9 @@ object TerminateTest {
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
-      (agentDirectory / "config" / "private" / "private.conf").contentString = """ jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
+      (agentDirectory / "config" / "private" / "private.conf").contentString = """
+          |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+          |""".stripMargin
       (agentDirectory / "config" / "live" resolve AJob.jobPath.toFile(SourceType.Json)).contentString =
         JobConfiguration(
           JobPath.NoId,

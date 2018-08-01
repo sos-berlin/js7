@@ -147,7 +147,7 @@ object AgentConfiguration {
       journalSyncOnCommit = config.getBoolean("jobscheduler.journal.sync"),
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
-    //for (o ← config.optionAs("jobscheduler.webserver.https.port")(StringToServerInetSocketAddress)) {
+    //for (o ← config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {
     //  v = v addHttps o
     //}
     v

@@ -52,7 +52,7 @@ with ActorReceiveLogging.WithStash {
   private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
   private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
   private val reconnectPause = new ReconnectPause
-  private val client = AgentClient(uri, masterConfiguration.keyStoreRef.toOption)(context.system)
+  private val client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
   private val agentUserAndPassword: Checked[UserAndPassword] =
     config.optionAs[SecretString](authConfigPath)

@@ -5,10 +5,12 @@ import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.internet.IP.StringToServerInetSocketAddress
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.configuration.CommonConfiguration._
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import java.nio.file.Path
@@ -28,6 +30,15 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
   final lazy val keyStoreRef: Checked[KeyStoreRef] =
     KeyStoreRef.fromConfig(config, default = configDirectory resolve "private/https-keystore.p12")
 
+  final lazy val keyStoreRefOption: Option[KeyStoreRef] =
+    keyStoreRef onProblem (p ⇒ logger.debug(s"No keystore: $p"))
+
+  final lazy val trustStoreRef: Checked[TrustStoreRef] =
+    TrustStoreRef.fromConfig(config, default = configDirectory resolve "private/https-truststore.p12")
+
+  final lazy val trustStoreRefOption: Option[TrustStoreRef] =
+    trustStoreRef onProblem (p ⇒ logger.debug(s"No truststore: $p"))
+
   final def http: Seq[WebServerBinding.Http] =
     webServerBindings collect { case o: WebServerBinding.Http ⇒ o }
 
@@ -40,13 +51,17 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
         WebServerBinding.Http(port)
 
       case WebServerPort.Https(port, mutual) ⇒
-        WebServerBinding.Https(port, keyStoreRef.mapProblem(Problem("HTTPS requires a key store") |+| _).orThrow,
+        WebServerBinding.Https(port,
+          keyStoreRef.mapProblem(Problem("HTTPS requires a key store") |+| _).orThrow,
+          trustStoreRefOption,
           mutual = mutual)
     }
 }
 
 object CommonConfiguration
 {
+  private val logger = Logger(getClass)
+
   private val AddressAndMutual: As[String, (InetSocketAddress, Boolean)] =
     string ⇒ (StringToServerInetSocketAddress.apply(string stripSuffix ",mutual"), string endsWith ",mutual")
 

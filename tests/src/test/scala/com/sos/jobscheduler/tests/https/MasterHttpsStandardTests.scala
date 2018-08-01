@@ -15,7 +15,7 @@ import monix.execution.Scheduler.Implicits._
 /**
   * @author Joacim Zschimmer
   */
-private[https] trait HttpsStandardTests extends HttpsTestBase
+private[https] trait MasterHttpsStandardTests extends HttpsTestBase
 {
   "overview" in {
     val overview = masterApi.overview await 99.s

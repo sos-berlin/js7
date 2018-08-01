@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.master.client
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.common.akkahttp.https.{Https, KeyStoreRef}
+import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.parseConfigIfExists
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
@@ -38,9 +37,11 @@ extends HasCloser with ProvideActorSystem with TextApi with SessionApi with Akka
   protected def apiUri(tail: String) = masterUris.api(tail)
 
   protected override lazy val httpsConnectionContextOption =
-    for (configDir ← configDirectory) yield
-      Https.loadHttpsConnectionContext(
-        KeyStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").orThrow)
+    for {
+      configDir ← configDirectory
+      trustStoreRef ← TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").toOption
+    } yield
+      AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(trustStoreRef))
 
   closer.onClose { super.close() }
 

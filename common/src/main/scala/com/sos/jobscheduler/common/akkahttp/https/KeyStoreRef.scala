@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.common.akkahttp.https
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.typesafe.config.Config
 import java.net.URL
@@ -17,7 +18,8 @@ final case class KeyStoreRef(
   /** Password for file */
   storePassword: SecretString,
   /** PKCS#12 key password */
-  keyPassword: Option[SecretString] = None)
+  keyPassword: SecretString)
+extends StoreRef
 {
   override def toString = s"KeyStore $url"
 }
@@ -25,9 +27,10 @@ final case class KeyStoreRef(
 object KeyStoreRef
 {
   def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
-    for (storePassword ← Checked.catchNonFatal(config.as[SecretString]("jobscheduler.webserver.https.keystore.store-password"))) yield
-      KeyStoreRef(
-        url = config.as[Path]("jobscheduler.webserver.https.keystore.file", default).toAbsolutePath.toURI.toURL,
-        storePassword = storePassword,
-        keyPassword = config.optionAs[SecretString]("jobscheduler.webserver.https.keystore.key-password"))
+    config.forExistingPath("jobscheduler.https.keystore.store-password")(path ⇒
+      Valid(
+        KeyStoreRef(
+          url = config.as[Path]("jobscheduler.https.keystore.file", default).toAbsolutePath.toURI.toURL,
+          storePassword = config.as[SecretString](path),
+          keyPassword = config.as[SecretString]("jobscheduler.https.keystore.key-password"))))
 }

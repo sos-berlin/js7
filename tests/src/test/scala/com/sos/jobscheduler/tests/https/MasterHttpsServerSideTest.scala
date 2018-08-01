@@ -5,4 +5,4 @@ package com.sos.jobscheduler.tests.https
   *
   * @author Joacim Zschimmer
   */
-final class HttpsServerSideTest extends HttpsStandardTests
+final class MasterHttpsServerSideTest extends MasterHttpsStandardTests

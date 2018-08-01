@@ -1,17 +1,15 @@
 package com.sos.jobscheduler.common.akkahttp.https
 
-import akka.http.scaladsl.{ConnectionContext, HttpsConnectionContext}
-import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Logger
 import java.net.URL
 import java.security.cert.{Certificate, X509Certificate}
 import java.security.{KeyStore, SecureRandom}
-import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManager, TrustManagerFactory}
 import scala.collection.JavaConverters._
 
 /**
-  * Provides TLS encryption to Spray HTTP.
+  * Provides HTTPS keystore and truststore..
   * <p>
   * Another way to use an own keystore may be via Java system properties:
   * <ul>
@@ -27,49 +25,45 @@ import scala.collection.JavaConverters._
 object Https
 {
   private val logger = Logger(getClass)
-  private lazy val KeyManagerAlgorithm = "SunX509"  // Or use default provided by Java ??? {
+  //private lazy val KeyManagerAlgorithm = {
   //  val r = KeyManagerFactory.getDefaultAlgorithm
   //  logger.debug(s"KeyManagerFactory.getDefaultAlgorithm=$r")
   //  r
   //}
-
-  private lazy val TrustManagerAlgorithm = "SunX509" // Or use default provided by Java ??? {
+  //private lazy val TrustManagerAlgorithm = {
   //  val r = TrustManagerFactory.getDefaultAlgorithm
   //  logger.debug(s"TrustManagerFactory.getDefaultAlgorithm=$r")
   //  r
   //}
 
-  def loadHttpsConnectionContext(keyStoreRef: KeyStoreRef): HttpsConnectionContext =
-    ConnectionContext.https(loadSSLContext(keyStoreRef))
-
-  def loadSSLContext(keyStoreRef: KeyStoreRef): SSLContext =
-    toSSLContext(loadKeyStore(keyStoreRef), keyStoreRef.keyPassword)
-
-  private def toSSLContext(keyStore: KeyStore, keyPassword: Option[SecretString]): SSLContext = {
-    val keyManagers = keyPassword match {
-      case Some(password) ⇒
-        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerAlgorithm)
-        keyManagerFactory.init(keyStore, password.string.toCharArray)
-        keyManagerFactory.getKeyManagers
-      case _ ⇒
-        Array.empty[KeyManager]
+  def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None): SSLContext = {
+    val keyManagers = keyStoreRef match {
+      case None ⇒ Array.empty[KeyManager]
+      case Some(ref) ⇒
+        val keyStore = loadKeyStore(ref)
+        val factory = KeyManagerFactory.getInstance("SunX509")
+        factory.init(keyStore, ref.keyPassword.string.toCharArray)
+        factory.getKeyManagers
     }
-
-    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerAlgorithm)
-    trustManagerFactory.init(keyStore)
-
+    val trustManagers = trustStoreRef match {
+      case None ⇒ Array.empty[TrustManager]
+      case Some(ref) ⇒
+        val keyStore = loadKeyStore(ref)
+        val factory = TrustManagerFactory.getInstance("SunX509")
+        factory.init(keyStore)
+        factory.getTrustManagers
+    }
     val sslContext = SSLContext.getInstance("TLS")
-    val trustManagers = trustManagerFactory.getTrustManagers
     sslContext.init(keyManagers, trustManagers, new SecureRandom)
     sslContext
   }
 
-  private def loadKeyStore(keyStoreRef: KeyStoreRef): KeyStore = {
+  private def loadKeyStore(storeRef: StoreRef): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
-    autoClosing(keyStoreRef.url.openStream()) { inputStream ⇒
-      keyStore.load(inputStream, keyStoreRef.storePassword.string.toCharArray)
+    autoClosing(storeRef.url.openStream()) { inputStream ⇒
+      keyStore.load(inputStream, storeRef.storePassword.string.toCharArray)
     }
-    log(keyStoreRef.url, keyStore)
+    log(storeRef.url, keyStore)
     keyStore
   }
 

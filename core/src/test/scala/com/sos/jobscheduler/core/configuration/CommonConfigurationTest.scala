@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.configuration
 
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -45,15 +45,21 @@ final class CommonConfigurationTest extends FreeSpec
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("STORE-PASSWORD"),
-        keyPassword = Some(SecretString("KEY-PASSWORD"))),
+        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
+        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
+      Some(TrustStoreRef(
+        url = (config / "private/https-truststore.p12").toUri.toURL,
+        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
         mutual = false)))
     assert(conf("-https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("STORE-PASSWORD"),
-        keyPassword = Some(SecretString("KEY-PASSWORD"))),
+        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
+        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
+      Some(TrustStoreRef(
+        url = (config / "private/https-truststore.p12").toUri.toURL,
+        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
         mutual = false)))
   }
 
@@ -63,15 +69,21 @@ final class CommonConfigurationTest extends FreeSpec
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("STORE-PASSWORD"),
-        keyPassword = Some(SecretString("KEY-PASSWORD"))),
+        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
+        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
+      Some(TrustStoreRef(
+        url = (config / "private/https-truststore.p12").toUri.toURL,
+        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
         mutual = true)))
     assert(conf("-https-port=11.22.33.44:1234,mutual").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
         url = (config / "private/https-keystore.p12").toUri.toURL,
-        storePassword = SecretString("STORE-PASSWORD"),
-        keyPassword = Some(SecretString("KEY-PASSWORD"))),
+        storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
+        keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
+      Some(TrustStoreRef(
+        url = (config / "private/https-truststore.p12").toUri.toURL,
+        storePassword = SecretString("TRUSTSTORE-PASSWORD"))),
         mutual = true)))
   }
 }
@@ -88,9 +100,13 @@ private object CommonConfigurationTest {
       dataDirectory = common.dataDirectory,
       webServerPorts = common.webServerPorts,
       ConfigFactory.parseString(
-        """jobscheduler.webserver.https.keystore {
-          |  key-password = "KEY-PASSWORD"
-          |  store-password = "STORE-PASSWORD"
-          |}""".stripMargin))
+        """jobscheduler.https.keystore {
+          |  store-password = "KEYSTORE-STORE-PASSWORD"
+          |  key-password = "KEYSTORE-KEY-PASSWORD"
+          |}
+          |jobscheduler.https.truststore {
+          |  store-password = "TRUSTSTORE-PASSWORD"
+          |}
+          |""".stripMargin))
   }
 }

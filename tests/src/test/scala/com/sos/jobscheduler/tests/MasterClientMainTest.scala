@@ -18,7 +18,6 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
   private val httpsPort = findRandomFreeTcpPort()
   override protected lazy val masterHttpPort = None
   override protected lazy val masterHttpsPort = Some(httpsPort)
-  override protected def masterHttpsMutual = true  // TODO Client uses Masters certificate as its own. But Master should not trust its own certificate (Master should not be its own client).
 
   override def beforeAll() = {
     directoryProvider.master.provideHttpsCertificate()

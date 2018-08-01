@@ -706,14 +706,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 object MasterWebServiceTest
 {
   private def writeMasterConfiguration(master: DirectoryProvider.Tree): Unit = {
-    (master.config / "master.conf").contentString =
-      """jobscheduler.webserver.test = true
-        |""".stripMargin
-    (master.config / "private" / "private.conf").append(
-      """jobscheduler.auth.users {
-        |  TEST-USER: "plain:TEST-PASSWORD"
-        |}
-        |""".stripMargin)
+    (master.config / "master.conf").contentString = """
+      |jobscheduler.webserver.test = true
+      |""".stripMargin
+    (master.config / "private" / "private.conf").append("""
+      |jobscheduler.auth.users {
+      |  TEST-USER: "plain:TEST-PASSWORD"
+      |}
+      |""".stripMargin)
     master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
     master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/B" on "/AGENT"; job "/MISSING" on "/AGENT";""")
   }

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.common.akkahttp.https.KeyStoreRef
+import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -13,7 +13,10 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
  *
  * @author Joacim Zschimmer
  */
-final class SimpleAgentClient(val baseUri: Uri, protected val keyStoreRef: Option[KeyStoreRef] = None)
+final class SimpleAgentClient(
+  val baseUri: Uri,
+  protected val keyStoreRef: Option[KeyStoreRef] = None,
+  protected val trustStoreRef: Option[TrustStoreRef] = None)
 extends HasCloser with AgentClient {
 
   protected val actorSystem = newActorSystem("SimpleAgentClient") withCloser (_.terminate())

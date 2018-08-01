@@ -49,6 +49,7 @@ final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
+  provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
   masterClientCertificate: Option[JavaResource] = None)
@@ -61,33 +62,34 @@ extends HasCloser {
     agentPaths.map { o ⇒ o →
       new AgentTree(directory, o, https = agentHttps,
         mutualHttps = agentHttpsMutual,
+        provideHttpsCertificate = provideAgentHttpsCertificate,
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
 
   closeOnError(this) {
-    master.createDirectories()
+    master.createDirectoriesAndFiles()
     for (a ← agents) {
-      a.createDirectories()
-      (a.config / "private" / "private.conf").append(
-        s"""jobscheduler.auth.users {
-           |  Master = ${quoteString("plain:" + a.password.string)}
-           |}
-           |jobscheduler.webserver.https.keystore {
-           |  store-password = "jobscheduler"
-           |  key-password = "jobscheduler"
-           |}
-         """.stripMargin)
+      a.createDirectoriesAndFiles()
+      (a.config / "private" / "private.conf").append(s"""
+         |jobscheduler.auth.users {
+         |  Master = ${quoteString("plain:" + a.password.string)}
+         |}
+         |jobscheduler.https.keystore {
+         |  store-password = "jobscheduler"
+         |  key-password = "jobscheduler"
+         |}
+         |""".stripMargin)
     }
     (master.config / "private" / "private.conf").append(
       agentPaths.map(a ⇒
         "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
       ).mkString +
-      s"""jobscheduler.webserver.https.keystore {
+      s"""jobscheduler.https.keystore {
          |  store-password = "jobscheduler"
          |  key-password = "jobscheduler"
          |}
-         """.stripMargin)
+         |""".stripMargin)
     for (a ← agents) {
       val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
       Files.createDirectories(file.getParent)
@@ -136,7 +138,8 @@ object DirectoryProvider
     protected def agentHttps = false
 
     protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
-      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual, provideAgentClientCertificate = provideAgentClientCertificate,
+      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
+      provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
       masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate)
 
     protected def agentConfig: Config = ConfigFactory.empty
@@ -148,6 +151,7 @@ object DirectoryProvider
     protected lazy val masterHttpsPort: Option[Int] = None
     protected def agentHttpsMutual = false
     protected def masterHttpsMutual = false
+    protected def provideAgentHttpsCertificate = false
     protected def provideAgentClientCertificate = false
     protected def masterClientCertificate: Option[JavaResource] = None
     protected def masterConfig: Config = ConfigFactory.empty
@@ -188,7 +192,7 @@ object DirectoryProvider
     }
     lazy val data = directory / "data"
 
-    private[DirectoryProvider] def createDirectories(): Unit = {
+    private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       Files.createDirectories(fileBasedDirectory)
       Files.createDirectory(config / "private")
       Files.createDirectory(data)
@@ -210,15 +214,23 @@ object DirectoryProvider
 
   final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
     def provideHttpsCertificate(): Unit = {
-      val keyStore = config / "private/https-keystore.p12"
-      keyStore.contentBytes = MasterKeyStoreResource.contentBytes
-      importKeyStore(keyStore, AgentTrustStoreResource)
-      for (o ← clientCertificate) importKeyStore(keyStore, o)
+      // Keystore
+      (config / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
+
+      // Truststore
+      (config / "private/private.conf").append("""
+        |jobscheduler.https.truststore {
+        |  store-password = "jobscheduler"
+        |}""".stripMargin)
+      val trustStore = config / "private/https-truststore.p12"
+      trustStore.contentBytes = AgentTrustStoreResource.contentBytes
+      for (o ← clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean, provideClientCertificate: Boolean)
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean,
+    provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
     val directory = rootDirectory / agentPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
@@ -229,13 +241,19 @@ object DirectoryProvider
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
 
-    def provideHttpsCertificate(): Unit = {
-      val keyStore = config / "private/https-keystore.p12"
-      keyStore.contentBytes = AgentKeyStoreResource.contentBytes
-      if (provideClientCertificate) {
-        importKeyStore(keyStore, MasterTrustStoreResource)
+    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
+      super.createDirectoriesAndFiles()
+      if (provideHttpsCertificate) {
+        (config / "private/https-keystore.p12").contentBytes = AgentKeyStoreResource.contentBytes
+        if (provideClientCertificate) {
+          (config / "private/private.conf").append("""
+            |jobscheduler.https.truststore {
+            |  store-password = "jobscheduler"
+            |}""".stripMargin)
+          (config / "private/https-truststore.p12").contentBytes = MasterTrustStoreResource.contentBytes
+        }
+        // KeyStore passwords has been provided by DirectoryProvider (must happen early)
       }
-      // KeyStore passwords has been provided by DirectoryProvider (must happen early)
     }
   }
 
@@ -266,15 +284,15 @@ object DirectoryProvider
 
   // Following resources have been generated with the command line:
   // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=master -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/master/config
-  private val MasterKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/private/https-keystore.p12")
-  val MasterTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
+  val MasterKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/master/config/private/https-keystore.p12")
+  val MasterTrustStoreResource       = JavaResource("com/sos/jobscheduler/tests/master/config/export/https-truststore.p12")
 
   // Following resources have been generated with the command line:
   // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent -config-directory=tests/src/test/resources/com/sos/jobscheduler/tests/agent/config
-  private val AgentKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/private/https-keystore.p12")
+  private val AgentKeyStoreResource   = JavaResource("com/sos/jobscheduler/tests/agent/config/private/https-keystore.p12")
   private val AgentTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/export/https-truststore.p12")
 
-  private[tests] def importKeyStore(keyStore: Path, add: JavaResource): Unit =
+  private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
     FileUtils.withTemporaryFile("test-", ".p12") { file ⇒
       file.contentBytes = add.contentBytes
       importKeyStore(keyStore, file)

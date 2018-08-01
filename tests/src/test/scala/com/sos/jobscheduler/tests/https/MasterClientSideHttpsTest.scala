@@ -5,7 +5,7 @@ package com.sos.jobscheduler.tests.https
   *
   * @author Joacim Zschimmer
   */
-final class MasterClientSideHttpsTest extends HttpsStandardTests
+final class MasterClientSideHttpsTest extends MasterHttpsStandardTests
 {
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = true
