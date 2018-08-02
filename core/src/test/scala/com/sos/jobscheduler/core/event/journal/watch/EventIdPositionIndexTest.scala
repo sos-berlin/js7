@@ -96,12 +96,22 @@ final class EventIdPositionIndexTest extends FreeSpec {
   }
 
   "Overflow #3" in {
-    index.addAfter( 13,
-      1300)
+    index.addAfter( 13, 1300)
     assert(index.positionAndEventIds == Vector(
       PositionAnd( 100,  1),
       PositionAnd( 800,  8),
       PositionAnd(1100, 11),
       PositionAnd(1300, 13)))
+  }
+
+  "Many more overflows" in {
+    for (i ← 14 to 60) index.addAfter(i, i * 100)
+    assert(index.positionAndEventIds == Vector(
+      PositionAnd( 100,  1),
+      PositionAnd(5300, 53),
+      PositionAnd(5600, 56),
+      PositionAnd(5800, 58),
+      PositionAnd(5900, 59),
+      PositionAnd(6000, 60)))
   }
 }
