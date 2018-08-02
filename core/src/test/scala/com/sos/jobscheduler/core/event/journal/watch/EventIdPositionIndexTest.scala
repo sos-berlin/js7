@@ -114,4 +114,11 @@ final class EventIdPositionIndexTest extends FreeSpec {
       PositionAnd(5900, 59),
       PositionAnd(6000, 60)))
   }
+
+  "releaseUnusedMemory" in {
+    index.releaseUnusedMemory()
+    intercept[IllegalStateException] {
+      index.addAfter(99900, 999)
+    }
+  }
 }

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
+import com.sos.jobscheduler.core.event.journal.watch.EventIdPositionIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
@@ -11,10 +12,11 @@ import scala.collection.immutable.Seq
   */
 private[watch] final class EventIdPositionIndex(size: Int)
 {
-  private val positions = new Array[Long]((size + 1) / 2 * 2)
-  private val eventIds = new Array[Long](positions.length)
+  private var positions = new Array[Long]((size + 1) / 2 * 2)
+  private var eventIds = new Array[Long](positions.length)
   private var length = 0
   private var _highestEventId = EventId.BeforeFirst - 1
+  private var unusedMemoryReleased = false
 
   require(positions.nonEmpty)
 
@@ -25,6 +27,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
   def tryAddAfter(eventId: EventId, position: Long): Boolean =
     (eventId > _highestEventId) &&
       synchronized {
+        if (unusedMemoryReleased) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after releaseUnusedMemory?")  // Self-check
         (eventId > _highestEventId) && {
           _highestEventId = eventId
           if (length == positions.length) {
@@ -43,6 +46,16 @@ private[watch] final class EventIdPositionIndex(size: Int)
       eventIds(i) = eventIds(2 * i)
     }
     length = length / 2
+  }
+
+  def releaseUnusedMemory() = {
+    unusedMemoryReleased = true
+    if (length < positions.length) {
+      synchronized {
+        positions = shrinkArray(positions, length)
+        eventIds = shrinkArray(eventIds, length)
+      }
+    }
   }
 
   def positionAfter(eventId: EventId): Long =
@@ -65,4 +78,16 @@ private[watch] final class EventIdPositionIndex(size: Int)
     }
 
   def highestEvenId = _highestEventId
+}
+
+object EventIdPositionIndex
+{
+  private def shrinkArray(array: Array[Long], length: Int): Array[Long] =
+    if (length == array.length)
+      array
+    else {
+      val result = new Array[Long](length)
+      Array.copy(array, 0, result, 0, length)
+      result
+    }
 }
