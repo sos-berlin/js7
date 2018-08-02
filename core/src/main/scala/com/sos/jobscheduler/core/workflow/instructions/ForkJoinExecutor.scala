@@ -20,12 +20,11 @@ object ForkJoinExecutor extends EventInstructionExecutor
   private val logger = Logger(getClass)
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: ForkJoin): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.Ready].map { order ⇒
+    order.ifState[Order.Ready].map(order ⇒
       checkOrderForked(context,
         order.id <-: OrderForked(
           for (branch ← instruction.branches) yield
-            OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))
-    }
+            OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty))))
     .orElse(
       order.ifState[Order.Join].flatMap(order ⇒
         //orderEntry.instruction match {
