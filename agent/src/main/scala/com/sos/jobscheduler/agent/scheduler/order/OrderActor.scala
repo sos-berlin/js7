@@ -50,22 +50,22 @@ extends KeyedJournalingActor[OrderEvent] {
     assert(order != null, "No Order")
     order.state match {
       case _: Order.Idle ⇒
-        context.become(idle)
+        become("idle")(idle)
 
       case Order.InProcess ⇒
-        context.become(processed)
+        become("processed")(processed)
         val event = OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome)
         persist(event)(update)
 
       case _: Order.Processed ⇒
-        context.become(processed)
+        become("processed")(processed)
         // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
       case _: Order.Join ⇒
-        context.become(joining)
+        become("joining")(joining)
 
       case _: Order.Stopped ⇒
-        context.become(stopped)
+        become("stopped")(stopped)
 
       case _: Order.Awaiting | _: Order.Stopped | _: Order.Offered | Order.Finished ⇒
         sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
@@ -74,7 +74,7 @@ extends KeyedJournalingActor[OrderEvent] {
     sender() ! Output.RecoveryFinished(order)  // Sent via JournalRecoverer to AgentOrderKeeper
   }
 
-  def receive = journaling orElse {
+  def receive = {
     case Input.Recover(o) ⇒
       assert(order == null)
       order = o
@@ -82,17 +82,17 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.AddChild(o) ⇒
       assert(order == null)
       order = o
-      context.become(idle)
+      become("idle")(idle)
 
     case Input.AddPublished(o) ⇒
       assert(order == null)
       order = o
-      context.become(offered)
+      become("offered")(offered)
 
     case command: Command ⇒
       command match {
         case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), parent, payload)) ⇒
-          context.become(idle)
+          become("idle")(idle)
           persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
             sender() ! Completed
             update(event)
@@ -103,7 +103,7 @@ extends KeyedJournalingActor[OrderEvent] {
       }
   }
 
-  private val idle: Receive = journaling orElse {
+  private val idle: Receive = {
     case Command.Detach ⇒
       detach()
 
@@ -113,7 +113,7 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.StartProcessing(job, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
       val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
-      context.become(processing(job, jobActor,
+      become("processing")(processing(job, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
       persist(OrderProcessingStarted) { event ⇒
@@ -127,7 +127,7 @@ extends KeyedJournalingActor[OrderEvent] {
       }
 
     case Input.HandleEvent(event: OrderForked) ⇒
-      context.become(joining)
+      become("joining")(joining)
       persist(event)(update)
 
     case Input.HandleEvent(event: OrderOffered) ⇒
@@ -137,14 +137,14 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(OrderDetachable)(update)
 
     case Input.HandleEvent(event: OrderStopped) ⇒
-      context.become(stopped)
+      become("stopped")(stopped)
       persist(event)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
   }
 
-  private def stopped: Receive = journaling orElse {
+  private def stopped: Receive = {
     case Command.Detach ⇒
       detach()
 
@@ -155,37 +155,36 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
-  private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
-    journaling orElse {
-      case msg: Stdouterr ⇒
-        stdouterr.handle(msg)
+  private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive = {
+    case msg: Stdouterr ⇒
+      stdouterr.handle(msg)
 
-      case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
-        val event = moduleStepEnded match {
-          case TaskStepSucceeded(variablesDiff, returnCode) ⇒
-            job.toOrderProcessed(variablesDiff, returnCode)
+    case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
+      val event = moduleStepEnded match {
+        case TaskStepSucceeded(variablesDiff, returnCode) ⇒
+          job.toOrderProcessed(variablesDiff, returnCode)
 
-          case TaskStepFailed(disrupted) ⇒
-            OrderProcessed(MapDiff.empty, disrupted)
-        }
-        finishProcessing(event, job, stdoutStderrStatistics)
-        context.unwatch(jobActor)
+        case TaskStepFailed(disrupted) ⇒
+          OrderProcessed(MapDiff.empty, disrupted)
+      }
+      finishProcessing(event, job, stdoutStderrStatistics)
+      context.unwatch(jobActor)
 
-      case Terminated(`jobActor`) ⇒
-        val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
-        finishProcessing(OrderProcessed(MapDiff.empty, bad), job, stdoutStderrStatistics)
+    case Terminated(`jobActor`) ⇒
+      val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
+      finishProcessing(OrderProcessed(MapDiff.empty, bad), job, stdoutStderrStatistics)
 
-      case command: Command ⇒
-        executeOtherCommand(command)
+    case command: Command ⇒
+      executeOtherCommand(command)
 
-      case Input.Terminate ⇒
-        terminating = true
-    }
+    case Input.Terminate ⇒
+      terminating = true
+  }
 
   private def finishProcessing(event: OrderProcessed, job: Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     stdouterr.finish()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
-    context.become(processed)
+    become("processed")(processed)
     persist(event) { event ⇒
       update(event)
       if (terminating) {
@@ -194,13 +193,13 @@ extends KeyedJournalingActor[OrderEvent] {
     }
   }
 
-  private def processed: Receive = journaling orElse {
+  private def processed: Receive = {
     case Input.HandleEvent(event: OrderMoved) ⇒
-      context.become(idle)
+      become("idle")(idle)
       persist(event)(update)
 
     case Input.HandleEvent(event: OrderStopped) ⇒
-      context.become(stopped)
+      become("stopped")(stopped)
       persist(event)(update)
 
     case Input.HandleEvent(OrderDetachable) ⇒
@@ -216,30 +215,28 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
   }
 
-  private def joining: Receive =
-    journaling orElse {
-      case Input.HandleEvent(event: OrderJoined) ⇒
-        context.become(idle)
-        persist(event)(update)
+  private def joining: Receive = {
+    case Input.HandleEvent(event: OrderJoined) ⇒
+      become("idle")(idle)
+      persist(event)(update)
 
-      case Input.HandleEvent(OrderDetachable) ⇒
-        persist(OrderDetachable)(update)
+    case Input.HandleEvent(OrderDetachable) ⇒
+      persist(OrderDetachable)(update)
 
-      case Command.Detach ⇒
-        detach()
+    case Command.Detach ⇒
+      detach()
 
-      case Input.Terminate ⇒
-        context.stop(self)
+    case Input.Terminate ⇒
+      context.stop(self)
 
-      case command: Command ⇒
-        executeOtherCommand(command)
-    }
+    case command: Command ⇒
+      executeOtherCommand(command)
+  }
 
-  private def offered: Receive =
-    journaling orElse {
-      case command: Command ⇒
-        executeOtherCommand(command)
-    }
+  private def offered: Receive = {
+    case command: Command ⇒
+      executeOtherCommand(command)
+  }
 
   private def executeOtherCommand(command: Command): Unit = command match {
     case _ ⇒
@@ -264,6 +261,7 @@ extends KeyedJournalingActor[OrderEvent] {
     context.parent ! Output.OrderChanged(order, event)
     if (event == OrderDetached) {
       logger.trace("Stopping after OrderDetached")
+      order = null
       context.stop(self)
     }
   }

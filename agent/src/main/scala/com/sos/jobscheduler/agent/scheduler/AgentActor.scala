@@ -93,32 +93,32 @@ extends KeyedEventJournalingActor[AgentEvent] {
     }
   }
 
-  def receive = journaling orElse {
+  def receive = {
     case JournalRecoverer.Output.JournalIsReady ⇒
       if (masterToOrderKeeper.nonEmpty) {
         logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       }
-      context.become(startable)
+      become("startable")(startable)
       unstashAll()
 
     case _ ⇒
       stash()
   }
 
-  private def startable: Receive = journaling orElse {
+  private def startable: Receive = {
     case Input.Start ⇒
-      context.become(startingJobKeeper(sender()))
+      become("startingJobKeeper")(startingJobKeeper(sender()))
       jobKeeper ! JobKeeper.Input.Start
   }
 
-  private def startingJobKeeper(commander: ActorRef): Receive = journaling orElse {
+  private def startingJobKeeper(commander: ActorRef): Receive = {
     case JobKeeper.Output.Ready(jobs) ⇒
       for (a ← masterToOrderKeeper.values) a ! AgentOrderKeeper.Input.Start(jobs)  // Start recovered actors
-      context.become(ready(jobs))
+      become("ready")(ready(jobs))
       commander ! Output.Ready
   }
 
-  private def ready(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
+  private def ready(jobs: Seq[(JobPath, ActorRef)]): Receive = {
     case cmd: Input.ExternalCommand ⇒
       executeExternalCommand(cmd, jobs)
 

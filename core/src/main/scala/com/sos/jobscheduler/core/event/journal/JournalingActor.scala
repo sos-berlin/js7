@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.common.akkautils.SimpleStateActor
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
@@ -15,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
+trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with SimpleStateActor {
 
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
@@ -23,6 +24,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
   private var stashingCount = 0
 
   import context.dispatcher
+
+  become("receive")(receive)
+
+  protected def become(state: String)(recv: Receive) =
+    context.become(journaling orElse recv)
 
   protected def inhibitJournaling(): Unit = {
     if (stashingCount > 0) throw new IllegalStateException("inhibitJournaling while persist operation is active?")
@@ -70,7 +76,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     }
   }
 
-  final def journaling: Receive = {
+  private def journaling: Receive = {
     case JournalActor.Output.Stored(stampedOptions, item: Item) ⇒
       // sender() is from persistKeyedEvent or deferAsync
       if (!item.async) {

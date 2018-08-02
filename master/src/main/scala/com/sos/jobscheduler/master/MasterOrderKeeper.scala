@@ -75,8 +75,6 @@ with KeyedEventJournalingActor[Event] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  import context.become
-
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
@@ -142,7 +140,7 @@ with KeyedEventJournalingActor[Event] {
       Some(eventWatch))
   }
 
-  def receive = journaling orElse {
+  def receive = {
     case JournalRecoverer.Output.JournalIsReady ⇒
       agentRegister.values foreach { _.start() }
       orderRegister.values.toVector/*copy*/ foreach proceedWithOrder
@@ -157,13 +155,13 @@ with KeyedEventJournalingActor[Event] {
 
     case Internal.Ready ⇒
       logger.info("Ready")
-      become(ready)
+      become("Ready")(ready)
       unstashAll()
 
     case _ ⇒ stash()
   }
 
-  private def ready: Receive = journaling orElse {
+  private def ready: Receive = {
     case Command.Execute(command, meta) ⇒
       val sender = this.sender()
       executeMasterCommand(command, meta) onComplete {
@@ -306,7 +304,7 @@ with KeyedEventJournalingActor[Event] {
         inhibitJournaling()
         orderScheduleGenerator ! PoisonPill
         journalActor ! JournalActor.Input.Terminate
-        context.become(terminating)
+        become("Terminating")(terminating)
         Future.successful(MasterCommand.Response.Accepted)
     }
 

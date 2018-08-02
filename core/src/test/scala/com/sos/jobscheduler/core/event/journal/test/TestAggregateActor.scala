@@ -24,7 +24,7 @@ extends KeyedJournalingActor[TestEvent] {
   protected def recoverFromEvent(event: TestEvent) =
     update(event)
 
-  def receive = journaling orElse {
+  def receive = {
     case command: Command ⇒
       command match {
 

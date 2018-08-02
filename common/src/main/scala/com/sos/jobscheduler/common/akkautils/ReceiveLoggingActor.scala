@@ -1,25 +1,23 @@
 package com.sos.jobscheduler.common.akkautils
 
-import akka.actor.Actor
-import com.sos.jobscheduler.common.akkautils.ActorReceiveLogging._
+import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor._
 import com.sos.jobscheduler.common.scalautil.Logger
 
 /**
   * @author Joacim Zschimmer
   */
-trait ActorReceiveLogging {
-  this: Actor ⇒
-
+trait ReceiveLoggingActor extends SimpleStateActor
+{
   protected val isReceiveLoggingEnabled = context.system.settings.config.getBoolean("jobscheduler.logging.actor")
 
-  protected[ActorReceiveLogging] def isLoggingEnabled = isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)
+  protected[ReceiveLoggingActor] def isLoggingEnabled = isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)
 
-  protected def become(state: String)(recv: Receive): Unit =
+  abstract override protected def become(state: String)(recv: Receive): Unit =
     if (isLoggingEnabled) {
       logger.debug(Logger.Actor, s"${context.self.path} becomes $state")
-      context.become(debugReceive(recv))
+      super.become(state)(debugReceive(recv))
     } else
-      context.become(recv)
+      super.become(state)(recv)
 
   private def debugReceive(recv: Receive): Receive = {
     new Receive {
@@ -33,10 +31,10 @@ trait ActorReceiveLogging {
   }
 }
 
-object ActorReceiveLogging {
+object ReceiveLoggingActor {
   private val logger = Logger(getClass)
 
-  trait WithStash extends akka.actor.Stash with ActorReceiveLogging
+  trait WithStash extends akka.actor.Stash with ReceiveLoggingActor
   {
     override def stash() = {
       if (isLoggingEnabled) {

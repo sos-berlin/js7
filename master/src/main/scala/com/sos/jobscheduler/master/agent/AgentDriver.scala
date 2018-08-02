@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.problem.Checked.CheckedOption
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkautils.ActorReceiveLogging
+import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -41,7 +41,7 @@ import scala.util.{Failure, Success, Try}
 final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
 extends KeyedEventJournalingActor[MasterAgentEvent]
-with ActorReceiveLogging.WithStash {
+with ReceiveLoggingActor.WithStash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
   private val config = masterConfiguration.config
@@ -189,7 +189,7 @@ with ActorReceiveLogging.WithStash {
   }
 
   override protected def become(state: String)(recv: Receive) =
-    super.become(state)(journaling orElse recv orElse handleOtherMessage)
+    super.become(state)(recv orElse handleOtherMessage)
 
   private def handleOtherMessage: Receive = {
     case input: Input.QueueableInput if sender() == context.parent ⇒

@@ -49,7 +49,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
   protected def recoverFromEvent(event: OrderScheduleEvent) = PartialFunction.empty
 
-  def receive = journaling orElse {
+  def receive = {
     case Input.Recover(until) ⇒
       generatedUntil = until.toInstant
       recovered = true
@@ -79,10 +79,10 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
       logger.info(s"Generating orders for time interval $interval")
       val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
       masterOrderKeeper ! MasterOrderKeeper.Command.AddOrderSchedule(orders)
-      context.become(addingOrderSchedule(interval.until, every))
+      become("addingOrderSchedule")(addingOrderSchedule(interval.until, every))
   }
 
-  private def addingOrderSchedule(until: Instant, every: Duration): Receive = journaling orElse {
+  private def addingOrderSchedule(until: Instant, every: Duration): Receive = {
     case Done if sender() == masterOrderKeeper ⇒
       onOrdersAdded(until, every)
     case Status.Failure(t) if sender() == masterOrderKeeper ⇒
@@ -93,7 +93,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   }
 
   private def onOrdersAdded(until: Instant, every: Duration): Unit = {
-    context.become(receive)
+    become("receive")(receive)
     unstashAll()
     persist(OrderScheduleEvent.GeneratedUntil(until.toTimestamp)) { e ⇒
       update(e)

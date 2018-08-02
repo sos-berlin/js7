@@ -107,20 +107,20 @@ extends KeyedEventJournalingActor[Event] with Stash {
 
   def snapshots = Future.successful(workflowRegister.workflows)
 
-  def receive = journaling orElse {
+  def receive = {
     case Input.Start(jobPathsAndActors) ⇒
       for ((jobPath, actorRef) ← jobPathsAndActors) {
         jobRegister.insert(jobPath, actorRef)
         watch(actorRef)
       }
-      context.become(awaitJournalIsReady)
+      become("awaitJournalIsReady")(awaitJournalIsReady)
       unstashAll()
 
     case _ ⇒
       stash()  // We stash all early OrderActor.Output.RecoveryFinished until the jobs are defined (Input.Start)
   }
 
-  private def awaitJournalIsReady: Receive = journaling orElse {
+  private def awaitJournalIsReady: Receive = {
     case OrderActor.Output.RecoveryFinished(order) ⇒
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
@@ -128,7 +128,7 @@ extends KeyedEventJournalingActor[Event] with Stash {
     case JournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${workflowRegister.size} Workflows and ${orderRegister.size} Orders recovered")
       persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault)) { _ ⇒
-        context.become(ready)
+        become("ready")(ready)
         unstashAll()
         logger.info("Ready")
       }
@@ -137,7 +137,7 @@ extends KeyedEventJournalingActor[Event] with Stash {
       stash()
   }
 
-  private def ready: Receive = journaling orElse {
+  private def ready: Receive = {
     case Input.ExternalCommand(cmd, response) ⇒
       response.completeWith(processOrderCommand(cmd))
 
