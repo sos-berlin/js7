@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashSet}
-import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
+import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, SeekableInputStream}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -128,12 +128,19 @@ private object GenericJournalEventReader {
         }
       }
       if (result == null) {
-        result = InputStreamJsonSeqReader.open(file,  // Exception when file has been deleted
-          onClose = { me ⇒
-            availableReaders.remove(me)
-            lentReaders -= me
-          })
-        // When close is called here the reader will not be closed. Good enough for JobScheduler use case.
+        result = new InputStreamJsonSeqReader(SeekableInputStream.openFile(file)) {  // Exception when file has been deleted
+          override def close() = {
+            logger.trace(s"Close  $file")
+            try {
+              availableReaders.remove(this)
+              lentReaders -= this
+            }
+            finally super.close()
+          }
+          override def toString = s"InputStreamJsonSeqReader(${file.getFileName})"
+        }
+        logger.trace(s"Opened $file")
+        // When close is called now the reader will not be closed. Good enough for JobScheduler use case.
         lentReaders += result
       }
       result

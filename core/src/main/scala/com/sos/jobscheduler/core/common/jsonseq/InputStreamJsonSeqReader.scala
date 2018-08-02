@@ -114,17 +114,6 @@ object InputStreamJsonSeqReader
   private val CharBufferSize = 1000
   private val logger = Logger(getClass)
 
-  def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize,
-    onClose: InputStreamJsonSeqReader ⇒ Unit = { _ ⇒ })
-  : InputStreamJsonSeqReader = {
-    val result = new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize) {
-      override def close() = {
-        logger.trace(s"Close  $file")
-        try onClose(this)
-        finally super.close()
-      }
-    }
-    logger.trace(s"Opened $file")
-    result
-  }
+  def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize): InputStreamJsonSeqReader =
+    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize)
 }
