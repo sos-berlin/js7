@@ -17,6 +17,8 @@ private[watch] final class EventIdPositionIndex(size: Int)
   private var length = 0
   private var _highestEventId = EventId.BeforeFirst - 1
   private var unusedMemoryReleased = false
+  private var factor = 1
+  private var addedCount = 0
 
   require(positions.nonEmpty)
 
@@ -29,13 +31,16 @@ private[watch] final class EventIdPositionIndex(size: Int)
       synchronized {
         if (unusedMemoryReleased) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after releaseUnusedMemory?")  // Self-check
         (eventId > _highestEventId) && {
-          _highestEventId = eventId
-          if (length == positions.length) {
-            halve()
+          addedCount += 1
+          if (addedCount % factor == 0) {
+            _highestEventId = eventId
+            if (length == positions.length) {
+              halve()
+            }
+            positions(length) = position
+            eventIds(length) = eventId
+            length += 1
           }
-          positions(length) = position
-          eventIds(length) = eventId
-          length += 1
           true
         }
       }
@@ -46,6 +51,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
       eventIds(i) = eventIds(2 * i)
     }
     length = length / 2
+    factor = 2 * factor
   }
 
   def releaseUnusedMemory() = {

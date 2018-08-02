@@ -63,56 +63,59 @@ final class EventIdPositionIndexTest extends FreeSpec {
   }
 
   "Adding more" in {
-    index.addAfter(8, 800)
-    index.addAfter(9, 900)
+    index.addAfter( 8,  800)
+    index.addAfter( 9,  900)
+    index.addAfter(10, 1000)
+    index.addAfter(11, 1100)
     assert(index.positionAndEventIds == Vector(
       PositionAnd(100, 1),
       PositionAnd(300, 3),
       PositionAnd(500, 5),
       PositionAnd(700, 7),
       PositionAnd(800, 8),
-      PositionAnd(900, 9)))
-  }
-
-  "Overflow #2" in {
-    index.addAfter(10, 1000)
-    assert(index.positionAndEventIds == Vector(
-      PositionAnd( 100,  1),
-      PositionAnd( 500,  5),
-      PositionAnd( 800,  8),
       PositionAnd(1000, 10)))
   }
 
-  "Adding more #2" in {
-    index.addAfter(11, 1100)
+  "Overflow #2" in {
     index.addAfter(12, 1200)
     assert(index.positionAndEventIds == Vector(
       PositionAnd( 100,  1),
       PositionAnd( 500,  5),
       PositionAnd( 800,  8),
-      PositionAnd(1000, 10),
-      PositionAnd(1100, 11),
       PositionAnd(1200, 12)))
   }
 
+  "Adding more #2" in {
+    for (i ← 13 to 23) index.addAfter(i, i * 100)
+    assert(index.positionAndEventIds == Vector(
+      PositionAnd( 100,  1),
+      PositionAnd( 500,  5),
+      PositionAnd( 800,  8),
+      PositionAnd(1200, 12),
+      PositionAnd(1600, 16),
+      PositionAnd(2000, 20)))
+  }
+
   "Overflow #3" in {
-    index.addAfter( 13, 1300)
+    for (i ← 24 to 47) index.addAfter(i, i * 100)
     assert(index.positionAndEventIds == Vector(
       PositionAnd( 100,  1),
       PositionAnd( 800,  8),
-      PositionAnd(1100, 11),
-      PositionAnd(1300, 13)))
+      PositionAnd(1600, 16),
+      PositionAnd(2400, 24),
+      PositionAnd(3200, 32),
+      PositionAnd(4000, 40)))
   }
 
-  "Many more overflows" in {
-    for (i ← 14 to 60) index.addAfter(i, i * 100)
+  "Positions are evenly distributed after many more positions have been added" in {
+    for (i ← 48 to 6000) index.addAfter(i, i * 100)
     assert(index.positionAndEventIds == Vector(
-      PositionAnd( 100,  1),
-      PositionAnd(5300, 53),
-      PositionAnd(5600, 56),
-      PositionAnd(5800, 58),
-      PositionAnd(5900, 59),
-      PositionAnd(6000, 60)))
+      PositionAnd(   100,  1),
+      PositionAnd(102400, 1024),
+      PositionAnd(204800, 2048),
+      PositionAnd(307200, 3072),
+      PositionAnd(409600, 4096),
+      PositionAnd(512000, 5120)))
   }
 
   "releaseUnusedMemory" in {
