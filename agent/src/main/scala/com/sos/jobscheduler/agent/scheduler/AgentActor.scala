@@ -52,7 +52,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = watch(actorOf(
-    JournalActor.props(journalMeta, syncOnCommit = agentConfiguration.journalSyncOnCommit, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, agentConfiguration.config, keyedEventBus, scheduler),
     "Journal"))
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(
@@ -212,7 +212,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
           masterId,
           journalFileBase = stateDirectory / s"master-$masterId",
           askTimeout = akkaAskTimeout,
-          syncOnCommit = agentConfiguration.journalSyncOnCommit,
           keyedEventBus,
           agentConfiguration.config,
           scheduler,

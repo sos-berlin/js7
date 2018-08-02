@@ -14,6 +14,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 /**
@@ -24,11 +25,12 @@ private[journal] final class JournalWriter[E <: Event](
   val file: Path,
   after: EventId,
   observer: Option[JournalingObserver],
-  appendToSnapshots: Boolean)
+  appendToSnapshots: Boolean,
+  simulateSync: Option[FiniteDuration])
 extends AutoCloseable
 {
   def this(journalMeta: JournalMeta[E], after: EventId, observer: Option[JournalingObserver] = None, appendToSnapshots: Boolean = false) =
-    this(journalMeta, journalMeta.file(after), after, observer, appendToSnapshots)
+    this(journalMeta, journalMeta.file(after), after, observer, appendToSnapshots, None)
 
   import journalMeta.eventJsonCodec
 
@@ -37,7 +39,7 @@ extends AutoCloseable
   if (!appendToSnapshots && Files.exists(file)) sys.error(s"JournalWriter: Not expecting existent files '$file'")
   if (appendToSnapshots && !Files.exists(file)) sys.error(s"JournalWriter: Missing files '$file'")
 
-  private val jsonWriter = new FileJsonWriter(JournalHeader.Singleton, file, append = appendToSnapshots)
+  private val jsonWriter = new FileJsonWriter(JournalHeader.Singleton, file, append = appendToSnapshots, simulateSync = simulateSync)
   private var snapshotStarted = appendToSnapshots
   private var eventsStarted = false
   private var _eventWritten = false

@@ -9,6 +9,7 @@ import io.circe.syntax.EncoderOps
 import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 final class FileJsonWriter(
   header: JournalHeader,
   val file: Path,
-  append: Boolean = false)
+  append: Boolean = false,
+  simulateSync: Option[FiniteDuration] = None)
 extends AutoCloseable {
 
   private val out = new FileOutputStream(file, append)
@@ -49,7 +51,10 @@ extends AutoCloseable {
   def sync(): Unit =
     if (!synced) {
       flush()
-      out.getFD.sync()
+      simulateSync match {
+        case Some(duration) ⇒ Thread.sleep(duration.toMillis)
+        case None ⇒ out.getFD.sync()
+      }
       synced = true
     }
 
@@ -65,4 +70,8 @@ extends AutoCloseable {
   def isSynced = synced
 
   def fileLength = initialPosition + writer.bytesWritten
+}
+
+object FileJsonWriter {
+  private val logger = com.sos.jobscheduler.common.scalautil.Logger(getClass)
 }

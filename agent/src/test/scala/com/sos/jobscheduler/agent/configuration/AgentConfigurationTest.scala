@@ -39,7 +39,6 @@ final class AgentConfigurationTest extends FreeSpec  {
         commandTimeout = 60.s,
         akkaAskTimeout = 60.seconds,
         name = "Agent",
-        journalSyncOnCommit = true,
         ConfigFactory.empty))
     }
   }
@@ -89,12 +88,6 @@ final class AgentConfigurationTest extends FreeSpec  {
 
   "-rpc-keepalive=" in {
     assert(dummyDirectoriesConf("-rpc-keepalive=5m").rpcKeepaliveDuration == Some(5 * 60.s))
-  }
-
-  "-sync-journal" in {
-    assert(dummyDirectoriesConf().journalSyncOnCommit)
-    assert(dummyDirectoriesConf("-sync-journal").journalSyncOnCommit)
-    assert(dummyDirectoriesConf("-sync-journal-").journalSyncOnCommit == false)
   }
 
   "System property" in {

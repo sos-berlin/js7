@@ -19,6 +19,7 @@ import com.sos.jobscheduler.core.event.journal.test.TestActor._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -34,7 +35,7 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, syncOnCommit = true, new StampedKeyedEventBus, Scheduler.global, journalStopped,
+    JournalActor.props(journalMeta, MyConfig, new StampedKeyedEventBus, Scheduler.global, journalStopped,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/))),
     "Journal"))
   private val keyToAggregate = mutable.Map[String, ActorRef]()
@@ -160,6 +161,10 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
 private[journal] object TestActor {
   intelliJuseImport(TestKeyedEventJsonCodec)
 
+  private val MyConfig = ConfigFactory.parseString("""
+      |jobscheduler.journal.sync = on
+      |jobscheduler.journal.delay = 0.s
+    """.stripMargin)
   private val logger = Logger(getClass)
 
   object Input {

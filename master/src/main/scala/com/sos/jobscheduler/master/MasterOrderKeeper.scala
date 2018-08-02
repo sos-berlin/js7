@@ -81,7 +81,7 @@ with KeyedEventJournalingActor[Event] {
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
       journalMeta,
-      syncOnCommit = masterConfiguration.journalSyncOnCommit,
+      masterConfiguration.config,
       keyedEventBus, scheduler,
       eventIdGenerator = eventIdGenerator),
     "Journal"))

@@ -27,14 +27,11 @@ final case class MasterConfiguration(
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
-  journalSyncOnCommit: Boolean,
   config: Config)
 extends CommonConfiguration
 {
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
-    copy(
-      journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
-      masterId = a.as("-id=", masterId))
+    copy(masterId = a.as("-id=", masterId))
 
   def fileBasedDirectory: Path = configDirectory / "live"
 
@@ -86,7 +83,6 @@ object MasterConfiguration
         //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
-      journalSyncOnCommit = config.getBoolean("jobscheduler.master.journal.sync"),
       config = config)
   }
 

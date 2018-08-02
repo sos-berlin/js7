@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
+import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -20,10 +21,11 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.write.JournalWriter
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.typesafe.config.Config
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.{Files, Path}
-import monix.execution.Scheduler
+import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -35,7 +37,7 @@ import scala.util.{Failure, Success}
   */
 final class JournalActor[E <: Event] private(
   journalMeta: JournalMeta[E],
-  syncOnCommit: Boolean,
+  config: Config,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   stopped: Promise[Stopped],
@@ -47,6 +49,9 @@ extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
+  private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
+  private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
+  private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
 
   private var journalWriter: JournalWriter[E] = null
   private var eventWatchOption: Option[JournalEventWatch[E]] = None
@@ -56,8 +61,12 @@ extends Actor with Stash {
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
   private var lastWrittenEventId = EventId.BeforeFirst
   private var dontSync = true
+  private var delayedCommit: Cancelable = null
+
+  for (o ← simulateSync) logger.warn(s"sync is simulated with $o duration")
 
   override def postStop() = {
+    if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = keyToJournalingActor.size))
     for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped while a KeyedJournalingActor is still running for key=$key")
     for (a ← keylessJournalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: $a")
@@ -135,12 +144,13 @@ extends Actor with Stash {
       }
       writtenBuffer += Written(stampedOptions, replyTo, sender(), item)
       dontSync &= noSync
-      self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
+      forwardCommit()
 
     case Internal.Commit(level) ⇒
-      if (level < writtenBuffer.length) {
-        self.forward(Internal.Commit(writtenBuffer.length))  // writtenBuffer has grown? Queue again to coalesce two commits
-      } else
+      if (level < writtenBuffer.length)
+        // writtenBuffer has grown? Queue again to coalesce two commits
+        forwardCommit()
+      else
       if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
         val sync = syncOnCommit && !dontSync
         try {
@@ -193,6 +203,18 @@ extends Actor with Stash {
             stop(self)
           }
         })
+  }
+
+  private def forwardCommit(): Unit = {
+    val commit = Internal.Commit(writtenBuffer.length)
+    if (experimentalDelay.isZero)
+      self.forward(commit)
+    else {
+      if (delayedCommit != null) delayedCommit.cancel()
+      delayedCommit = scheduler.scheduleOnce(experimentalDelay) {
+        self.forward(commit)
+      }
+    }
   }
 
   private def receiveTerminatedOrGet: Receive = {
@@ -258,7 +280,8 @@ extends Actor with Stash {
   }
 
   private def newJsonWriter(file: Path, appendToSnapshots: Boolean = false) =
-    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots)
+    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots,
+      simulateSync = simulateSync)
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
@@ -277,13 +300,13 @@ object JournalActor
 {
   def props[E <: Event](
     journalMeta: JournalMeta[E],
-    syncOnCommit: Boolean,
+    config: Config,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     stopped: Promise[Stopped] = Promise(),
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   =
-    Props { new JournalActor(journalMeta, syncOnCommit, keyedEventBus, scheduler, stopped, eventIdGenerator) }
+    Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, stopped, eventIdGenerator) }
 
   trait CallersItem
 

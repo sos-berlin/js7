@@ -159,7 +159,7 @@ private object OrderActorTest {
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(
-      JournalActor.props(journalMeta, syncOnCommit = true, keyedEventBus, Scheduler.global),
+      JournalActor.props(journalMeta, config, keyedEventBus, Scheduler.global),
       "Journal")
     private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
     private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")

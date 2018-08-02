@@ -24,7 +24,6 @@ final class MasterConfigurationTest extends FreeSpec {
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
-      journalSyncOnCommit = true,
       config = ConfigFactory.empty))
   }
 
@@ -42,12 +41,6 @@ final class MasterConfigurationTest extends FreeSpec {
   "-https-port=" in {
     // For more tests see CommonConfigurationTest
     assert(conf("-https-port=1234").webServerPorts == WebServerPort.Https(new InetSocketAddress("0.0.0.0", 1234), mutual = false) :: Nil)
-  }
-
-  "-sync-journal" in {
-    assert(conf().journalSyncOnCommit)
-    assert(conf("-sync-journal").journalSyncOnCommit)
-    assert(conf("-sync-journal-").journalSyncOnCommit == false)
   }
 
   "System property" in {

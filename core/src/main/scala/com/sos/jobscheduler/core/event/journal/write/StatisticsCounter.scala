@@ -46,7 +46,7 @@ private[journal] final class StatisticsCounter {
 
   def infoString =
     if (events == 0) "no events"
-    else f"$events events"
+    else f"$events events" + (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString =
     if (events == 0) "no events"

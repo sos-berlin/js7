@@ -86,7 +86,6 @@ object TestMasterAgent {
     withCloser { implicit closer ⇒
       val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
-        journalSyncOnCommit = conf.syncMaster,
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
@@ -110,7 +109,6 @@ object TestMasterAgent {
           ).asJson.toPrettyString
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
-            .copy(journalSyncOnCommit = conf.syncAgent)
         ) map { _.closeWithCloser } await 99.s
         env.file(agentPath, SourceType.Xml).xml = <agent uri={agent.localUri.toString}/>
         agent
@@ -212,9 +210,7 @@ object TestMasterAgent {
     tasksPerJob: Int,
     jobDuration: Duration,
     period: Duration,
-    orderGeneratorCount: Int,
-    syncMaster: Boolean,
-    syncAgent: Boolean)
+    orderGeneratorCount: Int)
   {
     require(agentCount >= 1)
     require(workflowLength >= 1)
@@ -237,9 +233,7 @@ object TestMasterAgent {
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[Duration]("-job-duration=", 0.s),
           period = a.as[Duration]("-period=", 1.s),
-          orderGeneratorCount = a.as[Int]("-orders=", 1),
-          syncMaster = a.boolean("-sync-master") || a.boolean("-sync"),
-          syncAgent = a.boolean("-sync-agent") || a.boolean("-sync"))
+          orderGeneratorCount = a.as[Int]("-orders=", 1))
         if (a.boolean("-?") || a.boolean("-help") || a.boolean("--help")) {
           print(usage(conf))
         }
@@ -253,7 +247,6 @@ object TestMasterAgent {
          |       -job-duration=${conf.jobDuration}
          |       -period=${conf.period}
          |       -orders=${conf.orderGeneratorCount}
-         |       [-sync-master -sync-agent -sync]
          |""".stripMargin
   }
 }

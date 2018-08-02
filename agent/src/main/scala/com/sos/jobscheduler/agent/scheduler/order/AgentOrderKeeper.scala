@@ -56,7 +56,6 @@ final class AgentOrderKeeper(
   masterId: MasterId,
   journalFileBase: Path,
   implicit private val askTimeout: Timeout,
-  syncOnCommit: Boolean,
   keyedEventBus: StampedKeyedEventBus,
   config: Config,
   scheduler: Scheduler,
@@ -70,7 +69,7 @@ extends KeyedEventJournalingActor[Event] with Stash {
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
   private val eventWatch = new JournalEventWatch[Event](journalMeta)
   protected val journalActor = watch(actorOf(
-    JournalActor.props(journalMeta, syncOnCommit = syncOnCommit, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, config, keyedEventBus, scheduler),
     "Journal"))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister

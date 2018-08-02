@@ -27,6 +27,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import com.typesafe.config.ConfigFactory
 import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -78,7 +79,11 @@ final class OrderAgentTest extends FreeSpec {
       val jobDir = directory / "config" / "live"
       (jobDir / "A.job.json").contentString = AJobConfiguration.asJson.toPrettyString
       (jobDir / "B.job.json").contentString = BJobConfiguration.asJson.toPrettyString
-      val agentConf = AgentConfiguration.forTest(directory)
+      val agentConf = AgentConfiguration.forTest(directory, ConfigFactory.parseString("""
+          jobscheduler.journal.sync = on
+          jobscheduler.journal.delay = 0ms
+          jobscheduler.journal.simulate-sync = 10ms
+        """.stripMargin))
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒
         withCloser { implicit closer ⇒

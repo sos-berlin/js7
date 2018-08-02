@@ -44,7 +44,6 @@ final case class AgentConfiguration(
   commandTimeout: Duration,
   implicit val akkaAskTimeout: Timeout,
   name: String,
-  journalSyncOnCommit: Boolean,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 extends CommonConfiguration
 {
@@ -55,7 +54,6 @@ extends CommonConfiguration
     var v = copy(
       webServerPorts = common.webServerPorts,
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
-      journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit),
       jobJavaOptions = a.optionAs[String]("-job-java-options=").fold(jobJavaOptions) { _ :: Nil },
       rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration),
       jobWorkingDirectory = a.as("-job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
@@ -145,7 +143,6 @@ object AgentConfiguration {
       commandTimeout = config.getDuration("jobscheduler.agent.command-timeout"),
       akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
       name = "Agent",
-      journalSyncOnCommit = config.getBoolean("jobscheduler.journal.sync"),
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
     //for (o ← config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {
