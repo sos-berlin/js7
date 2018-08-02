@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.ClassLoaders.currentClassLoader
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
+import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
@@ -36,7 +36,7 @@ object Configs {
 
   def loadResource(resource: JavaResource) = {
     logger.trace(s"Reading configuration JavaResource $resource")
-    ConfigFactory.load(resource.path, Required.setClassLoader(currentClassLoader), ConfigResolveOptions.defaults)
+    ConfigFactory.parseResourcesAnySyntax(resource.path, Required.setClassLoader(currentClassLoader))
   }
 
   implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]

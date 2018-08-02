@@ -120,11 +120,12 @@ object AgentConfiguration {
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
-  def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
+  def fromCommandLine(args: Seq[String], extraDefaultConfig: Config = ConfigFactory.empty) = CommandLineArguments.parse(args) { a ⇒
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
     val c = fromDirectories(
       configDirectory = common.configDirectory,
-      dataDirectory = common.dataDirectory)
+      dataDirectory = common.dataDirectory,
+      extraDefaultConfig)
     c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
     .withCommandLineArguments(a)
   }
@@ -154,8 +155,11 @@ object AgentConfiguration {
   }
 
   private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
-    val config = configDirectoryConfig(configDirectory)
-    (config withFallback extraDefaultConfig withFallback DefaultsConfig).resolve
+    ConfigFactory.systemProperties
+      .withFallback(configDirectoryConfig(configDirectory))
+      .withFallback(extraDefaultConfig)
+      .withFallback(DefaultsConfig)
+      .resolve
   }
 
   // Same code in TextAgentClient.configDirectoryConfig

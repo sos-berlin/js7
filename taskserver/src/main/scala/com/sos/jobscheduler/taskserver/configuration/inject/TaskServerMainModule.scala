@@ -53,7 +53,7 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
 
   @Provides @Singleton
   private def actorSystem(closer: Closer): ActorSystem = {
-    ActorSystem("TaskServerMain", Configs.loadResource(ConfigurationResource)) sideEffect  { o ⇒
+    ActorSystem("TaskServerMain", Configs.loadResource(ConfigurationResource).resolve) sideEffect  { o ⇒
       closer.onClose {
         o.terminate()
         //We want to terminate immediately: o.awaitTermination(ShutdownDuration)

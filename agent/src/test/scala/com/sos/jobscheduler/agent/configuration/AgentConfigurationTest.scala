@@ -97,10 +97,18 @@ final class AgentConfigurationTest extends FreeSpec  {
     assert(dummyDirectoriesConf("-sync-journal-").journalSyncOnCommit == false)
   }
 
+  "System property" in {
+    assert(dummyDirectoriesConf().config.getString("user.name") == sys.props("user.name"))
+  }
+
   private def dummyDirectoriesConf(args: String*) =
     conf(Array("-config-directory=CONFIG", "-data-directory=DATA") ++ args: _*)
 
-  private def conf(args: String*) = AgentConfiguration.fromCommandLine(args.toVector)
+  private def conf(args: String*) = {
+    AgentConfiguration.fromCommandLine(
+      args.toVector,
+      ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
+  }
 }
 
 object AgentConfigurationTest

@@ -92,7 +92,11 @@ object MasterConfiguration
 
   private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
     val config = configDirectoryConfig(configDirectory)
-    (config withFallback extraDefaultConfig withFallback DefaultConfig).resolve
+    ConfigFactory.systemProperties
+      .withFallback(config)
+      .withFallback(extraDefaultConfig)
+      .withFallback(DefaultConfig)
+      .resolve
   }
 
   // Same code in AkkaHttpMasterTextApi.configDirectoryConfig

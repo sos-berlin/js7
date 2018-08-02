@@ -50,6 +50,12 @@ final class MasterConfigurationTest extends FreeSpec {
     assert(conf("-sync-journal-").journalSyncOnCommit == false)
   }
 
+  "System property" in {
+    assert(conf().config.getString("user.name") == sys.props("user.name"))
+  }
+
   private def conf(args: String*) =
-    MasterConfiguration.fromCommandLine(Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args)
+    MasterConfiguration.fromCommandLine(
+      Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args,
+      ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
 }
