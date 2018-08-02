@@ -27,6 +27,7 @@ import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
 import com.typesafe.config.ConfigUtil
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -109,7 +110,10 @@ with ReceiveLoggingActor.WithStash {
         case Valid(userAndPassword) ⇒
           ( for {
               _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.Response
-              _ ← client.commandExecute(AgentCommand.RegisterAsMaster)
+              _ ← if (lastEventId == EventId.BeforeFirst)
+                    client.commandExecute(AgentCommand.RegisterAsMaster)
+                  else
+                    Task.pure(Completed)
             } yield Completed
           ).runAsync.onComplete { tried ⇒
             self ! Internal.AfterConnect(tried)
@@ -160,7 +164,7 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def ready: Receive = {
-    case Internal.FetchEvents(after) if !isAwaitingEventResponse ⇒
+    case Internal.FetchEvents(after) if isConnected && !isAwaitingEventResponse ⇒
       lastEventId = after
       isAwaitingEventResponse = true
       client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout)).runAsync
