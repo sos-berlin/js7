@@ -83,8 +83,8 @@ final class OrderAgentTest extends FreeSpec {
          |jobscheduler.journal.sync = on
          |jobscheduler.journal.delay = 0ms
          |jobscheduler.journal.simulate-sync = 10ms
-         |jobscheduler.journal.snapshot-log-period = 1.ms
-         |jobscheduler.journal.snapshot-log-actor-limit = 10
+         |jobscheduler.journal.snapshot.log-period = 1.ms
+         |jobscheduler.journal.snapshot.log-actor-limit = 10
          |""".stripMargin))
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent ⇒

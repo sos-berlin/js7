@@ -21,13 +21,13 @@ final class SnapshotTakerTest extends FreeSpec
 {
   private implicit val askTimeout = Timeout(99.seconds)
 
-  "snapshot-log-period" in {
+  "snapshot.log-period" in {
     val actorSystem = newActorSystem(getClass.simpleScalaName)
     try {
       val config = ConfigFactory.parseString("""
           |jobscheduler.journal {
-          |  snapshot-log-period = 10.ms
-          |  snapshot-log-actor-limit = 1
+          |  snapshot.log-period = 10.ms
+          |  snapshot.log-actor-limit = 1
           |}
         """.stripMargin)
       val actor = actorSystem.actorOf(

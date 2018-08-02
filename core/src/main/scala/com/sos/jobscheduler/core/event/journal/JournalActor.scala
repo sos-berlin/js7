@@ -52,7 +52,7 @@ extends Actor with Stash {
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot-period")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.period")(p ⇒ config.getDuration(p).toFiniteDuration)
   private var snapshotCancelable: Cancelable = null
 
   private var eventWriter: EventJournalWriter[E] = null
@@ -246,7 +246,7 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
-    logger.info(s"Starting new journal file with snapshot")
+    logger.info(s"Starting new journal file with a snapshot")
     if (snapshotCancelable != null) {
       snapshotCancelable.cancel()
       snapshotCancelable = null
