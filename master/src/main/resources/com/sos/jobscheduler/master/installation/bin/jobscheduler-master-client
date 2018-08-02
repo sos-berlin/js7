@@ -5,8 +5,6 @@ export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java
 
-config=/var/opt/jobscheduler/master/config
-data=/var/opt/jobscheduler/master/data
 httpPort=4444
 args=()
 javaOptions=(-Xmx100m -Xms50m)
@@ -33,16 +31,6 @@ for arg in "$@"; do :
       ;;
   esac
 done
-
-if [ ! -d "$config" ]; then :
-  echo "No such directory: -config-directory=$config"
-  exit 1
-fi
-
-if [ ! -d "$data" ]; then :
-  echo "No such directory: -data-directory=$data"
-  exit 1
-fi
 
 execute=(
   "$java"
