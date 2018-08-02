@@ -61,12 +61,17 @@ object Configs {
 
     def stringSeq(path: String): IndexedSeq[String] =
       underlying.getStringList(path).asScala.toVector
-    def durationOption(path: String): Option[Duration] = underlying.hasPath(path) option underlying.getDuration(path)
 
-    def forExistingPath[A](path: String)(f: String ⇒ Checked[A]): Checked[A] =
+    def durationOption(path: String): Option[Duration] =
+      underlying.hasPath(path) ? underlying.getDuration(path)
+
+    def checkedPath[A](path: String)(f: String ⇒ Checked[A]): Checked[A] =
       if (!underlying.hasPath(path))
         Invalid(Problem(s"Missing configuration key '$path'"))
       else
         f(path)
+
+    def ifPath[A](path: String)(f: String ⇒ A): Option[A] =
+      underlying.hasPath(path) ? f(path)
   }
 }

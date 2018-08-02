@@ -46,9 +46,14 @@ final class ConfigsTest extends FreeSpec {
     }
   }
 
-  "forExistingPath" in {
-    assert(TestConfig.forExistingPath("string") (path ⇒ Valid(TestConfig.getString(path))) == Valid("STRING"))
-    assert(TestConfig.forExistingPath("MISSING") (path ⇒ Valid(TestConfig.getString(path))) == Invalid(Problem(s"Missing configuration key 'MISSING'")))
+  "checkedPath" in {
+    assert(TestConfig.checkedPath("string") (path ⇒ Valid(TestConfig.getString(path))) == Valid("STRING"))
+    assert(TestConfig.checkedPath("MISSING") (path ⇒ Valid(TestConfig.getString(path))) == Invalid(Problem(s"Missing configuration key 'MISSING'")))
+  }
+
+  "ifPath" in {
+    assert(TestConfig.ifPath("string") (path ⇒ TestConfig.getString(path)) == Some("STRING"))
+    assert(TestConfig.ifPath("MISSING") (path ⇒ TestConfig.getString(path)) == None)
   }
 }
 
