@@ -47,9 +47,8 @@ extends AutoCloseable
   private var eventAdded = false
   private val statistics = new StatisticsCounter
 
-  def close() = jsonWriter.close()
-
-  def logStatistics(): Unit = {
+  def close() = {
+    jsonWriter.close()
     logger.info((try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }) + s" written: ${statistics.infoString}")
     logTiming()
   }
@@ -59,9 +58,10 @@ extends AutoCloseable
 
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("JournalWriter: duplicate beginSnapshotSection()")
+    logger.info("Snapshot starts")
     jsonWriter.write(ByteString(SnapshotsHeader.compactPrint))
     jsonWriter.write(ByteString(SnapshotMeta(_lastEventId).asJson.compactPrint))
-    flush()
+    flush(sync = false)
     snapshotStarted = true
   }
 
@@ -71,11 +71,11 @@ extends AutoCloseable
     jsonWriter.write(json)
   }
 
-  def beginEventSection(): Unit = {
+  def startJournaling(): Unit = {
     if (!snapshotStarted) throw new IllegalStateException("JournalWriter: beginSnapshotSection not called")
-    if (eventsStarted) throw new IllegalStateException("JournalWriter: duplicate beginEventSection()")
+    if (eventsStarted) throw new IllegalStateException("JournalWriter: duplicate startJournaling()")
     jsonWriter.write(ByteString(EventsHeader.compactPrint))
-    flush()
+    flush(sync = false)
     eventsStarted = true
     for (r ← observer) {
       r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId))
@@ -98,23 +98,22 @@ extends AutoCloseable
     }
   }
 
-  def flush(): Unit =
+  def flush(sync: Boolean): Unit = {
     if (!jsonWriter.isFlushed) {
       statistics.beforeFlush()
       jsonWriter.flush()
       statistics.afterFlush()
-      for (r ← observer if eventAdded) {
-        eventAdded = false
-        r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId))
-      }
     }
-
-  def sync(): Unit =
-    if (!isSynced) {
+    if (sync && !isSynced) {
       statistics.beforeSync()
       jsonWriter.sync()
       statistics.afterSync()
     }
+    if (eventAdded) for (r ← observer) {
+      eventAdded = false
+      r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId))
+    }
+  }
 
   def isFlushed = jsonWriter.isFlushed
 

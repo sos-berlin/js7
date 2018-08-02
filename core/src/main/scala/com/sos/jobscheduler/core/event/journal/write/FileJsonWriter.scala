@@ -63,6 +63,7 @@ extends AutoCloseable {
       writer.flush()
       bufferedOut.flush()
       flushed = true
+      synced = false
     }
 
   def isFlushed = flushed
@@ -70,8 +71,4 @@ extends AutoCloseable {
   def isSynced = synced
 
   def fileLength = initialPosition + writer.bytesWritten
-}
-
-object FileJsonWriter {
-  private val logger = com.sos.jobscheduler.common.scalautil.Logger(getClass)
 }

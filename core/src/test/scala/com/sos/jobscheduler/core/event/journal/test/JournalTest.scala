@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.test.JournalTest._
 import java.nio.file.Files.{delete, deleteIfExists}
 import org.scalatest.Matchers._
@@ -31,6 +31,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-C", "(C.Add)"))
     }
     assert(journalJsons == FirstJournal)
+    assert(journalFileNames == Vector("test--0.journal"))
   }
 
   "Second run, recovering from journal, then taking snapshot" in {
@@ -59,23 +60,33 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
 
       execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
+    assert(journalFileNames.length == 3)
   }
 
-  "Third run, recovering from snapshot and journal" in {
+  "Third run, recovering from journal, no events" in {
     withTestActor { (_, actor) ⇒
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"))
     }
+    assert(journalFileNames.length == 4)
+  }
+
+  "After adding no events, journal file is reused (rewritten) because of unchanged after-EventId" in {
+    withTestActor { (_, _) ⇒ }
+    assert(journalFileNames.length == 4)  // Unchanged
   }
 
   "noSync" in {
     withTestActor { (actorSystem, actor) ⇒
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
+
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
+
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendNoSync('B')) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = false))
+
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
@@ -83,12 +94,13 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ABCc"))
     }
+    assert(journalFileNames.length == 4)  // Unchanged
   }
 
   "Massive parallel" - {
     val n = 1  // TODO More iterations for long-running test (tagged test or system property?)
     for (runIndex ← 1 to n) s"#$runIndex" in {
-      JournalFiles.listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
+      listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
       withTestActor { (_, actor) ⇒
         val prefixes = for (i ← 1 to 1000) yield i.toString
         // Add "$p-A"
@@ -112,6 +124,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
             TestAggregate(s"$p-C", "(C.Add)"))
           ).toSet
       }
+      assert(journalFileNames.length == n)
     }
   }
 
@@ -135,6 +148,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       }
     }
   }
+
+  private def journalFileNames =
+    listJournalFiles(journalMeta.fileBase).map(_.file.getFileName.toString)
 }
 
 object JournalTest {

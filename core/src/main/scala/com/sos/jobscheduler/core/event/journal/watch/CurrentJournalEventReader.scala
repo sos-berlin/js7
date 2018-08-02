@@ -25,12 +25,14 @@ extends GenericJournalEventReader[E]
   protected val journalFile = journalMeta.file(after = tornEventId)
   protected def tornPosition = flushedLengthAndEventId.position
   protected var endPosition = flushedLengthAndEventId.position  // Initially, the file contains no events
+  private var _lastEventId = flushedLengthAndEventId.value
 
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < endPosition)
       throw new IllegalArgumentException(s"CurrentJournalEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
     eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position)
+    _lastEventId = eventId
     endPosition = flushedPosition
   }
 
@@ -43,6 +45,8 @@ extends GenericJournalEventReader[E]
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
+
+  def lastEventId = _lastEventId
 
   override def toString = s"CurrentJournalEventReader(${journalFile.getFileName})"
 }

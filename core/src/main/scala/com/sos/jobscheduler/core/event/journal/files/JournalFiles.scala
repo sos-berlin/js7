@@ -8,7 +8,6 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Path}
-import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 
 /**
@@ -16,9 +15,6 @@ import scala.collection.JavaConverters._
   */
 object JournalFiles
 {
-  def journalFile(journalFileBase: Path, after: EventId, extraSuffix: String = ""): Path =
-    journalFileBase resolveSibling s"${journalFileBase.getFileName}--$after.journal$extraSuffix"
-
   def currentFile(journalFileBase: Path): Checked[Path] =
     listJournalFiles(journalFileBase).lastOption.map(_.file) toChecked Problem(s"No journal under '$journalFileBase'")
 
@@ -28,9 +24,9 @@ object JournalFiles
       Vector.empty
     else
       autoClosing(Files.list(directory)) { stream ⇒
-        val pattern = Pattern.compile(Pattern.quote(journalFileBase.toString) + """--([0-9]+)\.journal""")
+        val pattern = JournalFile.pattern(journalFileBase.getFileName)
         stream.iterator.asScala.flatMap { file ⇒
-          val matcher = pattern.matcher(file.toString)
+          val matcher = pattern.matcher(file.getFileName.toString)
           matcher.matches ? JournalFile(afterEventId = matcher.group(1).toLong, file)
         } .toVector.sortBy(_.afterEventId)
       }
@@ -39,6 +35,6 @@ object JournalFiles
   implicit final class JournalMetaOps[E <: Event](private val underlying: JournalMeta[E]) extends AnyVal
   {
     def file(after: EventId, extraSuffix: String = ""): Path =
-      journalFile(underlying.fileBase, after, extraSuffix)
+      JournalFile.toFile(underlying.fileBase, after, extraSuffix)
   }
 }

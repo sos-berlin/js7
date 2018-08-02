@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, DeadLetterSuppression, Stash}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.typeName
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -143,7 +143,7 @@ object JournalingActor {
   private val logger = Logger(getClass)
 
   object Input {
-    private[journal] final case object GetSnapshot
+    private[journal] final case object GetSnapshot extends DeadLetterSuppression  // Actor may terminate
   }
 
   object Output {

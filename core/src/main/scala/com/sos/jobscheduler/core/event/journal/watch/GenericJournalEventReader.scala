@@ -27,11 +27,11 @@ extends AutoCloseable
   import journalMeta.eventJsonCodec
 
   protected val eventIdToPositionIndex = new EventIdPositionIndex(size = 10000)
-  private lazy val cache = new Cache(journalFile)
+  private lazy val readerCache = new ReaderCache(journalFile)
 
   eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
 
-  def close() = cache.close()
+  def close() = readerCache.close()
 
   protected def untornEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]] = {
     val position = eventIdToPositionIndex.positionAfter(after)
@@ -60,9 +60,9 @@ extends AutoCloseable
     }
   }
 
-  protected final def borrowReader() = cache.borrowReader()
+  protected final def borrowReader() = readerCache.borrowReader()
 
-  protected final def returnReader(reader: InputStreamJsonSeqReader) = cache.returnReader(reader)
+  protected final def returnReader(reader: InputStreamJsonSeqReader) = readerCache.returnReader(reader)
 
   private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
     var closed = false
@@ -84,14 +84,14 @@ extends AutoCloseable
       stamped
     }
 
-    override def toString = s"CloseableIterator(after = ${EventId.toString(after)}, ${cache.size}× open)"
+    override def toString = s"CloseableIterator(after = ${EventId.toString(after)}, ${readerCache.size}× open)"
   }
 }
 
 private object GenericJournalEventReader {
   private val logger = Logger(getClass)
 
-  private class Cache(file: Path) {
+  private class ReaderCache(file: Path) {
     private val availableReaders = new ConcurrentLinkedQueue[InputStreamJsonSeqReader]
     private val lentReaders = new ScalaConcurrentHashSet[InputStreamJsonSeqReader]
     @volatile

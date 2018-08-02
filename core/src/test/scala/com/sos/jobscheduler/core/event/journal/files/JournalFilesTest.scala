@@ -5,7 +5,6 @@ import com.google.common.io.Files.touch
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
-import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
 /**
@@ -13,10 +12,6 @@ import org.scalatest.FreeSpec
   */
 final class JournalFilesTest extends FreeSpec
 {
-  "journalFile" in {
-    assert(JournalFiles.journalFile(Paths.get("TEST/test"), after = 123) == Paths.get("TEST/test--123.journal"))
-  }
-
   "listJournalFiles, currentFile" in {
     withTemporaryDirectory("JournalHistoryTest-") { dir ⇒
       (dir / "test--0.journal").contentString = "TEST-CONTENT"

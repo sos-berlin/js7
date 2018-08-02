@@ -52,6 +52,8 @@ extends Actor with Stash {
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
+  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot-period")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private var snapshotCancelable: Cancelable = null
 
   private var journalWriter: JournalWriter[E] = null
   private var eventWatchOption: Option[JournalEventWatch[E]] = None
@@ -65,6 +67,7 @@ extends Actor with Stash {
   for (o ← simulateSync) logger.warn(s"sync is simulated with $o duration")
 
   override def postStop() = {
+    if (snapshotCancelable != null) snapshotCancelable.cancel()
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
     for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
@@ -73,10 +76,7 @@ extends Actor with Stash {
       temporaryJournalWriter.close()
       Files.delete(temporaryJournalWriter.file)
     }
-    if (journalWriter != null) {
-      journalWriter.close()
-      journalWriter.logStatistics()
-    }
+    closeJournalWriter()
     logger.debug("Stopped")
     super.postStop()
   }
@@ -112,7 +112,7 @@ extends Actor with Stash {
   private def becomeReady(): Unit = {
     become(ready)
     logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${journalWriter.file}'")
-    journalWriter.beginEventSection()
+    journalWriter.startJournaling()
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
@@ -151,10 +151,8 @@ extends Actor with Stash {
       else
       if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
         val sync = syncOnCommit && !dontSync
-        try {
-          journalWriter.flush()
-          if (sync) journalWriter.sync()
-        } catch { case NonFatal(t) ⇒
+        try journalWriter.flush(sync = sync)
+        catch { case NonFatal(t) ⇒
           val tt = t.appendCurrentStackTrace
           for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
           throw tt;
@@ -171,6 +169,8 @@ extends Actor with Stash {
         }
         writtenBuffer.clear()
         dontSync = true
+        scheduleNextSnapshot()
+
       } else
       if (writtenBuffer.nonEmpty) {
         logger.trace(s"Discarded: Commit($level), writtenBuffer.length=${writtenBuffer.length}")
@@ -180,14 +180,16 @@ extends Actor with Stash {
       if (!journalWriter.isEventWritten) {
         sender ! Output.SnapshotTaken
       } else {
-        journalWriter.close()
-        journalWriter.logStatistics()
+        closeJournalWriter()
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
+          for (o ← eventWatchOption) o.deleteObsoleteArchives()
           sender ! Output.SnapshotTaken
         }
       }
+
+    case Output.SnapshotTaken ⇒  // In case, JournalActor itself has sent TakeSnapshot
 
     case Input.Terminate ⇒
       stop(self)
@@ -239,9 +241,8 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
-    if (journalWriter != null) {
-      journalWriter.close()
-    }
+    if (snapshotCancelable != null) snapshotCancelable.cancel()
+    closeJournalWriter()
     temporaryJournalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"))
     temporaryJournalWriter.beginSnapshotSection()
     actorOf(
@@ -255,11 +256,10 @@ extends Actor with Stash {
       throw t.appendCurrentStackTrace
 
     case SnapshotWriter.Output.Finished(Success(snapshotCount)) ⇒
+      if (syncOnCommit) temporaryJournalWriter.flush(sync = syncOnCommit)
       temporaryJournalWriter.close()
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
-      if (snapshotCount > 0) {
-        logger.info(s"$snapshotCount snapshots written to journal")
-      }
+      logger.info(s"Snapshot written. $snapshotCount objects written to journal")
       val file = journalMeta.file(after = lastWrittenEventId)
       move(temporaryJournalWriter.file, file, ATOMIC_MOVE)
       temporaryJournalWriter = null
@@ -275,10 +275,25 @@ extends Actor with Stash {
     new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots,
       simulateSync = simulateSync)
 
+  def closeJournalWriter() {
+    if (journalWriter != null) {
+      journalWriter.flush(sync = syncOnCommit)
+      journalWriter.close()
+    }
+  }
+
   private def handleRegisterMe() = {
     journalingActors += sender()
     watch(sender())
   }
+
+  private def scheduleNextSnapshot(): Unit =
+    for (period ← snapshotPeriod) {
+      if (snapshotCancelable != null) snapshotCancelable.cancel()
+      snapshotCancelable = scheduler.scheduleOnce(period) {
+        self ! Input.TakeSnapshot
+      }
+    }
 }
 
 object JournalActor

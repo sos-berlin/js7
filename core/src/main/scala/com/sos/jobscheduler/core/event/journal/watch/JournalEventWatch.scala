@@ -1,11 +1,13 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -54,14 +56,17 @@ with JournalingObserver
     currentJournalEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
 
   def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
-    // TODO For properly working TakeSnapshot, remember current CurrentJournalEventReader as HistoricJournalEventReader
-    // Wenn currentJournalEventReader erneuert wird, dann kann die Meldung des nächsten neuen Events verloren gehen,
-    // wenn noch dem alten CurrentJournalEventReader gelauscht wird.
-    // Also: Alten CurrentJournalEventReader schließen und Lauscher benachrichtigen.
-    // Die bekommen dann einen leeren CloseableIterator und wiederholen den Aufruf, dann mit dem neuen CurrentJournalEventReader.
-    // Siehe auch onEventsAdded.
-    currentJournalEventReaderOption = Some(
-      new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId))
+    synchronized {
+      val after = flushedLengthAndEventId.value
+      if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
+      for (o ← currentJournalEventReaderOption if o.lastEventId != after)
+        throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
+      for (historicFile ← afterEventIdToHistoric.get(after))
+        historicFile.close()
+      val reader = new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId)
+      currentJournalEventReaderOption = Some(reader)
+      afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
+    }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
     started.trySuccess(Completed)
   }
@@ -88,7 +93,7 @@ with JournalingObserver
     }
   }
 
-  private def deleteObsoleteArchives(): Unit = {
+  protected[journal ]def deleteObsoleteArchives(): Unit = {
     val untilEventId = eventsAcceptedUntil()
     val keepAfter = currentJournalEventReader.tornEventId match {
       case current if untilEventId >= current ⇒ current
@@ -96,8 +101,8 @@ with JournalingObserver
     }
     for ((afterEventId, historicJournalFile) ← afterEventIdToHistoric if afterEventId < keepAfter) {
       try {
-        logger.info(s"Deleting obsolete journal files '$historicJournalFile'")
-        historicJournalFile.close()
+        logger.info(s"Deleting obsolete journal file '$historicJournalFile'")
+        if (isWindows) historicJournalFile.close()
         delete(historicJournalFile.file)
         afterEventIdToHistoric -= afterEventId
       } catch {
@@ -135,6 +140,17 @@ with JournalingObserver
 
   private def historicAfter(after: EventId): Option[HistoricJournalFile] =
     afterEventIdToHistoric.toVector.sortBy(_._1).reverseIterator find (_._1 <= after) map (_._2)
+
+  @VisibleForTesting
+  private[watch] def historicFileEventIds: Set[EventId] =
+    afterEventIdToHistoric.keySet
+
+  private def lastEventId =
+    currentJournalEventReaderOption match {
+      case Some(o) ⇒ o.lastEventId
+      case None if afterEventIdToHistoric.nonEmpty ⇒ afterEventIdToHistoric.keys.max
+      case None ⇒ EventId.BeforeFirst
+    }
 
   private final case class HistoricJournalFile(afterEventId: EventId, file: Path)
   {
