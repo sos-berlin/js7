@@ -30,7 +30,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
@@ -60,7 +60,7 @@ final class AgentOrderKeeper(
   config: Config,
   scheduler: Scheduler,
   implicit private val timerService: TimerService)
-extends KeyedEventJournalingActor[Event] with Stash {
+extends MainJournalingActor[Event] with Stash {
 
   import context.{actorOf, dispatcher, watch}
 

@@ -22,7 +22,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActor(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
+final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)

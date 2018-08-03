@@ -28,7 +28,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     }
   }
 
-  override def unhandled(msg: Any) = msg match {
+  override def journaling = super.journaling orElse {
     case Input.RecoverFromSnapshot(o) ⇒
       registered = true
       recoverFromSnapshot(o)
@@ -41,13 +41,11 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     case Input.FinishRecovery ⇒
       callFinishRecovery()
       sender() ! KeyedJournalingActor.Output.RecoveryFinished
-
-    case _ ⇒ super.unhandled(msg)
   }
 
   private def registerMe(): Unit =
     if (!registered) {
-      journalActor ! JournalActor.Input.RegisterMe(Some(key))
+      journalActor ! JournalActor.Input.RegisterMe
       registered = true
     }
 

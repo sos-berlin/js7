@@ -28,7 +28,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -71,7 +71,7 @@ final class MasterOrderKeeper(
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
 extends Stash
-with KeyedEventJournalingActor[Event] {
+with MainJournalingActor[Event] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 

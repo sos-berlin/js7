@@ -30,6 +30,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   protected def become(state: String)(recv: Receive) =
     context.become(journaling orElse recv)
 
+  override def preStart() = {
+    journalActor ! JournalActor.Input.RegisterMe
+    super.preStart()
+  }
+
   protected def inhibitJournaling(): Unit = {
     if (stashingCount > 0) throw new IllegalStateException("inhibitJournaling while persist operation is active?")
     stashingCount = Inhibited
@@ -76,7 +81,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     }
   }
 
-  private def journaling: Receive = {
+  protected[journal] def journaling: Receive = {
     case JournalActor.Output.Stored(stampedOptions, item: Item) ⇒
       // sender() is from persistKeyedEvent or deferAsync
       if (!item.async) {

@@ -24,7 +24,7 @@ import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedEventJournalingActor}
+import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.JobPath
@@ -43,7 +43,7 @@ private[agent] final class AgentActor @Inject private(
   keyedEventBus: StampedKeyedEventBus,
   timerService: TimerService)
   (implicit scheduler: Scheduler)
-extends KeyedEventJournalingActor[AgentEvent] {
+extends MainJournalingActor[AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, fileBasedDirectory, stateDirectory}
   import context.{actorOf, watch}

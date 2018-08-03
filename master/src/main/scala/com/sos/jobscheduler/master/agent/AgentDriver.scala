@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.journal.KeyedEventJournalingActor
+import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -40,7 +40,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
-extends KeyedEventJournalingActor[MasterAgentEvent]
+extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
@@ -82,7 +82,10 @@ with ReceiveLoggingActor.WithStash {
       self ! Internal.BatchFailed(inputs, throwable)
   }
 
-  protected def snapshots = Future.successful(Nil)
+  protected def key = agentId.path  // Only one version is active at any time
+  protected def recoverFromSnapshot(snapshot: Any) = {}
+  protected def recoverFromEvent(event: MasterAgentEvent) = {}
+  protected def snapshot = None
 
   override def postStop() = {
     client.logout().runAsync onComplete {
@@ -268,7 +271,7 @@ with ReceiveLoggingActor.WithStash {
   private def handleConnectionError(throwable: Throwable)(andThen: ⇒ Unit): Unit = {
     logger.warn(throwable.toStringWithCauses)
     if (throwable.getStackTrace.nonEmpty) logger.debug("", throwable)
-    persist(agentId.path <-: MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses), noSync = true) { _ ⇒
+    persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ ⇒
       andThen
     }
   }

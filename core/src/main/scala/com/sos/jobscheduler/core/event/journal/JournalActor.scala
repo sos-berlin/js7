@@ -56,8 +56,7 @@ extends Actor with Stash {
   private var journalWriter: JournalWriter[E] = null
   private var eventWatchOption: Option[JournalEventWatch[E]] = None
   private var temporaryJournalWriter: JournalWriter[E] = null
-  private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
-  private val keylessJournalingActors = mutable.Set[ActorRef]()
+  private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
   private var lastWrittenEventId = EventId.BeforeFirst
   private var dontSync = true
@@ -67,9 +66,8 @@ extends Actor with Stash {
 
   override def postStop() = {
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
-    stopped.trySuccess(Stopped(keyedEventJournalingActorCount = keyToJournalingActor.size))
-    for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped while a KeyedJournalingActor is still running for key=$key")
-    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: $a")
+    stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
+    for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
     if (temporaryJournalWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${temporaryJournalWriter.file}")
       temporaryJournalWriter.close()
@@ -88,8 +86,8 @@ extends Actor with Stash {
       lastWrittenEventId = lastEventId
       eventWatchOption = eventWatchOption_ map (_.asInstanceOf[JournalEventWatch[E]]/*restore erased type argument, not checked*/)
       eventIdGenerator.updateLastEventId(lastEventId)
-      keyToJournalingActor ++= keyToActor
-      keyToJournalingActor.values foreach watch
+      journalingActors ++= keyToActor.values
+      journalingActors foreach watch
       val sender = this.sender()
       becomeTakingSnapshotThen() {
         unstashAll()
@@ -97,15 +95,15 @@ extends Actor with Stash {
         sender ! Output.Ready
       }
 
-    case Input.StartWithoutRecovery ⇒
+    case Input.StartWithoutRecovery ⇒  // Testing only
       journalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId))
       unstashAll()
       journalWriter.beginSnapshotSection()  // Empty snapshot section
       becomeReady()
       sender() ! Output.Ready
 
-    case msg: Input.RegisterMe ⇒
-      handleRegisterMe(msg)
+    case Input.RegisterMe ⇒
+      handleRegisterMe()
 
     case _ ⇒
       stash()
@@ -126,8 +124,8 @@ extends Actor with Stash {
         sender() ! Valid(Completed)
       }
 
-    case msg: Input.RegisterMe ⇒
-      handleRegisterMe(msg)
+    case Input.RegisterMe ⇒
+      handleRegisterMe()
 
     case Input.Store(keyedEvents, replyTo, timestampOption, noSync, item) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption) }}
@@ -195,11 +193,11 @@ extends Actor with Stash {
       stop(self)
 
     case Input.AwaitAndTerminate ⇒  // For testing
-      if (keyToJournalingActor.isEmpty && keylessJournalingActors.isEmpty)
+      if (journalingActors.isEmpty)
         stop(self)
       else
         become(receiveTerminatedOrGet andThen { _ ⇒
-          if (keyToJournalingActor.isEmpty && keylessJournalingActors.isEmpty) {
+          if (journalingActors.isEmpty) {
             stop(self)
           }
         })
@@ -218,13 +216,9 @@ extends Actor with Stash {
   }
 
   private def receiveTerminatedOrGet: Receive = {
-    case Terminated(a) if keylessJournalingActors contains a ⇒
-      keylessJournalingActors -= a
-
-    case Terminated(a) if keyToJournalingActor.values.exists(_ == a) ⇒
-      val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
-      logger.trace(s"Terminated: ${keys mkString " ?"} -> ${a.path}")
-      keyToJournalingActor --= keys
+    case Terminated(a) if journalingActors contains a ⇒
+      logger.trace(s"Terminated: ${a.path}")
+      journalingActors -= a
 
     case Input.GetState ⇒
       sender() ! (
@@ -250,12 +244,10 @@ extends Actor with Stash {
     }
     temporaryJournalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"))
     temporaryJournalWriter.beginSnapshotSection()
-    val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     actorOf(
-      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors, snapshotJsonCodec) },
+      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec) },
       uniqueActorName("SnapshotWriter"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
-    // Ist der Schnappschuss vollständig, wenn ein journalingActor (von dem ein Schnappschuss geholt wird) sich jetzt beendet ???
   }
 
   private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
@@ -283,16 +275,9 @@ extends Actor with Stash {
     new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots,
       simulateSync = simulateSync)
 
-  private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
-    case Input.RegisterMe(None) ⇒
-      logger.trace(s"RegisterMe(${sender()})")
-      keylessJournalingActors.add(sender())
-      watch(sender())
-
-    case Input.RegisterMe(Some(key)) ⇒
-      logger.trace(s"RegisterMe($key)")
-      keyToJournalingActor += key → sender()
-      watch(sender())
+  private def handleRegisterMe() = {
+    journalingActors += sender()
+    watch(sender())
   }
 }
 
@@ -317,7 +302,7 @@ object JournalActor
       lastEventId: EventId)
     final case object StartWithoutRecovery
     final case class EventsAccepted(untilEventId: EventId)
-    private[journal] final case class RegisterMe(key: Option[Any])
+    private[journal] case object RegisterMe
     private[journal] final case class Store(
       keyedEventOptions: Seq[Option[AnyKeyedEvent]],
       journalingActor: ActorRef,
@@ -333,7 +318,7 @@ object JournalActor
   sealed trait Output
   object Output {
     final case object Ready
-    final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]], item: CallersItem) extends Output
+    private[journal] final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]], item: CallersItem) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken

@@ -5,14 +5,12 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import scala.concurrent.Future
 
 /**
+  * Instances of this trait are thought to be a controlling actor, the only for a journal.
+  * As a JournalingActor, the actor registers itself at JournalActor.
+  * The event `RegisterMe` must arrive before JournalActor takes a snapshot, if `snaphots` is nonEmpty.
   * @author Joacim Zschimmer
   */
-trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
-
-  override def preStart() = {
-    journalActor ! JournalActor.Input.RegisterMe(None)
-    super.preStart()
-  }
+trait MainJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE], noSync: Boolean = false)(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
     persist(keyedEvent, async = true)(callback)
@@ -22,3 +20,4 @@ trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
   : Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp, noSync = noSync, async = async)(callback)
 }
+
