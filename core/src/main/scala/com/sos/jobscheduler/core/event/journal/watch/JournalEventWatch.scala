@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.google.common.annotations.VisibleForTesting
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
@@ -39,7 +38,7 @@ with JournalingObserver
   @volatile
   private var afterEventIdToHistoric: Map[EventId, HistoricJournalFile] =
     listJournalFiles(journalMeta.fileBase) map (o ⇒ HistoricJournalFile(o.afterEventId, o.file)) toKeyedMap (_.afterEventId)
-  private val started = Promise[Completed]()
+  private val started = Promise[this.type]()
   @volatile
   private var currentJournalEventReaderOption: Option[CurrentJournalEventReader[E]] = None
   private val eventsAcceptedUntil = AtomicLong(EventId.BeforeFirst)
@@ -50,7 +49,7 @@ with JournalingObserver
   }
 
   override def whenStarted: Task[this.type] =
-    Task.deferFuture(started.future) map (_ ⇒ this)
+    Task.deferFuture(started.future)
 
   private def currentJournalEventReader =
     currentJournalEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
@@ -68,7 +67,7 @@ with JournalingObserver
       afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
-    started.trySuccess(Completed)
+    started.trySuccess(this)
   }
 
   def tornEventId =
