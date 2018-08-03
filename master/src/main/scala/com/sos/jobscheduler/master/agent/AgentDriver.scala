@@ -15,11 +15,12 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.AgentId
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
@@ -30,7 +31,6 @@ import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -183,6 +183,15 @@ with ReceiveLoggingActor.WithStash {
 
           case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
             self ! Internal.Fetched(Success(stampedEvents))
+
+          case Success(torn: TearableEventSeq.Torn) ⇒
+            val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
+            logger.error(problem)
+            persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
+              if (isConnected) scheduler.scheduleOnce(15.second) {
+                self ! Internal.FetchEvents(after)
+              }
+            }
         }
 
     case Internal.EventsAccepted(eventId) ⇒
