@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotWriterTest extends FreeSpec
+final class SnapshotTakerTest extends FreeSpec
 {
   private implicit val askTimeout = Timeout(99.seconds)
 
@@ -37,7 +37,7 @@ final class SnapshotWriterTest extends FreeSpec
           }
         },
         "TEST-ACTOR")
-      val snapshotWriter = actorSystem.actorOf(Props { new SnapshotWriter(_ ⇒ {}, Set(actor), null.asInstanceOf[Encoder[Any]], config, Scheduler.global) })
+      val snapshotWriter = actorSystem.actorOf(Props { new SnapshotTaker(_ ⇒ {}, Set(actor), null.asInstanceOf[Encoder[Any]], config, Scheduler.global) })
       def getTestLogCount = (snapshotWriter ? "getTestLogCount").mapTo[Int] await 99.s
       WaitForCondition.waitForCondition(10.s, 10.ms)(getTestLogCount >= 2)
       assert(getTestLogCount >= 2)

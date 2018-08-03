@@ -19,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.journal.write.JournalWriter
+import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Files.move
@@ -55,9 +55,9 @@ extends Actor with Stash {
   private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot-period")(p ⇒ config.getDuration(p).toFiniteDuration)
   private var snapshotCancelable: Cancelable = null
 
-  private var journalWriter: JournalWriter[E] = null
+  private var eventWriter: EventJournalWriter[E] = null
   private var eventWatchOption: Option[JournalEventWatch[E]] = None
-  private var temporaryJournalWriter: JournalWriter[E] = null
+  private var snapshotJournalWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
   private var lastWrittenEventId = EventId.BeforeFirst
@@ -71,12 +71,12 @@ extends Actor with Stash {
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
     for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
-    if (temporaryJournalWriter != null) {
-      logger.debug(s"Deleting temporary journal files due to termination: ${temporaryJournalWriter.file}")
-      temporaryJournalWriter.close()
-      Files.delete(temporaryJournalWriter.file)
+    if (snapshotJournalWriter != null) {
+      logger.debug(s"Deleting temporary journal files due to termination: ${snapshotJournalWriter.file}")
+      snapshotJournalWriter.close()
+      Files.delete(snapshotJournalWriter.file)
     }
-    closeJournalWriter()
+    closeEventWriter()
     logger.debug("Stopped")
     super.postStop()
   }
@@ -96,9 +96,8 @@ extends Actor with Stash {
       }
 
     case Input.StartWithoutRecovery ⇒  // Testing only
-      journalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId))
+      eventWriter = newEventJsonWriter(journalMeta.file(after = lastWrittenEventId), withoutSnapshots = true)
       unstashAll()
-      journalWriter.beginSnapshotSection()  // Empty snapshot section
       becomeReady()
       sender() ! Output.Ready
 
@@ -111,8 +110,8 @@ extends Actor with Stash {
 
   private def becomeReady(): Unit = {
     become(ready)
-    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${journalWriter.file}'")
-    journalWriter.startJournaling()
+    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file}'")
+    eventWriter.startJournaling()
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
@@ -129,11 +128,12 @@ extends Actor with Stash {
 
     case Input.Store(keyedEvents, replyTo, timestampOption, noSync, item) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption) }}
-      try journalWriter.writeEvents(stampedOptions.flatten)
+      val stampedEvents = stampedOptions.flatten
+      try eventWriter.writeEvents(stampedEvents)
       catch {
-        case t: JournalWriter.SerializationException ⇒
-          logger.error(t.getCause.toStringWithCauses, t.getCause)
-          replyTo.forward(Output.SerializationFailure(t.getCause))  // TODO Handle message in JournaledActor
+        //case t: JournalWriter.SerializationException ⇒
+        //  logger.error(t.getCause.toStringWithCauses, t.getCause)
+        //  replyTo.forward(Output.SerializationFailure(t.getCause))  // TODO Handle message in JournaledActor
         case NonFatal(t) ⇒
           val tt = t.appendCurrentStackTrace
           logger.error(tt.toStringWithCauses, tt)
@@ -143,44 +143,24 @@ extends Actor with Stash {
       writtenBuffer += Written(stampedOptions, replyTo, sender(), item)
       dontSync &= noSync
       forwardCommit()
+      if (stampedEvents.nonEmpty) {
+        scheduleNextSnapshot()
+      }
 
     case Internal.Commit(level) ⇒
-      if (level < writtenBuffer.length)
+      if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits
         forwardCommit()
-      else
-      if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
-        val sync = syncOnCommit && !dontSync
-        try journalWriter.flush(sync = sync)
-        catch { case NonFatal(t) ⇒
-          val tt = t.appendCurrentStackTrace
-          for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
-          throw tt;
-        }
-        logWrittenAsStored(sync)
-        for (Written(stampedOptions, replyTo, sender, item) ← writtenBuffer) {
-          replyTo.!(Output.Stored(stampedOptions, item))(sender)
-          for (lastStamped ← stampedOptions.reverseIterator.flatten.buffered.headOption) {
-            lastWrittenEventId = lastStamped.eventId
-          }
-          for (stamped ← stampedOptions.iterator.flatten) {
-            keyedEventBus.publish(stamped)
-          }
-        }
-        writtenBuffer.clear()
-        dontSync = true
-        scheduleNextSnapshot()
-
-      } else
-      if (writtenBuffer.nonEmpty) {
+      } else if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
+        commit()
+      } else if (writtenBuffer.nonEmpty) {
         logger.trace(s"Discarded: Commit($level), writtenBuffer.length=${writtenBuffer.length}")
       }
 
     case Input.TakeSnapshot ⇒
-      if (!journalWriter.isEventWritten) {
+      if (!eventWriter.isEventWritten) {
         sender ! Output.SnapshotTaken
       } else {
-        closeJournalWriter()
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
@@ -192,6 +172,7 @@ extends Actor with Stash {
     case Output.SnapshotTaken ⇒  // In case, JournalActor itself has sent TakeSnapshot
 
     case Input.Terminate ⇒
+      commit()
       stop(self)
 
     case Input.AwaitAndTerminate ⇒  // For testing
@@ -217,6 +198,30 @@ extends Actor with Stash {
     }
   }
 
+  /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
+  private def commit(): Unit = {
+    if (delayedCommit != null) delayedCommit.cancel()
+    val sync = syncOnCommit && !dontSync
+    try eventWriter.flush(sync = sync)
+    catch { case NonFatal(t) ⇒
+      val tt = t.appendCurrentStackTrace
+      for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
+      throw tt;
+    }
+    logWrittenAsStored(sync)
+    for (Written(stampedOptions, replyTo, sender, item) ← writtenBuffer) {
+      replyTo.!(Output.Stored(stampedOptions, item))(sender)
+      for (lastStamped ← stampedOptions.reverseIterator.flatten.buffered.headOption) {
+        lastWrittenEventId = lastStamped.eventId
+      }
+      for (stamped ← stampedOptions.iterator.flatten) {
+        keyedEventBus.publish(stamped)
+      }
+    }
+    writtenBuffer.clear()
+    dontSync = true
+  }
+
   private def receiveTerminatedOrGet: Receive = {
     case Terminated(a) if journalingActors contains a ⇒
       logger.trace(s"Terminated: ${a.path}")
@@ -224,10 +229,10 @@ extends Actor with Stash {
 
     case Input.GetState ⇒
       sender() ! (
-        if (journalWriter == null)
+        if (eventWriter == null)
           Output.State(isFlushed = false, isSynced = false)
         else
-          Output.State(isFlushed = journalWriter.isFlushed, isSynced = journalWriter.isSynced))
+          Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
   }
 
   private def logWrittenAsStored(synced: Boolean) =
@@ -241,29 +246,38 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
-    if (snapshotCancelable != null) snapshotCancelable.cancel()
-    closeJournalWriter()
-    temporaryJournalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"))
-    temporaryJournalWriter.beginSnapshotSection()
+    logger.info(s"Starting new journal file with snapshot")
+    if (snapshotCancelable != null) {
+      snapshotCancelable.cancel()
+      snapshotCancelable = null
+    }
+    if (eventWriter != null) {
+      commit()
+      closeEventWriter()
+    }
+
+    snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
+      journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"),
+      after = lastWrittenEventId, eventWatchOption, simulateSync = simulateSync)
+    snapshotJournalWriter.beginSnapshotSection()
     actorOf(
-      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
-      uniqueActorName("SnapshotWriter"))
+      Props { new SnapshotTaker(snapshotJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
+      uniqueActorName("SnapshotTaker"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
 
   private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
-    case SnapshotWriter.Output.Finished(Failure(t)) ⇒
+    case SnapshotTaker.Output.Finished(Failure(t)) ⇒
       throw t.appendCurrentStackTrace
 
-    case SnapshotWriter.Output.Finished(Success(snapshotCount)) ⇒
-      if (syncOnCommit) temporaryJournalWriter.flush(sync = syncOnCommit)
-      temporaryJournalWriter.close()
+    case SnapshotTaker.Output.Finished(Success(snapshotCount)) ⇒
+      if (syncOnCommit) snapshotJournalWriter.flush(sync = syncOnCommit)
+      snapshotJournalWriter.close()
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
-      logger.info(s"Snapshot written. $snapshotCount objects written to journal")
       val file = journalMeta.file(after = lastWrittenEventId)
-      move(temporaryJournalWriter.file, file, ATOMIC_MOVE)
-      temporaryJournalWriter = null
-      journalWriter = newJsonWriter(file, appendToSnapshots = true)
+      move(snapshotJournalWriter.file, file, ATOMIC_MOVE)
+      snapshotJournalWriter = null
+      eventWriter = newEventJsonWriter(file)
       unstashAll()
       andThen()
 
@@ -271,14 +285,16 @@ extends Actor with Stash {
       stash()
   }
 
-  private def newJsonWriter(file: Path, appendToSnapshots: Boolean = false) =
-    new JournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, appendToSnapshots = appendToSnapshots,
-      simulateSync = simulateSync)
 
-  def closeJournalWriter() {
-    if (journalWriter != null) {
-      journalWriter.flush(sync = syncOnCommit)
-      journalWriter.close()
+  private def newEventJsonWriter(file: Path, withoutSnapshots: Boolean = false) =
+    new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, simulateSync = simulateSync,
+      withoutSnapshots = withoutSnapshots)
+
+  def closeEventWriter(): Unit = {
+    if (eventWriter != null) {
+      eventWriter.flush(sync = syncOnCommit)
+      eventWriter.close()
+      eventWriter = null
     }
   }
 
@@ -288,10 +304,11 @@ extends Actor with Stash {
   }
 
   private def scheduleNextSnapshot(): Unit =
-    for (period ← snapshotPeriod) {
-      if (snapshotCancelable != null) snapshotCancelable.cancel()
-      snapshotCancelable = scheduler.scheduleOnce(period) {
-        self ! Input.TakeSnapshot
+    if (snapshotCancelable == null) {
+      for (period ← snapshotPeriod) {
+        snapshotCancelable = scheduler.scheduleOnce(period) {
+          self ! Input.TakeSnapshot
+        }
       }
     }
 }

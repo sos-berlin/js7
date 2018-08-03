@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.SnapshotWriter._
+import com.sos.jobscheduler.core.event.journal.SnapshotTaker._
 import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipeline
 import com.typesafe.config.Config
 import io.circe.Encoder
@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class SnapshotWriter(
+private[journal] final class SnapshotTaker(
   write: ByteString ⇒ Unit,
   journalingActors: Set[ActorRef],
   jsonEncoder: Encoder[Any],
@@ -109,7 +109,7 @@ extends Actor {
   }
 }
 
-private[journal] object SnapshotWriter {
+private[journal] object SnapshotTaker {
   private val logger = Logger(getClass)
 
   object Output {

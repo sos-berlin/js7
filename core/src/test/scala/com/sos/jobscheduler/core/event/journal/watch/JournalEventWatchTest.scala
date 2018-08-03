@@ -16,7 +16,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.HistoricJournalEventReaderTest.writeJournal
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
-import com.sos.jobscheduler.core.event.journal.write.JournalWriter
+import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
@@ -153,8 +153,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     "Second onJournalingStarted (snapshot)" in {
       withJournalMeta { journalMeta ⇒
         autoClosing(new JournalEventWatch[MyEvent](journalMeta)) { eventWatch ⇒
-          autoClosing(new JournalWriter[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch))) { writer ⇒
-            writer.beginSnapshotSection()
+          autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch))) { writer ⇒
             writer.startJournaling()
             writer.writeEvents(
               Stamped(1, "1" <-: A1) ::
@@ -164,8 +163,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
           }
           assert(eventWatch.historicFileEventIds == Set[EventId](0))
 
-          autoClosing(new JournalWriter[MyEvent](journalMeta, after = 3, Some(eventWatch))) { writer ⇒
-            writer.beginSnapshotSection()
+          autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = 3, Some(eventWatch))) { writer ⇒
             writer.startJournaling()
             writer.writeEvents(
               Stamped(4, "2" <-: A2) ::
@@ -214,7 +212,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     // Mit TakeSnapshot prüfen
   }
 
-  private def withJournalEventWatch(lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
+  private def withJournalEventWatch(lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
     withJournalMeta { journalMeta ⇒
       withJournal(journalMeta, lastEventId)(body)
     }
@@ -229,10 +227,9 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
       body(journalMeta)
     }
 
-  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (JournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
+  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
     autoClosing(new JournalEventWatch[MyEvent](journalMeta)) { eventWatch ⇒
-      autoClosing(new JournalWriter[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
-        writer.beginSnapshotSection()
+      autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
         writer.startJournaling()
         body(writer, eventWatch)
       }
