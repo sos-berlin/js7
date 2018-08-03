@@ -5,24 +5,43 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.SnapshotWriter._
 import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipeline
+import com.typesafe.config.Config
 import io.circe.Encoder
-import scala.collection.immutable
+import java.time.Instant
+import monix.execution.Scheduler
+import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonEncoder: Encoder[Any])
+private[journal] final class SnapshotWriter(
+  write: ByteString ⇒ Unit,
+  journalingActors: Set[ActorRef],
+  jsonEncoder: Encoder[Any],
+  config: Config,
+  scheduler: Scheduler)
 extends Actor {
 
-  private var remaining = journalingActors.size
+  private var remaining = mutable.Set() ++ journalingActors
   private var snapshotCount = 0
   private val pipeline = new ParallelExecutingPipeline[ByteString](write)
+  private val logProgressPeriod = config.getDuration("jobscheduler.journal.snapshot-log-period").toFiniteDuration
+  private val logProgressActorLimit = config.getInt("jobscheduler.journal.snapshot-log-actor-limit")
+  private var logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
+  private val startedAt = Instant.now
+  private var testLogCount = 0
 
   self ! Internal.Start
+
+  override def postStop(): Unit = {
+    logProgressCancelable.cancel()
+    super.postStop()
+  }
 
   def receive = {
     case Internal.Start ⇒
@@ -31,13 +50,28 @@ extends Actor {
       } else {
         for (a ← journalingActors) {
           context.watch(a)
-          a ! JournalingActor.Input.GetSnapshot
+          a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
         }
       }
 
+    case Internal.LogProgress ⇒
+      logProgressCancelable.cancel()
+      val limit = remaining.size min logProgressActorLimit
+      logger.info(s"Writing journal snapshot for ${(Instant.now - startedAt).pretty}, ${remaining.size} object snapshots remaining" +
+        (if (limit == remaining.size) "" else s" (showing $limit actors)") +
+        ":")
+      for (o ← remaining take limit) {
+        logger.info(s"... awaiting object snapshot from actor ${o.path}")
+      }
+      logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
+      testLogCount += 1
+
+    case "getTestLogCount" ⇒
+      sender() ! testLogCount
+
     case Terminated(a) ⇒
       logger.debug(s"${a.path} terminated while taking snapshot")
-      countDown()
+      onDone(a)
 
     case JournalingActor.Output.GotSnapshot(snapshots) ⇒
       context.unwatch(sender())
@@ -47,13 +81,13 @@ extends Actor {
           logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }
-        countDown()
+        onDone(sender())
       }
   }
 
-  private def countDown(): Unit = {
-    remaining -= 1
-    if (remaining == 0) {
+  private def onDone(actor: ActorRef): Unit = {
+    remaining -= actor
+    if (remaining.isEmpty) {
       end()
     }
   }
@@ -83,6 +117,7 @@ private[journal] object SnapshotWriter {
   }
 
   private object Internal {
-    final case object Start
+    case object Start
+    case object LogProgress
   }
 }

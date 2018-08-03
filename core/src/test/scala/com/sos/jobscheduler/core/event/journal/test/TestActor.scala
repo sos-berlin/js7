@@ -162,9 +162,11 @@ private[journal] object TestActor {
   intelliJuseImport(TestKeyedEventJsonCodec)
 
   private val MyConfig = ConfigFactory.parseString("""
-      |jobscheduler.journal.sync = on
-      |jobscheduler.journal.delay = 0.s
-    """.stripMargin)
+     |jobscheduler.journal.sync = on
+     |jobscheduler.journal.delay = 0.s
+     |jobscheduler.journal.snapshot-log-period = 10.ms
+     |jobscheduler.journal.snapshot-log-actor-limit = 1
+     |""".stripMargin)
   private val logger = Logger(getClass)
 
   object Input {

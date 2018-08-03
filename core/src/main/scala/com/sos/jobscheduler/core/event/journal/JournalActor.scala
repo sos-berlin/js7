@@ -246,7 +246,7 @@ extends Actor with Stash {
     temporaryJournalWriter = newJsonWriter(journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"))
     temporaryJournalWriter.beginSnapshotSection()
     actorOf(
-      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec) },
+      Props { new SnapshotWriter(temporaryJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
       uniqueActorName("SnapshotWriter"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
