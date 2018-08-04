@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.watch.HistoricJournalEventReaderTest.writeJournal
+import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest.writeJournal
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -67,7 +67,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     }
   }
 
-  "CurrentJournalEventReader only" - {
+  "CurrentEventReader only" - {
     "eventWatch.when" in {
       withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) ⇒
         assert(eventWatch.eventsAfter(after = EventId.BeforeFirst).get.strict.isEmpty)

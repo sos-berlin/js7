@@ -41,30 +41,30 @@ with JournalingObserver
     listJournalFiles(journalMeta.fileBase) map (o ⇒ HistoricJournalFile(o.afterEventId, o.file)) toKeyedMap (_.afterEventId)
   private val started = Promise[this.type]()
   @volatile
-  private var currentJournalEventReaderOption: Option[CurrentJournalEventReader[E]] = None
+  private var currentEventReaderOption: Option[CurrentEventReader[E]] = None
   private val eventsAcceptedUntil = AtomicLong(EventId.BeforeFirst)
 
   def close() = {
     afterEventIdToHistoric.values foreach (_.close())
-    currentJournalEventReaderOption foreach (_.close())
+    currentEventReaderOption foreach (_.close())
   }
 
   override def whenStarted: Task[this.type] =
     Task.deferFuture(started.future)
 
-  private def currentJournalEventReader =
-    currentJournalEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
+  private def currentEventReader =
+    currentEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
 
   def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
-      for (o ← currentJournalEventReaderOption if o.lastEventId != after)
+      for (o ← currentEventReaderOption if o.lastEventId != after)
         throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
       for (historicFile ← afterEventIdToHistoric.get(after))
         historicFile.close()
-      val reader = new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId, config)
-      currentJournalEventReaderOption = Some(reader)
+      val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
+      currentEventReaderOption = Some(reader)
       afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
@@ -76,7 +76,7 @@ with JournalingObserver
       if (afterEventIdToHistoric.nonEmpty)
         afterEventIdToHistoric.keys.min
       else
-        currentJournalEventReader.tornEventId
+        currentEventReader.tornEventId
     }
 
   @tailrec
@@ -95,7 +95,7 @@ with JournalingObserver
 
   protected[journal] def deleteObsoleteArchives(): Unit = {
     val untilEventId = eventsAcceptedUntil()
-    val keepAfter = currentJournalEventReader.tornEventId match {
+    val keepAfter = currentEventReader.tornEventId match {
       case current if untilEventId >= current ⇒ current
       case _ ⇒ historicAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
     }
@@ -112,7 +112,7 @@ with JournalingObserver
   }
 
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
-    currentJournalEventReader.onEventsAdded(flushedPositionAndEventId)
+    currentEventReader.onEventsAdded(flushedPositionAndEventId)
     super.onEventsAdded(eventId = flushedPositionAndEventId.value)
   }
 
@@ -121,7 +121,7 @@ with JournalingObserver
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
-    currentJournalEventReader.eventsAfter(after) orElse ( // Torn
+    currentEventReader.eventsAfter(after) orElse ( // Torn
       historicAfter(after) map { historicJournalFile ⇒
         var last = after
         historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
@@ -130,7 +130,7 @@ with JournalingObserver
         } ++
           (if (last == after)
             CloseableIterator.empty
-          else  // Continue with next HistoricJournalEventReader or CurrentJournalEventReader
+          else  // Continue with next HistoricEventReader or CurrentEventReader
             eventsAfter(last).getOrElse(CloseableIterator.empty/*Should never be torn here because last > after*/))
       }
     )
@@ -146,7 +146,7 @@ with JournalingObserver
     afterEventIdToHistoric.keySet
 
   private def lastEventId =
-    currentJournalEventReaderOption match {
+    currentEventReaderOption match {
       case Some(o) ⇒ o.lastEventId
       case None if afterEventIdToHistoric.nonEmpty ⇒ afterEventIdToHistoric.keys.max
       case None ⇒ EventId.BeforeFirst
@@ -154,23 +154,23 @@ with JournalingObserver
 
   private final case class HistoricJournalFile(afterEventId: EventId, file: Path)
   {
-    private val historicJournalEventReader = AtomicAny[HistoricJournalEventReader[E]](null)
+    private val historicJournalEventReader = AtomicAny[HistoricEventReader[E]](null)
 
     def close(): Unit =
       for (r ← Option(historicJournalEventReader.get)) r.close()
 
     @tailrec
-    def eventReader: HistoricJournalEventReader[E] =
+    def eventReader: HistoricEventReader[E] =
       historicJournalEventReader.get match {
         case null ⇒
-          val r = new HistoricJournalEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
+          val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
           if (historicJournalEventReader.compareAndSet(null, r))
             r
           else {
             r.close()
             eventReader
           }
-        case r ⇒ r.asInstanceOf[HistoricJournalEventReader[E]]
+        case r ⇒ r.asInstanceOf[HistoricEventReader[E]]
       }
 
     override def toString = file.getFileName.toString

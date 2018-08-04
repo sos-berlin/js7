@@ -10,13 +10,13 @@ import java.nio.file.{Files, Path}
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class HistoricJournalEventReader[E <: Event](
+private[journal] final class HistoricEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   val tornEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config)
 extends AutoCloseable
-with GenericJournalEventReader[E]
+with EventReader[E]
 {
   protected def isHistoric = true
   protected val endPosition = Files.size(journalFile)

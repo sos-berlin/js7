@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.watch.HistoricJournalEventReaderTest._
+import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
@@ -15,10 +15,10 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class HistoricJournalEventReaderTest extends FreeSpec
+final class HistoricEventReaderTest extends FreeSpec
 {
   "eventsAfter" in {
-    withTemporaryDirectory("HistoricJournalEventReaderTest-") { dir ⇒
+    withTemporaryDirectory("HistoricEventReaderTest-") { dir ⇒
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer ⇒
@@ -27,7 +27,7 @@ final class HistoricJournalEventReaderTest extends FreeSpec
         writer.flush(sync = false)
       }
 
-      autoClosing(new HistoricJournalEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader ⇒
+      autoClosing(new HistoricEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader ⇒
         locally {
           val closeableIterator = reader.eventsAfter(After)
           assert(closeableIterator.toList == TestEvents)
@@ -48,7 +48,7 @@ final class HistoricJournalEventReaderTest extends FreeSpec
   }
 }
 
-object HistoricJournalEventReaderTest {
+object HistoricEventReaderTest {
   private[journal] sealed trait TestEvent extends Event {
     type Key = String
   }

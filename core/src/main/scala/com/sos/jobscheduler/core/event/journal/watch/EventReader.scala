@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashSet}
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, SeekableInputStream}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
+import com.sos.jobscheduler.core.event.journal.watch.EventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-private[watch] trait GenericJournalEventReader[E <: Event]
+private[watch] trait EventReader[E <: Event]
 extends AutoCloseable
 {
   /** `endPosition` does not grow. */
@@ -85,7 +85,7 @@ extends AutoCloseable
         .getOrElse(sys.error(s"Unexpected end of journal files '$journalFile' at position ${jsonFileReader.position}, after=${EventId.toString(after)}"))
         .as[Stamped[KeyedEvent[E]]]
         .orThrow
-      eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricJournalEventReader
+      eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricEventReader
       if (isHistoric && jsonFileReader.position == endPosition) {
         eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.index-factor"))
       }
@@ -96,7 +96,7 @@ extends AutoCloseable
   }
 }
 
-private object GenericJournalEventReader {
+private object EventReader {
   private val logger = Logger(getClass)
 
   private class ReaderCache(file: Path) {

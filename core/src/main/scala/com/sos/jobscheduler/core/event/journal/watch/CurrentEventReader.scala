@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class CurrentJournalEventReader[E <: Event](
+private[watch] final class CurrentEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId],
@@ -21,7 +21,7 @@ private[watch] final class CurrentJournalEventReader[E <: Event](
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
-extends GenericJournalEventReader[E]
+extends EventReader[E]
 {
   val tornEventId = flushedLengthAndEventId.value
   protected def isHistoric = false
@@ -34,7 +34,7 @@ extends GenericJournalEventReader[E]
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < endPosition)
-      throw new IllegalArgumentException(s"CurrentJournalEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
+      throw new IllegalArgumentException(s"CurrentEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
     eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position)
     _lastEventId = eventId
     endPosition = flushedPosition
@@ -52,5 +52,5 @@ extends GenericJournalEventReader[E]
 
   def lastEventId = _lastEventId
 
-  override def toString = s"CurrentJournalEventReader(${journalFile.getFileName})"
+  override def toString = s"CurrentEventReader(${journalFile.getFileName})"
 }
