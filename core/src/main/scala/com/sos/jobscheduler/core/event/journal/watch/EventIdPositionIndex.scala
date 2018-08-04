@@ -22,17 +22,18 @@ private[watch] final class EventIdPositionIndex(size: Int)
 
   require(positions.nonEmpty)
 
-  def addAfter(eventId: EventId, position: Long): Unit =
-    if (!tryAddAfter(eventId, position))
+  def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
+    if (!tryAddAfter(eventId, position, n))
       throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} > ${EventId.toString(_highestEventId)}")
 
-  def tryAddAfter(eventId: EventId, position: Long): Boolean =
+  def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean =
     (eventId > _highestEventId) &&
       synchronized {
         if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
         (eventId > _highestEventId) && {
-          addedCount += 1
-          if (addedCount % _factor == 0) {
+          val a = addedCount
+          addedCount += n
+          if (addedCount / _factor > a / _factor) {
             _highestEventId = eventId
             if (length == positions.length) {
               compress(factor = 2)

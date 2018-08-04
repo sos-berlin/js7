@@ -11,5 +11,5 @@ private[journal] trait JournalingObserver
 {
   private[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit
+  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit
 }

@@ -32,7 +32,7 @@ with AutoCloseable
   private var _lastEventId = after
   private var eventsStarted = false
   private var _eventWritten = false
-  private var eventAdded = false
+  private var notFlushedCount = 0
 
   if (!Files.exists(file)) sys.error(s"EventJournalWriter: Not expecting existent files '$file'")
 
@@ -64,15 +64,15 @@ with AutoCloseable
         try ByteString(stamped.asJson.compactPrint)
         catch { case t: Exception ⇒ throw new SerializationException(t) }
       jsonWriter.write(byteString)
-      eventAdded = true
+      notFlushedCount += stampedEvents.length
     }
   }
 
   override def flush(sync: Boolean): Unit = {
     super.flush(sync)
-    if (eventAdded) for (r ← observer) {
-      eventAdded = false
-      r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId))
+    if (notFlushedCount > 0) for (r ← observer) {
+      notFlushedCount = 0
+      r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId), n = notFlushedCount)
     }
   }
 

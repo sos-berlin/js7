@@ -111,8 +111,8 @@ with JournalingObserver
     }
   }
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
-    currentEventReader.onEventsAdded(flushedPositionAndEventId)
+  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+    currentEventReader.onEventsAdded(flushedPositionAndEventId, n = n)
     super.onEventsAdded(eventId = flushedPositionAndEventId.value)
   }
 

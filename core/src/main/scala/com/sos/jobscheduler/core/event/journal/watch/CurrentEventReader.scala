@@ -31,11 +31,11 @@ extends EventReader[E]
 
   private var _lastEventId = flushedLengthAndEventId.value
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
+  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < endPosition)
       throw new IllegalArgumentException(s"CurrentEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < endPosition $endPosition")
-    eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position)
+    eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
     _lastEventId = eventId
     endPosition = flushedPosition
   }
