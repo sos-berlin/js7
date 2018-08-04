@@ -69,7 +69,9 @@ extends AutoCloseable
 
   protected final def returnReader(reader: InputStreamJsonSeqReader) = readerCache.returnReader(reader)
 
-  private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
+  private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId)
+  extends CloseableIterator[Stamped[KeyedEvent[E]]]
+  {
     var closed = false
 
     def close() =
@@ -102,7 +104,7 @@ private object EventReader {
   private val logger = Logger(getClass)
 
   private class ReaderCache(file: Path) {
-    private val availableReaders = new ConcurrentLinkedQueue[InputStreamJsonSeqReader]
+    private val freeReaders = new ConcurrentLinkedQueue[InputStreamJsonSeqReader]
     private val lentReaders = new ScalaConcurrentHashSet[InputStreamJsonSeqReader]
     @volatile
     private var closed = false
@@ -111,7 +113,7 @@ private object EventReader {
       closed = true
       val (availables, lent): (Set[InputStreamJsonSeqReader], Set[InputStreamJsonSeqReader]) =
         synchronized {
-          (availableReaders.asScala.toSet, lentReaders.toSet)
+          (freeReaders.asScala.toSet, lentReaders.toSet)
         }
       if (lent.nonEmpty) {
         logger.debug(s"Closing '$toString' while ${lent.size}× opened")
@@ -124,7 +126,7 @@ private object EventReader {
 
       var result: InputStreamJsonSeqReader = null
       synchronized {
-        result = availableReaders.poll()
+        result = freeReaders.poll()
         if (result != null) {
           lentReaders += result
         }
@@ -134,7 +136,7 @@ private object EventReader {
           override def close() = {
             logger.trace(s"Close  $file")
             try {
-              availableReaders.remove(this)
+              freeReaders.remove(this)
               lentReaders -= this
             }
             finally super.close()
@@ -149,11 +151,11 @@ private object EventReader {
     }
 
     def returnReader(reader: InputStreamJsonSeqReader): Unit =
-      availableReaders.synchronized {
-        availableReaders.add(reader)
+      freeReaders.synchronized {
+        freeReaders.add(reader)
         lentReaders -= reader
       }
 
-    def size = availableReaders.size + lentReaders.size
+    def size = freeReaders.size + lentReaders.size
   }
 }

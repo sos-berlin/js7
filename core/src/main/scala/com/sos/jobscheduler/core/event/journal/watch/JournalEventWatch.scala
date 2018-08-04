@@ -154,17 +154,17 @@ with JournalingObserver
 
   private final case class HistoricJournalFile(afterEventId: EventId, file: Path)
   {
-    private val historicJournalEventReader = AtomicAny[HistoricEventReader[E]](null)
+    private val historicEventReader = AtomicAny[HistoricEventReader[E]](null)
 
     def close(): Unit =
-      for (r ← Option(historicJournalEventReader.get)) r.close()
+      for (r ← Option(historicEventReader.get)) r.close()
 
     @tailrec
     def eventReader: HistoricEventReader[E] =
-      historicJournalEventReader.get match {
+      historicEventReader.get match {
         case null ⇒
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
-          if (historicJournalEventReader.compareAndSet(null, r))
+          if (historicEventReader.compareAndSet(null, r))
             r
           else {
             r.close()
