@@ -85,9 +85,11 @@ extends AutoCloseable
         .getOrElse(sys.error(s"Unexpected end of journal files '$journalFile' at position ${jsonFileReader.position}, after=${EventId.toString(after)}"))
         .as[Stamped[KeyedEvent[E]]]
         .orThrow
-      eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricEventReader
-      if (isHistoric && jsonFileReader.position == endPosition) {
-        eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.index-factor"))
+      if (isHistoric) {
+        eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)
+        if (jsonFileReader.position == endPosition) {
+          eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.index-factor"))
+        }
       }
       stamped
     }
