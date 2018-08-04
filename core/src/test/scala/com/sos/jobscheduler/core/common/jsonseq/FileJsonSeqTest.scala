@@ -77,7 +77,7 @@ final class FileJsonSeqTest extends FreeSpec {
         val stopwatch = new Stopwatch
         for (_ ← 1 to 2) {
           for (i ← 1 to n) {
-            Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson
+            Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson
           }
           info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
         }
@@ -99,7 +99,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
               }
               w.flush()
               info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -115,7 +115,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
               }
               info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -149,7 +149,7 @@ final class FileJsonSeqTest extends FreeSpec {
             for (_ ← 1 to 2) {
               val n = 100
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
                 fileOut.getFD.sync()
               }

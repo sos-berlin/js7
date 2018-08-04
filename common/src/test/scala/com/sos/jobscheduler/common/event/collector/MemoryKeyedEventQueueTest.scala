@@ -11,7 +11,7 @@ import org.scalatest.FreeSpec
 final class MemoryKeyedEventQueueTest extends FreeSpec {
 
   private val queue = new MemoryKeyedEventQueue(3)
-  private val stampeds = for (i ← 1 to 5) yield Stamped(EventId(i), Timestamp.ofEpochMilli(0), KeyedEvent(AEvent(i)))
+  private val stampeds = for (i ← 1 to 5) yield Stamped(EventId(i), Timestamp.Epoch, KeyedEvent(AEvent(i)))
 
   stampeds foreach queue.add
 

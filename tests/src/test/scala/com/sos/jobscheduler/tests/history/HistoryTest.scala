@@ -156,7 +156,7 @@ object HistoryTest
      """.stripMargin.trim
 
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, payload = Payload(Map("VARIABLE" → "VALUE")))
-  private val TestTimestamp = Timestamp.ofEpochMilli(0)
+  private val TestTimestamp = Timestamp.Epoch
 
   private def expectedOrderEntries(agentUris: IndexedSeq[String]) = {
     implicit def toSome[A](a: A): Option[A] = Some(a)

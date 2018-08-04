@@ -32,7 +32,7 @@ final class SyncExclusiveTest extends FreeSpec {
         assert(!a.isCompleted)
         val b = sync.whenEventIsAvailable(bEventId, now + 1.hour)
         assert(!b.isCompleted)
-        queue.add(Stamped(aEventId, Timestamp.ofEpochMilli(0), TestEvent))
+        queue.add(Stamped(aEventId, Timestamp.Epoch, TestEvent))
         sync.onEventAdded(aEventId)
         a await 1.s
         assert(a.isCompleted)
@@ -58,7 +58,7 @@ final class SyncExclusiveTest extends FreeSpec {
         a await 400.ms
         assert(!a.successValue)  // false: Timed out
         assert(!b.isCompleted)
-        queue.add(Stamped(eventId, Timestamp.ofEpochMilli(0), TestEvent))
+        queue.add(Stamped(eventId, Timestamp.Epoch, TestEvent))
         sync.onEventAdded(eventId)
         b await 1.s
         assert(b.isCompleted)

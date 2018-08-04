@@ -33,22 +33,23 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
 object GenericTimestamp {
   trait Companion[A <: GenericTimestamp[A]] {
-    val StringTimestampJsonEncoder: circe.Encoder[A] =
+    final val Epoch = ofEpochMilli(0)
+    final val StringTimestampJsonEncoder: circe.Encoder[A] =
       o ⇒ circe.Json.fromString(o.toIsoString)
 
-    val NumericTimestampJsonEncoder: circe.Encoder[A] =
+    final val NumericTimestampJsonEncoder: circe.Encoder[A] =
       o ⇒ circe.Json.fromLong(o.toEpochMilli)
 
-    implicit val jsonEncoder: circe.Encoder[A] = NumericTimestampJsonEncoder
+    implicit final val jsonEncoder: circe.Encoder[A] = NumericTimestampJsonEncoder
 
-    implicit val jsonDecoder: circe.Decoder[A] =
+    implicit final val jsonDecoder: circe.Decoder[A] =
       cursor ⇒
         if (cursor.value.isNumber)
           cursor.as[Long] map ofEpochMilli
         else
           cursor.as[String] map parse
 
-    def apply(string: String): A =
+    final def apply(string: String): A =
       parse(string)
 
     def ofEpochMilli(o: Long): A
