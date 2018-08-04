@@ -87,7 +87,7 @@ trait RouteProvider
 
   protected def completeUnauthenticatedLogin(problem: Problem): Route =
     respondWithHeader(LoginWWWAuthenticate) {
-      logger.warn(s"Delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty} because of: $problem")
+      logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
       complete {
         Task.pure(Unauthorized → problem) delayExecution gateKeeper.invalidAuthenticationDelay.toFiniteDuration
       }
