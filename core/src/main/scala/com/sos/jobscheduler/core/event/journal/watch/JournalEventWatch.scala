@@ -13,6 +13,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -26,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Promise}
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
-final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E])
+final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E], config: Config)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
@@ -62,7 +63,7 @@ with JournalingObserver
         throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
       for (historicFile ← afterEventIdToHistoric.get(after))
         historicFile.close()
-      val reader = new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId)
+      val reader = new CurrentJournalEventReader[E](journalMeta, flushedLengthAndEventId, config)
       currentJournalEventReaderOption = Some(reader)
       afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
     }
@@ -92,7 +93,7 @@ with JournalingObserver
     }
   }
 
-  protected[journal ]def deleteObsoleteArchives(): Unit = {
+  protected[journal] def deleteObsoleteArchives(): Unit = {
     val untilEventId = eventsAcceptedUntil()
     val keepAfter = currentJournalEventReader.tornEventId match {
       case current if untilEventId >= current ⇒ current
@@ -159,10 +160,10 @@ with JournalingObserver
       for (r ← Option(historicJournalEventReader.get)) r.close()
 
     @tailrec
-    def eventReader: HistoricJournalEventReader[E] = {
+    def eventReader: HistoricJournalEventReader[E] =
       historicJournalEventReader.get match {
         case null ⇒
-          val r = new HistoricJournalEventReader[E](journalMeta, tornEventId = afterEventId, file)
+          val r = new HistoricJournalEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
           if (historicJournalEventReader.compareAndSet(null, r))
             r
           else {
@@ -171,12 +172,16 @@ with JournalingObserver
           }
         case r ⇒ r.asInstanceOf[HistoricJournalEventReader[E]]
       }
-    }
 
     override def toString = file.getFileName.toString
   }
 }
 
-private[journal] object JournalEventWatch {
+object JournalEventWatch {
   private val logger = Logger(getClass)
+
+  val TestConfig = ConfigFactory.parseString("""
+     |jobscheduler.journal.index-size = 100
+     |jobscheduler.journal.index-factor = 10
+    """.stripMargin)
 }

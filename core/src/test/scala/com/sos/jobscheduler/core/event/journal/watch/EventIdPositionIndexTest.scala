@@ -116,12 +116,37 @@ final class EventIdPositionIndexTest extends FreeSpec {
       PositionAnd(307200, 3072),
       PositionAnd(409600, 4096),
       PositionAnd(512000, 5120)))
+      assert(index.factorForTest == 1024)
   }
 
-  "releaseUnusedMemory" in {
-    index.releaseUnusedMemory()
+  "freeze" in {
+    assert(index.factorForTest == 1024)
+    index.freeze(toFactor = 100)
+    index.positionAndEventIds == Vector(
+      PositionAnd(   100,  1),
+      PositionAnd(102400, 1024),
+      PositionAnd(204800, 2048),
+      PositionAnd(307200, 3072),
+      PositionAnd(409600, 4096),
+      PositionAnd(512000, 5120))
     intercept[IllegalStateException] {
       index.addAfter(99900, 999)
     }
+  }
+
+  "freeze 2" in {
+    val index = new EventIdPositionIndex(1000)
+    for (i ← 1 to 10000) index.addAfter(i, i * 100)
+    assert(index.factorForTest == 16 && index.lengthForTest == 626)
+    index.freeze(toFactor = 50)
+    assert(index.factorForTest == 48 && index.lengthForTest == 208/*about 3.2KB*/)
+  }
+
+  "freeze to high factor keeps length >= 100" in {
+    val index = new EventIdPositionIndex(1000)
+    for (i ← 1 to 10000) index.addAfter(i, i * 100)
+    assert(index.factorForTest == 16 && index.lengthForTest == 626)
+    index.freeze(toFactor = 1000)
+    assert(index.factorForTest == 96 && index.lengthForTest == 104/*about 1.6KB*/)
   }
 }

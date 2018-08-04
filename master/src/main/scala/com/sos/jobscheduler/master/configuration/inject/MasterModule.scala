@@ -42,7 +42,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, ts: TimerService, config: Config, closer: Closer): JournalEventWatch[Event] =
-    new JournalEventWatch[Event](journalMeta)
+    new JournalEventWatch[Event](journalMeta, config)
       .closeWithCloser
 
   @Provides @Singleton

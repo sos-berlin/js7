@@ -152,7 +152,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
     "Second onJournalingStarted (snapshot)" in {
       withJournalMeta { journalMeta ⇒
-        autoClosing(new JournalEventWatch[MyEvent](journalMeta)) { eventWatch ⇒
+        autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
           autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch))) { writer ⇒
             writer.startJournaling()
             writer.writeEvents(
@@ -228,7 +228,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     }
 
   private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
-    autoClosing(new JournalEventWatch[MyEvent](journalMeta)) { eventWatch ⇒
+    autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
       autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
         writer.startJournaling()
         body(writer, eventWatch)

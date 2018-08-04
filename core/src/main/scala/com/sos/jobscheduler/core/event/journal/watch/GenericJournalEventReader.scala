@@ -8,6 +8,7 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.GenericJournalEventReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.typesafe.config.Config
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.JavaConverters._
@@ -18,11 +19,15 @@ import scala.collection.JavaConverters._
 private[watch] trait GenericJournalEventReader[E <: Event]
 extends AutoCloseable
 {
+  /** `endPosition` does not grow. */
+  protected def isHistoric: Boolean
   protected val journalMeta: JournalMeta[E]
   protected def journalFile: Path
   protected def tornEventId: EventId
   protected def tornPosition: Long
+  /** Must be constant if `isHistoric`. */
   protected def endPosition: Long
+  protected def config: Config
 
   import journalMeta.eventJsonCodec
 
@@ -81,6 +86,9 @@ extends AutoCloseable
         .as[Stamped[KeyedEvent[E]]]
         .orThrow
       eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)  // For HistoricJournalEventReader
+      if (isHistoric && jsonFileReader.position == endPosition) {
+        eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.index-factor"))
+      }
       stamped
     }
 

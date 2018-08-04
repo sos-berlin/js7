@@ -16,8 +16,8 @@ private[watch] final class EventIdPositionIndex(size: Int)
   private var eventIds = new Array[Long](positions.length)
   private var length = 0
   private var _highestEventId = EventId.BeforeFirst - 1
-  private var unusedMemoryReleased = false
-  private var factor = 1
+  private var freezed = false
+  private var _factor = 1
   private var addedCount = 0
 
   require(positions.nonEmpty)
@@ -29,13 +29,13 @@ private[watch] final class EventIdPositionIndex(size: Int)
   def tryAddAfter(eventId: EventId, position: Long): Boolean =
     (eventId > _highestEventId) &&
       synchronized {
-        if (unusedMemoryReleased) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after releaseUnusedMemory?")  // Self-check
+        if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
         (eventId > _highestEventId) && {
           addedCount += 1
-          if (addedCount % factor == 0) {
+          if (addedCount % _factor == 0) {
             _highestEventId = eventId
             if (length == positions.length) {
-              halve()
+              compress(factor = 2)
             }
             positions(length) = position
             eventIds(length) = eventId
@@ -45,23 +45,25 @@ private[watch] final class EventIdPositionIndex(size: Int)
         }
       }
 
-  private def halve(): Unit = {
-    for (i ← 1 until length / 2) {
-      positions(i) = positions(2 * i)
-      eventIds(i) = eventIds(2 * i)
-    }
-    length = length / 2
-    factor = 2 * factor
-  }
-
-  def releaseUnusedMemory() = {
-    unusedMemoryReleased = true
-    if (length < positions.length) {
-      synchronized {
+  def freeze(toFactor: Int) = {
+    synchronized {
+      val a = toFactor / _factor min length / MinimumLength
+      if (a > 1) compress(a)
+      if (length < positions.length) {
         positions = shrinkArray(positions, length)
         eventIds = shrinkArray(eventIds, length)
       }
+      freezed = true
     }
+  }
+
+  private def compress(factor: Int): Unit = {
+    for (i ← 1 until length / factor) {
+      positions(i) = positions(factor * i)
+      eventIds(i) = eventIds(factor * i)
+    }
+    length = length / factor max 1
+    _factor = factor * _factor
   }
 
   def positionAfter(eventId: EventId): Long =
@@ -84,10 +86,15 @@ private[watch] final class EventIdPositionIndex(size: Int)
     }
 
   def highestEvenId = _highestEventId
+
+  private[watch] def factorForTest = _factor
+  private[watch] def lengthForTest = length
 }
 
 object EventIdPositionIndex
 {
+  private val MinimumLength = 100
+
   private def shrinkArray(array: Array[Long], length: Int): Array[Long] =
     if (length == array.length)
       array

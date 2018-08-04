@@ -7,6 +7,7 @@ import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.typesafe.config.Config
 import scala.concurrent.ExecutionContext
 
 /**
@@ -15,16 +16,19 @@ import scala.concurrent.ExecutionContext
 private[watch] final class CurrentJournalEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   /** Length and after-EventId of initialized and empty journal. */
-  flushedLengthAndEventId: PositionAnd[EventId])
+  flushedLengthAndEventId: PositionAnd[EventId],
+  protected val config: Config)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
 extends GenericJournalEventReader[E]
 {
   val tornEventId = flushedLengthAndEventId.value
+  protected def isHistoric = false
   protected val journalFile = journalMeta.file(after = tornEventId)
   protected def tornPosition = flushedLengthAndEventId.position
   protected var endPosition = flushedLengthAndEventId.position  // Initially, the file contains no events
+
   private var _lastEventId = flushedLengthAndEventId.value
 
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId]): Unit = {
