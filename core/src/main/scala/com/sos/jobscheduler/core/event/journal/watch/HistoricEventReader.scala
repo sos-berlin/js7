@@ -6,6 +6,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +24,7 @@ with EventReader[E]
 
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = {
-    val jsonFileReader = borrowReader()
+    val jsonFileReader = borrowReader()  // First call, Should return a new reader
     try
       Iterator.continually(jsonFileReader.read())
         .collectFirst {
@@ -31,6 +32,10 @@ with EventReader[E]
           case None ⇒ sys.error(s"Invalid journal file '$journalFile', EventHeader is missing")
         }
         .get
+      catch { case NonFatal(t) ⇒
+        jsonFileReader.close()
+        throw t
+      }
     finally
       returnReader(jsonFileReader)
   }

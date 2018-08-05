@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.google.common.annotations.VisibleForTesting
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
@@ -35,6 +36,7 @@ extends AutoCloseable
 with RealEventWatch[E]
 with JournalingObserver
 {
+  private val keepOpenCount = config.getInt("jobscheduler.journal.watch.keep-open")
   // Read journal file names from directory while constructing
   @volatile
   private var afterEventIdToHistoric: Map[EventId, HistoricJournalFile] =
@@ -124,6 +126,7 @@ with JournalingObserver
     currentEventReader.eventsAfter(after) orElse ( // Torn
       historicAfter(after) map { historicJournalFile ⇒
         var last = after
+        tryToEvict(but = historicJournalFile)
         historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
           last = stamped.eventId
           stamped
@@ -134,6 +137,13 @@ with JournalingObserver
             eventsAfter(last).getOrElse(CloseableIterator.empty/*Should never be torn here because last > after*/))
       }
     )
+
+  private def tryToEvict(but: HistoricJournalFile): Unit =
+    afterEventIdToHistoric.values
+      .filter(o ⇒ o.isEvictable && (o ne but))
+      .toVector.sortBy(_.lastUsedAt)
+      .dropRight(keepOpenCount)
+      .foreach(_.evictEventReader())
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
@@ -173,6 +183,27 @@ with JournalingObserver
         case r ⇒ r.asInstanceOf[HistoricEventReader[E]]
       }
 
+    def evictEventReader(): Unit = {
+      val reader = historicEventReader.get
+      if (reader != null) {
+        if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {
+          logger.debug(s"Evicted '${file.getFileName}' lastUsedAt=${reader.lastUsedAt}")
+          reader.close()
+        }
+      }
+    }
+
+    def lastUsedAt: Timestamp =
+      historicEventReader.get match {
+        case null ⇒ Timestamp.Epoch
+        case reader ⇒ reader.lastUsedAt
+      }
+
+    def isEvictable: Boolean = {
+      val reader = historicEventReader.get
+      reader != null && !reader.isInUse
+    }
+
     override def toString = file.getFileName.toString
   }
 }
@@ -181,7 +212,8 @@ object JournalEventWatch {
   private val logger = Logger(getClass)
 
   val TestConfig = ConfigFactory.parseString("""
-     |jobscheduler.journal.index-size = 100
-     |jobscheduler.journal.index-factor = 10
+     |jobscheduler.journal.watch.keep-open = 2
+     |jobscheduler.journal.watch.index-size = 100
+     |jobscheduler.journal.watch.index-factor = 10
     """.stripMargin)
 }

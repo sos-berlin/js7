@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
@@ -31,7 +32,7 @@ extends AutoCloseable
 
   import journalMeta.eventJsonCodec
 
-  protected val eventIdToPositionIndex = new EventIdPositionIndex(size = 10000)
+  protected lazy val eventIdToPositionIndex = new EventIdPositionIndex(size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val readerCache = new ReaderCache(journalFile)
 
   eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
@@ -60,14 +61,22 @@ extends AutoCloseable
   private def newCloseableIterator(position: Long, after: EventId) = {
     val jsonFileReader = borrowReader()
     closeOnError(jsonFileReader) {
+      logger.trace(s"seek $position")
       jsonFileReader.seek(position)
       new EventCloseableIterator(jsonFileReader, after)
     }
   }
 
-  protected final def borrowReader() = readerCache.borrowReader()
+  protected final def borrowReader() =
+    readerCache.borrowReader()
 
-  protected final def returnReader(reader: InputStreamJsonSeqReader) = readerCache.returnReader(reader)
+  protected final def returnReader(reader: InputStreamJsonSeqReader) =
+    readerCache.returnReader(reader)
+
+  final def lastUsedAt: Timestamp =
+    readerCache.lastUsedAt
+
+  final def isInUse = readerCache.isLent
 
   private class EventCloseableIterator(jsonFileReader: InputStreamJsonSeqReader, after: EventId)
   extends CloseableIterator[Stamped[KeyedEvent[E]]]
@@ -90,7 +99,7 @@ extends AutoCloseable
       if (isHistoric) {
         eventIdToPositionIndex.tryAddAfter(stamped.eventId, jsonFileReader.position)
         if (jsonFileReader.position == endPosition) {
-          eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.index-factor"))
+          eventIdToPositionIndex.freeze(toFactor = config.getInt("jobscheduler.journal.watch.index-factor"))
         }
       }
       stamped
@@ -108,6 +117,8 @@ private object EventReader {
     private val lentReaders = new ScalaConcurrentHashSet[InputStreamJsonSeqReader]
     @volatile
     private var closed = false
+    @volatile
+    private var _lastUsed = Timestamp.Epoch
 
     def close(): Unit = {
       closed = true
@@ -135,11 +146,11 @@ private object EventReader {
         result = new InputStreamJsonSeqReader(SeekableInputStream.openFile(file)) {  // Exception when file has been deleted
           override def close() = {
             logger.trace(s"Close  $file")
-            try {
+            synchronized {
               freeReaders.remove(this)
               lentReaders -= this
             }
-            finally super.close()
+            super.close()
           }
           override def toString = s"InputStreamJsonSeqReader(${file.getFileName})"
         }
@@ -150,12 +161,20 @@ private object EventReader {
       result
     }
 
-    def returnReader(reader: InputStreamJsonSeqReader): Unit =
-      freeReaders.synchronized {
-        freeReaders.add(reader)
+    def returnReader(reader: InputStreamJsonSeqReader): Unit = {
+      _lastUsed = Timestamp.now
+      synchronized {
+        if (!reader.isClosed) {
+          freeReaders.add(reader)
+        }
         lentReaders -= reader
       }
+    }
 
-    def size = freeReaders.size + lentReaders.size
+    def size = synchronized { freeReaders.size + lentReaders.size }
+
+    def isLent = lentReaders.nonEmpty
+
+    def lastUsedAt = this._lastUsed
   }
 }

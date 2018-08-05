@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.watch.EventIdPositionIndex._
 import com.sos.jobscheduler.data.event.EventId
@@ -55,6 +57,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
         eventIds = shrinkArray(eventIds, length)
       }
       freezed = true
+      logger.trace(s"Freezed - size=${positions.length} ${toKBGB(positions.length * 2 * 8)}")
     }
   }
 
@@ -95,6 +98,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
 object EventIdPositionIndex
 {
   private val MinimumLength = 100
+  private val logger = Logger(getClass)
 
   private def shrinkArray(array: Array[Long], length: Int): Array[Long] =
     if (length == array.length)

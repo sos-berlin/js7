@@ -91,7 +91,6 @@ extends AutoCloseable {
       if (pos >= blockPos && pos <= blockPos + blockLength) {
         blockRead = (pos - blockPos).toInt  // May be == blockLength
       } else {
-        logger.trace(s"seek $pos")
         in.seek(pos)
         blockPos = pos
         blockLength = 0
