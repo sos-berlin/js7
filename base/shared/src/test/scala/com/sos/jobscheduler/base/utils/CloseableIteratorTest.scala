@@ -52,6 +52,13 @@ final class CloseableIteratorTest extends FreeSpec
     assert(a.closed)
   }
 
+  "closeAtEnd on empty iterator closes immediately" in {
+    val a = new TestIterator(Iterator.empty)
+    assert(!a.closed)
+    val b = a.closeAtEnd
+    assert(a.closed)
+  }
+
   "closeAtEnd with NoSuchElementException" in {
     val a = new TestIterator(Iterator(1, 2))
     val b = a.closeAtEnd
