@@ -4,7 +4,6 @@ import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
 import io.circe.Json
@@ -33,9 +32,15 @@ extends AutoCloseable {
 
   private var lineNumber = 0  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
+  private var closed = false
 
   /** Closes underlying `SeekableInputStream`. */
-  def close() = in.close()
+  def close() = {
+    closed = true
+    in.close()
+  }
+
+  def isClosed = closed
 
   final def read(): Option[PositionAnd[Json]] = {
     val pos = position
@@ -76,7 +81,6 @@ extends AutoCloseable {
     blockPos = position
     blockRead = 0
     val length = in.read(block)
-    //logger.trace(s"position=$position: $length bytes read")
     if (length == -1) {
       blockLength = 0
       false  // EOF
@@ -111,7 +115,6 @@ object InputStreamJsonSeqReader
 {
   private val BlockSize = 4096
   private val CharBufferSize = 1000
-  private val logger = Logger(getClass)
 
   def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize): InputStreamJsonSeqReader =
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize)

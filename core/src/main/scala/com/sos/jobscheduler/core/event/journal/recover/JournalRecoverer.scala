@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererReader.{RecoveredEvent, RecoveredSnapshot}
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Files
@@ -57,10 +57,10 @@ trait JournalRecoverer[E <: Event] {
   final def startJournalAndFinishRecovery(
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventWatch: Option[JournalEventWatch[E]] = None)
+    journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, eventWatch, lastEventId = _lastEventId)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, lastEventId = _lastEventId)
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -71,7 +71,7 @@ object JournalRecoverer {
   private def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    eventWatch: Option[JournalEventWatch[E]] = None,
+    observer: Option[JournalingObserver] = None,
     lastEventId: EventId)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
@@ -80,7 +80,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, eventWatch, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, observer, lastEventId = lastEventId)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

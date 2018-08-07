@@ -29,23 +29,19 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   def whenStarted: Task[this.type] = Task.pure(this)
 
   @VisibleForTesting
-  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
+  protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
 
   protected def reverseEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]]
 
-  private var _lastEventId = EventId.BeforeFirst
   private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)  // Initialize not before whenStarted!
 
-  protected final def onEventsAdded(eventId: EventId): Unit = {
-    if (eventId < _lastEventId) throw new IllegalArgumentException(s"RealEventWatch: Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(_lastEventId)}")
-    _lastEventId = eventId
+  protected final def onEventsAdded(eventId: EventId): Unit =
     sync.onEventAdded(eventId)
-  }
 
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     def next(lazyRequest: () ⇒ EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () ⇒ EventRequest[E1])] = {
-      val request = lazyRequest()  // Access now in last iteration computed values lastEventId and limit (see below)
+      val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
       if (request.limit <= 0)
         NoMoreObservable
       else
@@ -198,7 +194,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       .take(request.limit))
 
   def lastAddedEventId: EventId =
-    if (_lastEventId != EventId.BeforeFirst) _lastEventId else tornEventId
+    sync.lastAddedEventId
 
   /** TEST ONLY - Blocking. */
   @TestOnly

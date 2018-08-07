@@ -69,7 +69,7 @@ with JournalingObserver
       currentEventReaderOption = Some(reader)
       afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
     }
-    onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about historic events
+    onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
   }
 
@@ -113,9 +113,9 @@ with JournalingObserver
     }
   }
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+  protected[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
     currentEventReader.onEventsAdded(flushedPositionAndEventId, n = n)
-    super.onEventsAdded(eventId = flushedPositionAndEventId.value)
+    onEventsAdded(eventId = flushedPositionAndEventId.value)
   }
 
   /**

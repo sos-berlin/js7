@@ -18,7 +18,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
@@ -56,7 +56,7 @@ extends Actor with Stash {
   private var snapshotCancelable: Cancelable = null
 
   private var eventWriter: EventJournalWriter[E] = null
-  private var eventWatchOption: Option[JournalEventWatch[E]] = None
+  private var observerOption: Option[JournalingObserver] = None
   private var snapshotJournalWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
@@ -82,9 +82,9 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), eventWatchOption_, lastEventId) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId) ⇒
       lastWrittenEventId = lastEventId
-      eventWatchOption = eventWatchOption_ map (_.asInstanceOf[JournalEventWatch[E]]/*restore erased type argument, not checked*/)
+      observerOption = observer
       eventIdGenerator.updateLastEventId(lastEventId)
       journalingActors ++= keyToActor.values
       journalingActors foreach watch
@@ -119,7 +119,7 @@ extends Actor with Stash {
       if (untilEventId > lastWrittenEventId)
         sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
       else {
-        for (r ← eventWatchOption) r.onEventsAcceptedUntil(untilEventId)
+        for (r ← observerOption) r.onEventsAcceptedUntil(untilEventId)
         sender() ! Valid(Completed)
       }
 
@@ -164,7 +164,7 @@ extends Actor with Stash {
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
-          for (o ← eventWatchOption) o.deleteObsoleteArchives()
+          for (o ← observerOption) o.deleteObsoleteArchives()
           sender ! Output.SnapshotTaken
         }
       }
@@ -258,7 +258,7 @@ extends Actor with Stash {
 
     snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
       journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"),
-      after = lastWrittenEventId, eventWatchOption, simulateSync = simulateSync)
+      after = lastWrittenEventId, observerOption, simulateSync = simulateSync)
     snapshotJournalWriter.beginSnapshotSection()
     actorOf(
       Props { new SnapshotTaker(snapshotJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
@@ -287,7 +287,7 @@ extends Actor with Stash {
 
 
   private def newEventJsonWriter(file: Path, withoutSnapshots: Boolean = false) =
-    new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, eventWatchOption, simulateSync = simulateSync,
+    new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observerOption, simulateSync = simulateSync,
       withoutSnapshots = withoutSnapshots)
 
   def closeEventWriter(): Unit = {
@@ -330,7 +330,7 @@ object JournalActor
   object Input {
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
-      eventWatch: Option[JournalEventWatch[_ <: Event]],
+      journalingObserver: Option[JournalingObserver],
       lastEventId: EventId)
     final case object StartWithoutRecovery
     final case class EventsAccepted(untilEventId: EventId)

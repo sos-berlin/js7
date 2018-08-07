@@ -13,13 +13,14 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-private[event] final class Sync(initialLastEventId: EventId, timerService: TimerService) {
+/*private[event]*/ final class Sync(initialLastEventId: EventId, timerService: TimerService) {
 
   @volatile private var promise: Promise[Boolean] = null
   @volatile private var lastEventId = initialLastEventId
 
   def onEventAdded(eventId: EventId): Unit =
     synchronized {
+      if (eventId < lastEventId) throw new IllegalArgumentException(s"Added EventId ${EventId.toString(eventId)} < last EventId ${EventId.toString(lastEventId)}")
       lastEventId = eventId
       if (promise != null) {
         promise.success(true)
@@ -55,4 +56,6 @@ private[event] final class Sync(initialLastEventId: EventId, timerService: Timer
           .timeoutAt(until.toInstant, Success(false), getClass.getName)(timerService, ec)
     }
   }
+
+  def lastAddedEventId = lastEventId
 }

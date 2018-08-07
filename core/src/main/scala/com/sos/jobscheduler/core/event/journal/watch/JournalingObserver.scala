@@ -9,7 +9,11 @@ import java.nio.file.Path
   */
 private[journal] trait JournalingObserver
 {
-  private[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit
+  protected[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit
+  protected[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit
+
+  protected[journal] def onEventsAcceptedUntil(eventId: EventId): Unit
+
+  protected[journal] def deleteObsoleteArchives(): Unit
 }
