@@ -48,18 +48,19 @@ private[watch] final class EventIdPositionIndex(size: Int)
         }
       }
 
-  def freeze(toFactor: Int) = {
-    synchronized {
-      val a = toFactor / _factor min length / MinimumLength
-      if (a > 1) compress(a)
-      if (length < positions.length) {
-        positions = shrinkArray(positions, length)
-        eventIds = shrinkArray(eventIds, length)
+  def freeze(toFactor: Int) =
+    if (!freezed) synchronized {
+      if (!freezed) {
+        val a = toFactor / _factor min length / MinimumLength
+        if (a > 1) compress(a)
+        if (length < positions.length) {
+          positions = shrinkArray(positions, length)
+          eventIds = shrinkArray(eventIds, length)
+        }
+        freezed = true
+        logger.trace(s"Freezed - size=${positions.length} ${toKBGB(positions.length * 2 * 8)}")
       }
-      freezed = true
-      logger.trace(s"Freezed - size=${positions.length} ${toKBGB(positions.length * 2 * 8)}")
     }
-  }
 
   private def compress(factor: Int): Unit = {
     for (i ← 1 until length / factor) {
