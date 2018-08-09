@@ -71,17 +71,21 @@ private[watch] final class EventIdPositionIndex(size: Int)
     _factor = factor * _factor
   }
 
-  def positionAfter(eventId: EventId): Long =
+  def positionAfter(after: EventId): Long =
+    positionAndEventIdAfter(after).position
+
+  def positionAndEventIdAfter(after: EventId): PositionAnd[EventId] =
     synchronized {
       if (length == 0) throw new IllegalStateException("EventIdPositionIndex.positionAfter but length=0")
-      binarySearch(eventIds, 0, length, eventId) match {
+      val index = binarySearch(eventIds, 0, length, after) match {
         case i if i >= 0 ⇒
-          positions(i)
+          i
 
         case i ⇒
-          if (eventId < eventIds.head) throw new IllegalArgumentException(s"EventIdPositionIndex.positionAfter($eventId) but oldest EventId is ${eventIds.head}")
-          positions(-i - 2)
+          if (after < eventIds.head) throw new IllegalArgumentException(s"EventIdPositionIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
+          -i - 2
       }
+      PositionAnd(positions(index), eventIds(index))
     }
 
   @TestOnly

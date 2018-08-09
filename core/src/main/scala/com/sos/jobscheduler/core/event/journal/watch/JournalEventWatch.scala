@@ -7,7 +7,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -21,6 +20,7 @@ import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.annotation.tailrec
+import scala.collection.immutable.SortedMap
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
@@ -119,24 +119,32 @@ with JournalingObserver
   }
 
   /**
-    * @return `Task(None)` if `after` < `tornEventId`
+    * @return `Task(None)` torn, `after` < `tornEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
-    currentEventReader.eventsAfter(after) orElse ( // Torn
-      historicAfter(after) map { historicJournalFile ⇒
-        var last = after
-        tryToEvict(but = historicJournalFile)
-        historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
-          last = stamped.eventId
-          stamped
-        } ++
-          (if (last == after)
-            CloseableIterator.empty
-          else  // Continue with next HistoricEventReader or CurrentEventReader
-            eventsAfter(last).getOrElse(CloseableIterator.empty/*Should never be torn here because last > after*/))
-      }
-    )
+    currentEventReaderOption match {
+      case Some(current) if current.tornEventId <= after ⇒
+        Some(current.eventsAfter(after))
+      case _ ⇒
+        historicEventsAfter(after)
+    }
+
+  private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
+    for (historicJournalFile ← historicAfter(after)) yield {
+      var last = after
+      tryToEvict(but = historicJournalFile)
+      historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
+        last = stamped.eventId
+        stamped
+      } ++  // ++ is lazy, so last contains last read eventId
+        (if (last == after)  // Nothing read
+          CloseableIterator.empty
+        else {  // Continue with next HistoricEventReader or CurrentEventReader
+          assert(last > after)
+          eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
+        })
+    }
 
   private def tryToEvict(but: HistoricJournalFile): Unit =
     afterEventIdToHistoric.values

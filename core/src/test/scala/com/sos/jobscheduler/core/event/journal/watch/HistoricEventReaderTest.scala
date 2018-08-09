@@ -1,16 +1,15 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
+import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestEvent, TestKeyedEventJsonCodec}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
-import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import com.sos.jobscheduler.data.event.Stamped
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -49,31 +48,10 @@ final class HistoricEventReaderTest extends FreeSpec
 }
 
 object HistoricEventReaderTest {
-  private[journal] sealed trait TestEvent extends Event {
-    type Key = String
-  }
-
-  private final case object AEvent extends TestEvent
-  private final case object BEvent extends TestEvent
-
-  private implicit val jsonFormat = TypedJsonCodec[TestEvent](
-    Subtype(AEvent),
-    Subtype(BEvent))
-
-  private val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[TestEvent](
-    KeyedSubtype[TestEvent])
-
   private val After = 1000
   private val TestEvents =
     Stamped(After + 1, "A" <-: AEvent) ::
     Stamped(After + 2, "B" <-: BEvent) ::
     Nil
 
-  def writeJournal[E <: Event](journalMeta: JournalMeta[E], after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[E]]]): Unit =
-    autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
-      writer.startJournaling()
-      writer.writeEvents(stampedEvents)
-      writer.flush(sync = false)
-      writer.close()
-    }
 }
