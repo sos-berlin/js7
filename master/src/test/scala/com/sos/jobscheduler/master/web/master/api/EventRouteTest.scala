@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
-import akka.http.scaladsl.model.StatusCodes.OK
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.google.common.base.Ascii
@@ -72,6 +72,13 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
       //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
       //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
       //assert(stamped == TestEvents)
+    }
+  }
+
+  "/event application/json-seq with after=unknown fails" in {
+    Get(s"/event?after=5") ~> Accept(`application/json-seq`) ~> route ~> check {
+      assert(status == BadRequest)
+      assert(response.utf8StringFuture.await(99.s) == s"Requested EventId after=5 is not available. Oldest available EventId is: 0\n")
     }
   }
 

@@ -45,6 +45,9 @@ object StandardMarshallers
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
     problemToEntityMarshaller map (entity ⇒ HttpResponse(ProblemStatusCode, Nil, entity))
 
+  implicit def problemToResponseMarshallable(problem: Problem): ToResponseMarshallable =
+    ToResponseMarshallable(ProblemStatusCode → problem)
+
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A ⇒ String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) ⇒
       var byteString = ByteString(toString(a), charset.nioCharset)

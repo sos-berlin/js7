@@ -2,15 +2,12 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd, SeekableInputStream}
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.EventsHeader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
-import scala.annotation.tailrec
 
 /**
   * @author Joacim Zschimmer
@@ -27,10 +24,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   val jsonReader = new InputStreamJsonSeqReader(SeekableInputStream.openFile(journalFile))
 
   private var closed = false
-  private var _eventId = UndefinedEventId
-  private var skipTo: EventId = _
-  private var skip = false
-  private var skipped = 0
+  private var _eventId = tornEventId
 
   def close(): Unit = {
     if (!closed) {
@@ -49,21 +43,29 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
       .get
   }
 
-  final def seek(position: Long): Unit = {
-    _eventId = UndefinedEventId
-    jsonReader.seek(position)
+  final def seek(positionAndEventId: PositionAnd[EventId]): Unit = {
+    require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
+    jsonReader.seek(positionAndEventId.position)
+    _eventId = positionAndEventId.value
   }
 
-  final def skipToEventAfter(after: EventId): Unit = {
-    // Don't implement with dropWhile because its calls an extra next() for buffering,
-    // requiring an extra seek() to position back for continuously event fetches.
-    skipTo = after
-    skip = true
-  }
+  /**
+    * @return false iff `after` is unknown
+    */
+  final def skipToEventAfter(after: EventId): Boolean =
+    (after >= _eventId) && {
+      var skipped = 0
+      while (_eventId < after) {
+        if (!hasNext) return false
+        next()
+        skipped += 1
+      }
+      if (skipped > 0) logger.trace(s"$skipped events skipped after=$eventId")
+      _eventId == after
+    }
 
   final def hasNext = jsonReader.position != flushedLength()
 
-  @tailrec
   final def next(): Stamped[KeyedEvent[E]] = {
     if (!hasNext) throw new NoSuchElementException
     val beforePosition = position
@@ -74,25 +76,13 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
     if (stamped.eventId <= _eventId) sys.error(s"Journal file '$journalFile' contains events in reverse order " +
       s" at position $beforePosition, ${EventId.toString(stamped.eventId)} ≤ ${EventId.toString(_eventId)}")
     _eventId = stamped.eventId
-    if (skip && stamped.eventId <= skipTo) {
-      skipped += 1
-      next()
-    } else {
-      if (skipped > 0) logger.trace(s"$skipped events skipped after=$eventId")
-      skipped = 0
-      skip = false
-      stamped
-    }
+    stamped
   }
 
-  final def eventId = (_eventId != UndefinedEventId) ? _eventId
+  final def eventId = _eventId
   final def position = jsonReader.position
   final def isClosed = closed
 
   override def toString =
     s"FileEventIterator(${journalFile.getFileName} tornEventId=${EventId.toString(tornEventId)})"
-}
-
-object FileEventIterator {
-  private val UndefinedEventId = EventId.BeforeFirst - 1
 }

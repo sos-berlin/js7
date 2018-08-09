@@ -37,17 +37,21 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
     * <p>
     *   None is returned if the queue has torn at its front (`after` < `tornEventId`).
     */
-  def after(after: EventId): Option[Iterator[Stamped[AnyKeyedEvent]]] = {
-    val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, false).iterator.asScala map queue.get)
-    try {
-      // hasNext and peek may throw NoSuchElementException in case of race condition ?
-      if (result.hasNext) result.peek
-      // result is empty or has the first Stamped in its head buffer.
-      after >= tornEventId option result.asScala
-    } catch { case _: NoSuchElementException ⇒
-      None
+  def after(after: EventId): Option[Iterator[Stamped[AnyKeyedEvent]]] =
+    synchronized {
+      val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, true).iterator.asScala map queue.get)
+      val afterIsKnown = after == tornEventId || result.hasNext && result.next().eventId == after
+      if (!afterIsKnown) None
+      else
+        try {
+          // hasNext and peek may throw NoSuchElementException in case of race condition ?
+          if (result.hasNext) result.peek
+          // result is empty or has the first Stamped in its head buffer.
+          after >= tornEventId option result.asScala
+        } catch { case _: NoSuchElementException ⇒
+          None
+        }
     }
-  }
 
   def reverseEvents(after: EventId): Iterator[Stamped[AnyKeyedEvent]] =
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala takeWhile { _ > after } map queue.get)

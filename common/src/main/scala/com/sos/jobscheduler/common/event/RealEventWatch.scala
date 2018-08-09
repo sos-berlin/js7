@@ -63,7 +63,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                 o
               }
             // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values
-            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit))
+            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = Duration.Zero))
         }
     }
     Observable.fromAsyncStateAction(next)(() ⇒ request).takeWhile(_.nonEmpty).map(_.get).flatten

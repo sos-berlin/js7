@@ -43,26 +43,26 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         writer.writeEvents(MyEvents2)
         writer.flush(sync = false)
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
-        assert(when(11) == EventSeq.NonEmpty(MyEvents1.tail ++ MyEvents2))
-        assert(when(12) == EventSeq.NonEmpty(MyEvents2))
-        assert(when(21) == EventSeq.NonEmpty(MyEvents2.tail))
-        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 22, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(22))
+        assert(when(110) == EventSeq.NonEmpty(MyEvents1.tail ++ MyEvents2))
+        assert(when(120) == EventSeq.NonEmpty(MyEvents2))
+        assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
+        assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(220))
 
         eventWatch.onEventsAcceptedUntil(0)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(12)))
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.onEventsAcceptedUntil(11)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(12)))
+        eventWatch.onEventsAcceptedUntil(110)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.onEventsAcceptedUntil(12)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(12)))
-        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(12))
+        eventWatch.onEventsAcceptedUntil(120)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
+        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.onEventsAcceptedUntil(22)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(12)))
-        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(12))
+        eventWatch.onEventsAcceptedUntil(220)
+        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
+        assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
       }
     }
   }
@@ -205,6 +205,24 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(e.after == 10 && e.tornEventId == 1000)
       }
     }
+
+    "observe after=(unknown EventId)" in {
+      withJournalMeta { journalMeta ⇒
+        withJournal(journalMeta, lastEventId = EventId(100)) { (writer, eventWatch) ⇒
+          writer.writeEvents(MyEvents1)
+          writer.flush(sync = false)
+
+          val e = intercept[RealEventWatch.TornException] {
+            eventWatch.observe(EventRequest.singleClass[AEvent](after = 115, timeout = 99.seconds)).countL await 9.s
+          }
+          assert(e.after == 115 && e.tornEventId == 100)
+
+          val stampeds = mutable.Buffer[Stamped[KeyedEvent[AEvent]]]()
+          eventWatch.observe(EventRequest.singleClass[AEvent](after = 110, timeout = 99.seconds)).foreach(stampeds.+=)
+          assert(stampeds == MyEvents1(1) :: Nil)
+        }
+      }
+    }
   }
 
   "Read/write synchronization crash test" in {
@@ -240,13 +258,13 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 private object JournalEventWatchTest
 {
   private val MyEvents1 =
-    Stamped(11, "A1" <-: A1) ::
-    Stamped(12, "A2" <-: A2) ::
+    Stamped(110, "A1" <-: A1) ::
+    Stamped(120, "A2" <-: A2) ::
     Nil
 
   private val MyEvents2 =
-    Stamped(21, "B1" <-: B1) ::
-    Stamped(22, "B2" <-: B2) ::
+    Stamped(210, "B1" <-: B1) ::
+    Stamped(220, "B2" <-: B2) ::
     Nil
 
   private sealed trait MyEvent extends Event

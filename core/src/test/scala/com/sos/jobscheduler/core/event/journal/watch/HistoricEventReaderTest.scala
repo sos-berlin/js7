@@ -27,18 +27,22 @@ final class HistoricEventReaderTest extends FreeSpec
       }
 
       autoClosing(new HistoricEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader ⇒
+        reader.start()
+        assert(reader.eventsAfter(After + 5) == None)
+        assert(reader.eventsAfter(After + 15) == None)
+        assert(reader.eventsAfter(After + 25) == None)
         locally {
-          val closeableIterator = reader.eventsAfter(After)
+          val Some(closeableIterator) = reader.eventsAfter(After)
           assert(closeableIterator.toList == TestEvents)
           closeableIterator.close()
         }
         locally {
-          val closeableIterator = reader.eventsAfter(After + 1)
+          val Some(closeableIterator) = reader.eventsAfter(After + 10)
           assert(closeableIterator.toList == TestEvents.tail)
           closeableIterator.close()
         }
         locally {
-          val closeableIterator = reader.eventsAfter(After + 2)
+          val Some(closeableIterator) = reader.eventsAfter(After + 20)
           assert(closeableIterator.toList == Nil)
           closeableIterator.close()
         }
@@ -50,8 +54,8 @@ final class HistoricEventReaderTest extends FreeSpec
 object HistoricEventReaderTest {
   private val After = 1000
   private val TestEvents =
-    Stamped(After + 1, "A" <-: AEvent) ::
-    Stamped(After + 2, "B" <-: BEvent) ::
+    Stamped(After + 10, "A" <-: AEvent) ::
+    Stamped(After + 20, "B" <-: BEvent) ::
     Nil
 
 }

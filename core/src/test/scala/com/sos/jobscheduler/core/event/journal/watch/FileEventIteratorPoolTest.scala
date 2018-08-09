@@ -28,7 +28,7 @@ final class FileEventIteratorPoolTest extends FreeSpec
       locally {
         // borrowIterator, returnIterator
         val it1 = pool.borrowIterator()
-        assert(it1.eventId == None)
+        assert(it1.eventId == After)
         val it2 = pool.borrowIterator()
         val it3 = pool.borrowIterator()
         assert(pool.freeIteratorsCount == 0 && pool.lentIteratorsCount == 3)
@@ -48,14 +48,14 @@ final class FileEventIteratorPoolTest extends FreeSpec
 
       val it1 = pool.borrowIterator()
       assert(it1.position == it1.firstEventPosition)  // it1 is the first opened iterator, used for firstEventPosition
-      assert(it1.eventId == None)
+      assert(it1.eventId == After)
       assert(it1.next() == TestEvents(0))
       pool.returnIterator(it1)
 
       val it1a = pool.borrowIterator()
       assert(it1a eq it1)
       assert(it1a.position - it1a.firstEventPosition == 45)
-      assert(it1a.eventId == Some(After + 1))
+      assert(it1a.eventId == After + 1)
       assert(it1a.next() == TestEvents(1))
       assert(!it1a.hasNext)
 

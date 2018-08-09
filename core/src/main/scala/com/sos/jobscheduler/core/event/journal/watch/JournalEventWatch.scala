@@ -64,12 +64,14 @@ with JournalingObserver
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
-      for (o ← currentEventReaderOption) {
-        if (o.lastEventId != after)
-          throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
-        afterEventIdToHistoric += o.tornEventId → HistoricJournalFile(o.tornEventId, o.journalFile)
+      for (current ← currentEventReaderOption) {
+        if (current.lastEventId != after)
+          throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
+        for (o ← afterEventIdToHistoric.get(current.tornEventId)) o.close()  // In case last journal file had no events (and `after` remains)
+        afterEventIdToHistoric += current.tornEventId → HistoricJournalFile(current.tornEventId, current.journalFile)
       }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
+      reader.start()
       currentEventReaderOption = Some(reader)
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
@@ -131,25 +133,27 @@ with JournalingObserver
     tryToEvict(until = after)
     currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after ⇒
-        Some(current.eventsAfter(after))
+        current.eventsAfter(after)
       case _ ⇒
         historicEventsAfter(after)
     }
   }
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
-    for (historicJournalFile ← historicAfter(after)) yield {
+    historicAfter(after) flatMap { historicJournalFile ⇒
       var last = after
-      historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
-        last = stamped.eventId
-        stamped
-      } ++  // ++ is lazy, so last contains last read eventId
-        (if (last == after)  // Nothing read
-          CloseableIterator.empty
-        else {  // Continue with next HistoricEventReader or CurrentEventReader
-          assert(last > after, s"last=$last ≤ after=$after ?")
-          eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
-        })
+      historicJournalFile.eventReader.eventsAfter(after) map { events ⇒
+        events.map { stamped ⇒
+          last = stamped.eventId
+          stamped
+        } ++  // ++ is lazy, so last contains last read eventId
+          (if (last == after)  // Nothing read
+            CloseableIterator.empty
+          else {  // Continue with next HistoricEventReader or CurrentEventReader
+            assert(last > after, s"last=$last ≤ after=$after ?")
+            eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
+          })
+      }
     }
 
   /** To reduce heap usage (for EventIdPositionIndex). **/
@@ -189,6 +193,7 @@ with JournalingObserver
       historicEventReader.get match {
         case null ⇒
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
+          r.start()
           if (historicEventReader.compareAndSet(null, r))
             r
           else {

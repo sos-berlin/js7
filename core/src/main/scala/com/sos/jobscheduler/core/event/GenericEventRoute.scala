@@ -12,6 +12,7 @@ import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.BuildInfo
@@ -31,6 +32,7 @@ import com.sos.jobscheduler.core.event.GenericEventRoute._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
+import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
@@ -97,16 +99,35 @@ trait GenericEventRoute extends RouteProvider
       }
 
     private def jsonSeqEvents(eventWatch: EventWatch[Event]): Route =
-      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero)
-      {
-        case request: EventRequest[Event] ⇒
-          implicit val x = JsonSeqStreamSupport
-          implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-          complete(eventWatch.observe(request, predicate = isRelevantEvent))
+      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request ⇒
+        implicit val x = JsonSeqStreamSupport
+        implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
+        val t = now
+        complete(
+          // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+          eventWatch.when(request, predicate = isRelevantEvent) map {
+            case TearableEventSeq.Torn(eventId) ⇒
+              Problem.fromEager(s"Requested EventId after=${request.after} is not available. Oldest available EventId is: $eventId")
+                : ToResponseMarshallable
 
-        case _ ⇒
-          reject
-      }
+            case EventSeq.Empty(_) ⇒
+              Observable.empty[Stamped[KeyedEvent[Event]]]
+                : ToResponseMarshallable
+
+            case EventSeq.NonEmpty(iterator) ⇒
+              val head = iterator.next()
+              // Continue with an Observable, skipping the already read event
+              val tail = eventWatch.observe(
+                request = request.copy[Event](
+                  after = head.eventId,
+                  limit = request.limit - 1,
+                  timeout = Duration.Zero,
+                  delay = (request.delay - (now - t)) min Duration.Zero),
+                predicate = isRelevantEvent)
+              Observable(head) ++ tail
+                : ToResponseMarshallable
+            })
+    }
 
     private def serverSentEvents(eventWatch: EventWatch[Event]): Route =
       parameter("v" ? BuildInfo.buildId) { requestedBuildId ⇒
@@ -149,8 +170,7 @@ trait GenericEventRoute extends RouteProvider
 
 object GenericEventRoute
 {
-  private val DefaultJsonSeqChunkTimeout = 24.hours  // Renewed for each chunked
-  private val DefaultDelay = 50.milliseconds
+  private val DefaultJsonSeqChunkTimeout = 24.hours  // Renewed for each chunk
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =
     try java.lang.Long.parseLong(header.id)
