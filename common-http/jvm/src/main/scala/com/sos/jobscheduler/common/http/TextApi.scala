@@ -34,19 +34,24 @@ trait TextApi {
     printer.doPrint(response)
   }
 
-  def requireIsResponding(): Unit = {
-    val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runAsync
-    awaitResult(whenResponded)
-    print(s"$serverName is responding")
-  }
+  def requireIsResponding(): Unit =
+    try {
+      val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runAsync
+      awaitResult(whenResponded)
+      print(s"$serverName is responding")
+    } catch {
+      case t: akka.stream.StreamTcpException ⇒
+        print(s"$serverName is not responding: ${t.getMessage}")
+        throw t
+    }
 
   def checkIsResponding(): Boolean = {
     try {
       requireIsResponding()
       true
-    } catch { case t: akka.stream.StreamTcpException ⇒
-      print(s"$serverName is not responding: ${t.getMessage}")
-      false
+    } catch {
+      case _: akka.stream.StreamTcpException ⇒
+        false
     }
   }
 
