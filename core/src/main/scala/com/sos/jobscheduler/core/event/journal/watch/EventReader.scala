@@ -40,8 +40,10 @@ extends AutoCloseable
   }
 
   /* To reuse ready built EventIdPositionIndex of CurrentEventReader. */
-  final def start(eventIdToPositionIndex: EventIdPositionIndex): Unit =
+  protected def startReusing(eventIdToPositionIndex: EventIdPositionIndex): Unit = {
     _eventIdToPositionIndex = Some(eventIdToPositionIndex)
+    _lastUsed = Timestamp.currentTimeMillis
+  }
 
   final def close() = {
     iteratorPool.close()

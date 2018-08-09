@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.google.common.annotations.VisibleForTesting
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
@@ -20,7 +21,7 @@ import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -69,9 +70,10 @@ with JournalingObserver
         for (o ← afterEventIdToHistoric.get(current.tornEventId)) {
           o.close()  // In case last journal file had no events (and `after` remains)
         }
-        afterEventIdToHistoric += current.tornEventId →
-          new HistoricJournalFile(afterEventId = current.tornEventId, current.journalFile,
-            Some(current.toHistoricEventReader)/*Reuse EventIdToPositionIndex*/)
+        afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
+          afterEventId = current.tornEventId,
+          current.journalFile,
+          Some(current.toHistoricEventReader)/*Reuse built-up EventIdToPositionIndex*/)
         current.close()
       }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
@@ -80,6 +82,7 @@ with JournalingObserver
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
+    Future { evictUnusedHistoricEventReaders() }  // Runs asynchronously to let calling JournalActor continue
   }
 
   def tornEventId =
@@ -214,8 +217,8 @@ with JournalingObserver
       val reader = historicEventReader.get
       if (reader != null) {
         if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {
+          logger.debug(s"Evict HistoricEventReader(${file.getFileName}' lastUsedAt=${Timestamp.ofEpochMilli(reader.lastUsedAt)})")
           reader.close()
-          logger.debug(s"Evicted HistoricEventReader(${file.getFileName}' lastUsedAt=${reader.lastUsedAt})")
         }
       }
     }

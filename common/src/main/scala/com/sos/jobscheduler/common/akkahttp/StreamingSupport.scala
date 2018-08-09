@@ -45,7 +45,7 @@ object StreamingSupport
     def toAkkaSource(implicit scheduler: Scheduler): Source[A, NotUsed] =
       Source.fromPublisher(underlying.toReactivePublisher(scheduler))
         .mapError { case throwable ⇒
-          logger.debug(s"Exception in HTTP stream: ${throwable.toStringWithCauses}", throwable)
+          logger.debug(s"Exception in HTTP stream: ${throwable.toStringWithCauses}", throwable)  // This is the only message logged
           throwable
         }
   }

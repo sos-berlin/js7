@@ -24,7 +24,7 @@ extends EventReader[E]
 {
   def toHistoricEventReader: HistoricEventReader[E] = {
     val r = new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config)
-    r.start(eventIdToPositionIndex.copy())
+    r.startReusing(eventIdToPositionIndex.copy())
     r
   }
 

@@ -27,7 +27,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
         (freeIterators.toSet, lentIterators.toSet)
       }
     if (lent.nonEmpty) {
-      logger.debug(s"Closing '$toString' while ${lent.size}× opened")
+      logger.info(s"Close '$toString' while ${lent.size}× opened")  // May abort open web requests
     }
     (availables ++ lent) foreach (_.close())  // Force close iterators, for Windows to unlock the file - required for testing
   }

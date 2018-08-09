@@ -21,4 +21,7 @@ with EventReader[E]
 
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = iteratorPool.firstEventPosition
+
+  override def startReusing(eventIdToPositionIndex: EventIdPositionIndex): Unit =
+    super.startReusing(eventIdToPositionIndex)
 }
