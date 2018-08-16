@@ -17,7 +17,7 @@ final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
 
   def map[B](f: A ⇒ B): Stamped[B] = functor.map(this)(f)
 
-  override def toString = s"Stamped(${EventId.toDateTimeString(eventId)} $value)"
+  override def toString = s"Stamped($eventId $timestamp $value)"
 }
 
 object Stamped

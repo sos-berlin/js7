@@ -164,7 +164,6 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       case None ⇒
         TearableEventSeq.Torn(after = tornEventId)
       }
-  }
 
   protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
   : EventSeq[CloseableIterator, KeyedEvent[E1]] =
@@ -203,7 +202,12 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       case EventSeq.NonEmpty(events) ⇒
         try events.toVector
         finally events.close()
-      case o ⇒ sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
+
+      case _: EventSeq.Empty ⇒
+        sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after, timeout=$timeout) timed out")
+
+      case o ⇒
+        sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
     }
 
   /** TEST ONLY - Blocking. */

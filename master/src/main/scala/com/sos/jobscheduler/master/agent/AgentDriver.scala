@@ -215,7 +215,7 @@ with ReceiveLoggingActor.WithStash {
       }
 
     case Input.EventsAccepted(eventId) ⇒
-      assert(eventId == lastEventId)
+      assert(eventId == lastEventId, s"Input.EventsAccepted($eventId) ≠ lastEventId=$lastEventId ?")
       if (isConnected) {
         if (keepEventsCancelable.isEmpty) {
           val delay = if (delayKeepEvents) keepEventsPeriod else Duration.Zero
