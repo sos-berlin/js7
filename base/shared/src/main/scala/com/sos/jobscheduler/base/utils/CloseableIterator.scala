@@ -107,10 +107,11 @@ object CloseableIterator {
     override def toString = s"CloseableIterator.CloseAtEnd($underlying)"
   }
 
-  private class Concatenated[A, B >: A](a: CloseableIterator[A], b: ⇒ CloseableIterator[B])
+  private class Concatenated[A, B >: A](a: CloseableIterator[A], lazyB: ⇒ CloseableIterator[B])
   extends CloseableIterator[B]
   {
-    val concatenated = (a: Iterator[A]) ++ b
+    private lazy val b = lazyB
+    private val concatenated = (a: Iterator[A]) ++ b
 
     def close() =
       try a.close()
