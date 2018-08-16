@@ -39,8 +39,11 @@ with JournalingObserver
   private val keepOpenCount = config.getInt("jobscheduler.journal.watch.keep-open")
   // Read journal file names from directory while constructing
   @volatile
-  private var afterEventIdToHistoric: Map[EventId, HistoricJournalFile] =
-    listJournalFiles(journalMeta.fileBase) map (o ⇒ HistoricJournalFile(o.afterEventId, o.file)) toKeyedMap (_.afterEventId)
+  private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
+    SortedMap.empty[EventId, HistoricJournalFile] ++
+      listJournalFiles(journalMeta.fileBase)
+      .map(o ⇒ HistoricJournalFile(o.afterEventId, o.file))
+      .toKeyedMap(_.afterEventId)
   private val started = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader[E]] = None
@@ -97,18 +100,20 @@ with JournalingObserver
 
   protected[journal] def deleteObsoleteArchives(): Unit = {
     val untilEventId = eventsAcceptedUntil()
-    val keepAfter = currentEventReader.tornEventId match {
-      case current if untilEventId >= current ⇒ current
-      case _ ⇒ historicAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
+    val keepAfter = currentEventReaderOption match {
+      case Some(current) if current.tornEventId <= untilEventId ⇒
+        current.tornEventId
+      case _ ⇒
+        historicAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
     }
-    for ((afterEventId, historicJournalFile) ← afterEventIdToHistoric if afterEventId < keepAfter) {
+    for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepAfter) {
       try {
-        logger.info(s"Deleting obsolete journal file '$historicJournalFile'")
-        if (isWindows) historicJournalFile.close()
-        delete(historicJournalFile.file)
-        afterEventIdToHistoric -= afterEventId
+        logger.info(s"Deleting obsolete journal file '$historic'")
+        historic.close()
+        delete(historic.file)
+        afterEventIdToHistoric -= historic.afterEventId
       } catch {
-        case e: IOException ⇒ logger.error(s"Cannot delete file '$historicJournalFile': ${e.toStringWithCauses}")
+        case e: IOException ⇒ logger.error(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
       }
     }
   }
@@ -157,7 +162,7 @@ with JournalingObserver
     CloseableIterator.empty  // Not implemented
 
   private def historicAfter(after: EventId): Option[HistoricJournalFile] =
-    afterEventIdToHistoric.toVector.sortBy(_._1).reverseIterator find (_._1 <= after) map (_._2)
+    afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)
 
   @VisibleForTesting
   private[watch] def historicFileEventIds: Set[EventId] =
