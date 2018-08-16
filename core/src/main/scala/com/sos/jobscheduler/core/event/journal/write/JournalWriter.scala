@@ -19,7 +19,7 @@ extends AutoCloseable {
   protected def observer: Option[JournalingObserver]
   protected def simulateSync: Option[FiniteDuration]
 
-  protected val logger = Logger.withPrefix(getClass, file.getFileName.toString)
+  protected val logger = Logger.withPrefix[JournalWriter[E]](file.getFileName.toString)
 
   if (!append && Files.exists(file)) sys.error(s"JournalWriter: Not expecting existent files '$file'")
   if (append && !Files.exists(file)) sys.error(s"JournalWriter: Missing files '$file'")

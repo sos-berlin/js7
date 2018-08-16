@@ -246,7 +246,6 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
-    logger.info(s"Starting new journal file with a snapshot")
     if (snapshotCancelable != null) {
       snapshotCancelable.cancel()
       snapshotCancelable = null
@@ -256,6 +255,7 @@ extends Actor with Stash {
       closeEventWriter()
     }
 
+    logger.info(s"Starting new journal file with a snapshot")
     snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
       journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"),
       after = lastWrittenEventId, observerOption, simulateSync = simulateSync)
