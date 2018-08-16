@@ -231,21 +231,25 @@ with MainJournalingActor[Event] {
       //TODO journal transaction {
       var lastAgentEventId = none[EventId]
       stampeds foreach {
-        case Stamped(agentEventId, timestamp, keyedEvent) ⇒
-          keyedEvent match {
-            case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
-              // OrderForked is (as all events) persisted and processed asynchronously,
-              // so events for child orders will probably arrive before OrderForked has registered the child orderId.
-              val ownEvent = event match {
-                case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                case _ ⇒ event
-              }
-              persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
+        case stamped @ Stamped(agentEventId, timestamp, keyedEvent) ⇒
+          if (agentEventId < lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
+            logger.error(s"Agent ${agentEntry.agentId} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
+          } else {
+            keyedEvent match {
+              case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+                // OrderForked is (as all events) persisted and processed asynchronously,
+                // so events for child orders will probably arrive before OrderForked has registered the child orderId.
+                val ownEvent = event match {
+                  case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _ ⇒ event
+                }
+                persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
 
-            case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
-              persist(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)) { _ ⇒ }
+              case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
+                persist(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)) { _ ⇒ }
+            }
+            lastAgentEventId = agentEventId.some
           }
-          lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {
         persist(agentId <-: AgentEventIdEvent(agentEventId)) { e ⇒  // Sync
