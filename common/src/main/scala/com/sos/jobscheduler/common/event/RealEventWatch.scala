@@ -148,8 +148,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
           }))
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : TearableEventSeq[CloseableIterator, A] = {
-    require(limit >= 0, "limit must be >= 0")
+  : TearableEventSeq[CloseableIterator, A] =
     eventsAfter(after) match {
       case Some(stampeds) ⇒
         var lastEventId = after
