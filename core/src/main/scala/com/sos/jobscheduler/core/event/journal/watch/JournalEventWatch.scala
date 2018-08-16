@@ -127,18 +127,19 @@ with JournalingObserver
     * @return `Task(None)` torn, `after` < `tornEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
-  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
+  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
+    tryToEvict(until = after)
     currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after ⇒
         Some(current.eventsAfter(after))
       case _ ⇒
         historicEventsAfter(after)
     }
+  }
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
     for (historicJournalFile ← historicAfter(after)) yield {
       var last = after
-      tryToEvict(but = historicJournalFile)
       historicJournalFile.eventReader.eventsAfter(after).map { stamped ⇒
         last = stamped.eventId
         stamped
@@ -146,7 +147,7 @@ with JournalingObserver
         (if (last == after)  // Nothing read
           CloseableIterator.empty
         else {  // Continue with next HistoricEventReader or CurrentEventReader
-          assert(last > after)
+          assert(last > after, s"last=$last ≤ after=$after ?")
           eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
         })
     }
