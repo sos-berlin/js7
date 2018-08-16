@@ -249,7 +249,7 @@ with MainJournalingActor[Event] {
       }
       for (agentEventId ← lastAgentEventId) {
         persist(agentId <-: AgentEventIdEvent(agentEventId)) { e ⇒  // Sync
-          agentEntry.lastAgentEventId = e.eventId
+          agentEntry.lastAgentEventId = agentEventId
           agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
         }
       }
