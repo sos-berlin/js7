@@ -77,13 +77,15 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 object AgentClient {
   val ErrorMessageLengthMaximum = 10000
 
-  def apply(agentUri: Uri, keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient =
-    new Standard(actorSystem, agentUri, keyStoreRef, trustStoreRef)
-
-  private class Standard(
-    protected val actorSystem: ActorSystem,
-    val baseUri: Uri,
-    protected val keyStoreRef: Option[KeyStoreRef],
-    protected val trustStoreRef: Option[TrustStoreRef])
-  extends AgentClient
+  def apply(agentUri: Uri, keyStoreRef: ⇒ Option[KeyStoreRef] = None, trustStoreRef: ⇒ Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient = {
+    val a = actorSystem
+    def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
+    def t = trustStoreRef  // lazy, to avoid reference when not needed (needed only for http)
+    new AgentClient {
+      protected val actorSystem = a
+      val baseUri = agentUri
+      protected def keyStoreRef = k
+      protected def trustStoreRef = t
+    }
+  }
 }
