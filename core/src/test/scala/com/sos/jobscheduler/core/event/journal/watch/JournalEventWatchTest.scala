@@ -161,7 +161,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
               Stamped(3, "1" <-: A2) :: Nil)
             writer.flush(sync = false)
           }
-          assert(eventWatch.historicFileEventIds == Set[EventId](0))
+          assert(eventWatch.historicFileEventIds == Set[EventId]())
 
           autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = 3, Some(eventWatch))) { writer ⇒
             writer.startJournaling()
@@ -169,7 +169,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
               Stamped(4, "2" <-: A2) ::
               Stamped(5, "1" <-: B2) :: Nil)
           }
-          assert(eventWatch.historicFileEventIds == Set[EventId](0, 3))
+          assert(eventWatch.historicFileEventIds == Set[EventId](0))
         }
       }
     }

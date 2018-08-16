@@ -64,13 +64,13 @@ with JournalingObserver
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
-      for (o ← currentEventReaderOption if o.lastEventId != after)
-        throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
-      for (historicFile ← afterEventIdToHistoric.get(after))
-        historicFile.close()
+      for (o ← currentEventReaderOption) {
+        if (o.lastEventId != after)
+          throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${o.lastEventId}")
+        afterEventIdToHistoric += o.tornEventId → HistoricJournalFile(o.tornEventId, o.journalFile)
+      }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
       currentEventReaderOption = Some(reader)
-      afterEventIdToHistoric += (after → HistoricJournalFile(after, file))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
@@ -151,9 +151,10 @@ with JournalingObserver
         })
     }
 
-  private def tryToEvict(but: HistoricJournalFile): Unit =
+  /** To reduce heap usage (for EventIdPositionIndex). **/
+  private def tryToEvict(until: EventId): Unit =
     afterEventIdToHistoric.values
-      .filter(o ⇒ o.isEvictable && (o ne but))
+      .filter(o ⇒ o.afterEventId < until && o.isEvictable)
       .toVector.sortBy(_.lastUsedAt)
       .dropRight(keepOpenCount)
       .foreach(_.evictEventReader())
