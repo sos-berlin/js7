@@ -12,3 +12,7 @@ idea-shared-test
 
 # MacOS
 .DS_Store
+
+.classpath
+.project
+.settings
