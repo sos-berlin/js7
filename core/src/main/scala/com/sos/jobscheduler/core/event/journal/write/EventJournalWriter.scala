@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.EventsHeader
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -29,6 +30,8 @@ with AutoCloseable
 {
   import journalMeta.eventJsonCodec
 
+  private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
+  protected val statistics = new EventStatisticsCounter
   private var _lastEventId = after
   private var eventsStarted = false
   private var _eventWritten = false
@@ -38,8 +41,8 @@ with AutoCloseable
 
   override def close(): Unit = {
     super.close()
-    logger.info(s"Journal closed, $bytesWrittenString written: ${statistics.eventInfoString}")
-    logger.debug(statistics.eventDebugString + " " + statistics.eventTimingString)
+    logger.info(s"Journal closed, $fileSizeString written ($statistics)")
+    for (o ← statistics.debugString) logger.debug(o)
   }
 
   def startJournaling(): Unit = {

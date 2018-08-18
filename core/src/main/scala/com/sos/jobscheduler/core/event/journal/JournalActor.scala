@@ -52,7 +52,7 @@ extends Actor with Stash {
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.period")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.duration")(p ⇒ config.getDuration(p).toFiniteDuration)
   private var snapshotCancelable: Cancelable = null
 
   private var eventWriter: EventJournalWriter[E] = null
@@ -110,7 +110,7 @@ extends Actor with Stash {
 
   private def becomeReady(): Unit = {
     become(ready)
-    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file}'")
+    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
     eventWriter.startJournaling()
   }
 
@@ -246,6 +246,8 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
+    logger.info(s"Starting new journal file with a snapshot")
+
     if (snapshotCancelable != null) {
       snapshotCancelable.cancel()
       snapshotCancelable = null
@@ -255,7 +257,6 @@ extends Actor with Stash {
       closeEventWriter()
     }
 
-    logger.info(s"Starting new journal file with a snapshot")
     snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
       journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"),
       after = lastWrittenEventId, observerOption, simulateSync = simulateSync)
@@ -271,7 +272,7 @@ extends Actor with Stash {
       throw t.appendCurrentStackTrace
 
     case SnapshotTaker.Output.Finished(Success(snapshotCount)) ⇒
-      if (syncOnCommit) snapshotJournalWriter.flush(sync = syncOnCommit)
+      snapshotJournalWriter.flush(sync = syncOnCommit)
       snapshotJournalWriter.close()
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
       val file = journalMeta.file(after = lastWrittenEventId)

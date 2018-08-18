@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.write
 
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
@@ -18,18 +17,16 @@ extends AutoCloseable {
   def file: Path
   protected def observer: Option[JournalingObserver]
   protected def simulateSync: Option[FiniteDuration]
-
-  protected val logger = Logger.withPrefix[JournalWriter[E]](file.getFileName.toString)
+  protected val statistics: StatisticsCounter
 
   if (!append && Files.exists(file)) sys.error(s"JournalWriter: Not expecting existent files '$file'")
   if (append && !Files.exists(file)) sys.error(s"JournalWriter: Missing files '$file'")
 
-  protected val jsonWriter = new FileJsonWriter(JournalHeader.Singleton, file, append = append, simulateSync = simulateSync)
-  protected val statistics = new StatisticsCounter
+  protected final val jsonWriter = new FileJsonWriter(JournalHeader.Singleton, file, append = append, simulateSync = simulateSync)
 
   def close() = jsonWriter.close()
 
-  protected def bytesWrittenString: String =
+  protected final def fileSizeString: String =
     try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }
 
   def flush(sync: Boolean): Unit = {
@@ -45,11 +42,7 @@ extends AutoCloseable {
     }
   }
 
-  def isFlushed = jsonWriter.isFlushed
+  final def isFlushed = jsonWriter.isFlushed
 
-  def isSynced = jsonWriter.isSynced
-}
-
-private[journal] object JournalWriter {
-  final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)
+  final def isSynced = jsonWriter.isSynced
 }

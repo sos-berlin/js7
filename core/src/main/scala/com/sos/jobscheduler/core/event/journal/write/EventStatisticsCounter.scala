@@ -1,0 +1,38 @@
+package com.sos.jobscheduler.core.event.journal.write
+
+import com.sos.jobscheduler.common.time.ScalaTime._
+import java.text.NumberFormat
+import java.util.Locale
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+
+/**
+  * @author Joacim Zschimmer
+  */
+private[journal] final class EventStatisticsCounter extends StatisticsCounter
+{
+  private var events = 0
+  private var commits = 0
+
+  def countEventsToBeCommitted(eventCount: Int): Unit =
+    if (eventCount > 0) {  // Count only commits with events
+      events += eventCount
+      commits += 1
+    }
+
+  override def toString =
+    if (events == 0) "(no events)"
+    else s"$events events" //+ (if (syncs > 0) s", $syncs syncs" else "")
+
+  def debugString: Option[String] =
+    (events != 0) ? s"$events events, $commits commits ($flushesDebugString) $timingString"
+
+  protected def timingString =
+    if (events == 0) ""
+    else
+      (if (stopwatch.duration >= 1.s) s"$flushesTimingString, " else "") + {
+        val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
+        factorFormat.setMaximumFractionDigits(1)
+        factorFormat.setGroupingUsed(false)  // For MacOS
+        factorFormat.format(commits.toDouble / flushCount) + " commits/flush"
+      }
+}
