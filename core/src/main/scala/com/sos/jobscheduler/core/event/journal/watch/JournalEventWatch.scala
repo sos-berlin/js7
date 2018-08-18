@@ -89,10 +89,8 @@ with JournalingObserver
   @tailrec
   def onEventsAcceptedUntil(eventId: EventId): Unit = {
     val old = eventsAcceptedUntil()
-    if (eventId < old)
-      logger.warn(s"onEventsAcceptedUntil with already accepted EventId $eventId < $old ?")  // Not expected to happen. No exception here!
-    else
-    if (eventId > old) {
+    require(eventId >= old, s"onEventsAcceptedUntil with already accepted EventId $eventId < $old ?")  // Not expected to happen
+    if (old < eventId) {
       if (!eventsAcceptedUntil.compareAndSet(old, eventId))
         onEventsAcceptedUntil(eventId)  // Try again when concurrently called
       else

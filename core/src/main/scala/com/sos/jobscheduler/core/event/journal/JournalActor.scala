@@ -119,7 +119,10 @@ extends Actor with Stash {
       if (untilEventId > lastWrittenEventId)
         sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
       else {
-        for (r ← observerOption) r.onEventsAcceptedUntil(untilEventId)
+        for (r ← observerOption) {
+          try r.onEventsAcceptedUntil(untilEventId)
+          catch { case NonFatal(t) ⇒ logger.warn(s"onEventsAcceptedUntil($untilEventId) failed: " + t.toStringWithCauses, t)}
+        }
         sender() ! Valid(Completed)
       }
 
