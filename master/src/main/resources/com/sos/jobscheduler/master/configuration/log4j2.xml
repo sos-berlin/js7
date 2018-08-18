@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN" shutdownHook="disable">
   <appenders>
-    <console name="console" target="SYSTEM_ERR">
+    <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
@@ -19,7 +19,7 @@
   </appenders>
   <loggers>
     <root level="INFO">
-      <appenderRef ref="console" level="INFO"/>
+      <appenderRef ref="stderr" level="INFO"/>
       <appenderRef ref="file" level="INFO"/>
     </root>
   </loggers>

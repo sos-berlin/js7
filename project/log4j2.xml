@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration status="WARN">
   <appenders>
-    <console name="console" target="SYSTEM_ERR">
+    <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
@@ -19,8 +19,8 @@
   </appenders>
   <loggers>
     <root level="INFO">
-      <appenderRef level="OFF" ref="console"/>
-      <appenderRef level="DEBUG" ref="file"/>
+      <appenderRef ref="stderr" level="OFF"/>
+      <appenderRef ref="file"   level="DEBUG" />
     </root>
     <logger level="DEBUG" name="jobscheduler"/>
   </loggers>
