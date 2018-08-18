@@ -143,7 +143,7 @@ with MainJournalingActor[Event] {
   def receive = {
     case JournalRecoverer.Output.JournalIsReady ⇒
       agentRegister.values foreach { _.start() }
-      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder
+      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
       logger.info(s"${orderRegister.size} Orders recovered")
       if (!hasRecovered) {
         readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events

@@ -77,7 +77,7 @@ extends Actor {
       context.unwatch(sender())
       abortOnError {
         for (snapshot ← snapshots) {
-          pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }
+          pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
           logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }
