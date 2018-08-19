@@ -89,7 +89,7 @@ object OrdersState {
       val added = mutable.Map[WorkflowId, js.Array[OrderId]]()
       val deleted = mutable.Set[OrderId]()
       var evtCount = 0
-      val nowMillis = Timestamp.epochMilli
+      val nowMillis = Timestamp.currentTimeMillis
       stampedEvents foreach {
         case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
           updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)

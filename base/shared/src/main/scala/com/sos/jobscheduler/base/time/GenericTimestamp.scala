@@ -59,6 +59,8 @@ object GenericTimestamp {
 
     def parse(string: String): A
 
-    def now: A
+    final def now: A = ofEpochMilli(currentTimeMillis)
+
+    final def currentTimeMillis = System.currentTimeMillis
   }
 }

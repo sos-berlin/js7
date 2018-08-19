@@ -12,22 +12,22 @@ import scala.concurrent.duration._
   * @author Joacim Zschimmer
   */
 private class Highlighter {
-  private var _lastHighlightedAt = Timestamp.epochMilli
+  private var _lastHighlightedAt = Timestamp.currentTimeMillis
   def lastHighlightedAt = _lastHighlightedAt
   private val orderToHighlighted, orderToCleanup = new mutable.HashMap[OrderId, HighlightedElement]
 
   def onChanged(orderId: OrderId, row: html.Element): Unit = {
-    orderToHighlighted += orderId → HighlightedElement(row, Timestamp.epochMilli)
+    orderToHighlighted += orderId → HighlightedElement(row, Timestamp.currentTimeMillis)
     orderToCleanup -= orderId
   }
 
   def componentDidUpdate(): Unit = {
-    _lastHighlightedAt = Timestamp.epochMilli
+    _lastHighlightedAt = Timestamp.currentTimeMillis
     Callback { phaseout() }.delayMs(HighlightMillis + 100).runNow()
   }
 
   private def phaseout(): Unit = {
-    val now = Timestamp.epochMilli
+    val now = Timestamp.currentTimeMillis
     val phasingOut = orderToHighlighted.filter(_._2.startPhaseoutAt < now)
     for (h ← phasingOut.values) {
       val o = h.row.classList
@@ -40,7 +40,7 @@ private class Highlighter {
   }
 
   private def cleanUp(): Unit = {
-    val now = Timestamp.epochMilli
+    val now = Timestamp.currentTimeMillis
     val cleansing = orderToCleanup filter (_._2.endPhaseoutAt < now)
     for (h ← cleansing.values) {
       h.row.classList.remove("orders-Order-changed-phaseout")

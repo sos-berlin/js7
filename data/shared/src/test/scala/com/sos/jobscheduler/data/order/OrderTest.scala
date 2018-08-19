@@ -223,9 +223,9 @@ final class OrderTest extends FreeSpec {
     val json = (order: Order[Order.State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[Order.State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {
-      val start = Timestamp.epochMilli
+      val start = Timestamp.currentTimeMillis
       for (_ ← 1 to n) what
-      val duration = Timestamp.epochMilli - start
+      val duration = Timestamp.currentTimeMillis - start
       println(s"${duration}ms/$n $ops ${(n * 1000L / duration).toString} $ops/s")
     }
   }

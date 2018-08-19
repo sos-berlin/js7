@@ -72,8 +72,4 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
   def fromInstant(instant: Instant) = ofEpochMilli(instant.toEpochMilli)
 
   def parse(string: String) = ofEpochMilli(js.Date.parse(string).toLong)
-
-  def now: Timestamp = ofEpochMilli(epochMilli)
-
-  def epochMilli: Long = java.lang.System.currentTimeMillis
 }

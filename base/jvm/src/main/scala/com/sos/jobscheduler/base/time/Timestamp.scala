@@ -30,8 +30,4 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
 
   def parse(string: String): Timestamp =
     ofInstant(Instant.from(dateTimeFormatter parse string))
-
-  def now: Timestamp = ofEpochMilli(epochMilli)
-
-  def epochMilli: Long = System.currentTimeMillis
 }
