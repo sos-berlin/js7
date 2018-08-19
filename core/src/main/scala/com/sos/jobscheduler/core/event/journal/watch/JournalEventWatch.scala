@@ -128,13 +128,14 @@ with JournalingObserver
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
-    tryToEvict(until = after)
-    currentEventReaderOption match {
+    val result = currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after ⇒
         current.eventsAfter(after)
       case _ ⇒
         historicEventsAfter(after)
     }
+    evictUnusedHistoricEventReaders()
+    result
   }
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
@@ -154,10 +155,10 @@ with JournalingObserver
       }
     }
 
-  /** To reduce heap usage (for EventIdPositionIndex). **/
-  private def tryToEvict(until: EventId): Unit =
+  /** Close unused HistoricEventReader (with EventIdPositionIndex) to reduce heap usage. **/
+  private def evictUnusedHistoricEventReaders(): Unit =
     afterEventIdToHistoric.values
-      .filter(o ⇒ o.afterEventId < until && o.isEvictable)
+      .filter(_.isEvictable)
       .toVector.sortBy(_.lastUsedAt)
       .dropRight(keepOpenCount)
       .foreach(_.evictEventReader())
@@ -192,9 +193,10 @@ with JournalingObserver
         case null ⇒
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
           r.start()
-          if (historicEventReader.compareAndSet(null, r))
+          if (historicEventReader.compareAndSet(null, r)) {
+            logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
-          else {
+          } else {
             r.close()
             eventReader
           }
@@ -205,8 +207,8 @@ with JournalingObserver
       val reader = historicEventReader.get
       if (reader != null) {
         if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {
-          logger.debug(s"Evicted '${file.getFileName}' lastUsedAt=${reader.lastUsedAt}")
           reader.close()
+          logger.debug(s"Evicted HistoricEventReader(${file.getFileName}' lastUsedAt=${reader.lastUsedAt})")
         }
       }
     }
