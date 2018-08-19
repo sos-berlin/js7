@@ -156,7 +156,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
           .map { o ⇒ lastEventId = o.eventId; o }
           .collect { case stamped if collect isDefinedAt stamped.value ⇒ stamped map collect }
           .take(limit)
-        if (eventIterator.isEmpty) {
+         if (eventIterator.isEmpty) {
           eventIterator.close()
           EventSeq.Empty(lastEventId)
         } else

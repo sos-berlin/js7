@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.google.common.annotations.VisibleForTesting
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
@@ -42,7 +41,7 @@ with JournalingObserver
   private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
       listJournalFiles(journalMeta.fileBase)
-      .map(o ⇒ HistoricJournalFile(o.afterEventId, o.file))
+      .map(o ⇒ new HistoricJournalFile(o.afterEventId, o.file))
       .toKeyedMap(_.afterEventId)
   private val started = Promise[this.type]()
   @volatile
@@ -67,8 +66,13 @@ with JournalingObserver
       for (current ← currentEventReaderOption) {
         if (current.lastEventId != after)
           throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
-        for (o ← afterEventIdToHistoric.get(current.tornEventId)) o.close()  // In case last journal file had no events (and `after` remains)
-        afterEventIdToHistoric += current.tornEventId → HistoricJournalFile(current.tornEventId, current.journalFile)
+        for (o ← afterEventIdToHistoric.get(current.tornEventId)) {
+          o.close()  // In case last journal file had no events (and `after` remains)
+        }
+        afterEventIdToHistoric += current.tornEventId →
+          new HistoricJournalFile(afterEventId = current.tornEventId, current.journalFile,
+            Some(current.toHistoricEventReader)/*Reuse EventIdToPositionIndex*/)
+        current.close()
       }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
       reader.start()
@@ -180,9 +184,12 @@ with JournalingObserver
       case None ⇒ EventId.BeforeFirst
     }
 
-  private final case class HistoricJournalFile(afterEventId: EventId, file: Path)
+  private final class HistoricJournalFile(
+    val afterEventId: EventId,
+    val file: Path,
+    initialHistoricReader: Option[HistoricEventReader[E]] = None)
   {
-    private val historicEventReader = AtomicAny[HistoricEventReader[E]](null)
+    private val historicEventReader = AtomicAny[HistoricEventReader[E]](initialHistoricReader.orNull)
 
     def close(): Unit =
       for (r ← Option(historicEventReader.get)) r.close()
@@ -213,9 +220,9 @@ with JournalingObserver
       }
     }
 
-    def lastUsedAt: Timestamp =
+    def lastUsedAt: Long =
       historicEventReader.get match {
-        case null ⇒ Timestamp.Epoch
+        case null ⇒ 0L
         case reader ⇒ reader.lastUsedAt
       }
 

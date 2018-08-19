@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -20,8 +19,6 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
   private val lentIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
   @volatile
   private var closed = false
-  @volatile
-  private var _lastUsed = Timestamp.Epoch
 
   def close(): Unit = {
     closed = true
@@ -82,7 +79,6 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
 
   def returnIterator(iterator: FileEventIterator[E]): Unit = {
     //logger.trace(s"returnIterator ${journalFile.getFileName} position=${iterator.position} eventId=${iterator.eventId}")
-    _lastUsed = Timestamp.now
     synchronized {
       if (!iterator.isClosed) {
         freeIterators += iterator
@@ -92,8 +88,6 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
   }
 
   def isLent = lentIterators.nonEmpty
-
-  def lastUsedAt = this._lastUsed
 
   def freeIteratorsCount = freeIterators.size
 

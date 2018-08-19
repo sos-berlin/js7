@@ -27,22 +27,36 @@ extends AutoCloseable
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
-  protected lazy val eventIdToPositionIndex = new EventIdPositionIndex(size = config.getInt("jobscheduler.journal.watch.index-size"))
-  protected lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
-  private var started = false
+  private var _eventIdToPositionIndex: Option[EventIdPositionIndex] = None
+  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
+  @volatile
+  private var _lastUsed = 0L
 
-  def start() {
+  protected def eventIdToPositionIndex = _eventIdToPositionIndex getOrElse (throw new IllegalStateException("EventReader has been closed"))
+
+  final def start(): Unit = {
+    _eventIdToPositionIndex = Some(new EventIdPositionIndex(size = config.getInt("jobscheduler.journal.watch.index-size")))
     eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
-    started = true
   }
 
-  def close() = iteratorPool.close()
+  /* To reuse ready built EventIdPositionIndex of CurrentEventReader. */
+  final def start(eventIdToPositionIndex: EventIdPositionIndex): Unit =
+    _eventIdToPositionIndex = Some(eventIdToPositionIndex)
+
+  final def close() = {
+    iteratorPool.close()
+    _eventIdToPositionIndex = None  // Release memory
+  }
+
+  final def freeze(): Unit =
+    if (!eventIdToPositionIndex.isFreezed) {
+      eventIdToPositionIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
+    }
 
   /**
     * @return None if torn
     */
   final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
-    require(started)
     val indexPositionAndEventId = eventIdToPositionIndex.positionAndEventIdAfter(after)
     import indexPositionAndEventId.position
     if (position >= flushedLength)  // Data behind flushedLength is not flushed and probably incomplete
@@ -66,9 +80,14 @@ extends AutoCloseable
               iteratorPool.returnIterator(iterator)
             }
 
-            def hasNext = iterator.hasNext
+            def hasNext = {
+              val r = iterator.hasNext
+              if (!r && isHistoric) freeze()
+              r
+            }
 
             def next() = {
+              _lastUsed = Timestamp.currentTimeMillis
               val stamped = iterator.next()
               assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
               if (isHistoric) {
@@ -82,8 +101,8 @@ extends AutoCloseable
     }
   }
 
-  final def lastUsedAt: Timestamp =
-    iteratorPool.lastUsedAt
+  final def lastUsedAt: Long =
+    _lastUsed
 
   final def isInUse = iteratorPool.isLent
 }

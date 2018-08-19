@@ -24,15 +24,27 @@ private[watch] final class EventIdPositionIndex(size: Int)
 
   require(positions.nonEmpty)
 
+  def copy(): EventIdPositionIndex = {
+    val r = new EventIdPositionIndex(size)
+    r.positions = positions
+    r.eventIds = eventIds
+    r.length = length
+    r._highestEventId = _highestEventId
+    r.freezed = freezed
+    r._factor = _factor
+    r.addedCount = addedCount
+    r
+  }
+
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
     if (!tryAddAfter(eventId, position, n))
-      throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} > ${EventId.toString(_highestEventId)}")
+      throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
   def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean =
     (eventId > _highestEventId) &&
       synchronized {
-        if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
         (eventId > _highestEventId) && {
+          if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
           val a = addedCount
           addedCount += n
           if (addedCount / _factor > a / _factor) {
@@ -61,6 +73,8 @@ private[watch] final class EventIdPositionIndex(size: Int)
         logger.trace(s"Freezed - size=${positions.length} ${toKBGB(positions.length * 2 * 8)}")
       }
     }
+
+  def isFreezed = freezed
 
   private def compress(factor: Int): Unit = {
     for (i ← 1 until length / factor) {

@@ -22,6 +22,12 @@ private[watch] final class CurrentEventReader[E <: Event](
     protected val timerService: TimerService)
 extends EventReader[E]
 {
+  def toHistoricEventReader: HistoricEventReader[E] = {
+    val r = new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config)
+    r.start(eventIdToPositionIndex.copy())
+    r
+  }
+
   val tornEventId = flushedLengthAndEventId.value
   protected def isHistoric = false
   final val journalFile = journalMeta.file(after = tornEventId)
