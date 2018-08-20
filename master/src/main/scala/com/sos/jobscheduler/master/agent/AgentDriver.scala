@@ -122,7 +122,6 @@ with ReceiveLoggingActor.WithStash {
           become("connecting")(connecting)
       }
 
-    //case _: Input.Start | _: Input.AttachOrder | _: Input.DetachOrder ⇒
     case _ ⇒
       stash()
   }
@@ -143,7 +142,6 @@ with ReceiveLoggingActor.WithStash {
         reconnect()
       }
 
-    //case _: Input.Start | _: Input.AttachOrder | _: Input.DetachOrder ⇒
     case _ ⇒
       stash()
   }
@@ -158,7 +156,6 @@ with ReceiveLoggingActor.WithStash {
       become("ready")(ready)
       self ! Internal.FetchEvents(lastEventId)
 
-    //case _: Input.AttachOrder | _: Input.DetachOrder ⇒
     case _ ⇒
       stash()
   }
@@ -277,6 +274,7 @@ with ReceiveLoggingActor.WithStash {
       context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream or acknowledge
 
       for (last ← stampedEvents.lastOption) {
+        assert(lastEventId < last.eventId, s"last.eventId=${last.eventId} <= lastEventId=$lastEventId ?")
         lastEventId = last.eventId
       }
   }
