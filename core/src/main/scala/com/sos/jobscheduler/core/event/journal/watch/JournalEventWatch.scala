@@ -21,7 +21,7 @@ import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -68,13 +68,13 @@ with JournalingObserver
         if (current.lastEventId != after)
           throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
         for (o ← afterEventIdToHistoric.get(current.tornEventId)) {
-          o.close()  // In case last journal file had no events (and `after` remains)
+          o.closeAfterUse()  // In case last journal file had no events (and `after` remains), we exchange it
         }
         afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
           afterEventId = current.tornEventId,
           current.journalFile,
           Some(current.toHistoricEventReader)/*Reuse built-up EventIdToPositionIndex*/)
-        current.close()
+        current.closeAfterUse()
       }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
       reader.start()
@@ -82,7 +82,7 @@ with JournalingObserver
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
-    Future { evictUnusedHistoricEventReaders() }  // Runs asynchronously to let calling JournalActor continue
+    evictUnusedHistoricEventReaders()
   }
 
   def tornEventId =
@@ -162,7 +162,7 @@ with JournalingObserver
       }
     }
 
-  /** Close unused HistoricEventReader (with EventIdPositionIndex) to reduce heap usage. **/
+  /** Close unused HistoricEventReader. **/
   private def evictUnusedHistoricEventReaders(): Unit =
     afterEventIdToHistoric.values
       .filter(_.isEvictable)
@@ -194,8 +194,11 @@ with JournalingObserver
   {
     private val historicEventReader = AtomicAny[HistoricEventReader[E]](initialHistoricReader.orNull)
 
+    def closeAfterUse(): Unit =
+      for (r ← Option(historicEventReader.get)) r.closeAfterUse()
+
     def close(): Unit =
-      for (r ← Option(historicEventReader.get)) r.close()
+    for (r ← Option(historicEventReader.get)) r.close()
 
     @tailrec
     def eventReader: HistoricEventReader[E] =
@@ -216,9 +219,9 @@ with JournalingObserver
     def evictEventReader(): Unit = {
       val reader = historicEventReader.get
       if (reader != null) {
-        if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {
+        if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {  // Race condition, may be become in-use before compareAndSet
           logger.debug(s"Evict HistoricEventReader(${file.getFileName}' lastUsedAt=${Timestamp.ofEpochMilli(reader.lastUsedAt)})")
-          reader.close()
+          reader.closeAfterUse()
         }
       }
     }
