@@ -15,8 +15,8 @@ import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -150,33 +150,38 @@ extends MainJournalingActor[Event] with Stash {
         for (o ← orderRegister.values if !o.detaching) {
           o.actor ! OrderActor.Input.Terminate
         }
+        handleTermination()
       }
-      handleTermination()
       sender() ! Done
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       handleOrderEvent(order, event)
       proceedWithOrder(order.id)
 
-    case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
-      tryStartProcessing(jobRegister(sender()))
+    case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
+      if (!terminating) {
+        tryStartProcessing(jobRegister(sender()))
+      }
 
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
-          Future.failed(new IllegalArgumentException(s"Unknown Position ${order.workflowPosition}"))
+          Future.failed(Problem.fromEager(s"Unknown Position ${order.workflowPosition}").throwable)
+        else if (orderRegister contains order.id) {
+          // May occur after Master restart when Master is not sure about order has been attached previously.
+          logger.debug(s"Ignoring duplicate $cmd")
+          Future.successful(Accepted)
+        } else if (terminating)
+          Future.failed(AgentIsTerminatingProblem.throwable)
         else
-          if (orderRegister contains order.id) {
-            // May occur after Master restart when Master is not sure about order has been attached previously.
-            logger.debug(s"Ignoring duplicate $cmd")
-            Future.successful(Accepted)
-          } else
-            attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
+          attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
-      val orderEntry = orderRegister(orderId)
-      onOrderAvailable(orderEntry)
+      if (!terminating) {
+        val orderEntry = orderRegister(orderId)
+        onOrderAvailable(orderEntry)
+      }
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
@@ -202,7 +207,7 @@ extends MainJournalingActor[Event] with Stash {
           }
       }
 
-    case DetachOrder(orderId) ⇒
+    case DetachOrder(orderId) if !terminating ⇒
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
           orderEntry.order.detachableFromAgent match {
@@ -231,7 +236,7 @@ extends MainJournalingActor[Event] with Stash {
       Future.successful(GetOrders.Response(
         for (orderEntry ← orderRegister.values) yield orderEntry.order))
 
-    case KeepEvents(after) ⇒
+    case KeepEvents(after) if !terminating ⇒
       (journalActor ? JournalActor.Input.EventsAccepted(after)).mapTo[Checked[Completed]]
         .map {
           case Valid(Completed) ⇒ AgentCommand.Accepted
@@ -239,7 +244,7 @@ extends MainJournalingActor[Event] with Stash {
         }
 
     case _ if terminating ⇒
-      Future.failed(new IllegalStateException(s"Agent is terminating"))
+      Future.failed(AgentIsTerminatingProblem.throwable)
   }
 
   private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
@@ -268,61 +273,66 @@ extends MainJournalingActor[Event] with Stash {
     for (followUps ← validatedFollowUps onProblem (p ⇒ logger.error(p))) {
       followUps foreach {
         case FollowUp.Processed(job) ⇒
-          assert(orderEntry.jobOption map (_.jobPath) contains job.jobPath)
-          for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
-            jobEntry.queue -= order.id
+          if (!terminating) {
+            assert(orderEntry.jobOption map (_.jobPath) contains job.jobPath)
+            for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
+              jobEntry.queue -= order.id
+            }
           }
 
         case FollowUp.AddChild(childOrder) ⇒
-          val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
-          actor ! OrderActor.Input.AddChild(childOrder)
-          proceedWithOrder(childOrder.id)
+          if (!terminating) {
+            val actor = newOrderActor(childOrder)
+            orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
+            actor ! OrderActor.Input.AddChild(childOrder)
+            proceedWithOrder(childOrder.id)
+          }
 
         case FollowUp.Remove(removeOrderId) ⇒
-          removeOrder(removeOrderId)
+          if (!terminating) {
+            removeOrder(removeOrderId)
+          }
 
         case o: FollowUp.AddOffered ⇒
-          sys.error(s"Unexpeced FollowUp $o")  // Only Master handles this
+          sys.error(s"Unexpeced FollowUp: $o")  // Only Master handles this
       }
     }
     orderEntry.order = order
   }
 
-  private def proceedWithOrder(orderId: OrderId): Unit = {
-    val orderEntry = orderRegister(orderId)
-    val order = orderEntry.order
-    if (order.isAttachedToAgent) {
-      order.state match {
-        case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
-          orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
-            self ! Internal.Due(orderId)
-          }
-
-        case _: Order.Idle ⇒
-          onOrderAvailable(orderEntry)
-
-        case _ ⇒
-          tryExecuteInstruction(order, orderEntry.workflow)
-      }
-    }
-  }
-
-  private def onOrderAvailable(orderEntry: OrderEntry): Unit =
+  private def proceedWithOrder(orderId: OrderId): Unit =
     if (!terminating) {
-      for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
-        orderEntry.instruction match {
-          case job: Job ⇒
-            jobRegister.get(job.jobPath) match {
-              case None ⇒
-                logger.error(s"Missing '${job.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.workflowPosition}'")
-              case Some(jobEntry) ⇒
-                onOrderAvailableForJob(orderEntry.order.id, jobEntry)
+      val orderEntry = orderRegister(orderId)
+      val order = orderEntry.order
+      if (order.isAttachedToAgent) {
+        order.state match {
+          case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
+            orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
+              self ! Internal.Due(orderId)
             }
 
+          case _: Order.Idle ⇒
+            onOrderAvailable(orderEntry)
+
           case _ ⇒
-            tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
+            tryExecuteInstruction(order, orderEntry.workflow)
         }
+      }
+    }
+
+  private def onOrderAvailable(orderEntry: OrderEntry): Unit =
+    for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
+      orderEntry.instruction match {
+        case job: Job ⇒
+          jobRegister.get(job.jobPath) match {
+            case None ⇒
+              logger.error(s"Missing '${job.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.workflowPosition}'")
+            case Some(jobEntry) ⇒
+              onOrderAvailableForJob(orderEntry.order.id, jobEntry)
+          }
+
+        case _ ⇒
+          tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
       }
     }
 
@@ -411,6 +421,7 @@ extends MainJournalingActor[Event] with Stash {
 }
 
 object AgentOrderKeeper {
+  private val AgentIsTerminatingProblem = Problem.fromEager("Agent is terminating")  // TODO 503 ServiceUnavailable? Master must not retry before new Login
   private val logger = Logger(getClass)
 
   private val SnapshotJsonFormat = TypedJsonCodec[Any](

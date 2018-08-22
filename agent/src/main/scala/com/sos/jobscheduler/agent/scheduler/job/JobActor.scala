@@ -157,7 +157,7 @@ extends Actor with Stash {
       if (orderToTask.isEmpty) {
         context.stop(self)
       } else {
-        logger.debug(s"Still awaiting termination of ${orderToTask.size} tasks")
+        logger.debug(s"Awaiting termination of ${orderToTask.size} tasks")
       }
     }
   }
