@@ -15,9 +15,6 @@ services:
         - UID
     image: jobscheduler
     container_name: jobscheduler-master
-    depends_on:
-      - "agent-1"
-      - "agent-2"
     command: ["master", "-J-Xmx100m"]
     hostname: master
     networks:
@@ -28,7 +25,7 @@ services:
     volumes:
       - ./volumes/master:/var/opt/jobscheduler/master
     stop_grace_period: 60s
-    #restart: unless-stopped
+    restart: unless-stopped
   agent-1:
     image: jobscheduler
     container_name: jobscheduler-agent-1
@@ -38,7 +35,7 @@ services:
     volumes:
       - ./volumes/agent-1:/var/opt/jobscheduler/agent
     stop_grace_period: 60s
-    #restart: unless-stopped
+    restart: unless-stopped
   agent-2:
     image: jobscheduler
     container_name: jobscheduler-agent-2
@@ -48,4 +45,4 @@ services:
     volumes:
       - ./volumes/agent-2:/var/opt/jobscheduler/agent
     stop_grace_period: 60s
-    #restart: unless-stopped
+    restart: unless-stopped
