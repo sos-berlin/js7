@@ -378,12 +378,12 @@ private[master] object AgentDriver
 
   private object Internal {
     final case object Connect
-    final case class AfterConnect(result: Try[Completed])
+    final case class AfterConnect(result: Try[Completed]) extends DeadLetterSuppression
     final case object LoggedOut extends DeadLetterSuppression
     final case object Ready
-    final case object CommandQueueReady
+    final case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
-    final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
+    final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable) extends DeadLetterSuppression
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]]) extends DeadLetterSuppression
     final case class EventsAccepted(agentEventId: EventId) extends DeadLetterSuppression
