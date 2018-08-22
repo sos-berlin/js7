@@ -60,7 +60,12 @@ object WebServerBinding {
 
     private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress) = {
       val localhost = scheme match {
-        case WebServerBinding.Http ⇒ "127.0.0.1"
+        case WebServerBinding.Http ⇒
+          if (Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress)
+            "127.0.0.1"
+          else
+            address.getAddress.getHostAddress
+
         case WebServerBinding.Https ⇒
           assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
           "localhost"  // To match TLS host name verification

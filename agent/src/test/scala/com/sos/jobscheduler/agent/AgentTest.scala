@@ -38,6 +38,10 @@ import scala.concurrent.duration._
   */
 final class AgentTest extends FreeSpec with AgentTester
 {
+  "state/http-uri" in {
+    assert((agentConfiguration.stateDirectory / "http-uri").contentString == s"${agent.localUri}/agent")
+  }
+
   "Job working directory" - {
     for ((testName, toWorkingDirectory) ←
            Array[(String, Path ⇒ Path)](

@@ -69,6 +69,9 @@ final class RunningMasterTest extends FreeSpec {
 
       RunningMaster.run(MasterConfiguration.forTest(configAndData = provider.master.directory)) { master ⇒
         import master.{injector, orderApi}
+
+        assert((master.injector.instance[MasterConfiguration].stateDirectory / "http-uri").contentString == s"${master.localUri}/master")
+
         val eventGatherer = new TestEventGatherer(injector)
 
         sleep(3.s)  // Let OrderGenerator generate some orders

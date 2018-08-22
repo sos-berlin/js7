@@ -5,7 +5,7 @@ export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java
 
-terminateCommand="{ TYPE: Terminate, sigtermProcesses: false }"
+terminateCommand='{ "TYPE": "Terminate", "sigtermProcesses": false }'
 javaOptions=()
 agentOptions=()
 httpPort=4445
@@ -112,15 +112,20 @@ pid=$!
 echo PID $pid
 
 function terminate() {
+  echo Terminate JobScheduler Agent
   # Add some seconds to start Java with AgentClientMain
   terminateTimeout=30
-  "$java" -Xmx50m \
-    -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
-    -classpath "$classpathString" \
-    com.sos.jobscheduler.agent.client.main.AgentClientMain \
-    -data-directory="$normalizedData" \
-    http://127.0.0.1:"$httpPort" \
-    "$terminateCommand" >/dev/null &
+  if true; then
+    "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$normalizedData" "$terminateCommand" &
+  else
+    "$java" -Xmx50m \
+      -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
+      -classpath "$classpathString" \
+      com.sos.jobscheduler.agent.client.main.AgentClientMain \
+      -data-directory="$normalizedData" \
+      http://127.0.0.1:"$httpPort" \
+      "$terminateCommand" >/dev/null &
+  fi
   (sleep $terminateTimeout && kill $pid) &
   killer=$!
   wait $pid

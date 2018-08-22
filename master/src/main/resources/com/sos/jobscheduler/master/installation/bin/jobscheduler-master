@@ -122,15 +122,20 @@ pid=$!
 echo PID $pid
 
 function terminate() {
+  echo Terminate JobScheduler Master
   # Add some seconds to start Java with MasterClientMain
   terminateTimeout=30
-  "$java" -Xmx50m \
-    -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
-    -classpath "$classpathString" \
-    com.sos.jobscheduler.master.client.main.MasterClientMain \
-    -data-directory="$normalizedData" \
-    http://127.0.0.1:$httpPort \
-    "{ TYPE: Terminate }" >/dev/null &
+  if true; then
+    $JOBSCHEDULER_HOME/bin/jobscheduler-client -data-directory="$normalizedData" '{ "TYPE": "Terminate" }' &
+  else
+    "$java" -Xmx50m \
+      -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
+      -classpath "$classpathString" \
+      com.sos.jobscheduler.master.client.main.MasterClientMain \
+      -data-directory="$normalizedData" \
+      http://127.0.0.1:$httpPort \
+      "{ TYPE: Terminate }" >/dev/null &
+  fi
   (sleep $terminateTimeout && kill $pid) &
   killer=$!
   wait $pid

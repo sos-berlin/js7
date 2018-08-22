@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -e
+
+data=.
+httpPort=4444
+args=()
+
+argToRequest() {
+  arg="$1"
+  if [ "${arg:0:1}" = "{" ]; then
+    echo "$(argToPost "$arg")"
+  else
+    echo "$(argToGet "$arg")"
+  fi
+}
+
+argToGet() {
+  arg="$1"
+  echo -e "GET $baseUri/api$arg HTTP/1.1\r
+Host: host\r
+Connection: close\r
+X-JobScheduler-Session: $(cat "$sessionTokenFile")\r
+Accept: text/plain;charset=UTF-8\r
+Accept-Charset: UTF-8\r
+\r
+"
+}
+
+argToPost() {
+  arg="$1"
+  echo -e "POST $baseUri/api/command HTTP/1.1\r
+Host: host\r
+Connection: close\r
+X-JobScheduler-Session: $(cat "$sessionTokenFile")\r
+Content-Type: application/json\r
+Content-Length: ${#arg}\r
+Accept: text/plain;charset=UTF-8\r
+Accept-Charset: UTF-8\r
+\r
+$arg"
+}
+
+for arg in "$@"; do :
+  case "$arg" in
+    -data-directory=*)
+      data="${arg#*=}"
+      shift
+      ;;
+    *)
+      args+=("$arg")
+      shift
+      ;;
+  esac
+done
+
+sessionTokenFile="$data/state/session-token"
+if [ ! -f "$sessionTokenFile" ]; then
+  echo "Invalid argument -data-directory=$data (missing file $data/state/session-token)"
+  exit 1
+fi
+
+httpUri="$(cat "$data/state/http-uri")"
+if ! [[ $httpUri =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
+  echo File "$data/state/http-uri does not contain a valid HTTP URI. Maybe JobScheduler is not running or does not provide a HTTP port on localhost"
+  exit 1
+else
+  httpPort="${BASH_REMATCH[1]}"
+  baseUri="/${BASH_REMATCH[2]}"
+fi
+
+for arg in "${args[@]}"; do
+  exec 3<>/dev/tcp/127.0.0.1/$httpPort
+  request=$(argToRequest "$arg")
+  echo "$request" >&3
+
+  IFS=' ' read -r httpVersion status remainder <&3
+  if [ "$status" != '200' ]; then
+    echo $status "$remainder"
+    echo
+  fi
+  while IFS='' read -r line && [ "$line" != $(echo -e '\r') ]; do :; done <&3   # Skip headers
+  cat <&3
+  exec 3>&-
+  if [ "$status" != '200' ]; then
+    exit 1
+  fi
+done

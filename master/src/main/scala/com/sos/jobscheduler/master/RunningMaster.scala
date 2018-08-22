@@ -223,6 +223,7 @@ object RunningMaster {
         }
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
+      (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/master")
       for (_ ← webServer.start()) yield
         new RunningMaster(sessionRegister, commandExecutor, webServer, orderApi, orderKeeper, terminated, closer, injector)
     }

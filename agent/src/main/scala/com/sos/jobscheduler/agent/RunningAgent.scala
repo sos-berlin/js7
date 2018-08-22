@@ -127,6 +127,8 @@ object RunningAgent {
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
+    (agentConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/agent")
+
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
     val sessionToken = sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
       .runAsync await agentConfiguration.akkaAskTimeout.duration
