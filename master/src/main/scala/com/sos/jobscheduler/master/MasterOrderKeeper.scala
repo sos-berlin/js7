@@ -71,12 +71,15 @@ final class MasterOrderKeeper(
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
 extends Stash
-with MainJournalingActor[Event] {
+with MainJournalingActor[Event]
+{
+  import context.watch
+  import context.actorOf
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
-  protected val journalActor = context.watch(context.actorOf(
+  protected val journalActor = watch(actorOf(
     JournalActor.props(
       journalMeta,
       masterConfiguration.config,
@@ -91,10 +94,11 @@ with MainJournalingActor[Event] {
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
-  private val orderScheduleGenerator = context.actorOf(
+  private val orderScheduleGenerator = actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, masterConfiguration)},
     "OrderScheduleGenerator")
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
+  private var terminating = false
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -164,12 +168,15 @@ with MainJournalingActor[Event] {
   private def ready: Receive = {
     case Command.Execute(command, meta) ⇒
       val sender = this.sender()
-      executeMasterCommand(command, meta) onComplete {
-        case Success(response) ⇒ sender ! response
-        case Failure(t) ⇒ sender ! Status.Failure(t)
-      }
+      if (terminating)
+        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+      else
+        executeMasterCommand(command, meta) onComplete {
+          case Success(response) ⇒ sender ! response
+          case Failure(t) ⇒ sender ! Status.Failure(t)
+        }
 
-    case Command.AddOrderSchedule(orders) ⇒
+    case Command.AddOrderSchedule(orders) if !terminating ⇒
       for (order ← orders) {
         addOrderWithUncheckedId(order) onComplete {
           case Failure(t) ⇒ logger.error(s"AddOrderSchedule: ${t.toStringWithCauses}", t)
@@ -185,17 +192,11 @@ with MainJournalingActor[Event] {
     case Command.GetRepo ⇒
       sender() ! eventIdGenerator.stampWithLast(repo)
 
-    case Command.GetWorkflow(path) ⇒
-      sender() ! (repo.currentTyped[Workflow].checked(path).toOption: Option[Workflow])
-
-    case Command.GetWorkflows ⇒
-      sender() ! eventIdGenerator.stampWithLast(repo.currentTyped[Workflow].values.toVector: Vector[Workflow])
-
-    case Command.GetWorkflowCount ⇒
-      sender() ! (repo.currentTyped[Workflow].size: Int)
-
     case Command.AddOrder(order) ⇒
-      addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
+      if (terminating)
+        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+      else
+        addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -205,25 +206,6 @@ with MainJournalingActor[Event] {
 
     case Command.GetOrderCount ⇒
       sender() ! (orderRegister.size: Int)
-
-    case Command.Remove(orderId) ⇒  // NOT TESTED
-      orderRegister.get(orderId) match {
-        case None ⇒ sender() ! Status.Failure(new NoSuchElementException(s"Unknown $orderId"))
-        case Some(orderEntry) ⇒
-          if (orderEntry.toBeRemoved)
-            sender() ! Done
-          else {
-            orderEntry.toBeRemoved = true
-            orderEntry.order.attachedTo match {
-              case None ⇒
-                //orderEntry.order = orderEntry.order.update(OrderRemoved)  // TODO Persist
-                sender() ! Done
-
-              case Some(Order.AttachedTo.AgentOrDetachable(agentPath)) ⇒
-                sender() ! Status.Failure(new IllegalStateException(s"Order cannot be deleted because it is attached to Agent '$agentPath'"))
-            }
-          }
-      }
 
     case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
@@ -271,9 +253,22 @@ with MainJournalingActor[Event] {
       logger.error(msg.toString, throwable)
       // Ignore this ???
 
+    case Terminated(a) if agentRegister contains a ⇒
+      agentRegister -= a
+      if (agentRegister.isEmpty) {
+        journalActor ! JournalActor.Input.Terminate
+      }
+
     case Terminated(`journalActor`) ⇒
-      logger.error("JournalActor terminated")
+      if (!terminating) logger.error("JournalActor terminated")
+      checkTermination()
+  }
+
+  private def checkTermination(): Unit = {
+    if (agentRegister.isEmpty) {
+      logger.info("Stop")
       context.stop(self)
+    }
   }
 
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
@@ -305,10 +300,12 @@ with MainJournalingActor[Event] {
 
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")
-        inhibitJournaling()
         orderScheduleGenerator ! PoisonPill
-        journalActor ! JournalActor.Input.Terminate
-        become("Terminating")(terminating)
+        if (agentRegister.nonEmpty)
+          agentRegister.values.foreach { _.actor ! AgentDriver.Input.Terminate }
+        else
+          journalActor ! JournalActor.Input.Terminate
+        terminating = true
         Future.successful(MasterCommand.Response.Accepted)
     }
 
@@ -349,9 +346,9 @@ with MainJournalingActor[Event] {
   }
 
   private def registerAgent(agent: Agent): AgentEntry = {
-    val actor = context.actorOf(
+    val actor = watch(actorOf(
       AgentDriver.props(agent.id, agent.uri, masterConfiguration, journalActor = journalActor),
-      encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/")))
+      encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/"))))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.id → entry)
     entry
@@ -449,18 +446,19 @@ with MainJournalingActor[Event] {
     proceedWithOrder(entry)
   }
 
-  private def proceedWithOrder(orderEntry: OrderEntry): Unit = {
-    val order = orderEntry.order
-    order.attachedTo match {
-      case None ⇒
-        proceedWithOrderOnMaster(orderEntry)
+  private def proceedWithOrder(orderEntry: OrderEntry): Unit =
+    if (!terminating) {
+      val order = orderEntry.order
+      order.attachedTo match {
+        case None ⇒
+          proceedWithOrderOnMaster(orderEntry)
 
-      case Some(_: Order.AttachedTo.Detachable) ⇒
-        detachOrderFromAgent(order.id)
+        case Some(_: Order.AttachedTo.Detachable) ⇒
+          detachOrderFromAgent(order.id)
 
-      case _ ⇒
+        case _ ⇒
+      }
     }
-  }
 
   private def proceedWithOrderOnMaster(orderEntry: OrderEntry): Unit = {
     val order = orderEntry.order
@@ -509,19 +507,11 @@ with MainJournalingActor[Event] {
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
-  private def terminating: Receive = {
-    case _: MasterCommand ⇒
-      sender() ! Status.Failure(new RuntimeException(s"Master is terminating"))
-
-    case Terminated(`journalActor`) ⇒
-      logger.info("Stop")
-      context.stop(self)
-  }
-
   override def toString = "MasterOrderKeeper"
 }
 
 private[master] object MasterOrderKeeper {
+  private val MasterIsTerminatingProblem = Problem.fromEager("Master is terminating")
   @deprecated
   private val InitialVersion = VersionId("(initial)")  // ???
 
@@ -532,15 +522,10 @@ private[master] object MasterOrderKeeper {
     final case class Execute(command: MasterCommand, meta: CommandMeta)
     final case class AddOrderSchedule(orders: Seq[FreshOrder]) extends Command
     final case object GetRepo extends Command
-    final case class GetWorkflow(path: WorkflowPath) extends Command
-    case object GetWorkflows extends Command
-    case object GetWorkflowCount extends Command
     final case class AddOrder(order: FreshOrder) extends Command
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
-    @deprecated("NOT TESTED", "-")
-    private[MasterOrderKeeper] final case class Remove(orderId: OrderId) extends Command
   }
 
   sealed trait Reponse
@@ -554,6 +539,7 @@ private[master] object MasterOrderKeeper {
 
   private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
     override def insert(kv: (AgentId, AgentEntry)) = super.insert(kv)
+    override def -=(a: ActorRef) = super.-=(a)
   }
 
   private case class AgentEntry(
@@ -569,9 +555,7 @@ private[master] object MasterOrderKeeper {
       actor ! AgentDriver.Input.Start(lastAgentEventId = lastAgentEventId)
   }
 
-  private case class OrderEntry(
-    var order: Order[Order.State],
-    var toBeRemoved: Boolean = false)
+  private case class OrderEntry(var order: Order[Order.State])
   {
     def orderId = order.id
 

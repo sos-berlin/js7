@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.agent
 
-import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props}
+import akka.actor.{Actor, ActorRef, DeadLetterSuppression, PoisonPill, Props}
 import akka.http.scaladsl.model.Uri
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
@@ -68,6 +68,7 @@ with ReceiveLoggingActor.WithStash {
   private var keepEventsCancelable: Option[Cancelable] = None
   private var delayKeepEvents = false
   private var logCount = 0
+  private var terminating = false
 
   become("disconnected")(disconnected)
   self ! Internal.Connect
@@ -162,43 +163,47 @@ with ReceiveLoggingActor.WithStash {
 
   private def ready: Receive = {
     case Internal.FetchEvents(after) if isConnected && !isAwaitingEventResponse ⇒
-      lastEventId = after
-      isAwaitingEventResponse = true
-      client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout)).runAsync
-        .andThen { case _ ⇒
-          isAwaitingEventResponse = false
-        }
-        .onComplete {
-          // Asynchronous!
-          case Failure(t) ⇒
-            self ! Internal.Fetched(Failure(t))
+      if (!terminating) {
+        lastEventId = after
+        isAwaitingEventResponse = true
+        client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout)).runAsync
+          .andThen { case _ ⇒
+            isAwaitingEventResponse = false
+          }
+          .onComplete {
+            // Asynchronous!
+            case Failure(t) ⇒
+              self ! Internal.Fetched(Failure(t))
 
-          case Success(EventSeq.Empty(lastEventId_)) ⇒  // No events after timeout
-            if (isConnected) scheduler.scheduleOnce(1.second) {
-              self ! Internal.FetchEvents(lastEventId_)
-            }
-
-          case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
-            self ! Internal.Fetched(Success(stampedEvents))
-
-          case Success(torn: TearableEventSeq.Torn) ⇒
-            val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
-            logger.error(problem)
-            persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
-              if (isConnected) scheduler.scheduleOnce(15.second) {
-                self ! Internal.FetchEvents(after)
+            case Success(EventSeq.Empty(lastEventId_)) ⇒  // No events after timeout
+              if (isConnected) scheduler.scheduleOnce(1.second) {
+                self ! Internal.FetchEvents(lastEventId_)
               }
-            }
+
+            case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
+              self ! Internal.Fetched(Success(stampedEvents))
+
+            case Success(torn: TearableEventSeq.Torn) ⇒
+              val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
+              logger.error(problem)
+              persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
+                if (isConnected) scheduler.scheduleOnce(15.second) {
+                  self ! Internal.FetchEvents(after)
+                }
+              }
+          }
         }
 
-    case Internal.EventsAccepted(eventId) ⇒
+    case Internal.EventsAccepted(eventId) ⇒  // TODO isConnected, terminating?
       client.commandExecute(AgentCommand.KeepEvents(after = eventId)).runOnComplete { tried ⇒
         tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
         keepEventsCancelable = None  // Asynchronous!
       }
 
     case Internal.CommandQueueReady ⇒
-      commandQueue.maySend()
+      if (!terminating) {
+        commandQueue.maySend()
+      }
   }
 
   override protected def become(state: String)(recv: Receive) =
@@ -225,6 +230,15 @@ with ReceiveLoggingActor.WithStash {
         scheduler.scheduleOnce(eventFetchDelay) {
           self ! Internal.FetchEvents(lastEventId)
         }
+      }
+
+    case Input.Terminate ⇒
+      terminating = true
+      isConnected = false
+      client.logout().runAsync onComplete { _ ⇒
+        // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um Akka-Warnungen zu vermeiden
+        // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] Response entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
+        self ! PoisonPill
       }
 
     case Internal.BatchSucceeded(responses) ⇒
@@ -280,28 +294,34 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def handleConnectionError(throwable: Throwable)(andThen: ⇒ Unit): Unit = {
-    logger.warn(throwable.toStringWithCauses)
-    if (throwable.getStackTrace.nonEmpty) logger.debug("", throwable)
-    persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ ⇒
-      andThen
+    if (terminating)
+      logger.debug(s"While terminating: ${throwable.toStringWithCauses}")
+    else {
+      logger.warn(throwable.toStringWithCauses)
+      if (throwable.getStackTrace.nonEmpty) logger.debug("", throwable)
+      persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ ⇒
+        andThen
+      }
     }
   }
 
   private def reconnect() = {
-    isConnected = false
-    client.logout().runAsync onComplete { _ ⇒
-      self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
-    }
-    become("LoggedOut") {
-      case Internal.LoggedOut ⇒
-        scheduler.scheduleOnce(reconnectPause.nextPause()) {
-          self ! Internal.Connect
-        }
-        unstashAll()
-        become("disconnected")(disconnected)
+    if (!terminating) {
+      isConnected = false
+      client.logout().runAsync onComplete { _ ⇒
+        self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
+      }
+      become("LoggedOut") {
+        case Internal.LoggedOut ⇒
+          scheduler.scheduleOnce(reconnectPause.nextPause()) {
+            self ! Internal.Connect
+          }
+          unstashAll()
+          become("disconnected")(disconnected)
 
-      case _ ⇒
-        stash()
+        case _ ⇒
+          stash()
+      }
     }
   }
 
@@ -347,6 +367,8 @@ private[master] object AgentDriver
     }
 
     final case class EventsAccepted(agentEventId: EventId)
+
+    case object Terminate
   }
 
   object Output {
@@ -357,13 +379,13 @@ private[master] object AgentDriver
   private object Internal {
     final case object Connect
     final case class AfterConnect(result: Try[Completed])
-    final case object LoggedOut
+    final case object LoggedOut extends DeadLetterSuppression
     final case object Ready
     final case object CommandQueueReady
-    final case class BatchSucceeded(responses: Seq[QueuedInputResponse])
+    final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
-    final case class FetchEvents(after: EventId) extends DeadLetterSuppression
-    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]])
+    final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
+    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]]) extends DeadLetterSuppression
     final case class EventsAccepted(agentEventId: EventId) extends DeadLetterSuppression
   }
 }
