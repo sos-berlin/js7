@@ -42,7 +42,7 @@ object CirceJsonOrYamlSupport {
   private def yamlMarshaller[A](implicit encoder: Encoder[A]): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(`text/plain`) { (value, charset) ⇒
       try {
-        val string = logException(s"ysonMarhaller(${encoder.getClass.getName})") {
+        val string = logException(s"yamlMarhaller(${encoder.getClass.getName})") {
           CirceToYaml.yaml.dump(jsonToYaml(value.asJson))   // OutOfMemoryError possible: two big objects in memory
         }
         HttpEntity.Strict(ContentType(`text/plain`, charset), ByteString(string.getBytes(charset.nioCharset)))
