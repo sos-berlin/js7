@@ -110,7 +110,7 @@ with ReceiveLoggingActor.WithStash {
 
         case Valid(userAndPassword) ⇒
           ( for {
-              _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.Response
+              _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
               _ ← if (lastEventId == EventId.BeforeFirst)
                     client.commandExecute(AgentCommand.RegisterAsMaster)
                   else
@@ -217,7 +217,7 @@ with ReceiveLoggingActor.WithStash {
       } else {
         isConnected = false
         // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um folgende Akka-Warnungen zu vermeiden
-        // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] Response entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
+        // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] LoggedIn entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
         client.logout().timeout(terminationLogoutTimeout).runAsync onComplete { tried ⇒
           for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
           self ! PoisonPill

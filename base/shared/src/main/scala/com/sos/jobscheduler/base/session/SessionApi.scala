@@ -27,16 +27,16 @@ trait SessionApi extends HasSessionToken
 
   final def logout(): Task[Completed] = {
     val tokenOption = sessionTokenRef.get
-    if (tokenOption.isEmpty)
-      Task.now(Completed)
-    else
-      executeSessionCommand(Logout)
-        .doOnFinish(_ ⇒ Task(
-          // clear sessionToken even when logout has failed, to allow to login with cleared sessionToken.
-          sessionTokenRef.compareAndSet(tokenOption, None)))  // Changes nothing in case of a concurrent successful Login
-        .map {
-          case SessionCommand.Response.Accepted ⇒ Completed
-        }
+    tokenOption match {
+      case None ⇒ Task.pure(Completed)
+      case Some(sessionToken) ⇒
+        if (!sessionTokenRef.compareAndSet(tokenOption, None))  // Changes nothing in case of a concurrent successful Logout or Login
+          Task.pure(Completed)
+        else
+          executeSessionCommand(Logout(sessionToken)) map {
+            case SessionCommand.Response.Accepted ⇒ Completed
+          }
+    }
   }
 
   private def executeSessionCommand(command: SessionCommand): Task[command.Response] =

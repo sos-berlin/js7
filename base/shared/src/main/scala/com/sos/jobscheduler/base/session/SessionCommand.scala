@@ -20,27 +20,36 @@ object SessionCommand
     * @param userAndPassword if None, the HTTP header Authentication is used to allow browser authentication dialog.
     */
   final case class Login(userAndPassword: Option[UserAndPassword]) extends SessionCommand {
-    type Response = Login.Response
+    type Response = Login.LoggedIn
   }
 
   object Login {
-    final case class Response(sessionToken: SessionToken) extends SessionCommand.Response
+    final case class LoggedIn(sessionToken: SessionToken) extends SessionCommand.Response
 
-    object Response {
-      implicit val jsonEncoder: ObjectEncoder[Response] =
+    object LoggedIn {
+      implicit val jsonEncoder: ObjectEncoder[LoggedIn] =
         o ⇒ JsonObject("sessionToken" → Json.fromString(o.sessionToken.secret.string))
 
-      implicit val jsonDecoder: Decoder[Response] =
+      implicit val jsonDecoder: Decoder[LoggedIn] =
         cursor ⇒
           for (token ← cursor.get[String]("sessionToken")) yield
-            Response(SessionToken(SecretString(token)))
+            LoggedIn(SessionToken(SecretString(token)))
     }
   }
 
   /** Invalidate the session established by `Login`.
     */
-  case object Logout extends SessionCommand {
+  final case class Logout(sessionToken: SessionToken) extends SessionCommand {
     type Response = SessionCommand.Response.Accepted.type
+  }
+  object Logout {
+    implicit val jsonEncoder: ObjectEncoder[Logout] =
+      o ⇒ JsonObject("sessionToken" → Json.fromString(o.sessionToken.secret.string))
+
+    implicit val jsonDecoder: Decoder[Logout] =
+      cursor ⇒
+        for (token ← cursor.get[String]("sessionToken")) yield
+          Logout(SessionToken(SecretString(token)))
   }
 
   sealed trait Response
@@ -52,13 +61,13 @@ object SessionCommand
 
     implicit val jsonCodec = TypedJsonCodec[Response](
       Subtype(Response.Accepted),
-      Subtype.named[Login.Response]("LoggedIn"))
+      Subtype[Login.LoggedIn])
   }
 
   implicit val jsonCodec = {
     implicit val x = UserAndPassword.jsonCodec
     TypedJsonCodec[SessionCommand](
       Subtype(deriveCodec[Login]),
-      Subtype(Logout))
+      Subtype[Logout])
   }
 }

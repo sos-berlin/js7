@@ -52,16 +52,12 @@ trait SessionRoute extends RouteProvider {
       case Login(userAndPasswordOption) ⇒
         authenticateOrUseHttpUser(userAndPasswordOption, httpUser)
         .map(user ⇒
-          sessionRegister.login(user, sessionTokenOption).map(Login.Response.apply)
+          sessionRegister.login(user, sessionTokenOption).map(Login.LoggedIn.apply)
         ).evert
 
-      case Logout ⇒
-        sessionTokenOption match {
-          case None ⇒ Task.pure(Problem("Logout without session token?"))
-          case Some(sessionToken) ⇒
-            sessionRegister.logout(sessionToken)
-              .map((_: Completed) ⇒ Valid(SessionCommand.Response.Accepted))
-        }
+      case Logout(sessionToken) ⇒
+        sessionRegister.logout(sessionToken)
+          .map { _: Completed ⇒ Valid(SessionCommand.Response.Accepted) }
     }
 
   private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =

@@ -231,13 +231,11 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     }
   }
 
-  "logout clears SessionToken even after failure" in {
+  "logout clears SessionToken even if invalid" in {
     withClient() { client ⇒
       client.setSessionToken(SessionToken(SecretString("DISCARDED")))
       assert(client.hasSession)
-      intercept[AkkaHttpClient.HttpException] {
-        client.logout() await 99.s
-      } .status shouldEqual Unauthorized
+      client.logout() await 99.s
       assert(!client.hasSession)
     }
   }

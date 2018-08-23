@@ -24,14 +24,15 @@ final class SessionCommandTest extends FreeSpec {
     }
 
     "Logout" in {
-      testJson[SessionCommand](SessionCommand.Logout,
+      testJson[SessionCommand](SessionCommand.Logout(SessionToken(SecretString("SESSION-TOKEN"))),
         json"""{
-          "TYPE": "Logout"
+          "TYPE": "Logout",
+          "sessionToken": "SESSION-TOKEN"
         }""")
     }
 
     "LoggedIn" in {
-      testJson[SessionCommand.Response](SessionCommand.Login.Response(SessionToken(SecretString("SESSION-TOKEN"))),
+      testJson[SessionCommand.Response](SessionCommand.Login.LoggedIn(SessionToken(SecretString("SESSION-TOKEN"))),
         json"""{
           "TYPE": "LoggedIn",
           "sessionToken": "SESSION-TOKEN"
