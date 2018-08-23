@@ -41,7 +41,7 @@ import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, Ver
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPosition}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
 import com.sos.jobscheduler.master.command.CommandMeta
@@ -73,8 +73,7 @@ final class MasterOrderKeeper(
 extends Stash
 with MainJournalingActor[Event]
 {
-  import context.watch
-  import context.actorOf
+  import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
@@ -261,14 +260,8 @@ with MainJournalingActor[Event]
 
     case Terminated(`journalActor`) ⇒
       if (!terminating) logger.error("JournalActor terminated")
-      checkTermination()
-  }
-
-  private def checkTermination(): Unit = {
-    if (agentRegister.isEmpty) {
       logger.info("Stop")
       context.stop(self)
-    }
   }
 
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
@@ -302,7 +295,7 @@ with MainJournalingActor[Event]
         logger.info("Command Terminate")
         orderScheduleGenerator ! PoisonPill
         if (agentRegister.nonEmpty)
-          agentRegister.values.foreach { _.actor ! AgentDriver.Input.Terminate }
+          agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
           journalActor ! JournalActor.Input.Terminate
         terminating = true

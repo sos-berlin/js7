@@ -15,7 +15,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
@@ -51,6 +50,7 @@ with ReceiveLoggingActor.WithStash {
   private val eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration
   private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
   private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
+  private val terminationLogoutTimeout = config.getDuration("jobscheduler.master.agent-driver.termination-logout-timeout").toFiniteDuration
   private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
   private val reconnectPause = new ReconnectPause
   private val client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
@@ -185,7 +185,7 @@ with ReceiveLoggingActor.WithStash {
 
             case Success(torn: TearableEventSeq.Torn) ⇒
               val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
-              logger.error(problem)
+              logger.error(problem.toString)
               persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
                 if (isConnected) scheduler.scheduleOnce(15.second) {
                   self ! Internal.FetchEvents(after)
@@ -207,18 +207,36 @@ with ReceiveLoggingActor.WithStash {
   }
 
   override protected def become(state: String)(recv: Receive) =
-    super.become(state)(recv orElse handleOtherMessage)
+    super.become(state)(handleStandardMessage orElse recv orElse handleOtherMessage)
+
+  private def handleStandardMessage: Receive = {
+    case Input.Terminate ⇒
+      terminating = true
+      if (!isConnected) {
+        self ! PoisonPill
+      } else {
+        isConnected = false
+        // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um folgende Akka-Warnungen zu vermeiden
+        // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] Response entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
+        client.logout().timeout(terminationLogoutTimeout).runAsync onComplete { tried ⇒
+          for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
+          self ! PoisonPill
+        }
+      }
+  }
 
   private def handleOtherMessage: Receive = {
     case input: Input.QueueableInput if sender() == context.parent ⇒
-      commandQueue.enqueue(input)
-      scheduler.scheduleOnce(batchDelay) {
-        self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueueableInput pending in actor's mailbox can be queued
+      if (!terminating) {
+        commandQueue.enqueue(input)
+        scheduler.scheduleOnce(batchDelay) {
+          self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueueableInput pending in actor's mailbox can be queued
+        }
       }
 
     case Input.EventsAccepted(eventId) ⇒
       assert(eventId == lastEventId, s"Input.EventsAccepted($eventId) ≠ lastEventId=$lastEventId ?")
-      if (isConnected) {
+      if (isConnected/*???*/) {
         if (keepEventsCancelable.isEmpty) {
           val delay = if (delayKeepEvents) keepEventsPeriod else Duration.Zero
           delayKeepEvents = true
@@ -230,15 +248,6 @@ with ReceiveLoggingActor.WithStash {
         scheduler.scheduleOnce(eventFetchDelay) {
           self ! Internal.FetchEvents(lastEventId)
         }
-      }
-
-    case Input.Terminate ⇒
-      terminating = true
-      isConnected = false
-      client.logout().runAsync onComplete { _ ⇒
-        // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um Akka-Warnungen zu vermeiden
-        // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] Response entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
-        self ! PoisonPill
       }
 
     case Internal.BatchSucceeded(responses) ⇒
