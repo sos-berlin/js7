@@ -49,7 +49,7 @@ final class RecoveryTest extends FreeSpec {
   "test" in {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
-      autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
+      autoClosing(new DirectoryProvider(AgentIds map (_.path), testName = Some("RecoveryTest"))) { directoryProvider ⇒
         for ((agentPath, tree) ← directoryProvider.agentToTree)
           tree.writeJson(jobConfiguration(TestJobPath, 1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1")))
         withCloser { implicit closer ⇒
@@ -111,7 +111,7 @@ final class RecoveryTest extends FreeSpec {
   }
 
   private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
+    directoryProvider.runMaster() { master ⇒
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)) await 99.s  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")

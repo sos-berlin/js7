@@ -120,8 +120,10 @@ object RunningMaster {
       master.terminated await timeout
     }
 
-  def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit = {
-    val injector = newInjectorForTest(directory)
+  def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None, name: String = MasterConfiguration.DefaultName)
+    (body: RunningMaster ⇒ Unit)(implicit s: Scheduler)
+  : Unit = {
+    val injector = newInjectorForTest(directory, name = name)
     eventCollector foreach (_.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus]))
     runForTest(injector)(body)
   }
@@ -142,7 +144,8 @@ object RunningMaster {
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false)
+    mutualHttps: Boolean = false,
+    name: String)
   : Injector =
     Guice.createInjector(DEVELOPMENT,
       Modules `override` new MasterModule(MasterConfiguration.forTest(
@@ -150,7 +153,8 @@ object RunningMaster {
         config,
         httpPort = httpPort,
         httpsPort = httpsPort,
-        mutualHttps = mutualHttps))
+        mutualHttps = mutualHttps,
+        name = name))
       `with` module)
 
   def apply(configuration: MasterConfiguration): Future[RunningMaster] =

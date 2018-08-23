@@ -24,6 +24,7 @@ final class MasterConfigurationTest extends FreeSpec {
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
+      name = MasterConfiguration.DefaultName,
       config = ConfigFactory.empty))
   }
 

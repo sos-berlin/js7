@@ -27,6 +27,7 @@ final case class MasterConfiguration(
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
+  name: String,
   config: Config)
 extends CommonConfiguration
 {
@@ -42,16 +43,20 @@ extends CommonConfiguration
 
 object MasterConfiguration
 {
+  val DefaultName = "Master"
+
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false
+    mutualHttps: Boolean = false,
+    name: String = DefaultName
   ) =
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = configAndData / "data",
-      config)
+      config,
+      name = name)
     .copy(
       webServerPorts =
         httpPort.map(o ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
@@ -66,12 +71,18 @@ object MasterConfiguration
       val conf = fromDirectories(
         configDirectory = common.configDirectory,
         dataDirectory = common.dataDirectory,
-        config)
+        config,
+        name = MasterConfiguration.DefaultName)
       conf.copy(webServerPorts = common.webServerPorts ++ conf.webServerPorts)
         .withCommandLineArguments(a)
     }
 
-  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
+  private def fromDirectories(
+    configDirectory: Path,
+    dataDirectory: Path,
+    extraDefaultConfig: Config = ConfigFactory.empty,
+    name: String
+  ): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, extraDefaultConfig)
@@ -83,6 +94,7 @@ object MasterConfiguration
         //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
+      name = name,
       config = config)
   }
 

@@ -80,7 +80,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def actorSystem(implicit closer: Closer, timerService: TimerService/*closed after ActorSystem*/): ActorSystem = {
-    val actorSystem = ActorSystem("Master", configuration.config)
+    val actorSystem = ActorSystem(configuration.name, configuration.config)
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {

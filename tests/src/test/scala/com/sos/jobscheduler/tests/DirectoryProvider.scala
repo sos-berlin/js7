@@ -24,6 +24,7 @@ import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.master.RunningMaster
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
@@ -52,7 +53,8 @@ final class DirectoryProvider(
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
-  masterClientCertificate: Option[JavaResource] = None)
+  masterClientCertificate: Option[JavaResource] = None,
+  testName: Option[String] = None)
 extends HasCloser {
 
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
@@ -60,7 +62,9 @@ extends HasCloser {
     mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentPath, AgentTree] =
     agentPaths.map { o ⇒ o →
-      new AgentTree(directory, o, https = agentHttps,
+      new AgentTree(directory, o,
+        testName.fold("")(_ + "-") ++ o.name,
+        https = agentHttps,
         mutualHttps = agentHttpsMutual,
         provideHttpsCertificate = provideAgentHttpsCertificate,
         provideClientCertificate = provideAgentClientCertificate)
@@ -103,7 +107,7 @@ extends HasCloser {
         body(master, agents)))
 
   def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(master.directory, eventCollector)(body)
+    RunningMaster.runForTest(master.directory, eventCollector, name = masterName)(body)
 
   def startMaster(
     module: Module = EMPTY_MODULE,
@@ -114,7 +118,7 @@ extends HasCloser {
   : Task[RunningMaster] =
     Task.deferFuture(
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
-        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps)))
+        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = masterName)))
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -127,6 +131,8 @@ extends HasCloser {
 
   def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentPath).conf)
+
+  private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 }
 
 object DirectoryProvider
@@ -140,7 +146,8 @@ object DirectoryProvider
     protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
       agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
       provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
-      masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate)
+      masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
+      testName = Some(getClass.getSimpleName))
 
     protected def agentConfig: Config = ConfigFactory.empty
     protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
@@ -229,7 +236,7 @@ object DirectoryProvider
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, https: Boolean, mutualHttps: Boolean,
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, name: String, https: Boolean, mutualHttps: Boolean,
     provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
     val directory = rootDirectory / agentPath.name
@@ -237,7 +244,7 @@ object DirectoryProvider
         httpPort = !https ? findRandomFreeTcpPort(),
         httpsPort = https ? findRandomFreeTcpPort(),
         mutualHttps = mutualHttps)
-      .copy(name = agentPath.name)
+      .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
 
