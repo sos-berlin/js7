@@ -66,7 +66,7 @@ object CatchingActor {
     val terminated = Promise[A]()
     val catchingProps = Props {
       new CatchingActor(terminated, props(terminated),
-        name = if (name.isEmpty) "catching" else s"$name-catching",
+        name = if (name.isEmpty) "catching" else s"$name-catched",
         decider, onStopped, loggingEnabled = loggingEnabled) }
     val a = if (name.nonEmpty) actorRefFactory.actorOf(catchingProps, name) else actorRefFactory.actorOf(catchingProps)
     (a, terminated.future)
