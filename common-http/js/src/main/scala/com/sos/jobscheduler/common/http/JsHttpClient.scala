@@ -98,8 +98,10 @@ trait JsHttpClient extends HttpClient with HasSessionToken {
 object JsHttpClient {
   private val ReloadDelay = 2.second  // Just in case of a loop
 
-  def reloadPage(): Unit =
+  def reloadPage(): Unit = {
+    window.document.body.innerHTML = s"""<pre>Version of JobScheduler has been changed ...</pre>"""
     window.setTimeout(
       () ⇒ window.location.reload(),
       ReloadDelay.toMillis)  // Delay in case of reload-loop
+  }
 }

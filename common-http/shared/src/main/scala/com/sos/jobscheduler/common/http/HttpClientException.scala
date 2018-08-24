@@ -20,7 +20,7 @@ object HttpClientException {
   }
 
   final case class HttpFailure(status: Int, statusText: String) extends Reason {
-    override def isUnreachable = status == 502  // Bad Gateway (Master is unreachable)
+    override def isUnreachable = status == 502  // Bad Gateway (a proxy does not reach Master)
 
     override def toString = s"JobScheduler returns HTTP status $status $statusText"
   }
