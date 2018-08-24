@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.web.master.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -15,7 +16,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait RouteTester extends ScalatestRouteTest {
+trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
   this: Suite ⇒
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
@@ -30,4 +31,6 @@ trait RouteTester extends ScalatestRouteTest {
 
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)(Scheduler.global)
+
+  protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
 }

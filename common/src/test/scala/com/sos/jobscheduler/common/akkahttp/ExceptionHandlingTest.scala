@@ -7,20 +7,23 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with WebLogDirectives {
+final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with ExceptionHandling {
 
-  protected def config = WebLogDirectives.TestConfig
+  protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = true")
+
   protected def actorSystem = system
 
   "RuntimeException" in {
     post("/") ~>
-      handleErrorAndLog() {
+      seal {
         complete {
           throw new RuntimeException("MESSAGE")
         }
@@ -33,20 +36,20 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with W
 
   "Any exception" in {
     post("/") ~>
-      handleErrorAndLog() {
+      seal {
         complete {
-          throw new RuntimeException("MESSAGE") {}
+          throw new TestException("MESSAGE")
         }
       } ~>
         check {
           assert(status == InternalServerError)
-          assert(entityAs[Problem] == Problem("com.sos.jobscheduler.common.akkahttp.WebLogDirectivesTest$$anon$1: MESSAGE"))
+          assert(entityAs[Problem] == Problem("com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest$TestException: MESSAGE"))
         }
   }
 
   "getMessage == null" in {
     post("/") ~>
-      handleErrorAndLog() {
+      seal {
         complete {
           throw new RuntimeException
         }
@@ -59,7 +62,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with W
 
   "HttpStatusCodeException" in {
     post("/") ~>
-      handleErrorAndLog() {
+      seal {
         complete {
           throw new HttpStatusCodeException(Forbidden, Problem("PROBLEM"))
         }
@@ -72,7 +75,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with W
 
   "PublicException" in {
     post("/") ~>
-      handleErrorAndLog() {
+      seal {
         complete {
           throw new StandardPublicException("PUBLIC MESSAGE")
         }
@@ -84,4 +87,8 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with W
   }
 
   private def post(path: String) = Post("/") ~> Accept(`application/json`)
+}
+
+object ExceptionHandlingTest {
+  private class TestException(message: String) extends RuntimeException(message)
 }

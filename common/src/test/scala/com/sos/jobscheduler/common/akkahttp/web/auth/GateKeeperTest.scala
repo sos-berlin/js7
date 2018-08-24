@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.model.{StatusCode, Uri}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
@@ -343,8 +343,10 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
   }
 
-  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) =
+  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) = {
+    implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
     new GateKeeper(conf, timerService, isLoopback = isLoopback)
+  }
 
   /** Error message does not contain a hint. */
   private def assertPlainStatus(statusCode: StatusCode): Unit = {

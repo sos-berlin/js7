@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.auth.{PermissionBundle, SessionToken, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
@@ -21,7 +22,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-trait RouteProvider
+trait RouteProvider extends ExceptionHandling
 {
   protected type Session <: Session_
 

@@ -26,7 +26,7 @@ trait CompleteRoute extends ServiceProviderRoute with MasterRoute with WebLogDir
 
   final lazy val completeRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      WebLogDirectives(config, actorSystem).handleErrorAndLog() {
+      webLog(userId = None) {
         forbidCSRF {
           route
         }

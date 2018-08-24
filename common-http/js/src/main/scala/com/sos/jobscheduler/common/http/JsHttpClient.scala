@@ -101,7 +101,7 @@ object JsHttpClient {
   def reloadPage(): Unit = {
     window.document.body.innerHTML = s"""<pre>Version of JobScheduler has been changed ...</pre>"""
     window.setTimeout(
-      () ⇒ window.location.reload(),
+      () ⇒ window.location.reload(true),
       ReloadDelay.toMillis)  // Delay in case of reload-loop
   }
 }

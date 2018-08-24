@@ -13,7 +13,7 @@ trait MasterRoute extends ApiRoute with WebLogDirectives with TestRoute {
 
   final val masterRoute: Route =
     pathSegments("api") {
-      handleError {
+      seal {
         apiRoute
       }
     } ~

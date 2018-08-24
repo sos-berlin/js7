@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, RejectionHandler, Route}
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
@@ -24,7 +24,9 @@ import scala.concurrent._
   */
 final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService,
   isLoopback: Boolean = false, mutual: Boolean = false)
-  (implicit ec: ExecutionContext)
+  (implicit ec: ExecutionContext,
+    /** For `Route` `seal`. */
+    exceptionHandler: ExceptionHandler)
 {
   import configuraton.{idToUser, realm}
 

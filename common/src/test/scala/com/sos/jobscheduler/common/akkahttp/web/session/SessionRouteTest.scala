@@ -43,6 +43,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
   protected type Session = SimpleSession
 
   implicit protected def scheduler = Scheduler.global
+  protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
   private lazy val actorSystem = ActorSystem("SessionRouteTest")
 
   protected lazy val gateKeeper = new GateKeeper(

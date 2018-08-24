@@ -13,7 +13,6 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute._
 import com.sos.jobscheduler.common.monix.MonixForCats.taskApplicative
 import monix.eval.Task
-import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
