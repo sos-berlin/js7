@@ -89,6 +89,13 @@ extends Actor with Stash {
       journalingActors ++= keyToActor.values
       journalingActors foreach watch
       val sender = this.sender()
+      locally {
+        val file = journalMeta.file(after = lastEventId, extraSuffix = TmpSuffix)
+        if (Files.exists(file)) {
+          logger.warn(s"JournalWriter: Deleting existent file '$file'")
+          Files.delete(file)  // TODO Provide alternative to move file
+        }
+      }
       becomeTakingSnapshotThen() {
         unstashAll()
         becomeReady()
@@ -261,7 +268,7 @@ extends Actor with Stash {
     }
 
     snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
-      journalMeta.file(after = lastWrittenEventId, extraSuffix = ".tmp"),
+      journalMeta.file(after = lastWrittenEventId, extraSuffix = TmpSuffix),
       after = lastWrittenEventId, observerOption, simulateSync = simulateSync)
     snapshotJournalWriter.beginSnapshotSection()
     actorOf(
@@ -319,6 +326,8 @@ extends Actor with Stash {
 
 object JournalActor
 {
+  private val TmpSuffix = ".tmp"
+
   def props[E <: Event](
     journalMeta: JournalMeta[E],
     config: Config,
