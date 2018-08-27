@@ -155,8 +155,10 @@ extends MainJournalingActor[Event] with Stash {
       sender() ! Done
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
-      handleOrderEvent(order, event)
-      proceedWithOrder(order.id)
+      if (!terminating) {
+        handleOrderEvent(order, event)
+        proceedWithOrder(order.id)
+      }
 
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
       if (!terminating) {
@@ -269,56 +271,49 @@ extends MainJournalingActor[Event] with Stash {
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
     val orderEntry = orderRegister(order.id)
-    val validatedFollowUps = orderProcessor.handleEvent(order.id <-: event)
-    for (followUps ← validatedFollowUps onProblem (p ⇒ logger.error(p))) {
+    val checkedFollowUps = orderProcessor.handleEvent(order.id <-: event)
+    for (followUps ← checkedFollowUps onProblem (p ⇒ logger.error(p))) {
       followUps foreach {
         case FollowUp.Processed(job) ⇒
-          if (!terminating) {
-            assert(orderEntry.jobOption map (_.jobPath) contains job.jobPath)
-            for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
-              jobEntry.queue -= order.id
-            }
+          assert(orderEntry.jobOption exists (_.jobPath == job.jobPath))
+          for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
+            jobEntry.queue -= order.id
           }
 
         case FollowUp.AddChild(childOrder) ⇒
-          if (!terminating) {
-            val actor = newOrderActor(childOrder)
-            orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
-            actor ! OrderActor.Input.AddChild(childOrder)
-            proceedWithOrder(childOrder.id)
-          }
+          val actor = newOrderActor(childOrder)
+          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
+          actor ! OrderActor.Input.AddChild(childOrder)
+          proceedWithOrder(childOrder.id)
 
         case FollowUp.Remove(removeOrderId) ⇒
-          if (!terminating) {
-            removeOrder(removeOrderId)
-          }
+          removeOrder(removeOrderId)
 
         case o: FollowUp.AddOffered ⇒
-          sys.error(s"Unexpeced FollowUp: $o")  // Only Master handles this
+          sys.error(s"Unexpected FollowUp: $o")  // Only Master handles this
       }
     }
     orderEntry.order = order
   }
 
-  private def proceedWithOrder(orderId: OrderId): Unit =
-    if (!terminating) {
-      val orderEntry = orderRegister(orderId)
-      val order = orderEntry.order
-      if (order.isAttachedToAgent) {
-        order.state match {
-          case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
-            orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
-              self ! Internal.Due(orderId)
-            }
+  private def proceedWithOrder(orderId: OrderId): Unit = {
+    val orderEntry = orderRegister(orderId)
+    val order = orderEntry.order
+    if (order.isAttachedToAgent) {
+      order.state match {
+        case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
+          orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
+            self ! Internal.Due(orderId)
+          }
 
-          case _: Order.Idle ⇒
-            onOrderAvailable(orderEntry)
+        case _: Order.Idle ⇒
+          onOrderAvailable(orderEntry)
 
-          case _ ⇒
-            tryExecuteInstruction(order, orderEntry.workflow)
-        }
+        case _ ⇒
+          tryExecuteInstruction(order, orderEntry.workflow)
       }
     }
+  }
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {

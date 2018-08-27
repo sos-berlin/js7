@@ -447,8 +447,8 @@ with MainJournalingActor[Event]
             logger.error(s"Unknown OrderId for event ${orderId <-: event}")
 
           case Some(orderEntry) ⇒
-            val validatedFollowUps = orderProcessor.handleEvent(orderId <-: event)
-            for (followUps ← validatedFollowUps onProblem (p ⇒ logger.error(p)))  {
+            val checkedFollowUps = orderProcessor.handleEvent(orderId <-: event)
+            for (followUps ← checkedFollowUps onProblem (p ⇒ logger.error(p)))  {
               followUps foreach {
                 case _: FollowUp.Processed if orderEntry.order.isAttachedToAgent ⇒
 
