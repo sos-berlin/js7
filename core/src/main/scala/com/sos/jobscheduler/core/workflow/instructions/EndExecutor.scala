@@ -34,7 +34,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
                 parentOrderId ← order.parent
                 parentOrder ← context.idToOrder.lift(parentOrderId)
                 forkJoin ← Some(context.instruction(parentOrder.workflowPosition)) collect { case o: ForkJoin ⇒ o }
-                event ← InstructionExecutor.toEvent(forkJoin, parentOrder, context)
+                event ← ForkJoinExecutor.toEvent(context, parentOrder, forkJoin)
               } yield event
           case _ ⇒ None
         }
