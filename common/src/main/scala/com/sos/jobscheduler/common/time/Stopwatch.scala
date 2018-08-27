@@ -59,6 +59,6 @@ object Stopwatch {
       if (n == 0)
         s"0 $ops"
       else
-        s"${duration.pretty}/$n $ops (${singleDuration.pretty}) $perSecondString $ops/s"
+        s"${duration.pretty}/$n $ops (⌀${singleDuration.pretty}) $perSecondString $ops/s"
   }
 }

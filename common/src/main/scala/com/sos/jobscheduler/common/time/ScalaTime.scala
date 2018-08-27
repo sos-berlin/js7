@@ -287,6 +287,7 @@ object ScalaTime {
 
   implicit final class RichConcurrentDuration(private val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
+    def pretty = toJavaDuration.pretty
   }
 
   implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {

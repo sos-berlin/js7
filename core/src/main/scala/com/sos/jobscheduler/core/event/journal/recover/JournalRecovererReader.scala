@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
@@ -85,10 +86,12 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
 
   def logStatistics(): Unit = {
     if (stopwatch.duration >= 1.s) {
-      logger.info(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
+      logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
-      logger.info(s"Recovered last EventId is ${EventId.toString(_lastReadEventId)} ($snapshotCount snapshots and $eventCount events read)")
+      logger.info(s"Recovered last EventId is ${_lastReadEventId} " +
+        s"of ${EventId.toDateTimeString(_lastReadEventId)}, ${(now - EventId.toTimestamp(_lastReadEventId)).withNanos(0).pretty} ago " +
+        s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }
   }
 

@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
@@ -13,7 +12,6 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererReader.{R
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import java.nio.file.Files
 import scala.concurrent.blocking
 
 /**
@@ -26,7 +24,6 @@ trait JournalRecoverer[E <: Event] {
   protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
 
   private var _lastEventId = EventId.BeforeFirst
-  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalMeta.fileBase.getFileName.toString)
   protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
 
   protected final def hasJournal = journalFileOption.isDefined
@@ -36,7 +33,6 @@ trait JournalRecoverer[E <: Event] {
       case None ⇒
       case Some(file) ⇒
         blocking {  // May take a long time
-          logger.info(s"Recovering from journal '${file.getFileName}' (${toMB(Files.size(file))})")
           autoClosing(new JournalRecovererReader(journalMeta, file)) { journalReader ⇒
             untilNoneIterator { journalReader.recoverNext() } foreach {
               case RecoveredSnapshot(snapshot) ⇒

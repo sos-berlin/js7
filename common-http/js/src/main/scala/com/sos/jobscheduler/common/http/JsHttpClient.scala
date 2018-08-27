@@ -99,7 +99,7 @@ object JsHttpClient {
   private val ReloadDelay = 2.second  // Just in case of a loop
 
   def reloadPage(): Unit = {
-    window.document.body.innerHTML = s"""<pre>Version of JobScheduler has been changed ...</pre>"""
+    window.document.body.innerHTML = "<pre>Version of JobScheduler has changed</pre>"
     window.setTimeout(
       () ⇒ window.location.reload(true),
       ReloadDelay.toMillis)  // Delay in case of reload-loop

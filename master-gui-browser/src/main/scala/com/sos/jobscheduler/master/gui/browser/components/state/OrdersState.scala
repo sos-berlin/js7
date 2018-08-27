@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.system.{Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.browser.common.Utils._
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{Content, OrderEntry}
@@ -113,7 +114,7 @@ object OrdersState {
                     updatedAt = nowMillis)
 
                 case OrderStdWritten(t, chunk) ⇒
-                  val output = entry.output ++ splitLines(chunk, s"$t: ")
+                  val output = entry.output ++ splitLines(chunk, if (t == Stdout) "›"/*>1*/ else "»"/*>2*/)
                   entry.copy(
                     output = output,
                     lastOutputOfCurrentJob = output.lastOption,

@@ -57,11 +57,11 @@ extends Actor {
     case Internal.LogProgress ⇒
       logProgressCancelable.cancel()
       val limit = remaining.size min logProgressActorLimit
-      logger.info(s"Writing journal snapshot for ${(Instant.now - startedAt).pretty}, ${remaining.size} object snapshots remaining" +
+      logger.info(s"Writing journal snapshot for ${(Instant.now - startedAt).pretty}, ${remaining.size} snapshot elements remaining" +
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
       for (o ← remaining take limit) {
-        logger.info(s"... awaiting object snapshot from actor ${o.path}")
+        logger.info(s"... awaiting snapshot element from actor ${o.path}")
       }
       logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
       testLogCount += 1
