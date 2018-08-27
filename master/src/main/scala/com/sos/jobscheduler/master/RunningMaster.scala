@@ -53,7 +53,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import shapeless.tag
@@ -218,13 +218,7 @@ object RunningMaster {
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) ⇒ logger.error(t.toStringWithCauses, t) }
-        .andThen { case _ ⇒
-          blocking {
-            logger.debug("Delaying to let HTTP server respond open requests")
-            sleep(500.ms)
-          }
-          closer.close()  // Close automatically after termination
-        }
+        .andThen { case _ ⇒ closer.close() }  // Close automatically after termination
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
       (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/master")

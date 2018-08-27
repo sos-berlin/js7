@@ -14,6 +14,8 @@ import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.{TaskRegister, TaskRegisterActor}
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -32,7 +34,8 @@ import com.sos.jobscheduler.data.master.MasterId
 import javax.inject.Inject
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise, blocking}
 
 /**
   * @author Joacim Zschimmer
@@ -62,6 +65,7 @@ extends MainJournalingActor[AgentEvent] {
   }
   private val masterToOrderKeeper = new MasterRegister
   private var terminating, jobKeeperStopped = false
+  private var terminateRespondedAt: Option[Timestamp] = None
   private val terminateCompleted = Promise[Completed]()
 
   def snapshots = Future.successful(masterToOrderKeeper.keys map AgentSnapshot.Master.apply)
@@ -75,6 +79,15 @@ extends MainJournalingActor[AgentEvent] {
 
   override def postStop() = {
     super.postStop()
+    for (t ← terminateRespondedAt) {
+      val millis = (t + 500.millis - now).toMillis
+      if (millis > 0) {
+        logger.debug("Delaying to let HTTP server respond to Terminate command")
+        blocking {
+          Thread.sleep(millis)
+        }
+      }
+    }
     logger.info("Stopped")
   }
 
@@ -161,6 +174,7 @@ extends MainJournalingActor[AgentEvent] {
     command match {
       case command: AgentCommand.Terminate ⇒
         terminating = true
+        terminateRespondedAt = Some(now)
         terminateOrderKeepers() onComplete { ordersTerminated ⇒
           (jobKeeper ? command).mapTo[AgentCommand.Accepted.type] onComplete { jobsTerminated ⇒
             response.complete(ordersTerminated flatMap { _ ⇒ jobsTerminated })

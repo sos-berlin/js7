@@ -13,6 +13,8 @@ import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -55,7 +57,8 @@ import java.time.ZoneId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
 /**
@@ -98,6 +101,7 @@ with MainJournalingActor[Event]
     "OrderScheduleGenerator")
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private var terminating = false
+  private var terminateRespondedAt: Option[Timestamp] = None
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -125,8 +129,17 @@ with MainJournalingActor[Event]
   }
 
   override def postStop() = {
-    logger.debug("Stopped")
     super.postStop()
+    for (t ← terminateRespondedAt) {
+      val millis = (t + 500.millis - now).toMillis
+      if (millis > 0) {
+        logger.debug("Delaying to let HTTP server respond to Terminate command")
+        blocking {
+          Thread.sleep(millis)
+        }
+      }
+    }
+    logger.debug("Stopped")
   }
 
   protected def snapshots = Future.successful(
@@ -323,6 +336,7 @@ with MainJournalingActor[Event]
         else
           journalActor ! JournalActor.Input.Terminate
         terminating = true
+        terminateRespondedAt = Some(now)
         Future.successful(MasterCommand.Response.Accepted)
     }
 

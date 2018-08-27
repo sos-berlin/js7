@@ -31,7 +31,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
  * JobScheduler Agent.
@@ -137,14 +137,9 @@ object RunningAgent {
     for (ready ← readyPromise.future) yield {
       webServerReady await WebServerReadyTimeout
       val terminated = stoppedPromise.future
-        .map(identity)  // Change to implicit ExecutionContext (needed?)
-        .andThen { case _ ⇒
-          blocking {
-            logger.debug("Delaying close to let HTTP server respond open requests")
-            sleep(500.ms)
-          }
+        //.andThen { case _ ⇒
           //To early. closer.close()  // Close automatically after termination
-        }
+        //}
         //.andThen {
         //  case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
         //}
