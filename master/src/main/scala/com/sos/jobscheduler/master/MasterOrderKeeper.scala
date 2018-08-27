@@ -99,6 +99,26 @@ with MainJournalingActor[Event]
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private var terminating = false
 
+  private object afterProceedEvents {
+    private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
+
+    def persistAndHandleLater(keyedEvents: Iterable[KeyedEvent[OrderEvent]]): Unit = {
+      val first = events.isEmpty
+      events ++= keyedEvents
+      if (first) {
+        self ! Internal.AfterProceedEventsAdded
+      }
+    }
+
+    def persistThenHandleEvents(): Unit = {
+      // Eliminate duplicate events like OrderJoined, which may be issued by parent and child orders when recovering
+      for (e ← events.distinct) {
+        persist(e)(handleOrderEvent)
+      }
+      events.clear()
+    }
+  }
+
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     recover()
@@ -146,9 +166,12 @@ with MainJournalingActor[Event]
   def receive = {
     case JournalRecoverer.Output.JournalIsReady ⇒
       agentRegister.values foreach { _.start() }
-      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
-      logger.info(s"${orderRegister.size} Orders recovered")
-      if (!hasRecovered) {
+
+      if (hasRecovered) {
+        orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
+        afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
+        logger.info(s"${orderRegister.size} Orders recovered")
+      } else {
         readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
@@ -165,6 +188,9 @@ with MainJournalingActor[Event]
   }
 
   private def ready: Receive = {
+    case Internal.AfterProceedEventsAdded ⇒
+      afterProceedEvents.persistThenHandleEvents()
+
     case Command.Execute(command, meta) ⇒
       val sender = this.sender()
       if (terminating)
@@ -218,8 +244,6 @@ with MainJournalingActor[Event]
           } else {
             keyedEvent match {
               case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
-                // OrderForked is (as all events) persisted and processed asynchronously,
-                // so events for child orders will probably arrive before OrderForked has registered the child orderId.
                 val ownEvent = event match {
                   case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ ⇒ event
@@ -465,17 +489,18 @@ with MainJournalingActor[Event]
 
       case _: Order.Offered ⇒
         for (awaitingOrderId ← orderProcessor.offeredToAwaitingOrder(orderEntry.orderId);
-             o ← orderRegister.get(awaitingOrderId);
-             _ ← o.order.ifState[Order.Awaiting]/*must be*/) {
-          proceedWithOrder(o)
+             awaitingOrder ← orderRegister.checked(awaitingOrderId).onProblem(p ⇒ logger.warn(p.toString));
+             _ ← awaitingOrder.order.checkedState[Order.Awaiting].onProblem(p ⇒ logger.error(p.toString)))
+        {
+          proceedWithOrderOnMaster(awaitingOrder)
         }
 
       case _ ⇒
     }
 
-    for (keyedEvent ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
-      persist/*Async?*/(keyedEvent)(handleOrderEvent)
-    }
+    // When recovering, proceedWithOrderOnMaster may issue the same event multiple times, so OrderJoined for each parent and child order.
+    // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
+    afterProceedEvents.persistAndHandleLater(orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten.toIterable)
   }
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit = {
@@ -491,11 +516,11 @@ with MainJournalingActor[Event]
   }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
-    orderRegister(orderId).order.detachableFromAgent match {
-      case Invalid(problem) ⇒ logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $problem")
-      case Valid(agentId) ⇒
+    orderRegister(orderId).order.detachableFromAgent
+      .onProblem(p ⇒ logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $p"))
+      .foreach { agentId ⇒
         agentRegister(agentId).actor ! AgentDriver.Input.DetachOrder(orderId)
-    }
+      }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
@@ -527,7 +552,8 @@ private[master] object MasterOrderKeeper {
   }
 
   private object Internal {
-    final case object Ready
+    case object Ready
+    case object AfterProceedEventsAdded
   }
 
   private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
