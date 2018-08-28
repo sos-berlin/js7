@@ -85,10 +85,8 @@ extends JournalRecoverer[Event]
 
       case event: OrderJoined ⇒
         idToOrder(orderId).state match {
-          case Order.Join(joinOrderIds) ⇒
-            for (joinOrderId ← joinOrderIds) {
-              idToOrder -= joinOrderId
-            }
+          case forked: Order.Forked ⇒
+            idToOrder --= forked.childOrderIds
 
           case state ⇒
             sys.error(s"Event $event recovered, but $orderId is in state $state")

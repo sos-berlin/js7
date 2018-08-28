@@ -48,7 +48,7 @@ object OrderComponent {
         <.tbody(
           orderEntry.order.parent.whenDefined(showField("Parent", _)),
           showField("State"  , orderEntry.order.state match {
-            case Order.Join(children) ⇒ VdomArray(<.div("Join"), children.toVdomArray(orderId ⇒ <.div(orderId)))
+            case o: Order.Forked ⇒ VdomArray(<.div("Forked"), o.childOrderIds.toVdomArray(orderId ⇒ <.div(orderId)))
             case o ⇒ o
           }),
           showField("Position"   , orderEntry.order.workflowPosition.toString),
@@ -78,8 +78,8 @@ object OrderComponent {
   }
 
   private def joinOrders(order: Order[Order.State], idToOrder: OrderId ⇒ Order[Order.State]): Seq[Order[Order.State]] =
-    order.ifState[Order.Join] match {
-      case Some(o) ⇒ o.state.joinOrderIds.map(idToOrder).flatMap(o ⇒ o +: joinOrders(o, idToOrder))
+    order.ifState[Order.Forked] match {
+      case Some(o) ⇒ o.state.childOrderIds.map(idToOrder).flatMap(o ⇒ o +: joinOrders(o, idToOrder))
       case None ⇒ Nil
     }
 

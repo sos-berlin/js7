@@ -35,7 +35,7 @@ private[workfloworders] final class BoxedOrderComponent
               ^.onDoubleClick --> Callback { window.document.location.assign(Router.hash(order.id)) },
           <.div(^.cls := "orders-Order-OrderId", order.id.string),
           order.state match {
-            case _: Order.Fresh | _: Order.Join ⇒
+            case _: Order.Fresh | _: Order.Forked ⇒
               <.div(^.cls := "orders-Order-compact",
                 order.state)
 
@@ -59,7 +59,7 @@ private[workfloworders] final class BoxedOrderComponent
     order.state match {
       case _: Order.Fresh      ⇒ "Order-Fresh "
       case Order.InProcess     ⇒ "Order-InProcess "
-      case _: Order.Join       ⇒ "Order-Join "
+      case _: Order.Forked     ⇒ "Order-Forked "
       case Order.Finished      ⇒ "Order-Finished "
       case _                   ⇒ ""
     }

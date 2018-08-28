@@ -53,7 +53,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case _: OrderAdded      ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _: OrderFinished   ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder - order.id)
       case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
-      case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder -- idToOrder(order.id).castState[Order.Join].state.joinOrderIds)
+      case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _ ⇒ this
     }
@@ -88,7 +88,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
 
       case OrderJoined(variablesDiff, outcome) ⇒
         Some(OrderJoinedFat(
-          childOrderIds = idToOrder(order.id).ifState[Order.Join] map (_.state.joinOrderIds) getOrElse Nil/*failure*/,
+          childOrderIds = idToOrder(order.id).ifState[Order.Forked] map (_.state.childOrderIds) getOrElse Nil/*failure*/,
           variables = variablesDiff applyTo order.variables, outcome))
 
       case _ ⇒

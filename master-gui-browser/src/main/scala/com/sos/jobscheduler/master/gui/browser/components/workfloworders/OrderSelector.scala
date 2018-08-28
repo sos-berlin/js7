@@ -98,8 +98,8 @@ object OrderSelector {
   def elementId(orderId: OrderId) = orderId.toString  // With prefix "Order:"
 
   private def orderChildren(order: Order[Order.State]): Set[OrderId] =
-    order.ifState[Order.Join] match {
-      case Some(o) ⇒ o.state.joinOrderIds.toSet
+    order.ifState[Order.Forked] match {
+      case Some(o) ⇒ o.state.childOrderIds.toSet
       case _ ⇒ Set.empty
     }
 

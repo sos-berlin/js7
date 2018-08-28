@@ -26,12 +26,12 @@ object ForkJoinExecutor extends EventInstructionExecutor
           for (branch ← instruction.branches) yield
             OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty))))
     .orElse(
-      order.ifState[Order.Join].flatMap(order ⇒
+      order.ifState[Order.Forked].flatMap(order ⇒
         //orderEntry.instruction match {
         //  case forkJoin: Instruction.ForkJoin if forkJoin isJoinableOnAgent ourAgentPath ⇒
         if (order.isAttachedToAgent)
           Some(order.id <-: OrderDetachable)  //
-        else if (order.state.joinOrderIds map context.idToOrder forall context.childOrderEnded)
+        else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
           Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
         else
           None))

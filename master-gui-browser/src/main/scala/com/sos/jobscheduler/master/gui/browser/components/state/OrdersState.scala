@@ -2,10 +2,11 @@ package com.sos.jobscheduler.master.gui.browser.components.state
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.system.{Stdout, StdoutOrStderr}
+import com.sos.jobscheduler.data.system.Stdout
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.browser.common.Utils._
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{Content, OrderEntry}
@@ -13,6 +14,7 @@ import org.scalajs.dom.window
 import scala.collection.immutable.{Seq, VectorBuilder}
 import scala.collection.mutable
 import scala.scalajs.js
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -31,7 +33,7 @@ final case class OrdersState(
     copy(
       content = OrdersState.FetchedContent(
         idToEntry = updatedIdToEntry,
-        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowId) mapValuesStrict (_.map(_.order.id).toVector.sorted),
+        workflowToOrderIds = updatedIdToEntry.values groupBy (_.order.workflowId) mapValuesStrict (_.map(_.order.id).toVector.sorted),
         eventId = stamped.eventId, eventCount = 0),
       error = None,
       step = step + 1)
@@ -42,6 +44,7 @@ object OrdersState {
   val Empty = OrdersState(Starting, step = 0, error = None)
 
   private type WorkflowToOrderIds = Map[WorkflowId, Vector[OrderId]]
+
   sealed trait Content {
     def orderCountByWorkflow(workflowId: WorkflowId): Option[Int]
   }
@@ -49,13 +52,14 @@ object OrdersState {
   object Starting extends Content {
     def orderCountByWorkflow(workflowId: WorkflowId) = None
   }
+
   object FetchingContent extends Content {
     def orderCountByWorkflow(workflowId: WorkflowId) = None
   }
 
   final case class FetchedContent(
     idToEntry: Map[OrderId, OrderEntry],
-    workflowToOrderSeq: WorkflowToOrderIds,
+    workflowToOrderIds: WorkflowToOrderIds,
     eventId: EventId,
     eventCount: Int)
   extends Content
@@ -63,16 +67,16 @@ object OrdersState {
     private val positionCache = mutable.Map[WorkflowId, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
 
     def orderCountByWorkflow(workflowId: WorkflowId) =
-      Some(workflowToOrderSeq(workflowId).size)
+      Some(workflowToOrderIds(workflowId).size)
 
-    def workflowPositionToOrderIdSeq(address: WorkflowPosition): Vector[OrderId] =
-      positionCache.getOrElseUpdate(address.workflowId, {
+    def workflowPositionToOrderIdSeq(workflowPosition: WorkflowPosition): Vector[OrderId] =
+      positionCache.getOrElseUpdate(workflowPosition.workflowId, {
         val m = mutable.Map.empty[WorkflowPosition, VectorBuilder[OrderId]]
-        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowId, Nil)) {
+        for (orderId ← workflowToOrderIds.getOrElse(workflowPosition.workflowId, Nil)) {
           m.getOrElseUpdate(idToEntry(orderId).order.workflowPosition, new VectorBuilder[OrderId]) += orderId
         }
         m map { case (k, v) ⇒ k → v.result }
-      }).getOrElseUpdate(address, Vector.empty)
+      }).getOrElseUpdate(workflowPosition, Vector.empty)
 
     private def restoreCache(from: FetchedContent, dirty: collection.Set[WorkflowPosition]): this.type = {
       for ((workflowPath, positionToOrderIds) ← from.positionCache -- dirty.map(_.workflowId)) {
@@ -91,68 +95,72 @@ object OrdersState {
       val deleted = mutable.Set[OrderId]()
       var evtCount = 0
       val nowMillis = Timestamp.currentTimeMillis
-      stampedEvents foreach {
-        case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
-          updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
-          added.getOrElseUpdate(event.workflowId, new js.Array) += orderId
-          deleted -= orderId
-          evtCount += 1
+      stampedEvents foreach { stamped ⇒
+        try stamped match {
+          case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
+            updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
+            added.getOrElseUpdate(event.workflowId, new js.Array) += orderId
+            deleted -= orderId
+            evtCount += 1
 
-        case Stamped(eId, _, KeyedEvent(orderId, event: OrderEvent)) ⇒
-          updated.get(orderId) orElse idToEntry.get(orderId) match {
-            case None ⇒ window.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
-            case Some(entry) ⇒
-              updated += orderId → (event match {
-                case event: OrderCoreEvent ⇒
-                  val lastOutput = event match {
-                    case _: OrderActorEvent ⇒ None
-                    case _ ⇒ entry.lastOutputOfCurrentJob
-                  }
-                  entry.copy(
-                    order = entry.order.update(event),
-                    lastOutputOfCurrentJob = lastOutput,
-                    updatedAt = nowMillis)
-
-                case OrderStdWritten(t, chunk) ⇒
-                  val output = entry.output ++ splitLines(chunk, if (t == Stdout) "›"/*>1*/ else "»"/*>2*/)
-                  entry.copy(
-                    output = output,
-                    lastOutputOfCurrentJob = output.lastOption,
-                    updatedAt = nowMillis)
-              })
-              event match {
-                case event: OrderForked ⇒
-                  for (childOrder ← entry.order.newForkedOrders(event)) {
-                    updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
-                    deleted -= childOrder.id
-                    added.getOrElseUpdate(entry.order.workflowId, new js.Array) += childOrder.id
-                  }
-
-                case _: OrderJoined ⇒
-                  for (order ← entry.order.ifState[Order.Join]) {
-                    deleted ++= order.state.joinOrderIds
-                    updated --= order.state.joinOrderIds
-                    val w = entry.order.workflowId
-                    for (a ← added.get(w)) {
-                      added(w) = a filterNot order.state.joinOrderIds.toSet
+          case Stamped(eId, _, KeyedEvent(orderId, event: OrderEvent)) ⇒
+            updated.get(orderId) orElse idToEntry.get(orderId) match {
+              case None ⇒ window.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
+              case Some(entry) ⇒
+                updated += orderId → (event match {
+                  case event: OrderCoreEvent ⇒
+                    val lastOutput = event match {
+                      case _: OrderActorEvent ⇒ None
+                      case _ ⇒ entry.lastOutputOfCurrentJob
                     }
-                  }
+                    entry.copy(
+                      order = entry.order.update(event),
+                      lastOutputOfCurrentJob = lastOutput,
+                      updatedAt = nowMillis)
 
-                case _: OrderFinished ⇒
-                  deleted += orderId
-                  updated -= orderId
-                  for (orderIds ← added.get(entry.order.workflowId))
-                    orderIds -= orderId
+                  case OrderStdWritten(t, chunk) ⇒
+                    val output = entry.output ++ splitLines(chunk, if (t == Stdout) "›"/*>1*/ else "»"/*>2*/)
+                    entry.copy(
+                      output = output,
+                      lastOutputOfCurrentJob = output.lastOption,
+                      updatedAt = nowMillis)
+                })
+                event match {
+                  case event: OrderForked ⇒
+                    for (childOrder ← entry.order.newForkedOrders(event)) {
+                      updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
+                      deleted -= childOrder.id
+                      added.getOrElseUpdate(entry.order.workflowId, new js.Array) += childOrder.id
+                    }
 
-                case _ ⇒
-              }
+                  case _: OrderJoined ⇒
+                    for (order ← entry.order.ifState[Order.Forked]) {
+                      deleted ++= order.state.childOrderIds
+                      updated --= order.state.childOrderIds
+                      val w = entry.order.workflowId
+                      for (a ← added.get(w)) {
+                        added(w) = a filterNot order.state.childOrderIds.toSet
+                      }
+                    }
+
+                  case _: OrderFinished ⇒
+                    deleted += orderId
+                    updated -= orderId
+                    for (orderIds ← added.get(entry.order.workflowId))
+                      orderIds -= orderId
+
+                  case _ ⇒
+                }
               evtCount += 1
           }
 
-        case Stamped(eId, _, KeyedEvent(orderId, event)) ⇒
-          window.console.warn("Ignored: " + eventToLog(eId, orderId, event))
+          case Stamped(eId, _, KeyedEvent(orderId, event)) ⇒
+            window.console.warn("Ignored: " + eventToLog(eId, orderId, event))
 
-        case _ ⇒
+          case _ ⇒
+        } catch { case NonFatal(t) ⇒
+          throw new RuntimeException(s"Error when handling $stamped: ${t.toStringWithCauses}", t)
+        }
       }
       val updatedWorkflowPositions: Iterator[WorkflowPosition] = for {
         order ← updated.valuesIterator map (_.order)
@@ -162,7 +170,7 @@ object OrdersState {
       val updatedIdToEntry = idToEntry -- deleted ++ updated
       copy(
         idToEntry = updatedIdToEntry,
-        workflowToOrderSeq = concatOrderIds(deleteOrderIds(workflowToOrderSeq, deleted.toSet), added),
+        workflowToOrderIds = concatOrderIds(deleteOrderIds(workflowToOrderIds, deleted.toSet), added),
         eventId = stampedEvents.last.eventId,
         eventCount = eventCount + evtCount)
       .restoreCache(

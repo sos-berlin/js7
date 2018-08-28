@@ -60,7 +60,7 @@ object Renderers {
       case Order.Processed(Outcome.Succeeded(ReturnCode.Success)) ⇒ s"Processed"
       case Order.Processed(o: Outcome.Undisrupted) ⇒ s"Processed rc=${o.returnCode.number}"
       case Order.Processed(o: Outcome.Disrupted) ⇒ s"Processed $o"
-      case Order.Join(children) ⇒ s"Join ${children.size}×"
+      case Order.Forked(children) ⇒ s"Forked ${children.size}×"
       case _ ⇒ state.toString
     }
 
@@ -77,11 +77,11 @@ object Renderers {
       case Order.Fresh(Some(_)) ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
       case Order.Fresh(None)  ⇒ "━"
       case Order.InProcess    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
-      case _: Order.Join      ⇒ "⨁"
-      case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"  "⬇"
+      case _: Order.Forked    ⇒ "⨁"
+      case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"
       case Order.Processed(_: Outcome.Failed) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy") // "☁"
-      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥" // "⬇"
-      case Order.Ready        ⇒ "━"
+      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥"
+      case Order.Ready        ⇒ "◯"
       case Order.Finished     ⇒ "☆"
       case _                  ⇒ "·"
     }

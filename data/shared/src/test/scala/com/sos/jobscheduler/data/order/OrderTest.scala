@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order._
@@ -152,12 +153,30 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Join" in {
-      check(Join(List(OrderId("A/1"), OrderId("A/2"))),
+    "Forked" in {
+      check(Forked(List(
+        Forked.Child(Position.BranchId("A"), OrderId("A/1"), MapDiff(Map("K" → "V"))),
+        Forked.Child(Position.BranchId("B"), OrderId("B/1")))),
         json"""{
-          "TYPE": "Join",
-          "joinOrderIds": [ "A/1", "A/2" ]
-        }""")
+          "TYPE": "Forked",
+            "children": [
+              {
+                "branchId": "A",
+                "orderId": "A/1",
+                "variablesDiff": {
+                  "changed": { "K": "V" },
+                  "deleted": []
+                }
+              }, {
+                "branchId": "B",
+                "orderId": "B/1",
+                "variablesDiff": {
+                  "changed": {},
+                  "deleted": []
+                }
+              }
+            ]
+          }""")
     }
 
     "Offered" in {

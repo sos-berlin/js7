@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -49,8 +48,8 @@ final class OrderEventHandler(
 
       case joined: OrderJoined ⇒
         previousOrder.state match {
-          case Order.Join(joinOrderIds) ⇒
-            Valid(joinOrderIds map FollowUp.Remove.apply)
+          case o: Order.Forked ⇒
+            Valid(o.childOrderIds map FollowUp.Remove.apply)
 
           case Order.Awaiting(_) ⇒
             _offeredToAwaitingOrder -= previousOrder.castState[Order.Awaiting].state.offeredOrderId

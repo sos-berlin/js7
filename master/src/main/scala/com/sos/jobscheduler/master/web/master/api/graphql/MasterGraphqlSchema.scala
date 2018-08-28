@@ -290,10 +290,10 @@ private[graphql] object MasterGraphqlSchema
       fields[QueryContext, Order.Stopped](
         Field("outcome", OutcomeType, resolve = _.value.outcome))),
     ObjectType(
-      "JoinOrderState",
-      interfaces[QueryContext, Order.Join](OrderStateType),
-      fields[QueryContext, Order.Join](
-        Field("joinOrderIds", ListType(OrderIdType), resolve = _.value.joinOrderIds))),
+      "ForkOrderState",
+      interfaces[QueryContext, Order.Forked](OrderStateType),
+      fields[QueryContext, Order.Forked](
+        Field("childOrderIds", ListType(OrderIdType), resolve = _.value.childOrderIds))),
     ObjectType(
       "OfferedOrderState",
       interfaces[QueryContext, Order.Offered](OrderStateType),

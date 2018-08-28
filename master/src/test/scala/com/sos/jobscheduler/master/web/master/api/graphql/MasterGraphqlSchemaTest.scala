@@ -108,8 +108,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
               ...Outcome
             }
           }
-          ... on JoinOrderState {
-            joinOrderIds
+          ... on ForkOrderState {
+            childOrderIds
           }
           ... on AwaitingOrderState {
             offeredOrderId
@@ -326,8 +326,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               },
               "state": {
-                "TYPE": "Join",
-                "joinOrderIds": [ "A", "B" ]
+                "TYPE": "Forked",
+                "childOrderIds": [ "A/1", "B/1" ]
               }
             }, {
               "id": "9",
@@ -395,7 +395,7 @@ object MasterGraphqlSchemaTest
         Order(OrderId("5"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Failed(ReturnCode(8)))),
         Order(OrderId("6"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted("MESSAGE"))),
         Order(OrderId("7"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))),
-        Order(OrderId("8"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Join(OrderId("A") :: OrderId("B") :: Nil)),
+        Order(OrderId("8"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
         Order(OrderId("9"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offered(Timestamp.parse("2018-04-16T11:22:33Z"))),
         Order(OrderId("10"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
         Order(OrderId("11"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Finished)

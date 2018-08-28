@@ -29,7 +29,7 @@ extends OnUnmount {
         <.div(<.i("Fetching orders..."))
 
       case content: FetchedContent ⇒
-        val sequence = content.workflowToOrderSeq.getOrElse(props.preparedWorkflow.id, Vector.empty)
+        val sequence = content.workflowToOrderIds.getOrElse(props.preparedWorkflow.id, Vector.empty)
         <.div(
           <.div(^.cls := "sheet-headline")(
             props.preparedWorkflow.id),

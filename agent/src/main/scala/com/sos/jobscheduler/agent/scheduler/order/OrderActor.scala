@@ -61,8 +61,8 @@ extends KeyedJournalingActor[OrderEvent] {
         become("processed")(processed)
         // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
-      case _: Order.Join ⇒
-        become("joining")(joining)
+      case _: Order.Forked ⇒
+        become("forked")(forked)
 
       case _: Order.Stopped ⇒
         become("stopped")(stopped)
@@ -127,7 +127,7 @@ extends KeyedJournalingActor[OrderEvent] {
       }
 
     case Input.HandleEvent(event: OrderForked) ⇒
-      become("joining")(joining)
+      become("forked")(forked)
       persist(event)(update)
 
     case Input.HandleEvent(event: OrderOffered) ⇒
@@ -215,7 +215,7 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
   }
 
-  private def joining: Receive = {
+  private def forked: Receive = {
     case Input.HandleEvent(event: OrderJoined) ⇒
       become("idle")(idle)
       persist(event)(update)

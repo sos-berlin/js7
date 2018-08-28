@@ -121,21 +121,21 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderForked" in {
     check(OrderForked(List(
-      OrderForked.Child("A", OrderId("ORDER-ID/A"), MapDiff(Map("CHANGED" → "x"))),
-      OrderForked.Child("B", OrderId("ORDER-ID/B")))), json"""
+      OrderForked.Child("A", OrderId("A/1"), MapDiff(Map("CHANGED" → "x"))),
+      OrderForked.Child("B", OrderId("B/1")))), json"""
       {
         "TYPE": "OrderForked",
         "children": [
           {
             "branchId": "A",
-            "orderId": "ORDER-ID/A",
+            "orderId": "A/1",
             "variablesDiff": {
               "changed": { "CHANGED": "x" },
               "deleted": []
             }
           }, {
             "branchId": "B",
-            "orderId": "ORDER-ID/B",
+            "orderId": "B/1",
             "variablesDiff": {
               "changed": {},
               "deleted": []

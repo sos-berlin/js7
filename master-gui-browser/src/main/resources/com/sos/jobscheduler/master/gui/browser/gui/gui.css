@@ -130,7 +130,7 @@ header, main, footer { padding-left: 150px; }
 .Order-Fresh { background-color: #f4f4f4; }
 .Order-Finished   { background-color: #f4f4f4; }
 .Order-InProcess  { background-color: #ffc744; }
-/*.Order-Joined    { background-color: #ffe366; }*/
+/*.Order-Forked    { background-color: #ffe366; }*/
 /*.Order-highlight      { box-shadow: 0 0 7px 2px #f99b00; }*/
 .Order-highlight      { border-color: #708af9; }
 .Order-child-highlight { border-color: #708af9; border-style: dotted }

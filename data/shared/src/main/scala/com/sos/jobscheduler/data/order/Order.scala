@@ -69,7 +69,7 @@ final case class Order[+S <: Order.State](
         payload = Payload(diff.applyTo(payload.variables)))
 
       case OrderForked(children) ⇒ copy(
-        state = Join(children map (_.orderId)))
+        state = Forked(children))
 
       case OrderJoined(variablesDiff, outcome_) ⇒
         copy(
@@ -213,7 +213,13 @@ object Order {
   final case class Processed(outcome: Outcome) extends Transitionable
 
   @JsonCodec
-  final case class Join(joinOrderIds: Seq[OrderId]) extends Transitionable
+  final case class Forked(children: Seq[Forked.Child]) extends Transitionable {
+    def childOrderIds = children map (_.orderId)
+  }
+  object Forked {
+    type Child = OrderForked.Child
+    val Child = OrderForked.Child
+  }
 
   @JsonCodec
   final case class Offered(until: Timestamp)
@@ -234,7 +240,7 @@ object Order {
     Subtype[Stopped],
     Subtype(InProcess),
     Subtype[Processed],
-    Subtype[Join],
+    Subtype[Forked],
     Subtype[Offered],
     Subtype[Awaiting],
     Subtype(Finished))

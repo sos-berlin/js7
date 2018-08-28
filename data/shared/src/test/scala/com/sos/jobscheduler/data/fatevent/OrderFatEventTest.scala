@@ -73,14 +73,14 @@ final class OrderFatEventTest extends FreeSpec {
   "OrderJoinedFat" in {
     testJson[OrderFatEvent](
       OrderJoinedFat(
-        OrderId("A/1") :: OrderId("A/2") :: Nil,
+        OrderId("A/1") :: OrderId("B/1") :: Nil,
         Map("KEY" → "VALUE"), Outcome.Undisrupted(ReturnCode(0), success = true)),
       json"""
       {
         "TYPE": "OrderJoinedFat",
         "childOrderIds": [
           "A/1",
-          "A/2"
+          "B/1"
         ],
         "outcome": {
           "TYPE": "Succeeded",
