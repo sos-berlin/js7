@@ -38,6 +38,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
     assert(reader.read() == Some(Chunk(3)._2))
     assert(reader.read() == None)
     assert(in.seekCount == 0)
+    assert(reader.read() == None)
 
     // seek
     reader.seek(3+4)

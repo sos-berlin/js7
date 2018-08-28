@@ -3,8 +3,10 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
@@ -28,6 +30,12 @@ extends JournalRecoverer[Event] {
 
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
+  }
+
+  override protected def onAllSnapshotRecovered() = {
+    val (added, removed) = followUpRecoveredSnapshots(workflowRegister.idToWorkflow.checked, idToOrder.toMap)
+    idToOrder ++= added.map(o ⇒ o.id → o)
+    idToOrder --= removed
   }
 
   protected def recoverEvent = {

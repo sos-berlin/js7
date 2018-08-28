@@ -32,6 +32,7 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
   private var _lastReadEventId = EventId.BeforeFirst
   private var _completelyRead = false
   private var snapshotCount = 0
+  private var allSnapshotsRecovered = false
   private var eventCount = 0
 
   logger.info(s"Recovering from journal journalFile '${journalFile.getFileName}' (${toMB(Files.size(journalFile))})")
@@ -42,18 +43,26 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
 
   private[journal] def recoverNext(): Option[Recovered[E]] =
     readJson() match {
-      case None ⇒   // End of file
-        _completelyRead = true
-        None
-      case Some(positionAndJson) ⇒
+      case Left(0) ⇒   // End of file
+        if (!allSnapshotsRecovered) {
+          allSnapshotsRecovered = true
+          Some(AllSnapshotsRecovered)
+        } else {
+          _completelyRead = true
+          None
+        }
+
+      case Left(1) ⇒
+        allSnapshotsRecovered = true
+        Some(AllSnapshotsRecovered)
+
+      case Right(positionAndJson) ⇒
         if (!snapshotSeparatorRead)
           sys.error(s"Unexpected JSON value in '$journalFile': $positionAndJson")
         else if (!eventSeparatorRead) {
           snapshotCount += 1
           Some(RecoveredSnapshot(snapshotJsonCodec.decodeJson(positionAndJson.value).orThrow))
-        } else if (!eventSeparatorRead)
-          throw new IllegalStateException("JournalRecovererReader.readEvent but snapshots have not been read")
-        else {
+        } else {
           eventCount += 1
           val stampedEvent = positionAndJson.value.as[Stamped[Json]].orThrow
           if (stampedEvent.eventId <= _lastReadEventId)
@@ -64,22 +73,24 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
     }
 
   @tailrec
-  private def readJson(): Option[PositionAnd[Json]] =
+  private def readJson(): Either[Int, PositionAnd[Json]] =
     jsonReader.read() match {
       case None ⇒
-        None
+        Left(0)
+
       case Some(positionAndJson) ⇒
-        if (positionAndJson.value.isObject)
-          Some(positionAndJson)
-        else if (!snapshotSeparatorRead && positionAndJson.value == SnapshotsHeader) {
+        val json = positionAndJson.value
+        if (json.isObject)
+          Right(positionAndJson)
+        else if (!snapshotSeparatorRead && json == SnapshotsHeader) {
           snapshotSeparatorRead = true
           val posAndJson = jsonReader.read() getOrElse sys.error("Journal file is truncated")  // Tolerate this ???
           val snapshotMeta = posAndJson.value.as[SnapshotMeta].toChecked.mapProblem(_ wrapProblemWith "Error while reading SnapshotMeta").orThrow
           _lastReadEventId = snapshotMeta.eventId
           readJson()
-        } else if (!eventSeparatorRead && positionAndJson.value == EventsHeader) {
+        } else if (!eventSeparatorRead && json == EventsHeader) {
           eventSeparatorRead = true
-          readJson()
+          Left(1)
         } else
           sys.error(s"Unexpected JSON value in '$journalFile': $positionAndJson")
     }
@@ -103,5 +114,6 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
 private[recover] object JournalRecovererReader {
   sealed trait Recovered[+E <: Event]
   final case class RecoveredSnapshot private(snapshot: Any) extends Recovered[Nothing]
+  final case object AllSnapshotsRecovered extends Recovered[Nothing]
   final case class RecoveredEvent[E <: Event] private[JournalRecovererReader](stamped: Stamped[KeyedEvent[E]]) extends Recovered[E]
 }

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererReader.{RecoveredEvent, RecoveredSnapshot}
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererReader.{AllSnapshotsRecovered, RecoveredEvent, RecoveredSnapshot}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -22,6 +22,7 @@ trait JournalRecoverer[E <: Event] {
   protected val journalMeta: JournalMeta[E]
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
+  protected def onAllSnapshotRecovered(): Unit = {}
 
   private var _lastEventId = EventId.BeforeFirst
   protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
@@ -39,6 +40,10 @@ trait JournalRecoverer[E <: Event] {
                 wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
                   recoverSnapshot(snapshot)
                 }
+
+              case AllSnapshotsRecovered ⇒
+                onAllSnapshotRecovered()
+
               case RecoveredEvent(stampedEvent) ⇒
                 wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
                   recoverEvent(stampedEvent)

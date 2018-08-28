@@ -8,12 +8,14 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.filebased.Repo
+import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleEvent}
@@ -42,6 +44,12 @@ extends JournalRecoverer[Event]
 
     case OrderScheduleEndedAt(timestamp) ⇒
       orderScheduleEndedAt = Some(timestamp)
+  }
+
+  override protected def onAllSnapshotRecovered() = {
+    val (added, removed) = followUpRecoveredSnapshots(repo.idTo[Workflow], idToOrder.toMap)
+    idToOrder ++= added.map(o ⇒ o.id → o)
+    idToOrder --= removed
   }
 
   protected def recoverEvent = {

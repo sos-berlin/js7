@@ -48,7 +48,6 @@ extends AutoCloseable {
   }
 
   private def readByteString(): Option[ByteString] = {
-    if (lineNumber != -1) lineNumber += 1
     var rsReached = false
     var lfReached = false
     var eof = false
@@ -71,6 +70,7 @@ extends AutoCloseable {
     }
     if (rsReached && !lfReached) throwCorrupted("Missing ASCII LF at end of JSON sequence record")
     lfReached ? {
+      if (lineNumber != -1) lineNumber += 1
       val result = byteStringBuilder.result()
       byteStringBuilder.clear()
       result
@@ -106,7 +106,7 @@ extends AutoCloseable {
   final def position = blockPos + blockRead
 
   private def throwCorrupted(extra: String) = {
-    val where = if (lineNumber != -1) s"line $lineNumber" else s"position $position"
+    val where = if (lineNumber != -1) s"line ${lineNumber+1}" else s"position $position"
     sys.error(s"JSON sequence is corrupted at $where. $extra")
   }
 }
