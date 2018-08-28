@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.tests
 
+import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -115,12 +117,16 @@ final class RecoveryTest extends FreeSpec {
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)) await 99.s  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
+      // Kill Master ActorSystem
+      master.injector.instance[ActorSystem].terminate() await 99.s
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
+      // Kill Agents ActorSystems
+      for (agent ← agents) agent.injector.instance[ActorSystem].terminate() await 99.s
     }
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =

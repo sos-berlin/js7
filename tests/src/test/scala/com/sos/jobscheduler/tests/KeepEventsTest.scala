@@ -44,8 +44,8 @@ final class KeepEventsTest extends FreeSpec {
 
       def masterJournalCount = JournalFiles.listJournalFiles(directoryProvider.master.data / "state" / "master").length
       def agentJournalCount = JournalFiles.listJournalFiles(directoryProvider.agents(0).data / "state" / "master-Master").length
-      assert(masterJournalCount == 1)
-      assert(agentJournalCount == 1)
+      assert(masterJournalCount == 2)
+      assert(agentJournalCount == 2)
 
       RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
         RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒

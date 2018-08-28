@@ -132,9 +132,11 @@ object RunningMaster {
     autoClosing(RunningMaster(injector) await 99.s) { master ⇒
       try {
         body(master)
-        master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
-        master.terminated await 99.s
-      } catch { case NonFatal(t) if master.terminated.failed.isCompleted && t != master.terminated.failed.successValue ⇒
+        if (!master.terminated.isCompleted && !injector.instance[ActorSystem].whenTerminated.isCompleted) {
+          master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
+          master.terminated await 99.s
+        }
+      } catch { case NonFatal(t) if master.terminated.isCompleted && master.terminated.value.get.isFailure && t != master.terminated.failed.successValue ⇒
         t.addSuppressed(master.terminated.failed.successValue)
         throw t
       }

@@ -285,6 +285,15 @@ with MainJournalingActor[Event]
         persistAsync(orderId <-: OrderTransferredToMaster)(handleOrderEvent)
       }
 
+    case JournalActor.Output.SnapshotTaken ⇒
+      if (terminating) {
+        orderScheduleGenerator ! PoisonPill
+        if (agentRegister.nonEmpty)
+          agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
+        else
+          journalActor ! JournalActor.Input.Terminate
+      }
+
     case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable)
       // Ignore this ???
@@ -330,11 +339,7 @@ with MainJournalingActor[Event]
 
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")
-        orderScheduleGenerator ! PoisonPill
-        if (agentRegister.nonEmpty)
-          agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
-        else
-          journalActor ! JournalActor.Input.Terminate
+        journalActor ! JournalActor.Input.TakeSnapshot
         terminating = true
         terminateRespondedAt = Some(now)
         Future.successful(MasterCommand.Response.Accepted)

@@ -147,10 +147,7 @@ extends MainJournalingActor[Event] with Stash {
     case Input.Terminate ⇒
       if (!terminating) {
         terminating = true
-        for (o ← orderRegister.values if !o.detaching) {
-          o.actor ! OrderActor.Input.Terminate
-        }
-        handleTermination()
+        journalActor ! JournalActor.Input.TakeSnapshot
       }
       sender() ! Done
 
@@ -163,6 +160,14 @@ extends MainJournalingActor[Event] with Stash {
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
       if (!terminating) {
         tryStartProcessing(jobRegister(sender()))
+      }
+
+    case JournalActor.Output.SnapshotTaken ⇒
+      if (terminating) {
+        for (o ← orderRegister.values if !o.detaching) {
+          o.actor ! OrderActor.Input.Terminate
+        }
+        handleTermination()
       }
 
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
