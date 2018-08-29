@@ -1,9 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -17,7 +14,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
-import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
@@ -163,7 +160,6 @@ extends Actor with Stash {
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
-          for (o ← observerOption) o.deleteObsoleteJournalFiles()
           sender ! Output.SnapshotTaken
         }
       }
@@ -278,13 +274,13 @@ extends Actor with Stash {
       move(snapshotJournalWriter.file, file, ATOMIC_MOVE)
       snapshotJournalWriter = null
       eventWriter = newEventJsonWriter(file)
+      deleteObsoleteJournalFiles()
       unstashAll()
       andThen()
 
     case _ ⇒
       stash()
   }
-
 
   private def newEventJsonWriter(file: Path, withoutSnapshots: Boolean = false) =
     new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observerOption, simulateSync = simulateSync,
@@ -297,6 +293,17 @@ extends Actor with Stash {
       eventWriter = null
     }
   }
+
+  private def deleteObsoleteJournalFiles(): Unit =
+    observerOption match {
+      case None ⇒
+        for (file ← listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
+          try Files.delete(file)
+          catch { case NonFatal(t) ⇒ logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}") }
+        }
+      case Some(observer) ⇒
+        observer.deleteObsoleteJournalFiles()
+    }
 
   private def handleRegisterMe() = {
     journalingActors += sender()
