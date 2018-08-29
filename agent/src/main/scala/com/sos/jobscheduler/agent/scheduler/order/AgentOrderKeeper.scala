@@ -16,7 +16,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -245,7 +245,7 @@ extends MainJournalingActor[Event] with Stash {
 
     case KeepEvents(eventId) if !terminating ⇒
       Future {
-        eventWatch.keepEvents(eventId)
+        eventWatch.keepEvents(eventId).orThrow
         AgentCommand.Accepted
       }
 

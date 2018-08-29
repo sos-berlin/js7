@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
@@ -20,6 +22,7 @@ import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -48,21 +51,23 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(220))
 
-        eventWatch.keepEvents(after = 0)
+        eventWatch.keepEvents(after = 0) shouldEqual Checked.unit
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 110)
+        eventWatch.keepEvents(after = 110) shouldEqual Checked.unit
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 120)
+        eventWatch.keepEvents(after = 120) shouldEqual Checked.unit
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 220)
+        eventWatch.keepEvents(after = 220) shouldEqual Checked.unit
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
+
+        eventWatch.keepEvents(after = 0) shouldEqual Invalid(Problem("keepEvents with already accepted EventId 0 < 220 ?"))
       }
     }
   }

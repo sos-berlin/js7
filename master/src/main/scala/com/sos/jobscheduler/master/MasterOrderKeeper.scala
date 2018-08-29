@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master
 
 import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
-import akka.pattern.{ask, pipe}
+import akka.pattern.pipe
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
 import cats.instances.vector._
@@ -10,7 +10,6 @@ import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -314,7 +313,7 @@ with MainJournalingActor[Event]
     command match {
       case MasterCommand.KeepEvents(eventId) ⇒
         Future {
-          eventWatch.keepEvents(eventId)
+          eventWatch.keepEvents(eventId).orThrow
           MasterCommand.Response.Accepted
         }
 

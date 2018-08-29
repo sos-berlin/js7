@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import cats.data.Validated.Invalid
 import com.google.common.annotations.VisibleForTesting
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -95,14 +97,17 @@ with JournalingObserver
 
   /** Files containing non-kept events may be deleted. */
   @tailrec
-  def keepEvents(after: EventId): Unit = {
+  def keepEvents(after: EventId): Checked[Unit] = {
     val old = keepEventsAfter()
-    require(after >= old, s"keepEvents with already accepted EventId $after < $old ?")  // Not expected to happen
-    if (old < after) {
-      if (!keepEventsAfter.compareAndSet(old, after))
-        keepEvents(after)  // Try again when concurrently called
-      else
-        deleteObsoleteJournalFiles()
+    if (after < old)
+      Invalid(Problem(s"keepEvents with already accepted EventId $after < $old ?"))
+    else if (after == old)
+      Checked.unit
+    else if (!keepEventsAfter.compareAndSet(old, after))
+      keepEvents(after)  // Try again when concurrently called
+    else {
+      deleteObsoleteJournalFiles()
+      Checked.unit
     }
   }
 
