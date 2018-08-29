@@ -9,10 +9,9 @@ import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.Exceptions.logException
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
@@ -24,6 +23,7 @@ import java.time.Instant.now
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -84,8 +84,11 @@ extends TaskRunner {
 
   private def fetchReturnValuesThenDeleteFile(): Map[String, String] = {
     val result = returnValuesProvider.variables
-    logException(logger.asLazy.error) {    // TODO When Windows locks the file, try delete it later, asynchronously
-      delete(returnValuesProvider.file)
+    // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
+    try delete(returnValuesProvider.file)
+    catch { case NonFatal(t) ⇒
+      logger.error(s"Cannot delete file '${returnValuesProvider.file}': ${t.toStringWithCauses}")
+      throw t
     }
     result
   }

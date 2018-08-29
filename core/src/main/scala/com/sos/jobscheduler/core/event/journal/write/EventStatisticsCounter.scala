@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.core.event.journal.write
 
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.text.NumberFormat
 import java.util.Locale
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 
 /**
   * @author Joacim Zschimmer
@@ -20,7 +20,7 @@ private[journal] final class EventStatisticsCounter extends StatisticsCounter
     }
 
   override def toString =
-    if (events == 0) "(no events)"
+    if (events == 0) "no events"
     else s"$events events" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =

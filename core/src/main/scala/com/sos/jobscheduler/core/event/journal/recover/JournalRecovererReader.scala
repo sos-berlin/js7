@@ -100,8 +100,9 @@ private[recover] final class JournalRecovererReader[E <: Event](journalMeta: Jou
       logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
-      logger.info(s"Recovered last EventId is ${_lastReadEventId} " +
-        s"of ${EventId.toDateTimeString(_lastReadEventId)}, ${(now - EventId.toTimestamp(_lastReadEventId)).withNanos(0).pretty} ago " +
+      val time = EventId.toDateTimeString(_lastReadEventId)
+      val age = (now - EventId.toTimestamp(_lastReadEventId)).withNanos(0).pretty
+      logger.info(s"Recovered last EventId is ${_lastReadEventId} of $time $age ago " +
         s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }
   }

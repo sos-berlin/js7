@@ -2,6 +2,7 @@ package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.process.Processes._
@@ -169,7 +170,7 @@ object RichProcess {
       }
       catch { case NonFatal(t) ⇒
         allFilesDeleted = false
-        logger.error(t.toString)
+        logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}")
       }
     }
     allFilesDeleted
