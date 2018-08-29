@@ -32,7 +32,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
   private implicit lazy val timerService = TimerService(idleTimeout = Some(1.s))
 
-  "eventWatch.when, .onEventsAcceptedUntil" in {
+  "eventWatch.when, .keepEvents" in {
     withJournalMeta { journalMeta ⇒
       writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1)
       withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventWatch) ⇒
@@ -48,19 +48,19 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(220))
 
-        eventWatch.onEventsAcceptedUntil(0)
+        eventWatch.keepEvents(after = 0)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.onEventsAcceptedUntil(110)
+        eventWatch.keepEvents(after = 110)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.onEventsAcceptedUntil(120)
+        eventWatch.keepEvents(after = 120)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.onEventsAcceptedUntil(220)
+        eventWatch.keepEvents(after = 220)
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
       }

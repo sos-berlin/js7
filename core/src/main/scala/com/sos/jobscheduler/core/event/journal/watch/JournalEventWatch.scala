@@ -47,7 +47,7 @@ with JournalingObserver
   private val started = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader[E]] = None
-  private val eventsAcceptedUntil = AtomicLong(EventId.BeforeFirst)
+  private val keepEventsAfter = AtomicLong(EventId.BeforeFirst)
 
   def close() = {
     afterEventIdToHistoric.values foreach (_.close())
@@ -93,25 +93,26 @@ with JournalingObserver
         currentEventReader.tornEventId
     }
 
+  /** Files containing non-kept events may be deleted. */
   @tailrec
-  def onEventsAcceptedUntil(eventId: EventId): Unit = {
-    val old = eventsAcceptedUntil()
-    require(eventId >= old, s"onEventsAcceptedUntil with already accepted EventId $eventId < $old ?")  // Not expected to happen
-    if (old < eventId) {
-      if (!eventsAcceptedUntil.compareAndSet(old, eventId))
-        onEventsAcceptedUntil(eventId)  // Try again when concurrently called
+  def keepEvents(after: EventId): Unit = {
+    val old = keepEventsAfter()
+    require(after >= old, s"keepEvents with already accepted EventId $after < $old ?")  // Not expected to happen
+    if (old < after) {
+      if (!keepEventsAfter.compareAndSet(old, after))
+        keepEvents(after)  // Try again when concurrently called
       else
-        deleteObsoleteArchives()
+        deleteObsoleteJournalFiles()
     }
   }
 
-  protected[journal] def deleteObsoleteArchives(): Unit = {
-    val untilEventId = eventsAcceptedUntil()
+  protected[journal] def deleteObsoleteJournalFiles(): Unit = {
+    val after = keepEventsAfter()
     val keepAfter = currentEventReaderOption match {
-      case Some(current) if current.tornEventId <= untilEventId ⇒
+      case Some(current) if current.tornEventId <= after ⇒
         current.tornEventId
       case _ ⇒
-        historicAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing untilEventId
+        historicAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
     }
     for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepAfter) {
       try {
@@ -120,7 +121,7 @@ with JournalingObserver
         delete(historic.file)
         afterEventIdToHistoric -= historic.afterEventId
       } catch {
-        case e: IOException ⇒ logger.error(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
+        case e: IOException ⇒ logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
       }
     }
   }

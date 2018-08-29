@@ -194,8 +194,8 @@ with ReceiveLoggingActor.WithStash {
           }
         }
 
-    case Internal.EventsAccepted(eventId) ⇒  // TODO isConnected, terminating?
-      client.commandExecute(AgentCommand.KeepEvents(after = eventId)).runOnComplete { tried ⇒
+    case Internal.KeepEvents(after) ⇒  // TODO isConnected, terminating?
+      client.commandExecute(AgentCommand.KeepEvents(after = after)).runOnComplete { tried ⇒
         tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
         keepEventsCancelable = None  // Asynchronous!
       }
@@ -234,15 +234,15 @@ with ReceiveLoggingActor.WithStash {
         }
       }
 
-    case Input.EventsAccepted(eventId) ⇒
-      assert(eventId == lastEventId, s"Input.EventsAccepted($eventId) ≠ lastEventId=$lastEventId ?")
+    case Input.KeepEvents(after) ⇒
+      assert(after == lastEventId, s"Input.KeepEvents($after) ≠ lastEventId=$lastEventId ?")
       if (isConnected/*???*/) {
         if (keepEventsCancelable.isEmpty) {
           val delay = if (delayKeepEvents) keepEventsPeriod else Duration.Zero
           delayKeepEvents = true
           keepEventsCancelable = Some(
             scheduler.scheduleOnce(delay) {
-              self ! Internal.EventsAccepted(eventId)
+              self ! Internal.KeepEvents(after)
             })
         }
         scheduler.scheduleOnce(eventFetchDelay) {
@@ -375,7 +375,7 @@ private[master] object AgentDriver
       def toShortString = s"DetachOrder($orderId)"
     }
 
-    final case class EventsAccepted(agentEventId: EventId)
+    final case class KeepEvents(agentEventId: EventId)
 
     case object Terminate
   }
@@ -395,6 +395,6 @@ private[master] object AgentDriver
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable) extends DeadLetterSuppression
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]]) extends DeadLetterSuppression
-    final case class EventsAccepted(agentEventId: EventId) extends DeadLetterSuppression
+    final case class KeepEvents(agentEventId: EventId) extends DeadLetterSuppression
   }
 }

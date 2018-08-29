@@ -13,7 +13,7 @@ private[journal] trait JournalingObserver
 
   protected[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit
 
-  protected[journal] def onEventsAcceptedUntil(eventId: EventId): Unit
+  protected[journal] def keepEvents(eventId: EventId): Unit
 
-  protected[journal] def deleteObsoleteArchives(): Unit
+  protected[journal] def deleteObsoleteJournalFiles(): Unit
 }

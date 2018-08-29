@@ -163,7 +163,7 @@ extends Actor with Stash {
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
-          for (o ← observerOption) o.deleteObsoleteArchives()
+          for (o ← observerOption) o.deleteObsoleteJournalFiles()
           sender ! Output.SnapshotTaken
         }
       }
