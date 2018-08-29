@@ -122,17 +122,6 @@ extends Actor with Stash {
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
-    case Input.EventsAccepted(untilEventId) ⇒
-      if (untilEventId > lastWrittenEventId)
-        sender() ! Invalid(Problem(s"EventsAccepted($untilEventId): unknown EventId"))
-      else {
-        for (r ← observerOption) {
-          try r.onEventsAcceptedUntil(untilEventId)
-          catch { case NonFatal(t) ⇒ logger.warn(s"onEventsAcceptedUntil($untilEventId) failed: " + t.toStringWithCauses, t)}
-        }
-        sender() ! Valid(Completed)
-      }
-
     case Input.RegisterMe ⇒
       handleRegisterMe()
 
@@ -346,7 +335,6 @@ object JournalActor
       journalingObserver: Option[JournalingObserver],
       lastEventId: EventId)
     final case object StartWithoutRecovery
-    final case class EventsAccepted(untilEventId: EventId)
     private[journal] case object RegisterMe
     private[journal] final case class Store(
       keyedEventOptions: Seq[Option[AnyKeyedEvent]],

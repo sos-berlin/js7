@@ -313,12 +313,10 @@ with MainJournalingActor[Event]
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
     command match {
       case MasterCommand.KeepEvents(eventId) ⇒
-        import masterConfiguration.akkaAskTimeout
-        (journalActor ? JournalActor.Input.EventsAccepted(eventId)).mapTo[Checked[Completed]]
-          .map {
-            case Valid(Completed) ⇒ MasterCommand.Response.Accepted
-            case Invalid(problem) ⇒ throw problem.throwable
-          }
+        Future {
+          eventWatch.keepEvents(eventId)
+          MasterCommand.Response.Accepted
+        }
 
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
         val checkedSideEffect = for {

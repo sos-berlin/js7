@@ -243,12 +243,11 @@ extends MainJournalingActor[Event] with Stash {
       Future.successful(GetOrders.Response(
         for (orderEntry ← orderRegister.values) yield orderEntry.order))
 
-    case KeepEvents(after) if !terminating ⇒
-      (journalActor ? JournalActor.Input.EventsAccepted(after)).mapTo[Checked[Completed]]
-        .map {
-          case Valid(Completed) ⇒ AgentCommand.Accepted
-          case Invalid(problem) ⇒ throw problem.throwable
-        }
+    case KeepEvents(eventId) if !terminating ⇒
+      Future {
+        eventWatch.keepEvents(eventId)
+        AgentCommand.Accepted
+      }
 
     case _ if terminating ⇒
       Future.failed(AgentIsTerminatingProblem.throwable)
