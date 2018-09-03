@@ -2,10 +2,11 @@ package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{EventFooter, EventHeader, SnapshotFooter, SnapshotHeader}
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, SnapshotMeta}
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.Json
@@ -15,16 +16,16 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path, tornEventIdOption: Option[EventId] = None) extends AutoCloseable
+private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path) extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
+  val tornEventId = closeOnError(jsonReader) {
+    val journalHeader = JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"), journalFile)
+    journalHeader.eventId
+  }
   private var snapshotHeaderRead = false
   private var eventHeaderRead = false
-  private var _eventId = tornEventIdOption getOrElse EventId.BeforeFirst
-
-  JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"), journalFile)
-  var _tornEventId = tornEventIdOption
-  var lastReadEventId = -1L
+  private var _eventId = tornEventId
 
   def close() = jsonReader.close()
 
@@ -61,12 +62,6 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           None
         case SnapshotHeader ⇒
           snapshotHeaderRead = true
-          val positionAndSnapshotMetaJson = jsonReader.read() getOrElse sys.error(s"Journal '$journalFile' is truncated in snapshot section")
-          val snapshotMeta = positionAndSnapshotMetaJson.value.as[SnapshotMeta].orThrow
-          if (_tornEventId exists (_ != snapshotMeta.eventId))
-            throw new CorruptJournalException(s"SnapshotMeta.eventId=${snapshotMeta.eventId} differs from expected tornEventId=${_tornEventId.get}", journalFile, positionAndSnapshotMetaJson)
-          _tornEventId = Some(snapshotMeta.eventId)
-          _eventId = snapshotMeta.eventId
           nextSnapshotJson()
         case _ ⇒
           throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndJson)
@@ -81,7 +76,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
 
   /** For FileEventIterator */
   def seekEvent(positionAndEventId: PositionAnd[EventId]): Unit = {
-    require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=${_tornEventId}")
+    require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
     jsonReader.seek(positionAndEventId.position)
     _eventId = positionAndEventId.value
     eventHeaderRead = true
@@ -119,9 +114,6 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           None
         }
       }
-
-  def tornEventId: EventId =
-    _tornEventId getOrElse sys.error("EventReader.tornEventId is undefined")
 
   def eventId = _eventId
 

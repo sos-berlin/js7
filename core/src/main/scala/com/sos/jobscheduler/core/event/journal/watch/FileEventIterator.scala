@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -15,10 +16,13 @@ private[watch] class FileEventIterator[E <: Event](journalMeta: JournalMeta[E], 
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
   private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)
-  private val journalReader = new JournalReader(journalMeta, journalFile, tornEventIdOption = Some(tornEventId))
+  private val journalReader = new JournalReader(journalMeta, journalFile)
   private var nextEvent: Stamped[KeyedEvent[E]] = null
-  // ??? if (journalReader.tornEventId != tornEventId) sys.error(s"Expected torn EventId $tornEventId does not match file's JournalMeta.eventId=${journalReader.tornEventId}")
   private var closed = false
+
+  closeOnError(journalReader) {
+    if (journalReader.tornEventId != tornEventId) sys.error(s"Journal file '$journalFile' has different eventId=${journalReader.tornEventId} than expected=$tornEventId")
+  }
 
   def close(): Unit =
     if (!closed) {

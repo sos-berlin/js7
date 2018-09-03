@@ -24,11 +24,8 @@ final class FileEventIteratorTest extends FreeSpec
       writeJournal[TestEvent](journalMeta, after = After, TestEvents)
 
       val iterator = new FileEventIterator[TestEvent](journalMeta, journalFile, tornEventId = After, () ⇒ Files.size(journalFile))
-
-      // firstEventPosition
-      assert(iterator.firstEventPosition == 183)
+      iterator.firstEventPosition  // Must be called before reading
       iterator.next()
-      assert(iterator.position == 228)
       val firstPos = PositionAnd(iterator.firstEventPosition, After)
       val secondPos = PositionAnd(iterator.position, TestEvents(0).eventId)
 

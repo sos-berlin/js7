@@ -12,12 +12,13 @@ final class JournalHeaderTest extends FreeSpec {
 
   "NamedJsonFormat" in {
     testJson[JournalHeader](
-      JournalHeader.Singleton.copy(timestamp = "X"),
+      JournalHeader(eventId = 777).copy(timestamp = "X"),
       json"""{
         "TYPE": "JobScheduler.Journal",
-        "version": "${JournalHeader.Singleton.version}",
+        "version": "${JournalHeader.Version}",
         "softwareVersion": "${BuildInfo.version}",
         "buildId": "${BuildInfo.buildId}",
+        "eventId": 777,
         "timestamp": "X"
       }""")
   }

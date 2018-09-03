@@ -44,12 +44,12 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s  // 1000066
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
-      assertResult(SecondJournal) {
-        val jsons = journalJsons
-        jsons.slice(0, 3) ++  // Drop JsonHeader
-          jsons.slice(3, 6).sortBy(_.asObject.map(_("key").map(_.asString))) ++
-          jsons.drop(6)
-      }
+      assert({
+          val jsons = journalJsons
+          jsons.slice(0, 2) ++
+            jsons.slice(2, 5).sortBy(_.asObject.map(_("key").map(_.asString))) ++  // Make snapshots comparable
+            jsons.drop(5)
+        } == SecondJournal)
       assert(journalAggregates == Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"),
@@ -160,10 +160,10 @@ object JournalTest {
       "version": "0.17",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
+      "eventId": 0,
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
-    json"""{ "TYPE": "SnapshotMeta", "eventId": 0 }""",
     json""""-------END OF SNAPSHOTS-------"""",
     json""""-------EVENTS-------"""",
     json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
@@ -244,10 +244,10 @@ object JournalTest {
       "version": "0.17",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
+      "eventId": 1000066,
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
-    json"""{ "TYPE": "SnapshotMeta", "eventId": 1000066 }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-C", "string": "(C.Add)",
