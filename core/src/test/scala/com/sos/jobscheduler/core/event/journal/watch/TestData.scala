@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
@@ -28,6 +28,7 @@ private[watch] object TestData {
 
   def writeJournal[E <: Event](journalMeta: JournalMeta[E], after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[E]]]): Unit =
     autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
+      writer.writeHeader(JournalHeader(eventId = after, totalEventCount = 0))
       writer.beginEventSection()
       writer.writeEvents(stampedEvents)
       writer.endEventSection(sync = false)

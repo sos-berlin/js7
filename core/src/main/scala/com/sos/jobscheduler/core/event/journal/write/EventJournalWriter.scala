@@ -21,7 +21,7 @@ import scala.concurrent.duration.FiniteDuration
 private[journal] final class EventJournalWriter[E <: Event](
   journalMeta: JournalMeta[E],
   val file: Path,
-  protected val after: EventId,
+  after: EventId,
   protected val observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration],
   withoutSnapshots: Boolean = false)

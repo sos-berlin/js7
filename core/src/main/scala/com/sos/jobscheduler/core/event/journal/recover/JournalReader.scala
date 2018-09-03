@@ -19,10 +19,11 @@ import scala.annotation.tailrec
 private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path) extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
-  val tornEventId = closeOnError(jsonReader) {
-    val journalHeader = JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"), journalFile)
-    journalHeader.eventId
+  val journalHeader = closeOnError(jsonReader) {
+    JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"), journalFile)
   }
+  val tornEventId = journalHeader.eventId
+  private var _totalEventCount = journalHeader.totalEventCount
   private var snapshotHeaderRead = false
   private var eventHeaderRead = false
   private var _eventId = tornEventId
@@ -80,6 +81,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     jsonReader.seek(positionAndEventId.position)
     _eventId = positionAndEventId.value
     eventHeaderRead = true
+    _totalEventCount = -1
   }
 
   def nextEvents(): Iterator[Stamped[KeyedEvent[E]]] =
@@ -107,6 +109,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
             throw new CorruptJournalException(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
               journalFile, positionAndJson)
           _eventId = stampedEvent.eventId
+          if (_totalEventCount != -1) _totalEventCount += 1
           Some(stampedEvent)
         } else {
           if (json != EventFooter) throw new CorruptJournalException("Missing event footer", journalFile, positionAndJson)
@@ -118,6 +121,8 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   def eventId = _eventId
 
   def position = jsonReader.position
+
+  def totalEventCount = _totalEventCount
 }
 
 private[recover] object JournalReader {

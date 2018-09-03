@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.JournalActor
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
@@ -31,7 +32,8 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   "Journal file with snapshot section only" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0)) { writer ⇒
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer ⇒
+      writer.writeHeader(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
@@ -45,7 +47,8 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   "Journal file with open event section" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0)) { writer ⇒
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer ⇒
+      writer.writeHeader(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }

@@ -17,17 +17,19 @@ final case class JournalHeader(
   softwareVersion: String,
   buildId: String,
   eventId: EventId,
+  totalEventCount: Long,
   timestamp: String)
 
 object JournalHeader
 {
   private[data] val Version = "0.17"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
 
-  def apply(eventId: EventId) = new JournalHeader(
+  def apply(eventId: EventId, totalEventCount: Long) = new JournalHeader(
     version = Version,
     softwareVersion = BuildInfo.version,
     buildId = BuildInfo.buildId,
     eventId = eventId,
+    totalEventCount = totalEventCount,
     Timestamp.now.toIsoString)
 
   implicit lazy val jsonCodec = TypedJsonCodec[JournalHeader](
@@ -35,7 +37,7 @@ object JournalHeader
 
   def checkHeader(json: Json, journalFile: Path): JournalHeader = {
     val header = json.as[JournalHeader] match {
-      case Left(t) ⇒ throw new RuntimeException(s"Not a valid JobScheduler journal files: $journalFile. Expected header ${json.compactPrint}", t)
+      case Left(t) ⇒ throw new RuntimeException(s"Not a valid JobScheduler journal files: $journalFile. Expected JournalHeader instead of ${json.compactPrint}", t)
       case Right(o) ⇒ o
     }
     if (header.version != Version)

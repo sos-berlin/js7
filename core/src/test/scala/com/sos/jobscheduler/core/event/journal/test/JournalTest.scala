@@ -161,6 +161,7 @@ object JournalTest {
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 0,
+      "totalEventCount": 0,
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
@@ -245,6 +246,7 @@ object JournalTest {
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 1000066,
+      "totalEventCount": 67,
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",

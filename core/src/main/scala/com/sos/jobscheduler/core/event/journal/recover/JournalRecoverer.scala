@@ -28,7 +28,8 @@ trait JournalRecoverer[E <: Event] {
   protected def onAllSnapshotRecovered(): Unit = {}
 
   private var _lastEventId = EventId.BeforeFirst
-  private var snapshotCount, eventCount = 0
+  private var snapshotCount, eventCount = 0L
+  private var _totalEventCount = 0L
   protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
 
   protected final def hasJournal = journalFileOption.isDefined
@@ -41,6 +42,7 @@ trait JournalRecoverer[E <: Event] {
           onAllSnapshotRecovered()
           recoverEvents(journalReader)
           _lastEventId = journalReader.eventId
+          _totalEventCount = journalReader.totalEventCount
           logStatistics()
         }
       }
@@ -80,7 +82,8 @@ trait JournalRecoverer[E <: Event] {
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, lastEventId = _lastEventId)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, lastEventId = _lastEventId,
+      totalEventCount = _totalEventCount)
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -92,7 +95,8 @@ object JournalRecoverer {
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
     observer: Option[JournalingObserver] = None,
-    lastEventId: EventId)
+    lastEventId: EventId,
+    totalEventCount: Long)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
@@ -100,7 +104,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, observer, lastEventId = lastEventId)
+          journalActor ! JournalActor.Input.Start(recoveredActors, observer, lastEventId = lastEventId, totalEventCount = totalEventCount)
 
           def receive = {
             case JournalActor.Output.Ready ⇒

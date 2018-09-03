@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
@@ -52,14 +52,15 @@ extends Actor with Stash {
   private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.duration")(p ⇒ config.getDuration(p).toFiniteDuration)
   private var snapshotCancelable: Cancelable = null
 
-  private var eventWriter: EventJournalWriter[E] = null
   private var observerOption: Option[JournalingObserver] = None
-  private var snapshotJournalWriter: SnapshotJournalWriter[E] = null
+  private var eventWriter: EventJournalWriter[E] = null
+  private var snapshotWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
   private var lastWrittenEventId = EventId.BeforeFirst
   private var dontSync = true
   private var delayedCommit: Cancelable = null
+  private var totalEventCount = 0L
 
   for (o ← simulateSync) logger.warn(s"sync is simulated with $o duration")
 
@@ -68,10 +69,10 @@ extends Actor with Stash {
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
     for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
-    if (snapshotJournalWriter != null) {
-      logger.debug(s"Deleting temporary journal files due to termination: ${snapshotJournalWriter.file}")
-      snapshotJournalWriter.close()
-      Files.delete(snapshotJournalWriter.file)
+    if (snapshotWriter != null) {
+      logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
+      snapshotWriter.close()
+      Files.delete(snapshotWriter.file)
     }
     closeEventWriter()
     logger.debug("Stopped")
@@ -79,9 +80,10 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId) ⇒
-      lastWrittenEventId = lastEventId
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId, totalEventCount_) ⇒
       observerOption = observer
+      lastWrittenEventId = lastEventId
+      totalEventCount = totalEventCount_
       eventIdGenerator.updateLastEventId(lastEventId)
       journalingActors ++= keyToActor.values
       journalingActors foreach watch
@@ -101,6 +103,7 @@ extends Actor with Stash {
 
     case Input.StartWithoutRecovery ⇒  // Testing only
       eventWriter = newEventJsonWriter(journalMeta.file(after = lastWrittenEventId), withoutSnapshots = true)
+      eventWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
       unstashAll()
       becomeReady()
       sender() ! Output.Ready
@@ -213,6 +216,7 @@ extends Actor with Stash {
         keyedEventBus.publish(stamped)
       }
     }
+    totalEventCount += writtenBuffer.iterator.map(_.stampeds.count(_.isDefined)).sum
     writtenBuffer.clear()
     dontSync = true
   }
@@ -252,12 +256,13 @@ extends Actor with Stash {
       closeEventWriter()
     }
 
-    snapshotJournalWriter = new SnapshotJournalWriter[E](journalMeta,
+    snapshotWriter = new SnapshotJournalWriter[E](journalMeta,
       journalMeta.file(after = lastWrittenEventId, extraSuffix = TmpSuffix),
-      after = lastWrittenEventId, observerOption, simulateSync = simulateSync)
-    snapshotJournalWriter.beginSnapshotSection()
+      observerOption, simulateSync = simulateSync)
+    snapshotWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
+    snapshotWriter.beginSnapshotSection()
     actorOf(
-      Props { new SnapshotTaker(snapshotJournalWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
+      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
       uniqueActorName("SnapshotTaker"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
@@ -267,12 +272,12 @@ extends Actor with Stash {
       throw t.appendCurrentStackTrace
 
     case SnapshotTaker.Output.Finished(Success(snapshotCount)) ⇒
-      snapshotJournalWriter.endSnapshotSection(sync = syncOnCommit)
-      snapshotJournalWriter.close()
+      snapshotWriter.endSnapshotSection(sync = syncOnCommit)
+      snapshotWriter.close()
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
       val file = journalMeta.file(after = lastWrittenEventId)
-      move(snapshotJournalWriter.file, file, ATOMIC_MOVE)
-      snapshotJournalWriter = null
+      move(snapshotWriter.file, file, ATOMIC_MOVE)
+      snapshotWriter = null
       eventWriter = newEventJsonWriter(file)
       deleteObsoleteJournalFiles()
       unstashAll()
@@ -340,7 +345,8 @@ object JournalActor
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
-      lastEventId: EventId)
+      lastEventId: EventId,
+      totalEventCount: Long)
     final case object StartWithoutRecovery
     private[journal] case object RegisterMe
     private[journal] final case class Store(

@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
@@ -254,6 +254,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
   private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
     autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
       autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
+        writer.writeHeader(JournalHeader(eventId = lastEventId, totalEventCount = 0))
         writer.beginEventSection()
         body(writer, eventWatch)
         writer.endEventSection(sync = false)

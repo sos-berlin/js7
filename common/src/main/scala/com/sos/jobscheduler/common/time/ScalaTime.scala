@@ -24,71 +24,71 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def µs = Duration ofNanos 1000L * delegate
+    def µs = Duration ofNanos 1000L * delegate
 
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration ofMillis delegate
+    def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration ofSeconds delegate
+    def s = Duration ofSeconds delegate
 
     // Conflicts with scala.runtime.RichInt.min
     ///**
     // * Duration, counted in minutes.
     // */
-    //final def min = Duration ofMinutes delegate
+    //def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration ofHours delegate
+    def h = Duration ofHours delegate
 
-    final def *(o: Duration) =  o multipliedBy delegate
+    def *(o: Duration) =  o multipliedBy delegate
   }
 
   implicit final class DurationRichLong(private val delegate: Long) extends AnyVal {
     /**
      * Duration, counted in microseconds.
      */
-    final def µs = Duration.ofSeconds(delegate / 1000000, delegate % 1000000 * 1000)
+    def µs = Duration.ofSeconds(delegate / 1000000, delegate % 1000000 * 1000)
 
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration ofMillis delegate
+    def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration ofSeconds delegate
+    def s = Duration ofSeconds delegate
 
     // Conflicts with scala.runtime.RichLong.min
     ///**
     // * Duration, counted in minutes.
     // */
-    //final def min = Duration ofMinutes delegate
+    //def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration ofHours delegate
+    def h = Duration ofHours delegate
 
-    final def *(o: Duration) = o multipliedBy delegate
+    def *(o: Duration) = o multipliedBy delegate
   }
 
   implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal {
-    final def s: Duration = bigDecimalToDuration(delegate)
+    def s: Duration = bigDecimalToDuration(delegate)
   }
 
   def bigDecimalToDuration(o: BigDecimal) = {
     val (seconds, fraction) = o /% 1
     try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
     catch { case t: ArithmeticException ⇒
-      throw new ArithmeticException(s"Not a Duration (${t.getMessage}: $o")
+      throw new ArithmeticException(s"Not a Duration (${t.getMessage}): $o")
     }
   }
 
@@ -128,8 +128,8 @@ object ScalaTime {
     def unary_- = Duration.ZERO minus delegate
     def +(o: Duration): Duration = delegate plus o
     def -(o: Duration): Duration = delegate minus o
-    def *(o: Int): Duration = delegate multipliedBy o
-    def /(o: Int): Duration = delegate dividedBy o
+    def *(o: Long): Duration = delegate multipliedBy o
+    def /(o: Long): Duration = delegate dividedBy o
     def *(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal * o)
     def /(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal / o)
     def min(o: Duration): Duration = if (this <= o) delegate else o

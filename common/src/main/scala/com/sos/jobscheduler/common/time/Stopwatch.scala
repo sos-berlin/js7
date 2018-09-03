@@ -13,10 +13,10 @@ import scala.concurrent.{ExecutionContext, Future}
 final class Stopwatch {
   private val start = nanoTime
 
-  def result(n: Int, ops: String = "ops"): Result =
+  def result(n: Long, ops: String = "ops"): Result =
     Result(duration, n, ops)
 
-  def itemsPerSecondString(n: Int, ops: String = "ops"): String =
+  def itemsPerSecondString(n: Long, ops: String = "ops"): String =
     Stopwatch.itemsPerSecondString(duration, n, ops)
 
   def elapsedMs: Long =
@@ -49,10 +49,10 @@ object Stopwatch {
   /**
     * Returns something like "2s/3000 items, 666µs/item, 1500 items/s"
     */
-  def itemsPerSecondString(duration: Duration, n: Int, ops: String = "ops"): String =
+  def itemsPerSecondString(duration: Duration, n: Long, ops: String = "ops"): String =
     Result(duration, n, ops).toString
 
-  final case class Result(duration: Duration, n: Int, ops: String = "ops") {
+  final case class Result(duration: Duration, n: Long, ops: String = "ops") {
     def singleDuration = duration / n
     def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
     override def toString =

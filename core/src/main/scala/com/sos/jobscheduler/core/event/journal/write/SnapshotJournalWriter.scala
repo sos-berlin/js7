@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.Event
 import java.nio.file.Path
 import java.time.Instant.now
 import scala.concurrent.duration.FiniteDuration
@@ -18,7 +18,6 @@ import scala.concurrent.duration.FiniteDuration
 private[journal] final class SnapshotJournalWriter[E <: Event](
   journalMeta: JournalMeta[E],
   val file: Path,
-  protected val after: EventId,
   protected val observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration])
 extends JournalWriter[E](append = false)

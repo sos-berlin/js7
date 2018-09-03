@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestEvent, TestKeyedEventJsonCodec}
@@ -21,6 +21,7 @@ final class HistoricEventReaderTest extends FreeSpec
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer ⇒
+        writer.writeHeader(JournalHeader(eventId = After, totalEventCount = 0))
         writer.beginEventSection()
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)
