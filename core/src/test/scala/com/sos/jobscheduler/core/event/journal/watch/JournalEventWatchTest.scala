@@ -159,20 +159,21 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
       withJournalMeta { journalMeta ⇒
         autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
           autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch))) { writer ⇒
-            writer.startJournaling()
+            writer.beginEventSection()
             writer.writeEvents(
               Stamped(1, "1" <-: A1) ::
               Stamped(2, "1" <-: B1) ::
               Stamped(3, "1" <-: A2) :: Nil)
-            writer.flush(sync = false)
+            writer.endEventSection(sync = false)
           }
           assert(eventWatch.historicFileEventIds == Set[EventId]())
 
           autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = 3, Some(eventWatch))) { writer ⇒
-            writer.startJournaling()
+            writer.beginEventSection()
             writer.writeEvents(
               Stamped(4, "2" <-: A2) ::
               Stamped(5, "1" <-: B2) :: Nil)
+            writer.endEventSection(sync = false)
           }
           assert(eventWatch.historicFileEventIds == Set[EventId](0))
         }
@@ -253,8 +254,9 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
   private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) ⇒ Unit): Unit = {
     autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
       autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer ⇒
-        writer.startJournaling()
+        writer.beginEventSection()
         body(writer, eventWatch)
+        writer.endEventSection(sync = false)
       }
     }
   }

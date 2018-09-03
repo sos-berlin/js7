@@ -1,11 +1,10 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd, SeekableInputStream}
-import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.EventsHeader
+import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
 
@@ -15,72 +14,55 @@ import java.nio.file.Path
 private[watch] class FileEventIterator[E <: Event](journalMeta: JournalMeta[E], journalFile: Path, tornEventId: EventId, flushedLength: () ⇒ Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
-  // Similar to JournalRecovererReader, but reads only events.
-  // TODO Mit JournalRecovererReader zusammenlegen ?
-
-  import journalMeta.eventJsonCodec
-
   private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)
-  val jsonReader = new InputStreamJsonSeqReader(SeekableInputStream.openFile(journalFile))
-
+  private val journalReader = new JournalReader(journalMeta, journalFile, tornEventIdOption = Some(tornEventId))
+  private var nextEvent: Stamped[KeyedEvent[E]] = null
+  // ??? if (journalReader.tornEventId != tornEventId) sys.error(s"Expected torn EventId $tornEventId does not match file's JournalMeta.eventId=${journalReader.tornEventId}")
   private var closed = false
-  private var _eventId = tornEventId
 
-  def close(): Unit = {
+  def close(): Unit =
     if (!closed) {
       closed = true
-      jsonReader.close()
+      journalReader.close()
     }
-  }
 
-  lazy val firstEventPosition: Long = {
-    if (jsonReader.position != 0) throw new IllegalStateException("FileEventIterator.firstEventPosition called after borrowIterator")
-    Iterator.continually(jsonReader.read())
-      .collectFirst {
-        case Some(PositionAnd(_, EventsHeader)) ⇒ jsonReader.position
-        case None ⇒ sys.error(s"Invalid journal file '$journalFile', EventHeader is missing")
-      }
-      .get
-  }
+  final def firstEventPosition = journalReader.firstEventPosition
 
   final def seek(positionAndEventId: PositionAnd[EventId]): Unit = {
-    require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
-    jsonReader.seek(positionAndEventId.position)
-    _eventId = positionAndEventId.value
+    journalReader.seekEvent(positionAndEventId)
+    nextEvent = null
   }
 
   /**
     * @return false iff `after` is unknown
     */
   final def skipToEventAfter(after: EventId): Boolean =
-    (after >= _eventId) && {
+    (after >= eventId) && {
       var skipped = 0
-      while (_eventId < after) {
+      while (eventId < after) {
         if (!hasNext) return false
         next()
         skipped += 1
       }
       if (skipped > 0) logger.trace(s"$skipped events skipped after=$eventId")
-      _eventId == after
+      eventId == after
     }
 
-  final def hasNext = jsonReader.position != flushedLength()
-
-  final def next(): Stamped[KeyedEvent[E]] = {
-    if (!hasNext) throw new NoSuchElementException
-    val beforePosition = position
-    val stamped = jsonReader.read().map(_.value)
-      .getOrElse(sys.error(s"Unexpected end of journal files '$journalFile' at position ${jsonReader.position}, tornEventId=${EventId.toString(tornEventId)}"))
-      .as[Stamped[KeyedEvent[E]]]
-      .orThrow
-    if (stamped.eventId <= _eventId) sys.error(s"Journal file '$journalFile' contains events in reverse order " +
-      s" at position $beforePosition, ${EventId.toString(stamped.eventId)} ≤ ${EventId.toString(_eventId)}")
-    _eventId = stamped.eventId
-    stamped
+  final def hasNext = nextEvent != null || {
+    nextEvent = journalReader.nextEvent().orNull
+    nextEvent != null
   }
 
-  final def eventId = _eventId
-  final def position = jsonReader.position
+  final def next(): Stamped[KeyedEvent[E]] =
+    if (nextEvent != null) {
+      val r = nextEvent
+      nextEvent = null
+      r
+    } else
+      journalReader.nextEvent() getOrElse (throw new NoSuchElementException)
+
+  final def eventId = journalReader.eventId
+  final def position = journalReader.position
   final def isClosed = closed
 
   override def toString =

@@ -27,9 +27,13 @@ final class FileEventIteratorTest extends FreeSpec
 
       // firstEventPosition
       assert(iterator.firstEventPosition == 183)
+      iterator.next()
+      assert(iterator.position == 228)
+      val firstPos = PositionAnd(iterator.firstEventPosition, After)
+      val secondPos = PositionAnd(iterator.position, TestEvents(0).eventId)
 
       for (_ ← 1 to 3) {
-        iterator.seek(PositionAnd(iterator.firstEventPosition, After))
+        iterator.seek(firstPos)
         assert(iterator.next() == TestEvents(0))
         assert(iterator.next() == TestEvents(1))
         assert(!iterator.hasNext)
@@ -39,22 +43,36 @@ final class FileEventIteratorTest extends FreeSpec
         iterator.seek(PositionAnd(iterator.firstEventPosition, After - 1))
       }
 
-      iterator.seek(PositionAnd(iterator.firstEventPosition, After + 10))
-      iterator.skipToEventAfter(After) shouldEqual false
+      iterator.seek(secondPos)
+      iterator.next() shouldEqual TestEvents(1)
 
-      iterator.seek(PositionAnd(iterator.firstEventPosition, After))
+      iterator.seek(secondPos)
+      assert(iterator.hasNext)
+      iterator.next() shouldEqual TestEvents(1)
+
+      iterator.seek(firstPos)
+      assert(iterator.hasNext)
+      iterator.seek(secondPos)
+      iterator.next() shouldEqual TestEvents(1)
+
+      iterator.seek(secondPos)
+      iterator.skipToEventAfter(After) shouldEqual false
+      iterator.next() shouldEqual TestEvents(1)
+
+      iterator.seek(firstPos)
       iterator.skipToEventAfter(After + 15) shouldEqual false
       iterator.skipToEventAfter(After + 25) shouldEqual false
+      assert(!iterator.hasNext)
 
-      iterator.seek(PositionAnd(iterator.firstEventPosition, After))
+      iterator.seek(firstPos)
       iterator.skipToEventAfter(After) shouldEqual true
       assert(iterator.next() == TestEvents(0))
 
-      iterator.seek(PositionAnd(iterator.firstEventPosition, After))
+      iterator.seek(firstPos)
       iterator.skipToEventAfter(After + 10) shouldEqual true
       assert(iterator.next() == TestEvents(1))
 
-      iterator.seek(PositionAnd(iterator.firstEventPosition, After))
+      iterator.seek(firstPos)
       iterator.skipToEventAfter(After + 20) shouldEqual true
       assert(!iterator.hasNext)
 

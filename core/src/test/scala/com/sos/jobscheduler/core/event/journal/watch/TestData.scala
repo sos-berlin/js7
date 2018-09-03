@@ -28,9 +28,9 @@ private[watch] object TestData {
 
   def writeJournal[E <: Event](journalMeta: JournalMeta[E], after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[E]]]): Unit =
     autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
-      writer.startJournaling()
+      writer.beginEventSection()
       writer.writeEvents(stampedEvents)
-      writer.flush(sync = false)
+      writer.endEventSection(sync = false)
       writer.close()
     }
 }

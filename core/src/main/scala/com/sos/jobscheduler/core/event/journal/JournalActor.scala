@@ -115,7 +115,7 @@ extends Actor with Stash {
   private def becomeReady(): Unit = {
     become(ready)
     logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
-    eventWriter.startJournaling()
+    eventWriter.beginEventSection()
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
@@ -267,7 +267,7 @@ extends Actor with Stash {
       throw t.appendCurrentStackTrace
 
     case SnapshotTaker.Output.Finished(Success(snapshotCount)) ⇒
-      snapshotJournalWriter.flush(sync = syncOnCommit)
+      snapshotJournalWriter.endSnapshotSection(sync = syncOnCommit)
       snapshotJournalWriter.close()
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
       val file = journalMeta.file(after = lastWrittenEventId)
@@ -288,7 +288,7 @@ extends Actor with Stash {
 
   def closeEventWriter(): Unit = {
     if (eventWriter != null) {
-      eventWriter.flush(sync = syncOnCommit)
+      eventWriter.endEventSection(sync = syncOnCommit)
       eventWriter.close()
       eventWriter = null
     }

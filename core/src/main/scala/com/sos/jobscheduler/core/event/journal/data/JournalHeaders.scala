@@ -7,6 +7,8 @@ import io.circe.Json
   */
 private[journal] object JournalHeaders
 {
-  val SnapshotsHeader = Json.fromString("-------SNAPSHOTS-------")
-  val EventsHeader    = Json.fromString("-------EVENTS-------")
+  val SnapshotHeader = Json.fromString("-------SNAPSHOTS-------")
+  val SnapshotFooter = Json.fromString("-------END OF SNAPSHOTS-------")
+  val EventHeader    = Json.fromString("-------EVENTS-------")
+  val EventFooter    = Json.fromString("-------END OF EVENTS-------")
 }

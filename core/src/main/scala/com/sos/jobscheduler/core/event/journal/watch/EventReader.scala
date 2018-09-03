@@ -70,7 +70,7 @@ extends AutoCloseable
       val iterator = iteratorPool.borrowIterator()
       closeOnError(iterator) {
         if (iterator.position != position &&
-          (iterator.position < position || iterator.eventId > after/*No seek if skipToEvensAfter works without seek*/))
+          (iterator.position < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
         {
           logger.trace(s"seek $position (eventId=${indexPositionAndEventId.value}, for $after) ≠ " +
             s"iterator ${iterator.position} (eventId=${iterator.eventId})")

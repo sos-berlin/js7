@@ -60,6 +60,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
         }
       }
 
+  /** toFactor > 1 to keep multiple EventIdPositionIndex small. */
   def freeze(toFactor: Int) =
     if (!freezed) synchronized {
       if (!freezed) {

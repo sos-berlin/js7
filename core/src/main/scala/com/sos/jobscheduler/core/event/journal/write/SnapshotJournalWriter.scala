@@ -4,7 +4,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.SnapshotsHeader
+import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, SnapshotMeta}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.data.event.{Event, EventId}
@@ -30,15 +30,9 @@ extends JournalWriter[E](append = false)
   private var snapshotCount = 0
   private val startedAt = now
 
-  override def close(): Unit = {
-    super.close()
-    logger.info(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
-    for (o ← statistics.debugString) logger.debug(o)
-  }
-
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
-    jsonWriter.write(ByteString(SnapshotsHeader.compactPrint))
+    jsonWriter.write(ByteString(SnapshotHeader.compactPrint))
     jsonWriter.write(ByteString(SnapshotMeta(after).asJson.compactPrint))
     flush(sync = false)
     snapshotStarted = true
@@ -49,6 +43,13 @@ extends JournalWriter[E](append = false)
     statistics.countSnapshot()
     jsonWriter.write(json)
     snapshotCount += 1
+  }
+
+  def endSnapshotSection(sync: Boolean): Unit = {
+    jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
+    flush(sync = sync)
+    logger.info(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
+    for (o ← statistics.debugString) logger.debug(o)
   }
 
   override def toString = s"SnapshotJournalWriter(${file.getFileName})"

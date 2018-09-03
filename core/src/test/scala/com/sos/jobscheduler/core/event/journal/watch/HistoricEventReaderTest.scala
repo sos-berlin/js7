@@ -21,9 +21,9 @@ final class HistoricEventReaderTest extends FreeSpec
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer ⇒
-        writer.startJournaling()
+        writer.beginEventSection()
         writer.writeEvents(TestEvents)
-        writer.flush(sync = false)
+        writer.endEventSection(sync = false)
       }
 
       autoClosing(new HistoricEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader ⇒
@@ -57,5 +57,4 @@ object HistoricEventReaderTest {
     Stamped(After + 10, "A" <-: AEvent) ::
     Stamped(After + 20, "B" <-: BEvent) ::
     Nil
-
 }

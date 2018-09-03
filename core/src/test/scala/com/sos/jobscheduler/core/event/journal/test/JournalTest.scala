@@ -157,13 +157,14 @@ object JournalTest {
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.16",
+      "version": "0.17",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
     json"""{ "TYPE": "SnapshotMeta", "eventId": 0 }""",
+    json""""-------END OF SNAPSHOTS-------"""",
     json""""-------EVENTS-------"""",
     json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
@@ -233,12 +234,14 @@ object JournalTest {
     json"""{ "eventId": 1000062, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
     json"""{ "eventId": 1000063, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
     json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-    json"""{ "eventId": 1000065, "key": "TEST-B", "TYPE": "Removed" }""")
+    json"""{ "eventId": 1000065, "key": "TEST-B", "TYPE": "Removed" }""",
+    json""""-------END OF EVENTS-------"""",
+  )
 
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.16",
+      "version": "0.17",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "timestamp": "TIMESTAMP"
@@ -251,5 +254,6 @@ object JournalTest {
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-D", "string": "DDD",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
+    json""""-------END OF SNAPSHOTS-------"""",
     json""""-------EVENTS-------"""")
 }

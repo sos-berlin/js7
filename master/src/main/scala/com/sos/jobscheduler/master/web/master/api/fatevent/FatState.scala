@@ -20,7 +20,7 @@ import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
 {
   def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[FatEvent]]]) = {
-    if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
+    if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"Duplicate stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
     stamped.value match {
       case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
         handleOrderEvent(stamped.copy(value = orderId <-: event))
