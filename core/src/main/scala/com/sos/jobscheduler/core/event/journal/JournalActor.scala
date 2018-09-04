@@ -126,8 +126,7 @@ extends Actor with Stash {
       handleRegisterMe()
 
     case Input.Store(keyedEvents, replyTo, timestampOption, noSync, item) ⇒
-      val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption) }}
-      val stampedEvents = stampedOptions.flatten
+      val stampedEvents = keyedEvents map (e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption))
       try eventWriter.writeEvents(stampedEvents)
       catch {
         //case t: JournalWriter.SerializationException ⇒
@@ -139,7 +138,7 @@ extends Actor with Stash {
           replyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
           throw tt  // Stop Actor
       }
-      writtenBuffer += Written(stampedOptions, replyTo, sender(), item)
+      writtenBuffer += Written(stampedEvents, replyTo, sender(), item)
       dontSync &= noSync
       forwardCommit()
       if (stampedEvents.nonEmpty) {
@@ -207,16 +206,14 @@ extends Actor with Stash {
       throw tt;
     }
     logWrittenAsStored(sync)
-    for (Written(stampedOptions, replyTo, sender, item) ← writtenBuffer) {
-      replyTo.!(Output.Stored(stampedOptions, item))(sender)
-      for (lastStamped ← stampedOptions.reverseIterator.flatten.buffered.headOption) {
+    for (Written(keyedEvents, replyTo, sender, item) ← writtenBuffer) {
+      replyTo.!(Output.Stored(keyedEvents, item))(sender)
+      for (lastStamped ← keyedEvents.lastOption) {
         lastWrittenEventId = lastStamped.eventId
       }
-      for (stamped ← stampedOptions.iterator.flatten) {
-        keyedEventBus.publish(stamped)
-      }
+      keyedEvents foreach keyedEventBus.publish
     }
-    totalEventCount += writtenBuffer.iterator.map(_.stampeds.count(_.isDefined)).sum
+    totalEventCount += writtenBuffer.iterator.map(_.stamped.size).sum
     writtenBuffer.clear()
     dontSync = true
   }
@@ -236,7 +233,7 @@ extends Actor with Stash {
 
   private def logWrittenAsStored(synced: Boolean) =
     if (logger.underlying.isTraceEnabled) {
-      val it = writtenBuffer.iterator.flatMap(_.stampeds).flatten
+      val it = writtenBuffer.iterator flatMap (_.stamped)
       while (it.hasNext) {
         val stamped = it.next()
         val last = if (it.hasNext) "     " else if (synced) "sync " else "flush"  // After the last one, the file buffer was flushed
@@ -339,7 +336,7 @@ object JournalActor
   =
     Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, stopped, eventIdGenerator) }
 
-  trait CallersItem
+  private[journal] trait CallersItem
 
   object Input {
     private[journal] final case class Start(
@@ -350,7 +347,7 @@ object JournalActor
     final case object StartWithoutRecovery
     private[journal] case object RegisterMe
     private[journal] final case class Store(
-      keyedEventOptions: Seq[Option[AnyKeyedEvent]],
+      keyedEvent: Seq[AnyKeyedEvent],
       journalingActor: ActorRef,
       timestamp: Option[Timestamp],
       noSync: Boolean,
@@ -364,7 +361,7 @@ object JournalActor
   sealed trait Output
   object Output {
     final case object Ready
-    private[journal] final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]], item: CallersItem) extends Output
+    private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
@@ -378,12 +375,12 @@ object JournalActor
   }
 
   private case class Written(
-    stampeds: Seq[Option[Stamped[AnyKeyedEvent]]],  // None means no-operation (for deferAsync)
+    stamped: Seq[Stamped[AnyKeyedEvent]],  // None means no-operation (for deferAsync)
     replyTo: ActorRef,
     sender: ActorRef,
     item: CallersItem)
   {
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
-      stampeds.reverseIterator.flatten.buffered.headOption
+      stamped.reverseIterator.buffered.headOption
   }
 }

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import scala.collection.immutable.Iterable
+import scala.collection.immutable.{Iterable, Seq}
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
@@ -40,22 +40,25 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     stashingCount = Inhibited
   }
 
-  private[event] final def persistKeyedEvent[EE <: E, A](
-    keyedEvent: KeyedEvent[EE],
+  private[event] final def persistKeyedEvents[EE <: E, A](
+    keyedEvents: Seq[KeyedEvent[EE]],
     timestamp: Option[Timestamp] = None,
     noSync: Boolean = false,
     async: Boolean = false)(
     callback: Stamped[KeyedEvent[EE]] ⇒ A)
-  : Future[A] =
+  : Future[A] = {
+    assert(keyedEvents.length <= 1)
     promiseFuture[A] { promise ⇒
       start(async = async)
-      logger.trace(s"“$toString” Store ${keyedEvent.key} <-: ${typeName(keyedEvent.event.getClass)}")
+      if (logger.underlying.isTraceEnabled)
+        for (keyedEvent ← keyedEvents) logger.trace(s"“$toString” Store ${keyedEvent.key} <-: ${typeName(keyedEvent.event.getClass)}")
       journalActor.forward(
-        JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync,
+        JournalActor.Input.Store(keyedEvents, self, timestamp, noSync = noSync,
           EventCallback(
             async = async,
             event ⇒ promise complete Try { callback(event.asInstanceOf[Stamped[KeyedEvent[EE]]]) })))
     }
+  }
 
   protected final def defer(callback: ⇒ Unit): Unit =
     defer_(async = false, callback)
@@ -65,7 +68,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
 
   private def defer_(async: Boolean, callback: ⇒ Unit): Unit = {
     start(async = async)
-    journalActor.forward(JournalActor.Input.Store(None :: Nil, self, timestamp = None, noSync = true,
+    journalActor.forward(JournalActor.Input.Store(Nil, self, timestamp = None, noSync = true,
       Deferred(async = async, () ⇒ callback)))
   }
 
@@ -97,22 +100,17 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
         }
       }
       def remaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
-      if (stampedOptions.isEmpty)
-        logger.trace(s"“$toString” Stored(empty)$remaining")
-      else
-        for (stampedOption ← stampedOptions) {
-          (stampedOption, item) match {
-            case (Some(stamped), EventCallback(_, callback)) ⇒
-              logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} <-: ${typeName(stamped.value.event.getClass)}$remaining")
-              callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
+      (stampedOptions, item) match {
+        case (Seq(stamped), EventCallback(_, callback)) ⇒
+          logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} <-: ${typeName(stamped.value.event.getClass)}$remaining")
+          callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
 
-            case (None, Deferred(_, callback)) ⇒
-              logger.trace(s"“$toString” Stored (no event)$remaining")
-              callback()
+        case (Nil, Deferred(_, callback)) ⇒
+          logger.trace(s"“$toString” Stored (no event)$remaining")
+          callback()
 
-            case x ⇒ sys.error(s"Bad 'JournalActor.Output.Stored' message received: $x")
-          }
-        }
+        case _ ⇒ sys.error(s"JournalActor.Output.Stored(${stampedOptions.length}×) message does not match item '$item'")
+      }
 
     case Input.GetSnapshot ⇒
       val sender = this.sender()

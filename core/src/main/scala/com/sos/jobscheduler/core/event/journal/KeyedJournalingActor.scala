@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import scala.collection.immutable.Iterable
@@ -23,7 +24,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def persist[EE <: E, A](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ A): Future[A] = {
     registerMe()
-    super.persistKeyedEvent(KeyedEvent(key, event), noSync = noSync,  async = async) { stampedEvent ⇒
+    super.persistKeyedEvents(KeyedEvent(key, event) :: Nil, noSync = noSync,  async = async) { stampedEvent ⇒
       callback(stampedEvent.value.event.asInstanceOf[EE])
     }
   }
@@ -54,6 +55,8 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     val snapshot = this.snapshot
     if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot is null")
   }
+
+  override def toString = s"${getClass.simpleScalaName}($key)"
 }
 
 object KeyedJournalingActor {
