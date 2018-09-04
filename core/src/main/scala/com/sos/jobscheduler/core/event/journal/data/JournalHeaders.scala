@@ -11,4 +11,6 @@ private[journal] object JournalHeaders
   val SnapshotFooter = Json.fromString("-------END OF SNAPSHOTS-------")
   val EventHeader    = Json.fromString("-------EVENTS-------")
   val EventFooter    = Json.fromString("-------END OF EVENTS-------")
+  val Transaction    = Json.fromString("TRANSACTION")
+  val Commit         = Json.fromString("COMMIT")
 }

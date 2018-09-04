@@ -4,11 +4,11 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
-import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{EventFooter, EventHeader}
+import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{Commit, EventFooter, EventHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter.SerializationException
+import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter.{SerializationException, _}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
@@ -55,10 +55,13 @@ with AutoCloseable
     }
   }
 
-  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[E]]]): Unit = {
+  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[E]]], transaction: Boolean = false): Unit = {
+    // TODO Rollback writes in case of error (with seek?)
     if (!eventsStarted) throw new IllegalStateException
     _eventWritten = true
     statistics.countEventsToBeCommitted(stampedEvents.size)
+    val ta = transaction && stampedEvents.lengthCompare(1) > 0
+    if (ta) jsonWriter.write(TransactionByteString)
     for (stamped ← stampedEvents) {
       if (stamped.eventId <= _lastEventId)
         throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
@@ -69,6 +72,7 @@ with AutoCloseable
       jsonWriter.write(byteString)
       notFlushedCount += stampedEvents.length
     }
+    if (ta) jsonWriter.write(CommitByteString)
   }
 
   def endEventSection(sync: Boolean): Unit = {
@@ -92,6 +96,9 @@ with AutoCloseable
 
 private[journal] object EventJournalWriter
 {
+  private val TransactionByteString = ByteString(Transaction.asJson.compactPrint)
+  private val CommitByteString = ByteString(Commit.asJson.compactPrint)
+
   def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId, observer: Option[JournalingObserver] = None) =
     new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, observer, simulateSync = None, withoutSnapshots = true)
 

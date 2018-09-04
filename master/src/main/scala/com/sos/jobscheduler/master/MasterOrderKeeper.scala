@@ -105,9 +105,9 @@ with MainJournalingActor[Event]
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
 
-    def persistAndHandleLater(keyedEvents: Iterable[KeyedEvent[OrderEvent]]): Unit = {
+    def persistAndHandleLater(keyedEvent: KeyedEvent[OrderEvent]): Unit = {
       val first = events.isEmpty
-      events ++= keyedEvents
+      events += keyedEvent
       if (first) {
         self ! Internal.AfterProceedEventsAdded
       }
@@ -115,6 +115,7 @@ with MainJournalingActor[Event]
 
     def persistThenHandleEvents(): Unit = {
       // Eliminate duplicate events like OrderJoined, which may be issued by parent and child orders when recovering
+      // Transaction ???  persistTransaction(events.distinct.toVector)(_ foreach handleOrderEvent)
       for (e ← events.distinct) {
         persist(e)(handleOrderEvent)
       }
@@ -247,33 +248,40 @@ with MainJournalingActor[Event]
     case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentId
-      //TODO journal transaction {
       var lastAgentEventId = none[EventId]
-      stampeds foreach {
+      var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
         case stamped @ Stamped(agentEventId, timestamp, keyedEvent) ⇒
           if (agentEventId < lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
-            logger.error(s"Agent ${agentEntry.agentId} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
-          } else {
+            logger.error(s"Agent ${ agentEntry.agentId } has returned old (<= ${ lastAgentEventId.getOrElse(agentEntry.lastAgentEventId) }) event: $stamped")
+            None
+          } else
             keyedEvent match {
               case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
                 val ownEvent = event match {
-                  case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ ⇒ event
                 }
-                persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
+                lastAgentEventId = agentEventId.some
+                Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
               case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
-                persist(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)) { _ ⇒ }
+                lastAgentEventId = agentEventId.some
+                Some(Timestamped(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)))
             }
-            lastAgentEventId = agentEventId.some
-          }
       }
-      for (agentEventId ← lastAgentEventId) {
-        persist(agentId <-: AgentEventIdEvent(agentEventId)) { _ ⇒
+      masterStamped ++= lastAgentEventId.map(agentEventId ⇒ Timestamped(agentId <-: AgentEventIdEvent(agentEventId)))
+
+      persistTransactionTimestamped(masterStamped) { _.map(_.value) foreach {
+        case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+          handleOrderEvent(orderId, event)
+
+        case KeyedEvent(_: AgentId, AgentEventIdEvent(agentEventId)) ⇒
           agentEntry.lastAgentEventId = agentEventId
           agentEntry.actor ! AgentDriver.Input.KeepEvents(agentEventId)
-        }
+
+        case _ ⇒
       }
+    }
 
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
       val unknown = orderIds -- orderRegister.keySet
@@ -293,9 +301,9 @@ with MainJournalingActor[Event]
           journalActor ! JournalActor.Input.Terminate
       }
 
-    case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
-      logger.error(msg.toString, throwable)
-      // Ignore this ???
+    //case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
+    //  logger.error(msg.toString, throwable)
+    //  // Ignore this ???
 
     case Terminated(a) if agentRegister contains a ⇒
       agentRegister -= a
@@ -362,10 +370,7 @@ with MainJournalingActor[Event]
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(IO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield IO {
-      //TODO journal transaction {
-      for (event ← events) {
-        persist(event)(logNotableEvent)
-      }
+      persistTransaction(events map (e ⇒ KeyedEvent(e)))(_ foreach logNotableEvent)
       defer {
         changeRepo(changedRepo)
         foldedSideEffects.unsafeRunSync()
@@ -468,7 +473,9 @@ with MainJournalingActor[Event]
               }
             }
             orderEntry.update(event)
-            proceedWithOrder(orderEntry)
+            if (orderRegister contains orderId) {  // orderEntry has not been deleted?
+              proceedWithOrder(orderEntry)
+            }
         }
     }
   }
@@ -516,7 +523,9 @@ with MainJournalingActor[Event]
 
     // When recovering, proceedWithOrderOnMaster may issue the same event multiple times, so OrderJoined for each parent and child order.
     // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
-    afterProceedEvents.persistAndHandleLater(orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten.toIterable)
+    for (keyedEvent ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
+      afterProceedEvents.persistAndHandleLater(keyedEvent)
+    }
   }
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit = {

@@ -49,11 +49,7 @@ extends KeyedJournalingActor[TestEvent] {
           }
 
         case Command.Append(string) ⇒
-          for (c ← string) {
-            persist(TestEvent.Appended(c)) { e ⇒
-              update(e)
-            }
-          }
+          persistTransaction(string map TestEvent.Appended.apply)(es ⇒ es foreach update)
           defer {
             sender() ! Response.Completed(disturbance)
           }

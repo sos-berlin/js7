@@ -30,7 +30,9 @@ private[watch] object TestData {
     autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
       writer.writeHeader(JournalHeader(eventId = after, totalEventCount = 0))
       writer.beginEventSection()
-      writer.writeEvents(stampedEvents)
+      writer.writeEvents(stampedEvents take 1)
+      writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)
+      writer.writeEvents(stampedEvents drop 3)
       writer.endEventSection(sync = false)
       writer.close()
     }

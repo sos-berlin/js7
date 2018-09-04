@@ -67,6 +67,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
 
   final def eventId = journalReader.eventId
   final def position = journalReader.position
+  final def positionAndEventId = journalReader.positionAndEventId
   final def isClosed = closed
 
   override def toString =

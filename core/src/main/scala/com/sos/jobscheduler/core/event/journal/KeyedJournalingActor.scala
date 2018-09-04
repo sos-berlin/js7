@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
-import scala.collection.immutable.Iterable
+import scala.collection.immutable.{Iterable, Seq}
 import scala.concurrent.Future
 
 /**
@@ -24,8 +24,17 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def persist[EE <: E, A](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ A): Future[A] = {
     registerMe()
-    super.persistKeyedEvents(KeyedEvent(key, event) :: Nil, noSync = noSync,  async = async) { stampedEvent ⇒
+    super.persistKeyedEvent(KeyedEvent(key, event), noSync = noSync,  async = async) { stampedEvent ⇒
       callback(stampedEvent.value.event.asInstanceOf[EE])
+    }
+  }
+
+  protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false, noSync: Boolean = false)
+    (callback: Seq[EE] ⇒ A)
+  : Future[A] = {
+    registerMe()
+    super.persistKeyedEvents(events map (e ⇒ Timestamped(KeyedEvent(key, e))), noSync = noSync,  async = async, transaction = true) {
+      stampedEvents ⇒ callback(stampedEvents map (_.value.event.asInstanceOf[EE]))
     }
   }
 

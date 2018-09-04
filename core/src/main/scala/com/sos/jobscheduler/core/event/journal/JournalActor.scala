@@ -125,19 +125,20 @@ extends Actor with Stash {
     case Input.RegisterMe ⇒
       handleRegisterMe()
 
-    case Input.Store(keyedEvents, replyTo, timestampOption, noSync, item) ⇒
-      val stampedEvents = keyedEvents map (e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption))
-      try eventWriter.writeEvents(stampedEvents)
-      catch {
-        //case t: JournalWriter.SerializationException ⇒
-        //  logger.error(t.getCause.toStringWithCauses, t.getCause)
-        //  replyTo.forward(Output.SerializationFailure(t.getCause))  // TODO Handle message in JournaledActor
-        case NonFatal(t) ⇒
-          val tt = t.appendCurrentStackTrace
-          logger.error(tt.toStringWithCauses, tt)
-          replyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
-          throw tt  // Stop Actor
-      }
+    case Input.Store(timestamped, replyTo, noSync, transaction, item) ⇒
+      val stampedEvents = for (t ← timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
+      /*try*/ eventWriter.writeEvents(stampedEvents, transaction = transaction)
+      // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
+      //catch {
+      //  //case t: JournalWriter.SerializationException ⇒
+      //  //  logger.error(t.getCause.toStringWithCauses, t.getCause)
+      //  //  replyTo.forward(Output.SerializationFailure(t.getCause))  // TODO Handle message in JournaledActor
+      //  case NonFatal(t) ⇒
+      //    val tt = t.appendCurrentStackTrace
+      //    logger.error(tt.toStringWithCauses, tt)
+      //    replyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
+      //    throw tt  // Stop Actor
+      //}
       writtenBuffer += Written(stampedEvents, replyTo, sender(), item)
       dontSync &= noSync
       forwardCommit()
@@ -347,10 +348,10 @@ object JournalActor
     final case object StartWithoutRecovery
     private[journal] case object RegisterMe
     private[journal] final case class Store(
-      keyedEvent: Seq[AnyKeyedEvent],
+      timestamped: Seq[Timestamped],
       journalingActor: ActorRef,
-      timestamp: Option[Timestamp],
       noSync: Boolean,
+      transaction: Boolean,
       item: CallersItem)
     final case object TakeSnapshot
     final case object Terminate
@@ -358,11 +359,16 @@ object JournalActor
     private[journal] case object GetState
   }
 
+  private[journal] trait Timestamped {
+    def keyedEvent: AnyKeyedEvent
+    def timestamp: Option[Timestamp]
+  }
+
   sealed trait Output
   object Output {
     final case object Ready
     private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
-    final case class SerializationFailure(throwable: Throwable) extends Output
+    //final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
     private[journal] final case class State(isFlushed: Boolean, isSynced: Boolean)

@@ -19,6 +19,16 @@ trait MainJournalingActor[E <: Event] extends JournalingActor[E] {
   protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false, noSync: Boolean = false)
     (callback: Stamped[KeyedEvent[EE]] ⇒ A)
   : Future[A] =
-    super.persistKeyedEvents(keyedEvent :: Nil, timestamp, noSync = noSync, async = async)(callback)
+    super.persistKeyedEvent(keyedEvent, timestamp, noSync = noSync, async = async)(callback)
+
+  protected final def persistTransaction[EE <: E, A](keyedEvent: Seq[KeyedEvent[EE]], async: Boolean = false, noSync: Boolean = false)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+  : Future[A] =
+    persistTransactionTimestamped(keyedEvent map (e ⇒ Timestamped(e)), async = async, noSync = noSync)(callback)
+
+  protected final def persistTransactionTimestamped[EE <: E, A](keyedEvent: Seq[Timestamped[EE]], async: Boolean = false, noSync: Boolean = false)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+  : Future[A] =
+    super.persistKeyedEvents(keyedEvent, noSync = noSync, async = async, transaction = true)(callback)
 }
 

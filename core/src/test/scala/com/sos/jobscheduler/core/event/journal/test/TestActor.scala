@@ -164,6 +164,7 @@ private[journal] object TestActor {
   private val MyConfig = ConfigFactory.parseString("""
      |jobscheduler.journal.sync = on
      |jobscheduler.journal.delay = 0.s
+     |jobscheduler.journal.simulate-sync = 10ms
      |jobscheduler.journal.snapshot.log-period = 10.ms
      |jobscheduler.journal.snapshot.log-actor-limit = 1
      |""".stripMargin)
