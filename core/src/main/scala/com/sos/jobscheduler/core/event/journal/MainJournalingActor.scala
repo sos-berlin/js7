@@ -14,21 +14,29 @@ import scala.concurrent.Future
 trait MainJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE], noSync: Boolean = false)(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
-    persist(keyedEvent, async = true)(callback)
+    super.persistKeyedEvent(keyedEvent, timestamp = None, noSync = noSync, async = true)(callback)
 
-  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false, noSync: Boolean = false)
+  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], noSync: Boolean = false)(callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A): Future[A] =
+    super.persistKeyedEvents(toTimestamped(keyedEvents), noSync = noSync, async = true)(callback)
+
+  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, noSync: Boolean = false, async: Boolean = false)
     (callback: Stamped[KeyedEvent[EE]] ⇒ A)
   : Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp, noSync = noSync, async = async)(callback)
 
-  protected final def persistTransaction[EE <: E, A](keyedEvent: Seq[KeyedEvent[EE]], async: Boolean = false, noSync: Boolean = false)
+  protected final def persistMultiple[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], noSync: Boolean = false, async: Boolean = false)
     (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
   : Future[A] =
-    persistTransactionTimestamped(keyedEvent map (e ⇒ Timestamped(e)), async = async, noSync = noSync)(callback)
+    super.persistKeyedEvents(toTimestamped(keyedEvents), noSync = noSync, async = async)(callback)
 
-  protected final def persistTransactionTimestamped[EE <: E, A](keyedEvent: Seq[Timestamped[EE]], async: Boolean = false, noSync: Boolean = false)
+  protected final def persistTransaction[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], noSync: Boolean = false, async: Boolean = false)
     (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
   : Future[A] =
-    super.persistKeyedEvents(keyedEvent, noSync = noSync, async = async, transaction = true)(callback)
+    persistTransactionTimestamped(toTimestamped(keyedEvents), noSync = noSync, async = async)(callback)
+
+  protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]], noSync: Boolean = false, async: Boolean = false)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+  : Future[A] =
+    super.persistKeyedEvents(keyedEvents, noSync = noSync, async = async, transaction = true)(callback)
 }
 

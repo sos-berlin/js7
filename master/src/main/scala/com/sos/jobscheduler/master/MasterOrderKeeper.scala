@@ -115,10 +115,8 @@ with MainJournalingActor[Event]
 
     def persistThenHandleEvents(): Unit = {
       // Eliminate duplicate events like OrderJoined, which may be issued by parent and child orders when recovering
-      // Transaction ???  persistTransaction(events.distinct.toVector)(_ foreach handleOrderEvent)
-      for (e ← events.distinct) {
-        persist(e)(handleOrderEvent)
-      }
+      persistMultiple(events.distinct)(
+        _ foreach handleOrderEvent)
       events.clear()
     }
   }
@@ -288,9 +286,8 @@ with MainJournalingActor[Event]
       if (unknown.nonEmpty) {
         logger.error(s"Received OrdersDetached from Agent for unknown orders: "+ unknown.mkString(", "))
       }
-      for (orderId ← orderIds -- unknown) {
-        persistAsync(orderId <-: OrderTransferredToMaster)(handleOrderEvent)
-      }
+      persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster))(
+        _ foreach handleOrderEvent)
 
     case JournalActor.Output.SnapshotTaken ⇒
       if (terminating) {

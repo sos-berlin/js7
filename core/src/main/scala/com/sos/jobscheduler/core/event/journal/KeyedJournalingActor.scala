@@ -29,7 +29,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     }
   }
 
-  protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false, noSync: Boolean = false)
+  protected final def persistTransaction[EE <: E, A](events: Seq[EE], noSync: Boolean = false, async: Boolean = false)
     (callback: Seq[EE] ⇒ A)
   : Future[A] = {
     registerMe()

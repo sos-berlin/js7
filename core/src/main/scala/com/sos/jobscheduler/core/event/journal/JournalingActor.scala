@@ -161,6 +161,9 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       super.stash()
   }
 
+  protected def toTimestamped[EE <: E](keyEvents: collection.Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
+    keyEvents.view.map(e ⇒ Timestamped(e)).to[Vector]
+
   protected type Timestamped[+EE <: E] = JournalingActor.Timestamped[EE]
 
   protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None) =
