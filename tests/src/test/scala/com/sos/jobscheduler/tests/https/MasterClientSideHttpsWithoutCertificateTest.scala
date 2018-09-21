@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -15,14 +14,18 @@ final class MasterClientSideHttpsWithoutCertificateTest extends HttpsTestBase
   override protected def masterHttpsMutual = true  // Master requires Clients certificate
 
   "overview" in {
-    intercept[javax.net.ssl.SSLException] {
+    val exception = intercept[Exception] {
       masterApi.overview await 99.s
-    } .getMessage shouldEqual "Received fatal alert: certificate_unknown"
+    }
+    assert(exception.toString == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
+           exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
   }
 
   "Login" in {
-    intercept[javax.net.ssl.SSLException] {
+    val exception = intercept[Exception] {
       masterApi.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
-    } .getMessage shouldEqual "Received fatal alert: certificate_unknown"
+    }
+    assert(exception.toString == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
+           exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
   }
 }
