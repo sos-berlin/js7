@@ -2,7 +2,6 @@
 set -e
 
 data=.
-httpPort=4444
 args=()
 
 argToRequest() {

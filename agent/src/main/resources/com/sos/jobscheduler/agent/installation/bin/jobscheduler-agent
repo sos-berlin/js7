@@ -115,7 +115,7 @@ function terminate() {
   echo Terminate JobScheduler Agent
   # Add some seconds to start Java with AgentClientMain
   terminateTimeout=30
-  if true; then
+  if [ "$SHELL" == "/bin/bash" ]; then
     "$JOBSCHEDULER_HOME"/bin/jobscheduler-client -data-directory="$normalizedData" "$terminateCommand" &
   else
     "$java" -Xmx50m \
