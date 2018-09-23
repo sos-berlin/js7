@@ -31,5 +31,8 @@ object StartUp {
         logger.debug(Logger.Java, s"Classpath $o")
       }
     }
+    if (logger.underlying.isTraceEnabled) {
+      logger.debug("Logger TRACE enabled")
+    }
   }
 }
