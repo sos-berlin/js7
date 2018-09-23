@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration status="WARN" shutdownHook="disable">
+<configuration status="WARN" shutdownHook="disable" monitorInterval="10">
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
@@ -15,6 +15,7 @@
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
+      <defaultRolloverStrategy fileIndex="nomax"/>
     </rollingRandomAccessFile>
     <rollingRandomAccessFile name="weblog"
                              fileName="${env:SCHEDULER_LOGS}/web.log"
@@ -27,12 +28,13 @@
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
+      <defaultRolloverStrategy fileIndex="nomax"/>
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
     <root level="INFO">
       <appenderRef ref="stderr" level="INFO"/>
-      <appenderRef ref="file"   level="DEBUG"/>
+      <appenderRef ref="file"   level="TRACE"/>
     </root>
     <logger level="DEBUG" name="web" additivity="false">
       <appenderRef ref="weblog"/>

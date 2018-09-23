@@ -23,9 +23,11 @@ services:
     - "127.0.0.1:4444:4444"
     working_dir: /var/opt/jobscheduler/master/data
     volumes:
-      - ./volumes/master:/var/opt/jobscheduler/master
+      - ./volumes/master/config:/var/opt/jobscheduler/master/config:ro
+      - ./volumes/master/data:/var/opt/jobscheduler/master/data:delegated
     stop_grace_period: 60s
     restart: unless-stopped
+
   agent-1:
     image: jobscheduler
     container_name: jobscheduler-agent-1
@@ -33,9 +35,11 @@ services:
     hostname: agent-1
     working_dir: /var/opt/jobscheduler/agent/data
     volumes:
-      - ./volumes/agent-1:/var/opt/jobscheduler/agent
+      - ./volumes/agent-1/config:/var/opt/jobscheduler/agent/config:ro
+      - ./volumes/agent-1/data:/var/opt/jobscheduler/agent/data:delegated
     stop_grace_period: 60s
     restart: unless-stopped
+
   agent-2:
     image: jobscheduler
     container_name: jobscheduler-agent-2
@@ -43,6 +47,7 @@ services:
     hostname: agent-2
     working_dir: /var/opt/jobscheduler/agent/data
     volumes:
-      - ./volumes/agent-2:/var/opt/jobscheduler/agent
+      - ./volumes/agent-2/config:/var/opt/jobscheduler/agent/config:ro
+      - ./volumes/agent-2/data:/var/opt/jobscheduler/agent/data:delegated
     stop_grace_period: 60s
     restart: unless-stopped
