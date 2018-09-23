@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-    <!-- The TaskServer process should not log to stdout or stderr to avoid a loop with task stdout collecting -->
-    <root level="OFF"/>
-</configuration>

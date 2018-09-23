@@ -28,7 +28,7 @@ final class ShellScriptProcessTest extends FreeSpec {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
-    val processConfig = ProcessConfiguration(additionalEnvironment = Map(envName → envValue))
+    val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName → envValue))
     val shellProcess = startShellScript(processConfig, name = "TEST", s"exit $exitCode")
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
@@ -58,7 +58,7 @@ final class ShellScriptProcessTest extends FreeSpec {
                |echo TEST-SCRIPT
                |""".stripMargin
           val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
-          val processConfig = ProcessConfiguration(stdFileMap)
+          val processConfig = ProcessConfiguration.forTest.copy(stdFileMap)
           val shellProcess = startShellScript(processConfig, name = "TEST", scriptString = scriptString)
           shellProcess.terminated await 99.s
           shellProcess.close()
@@ -87,7 +87,7 @@ final class ShellScriptProcessTest extends FreeSpec {
         delete(killScriptOutputFile)
         delete(killScriptFile)
       }
-      val processConfig = ProcessConfiguration(
+      val processConfig = ProcessConfiguration.forTest.copy(
         stdFileMap = stdFileMap,
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = Some(ProcessKillScript(killScriptFile)))
@@ -114,7 +114,7 @@ final class ShellScriptProcessTest extends FreeSpec {
   if (!isWindows) {
     "sendProcessSignal SIGTERM (Unix only)" in {
       val script = "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3"
-      val shellProcess = startShellScript(ProcessConfiguration(), scriptString = script)
+      val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptString = script)
       sleep(3.s)
       assert(shellProcess.isAlive)
       shellProcess.sendProcessSignal(SIGTERM)

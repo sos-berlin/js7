@@ -15,7 +15,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
-import com.sos.jobscheduler.taskserver.task.TaskArguments
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
 import java.nio.file.Files.delete
@@ -50,7 +49,7 @@ extends TaskRunner {
 
   private val terminatedPromise = Promise[Completed]()
   private val startedAt = now
-  private val variablePrefix = TaskArguments.DefaultShellVariablePrefix
+  private val variablePrefix = DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider
   private val richProcessOnce = new SetOnce[RichProcess]
   private var killedBeforeStart = false
@@ -131,6 +130,7 @@ extends TaskRunner {
 }
 
 object SimpleShellTaskRunner {
+  private val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
   private val logger = Logger(getClass)
 
   @Singleton

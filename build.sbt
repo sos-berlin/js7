@@ -13,9 +13,6 @@
   * To build quickly, without running tests again:
   *   sbt "; clean-all; build-quickly"
   *
-  * Under Windows, Microsoft SDK is required to compile taskserver-dotnet.
-  *   set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
-  *
   * To build and publish to a repository use
   *   sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
   *   (publishRepository.name defaults to publishRepository.uri)
@@ -30,7 +27,6 @@ import BuildUtils._
 import Dependencies.bootstrapVersion
 import java.nio.file.Paths
 import sbt.Keys.testOptions
-import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
 
 val _dummy_ = {
@@ -51,7 +47,6 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
-// Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
 addCommandAlias("clean-all"      , "; clean; clean-js; testerJVM/clean")
 addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/clean; master-clientJS/clean; master-dataJS/clean; master-gui-browser/clean; testerJS/clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
@@ -59,8 +54,8 @@ addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
-addCommandAlias("compile-all"    , "; engine-job-api/Test/compile; Test/compile; ForkedTest:compile")
-addCommandAlias("compile-only"   , "; engine-job-api/compile; compile")
+addCommandAlias("compile-all"    , "; Test/compile; ForkedTest:compile")
+addCommandAlias("compile-only"   , "; compile")
 addCommandAlias("test-all",
   if (testParallel)
     "; StandardTest:test" +
@@ -133,13 +128,8 @@ lazy val jobscheduler = (project in file("."))
     `agent-client`,
     `agent-data`,
     `agent-tests`,
-    `engine-job-api`,
-    minicom,
     taskserver,
-    `taskserver-dotnet`,
-    `taskserver-moduleapi`,
-    tests,
-    tunnel)
+    tests)
   .settings(skip in publish := true)
 
 lazy val `jobscheduler-install` = project
@@ -450,7 +440,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
       log4j % "test"
   }
 
-lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tunnel, tester.jvm % "test")
+lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -515,61 +505,8 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
       log4j % "test"
   }
 
-lazy val `engine-job-api` = project.dependsOn(common, tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings(
-    description := "JobScheduler Java Job API",
-    crossPaths := false)  // No Scala binary "_2.11" version in artifact name
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      guava ++
-      javaxAnnotations % "compile" ++
-      groovy % "test" ++
-      apacheCommonsBeanutils % "test" ++
-      reflections % "test" ++
-      scalaTest % "test" ++
-      log4j % "test"
-  }
-
-lazy val minicom = project.dependsOn(common, `engine-job-api`, tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      guava ++
-      scalaXml ++
-      javaxAnnotations % "compile" ++
-      intelliJAnnotations % "compile" ++
-      mockito % "test" ++
-      scalaTest % "test" ++
-      log4j % "test"
-  }
-
-lazy val tunnel = project.dependsOn(common, data.jvm, tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      akkaHttp ++
-      akkaStream ++
-      akkaActor ++
-      akkaSlf4j ++
-      scalactic ++
-      intelliJAnnotations % "compile" ++
-      scalaTest % "test" ++
-      log4j % "test"
-  }
-
 lazy val taskserver = project
   .dependsOn(
-    `taskserver-moduleapi`,
-    `taskserver-dotnet`,
-    minicom,
     `agent-data`,
     common,
     data.jvm,
@@ -588,85 +525,6 @@ lazy val taskserver = project
       scalaTest % "test" ++
       log4j % "test"
   }
-
-lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTest % "test" ++
-      log4j % "test"
-  }
-
-lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      javaxAnnotations % "compile" ++
-      "net.sf.jni4net" % "jni4net.j" % "0.8.8.0" ++
-      "net.sf.jni4net" % "jni4net-bin" % "0.8.8.0" % "compile" ++
-      "com.sos-berlin" % "jni4net.n-sos" % "0.8.8.0" % "compile" ++
-      mockito % "test" ++
-      scalaTest % "test" ++
-      log4j % "test"
-  }
-  .settings(
-    sourceGenerators in Compile += Def.task {
-      def extractProxygen() = IO.unzip(
-        from = (update in Compile).value.select(artifactFilter()).filter { _.name contains "jni4net-bin-0.8.8.0.jar" }.head,
-        toDirectory = (target in Compile).value / "jni4net",
-        filter = { name: String ⇒ name.startsWith("bin/proxygen.exe") || name.startsWith("lib/") })
-
-      def extractDll() = IO.unzip(
-        from = (update in Compile).value.select(artifactFilter()).filter { _.name contains "jni4net.n-sos-0.8.8.0.jar" }.head,
-        toDirectory = (target in Compile).value / "jni4net_forked")
-
-      if (!isWindows) Nil
-      else {
-        import java.lang.ProcessBuilder.Redirect.PIPE
-        import java.nio.file.Files.createDirectories
-        // engine-job-api must have been compiled before running this code !!!
-        val jobApiClassesDir = baseDirectory.value / "../engine-job-api/target/classes/sos/spooler"  // How to do this right with a TaskKey???
-
-        def provideJobApiClassFiles(): Unit = {
-          val classes = listFiles(jobApiClassesDir) filter { file ⇒
-            file.isFile && !Set("Job_impl.class", "Monitor_impl.class", "Spooler_program.class").contains(file.getName)
-          }
-          if (classes.isEmpty) sys.error(s"Expecting class files in $jobApiClassesDir")
-          val dest = target.value / "jni4net-input/javaClasses/sos/spooler"
-          createDirectories(dest.toPath)
-          for (classFile ← classes) IO.copyFile(classFile, dest / classFile.getName)
-        }
-
-        def callPowershellScript(): Unit = {
-          val scriptFile = baseDirectory.value / "src/main/scripts/Generate-Jni4Net.ps1"
-          executeWindowsCmd(
-            command = s"""powershell -NonInteractive -noprofile -executionpolicy bypass "& '$scriptFile' '${target.value}' '${crossTarget.value}/classes'" <NUL""",
-            name = scriptFile.toString)
-        }
-
-        def executeWindowsCmd(command: String, name: String): Unit = {
-          val cmd = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC"/*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
-          val processBuilder = new java.lang.ProcessBuilder(cmd, "/C", command)
-            .inheritIO().redirectInput(PIPE).directory(baseDirectory.value)
-          for (o ← javaHome.value) processBuilder.environment.put("JAVA_HOME", o.toString)
-          val process = processBuilder.start()
-          process.getOutputStream.close()
-          val exitValue = process.waitFor()
-          if (exitValue != 0) sys.error(s"Process '$name' terminates with exitValue=$exitValue")
-        }
-
-        provideJobApiClassFiles()
-        extractProxygen()
-        extractDll()
-        callPowershellScript()
-
-        listFiles(target.value / "jni4net-build/jvm/sos/spooler")  // Generated Java source files
-      }
-    }.taskValue)
 
 lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

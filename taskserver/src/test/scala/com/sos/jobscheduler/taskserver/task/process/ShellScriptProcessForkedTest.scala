@@ -24,7 +24,7 @@ final class ShellScriptProcessForkedTest extends FreeSpec {
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
     val processFutures = for (i ← 0 until n) yield Future {
-      startShellScript(ProcessConfiguration(), name = s"#$i", scriptString = script)
+      startShellScript(ProcessConfiguration.forTest, name = s"#$i", scriptString = script)
     }
     val processes = processFutures await 300.s
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }

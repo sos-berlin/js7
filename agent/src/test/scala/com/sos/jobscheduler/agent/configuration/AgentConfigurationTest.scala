@@ -6,8 +6,6 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.createTempDirectory
@@ -29,14 +27,10 @@ final class AgentConfigurationTest extends FreeSpec  {
         configDirectory = config,
         dataDirectory = data,
         webServerPorts = Nil,
-        jobWorkingDirectory = WorkingDirectory,
         logDirectory = data / "logs",
-        environment = Map(),
+        jobWorkingDirectory = WorkingDirectory,
         jobJavaOptions = Nil,
-        dotnet = DotnetConfiguration(),
-        rpcKeepaliveDuration = None,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
-        commandTimeout = 60.s,
         akkaAskTimeout = 60.seconds,
         name = "Agent",
         ConfigFactory.empty))
@@ -84,10 +78,6 @@ final class AgentConfigurationTest extends FreeSpec  {
       val myConf = conf(s"-config-directory=$config", s"-data-directory=$data", "-kill-script=/my/kill/script").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     }
-  }
-
-  "-rpc-keepalive=" in {
-    assert(dummyDirectoriesConf("-rpc-keepalive=5m").rpcKeepaliveDuration == Some(5 * 60.s))
   }
 
   "System property" in {

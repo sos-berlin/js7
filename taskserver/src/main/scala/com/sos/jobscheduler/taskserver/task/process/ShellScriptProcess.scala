@@ -29,7 +29,7 @@ extends RichProcess(processConfiguration, process, argumentsForLogging) {
 
 object ShellScriptProcess {
   def startShellScript(
-    processConfiguration: ProcessConfiguration = ProcessConfiguration(),
+    processConfiguration: ProcessConfiguration,
     name: String = "shell-script",
     scriptString: String)
     (implicit executionContext: ExecutionContext)
@@ -55,7 +55,7 @@ object ShellScriptProcess {
 
   def startPipedShellScript(
     shellFile: Path,
-    processConfiguration: ProcessConfiguration = ProcessConfiguration(),
+    processConfiguration: ProcessConfiguration,
     stdChannels: StdChannels)
     (implicit executionContext: ExecutionContext): ShellScriptProcess =
   {

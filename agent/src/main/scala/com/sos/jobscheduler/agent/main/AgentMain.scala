@@ -7,7 +7,6 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.Closers.EmptyAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -30,9 +29,7 @@ object AgentMain {
     logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
     val exitCode = try {
       val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
-      val (conf, dotnet) = tryProvideDotnet(agentConfiguration)
-      try run(conf).awaitInfinite
-      finally dotnet.close()
+      run(agentConfiguration).awaitInfinite
       val msg = "JobScheduler Agent terminated"
       println(msg)
       logger.debug(msg)
@@ -47,15 +44,6 @@ object AgentMain {
     Log4j.shutdown()
     sys.runtime.exit(exitCode)
   }
-
-  private def tryProvideDotnet(conf: AgentConfiguration): (AgentConfiguration, AutoCloseable) =
-    conf match {
-      // TODO DotnetModule als ServiceProvider realisieren, so dass unter Unix kompilierter Agent auch unter Windows nutzbar ist.
-      //case c if isWindows ⇒
-      //  val env = new DotnetEnvironment(temporaryDirectory)
-      //  (c withDotnetAdapterDirectory Some(env.directory), env)
-      case c ⇒ (c, EmptyAutoCloseable)
-    }
 
   private def run(conf: AgentConfiguration): Future[Completed] = {
     (for (agent ← RunningAgent(conf)) yield {

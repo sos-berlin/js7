@@ -5,21 +5,16 @@ import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
-import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
-import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.jobscheduler.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
-import com.sos.jobscheduler.taskserver.modules.shell.ShellModule
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -37,22 +32,6 @@ extends AbstractModule {
 
   @Provides @Singleton
   def actorRefFactory(o: ActorSystem): ActorRefFactory = o
-
-  @Provides @Singleton
-  def moduleFactoryRegister(shellModuleFactory: ShellModule.Factory): ModuleFactoryRegister = {
-    val forInProcessDebugging = if (StandardAgentTaskFactory.runInProcess)
-      List(  // For in-process debugging
-        StandardJavaModule,
-        JavaScriptEngineModule,
-        shellModuleFactory)
-      else
-        Nil  // Other modules get its own process via TaskServerMain
-    new ModuleFactoryRegister(shellModuleFactory :: forInProcessDebugging)
-  }
-
-  /** If task server runs in an own process, the Future of its termination. */
-  @Provides @Singleton
-  def TerminatedFutureOption: Option[Future[TaskServerMainTerminated.type]] = None
 
   @Provides @Singleton
   def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config, timerService: TimerService/*closed after ActorSystem*/): ActorSystem =

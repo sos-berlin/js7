@@ -16,14 +16,12 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
-import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
-import java.time.Duration
 import org.scalactic.Requirements._
 import scala.collection.immutable.Seq
 
@@ -34,14 +32,10 @@ final case class AgentConfiguration(
   configDirectory: Path,
   dataDirectory: Path,
   webServerPorts: Seq[WebServerPort],
-  jobWorkingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
-  environment: Map[String, String],
-  jobJavaOptions: Seq[String],
-  dotnet: DotnetConfiguration,
-  rpcKeepaliveDuration: Option[Duration],
+  jobWorkingDirectory: Path = WorkingDirectory,
+  /** Unused. */jobJavaOptions: Seq[String],
   killScript: Option[ProcessKillScript],
-  commandTimeout: Duration,
   implicit val akkaAskTimeout: Timeout,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
@@ -51,17 +45,12 @@ extends CommonConfiguration
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
-    var v = copy(
+    copy(
       webServerPorts = common.webServerPorts,
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
       jobJavaOptions = a.optionAs[String]("-job-java-options=").fold(jobJavaOptions) { _ :: Nil },
-      rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration),
       jobWorkingDirectory = a.as("-job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
-    v = v withKillScript a.optionAs[String]("-kill-script=")
-    for (o ← a.optionAs("-dotnet-class-directory=")(asAbsolutePath)) {
-      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o)))
-    }
-    v
+    .withKillScript(a.optionAs[String]("-kill-script="))
   }
 
   private def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
@@ -69,8 +58,6 @@ extends CommonConfiguration
     case Some("") ⇒ copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
     case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
-
-  def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
   def fileBasedDirectory: Path =
     configDirectory / "live"
@@ -135,12 +122,8 @@ object AgentConfiguration {
       dataDirectory = dataDirectory,
       webServerPorts = Nil,
       logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
-      environment = Map(),
-      dotnet = DotnetConfiguration(classDllDirectory = config.optionAs("jobscheduler.agent.task.dotnet.class-directory")(asAbsolutePath)),
-      rpcKeepaliveDuration = config.durationOption("jobscheduler.agent.task.rpc.keepalive.duration"),
       jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      commandTimeout = config.getDuration("jobscheduler.agent.command-timeout"),
       akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
       name = "Agent",
       config = config)
