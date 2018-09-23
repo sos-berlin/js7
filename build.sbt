@@ -28,6 +28,8 @@ import Dependencies.bootstrapVersion
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.{CrossVersion, Def}
+// shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 val _dummy_ = {
   sys.props += "log4j2.contextSelector" → "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
@@ -163,9 +165,7 @@ lazy val `jobscheduler-docker` = project
     mappings in Universal :=
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
-lazy val testerJVM = tester.jvm
-lazy val testerJS = tester.js
-lazy val tester = crossProject
+lazy val tester = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -177,9 +177,7 @@ lazy val tester = crossProject
       "org.scalatest" %%% "scalatest" % scalaTestVersion
   }
 
-lazy val baseJVM = base.jvm
-lazy val baseJS = base.js
-lazy val base = crossProject
+lazy val base = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -197,9 +195,7 @@ lazy val base = crossProject
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
 
-lazy val dataJVM = data.jvm
-lazy val dataJS = data.js
-lazy val data = crossProject
+lazy val data = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(base, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -252,9 +248,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       BuildInfoKey.action("buildId")(newBuildId)),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
-lazy val `common-httpJVM` = `common-http`.jvm
-lazy val `common-httpJS` = `common-http`.js
-lazy val `common-http` = crossProject
+lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(base, tester % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
@@ -293,9 +287,7 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
       log4j % "test"
   }
 
-lazy val `master-dataJVM` = `master-data`.jvm
-lazy val `master-dataJS` = `master-data`.js
-lazy val `master-data` = crossProject
+lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(data, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -306,9 +298,7 @@ lazy val `master-data` = crossProject
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     })
 
-lazy val `master-clientJVM` = `master-client`.jvm
-lazy val `master-clientJS` = `master-client`.js
-lazy val `master-client` = crossProject
+lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`master-data`, `common-http`, tester % "test")
   .jvmConfigure(_.dependsOn(common))
   .settings(commonSettings)
@@ -399,8 +389,8 @@ lazy val `master-gui-browser` = project
         "com.github.mpilquist" %% "simulacrum" % simulacrumVersion,
         "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion,
         "be.doeraene" %%% "scalajs-jquery" % scajaJsJQueryVersion,
-        "com.github.japgolly.scalajs-react" %%% "core" % "1.2.1",
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.2.1",
+        "com.github.japgolly.scalajs-react" %%% "core" % "1.3.0",
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.0",
       //"com.github.japgolly.scalajs-react" %%% "ext-cats" % "1.2.1",
       //"com.github.japgolly.scalajs-react" %%% "ext-monocle-cats" % "1.2.1",
       //"com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion,
