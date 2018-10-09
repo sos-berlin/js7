@@ -61,11 +61,11 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
     Get(s"/event?after=0&limit=2") ~> Accept(`application/json-seq`) ~> route ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/json-seq`))
-      val rs = Ascii.RS.toChar
-      val lf = Ascii.LF.toChar
+      val RS = Ascii.RS.toChar
+      val LF = Ascii.LF.toChar
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""$rs{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""" +
-        s"""$rs{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$lf""")
+        s"""$RS{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""" +
+        s"""$RS{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""")
 
       //implicit val x = JsonSeqStreamSupport
       //implicit val y = CirceJsonSeqSupport
@@ -177,9 +177,11 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         assert(response.entity.contentType == ContentType(`text/event-stream`))
         val string = response.utf8StringFuture.await(99.s)
-        val problemJson = """{"TYPE":"Problem","message":"BUILD-CHANGED"}"""
-        assert(string == s"data:$problemJson\n\n")
-        assert(problemJson.parseJson.as[Problem].orThrow.toString == "BUILD-CHANGED")
+        assert(string ==
+          """data:{"TYPE":"Problem","message":"BUILD-CHANGED"}
+            |
+            |""".stripMargin)
+        assert(string.drop(5).parseJson.as[Problem].orThrow.toString == "BUILD-CHANGED")
       }
     }
   }

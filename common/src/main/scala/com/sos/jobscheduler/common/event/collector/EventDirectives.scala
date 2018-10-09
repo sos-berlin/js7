@@ -21,7 +21,7 @@ object EventDirectives {
 
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
-  private val MinimumDelay = 100.milliseconds
+  val MinimumDelay = 100.milliseconds
   private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
@@ -98,11 +98,10 @@ object EventDirectives {
             case Some(after) ⇒
               parameter("timeout" ? defaultTimeout) { timeout ⇒
                 parameter("delay" ? defaultDelay) { delay ⇒
-                  optionalHeaderValueByType[`Timeout-Access`](()) { timeoutAccess ⇒
-                    val akkaTimeout = timeoutAccess map (_.timeoutAccess.timeout) match {   // Setting akka.http.server.request-timeout
-                      case None ⇒ timeout
-                      case Some(Duration.Inf) ⇒ timeout
+                  optionalHeaderValueByType[`Timeout-Access`](()) { h ⇒  // Setting akka.http.server.request-timeout
+                    val akkaTimeout = h map (_.timeoutAccess.timeout) match {
                       case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
+                      case _ ⇒ timeout
                     }
                     val eventRequest = EventRequest[E](eventClasses, after = after,
                       timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit)

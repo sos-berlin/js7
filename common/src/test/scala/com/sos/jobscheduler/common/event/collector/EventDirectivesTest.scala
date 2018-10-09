@@ -24,12 +24,10 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
   private def route =
     path("test") {
       eventRequest[MyEvent].apply { eventReq ⇒
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]),
-            after = EventId(66), delay = 770.millis, timeout = 88.seconds, limit = 99))
+        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(66), delay = 770.millis, timeout = 88.seconds, limit = 99))
           complete("A")
         else
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]),
-            after = EventId(666), delay = 777.millis, timeout = 888.seconds, limit = 999))
+        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(666), delay = 777.millis, timeout = 888.seconds, limit = 999))
           complete("B")
         else {
           println(eventReq)

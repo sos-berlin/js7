@@ -139,10 +139,13 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
           collectEventsSince(after, collect, limit) match {
             case o @ EventSeq.NonEmpty(_) ⇒
               Task.pure(o)
-            case EventSeq.Empty(lastEventId) if now < until ⇒
-              whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
+
             case EventSeq.Empty(lastEventId) ⇒
-              Task.pure(EventSeq.Empty(lastEventId))
+              if (now < until)
+                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
+              else
+                Task.pure(EventSeq.Empty(lastEventId))
+
             case o: TearableEventSeq.Torn ⇒
               Task.pure(o)
           }))
