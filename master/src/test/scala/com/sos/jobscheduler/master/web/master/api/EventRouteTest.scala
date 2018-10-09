@@ -78,7 +78,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
   "/event application/json-seq with after=unknown fails" in {
     Get(s"/event?after=5") ~> Accept(`application/json-seq`) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == s"Requested EventId after=5 is not available. Oldest available EventId is: 0\n")
+      assert(response.utf8StringFuture.await(99.s) == s"Requested EventId after=5 is not available. Oldest available EventId is 0\n")
     }
   }
 

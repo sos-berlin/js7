@@ -107,7 +107,7 @@ trait GenericEventRoute extends RouteProvider
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
           eventWatch.when(request, predicate = isRelevantEvent) map {
             case TearableEventSeq.Torn(eventId) ⇒
-              Problem.fromEager(s"Requested EventId after=${request.after} is not available. Oldest available EventId is: $eventId")
+              Problem.fromEager(s"Requested EventId after=${request.after} is not available. Oldest available EventId is $eventId")
                 : ToResponseMarshallable
 
             case EventSeq.Empty(_) ⇒
