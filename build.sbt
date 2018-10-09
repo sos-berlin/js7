@@ -245,7 +245,9 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
-        branch = git.gitCurrentBranch.value),
+        commitDate = git.gitHeadCommitDate.value,
+        branch = git.gitCurrentBranch.value,
+        isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
       BuildInfoKey.action("buildId")(newBuildId)),
     buildInfoPackage := "com.sos.jobscheduler.common")
