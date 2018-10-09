@@ -291,8 +291,7 @@ extends Actor with Stash {
 
   def closeEventWriter(): Unit = {
     if (eventWriter != null) {
-      eventWriter.endEventSection(sync = syncOnCommit)
-      eventWriter.close()
+      eventWriter.closeProperly(sync = syncOnCommit)
       eventWriter = null
     }
   }

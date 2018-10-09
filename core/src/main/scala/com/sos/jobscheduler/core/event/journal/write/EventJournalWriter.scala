@@ -39,6 +39,10 @@ with AutoCloseable
 
   if (!Files.exists(file)) sys.error(s"EventJournalWriter: Not expecting existent files '$file'")
 
+  def closeProperly(sync: Boolean): Unit =
+    try if (eventsStarted) endEventSection(sync = sync)
+    finally close()
+
   override def close(): Unit = {
     super.close()
     logger.info(s"Journal closed, $fileSizeString written ($statistics)")
@@ -76,6 +80,7 @@ with AutoCloseable
   }
 
   def endEventSection(sync: Boolean): Unit = {
+    if (!eventsStarted) throw new IllegalStateException
     jsonWriter.write(ByteString(EventFooter.compactPrint))
     flush(sync = sync)
   }
