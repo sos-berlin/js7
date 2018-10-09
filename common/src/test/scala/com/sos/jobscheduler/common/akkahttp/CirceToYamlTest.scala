@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.akkahttp
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.common.http.CirceToYaml.{yamlToJson, _}
+import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
 
@@ -48,7 +48,7 @@ final class CirceToYamlTest extends FreeSpec {
         | in 'string', line 1, column 1:
         |    { INVALID YAML
         |    ^
-        |expected ',' or '}', but got StreamEnd
+        |expected ',' or '}', but got <stream end>
         | in 'string', line 1, column 15:
         |    { INVALID YAML
         |                  ^"""

@@ -6,15 +6,15 @@ import scala.language.implicitConversions
 object Dependencies {
   val scalaVersion = "2.12.6"
 
-  val akkaVersion = "2.5.14"
-  val akkaHttpVersion = "10.1.3"
+  val akkaVersion = "2.5.17"
+  val akkaHttpVersion = "10.1.5"
   val slf4jVersion = "1.7.25"
   val log4jVersion = "2.11.1"
-  val catsVersion = "1.1.0"
-  val catsEffectVersion = "0.10"
+  val catsVersion = "1.4.0"
+  val catsEffectVersion = "1.0.0"
   val fastparseVersion = "1.0.0"
-  val kittensVersion = "1.1.0"
-  val circeVersion = "0.9.3"
+  val kittensVersion = "1.1.1"
+  val circeVersion = "0.10.0"
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.12.0"
   val disciplineVersion = "0.8"
@@ -33,19 +33,19 @@ object Dependencies {
   val log4jCore           = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4j          = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
   val jansi               = "org.fusesource.jansi" % "jansi" % "1.17"
-  val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.1"
+  val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.2"
   val log4j               = log4jSlf4j :: log4jApi :: log4jCore :: lmaxDisruptor /*:: jansi*/ :: Nil
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
-  val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.13.5"
-  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0" :: slf4j :: Nil
+  val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.14.0"
+  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = ("com.google.inject" % "guice" % "4.2.0" classifier "no_aop") :: javaxInject :: Nil
+  val guice               = ("com.google.inject" % "guice" % "4.2.1" classifier "no_aop") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.3"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
@@ -63,7 +63,7 @@ object Dependencies {
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
-  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.20"
+  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.23"
 
   val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "1.3.9"  // Everyone uses this version
   val guava               = "com.google.guava" % "guava" % "24.1-jre"
