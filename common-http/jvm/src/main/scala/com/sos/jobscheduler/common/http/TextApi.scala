@@ -40,20 +40,18 @@ trait TextApi {
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {
-      case t: akka.stream.StreamTcpException ⇒
-        print(s"$serverName is not responding: ${t.getMessage}")
+      case ConnectionLost(t) ⇒
+        print(s"$serverName is not responding: $t")
         throw t
     }
 
-  def checkIsResponding(): Boolean = {
+  def checkIsResponding(): Boolean =
     try {
       requireIsResponding()
       true
     } catch {
-      case _: akka.stream.StreamTcpException ⇒
-        false
+      case ConnectionLost(_) ⇒ false
     }
-  }
 
   private def awaitResult[A](future: Future[A]): A =
     try Await.result(future, 65.seconds)  // TODO Use standard Futures method await when available in subproject 'base'
@@ -74,5 +72,18 @@ trait TextApi {
       needYamlDocumentSeparator = true
       print(string.trim)
     }
+  }
+
+  object ConnectionLost {
+     def apply(t: Throwable): Boolean =
+       t match {
+         case _: akka.stream.StreamTcpException ⇒
+           true
+         case _ if t.getMessage == "Connection was shutdown." ⇒  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
+           true
+       }
+
+    def unapply(t: Throwable): Option[Throwable] =
+      if (apply(t)) Some(t) else None
   }
 }
