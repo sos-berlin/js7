@@ -4,18 +4,19 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderStdoutWrittenFat}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderStdoutWritten, OrderTransferredToAgent}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
@@ -111,10 +112,46 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(190))
     }
 
+    "/fatEvent?after=180, intermediate event added, with timeout" in {
+      val t = now
+      assert(getFatEventSeq("/fatEvent?after=180&timeout=0.1") == EventSeq.Empty(190))
+      assert(now - t >= 100.millis)
+    }
+
     "/fatEvent?after=190, OrderFinished added" in {
-      eventWatch.addStamped(Stamped(EventId(191), OrderId("10") <-: OrderFinished))
-      assert(getFatEventSeq("/fatEvent?after=190") == EventSeq.NonEmpty(
-        Stamped(191, OrderId("10") <-: OrderFinishedFat(TestWorkflowId /: Position(0))):: Nil))
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(Stamped(EventId(191), OrderId("10") <-: OrderStdoutWritten("1")))
+      }
+      assert(getFatEventSeq("/fatEvent?timeout=30&after=190") == EventSeq.NonEmpty(
+        Stamped(191, OrderId("10") <-: OrderStdoutWrittenFat("1")):: Nil))
+      assert(now - t >= 100.millis + EventDirectives.DefaultDelay, "(DefaultDelay)")
+    }
+
+    "/fatEvent?after=191, with delay" in {
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(Stamped(EventId(192), OrderId("10") <-: OrderStdoutWritten("2")))
+      }
+      assert(getFatEventSeq("/fatEvent?delay=0.1&timeout=30&after=191") == EventSeq.NonEmpty(
+        Stamped(192, OrderId("10") <-: OrderStdoutWrittenFat("2")):: Nil))
+      assert(now - t >= 100.millis)
+    }
+
+    "/fatEvent?after=192, with delay=0" in {
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderStdoutWritten("3")))
+      }
+      assert(getFatEventSeq("/fatEvent?delay=0&timeout=30&after=192") == EventSeq.NonEmpty(
+        Stamped(193, OrderId("10") <-: OrderStdoutWrittenFat("3")):: Nil))
+      assert(now - t >= EventDirectives.MinimumDelay)
+    }
+
+    "/fatEvent?after=193 no more events, with timeout" in {
+      val t = now
+      assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(193))
+      assert(now - t >= 100.millis)
     }
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream

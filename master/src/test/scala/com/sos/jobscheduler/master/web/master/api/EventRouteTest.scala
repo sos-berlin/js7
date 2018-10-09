@@ -9,9 +9,10 @@ import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -19,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
@@ -114,13 +115,54 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
     }
 
     "/event?limit=3&after=150 skip some events" in {
+      val t = now
       val stampeds = getEvents("/event?limit=3&after=150")
+      assert(now < t + EventDirectives.MinimumDelay)
       assert(stampeds.head.eventId == 160)
       assert(stampeds.last.eventId == 180)
     }
 
     "/event?after=180 no more events" in {
       assert(getEventSeq("/event?after=180") == EventSeq.Empty(180))
+    }
+
+    "/event?after=180 no more events, with timeout" in {
+      val t = now
+      assert(getEventSeq("/event?after=180&timeout=0.2") == EventSeq.Empty(180))
+      assert(now - t >= 200.millis)
+    }
+
+    "/event DefaultDelay" in {
+      val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished)
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(stamped)
+      }
+      val stampeds = getEvents("/event?timeout=30&after=180")
+      assert(stampeds == stamped :: Nil)
+      assert(now - t >= 100.millis + EventDirectives.DefaultDelay)
+    }
+
+    "/event?delay=0 MinimumDelay" in {
+      val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished)
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(stamped)
+      }
+      val stampeds = getEvents("/event?delay=0&timeout=30&after=190")
+      assert(stampeds == stamped :: Nil)
+      assert(now - t >= 100.millis + EventDirectives.MinimumDelay)
+    }
+
+    "/event?delay=0.2" in {
+      val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished)
+      val t = now
+      scheduler.scheduleOnce(100.millis) {
+        eventWatch.addStamped(stamped)
+      }
+      val stampeds = getEvents("/event?delay=0.2&timeout=30&after=200")
+      assert(stampeds == stamped :: Nil)
+      assert(now - t >= 100.millis + 200.millis)
     }
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream
