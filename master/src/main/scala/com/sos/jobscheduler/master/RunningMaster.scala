@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import akka.util.Timeout
-import com.google.common.io.Closer
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
@@ -22,11 +21,10 @@ import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch, StrictEventW
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.monix.MonixForCats._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort

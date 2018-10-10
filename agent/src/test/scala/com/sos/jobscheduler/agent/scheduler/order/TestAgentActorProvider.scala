@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Props}
-import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
@@ -16,7 +15,7 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.{Closer, HasCloser}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.{ActorEventCollector, StampedKeyedEventBus}

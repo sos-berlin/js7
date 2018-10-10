@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -15,6 +14,7 @@ import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
+import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively

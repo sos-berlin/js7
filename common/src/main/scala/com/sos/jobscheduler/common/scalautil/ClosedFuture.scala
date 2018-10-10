@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import scala.concurrent.Promise
 
 /**

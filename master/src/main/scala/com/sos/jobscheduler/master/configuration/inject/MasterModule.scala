@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
-import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -11,7 +10,7 @@ import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -109,7 +108,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def closer(): Closer =
-    Closer.create()   // Not thread-safe !!!
+    new Closer
 }
 
 object MasterModule {

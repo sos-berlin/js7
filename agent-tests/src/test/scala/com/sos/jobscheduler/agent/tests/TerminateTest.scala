@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
 import akka.actor.{ActorRefFactory, ActorSystem}
-import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
@@ -16,6 +15,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._

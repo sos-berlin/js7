@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.AutoClosingTest._
 import java.io.Closeable
@@ -68,14 +67,13 @@ final class AutoClosingTest extends FreeSpec {
       }
       assert(closeables collect { case a: A ⇒ a } forall { _.closed })
       for (suppressed ← x.getSuppressed) {
-        suppressed.asInstanceOf[AssertionError]  // Guava Closer wraps a checked exception into an AssertionError
-          .getCause.asInstanceOf[ClosedException]
+        suppressed.asInstanceOf[ClosedException]
       }
     }
   }
 
   "closeOnError" in {
-    val closer = Closer.create()
+    val closer = new Closer
     val a = mock[Closeable]
     closer.register(a)
     closeOnError(closer) {}

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
-import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
@@ -19,11 +18,10 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
 import java.time.Duration

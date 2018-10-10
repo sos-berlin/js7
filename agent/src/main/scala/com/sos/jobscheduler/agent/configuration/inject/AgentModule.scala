@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
-import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
@@ -9,6 +8,7 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
@@ -56,7 +56,7 @@ extends AbstractModule {
   def config(agentConfiguration: AgentConfiguration): Config = agentConfiguration.config
 
   @Provides @Singleton
-  def closer(): Closer = Closer.create()  // Do not use concurrently !!!
+  def closer(): Closer = new Closer
 
   @Provides @Singleton
   def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],

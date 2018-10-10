@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.scalautil
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
-import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
+import com.google.common.io.{Files ⇒ GuavaFiles}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._

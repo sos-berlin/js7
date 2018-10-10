@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
-import java.io.Closeable
 import scala.language.higherKinds
 import scala.util.control.{ControlThrowable, NonFatal}
 
@@ -12,10 +10,8 @@ object AutoClosing {
   private val logger = Logger(getClass)
 
   def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type ⇒ B): B = {
-    autoClosing(Closer.create()) { closer ⇒
-      for (o ← resources) closer.register(new Closeable {
-        def close() = o.close()
-      })
+    autoClosing(new Closer) { closer ⇒
+      for (o ← resources) closer.register(o)
       body(resources)
     }
   }
@@ -41,7 +37,7 @@ object AutoClosing {
 
   private def closeAfterError[A <: AutoCloseable](resource: A, t: Throwable): Unit = {
     t match {
-      case (NonFatal(_) | _: ControlThrowable) ⇒ // Normal exception
+      case NonFatal(_) | _: ControlThrowable ⇒ // Normal exception
       case _ ⇒ logger.error(t.toString, t)
     }
     try resource.close()

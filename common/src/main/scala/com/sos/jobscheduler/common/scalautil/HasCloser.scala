@@ -1,11 +1,8 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
-
 trait HasCloser extends AutoCloseable {
 
-  private val _closer: Closer = Closer.create()
+  private val _closer: Closer = new Closer
 
   protected implicit final def closer: Closer = {
     if (_closer == null) throw new NullPointerException(s"$getClass should extend HasClose further in front?")

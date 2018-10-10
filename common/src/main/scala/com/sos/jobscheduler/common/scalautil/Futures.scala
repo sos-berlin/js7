@@ -112,7 +112,10 @@ object Futures {
         }
 
       def await(duration: java.time.Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        Await.result(Future.sequence(delegate)(cbf, ec), duration.toFiniteDuration)
+        await(duration.toFiniteDuration)
+
+      def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+        Await.result(Future.sequence(delegate)(cbf, ec), duration)
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         Await.ready(Future.sequence(delegate)(cbf, ec), Duration.Inf).successValue

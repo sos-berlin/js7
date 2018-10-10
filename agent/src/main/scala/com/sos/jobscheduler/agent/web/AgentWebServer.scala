@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
-import com.google.common.io.Closer
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.command.CommandMeta
@@ -18,10 +17,10 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.{Closer, Logger, SetOnce}
 import com.sos.jobscheduler.common.time.timer.TimerService
 import monix.execution.Scheduler
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer

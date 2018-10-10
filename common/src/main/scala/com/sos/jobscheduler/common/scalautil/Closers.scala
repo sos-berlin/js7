@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import scala.language.reflectiveCalls
@@ -8,18 +7,16 @@ import scala.language.reflectiveCalls
 /**
  * @author Joacim Zschimmer
  */
-object Closers {
-  type GuavaCloseable = java.io.Closeable
-  private type HasClose = { def close(): Unit }
-
+object Closers
+{
   object implicits {
     implicit final class RichClosersCloser(private val delegate: Closer) extends AnyVal {
-      final def onCloseOrShutdown(body: ⇒ Unit): Unit = {
+      def onCloseOrShutdown(body: ⇒ Unit): Unit = {
         onClose(body)
         whenNotClosedAtShutdown(body)
       }
 
-      final def whenNotClosedAtShutdown(body: ⇒ Unit): Unit = {
+      def whenNotClosedAtShutdown(body: ⇒ Unit): Unit = {
         val hook = new Thread(s"ShutdownHook for $delegate") {
           override def run() = body
         }
@@ -29,17 +26,17 @@ object Closers {
         }
       }
 
-      final def registerAutoCloseable(autoCloseable: AutoCloseable): Unit =
-        delegate.register(toGuavaCloseable(autoCloseable))
+      def registerAutoCloseable(autoCloseable: AutoCloseable): Unit =
+        delegate.register(autoCloseable)
 
-      final def onClose(body: ⇒ Unit): Unit =
-        delegate.register(guavaCloseable(body))
+      def onClose(body: ⇒ Unit): Unit =
+        delegate.onClose(body)
 
       /**
         * Closes the `Closer`, then "finally" (nonwithstanding any NonFatal exception) call `body`.
         */
-      final def closeThen(body: ⇒ Unit) = {
-        val c = Closer.create()
+      def closeThen(body: ⇒ Unit) = {
+        val c = new Closer
         c onClose body
         c.registerAutoCloseable(delegate)
         c.close()
@@ -47,42 +44,25 @@ object Closers {
     }
 
     implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val delegate: A) extends AnyVal {
-      final def closeWithCloser(implicit closer: Closer): A = {
-        closer.register(toGuavaCloseable(delegate))
+      def closeWithCloser(implicit closer: Closer): A = {
+        closer.register(delegate)
         delegate
       }
     }
 
     implicit final class RichClosersAny[A <: AnyRef](private val delegate: A) extends AnyVal {
-      final def withCloser(onClose: A ⇒ Unit)(implicit closer: Closer): A = {
-        closer.register(guavaCloseable { onClose(delegate) })
+      def withCloser(onClose: A ⇒ Unit)(implicit closer: Closer): A = {
+        closer.onClose(onClose(delegate))
         delegate
       }
     }
   }
 
-  def toGuavaCloseable(autoCloseable: AutoCloseable): GuavaCloseable =
-    autoCloseable match {
-      case o: GuavaCloseable ⇒ o
-      case o ⇒ guavaCloseable { o.close() }
-    }
-
-  def toGuavaCloseable(closeable: HasClose): GuavaCloseable = guavaCloseable { closeable.close() }
-
-  private def guavaCloseable(f: ⇒ Unit): GuavaCloseable =
-    new GuavaCloseable {
-      def close() = f
-    }
-
-  def withCloser[A](f: Closer ⇒ A): A = autoClosing(Closer.create())(f)
+  def withCloser[A](f: Closer ⇒ A): A = autoClosing(new Closer)(f)
 
   def closeOrdered(closeables: AutoCloseable*): Unit = {
-    val closer = Closer.create()
+    val closer = new Closer
     closeables.reverseIterator foreach closer.registerAutoCloseable
     closer.close()
-  }
-
-  object EmptyAutoCloseable extends AutoCloseable {
-    def close() = {}
   }
 }

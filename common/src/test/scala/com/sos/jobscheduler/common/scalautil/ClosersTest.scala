@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.google.common.io.Closer
 import com.sos.jobscheduler.common.scalautil.Closers._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import org.mockito.Mockito._
@@ -13,7 +12,7 @@ import scala.language.reflectiveCalls
 final class ClosersTest extends FreeSpec {
 
   "onClose" in {
-    implicit val closer = Closer.create()
+    implicit val closer = new Closer
     var a = false
     closer.onClose { a = true }
     a shouldBe false
@@ -22,7 +21,7 @@ final class ClosersTest extends FreeSpec {
   }
 
   "registerAutoCloseable" in {
-    implicit val closer = Closer.create()
+    implicit val closer = new Closer
     val autoCloseable = mock[AutoCloseable]
     closer.registerAutoCloseable(autoCloseable)
     verify(autoCloseable, never).close()
@@ -31,7 +30,7 @@ final class ClosersTest extends FreeSpec {
   }
 
   "closeWithCloser AutoClosable" in {
-    implicit val closer = Closer.create()
+    implicit val closer = new Closer
     val c = mock[AutoCloseable].closeWithCloser
     verify(c, never).close()
     closer.close()
@@ -39,7 +38,7 @@ final class ClosersTest extends FreeSpec {
   }
 
   "AnyRef.withCloser" in {
-    implicit val closer = Closer.create()
+    implicit val closer = new Closer
     trait A
     var closedA: A = null
     val c = mock[A].withCloser { a ⇒ closedA = a }
@@ -50,7 +49,7 @@ final class ClosersTest extends FreeSpec {
 
   "onCloseOrShutdownn" in {
     var closed = false
-    val closer = Closer.create()
+    val closer = new Closer
     closer.onCloseOrShutdown { closed = true }
     closed shouldBe false
     closer.close()
@@ -58,7 +57,7 @@ final class ClosersTest extends FreeSpec {
   }
 
   "withCloser" in {
-    val a = mock[GuavaCloseable]
+    val a = mock[AutoCloseable]
     withCloser { closer ⇒
       closer.register(a)
     }
@@ -75,7 +74,7 @@ final class ClosersTest extends FreeSpec {
 
   "closeThen" in {
     val closes = mutable.Buffer[Int]()
-    val closer = Closer.create()
+    val closer = new Closer
     closer.onClose { closes += 1 }
     closer.closeThen { closes += 2 }
     assert(closes == List(1, 2))
