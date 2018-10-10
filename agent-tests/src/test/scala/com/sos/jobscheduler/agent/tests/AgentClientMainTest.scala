@@ -7,7 +7,6 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.TestAgentProvider
 import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

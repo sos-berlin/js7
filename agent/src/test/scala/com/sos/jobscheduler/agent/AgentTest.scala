@@ -12,7 +12,7 @@ import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDi
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._

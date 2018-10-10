@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.Closer
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
 import javax.inject.Singleton

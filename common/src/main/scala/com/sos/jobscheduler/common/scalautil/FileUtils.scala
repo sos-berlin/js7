@@ -6,8 +6,8 @@ import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files ⇒ GuavaFiles}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
-import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.Closer.ops._
+import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink}

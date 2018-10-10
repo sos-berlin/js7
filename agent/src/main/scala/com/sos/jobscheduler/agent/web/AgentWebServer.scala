@@ -16,7 +16,6 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger, SetOnce}
 import com.sos.jobscheduler.common.time.timer.TimerService
 import monix.execution.Scheduler
@@ -36,7 +35,7 @@ final class AgentWebServer(
     protected val executionContext: ExecutionContext)
 extends AkkaWebServer with AkkaWebServer.HasUri {
 
-  closer.registerAutoCloseable(this)
+  closer.register(this)
 
   protected val bindings = conf.webServerBindings.toVector
   private val runningAgentOnce = new SetOnce[RunningAgent]("RunningAgent")

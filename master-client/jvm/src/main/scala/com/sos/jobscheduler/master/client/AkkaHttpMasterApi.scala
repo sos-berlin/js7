@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionC
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 
 /**
   * @author Joacim Zschimmer

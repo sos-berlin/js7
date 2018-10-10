@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import io.circe.Json

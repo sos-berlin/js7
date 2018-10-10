@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Emergenc
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import javax.inject.Singleton

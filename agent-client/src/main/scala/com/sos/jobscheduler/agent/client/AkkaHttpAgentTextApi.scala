@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parseConfigIfExists}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.data.agent.AgentAddress
