@@ -2,6 +2,8 @@ package com.sos.jobscheduler.base.generic
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.standards.NameValidator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
@@ -46,5 +48,10 @@ object GenericString {
     implicit val GenericStringAsString: As[String, A] = As(apply)
 
     implicit def self: Companion[A] = this
+  }
+
+  trait NameValidating[A <: GenericString] extends Companion[A] {
+    override def checked(string: String): Checked[A] =
+      NameValidator.checked(string) mapProblem (_ withKey name) flatMap super.checked
   }
 }

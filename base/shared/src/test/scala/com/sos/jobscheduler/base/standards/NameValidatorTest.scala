@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.data.filebased
+package com.sos.jobscheduler.base.standards
 
-import com.sos.jobscheduler.data.filebased.NameValidator._
+import com.sos.jobscheduler.base.standards.NameValidator._
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters.asScalaIteratorConverter
 
@@ -39,6 +39,8 @@ final class NameValidatorTest extends FreeSpec {
     assert(!isValid("a-"))
     assert(!isValid("a$"))
     assert(!isValid("a$"))
+    assert(!isValid("/"))
+    assert(!isValid("a/b"))
     assert(!isValid("a\u0000"))
     assert(!isValid("a\u0001"))
     assert(!isValid("a\u0002"))

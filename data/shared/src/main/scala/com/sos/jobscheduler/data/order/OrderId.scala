@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.order
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.filebased.NameValidator
+import com.sos.jobscheduler.base.standards.NameValidator
 
 final case class OrderId(string: String) extends GenericString
 {
