@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import static java.io.File.separator;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.delete;
@@ -48,12 +49,13 @@ final class MasterRepoReaderTester {
         write(directory.resolve("ERROR-1.workflow.json"), "{ \"something\": \"different\" }".getBytes(UTF_8));
         write(directory.resolve("ERROR-2.workflow.json"), "{ \"instructions\": 999 }".getBytes(UTF_8));
         Object result2 = repoReader.applyConfigurationDirectory(repo);
-        assert new HashSet<>(problemsToStrings(result2)).equals(
-            new HashSet<>(asList(
-                "Problem with 'Workflow:/ERROR-2' (JSON) [CanBuildFrom for A: DownField(instructions)]",
-                "File '..."+ separator +"UNKNOWN.tmp' is not recognized as a configuration file",
-                "Problem with 'Workflow:/NO-JSON' (JSON) [expected json value got I (line 1, column 1)]",
-                "Problem with 'Workflow:/ERROR-1' (JSON) [Attempt to decode value on failed cursor: DownField(instructions)]")));
+        Set<String> errors = new HashSet<>(problemsToStrings(result2));
+        Set<String> expected = new HashSet<>(asList(
+            "Problem with 'Workflow:/ERROR-2' (JSON) [C[A]: DownField(instructions)]",
+            "File '..."+ separator +"UNKNOWN.tmp' is not recognized as a configuration file",
+            "Problem with 'Workflow:/NO-JSON' (JSON) [expected json value got I (line 1, column 1)]",
+            "Problem with 'Workflow:/ERROR-1' (JSON) [Attempt to decode value on failed cursor: DownField(instructions)]"));
+        assert errors.equals(expected) : errors + " did not equal " + expected;
 
         delete(directory.resolve("NO-JSON.workflow.json"));
         delete(directory.resolve("UNKNOWN.tmp"));

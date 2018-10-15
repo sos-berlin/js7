@@ -26,7 +26,7 @@ final class MasterJsonValidatorTester {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson("{" +
             "\"instructions\": 999" +
           "}");
-        assertEqual(maybeProblem.get().toString(), "CanBuildFrom for A: DownField(instructions)");
+        assertEqual(maybeProblem.get().toString(), "C[A]: DownField(instructions)");
     }
 
     static void testInvalidJson() {
