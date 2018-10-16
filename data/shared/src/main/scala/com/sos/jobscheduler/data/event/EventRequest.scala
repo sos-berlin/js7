@@ -56,6 +56,7 @@ extends SomeEventRequest[E] {
 object EventRequest {
   val DefaultDelay = Duration.Zero
   val DefaultLimit = Int.MaxValue
+  val LongTimeout = 365.days
 
   /**
     * Convenience for only one Event class.

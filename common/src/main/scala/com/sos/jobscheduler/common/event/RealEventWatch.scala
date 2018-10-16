@@ -18,6 +18,7 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 
 /**
   * @author Joacim Zschimmer
@@ -40,8 +41,12 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
+    val originalTimeout = request.timeout
+    var until = Timestamp(0)  // Value not used
+
     def next(lazyRequest: () ⇒ EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () ⇒ EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
+      until = now + (request.timeout min EventRequest.LongTimeout)  // Timeout is renewd after every fetched event
       if (request.limit <= 0)
         NoMoreObservable
       else
@@ -50,7 +55,8 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             throw new TornException(after = request.after, tornEventId = tornEventId)
 
           case EventSeq.Empty(lastEventId) ⇒
-            (Some(Observable.empty), () ⇒ request.copy[E1](after = lastEventId))
+            val remaining = until - now
+            ((remaining > Duration.Zero) ? Observable.empty, () ⇒ request.copy[E1](after = lastEventId, timeout = until - now))
 
           case EventSeq.NonEmpty(events) ⇒
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
@@ -62,11 +68,13 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                 limit -= 1
                 o
               }
-            // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values
-            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = Duration.Zero))
+            // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
+            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = originalTimeout))
         }
     }
-    Observable.fromAsyncStateAction(next)(() ⇒ request).takeWhile(_.nonEmpty).map(_.get).flatten
+    Observable.fromAsyncStateAction(next)(() ⇒ request.copy[E1](timeout = EventRequest.LongTimeout))
+      .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
+      .map(_.get).flatten
   }
 
   final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
@@ -126,7 +134,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
   : Task[TearableEventSeq[CloseableIterator, A]] = {
-    val until = now + (request.timeout min 365.days)  // Protected agains Timestamp overflow
+    val until = now + (request.timeout min EventRequest.LongTimeout)  // Protected agains Timestamp overflow
     whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit)
   }
 
@@ -135,20 +143,21 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
     whenStarted.flatMap (_ ⇒
       Task.deferFutureAction(implicit s ⇒
         sync.whenEventIsAvailable(after, until, delay))
-        .flatMap (_ ⇒
-          collectEventsSince(after, collect, limit) match {
-            case o @ EventSeq.NonEmpty(_) ⇒
-              Task.pure(o)
+          .flatMap (_ ⇒
+            collectEventsSince(after, collect, limit) match {
+              case o @ EventSeq.NonEmpty(_) ⇒
+                Task.pure(o)
 
-            case EventSeq.Empty(lastEventId) ⇒
-              if (now < until)
-                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
-              else
-                Task.pure(EventSeq.Empty(lastEventId))
+              case EventSeq.Empty(lastEventId) ⇒
+                val nw = now
+                if (nw < until)
+                  whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
+                else
+                  Task.pure(EventSeq.Empty(lastEventId))
 
-            case o: TearableEventSeq.Torn ⇒
-              Task.pure(o)
-          }))
+              case o: TearableEventSeq.Torn ⇒
+                Task.pure(o)
+            }))
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : TearableEventSeq[CloseableIterator, A] =

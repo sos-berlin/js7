@@ -121,7 +121,6 @@ trait GenericEventRoute extends RouteProvider
                 request = request.copy[Event](
                   after = head.eventId,
                   limit = request.limit - 1,
-                  timeout = Duration.Zero,
                   delay = (request.delay - (now - t)) min Duration.Zero),
                 predicate = isRelevantEvent)
               Observable(head) ++ tail
