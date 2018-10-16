@@ -33,7 +33,7 @@ object Agent extends FileBased.Companion[Agent]
       uri ← cursor.get[String]("uri")
     } yield Agent(id, uri)
 
-  override val self = this
+  override implicit val self = this
   implicit val fileBasedsOverview = AgentsOverview
   val typedPathCompanion = AgentPath
 }

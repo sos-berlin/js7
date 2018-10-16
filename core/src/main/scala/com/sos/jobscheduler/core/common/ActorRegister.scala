@@ -16,8 +16,7 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
   private val keyToValue = mutable.Map[K, V]() withDefault (k ⇒ throw new NoSuchElementException(noSuchKeyMessage(k)))
   private val _actorToKey = mutable.Map[ActorRef, K]()
 
-  def noSuchKeyMessage(k: K): String =
-    s"No such key '$k'"
+  protected def noSuchKeyMessage(k: K) = s"No such key '$k'"
 
   protected def insert(kv: (K, V)): Unit = {
     if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
