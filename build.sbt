@@ -527,9 +527,10 @@ lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, 
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest % "test" ++
       mockito % "test" ++
-      log4j % "test"
+      log4j % "test" 
   }
 
 Global / concurrentRestrictions += (
@@ -549,7 +550,7 @@ lazy val testSettings =
     Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name ⇒ !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
     StandardTest  / testOptions := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
     ExclusiveTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
-    ForkedTest/ testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
+    ForkedTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
     ForkedTest / javaOptions ++= Seq("-Xmx100m", "-Xms20m"),
     ForkedTest / testForkedParallel := testParallel,
     Test          / logBuffered := false,  // Recommended for ScalaTest
