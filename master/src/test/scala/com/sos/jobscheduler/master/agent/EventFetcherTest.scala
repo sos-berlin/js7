@@ -6,12 +6,14 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Stamped}
 import com.sos.jobscheduler.master.agent.EventFetcherTest._
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit.SECONDS
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -36,7 +38,7 @@ final class EventFetcherTest extends FreeSpec {
                 Stamped(102, Timestamp.ofEpochMilli(102), KeyedEvent(AEvent(2)))))
             case 2 ⇒
               aBarrier.countDown()
-              bBarrier.await()
+              bBarrier.await(99, SECONDS) shouldBe true
               assert(request.after == 102)
               EventSeq.Empty(lastEventId = 200)
             case 3 ⇒
@@ -45,7 +47,7 @@ final class EventFetcherTest extends FreeSpec {
                 Stamped(201, Timestamp.ofEpochMilli(201), KeyedEvent(AEvent(3)))))
             case 4 ⇒
               cBarrier.countDown()
-              dBarrier.await()
+              dBarrier.await(99, SECONDS) shouldBe true
               assert(request.after == 201)
               EventSeq.Empty(lastEventId = 201)
             case _ ⇒  // May be passed
@@ -58,12 +60,12 @@ final class EventFetcherTest extends FreeSpec {
     }
 
     val whenCompleted = fetcher.start()
-    aBarrier.await()
+    aBarrier.await(99, SECONDS) shouldBe true
     assert(collector == List(
       Stamped(101, Timestamp.ofEpochMilli(101), KeyedEvent(AEvent(1))),
       Stamped(102, Timestamp.ofEpochMilli(102), KeyedEvent(AEvent(2)))))
     bBarrier.countDown()
-    cBarrier.await()
+    cBarrier.await(99, SECONDS) shouldBe true
     assert(!whenCompleted.isCompleted)
     dBarrier.countDown()
     fetcher.close()
