@@ -17,12 +17,14 @@ import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
+import monix.execution.Scheduler
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
+  (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
@@ -156,7 +158,7 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive = {
-    case msg: Stdouterr ⇒
+    case msg: Stdouterr ⇒  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
       stdouterr.handle(msg)
 
     case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
@@ -182,7 +184,7 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def finishProcessing(event: OrderProcessed, job: Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
-    stdouterr.finish()
+    stdouterr.close()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
     become("processed")(processed)
     persist(event) { event ⇒
@@ -298,7 +300,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config) =
+  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit s: Scheduler) =
     Props { new OrderActor(orderId, journalActor = journalActor, config) }
 
   sealed trait Command

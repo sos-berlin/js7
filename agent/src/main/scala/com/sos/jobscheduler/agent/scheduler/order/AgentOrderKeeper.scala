@@ -58,11 +58,11 @@ final class AgentOrderKeeper(
   implicit private val askTimeout: Timeout,
   keyedEventBus: StampedKeyedEventBus,
   config: Config,
-  scheduler: Scheduler,
-  implicit private val timerService: TimerService)
+  implicit private val timerService: TimerService)(
+  implicit scheduler: Scheduler)
 extends MainJournalingActor[Event] with Stash {
 
-  import context.{actorOf, dispatcher, watch}
+  import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 

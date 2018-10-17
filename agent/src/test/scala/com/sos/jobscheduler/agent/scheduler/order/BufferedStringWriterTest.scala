@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.agent.scheduler.order.BufferedStringWriterTest._
 import com.sos.jobscheduler.base.generic.Completed
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -72,6 +73,7 @@ object BufferedStringWriterTest {
   private class W extends BufferedStringWriter {
     protected val size = 30
     protected val passThroughSize = 10
+    protected def scheduler = Scheduler.global
     val result = mutable.Buffer[String]()
 
     protected def onBufferingStarted() = {
@@ -82,7 +84,5 @@ object BufferedStringWriterTest {
       result += string
       Future.successful(Completed)
     }
-
-    def close() = {}
   }
 }

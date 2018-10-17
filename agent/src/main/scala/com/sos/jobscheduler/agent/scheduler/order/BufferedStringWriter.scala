@@ -3,9 +3,10 @@ package com.sos.jobscheduler.agent.scheduler.order
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import java.io.Writer
+import java.lang.Thread.currentThread
+import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
 /**
   * Combines several `write` calls to one `onFlush`.
@@ -21,24 +22,40 @@ private[order] trait BufferedStringWriter extends Writer {
 
   protected def passThroughSize: Int
 
+  implicit protected def scheduler: Scheduler
+
   /** Do not block here! */
   protected def onFlush(string: String): Future[Completed]
 
   protected def onBufferingStarted(): Unit
 
   private var stringBuilder: StringBuilder = null
+  @volatile
+  private var blockingThread: Thread = null  // Only only thread is expected to write
+
+  final def close() = {
+    blockingThread match {
+      case null ⇒
+      case t ⇒ t.interrupt()  // In case of an emergency close, free blocking thread.
+    }
+    flush()
+  }
 
   final def write(chars: Array[Char], offset: Int, length: Int) =
     if (length > 0) {
       val completed = writeSynchronized(chars, offset, length)
-      Await.ready(completed, Inf).successValue  // We block in stdout/stderr reader thread to avoid congestion
+      blockingThread = currentThread
+      try completed.awaitInfinite  // We block in our stdout/stderr reader thread to avoid congestion  // TODO Waits forever if OrderActor crashes
+      finally blockingThread = null
     }
 
   private def writeSynchronized(chars: Array[Char], offset: Int, length: Int): Future[Completed] =
     synchronized {
-      if (bufferLength + length > size) {
-        flushBuffer()
-      }
+      val startWritten =
+        if (bufferLength + length > size)
+          flushBuffer()
+        else
+          Future.successful(Completed)
       if (isEmpty && length >= passThroughSize) {
         val completed = onFlush(new String(chars, offset, length))
         stringBuilder = null
@@ -51,10 +68,12 @@ private[order] trait BufferedStringWriter extends Writer {
           }
         }
         stringBuilder.appendAll(chars, offset, length)
-        if (bufferLength == size) {
-          flushBuffer()
+        if (bufferLength >= size) {
+          val flushed = flushBuffer()
+          Future.sequence(flushed :: startWritten :: Nil) map (_ reduce ((_, _) ⇒ Completed))
         }
-        Future.successful(Completed)
+        else
+          startWritten
       }
     }
 
@@ -62,10 +81,12 @@ private[order] trait BufferedStringWriter extends Writer {
     synchronized {  // `flush` may be called by the actor thread, while the pipe thread is calling `write`
       flushBuffer()
       stringBuilder = null
-    }
+    } // Don't wait here for flushBuffer() to be completed
 
-  private def flushBuffer(): Unit = {
-    if (!isEmpty) {
+  private def flushBuffer(): Future[Completed] = {
+    if (isEmpty)
+      Future.successful(Completed)
+    else {
       val string = stringBuilder.toString
       stringBuilder.clear()
       onFlush(string)

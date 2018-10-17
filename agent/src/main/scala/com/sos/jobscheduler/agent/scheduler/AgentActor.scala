@@ -228,8 +228,8 @@ extends MainJournalingActor[AgentEvent] {
           askTimeout = akkaAskTimeout,
           keyedEventBus,
           agentConfiguration.config,
-          scheduler,
-          timerService)
+          timerService)(
+          scheduler)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
     masterToOrderKeeper.insert(masterId → actor)

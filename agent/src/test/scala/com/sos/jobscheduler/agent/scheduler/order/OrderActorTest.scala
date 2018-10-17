@@ -40,11 +40,11 @@ import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import java.time.Instant.now
 import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
 
