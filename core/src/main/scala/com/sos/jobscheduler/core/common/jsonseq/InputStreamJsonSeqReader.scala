@@ -47,7 +47,7 @@ extends AutoCloseable {
     val pos = position
     readByteString() map (o ⇒
       io.circe.parser.parse(o.decodeString(UTF_8)) match {
-        case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos + 1/*RS*/, failure.message.replace(" (line 1, ", " ("))
+        case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
         case Right(json) ⇒ PositionAnd(pos, json)
       })
   }
