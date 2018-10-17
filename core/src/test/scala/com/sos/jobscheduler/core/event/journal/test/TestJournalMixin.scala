@@ -22,6 +22,7 @@ import com.sos.jobscheduler.core.event.journal.test.TestJournalMixin._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.test.TestMeta.testJournalMeta
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import java.io.EOFException
@@ -49,12 +50,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     super.afterAll()
   }
 
-  protected def withTestActor(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
+  protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
     val actorSystem = newActorSystem(getClass.simpleScalaName)
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
-      val actor = actorSystem.actorOf(Props { new TestActor(journalMeta, whenJournalStopped) }, "TestActor")
+      val actor = actorSystem.actorOf(Props { new TestActor(config, journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (?)
       (actor ? TestActor.Input.Terminate) await 99.s

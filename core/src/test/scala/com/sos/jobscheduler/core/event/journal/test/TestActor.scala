@@ -19,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.test.TestActor._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -28,14 +28,14 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
+private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[TestEvent], journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
 
   private implicit val executionContext = context.dispatcher
 
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, MyConfig, new StampedKeyedEventBus, Scheduler.global, journalStopped,
+    JournalActor.props(journalMeta, config withFallback TestConfig, new StampedKeyedEventBus, Scheduler.global, journalStopped,
       new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/))),
     "Journal"))
   private val keyToAggregate = mutable.Map[String, ActorRef]()
@@ -161,12 +161,13 @@ private[journal] final class TestActor(journalMeta: JournalMeta[TestEvent], jour
 private[journal] object TestActor {
   intelliJuseImport(TestKeyedEventJsonCodec)
 
-  private val MyConfig = ConfigFactory.parseString("""
+  private val TestConfig = ConfigFactory.parseString("""
      |jobscheduler.journal.sync = on
      |jobscheduler.journal.delay = 0.s
      |jobscheduler.journal.simulate-sync = 10ms
-     |jobscheduler.journal.snapshot.log-period = 10.ms
+     |jobscheduler.journal.snapshot.log-period = 10ms
      |jobscheduler.journal.snapshot.log-actor-limit = 1
+     |jobscheduler.journal.event-buffer-size = 1000
      |""".stripMargin)
   private val logger = Logger(getClass)
 

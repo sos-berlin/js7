@@ -50,13 +50,14 @@ extends Actor with Stash {
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
   private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.duration")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
   private var snapshotCancelable: Cancelable = null
 
   private var observerOption: Option[JournalingObserver] = None
   private var eventWriter: EventJournalWriter[E] = null
   private var snapshotWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()
-  private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
+  private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
   private var dontSync = true
   private var delayedCommit: Cancelable = null
@@ -147,7 +148,9 @@ extends Actor with Stash {
       }
 
     case Internal.Commit(level) ⇒
-      if (level < writtenBuffer.length) {
+      if (writtenBuffer.length >= eventLimit)
+        commit()
+      else if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits
         forwardCommit()
       } else if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit

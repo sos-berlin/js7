@@ -24,7 +24,7 @@ import org.scalatest.FreeSpec
 final class JournalReaderTest extends FreeSpec with TestJournalMixin {
 
   "Journal file without snapshots or events" in {
-    withTestActor { (_, _ ) ⇒ }
+    withTestActor() { (_, _ ) ⇒ }
     val file = currentFile
     autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
       assert(journalReader.nextSnapshots().toList == Nil)
@@ -74,7 +74,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   }
 
   "Journal file with snapshot and events" in {
-    withTestActor { (actorSystem, actor) ⇒
+    withTestActor() { (actorSystem, actor) ⇒
       for ((key, cmd) ← testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")) await 99.s
