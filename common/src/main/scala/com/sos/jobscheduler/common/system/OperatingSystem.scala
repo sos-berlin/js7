@@ -129,7 +129,7 @@ object OperatingSystem {
           val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
           autoClosing(new FileInputStream("/proc/cpuinfo")) { in ⇒
             fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
-              case CpuModelRegex(model) ⇒ model.trim
+              case CpuModelRegex(model) ⇒ model.trim.replaceAll("""[ \t\n]+""", " ")
             }
           }
         } .toOption.flatten
