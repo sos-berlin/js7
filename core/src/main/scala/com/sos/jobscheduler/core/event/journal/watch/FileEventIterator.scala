@@ -52,10 +52,11 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
       eventId == after
     }
 
-  final def hasNext = nextEvent != null || {
-    nextEvent = journalReader.nextEvent().orNull
-    nextEvent != null
-  }
+  final def hasNext = nextEvent != null ||
+    journalReader.position < flushedLength() && {
+      nextEvent = journalReader.nextEvent().orNull
+      nextEvent != null
+    }
 
   final def next(): Stamped[KeyedEvent[E]] =
     if (nextEvent != null) {

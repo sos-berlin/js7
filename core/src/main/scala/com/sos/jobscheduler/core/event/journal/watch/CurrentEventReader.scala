@@ -32,17 +32,18 @@ extends EventReader[E]
   protected def isHistoric = false
   final val journalFile = journalMeta.file(after = tornEventId)
   protected def tornPosition = flushedLengthAndEventId.position
-  protected var flushedLength = flushedLengthAndEventId.position  // Initially, the file contains no events
+  protected def flushedLength = _flushedLength
 
+  private var _flushedLength = flushedLengthAndEventId.position  // Initially, the file contains no events
   private var _lastEventId = flushedLengthAndEventId.value
 
   private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
-    if (flushedPosition < flushedLength)
+    if (flushedPosition < _flushedLength)
       throw new IllegalArgumentException(s"CurrentEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < flushedLength $flushedLength")
     eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
     _lastEventId = eventId
-    flushedLength = flushedPosition
+    _flushedLength = flushedPosition
   }
 
   protected def reverseEventsAfter(after: EventId) =
