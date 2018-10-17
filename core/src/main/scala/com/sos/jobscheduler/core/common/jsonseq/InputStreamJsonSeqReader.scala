@@ -2,11 +2,11 @@ package com.sos.jobscheduler.core.common.jsonseq
 
 import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
 import io.circe.Json
+import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 
@@ -21,7 +21,7 @@ import java.nio.file.Path
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize)
+class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSize)
 extends AutoCloseable {
 
   private val block = new Array[Byte](blockSize)
@@ -30,8 +30,9 @@ extends AutoCloseable {
   private var blockRead = 0
   private val byteStringBuilder = ByteString.newBuilder
 
-  private var lineNumber = 0  // -1 for unknown line number after seek
+  private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
+
   private var closed = false
 
   /** Closes underlying `SeekableInputStream`. */
@@ -44,7 +45,11 @@ extends AutoCloseable {
 
   final def read(): Option[PositionAnd[Json]] = {
     val pos = position
-    readByteString() map (o ⇒ PositionAnd(pos, o.decodeString(UTF_8).parseJson))
+    readByteString() map (o ⇒
+      io.circe.parser.parse(o.decodeString(UTF_8)) match {
+        case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos + 1/*RS*/, failure.message.replace(" (line 1, ", " ("))
+        case Right(json) ⇒ PositionAnd(pos, json)
+      })
   }
 
   private def readByteString(): Option[ByteString] = {
@@ -57,7 +62,7 @@ extends AutoCloseable {
       }
       if (!rsReached && blockRead < blockLength) {
         if (block(blockRead) != RS)
-          throwCorrupted("Missing ASCII RS at start of JSON sequence record")
+          throwCorrupt("Missing ASCII RS at start of JSON sequence record")
         blockRead += 1
         rsReached = true
       }
@@ -68,7 +73,7 @@ extends AutoCloseable {
         blockRead += 1
       }
     }
-    if (rsReached && !lfReached) throwCorrupted("Missing ASCII LF at end of JSON sequence record")
+    if (rsReached && !lfReached) throwCorrupt("Missing ASCII LF at end of JSON sequence record")
     lfReached ? {
       if (lineNumber != -1) lineNumber += 1
       val result = byteStringBuilder.result()
@@ -80,7 +85,7 @@ extends AutoCloseable {
   private def fillByteBuffer(): Boolean = {
     blockPos = position
     blockRead = 0
-    val length = in.read(block)
+    val length = check { in.read(block) }
     if (length == -1) {
       blockLength = 0
       false  // EOF
@@ -95,7 +100,7 @@ extends AutoCloseable {
       if (pos >= blockPos && pos <= blockPos + blockLength) {
         blockRead = (pos - blockPos).toInt  // May be == blockLength
       } else {
-        in.seek(pos)
+        check { in.seek(pos) }
         blockPos = pos
         blockLength = 0
         blockRead = 0
@@ -105,17 +110,23 @@ extends AutoCloseable {
 
   final def position = blockPos + blockRead
 
-  private def throwCorrupted(extra: String) = {
-    val where = if (lineNumber != -1) s"line ${lineNumber+1}" else s"position $position"
-    sys.error(s"JSON sequence is corrupted at $where. $extra")
-  }
+  private def check[A](body: ⇒ A): A =
+    try body
+    catch { case _: IOException if closed ⇒ sys.error("JSON sequence file has been closed while reading") }
+
+  private def throwCorrupt(extra: String) =
+    throwCorrupt2(lineNumber, position, extra)
 }
 
 object InputStreamJsonSeqReader
 {
   private val BlockSize = 4096
-  private val CharBufferSize = 1000
 
-  def open(file: Path, blockSize: Int = BlockSize, charBufferSize: Int = CharBufferSize): InputStreamJsonSeqReader =
-    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize, charBufferSize)
+  def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
+    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize)
+
+  private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
+    val where = if (lineNumber >= 0) s"line $lineNumber" else s"position $position"
+    sys.error(s"JSON sequence is corrupt at $where: $extra")
+  }
 }
