@@ -62,26 +62,25 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
     assert(reader.read() == Some(Chunk(2)._2))
   }
 
+  "Last truncate record of truncated file is ignored" - {
+    "Last record is not truncated" in {
+      assert(read().isEmpty)
+    }
+
+    "Truncated file" in {
+      assert(read(RS, '{').isEmpty)
+    }
+
+    "Truncated file before LF" in {
+      assert(read(RS, '{', '}').isEmpty)
+    }
+
+    "Truncated file after RS" in {
+      assert(read(RS).isEmpty)
+    }
+  }
+
   "Corrupt data" - {
-    def expectException(bytes: Byte*): Exception =
-      intercept[Exception] {
-        new InputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.toArray)).read()
-      }
-
-    "Truncated JSON" in {
-      assert(expectException(RS, '{').toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: Missing ASCII LF at end of JSON sequence record")
-    }
-
-    "Truncated before LF" in {
-      assert(expectException(RS, '{', '}').toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: Missing ASCII LF at end of JSON sequence record")
-    }
-
-    "Truncated after RS" in {
-      assert(expectException(RS).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: Missing ASCII LF at end of JSON sequence record")
-    }
 
     "Missing RS" in {
       assert(expectException('{', '}', LF).toStringWithCauses ==
@@ -136,6 +135,13 @@ private object InputStreamJsonSeqReaderTest {
 
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1 sameElements FourByteUtf8)
+
+  private def read(bytes: Byte*) = new InputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.toArray)).read()
+
+  private def expectException(bytes: Byte*): Exception =
+    intercept[Exception] {
+      read(bytes: _*)
+    }
 
   private def simplifiedSeekableInputStream(bytes: Array[Byte]): SeekableInputStream =
     new ByteArrayInputStream(bytes) with SeekableInputStream {

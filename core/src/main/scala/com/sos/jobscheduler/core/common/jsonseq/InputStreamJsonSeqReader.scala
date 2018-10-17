@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.common.jsonseq
 import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
 import io.circe.Json
@@ -34,6 +35,7 @@ extends AutoCloseable {
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
 
   private var closed = false
+  private var truncatedWarned = false
 
   /** Closes underlying `SeekableInputStream`. */
   def close() = {
@@ -73,7 +75,9 @@ extends AutoCloseable {
         blockRead += 1
       }
     }
-    if (rsReached && !lfReached) throwCorrupt("Missing ASCII LF at end of JSON sequence record")
+    if (rsReached && !lfReached) {
+      logger.warn(s"Ignoring last truncated record in: $in")
+    }
     lfReached ? {
       if (lineNumber != -1) lineNumber += 1
       val result = byteStringBuilder.result()
@@ -121,6 +125,7 @@ extends AutoCloseable {
 object InputStreamJsonSeqReader
 {
   private val BlockSize = 4096
+  private val logger = Logger(getClass)
 
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize)
