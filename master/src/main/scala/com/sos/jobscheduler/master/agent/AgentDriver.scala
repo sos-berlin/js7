@@ -166,7 +166,7 @@ with ReceiveLoggingActor.WithStash {
       if (!terminating) {
         lastEventId = after
         isAwaitingEventResponse = true
-        client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout)).runAsync
+        client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout, limit = EventLimit)).runAsync
           .andThen { case _ ⇒
             isAwaitingEventResponse = false
           }
@@ -339,6 +339,7 @@ with ReceiveLoggingActor.WithStash {
 
 private[master] object AgentDriver
 {
+  private val EventLimit = 1000  // OrderStdWritten may be up to 10000 characters (30000 UTF-8 characters), so memory usage may be 30MB
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
 
   def props(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit ts: TimerService, s: Scheduler) =
