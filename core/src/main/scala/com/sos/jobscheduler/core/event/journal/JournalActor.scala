@@ -19,15 +19,15 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
-import java.nio.file.Files.move
+import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import java.nio.file.{Files, Path}
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -73,7 +73,7 @@ extends Actor with Stash {
     if (snapshotWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
-      Files.delete(snapshotWriter.file)
+      delete(snapshotWriter.file)
     }
     closeEventWriter()
     logger.debug("Stopped")
@@ -91,9 +91,9 @@ extends Actor with Stash {
       val sender = this.sender()
       locally {
         val file = journalMeta.file(after = lastEventId, extraSuffix = TmpSuffix)
-        if (Files.exists(file)) {
+        if (exists(file)) {
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
-          Files.delete(file)  // TODO Provide alternative to move file
+          delete(file)  // TODO Provide alternative to move file
         }
       }
       becomeTakingSnapshotThen() {
@@ -103,7 +103,7 @@ extends Actor with Stash {
       }
 
     case Input.StartWithoutRecovery ⇒  // Testing only
-      eventWriter = newEventJsonWriter(journalMeta.file(after = lastWrittenEventId), withoutSnapshots = true)
+      eventWriter = newEventJsonWriter(withoutSnapshots = true)
       eventWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
       unstashAll()
       becomeReady()
@@ -279,7 +279,7 @@ extends Actor with Stash {
       val file = journalMeta.file(after = lastWrittenEventId)
       move(snapshotWriter.file, file, ATOMIC_MOVE)
       snapshotWriter = null
-      eventWriter = newEventJsonWriter(file)
+      eventWriter = newEventJsonWriter()
       deleteObsoleteJournalFiles()
       unstashAll()
       andThen()
@@ -288,9 +288,17 @@ extends Actor with Stash {
       stash()
   }
 
-  private def newEventJsonWriter(file: Path, withoutSnapshots: Boolean = false) =
-    new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observerOption, simulateSync = simulateSync,
+  private def newEventJsonWriter(withoutSnapshots: Boolean = false) = {
+    val symLink = Paths.get(journalMeta.fileBase + ".journal")
+    Try { if (exists(symLink)) delete(symLink) }
+
+    val file = journalMeta.file(after = lastWrittenEventId)
+    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observerOption, simulateSync = simulateSync,
       withoutSnapshots = withoutSnapshots)
+
+    Try { createSymbolicLink(symLink, file.getFileName) }
+    writer
+  }
 
   def closeEventWriter(): Unit = {
     if (eventWriter != null) {
@@ -303,7 +311,7 @@ extends Actor with Stash {
     observerOption match {
       case None ⇒
         for (file ← listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
-          try Files.delete(file)
+          try delete(file)
           catch { case NonFatal(t) ⇒ logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}") }
         }
       case Some(observer) ⇒
