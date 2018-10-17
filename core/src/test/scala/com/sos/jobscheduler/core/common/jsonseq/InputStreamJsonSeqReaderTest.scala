@@ -78,6 +78,11 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
         "JSON sequence is corrupt at line 1: Missing ASCII LF at end of JSON sequence record")
     }
 
+    "Truncated after RS" in {
+      assert(expectException(RS).toStringWithCauses ==
+        "JSON sequence is corrupt at line 1: Missing ASCII LF at end of JSON sequence record")
+    }
+
     "Missing RS" in {
       assert(expectException('{', '}', LF).toStringWithCauses ==
         "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record")
@@ -86,6 +91,11 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
     "Missing separators" in {
       assert(expectException(RS, '{', '}', '{', '}', LF).toStringWithCauses ==
         "JSON sequence is corrupt at line 1: expected whitespace or eof got { (column 3)")
+    }
+
+    "Invalid JSON" in {
+      assert(expectException(RS, '{', LF).toStringWithCauses ==
+        "JSON sequence is corrupt at line 1: exhausted input")
     }
   }
 
