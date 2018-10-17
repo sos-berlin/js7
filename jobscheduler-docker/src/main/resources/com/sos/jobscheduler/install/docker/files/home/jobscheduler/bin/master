@@ -4,7 +4,6 @@ set -e
 data=/var/opt/jobscheduler/master/data
 hprof=$data/logs/OutOfMemoryError.hprof
 
-rm -fv "$hprof"
 exec /opt/jobscheduler/bin/jobscheduler-master \
   -log4j-async \
   -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
