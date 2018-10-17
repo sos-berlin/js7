@@ -75,7 +75,7 @@ final class ClassicEventHandler(protected val scope: BackendScope[GuiComponent.P
 
     Callback.future {
       _isRequestingEvents = true
-      MasterApi.events(EventRequest.singleClass[OrderEvent](after = after, timeout = timeout))
+      MasterApi.events(EventRequest.singleClass[OrderEvent](after = after, timeout = timeout, limit = 1000/*limit Master's memory usage*/))
         .runAsync
         .andThen { case _ ⇒
           _isRequestingEvents = false  // TODO Falls requestStateAndEvents() aufgerufen wird, während Events geholt werden, wird _isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchAndHandleEvents)
