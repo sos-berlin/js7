@@ -1,4 +1,4 @@
-// Workflow containg three forks
+// Workflow containing three forks
 
 job "test" on "test-agent-1";
 
