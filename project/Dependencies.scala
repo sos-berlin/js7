@@ -52,7 +52,8 @@ object Dependencies {
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
   val akkaHttp            = "com.typesafe.akka" %% "akka-http" % akkaHttpVersion :: akkaStream :: akkaActor/*force version*/ :: Nil
-  val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion
+  val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion ::
+                            "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion/*force version*/ :: Nil
 
   val circe               = "io.circe" %% "circe-core" % circeVersion ::
                             "io.circe" %% "circe-parser" % circeVersion ::
