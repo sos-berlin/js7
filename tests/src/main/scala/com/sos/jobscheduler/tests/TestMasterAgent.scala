@@ -7,10 +7,9 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.auth.SecretStringGenerator.newSecretString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
@@ -28,7 +27,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
@@ -43,7 +42,6 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
-import io.circe.syntax.EncoderOps
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
@@ -60,9 +58,6 @@ import scala.language.implicitConversions
 object TestMasterAgent {
   private val TestWorkflowPath = WorkflowPath("/test")
   private val TestJobPath = JobPath("/test")
-
-  /** Für &lt;elememt attribute={stringValue}/>. */
-  private implicit def toXmlText(o: GenericString): xml.Text = if (o == null) null else xml.Text(o.string)
 
   def main(args: Array[String]): Unit = {
     lazy val directory =
@@ -83,34 +78,43 @@ object TestMasterAgent {
 
   private def run(conf: Conf): Unit = {
     val env = new TestEnvironment(conf.agentPaths, conf.directory)
+    val agentToPassword = conf.agentPaths.map(_ → newSecretString()).toMap
     withCloser { implicit closer ⇒
+      env.masterDir / "config" / "private" / "private.conf" :=
+        s"""jobscheduler.webserver.auth.loopback-is-public = on
+            |jobscheduler.auth.agents {
+            |  # Passwords for each Agent path (user name is the configured Master ID or "Master")
+            |""".stripMargin +
+         agentToPassword.map(o ⇒ s"""  "${o._1.string}" = "${o._2.string}"\n""").mkString +
+         "}\n"
       val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
-        env.agentFile(agentPath, TestJobPath, SourceType.Xml).contentString =
-          JobConfiguration(
-            JobPath.NoId,
-            JobScript(
-              if (isWindows) s"""
-                 |@echo off
-                 |echo Hello
-                 |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
-                 |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-                 |""".stripMargin
-              else s"""
-                 |echo Hello ☘️
-                 |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
-                 |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
-                 |""".stripMargin),
-            Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
-            taskLimit = conf.tasksPerJob
-          ).asJson.toPrettyString
+        env.agentDir(agentPath) / "config" / "private" / "private.conf" :=
+          s"""jobscheduler.auth.users.Master = "plain:${agentToPassword(agentPath).string}"
+             |""".stripMargin
+        env.agentFile(agentPath, TestJobPath, SourceType.Json) := JobConfiguration(
+          JobPath.NoId,
+          JobScript(
+            if (isWindows) s"""
+               |@echo off
+               |echo Hello
+               |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
+               |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+               |""".stripMargin
+            else s"""
+               |echo Hello ☘️
+               |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
+               |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
+               |""".stripMargin),
+          Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
+          taskLimit = conf.tasksPerJob)
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
         ) map { _.closeWithCloser } await 99.s
-        env.file(agentPath, SourceType.Xml).xml = <agent uri={agent.localUri.toString}/>
+        env.file(agentPath, SourceType.Json) := Agent(AgentPath.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestMasterAgent") {
@@ -128,7 +132,7 @@ object TestMasterAgent {
       env.writeJson(TestWorkflowPath, makeWorkflow(conf))
       for (i ← 1 to conf.orderGeneratorCount) {
         env.file(ScheduledOrderGeneratorPath(s"/test-$i"), SourceType.Xml).xml =
-          <order job_chain={TestWorkflowPath}>
+          <order job_chain={TestWorkflowPath.string}>
             <params>
               <param name="VARIABLE" value={i.toString}/>
             </params>
