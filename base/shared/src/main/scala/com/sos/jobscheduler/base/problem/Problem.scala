@@ -18,7 +18,7 @@ sealed trait Problem
 {
   def throwable: Throwable
 
-  def throwableOption: Option[Throwable] = None
+  def throwableOption: Option[Throwable]
 
   def cause: Option[Problem]
 
@@ -37,7 +37,9 @@ sealed trait Problem
 
   override def hashCode = toString.hashCode
 
-  override def toString: String
+  override final def toString = message + cause.fold("")(o ⇒ s" [$o]")
+
+  protected def message: String
 }
 
 object Problem
@@ -57,27 +59,25 @@ object Problem
   def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
     new FromThrowable(() ⇒ throwable)
 
-  sealed trait HasMessage extends Problem {
-    def message: String
-  }
-
-  private[Problem] trait Simple extends HasMessage {
+  private[Problem] trait Simple extends Problem {
     protected def rawMessage: String
+    final def throwableOption: None.type = None
 
     // A val, to compute message only once.
-    final lazy val message = {
+    final lazy val message =
       rawMessage match {
         case null ⇒ "A problem occurred (null)"
         case "" ⇒ "A problem occurred (no message)"
         case o ⇒ o
       }
-    }
 
-    final def throwable = new ProblemException(message)
+    final def throwable =
+      cause match {
+        case Some(p: FromThrowable) ⇒ new ProblemException(message, p.throwable)
+        case _ ⇒ new ProblemException(toString)
+      }
 
-    override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + message)
-
-    override def toString = message + cause.map(o ⇒ s" [$o]").getOrElse("")
+    override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
   }
 
   class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None) extends Simple {
@@ -98,10 +98,12 @@ object Problem
   def multiple(problems: Iterable[String]): Multiple =
     Multiple(problems.map(o ⇒ new Lazy(o)))
 
-  final case class Multiple private[problem](problems: Iterable[Problem]) extends HasMessage {
+  final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
     def throwable = new ProblemException(toString)
+
+    def throwableOption: None.type = None
 
     lazy val message = problems map (_.toString) reduce combineMessages
 
@@ -120,8 +122,6 @@ object Problem
       }
 
     override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
-
-    override def toString = message
   }
 
   private final class FromThrowable(throwableFunction: () ⇒ Throwable) extends Problem {
@@ -129,11 +129,13 @@ object Problem
 
     def throwable = throwable_
 
-    override def throwableOption = Some(throwable_)
+    def throwableOption: Some[Throwable] =
+      Some(throwable_)
 
-    def cause = None
+    def cause: None.type =
+      None
 
-    override def toString = throwable_.toStringWithCauses
+    lazy val message = throwable_.toStringWithCauses
   }
 
   implicit val semigroup: Semigroup[Problem] = {
@@ -147,10 +149,10 @@ object Problem
         t
       }
 
-    case (a: Lazy, b: Lazy) ⇒
+    case (a: Simple, b: Simple) ⇒
       Multiple(a :: b :: Nil)
 
-    case (a: Lazy, b: Multiple) ⇒
+    case (a: Simple, b: Multiple) ⇒
       Multiple(a +: b.problems.toVector)
 
     case (a: Multiple, b: Lazy) ⇒

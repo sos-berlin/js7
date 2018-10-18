@@ -47,6 +47,11 @@ final class ProblemTest extends FreeSpec {
     assert(Problem.fromLazyThrowable(new RuntimeException).toString == "java.lang.RuntimeException")
   }
 
+  "cause" in {
+    assert(new Problem.Lazy("A", Some(Problem("B"))).toString == "A [B]")
+    assert(catch_(new Problem.Lazy("A", Some(Problem("B")))) == "A [B]")
+  }
+
   "combine" in {
     assert((Problem("A") |+| Problem("B")) == Problem("A\n & B"))
     assert((Problem("A:") |+| Problem("B")) == Problem("A: B"))
@@ -59,6 +64,8 @@ final class ProblemTest extends FreeSpec {
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A, caused by: B")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
+
+    assert(catch_(Problem("A") |+| Problem("B")) == "A\n & B")
   }
 
   "Multiple" in {
@@ -101,6 +108,25 @@ final class ProblemTest extends FreeSpec {
     }
   }
 
+  "throwable" in {
+    val throwable = intercept[ProblemException] {
+      throw Problem("PROBLEM").throwable
+    }
+    assert(throwable.toString == "ProblemException: PROBLEM")
+  }
+
+  "throwable withPrefix" in {
+    val throwable = intercept[ProblemException] {
+      throw Problem("PROBLEM").withPrefix("PREFIX:").throwable
+    }
+    assert(throwable.toString == "ProblemException: PREFIX: PROBLEM")
+  }
+
+  "Problem.fromEagerThrowable" in {
+    assert(Problem.fromEagerThrowable(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
+    assert(Problem.fromEagerThrowable(new RuntimeException("EXCEPTION")).withPrefix("PREFIX").toString == "PREFIX, caused by: EXCEPTION")
+  }
+
   "equals" in {
     assert(Problem("TEST") == Problem("TEST"))
     assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
@@ -108,4 +134,9 @@ final class ProblemTest extends FreeSpec {
     assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
     assert(Problem("X") != Problem("Y"))
   }
+
+  private def catch_(problem: Problem): String =
+    intercept[ProblemException] {
+      throw problem.throwable
+    }.toStringWithCauses
 }
