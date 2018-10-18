@@ -49,7 +49,7 @@ extends Actor with Stash {
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.duration")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.period")(p ⇒ config.getDuration(p).toFiniteDuration)
   private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
   private var snapshotCancelable: Cancelable = null
 
