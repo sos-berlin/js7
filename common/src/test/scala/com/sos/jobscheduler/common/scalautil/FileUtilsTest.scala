@@ -1,13 +1,16 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.google.common.io.Files.touch
+import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
+import com.sos.jobscheduler.common.scalautil.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
 import com.sos.jobscheduler.common.scalautil.FileUtilsTest._
+import io.circe.Json
 import java.io.File
+import java.io.File.separator
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
-import java.nio.file.{Files, NotDirectoryException, Path}
+import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
@@ -30,10 +33,6 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "File extention methods" - {
-    "slash" in {
-      assert(new File("/a") / "b" == new File("/a", "b"))
-    }
-
     "contentString" in {
       file.contentString = TestString
       file.contentString shouldEqual TestString
@@ -58,8 +57,20 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "Path extention methods" - {
-    "slash" in {
-      assert(new File("/a").toPath / "b" == new File("/a", "b").toPath)
+    "slash" - {
+      val a = Paths.get("a")
+      "valid" in {
+        assert((a / "b").toString == s"a${separator}b")
+      }
+      "invalid" - {
+        for (invalid ← InvalidRelativePaths) {
+          invalid in {
+            intercept[ProblemException] {
+              a / invalid
+            }
+          }
+        }
+      }
     }
 
     "contentString" in {
@@ -72,6 +83,22 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       path.contentBytes shouldEqual TestBytes
       path.contentBytes = Array[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    ":= String" in {
+      path := TestString
+      path.contentString shouldEqual TestString
+      new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString
+    }
+
+    ":= Array[Byte]" in {
+      path := Array[Byte](1, 2)
+      path.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    ":= JSON" in {
+      path := Json.obj("key" → Json.fromInt(7))
+      path.contentString shouldEqual """{"key":7}"""
     }
 
     "write" in {
@@ -146,10 +173,45 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
     }
     assert(!exists(file))
   }
+
+  "checkRelativePath" - {
+    "valid" in {
+      assert(checkRelativePath("relative").isValid)
+    }
+
+    "invalid" - {
+      for (invalid ← InvalidRelativePaths) {
+        invalid in {
+          assert(checkRelativePath(invalid).isInvalid)
+        }
+      }
+    }
+  }
 }
 
 private object FileUtilsTest {
   private val TestString = "AÅ"
   private val TestBytes = TestString.getBytes(UTF_8)
   assert(TestBytes.length == 3)
+
+  private val InvalidRelativePaths = List(
+    "",
+    "/b",
+    """\b""",
+    "./b",
+    "../b",
+    """.\b""",
+    """..\b""",
+    "b/./c",
+    "b/../c",
+    """b/.\c""",
+    """b/..\c""",
+    """b\.\c""",
+    """b\..\c""",
+    """b\./c""",
+    """b\../c""",
+    "b/.",
+    "b/..",
+    """b\.""",
+    """b\..""")
 }

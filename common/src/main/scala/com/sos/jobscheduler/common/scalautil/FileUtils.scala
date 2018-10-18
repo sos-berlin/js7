@@ -1,17 +1,23 @@
 package com.sos.jobscheduler.common.scalautil
 
 import akka.util.ByteString
+import cats.data.Validated.{Invalid, Valid}
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files ⇒ GuavaFiles}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
+import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
+import io.circe.{Encoder, Json}
 import java.io.File
 import java.nio.charset.Charset
-import java.nio.file.Files.{delete, isSymbolicLink}
-import java.nio.file.attribute.FileAttribute
+import java.nio.file.Files.{delete, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
@@ -38,9 +44,21 @@ object FileUtils {
 
     implicit def fileToPath(file: File): Path = file.toPath
 
-    implicit final class RichPath(private val delegate: Path) extends AnyVal {
+    implicit final class RichPath(private val delegate: Path) extends AnyVal
+    {
+      /** Writes `string` encoded with UTF-8 to file. */
+      def :=(string: CharSequence): Unit =
+        contentString = string
 
-      def /(filename: String): Path = delegate resolve filename
+      def :=(byteString: Array[Byte]): Unit =
+        contentBytes = byteString
+
+      def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
+        contentString = jsonEncoder(a).pretty(CompactPrinter)
+
+      /** Must be a relative path without backslashes or single or double dot directories. */
+      def /(relative: String): Path =
+        delegate resolve checkRelativePath(relative).orThrow
 
       def byteString: ByteString = file.byteString
 
@@ -50,9 +68,16 @@ object FileUtils {
 
       def contentString: String = file.contentString
 
-      def contentString_=(o: String): Unit = file.contentString = o
+      def contentString_=(o: CharSequence): Unit = file.contentString = o
 
       def contentString(encoding: Charset) = file.contentString(encoding)
+
+      def writeExecutable(string: String): Unit = {
+        this := string
+        if (isUnix) {
+          setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
+        }
+      }
 
       def write(string: String, encoding: Charset = UTF_8): Unit =  file.write(string, encoding)
 
@@ -66,10 +91,8 @@ object FileUtils {
       def pathSet: Set[Path] = autoClosing(Files.list(delegate)) { _.toSet }
     }
 
-    implicit final class RichFile(private val delegate: File) extends AnyVal {
-
-      def /(filename: String) = new File(delegate, filename)
-
+    implicit final class RichFile(private val delegate: File) extends AnyVal
+    {
       def byteString: ByteString = ByteString(delegate.contentBytes)
 
       def contentBytes: Array[Byte] = GuavaFiles.toByteArray(delegate)
@@ -78,13 +101,13 @@ object FileUtils {
 
       def contentString: String = contentString(UTF_8)
 
-      def contentString_=(o: String): Unit = write(o, UTF_8)
+      def contentString_=(o: CharSequence): Unit = write(o, UTF_8)
 
       def contentString(encoding: Charset) = GuavaFiles.asCharSource(delegate, encoding).read()
 
-      def write(string: String, encoding: Charset = UTF_8): Unit =  GuavaFiles.asCharSink(delegate, encoding).write(string)
+      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =  GuavaFiles.asCharSink(delegate, encoding).write(string)
 
-      def append(string: String, encoding: Charset = UTF_8): Unit = GuavaFiles.asCharSink(delegate, encoding, APPEND).write(string)
+      def append(string: CharSequence, encoding: Charset = UTF_8): Unit = GuavaFiles.asCharSink(delegate, encoding, APPEND).write(string)
     }
   }
 
@@ -153,4 +176,14 @@ object FileUtils {
       def hasNext = iterator.hasNext
       def next() = iterator.next()
     }
+
+  private val RelativePathRegex = """^(/|\\|..?/|..?\\)|([/\\]..?([/\\]|$))""".r.unanchored
+
+  def checkRelativePath(path: String): Checked[String] =
+    if (path.isEmpty)
+      Invalid(Problem("File path must not be empty"))
+    else if (RelativePathRegex.pattern.matcher(path).find())
+      Invalid(Problem(s"Not a valid file path: $path"))
+    else
+      Valid(path)
 }
