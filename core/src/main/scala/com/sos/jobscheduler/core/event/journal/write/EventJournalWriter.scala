@@ -89,8 +89,8 @@ with AutoCloseable
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
     if (notFlushedCount > 0) for (r ← observer) {
-      notFlushedCount = 0
       r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId), n = notFlushedCount)
+      notFlushedCount = 0
     }
   }
 

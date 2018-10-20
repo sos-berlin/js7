@@ -42,7 +42,8 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     if (!tryAddAfter(eventId, position, n))
       throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
-  def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean =
+  def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean = {
+    require(n >= 1, "EventIdPositionIndex.tryAddAfter")
     eventId > _highestEventId && {
       synchronized {
         eventId > _highestEventId && {
@@ -62,6 +63,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
         }
       }
     }
+  }
 
   /** toFactor > 1 to keep multiple EventIdPositionIndex small. */
   def freeze(toFactor: Int) =
