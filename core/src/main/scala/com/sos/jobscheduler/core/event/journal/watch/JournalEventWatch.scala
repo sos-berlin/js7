@@ -75,7 +75,7 @@ with JournalingObserver
         afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
           afterEventId = current.tornEventId,
           current.journalFile,
-          Some(current.toHistoricEventReader)/*Reuse built-up EventIdToPositionIndex*/)
+          Some(current.toHistoricEventReader)/*Reuse built-up EventIdPositionIndex*/)
         current.closeAfterUse()
       }
       val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
@@ -219,7 +219,7 @@ with JournalingObserver
             r.close()
             eventReader
           }
-        case r ⇒ r.asInstanceOf[HistoricEventReader[E]]
+        case r ⇒ r
       }
 
     def evictEventReader(): Unit = {

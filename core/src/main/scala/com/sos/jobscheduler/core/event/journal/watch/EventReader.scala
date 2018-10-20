@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
@@ -27,7 +28,7 @@ extends AutoCloseable
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
-  private var _eventIdToPositionIndex: EventIdPositionIndex = null
+  private var _eventIdPositionIndex: EventIdPositionIndex = null
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
   @volatile
   private var _closeAfterUse = false
@@ -35,13 +36,13 @@ extends AutoCloseable
   private var _lastUsed = 0L
 
   final def start(): Unit = {
-    _eventIdToPositionIndex = new EventIdPositionIndex(size = config.getInt("jobscheduler.journal.watch.index-size"))
-    _eventIdToPositionIndex.addAfter(tornEventId, tornPosition)
+    _eventIdPositionIndex = new EventIdPositionIndex(PositionAnd(tornPosition, tornEventId),
+      size = config.getInt("jobscheduler.journal.watch.index-size"))
   }
 
   /* To reuse ready built EventIdPositionIndex of CurrentEventReader. */
   protected def startReusing(index: EventIdPositionIndex): Unit = {
-    _eventIdToPositionIndex = index
+    _eventIdPositionIndex = index
     _lastUsed = Timestamp.currentTimeMillis
   }
 
@@ -54,15 +55,15 @@ extends AutoCloseable
     iteratorPool.close()
 
   final def freeze(): Unit =
-    if (!_eventIdToPositionIndex.isFreezed) {
-      _eventIdToPositionIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
+    if (!_eventIdPositionIndex.isFreezed) {
+      _eventIdPositionIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
     }
 
   /**
     * @return None if torn
     */
   final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
-    val indexPositionAndEventId = _eventIdToPositionIndex.positionAndEventIdAfter(after)
+    val indexPositionAndEventId = _eventIdPositionIndex.positionAndEventIdAfter(after)
     import indexPositionAndEventId.position
     if (position >= flushedLength)  // Data behind flushedLength is not flushed and probably incomplete
       Some(CloseableIterator.empty)
@@ -100,7 +101,7 @@ extends AutoCloseable
               val stamped = iterator.next()
               assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
               if (isHistoric) {
-                _eventIdToPositionIndex.tryAddAfter(stamped.eventId, iterator.position)
+                _eventIdPositionIndex.tryAddAfter(stamped.eventId, iterator.position)
               }
               stamped
             }
@@ -110,7 +111,7 @@ extends AutoCloseable
     }
   }
 
-  protected final def eventIdToPositionIndex = _eventIdToPositionIndex
+  protected final def eventIdPositionIndex = _eventIdPositionIndex
 
   final def lastUsedAt: Long =
     _lastUsed

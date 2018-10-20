@@ -12,26 +12,28 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class EventIdPositionIndex(size: Int)
+private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size: Int)
 {
   private var positions = new Array[Long]((size + 1) / 2 * 2)
   private var eventIds = new Array[Long](positions.length)
   private var length = 0
   private var _highestEventId = EventId.BeforeFirst - 1
   private var freezed = false
-  private var _factor = 1
+  private var spread = 1
   private var addedCount = 0
 
   require(positions.nonEmpty)
 
+  addAfter(torn.value, torn.position)
+
   def copy(): EventIdPositionIndex = {
-    val r = new EventIdPositionIndex(size)
+    val r = new EventIdPositionIndex(torn, size)
     r.positions = positions
     r.eventIds = eventIds
     r.length = length
     r._highestEventId = _highestEventId
     r.freezed = freezed
-    r._factor = _factor
+    r.spread = spread
     r.addedCount = addedCount
     r
   }
@@ -41,13 +43,13 @@ private[watch] final class EventIdPositionIndex(size: Int)
       throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
   def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean =
-    (eventId > _highestEventId) &&
+    eventId > _highestEventId && {
       synchronized {
-        (eventId > _highestEventId) && {
+        eventId > _highestEventId && {
           if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
           val a = addedCount
           addedCount += n
-          if (addedCount / _factor > a / _factor) {
+          if (addedCount / spread > a / spread) {
             _highestEventId = eventId
             if (length == positions.length) {
               compress(factor = 2)
@@ -59,12 +61,13 @@ private[watch] final class EventIdPositionIndex(size: Int)
           true
         }
       }
+    }
 
   /** toFactor > 1 to keep multiple EventIdPositionIndex small. */
   def freeze(toFactor: Int) =
     if (!freezed) synchronized {
       if (!freezed) {
-        val a = toFactor / _factor min length / MinimumLength
+        val a = toFactor / spread min length / MinimumLength
         if (a > 1) compress(a)
         if (length < positions.length) {
           positions = shrinkArray(positions, length)
@@ -83,7 +86,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
       eventIds(i) = eventIds(factor * i)
     }
     length = length / factor max 1
-    _factor = factor * _factor
+    spread = factor * spread
   }
 
   def positionAfter(after: EventId): Long =
@@ -111,7 +114,7 @@ private[watch] final class EventIdPositionIndex(size: Int)
 
   def highestEvenId = _highestEventId
 
-  private[watch] def factorForTest = _factor
+  private[watch] def spreadForTest = spread
   private[watch] def lengthForTest = length
 }
 

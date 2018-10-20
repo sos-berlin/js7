@@ -24,7 +24,7 @@ extends EventReader[E]
 {
   def toHistoricEventReader: HistoricEventReader[E] = {
     val r = new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config)
-    r.startReusing(eventIdToPositionIndex.copy())
+    r.startReusing(eventIdPositionIndex.copy())
     r
   }
 
@@ -41,7 +41,7 @@ extends EventReader[E]
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < _flushedLength)
       throw new IllegalArgumentException(s"CurrentEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < flushedLength $flushedLength")
-    eventIdToPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
+    eventIdPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
     _lastEventId = eventId
     _flushedLength = flushedPosition
   }

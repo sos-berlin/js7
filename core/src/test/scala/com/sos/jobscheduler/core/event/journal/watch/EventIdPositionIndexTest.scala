@@ -8,13 +8,9 @@ import org.scalatest.FreeSpec
   */
 final class EventIdPositionIndexTest extends FreeSpec {
 
-  private val index = new EventIdPositionIndex(6)
+  private val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 6)
 
   "No overflow" in {
-    intercept[IllegalStateException] { index.positionAfter(0) }
-    assert(index.positionAndEventIds.isEmpty)
-
-    index.addAfter(1, 100)
     intercept[IllegalArgumentException] { index.positionAfter(0) }
     assert(index.positionAfter(1) == 100)
     assert(index.positionAfter(2) == 100)
@@ -116,37 +112,45 @@ final class EventIdPositionIndexTest extends FreeSpec {
       PositionAnd(307200, 3072),
       PositionAnd(409600, 4096),
       PositionAnd(512000, 5120)))
-      assert(index.factorForTest == 1024)
+    assert(index.spreadForTest == 1024)
+  }
+
+  "A million positions added" in {
+    for (i ← 6001 to 1000000) index.addAfter(i, i * 100)
+    assert(index.positionAndEventIds == Vector(
+      PositionAnd(     100,  1),
+      PositionAnd(26214400, 262144),
+      PositionAnd(52428800, 524288),
+      PositionAnd(78643200, 786432)))
+    assert(index.spreadForTest == 262144)
   }
 
   "freeze" in {
-    assert(index.factorForTest == 1024)
+    assert(index.spreadForTest == 262144)
     index.freeze(toFactor = 100)
     index.positionAndEventIds == Vector(
-      PositionAnd(   100,  1),
-      PositionAnd(102400, 1024),
-      PositionAnd(204800, 2048),
-      PositionAnd(307200, 3072),
-      PositionAnd(409600, 4096),
-      PositionAnd(512000, 5120))
+      PositionAnd(     100,  1),
+      PositionAnd(26214400, 262144),
+      PositionAnd(52428800, 524288),
+      PositionAnd(78643200, 786432))
     intercept[IllegalStateException] {
-      index.addAfter(99900, 999)
+      index.addAfter(99999900, 999)
     }
   }
 
   "freeze 2" in {
-    val index = new EventIdPositionIndex(1000)
-    for (i ← 1 to 10000) index.addAfter(i, i * 100)
-    assert(index.factorForTest == 16 && index.lengthForTest == 626)
+    val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 1000)
+    for (i ← 2 to 10000) index.addAfter(i, i * 100)
+    assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 50)
-    assert(index.factorForTest == 48 && index.lengthForTest == 208/*about 3.2KB*/)
+    assert(index.spreadForTest == 48 && index.lengthForTest == 208/*about 3.2KB*/)
   }
 
   "freeze to high factor keeps length >= 100" in {
-    val index = new EventIdPositionIndex(1000)
-    for (i ← 1 to 10000) index.addAfter(i, i * 100)
-    assert(index.factorForTest == 16 && index.lengthForTest == 626)
+    val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 1000)
+    for (i ← 2 to 10000) index.addAfter(i, i * 100)
+    assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 1000)
-    assert(index.factorForTest == 96 && index.lengthForTest == 104/*about 1.6KB*/)
+    assert(index.spreadForTest == 96 && index.lengthForTest == 104/*about 1.6KB*/)
   }
 }
