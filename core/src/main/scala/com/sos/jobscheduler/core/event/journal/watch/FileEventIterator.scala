@@ -1,13 +1,18 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
+import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
+import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -73,5 +78,36 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   final def isClosed = closed
 
   override def toString =
-    s"FileEventIterator(${journalFile.getFileName} tornEventId=${EventId.toString(tornEventId)})"
+    s"FileEventIterator(${journalFile.getFileName} tornEventId=${EventId.toString(tornEventId)} eventId=$eventId)"
+
+  private class TimeWatch(after: EventId) {
+    private val PositionAnd(startPosition, startEventId) = positionAndEventId
+    private val t = now
+    private var skipped = 0
+    private var debugIssued = false
+
+    def onSkipped(): Unit = {
+      skipped += 1
+      def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${(now - t).pretty}" +
+        s" while searching ${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)} in journal, "
+      if (!debugIssued && (position - startPosition >= 100*1000*1000 || now - t > 10.seconds)) {
+        logger.debug(msg)
+        debugIssued = true
+      }
+    }
+
+    def end(): Unit = {
+      val skippedSize = position - startPosition
+      val duration = now - t
+      if (skipped > 0)
+        logger.trace(s"$skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
+      if (skippedSize >= WarnSkippedSize || duration >= WarnDuration)
+        logger.info(s"$skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, in search of event '${EventId.toString(startEventId)}'")
+    }
+  }
+}
+
+object FileEventIterator {
+  private val WarnSkippedSize = 100*1000*100
+  private val WarnDuration = 30.seconds
 }

@@ -24,15 +24,18 @@ private[journal] final class EventStatisticsCounter extends StatisticsCounter
     else s"$events events" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =
-    (events != 0) ? s"$events events, $commits commits ($flushesDebugString) $timingString"
-
-  protected def timingString =
-    if (events == 0) ""
-    else
-      (if (stopwatch.duration >= 1.s) s"$flushesTimingString, " else "") + {
-        val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
-        factorFormat.setMaximumFractionDigits(1)
-        factorFormat.setGroupingUsed(false)  // For MacOS
-        factorFormat.format(commits.toDouble / flushCount) + " commits/flush"
-      }
+    (events != 0) ? (
+      s"$events events, $commits commits ($flushesDebugString) " +
+        (if (events == 0) ""
+         else
+          (if (stopwatch.duration >= 1.s) s"$flushesTimingString, " else "") + {
+            val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
+            factorFormat.setMaximumFractionDigits(1)
+            factorFormat.setGroupingUsed(false)  // For MacOS
+            factorFormat.format(commits.toDouble / flushCount) + s" commits/flush" +
+              (if (syncs < 10) "" // syncOnCommit?
+               else ", " +
+                factorFormat.format(commits.toDouble / syncCount) + s" commits/sync" +
+                factorFormat.format(events.toDouble / syncCount) + s" events/sync")
+          }))
 }

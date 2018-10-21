@@ -68,7 +68,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
           eventIds = shrinkArray(eventIds, length)
         }
         freezed = true
-        logger.trace(s"Freezed - size=${positions.length} ${toKBGB(positions.length * 2 * 8)}")
+        logger.debug(s"Freezed $toString, memory=${toKBGB(positions.length * 2 * 8)}")
       }
     }
 
@@ -81,6 +81,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     }
     length = length / factor max 1
     spread = factor * spread
+    logger.debug(s"Compressed $toString")
   }
 
   private val synchronizeLock = new ReentrantLock
@@ -124,7 +125,14 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
       for (i ← 0 until length) yield PositionAnd(positions(i), eventIds(i))
     }
 
-  def highestEvenId = _highestEventId
+  override def toString = {
+    val addedFileSize = synchronized(if (length == 0) 0 else positions(length - 1) - torn.position)
+    "EventIdPositionIndex(" +
+      EventId.toString(torn.value) + " -> " + torn.value +
+      s" eventIds=$addedCount ${toKBGB(addedFileSize)}" +
+      s" entries=$length/${eventIds.length} spread=$spread ⌀${toKBGB(addedFileSize / length)}"  +
+      ")"
+  }
 
   private[watch] def spreadForTest = spread
   private[watch] def lengthForTest = length

@@ -42,6 +42,8 @@ private[journal] trait StatisticsCounter
     else (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ")
 
   final def flushCount = flushes
+
+  final def syncCount = syncs
 }
 
 object StatisticsCounter

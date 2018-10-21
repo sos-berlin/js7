@@ -29,7 +29,7 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer {
     val active = Duration.ofNanos(activeNanos)
     val duration = (now - startTime).toNanos
     val percentage = if (duration == 0) 1 else 100 * active.toNanos / duration
-    s"$messageCount chunks (${toKBGB(size)}) handled in ${active.pretty} ($percentage%)"  // This is the time the stdout/stderr pipe is blocked
+    s"$messageCount chunks (${toKBGB(size)}) processed in ${active.pretty} ($percentage%)"  // This is the time an unbuffered stdout/stderr pipe is blocked
   }
 
   def flush() = writer.flush()

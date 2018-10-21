@@ -138,8 +138,8 @@ extends Actor with Stash {
     tried match {
       case Success(o) ⇒ o
       case Failure(t) ⇒
-        logger.error(s"TaskRunner.stepOne failed: ${t.toStringWithCauses}", t)
-        TaskStepFailed(Disrupted("TaskRunner.stepOne failed"))
+        logger.error(s"Job step failed: ${t.toStringWithCauses}", t)
+        TaskStepFailed(Disrupted(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
     }
 
   private def killAll(signal: ProcessSignal): Unit = {

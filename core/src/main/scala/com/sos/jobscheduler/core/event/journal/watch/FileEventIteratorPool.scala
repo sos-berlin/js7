@@ -52,10 +52,10 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
   private def tryBorrowIterator(): Option[FileEventIterator[E]] =
     synchronized {
       freeIterators.nonEmpty ? {
-        val result = freeIterators.remove(freeIterators.size - 1)  // LIFO
-        lentIterators += result
-        //logger.trace(s"borrowIterator ${journalFile.getFileName} position=${result.position} eventId=${result.eventId}")
-        result
+        val iterator = freeIterators.remove(freeIterators.size - 1)  // LIFO
+        lentIterators += iterator
+        logger.trace(s"borrowIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
+        iterator
       }
     }
 
@@ -65,23 +65,23 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
       // Exception when file has been deleted
       val result = new FileEventIterator[E](journalMeta, journalFile, tornEventId = tornEventId, flushedLength) {
         private val number = lentIterators.size + 1
-        logger.trace(s"Opened $toString")
+        logger.debug(s"Opened $toString")
         override def close() = {
-          logger.trace(s"Close  $toString")
           synchronized {
             freeIterators -= this
             lentIterators -= this
           }
           super.close()
+          logger.debug(s"Closed $toString")
         }
-        override def toString = s"FileEventIterator(${journalFile.getFileName} #$number)"
+        override def toString = s"${super.toString} #$number)"
       }
       lentIterators += result
       result
     }
 
   def returnIterator(iterator: FileEventIterator[E]): Unit = {
-    //logger.trace(s"returnIterator ${journalFile.getFileName} position=${iterator.position} eventId=${iterator.eventId}")
+    logger.trace(s"returnIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
     synchronized {
       if (!iterator.isClosed) {
         freeIterators += iterator
