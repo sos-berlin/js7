@@ -11,6 +11,8 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -58,7 +60,11 @@ trait FatEventRoute extends MasterRouteProvider
 
                 case EventSeq.NonEmpty(stampedIterator) ⇒
                   implicit val x = NonEmptyEventSeqJsonStreamingSupport
-                  ToResponseMarshallable(closeableIteratorToAkkaSource(stampedIterator))
+                  ToResponseMarshallable(closeableIteratorToAkkaSource(stampedIterator
+                    .map { stamped ⇒
+                      stateAccessor.watch(stamped.eventId)
+                      stamped
+                    }))
               }
 
             complete(requestFat(EventRequest[Event](
@@ -75,6 +81,8 @@ trait FatEventRoute extends MasterRouteProvider
 
 object FatEventRoute
 {
+  private val logger = Logger(getClass)
+
   /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.
     */
   private class FatStateCache {
@@ -138,6 +146,28 @@ object FatEventRoute
         lastState = s
         fatEvents
       }
+
+      private val startedAt = now
+      private var loggedRebuilding = false
+      private var loggedTrace = false
+      private var loggedLong = false
+
+      def watch(eventId: EventId): Unit =
+        if (isRebuilding) {
+          lazy val duration = now - startedAt
+          if (!loggedRebuilding && eventId <= after && duration >= 10.seconds) {
+            loggedRebuilding = true
+            logger.info(s"Still rebuilding requested FatState, since ${duration.pretty}")
+          }
+          if (!loggedTrace && eventId > after) {
+            loggedTrace = true
+            logger.trace(s"Rebuilding FatState completed after ${duration.pretty}")
+            if (!loggedLong && duration >= 30.seconds) {
+              loggedLong = true
+              logger.info(s"Rebuilding FatState completed after ${duration.pretty}")
+            }
+          }
+        }
     }
   }
 }
