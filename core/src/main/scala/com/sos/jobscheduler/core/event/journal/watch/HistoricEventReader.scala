@@ -12,7 +12,8 @@ private[journal] final class HistoricEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   val tornEventId: EventId,
   protected val journalFile: Path,
-  protected val config: Config)
+  protected val config: Config,
+  protected val reusableEventIdPositionIndex: Option[EventIdPositionIndex] = None)
 extends AutoCloseable
 with EventReader[E]
 {
@@ -21,7 +22,4 @@ with EventReader[E]
 
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = iteratorPool.firstEventPosition
-
-  override def startReusing(eventIdPositionIndex: EventIdPositionIndex): Unit =
-    super.startReusing(eventIdPositionIndex)
 }

@@ -16,17 +16,15 @@ private[watch] final class CurrentEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId],
-  protected val config: Config)
+  protected val config: Config,
+  protected val reusableEventIdPositionIndex: Option[EventIdPositionIndex] = None)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
 extends EventReader[E]
 {
-  def toHistoricEventReader: HistoricEventReader[E] = {
-    val r = new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config)
-    r.startReusing(eventIdPositionIndex.copy())
-    r
-  }
+  def toHistoricEventReader: HistoricEventReader[E] =
+    new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config, Some(eventIdPositionIndex))
 
   val tornEventId = flushedLengthAndEventId.value
   protected def isHistoric = false

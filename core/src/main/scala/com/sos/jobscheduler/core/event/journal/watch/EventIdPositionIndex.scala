@@ -25,18 +25,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
   require(positions.nonEmpty)
 
   addAfter(torn.value, torn.position)
-
-  def copy(): EventIdPositionIndex = {
-    val r = new EventIdPositionIndex(torn, size)
-    r.positions = positions
-    r.eventIds = eventIds
-    r.length = length
-    r._highestEventId = _highestEventId
-    r.freezed = freezed
-    r.spread = spread
-    r.addedCount = addedCount
-    r
-  }
+  logger.debug(s"Building EventIdPositionIndex(${EventId.toString(torn.value)})")
 
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
     if (!tryAddAfter(eventId, position, n))

@@ -78,9 +78,7 @@ with JournalingObserver
           Some(current.toHistoricEventReader)/*Reuse built-up EventIdPositionIndex*/)
         current.closeAfterUse()
       }
-      val reader = new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config)
-      reader.start()
-      currentEventReaderOption = Some(reader)
+      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
@@ -211,7 +209,6 @@ with JournalingObserver
       historicEventReader.get match {
         case null ⇒
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
-          r.start()
           if (historicEventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
