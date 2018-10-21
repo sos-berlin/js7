@@ -29,9 +29,10 @@ private[order] trait BufferedStringWriter extends Writer {
 
   protected def onBufferingStarted(): Unit
 
+  private var whenReady = Future.successful[Completed](Completed)
   private var stringBuilder: StringBuilder = null
   @volatile
-  private var blockingThread: Thread = null  // Only only thread is expected to write
+  private var blockingThread: Thread = null  // Only one thread is expected to write
 
   final def close() = {
     blockingThread match {
@@ -43,10 +44,10 @@ private[order] trait BufferedStringWriter extends Writer {
 
   final def write(chars: Array[Char], offset: Int, length: Int) =
     if (length > 0) {
-      val completed = writeSynchronized(chars, offset, length)
       blockingThread = currentThread
-      try completed.awaitInfinite  // We block in our stdout/stderr reader thread to avoid congestion  // TODO Waits forever if OrderActor crashes
+      try whenReady.awaitInfinite  // We block in our stdout/stderr reader thread to avoid congestion  // TODO Waits forever if OrderActor crashes
       finally blockingThread = null
+      whenReady = writeSynchronized(chars, offset, length)
     }
 
   private def writeSynchronized(chars: Array[Char], offset: Int, length: Int): Future[Completed] =
