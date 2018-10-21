@@ -40,12 +40,12 @@ trait FatEventRoute extends MasterRouteProvider
     pathEnd {
       get {
         authorizedUser(ValidUserPermission) { _ ⇒
-          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { request ⇒
-            val timeoutAt = now + request.timeout
-            val stateAccessor = fatStateCache.newAccessor(request.after)
+          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest ⇒
+            val timeoutAt = now + fatRequest.timeout
+            val stateAccessor = new fatStateCache.Accessor(fatRequest.after)
 
             def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
-              eventWatch.when[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(request, _)) map {
+              eventWatch.when[Event](underlyingRequest) map (stateAccessor.toFatEventSeq(fatRequest, _)) map {
                 case o: TearableEventSeq.Torn ⇒
                   ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
@@ -64,8 +64,8 @@ trait FatEventRoute extends MasterRouteProvider
             complete(requestFat(EventRequest[Event](
               Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
               after = stateAccessor.eventId,
-              timeout = request.timeout,
-              delay = request.delay,
+              timeout = fatRequest.timeout,
+              delay = fatRequest.delay,
               limit = Int.MaxValue)))
           }
         }
@@ -79,21 +79,27 @@ object FatEventRoute
     */
   private class FatStateCache {
     @volatile
-    private var _lastRequestedState = FatState.Initial
+    private var lastRequestedState = FatState.Initial
     @volatile  // May be accessed by multiple clients simultaneously
-    private var _lastState = FatState.Initial  // Modified while on-the-fly built FatEvent stream is being sent to client !!!
+    private var lastState = FatState.Initial  // Modified while on-the-fly built FatEvent stream is being sent to client !!!
 
-    def newAccessor(after: EventId) = new Accessor(after)
-
-    final class Accessor private[FatStateCache](after: EventId) {
-      private var state = _lastState  // _lastState may change
-      if (after == state.eventId) {
-        _lastRequestedState = state
-      } else
-      if (after < state.eventId) {
-        state = _lastRequestedState
-        if (after < state.eventId) {
-          state = FatState.Initial
+    final class Accessor[FatStateCache](after: EventId)
+    {
+      private var isRebuilding = false
+      private var state = {
+        val last = lastState  // lastState may change
+        if (after >= last.eventId) {
+          logger.trace(s"Continuing with lastState=${EventId.toString(last.eventId)} after=${EventId.toString(after)} ")
+          lastRequestedState = last
+          last
+        } else if (after < lastRequestedState.eventId) {
+          logger.trace("Continuing with FatState.Initial")
+          isRebuilding = true
+          FatState.Initial  // FIXME Scheitert, wenn erste Journaldatei bereits gelöscht.
+        } else {
+          logger.trace(s"Continuing with lastRequestedState=${EventId.toString(last.eventId)} after=${EventId.toString(after)} ")
+          isRebuilding = true
+          lastRequestedState
         }
       }
 
@@ -110,26 +116,26 @@ object FatEventRoute
           case o: EventSeq.Empty ⇒ o
           case EventSeq.NonEmpty(stampedIterator) ⇒
             var lastEventId = after
-            val closeableIterator = stampedIterator
+            val fatCloseableIterator = stampedIterator
               .flatMap { stamped ⇒
                 lastEventId = stamped.eventId
                 toFatEvents(stamped)
               }
               .dropWhile(_.eventId <= request.after)
               .take(request.limit)
-            if (closeableIterator.isEmpty)
+            if (fatCloseableIterator.isEmpty)
               EventSeq.Empty(lastEventId)
             else
-              EventSeq.NonEmpty(closeableIterator)
+              EventSeq.NonEmpty(fatCloseableIterator)
         }
 
       def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): Option[Stamped[KeyedEvent[FatEvent]]] = {
         val (s, fatEvents) = state.toFatEvents(stamped)
         if (s.eventId <= after) {
-          _lastRequestedState = s
+          lastRequestedState = s
         }
         state = s
-        _lastState = s
+        lastState = s
         fatEvents
       }
     }
