@@ -40,15 +40,16 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   /**
     * @return false iff `after` is unknown
     */
-  final def skipToEventAfter(after: EventId): Boolean =
-    (after >= eventId) && {
-      var skipped = 0
+  final def skipToEventAfter(after: EventId)(onEventSkipped: PositionAnd[EventId] ⇒ Unit): Boolean =
+    after >= eventId && {
+      val watch = new TimeWatch(after)
       while (eventId < after) {
         if (!hasNext) return false
         next()
-        skipped += 1
+        onEventSkipped(positionAndEventId)
+        watch.onSkipped()  // Occassion to update EventIdPositionIndex
       }
-      if (skipped > 0) logger.trace(s"$skipped events skipped after=$eventId")
+      watch.end()
       eventId == after
     }
 

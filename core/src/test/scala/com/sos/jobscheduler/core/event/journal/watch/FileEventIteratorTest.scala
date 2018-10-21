@@ -57,24 +57,38 @@ final class FileEventIteratorTest extends FreeSpec
       iterator.next() shouldEqual TestEvents(1)
 
       iterator.seek(secondPos)
-      iterator.skipToEventAfter(After) shouldEqual false
+      object onOneSkipped extends (PositionAnd[EventId] ⇒ Unit) {
+        var eventId: EventId = -1
+        def apply(positionAndEventId: PositionAnd[EventId]) = eventId = positionAndEventId.value
+        def check(eventId: EventId = -1) = {
+          assert(eventId == this.eventId)
+          this.eventId = -1
+        }
+      }
+      iterator.skipToEventAfter(After)(onOneSkipped) shouldEqual false
+      onOneSkipped.check()
       iterator.next() shouldEqual TestEvents(1)
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 15) shouldEqual false
-      iterator.skipToEventAfter(After + 45) shouldEqual false
+      iterator.skipToEventAfter(After + 15)(onOneSkipped) shouldEqual false
+      onOneSkipped.check(After + 20)
+      iterator.skipToEventAfter(After + 45)(onOneSkipped) shouldEqual false
+      onOneSkipped.check(After + 40)
       assert(!iterator.hasNext)
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After) shouldEqual true
+      iterator.skipToEventAfter(After)(onOneSkipped) shouldEqual true
+      onOneSkipped.check()
       assert(iterator.next() == TestEvents(0))
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 10) shouldEqual true
+      iterator.skipToEventAfter(After + 10)(onOneSkipped) shouldEqual true
+      onOneSkipped.check(After + 10)
       assert(iterator.next() == TestEvents(1))
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 40) shouldEqual true
+      iterator.skipToEventAfter(After + 40)(onOneSkipped) shouldEqual true
+      onOneSkipped.check(After + 40)
       assert(!iterator.hasNext)
 
       iterator.seek(firstPos)

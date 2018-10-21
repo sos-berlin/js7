@@ -6,8 +6,11 @@ import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.watch.EventIdPositionIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
+import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.locks.ReentrantLock
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
+import scala.concurrent.blocking
 
 /**
   * @author Joacim Zschimmer
@@ -79,6 +82,24 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     length = length / factor max 1
     spread = factor * spread
   }
+
+  private val synchronizeLock = new ReentrantLock
+
+  def synchronize[A](body: ⇒ A): A =
+    blocking {
+      try {
+        if (!synchronizeLock.tryLock(1, SECONDS)) {
+          try logger.debug(s"EventIdPositionIndex.synchronize: waiting for lock (#${synchronizeLock.getQueueLength})")
+          catch { case _: Throwable ⇒ }  // No exceptions allowed here
+          synchronizeLock.lock()
+          try logger.debug(s"EventIdPositionIndex.synchronize: continuing")
+          catch { case _: Throwable ⇒ }  // No exceptions allowed here
+        }
+        synchronized {
+          body
+        }
+      } finally synchronizeLock.unlock()
+    }
 
   def positionAfter(after: EventId): Long =
     positionAndEventIdAfter(after).position

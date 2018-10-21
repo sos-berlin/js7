@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
@@ -25,6 +24,7 @@ extends AutoCloseable
   protected def tornPosition: Long
   /** Must be constant if `isHistoric`. */
   protected def flushedLength: Long
+  protected def reusableEventIdPositionIndex: Option[EventIdPositionIndex]
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
@@ -67,36 +67,47 @@ extends AutoCloseable
             s"iterator ${iterator.position} (eventId=${iterator.eventId})")
           iterator.seek(indexPositionAndEventId)
         }
-        iterator.skipToEventAfter(after) ? {
-          new CloseableIterator[Stamped[KeyedEvent[E]]] {
-            var closed = false
+        val exists =
+          // May run very long (minutes for gigabyte journals). The first caller reads the journal and updates eventIdPositionIndex, others wait until finished.
+          eventIdPositionIndex.synchronize {
+            iterator.skipToEventAfter(after) {
+              positionAndEventId ⇒ eventIdPositionIndex.tryAddAfter(positionAndEventId.value, positionAndEventId.position)
+            }
+          }
+        if (!exists) {
+          iteratorPool.returnIterator(iterator)
+          None
+        } else
+          Some(
+            new CloseableIterator[Stamped[KeyedEvent[E]]] {
+              var closed = false
 
-            def close() = if (!closed) {
-              closed = true
-              iteratorPool.returnIterator(iterator)
-              if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
-                logger.debug("Close now (after use)")
-                EventReader.this.close()
+              def close() = if (!closed) {
+                closed = true
+                iteratorPool.returnIterator(iterator)
+                if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
+                  logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
+                  EventReader.this.close()
+                }
               }
-            }
 
-            def hasNext = {
-              val r = iterator.hasNext
-              if (!r && isHistoric) freeze()
-              r
-            }
-
-            def next() = {
-              _lastUsed = Timestamp.currentTimeMillis
-              val stamped = iterator.next()
-              assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
-              if (isHistoric) {
-                _eventIdPositionIndex.tryAddAfter(stamped.eventId, iterator.position)
+              def hasNext = {
+                val r = iterator.hasNext
+                if (!r && isHistoric) freeze()
+                r
               }
-              stamped
-            }
-          }.closeAtEnd
-        }
+
+              def next() = {
+                _lastUsed = Timestamp.currentTimeMillis
+                val stamped = iterator.next()
+                assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
+                if (isHistoric) {
+                  eventIdPositionIndex.tryAddAfter(stamped.eventId, iterator.position)
+                }
+
+                stamped
+              }
+            }.closeAtEnd)
       }
     }
   }
