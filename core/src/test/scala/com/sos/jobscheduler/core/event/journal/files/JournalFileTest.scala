@@ -12,7 +12,6 @@ final class JournalFileTest extends FreeSpec
 {
   "toFile" in {
     assert(JournalFile.toFile(Paths.get("DIR/NAME"), 123) == Paths.get("DIR/NAME--123.journal"))
-    assert(JournalFile.toFile(Paths.get("DIR/NAME"), 123, ".tmp") == Paths.get("DIR/NAME--123.journal.tmp"))
   }
 
   "pattern" in {

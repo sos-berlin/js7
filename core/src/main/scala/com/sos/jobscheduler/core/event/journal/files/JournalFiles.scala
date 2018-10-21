@@ -34,7 +34,7 @@ object JournalFiles
 
   implicit final class JournalMetaOps[E <: Event](private val underlying: JournalMeta[E]) extends AnyVal
   {
-    def file(after: EventId, extraSuffix: String = ""): Path =
-      JournalFile.toFile(underlying.fileBase, after, extraSuffix)
+    def file(after: EventId): Path =
+      JournalFile.toFile(underlying.fileBase, after)
   }
 }

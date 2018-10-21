@@ -16,8 +16,8 @@ object JournalFile {
   def fromFileBase(fileBase: Path, afterEventId: EventId) =
     JournalFile(afterEventId, toFile(fileBase, afterEventId))
 
-  def toFile(fileBase: Path, afterEventId: EventId, extraSuffix: String = ""): Path =
-    fileBase resolveSibling s"${fileBase.getFileName}--$afterEventId.journal$extraSuffix"
+  def toFile(fileBase: Path, afterEventId: EventId): Path =
+    fileBase resolveSibling s"${fileBase.getFileName}--$afterEventId.journal"
 
   def pattern(fileBase: Path): Pattern =
     Pattern.compile(Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal""")

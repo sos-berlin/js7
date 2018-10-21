@@ -20,8 +20,8 @@ import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, Snapsh
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
-import java.nio.file.Paths
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.{Path, Paths}
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -90,7 +90,7 @@ extends Actor with Stash {
       journalingActors foreach watch
       val sender = this.sender()
       locally {
-        val file = journalMeta.file(after = lastEventId, extraSuffix = TmpSuffix)
+        val file = toSnapshotTemporary(journalMeta.file(after = lastEventId))
         if (exists(file)) {
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
           delete(file)  // TODO Provide alternative to move file
@@ -246,7 +246,8 @@ extends Actor with Stash {
     }
 
   private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
-    logger.info(s"Starting new journal file with a snapshot")
+    val file = journalMeta.file(after = lastWrittenEventId)
+    logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
     if (snapshotCancelable != null) {
       snapshotCancelable.cancel()
@@ -257,9 +258,7 @@ extends Actor with Stash {
       closeEventWriter()
     }
 
-    snapshotWriter = new SnapshotJournalWriter[E](journalMeta,
-      journalMeta.file(after = lastWrittenEventId, extraSuffix = TmpSuffix),
-      observerOption, simulateSync = simulateSync)
+    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observerOption, simulateSync = simulateSync)
     snapshotWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
     snapshotWriter.beginSnapshotSection()
     actorOf(
@@ -346,6 +345,8 @@ object JournalActor
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   =
     Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, stopped, eventIdGenerator) }
+
+  private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix
 
   private[journal] trait CallersItem
 
