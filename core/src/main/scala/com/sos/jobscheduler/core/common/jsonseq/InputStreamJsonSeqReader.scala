@@ -30,12 +30,9 @@ extends AutoCloseable {
   private var blockLength = 0
   private var blockRead = 0
   private val byteStringBuilder = ByteString.newBuilder
-
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
-
   private var closed = false
-  private var truncatedWarned = false
 
   /** Closes underlying `SeekableInputStream`. */
   def close() = {
