@@ -5,8 +5,9 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport.closeableIteratorToObservable
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventWatch._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -18,7 +19,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 
 /**
   * @author Joacim Zschimmer
