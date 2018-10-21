@@ -59,6 +59,18 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
   override def collect[B](pf: PartialFunction[A, B]): CloseableIterator[B] =
     wrap(super.collect[B](pf))
 
+  /** Side-effect after successful close. */
+  final def onClosed(sideEffect: ⇒ Unit): CloseableIterator[A] =
+    new CloseableIterator[A] {
+      def close() = {
+        CloseableIterator.this.close()
+        sideEffect
+      }
+      def hasNext = CloseableIterator.this.hasNext
+      def next() = CloseableIterator.this.next()
+      override def toString = CloseableIterator.this.toString
+  }
+
   private def wrap[B](iterator: Iterator[B]): CloseableIterator[B] =
     new CloseableIterator[B] {
       def close() = CloseableIterator.this.close()

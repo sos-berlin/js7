@@ -95,6 +95,17 @@ final class CloseableIteratorTest extends FreeSpec
     val a = new TestIterator(Iterator(1, 2, 3)).closeAtEnd
     assert(a.closeAtEnd eq a)
   }
+
+  "onClosed" in {
+    var closed = false
+    val a = new TestIterator(Iterator(1)) onClosed { closed = true }
+    assert(!closed)
+    a.next()
+    assert(!a.hasNext)
+    assert(!closed)
+    a.close()
+    assert(closed)
+  }
 }
 
 object CloseableIteratorTest {
