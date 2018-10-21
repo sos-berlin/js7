@@ -28,6 +28,7 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.{`application/json-seq`, jsonSeqMarshaller}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.GenericEventRoute._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
@@ -114,8 +115,8 @@ trait GenericEventRoute extends RouteProvider
               Observable.empty[Stamped[KeyedEvent[Event]]]
                 : ToResponseMarshallable
 
-            case EventSeq.NonEmpty(iterator) ⇒
-              val head = iterator.next()
+            case EventSeq.NonEmpty(closeableIterator) ⇒
+              val head = autoClosing(closeableIterator) (_.next())
               // Continue with an Observable, skipping the already read event
               val tail = eventWatch.observe(
                 request = request.copy[Event](
