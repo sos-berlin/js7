@@ -25,7 +25,7 @@ import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.common.utils.JavaShutdownHook
+import com.sos.jobscheduler.common.utils.{DecimalPrefixes, JavaShutdownHook}
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
@@ -58,6 +58,7 @@ import scala.language.implicitConversions
 object TestMasterAgent {
   private val TestWorkflowPath = WorkflowPath("/test")
   private val TestJobPath = JobPath("/test")
+  private val StdoutRowSize = 1000
 
   def main(args: Array[String]): Unit = {
     lazy val directory =
@@ -71,7 +72,7 @@ object TestMasterAgent {
         }
       }
     val conf = Conf.parse(args, () ⇒ directory)
-    println(s"${conf.agentCount * conf.workflowLength} nodes, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
+    println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     try run(conf)
     finally Log4j.shutdown()
   }
@@ -105,7 +106,12 @@ object TestMasterAgent {
                |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                |""".stripMargin
             else s"""
+               |/usr/bin/env bash
+               |set -e
                |echo Hello ☘️
+               |for a in {1..${conf.stdoutSize / StdoutRowSize}}; do
+               |  echo "»${"x" * (StdoutRowSize - 2)}«"
+               |done
                |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
                |""".stripMargin),
@@ -163,7 +169,7 @@ object TestMasterAgent {
               finished += 1
             case "PRINT" ⇒
               if (finished > printedFinished) {
-                val duration = lastDuration map { _.pretty } getOrElse "-"
+                val duration = lastDuration.fold("-")(_.pretty)
                 val delta = finished - printedFinished
                 val diff = s"(diff ${finished - (now - startTime).getSeconds * conf.orderGeneratorCount})"
                 val notFinished = added - finished
@@ -213,6 +219,7 @@ object TestMasterAgent {
     workflowLength: Int,
     tasksPerJob: Int,
     jobDuration: Duration,
+    stdoutSize: Int,
     period: Duration,
     orderGeneratorCount: Int)
   {
@@ -233,9 +240,10 @@ object TestMasterAgent {
         val conf = Conf(
           directory = a.as[Path]("-directory=", directory()),
           agentCount = agentCount,
-          workflowLength = a.as[Int]("-nodes-per-agent=", 1),
+          workflowLength = a.as[Int]("-jobs-per-agent=", 1),
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[Duration]("-job-duration=", 0.s),
+          stdoutSize = a.as("-stdout-size=", StdoutRowSize)(o ⇒ DecimalPrefixes.toInt(o)),
           period = a.as[Duration]("-period=", 1.s),
           orderGeneratorCount = a.as[Int]("-orders=", 1))
         if (a.boolean("-?") || a.boolean("-help") || a.boolean("--help")) {
@@ -246,7 +254,7 @@ object TestMasterAgent {
 
     def usage(conf: Conf) =
       s"""Usage: -agents=${conf.agentCount}
-         |       -nodes-per-agent=${conf.workflowLength}
+         |       -jobs-per-agent=${conf.workflowLength}
          |       -tasks=${conf.tasksPerJob}
          |       -job-duration=${conf.jobDuration}
          |       -period=${conf.period}
