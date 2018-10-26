@@ -75,7 +75,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(stampeds == fatEventsAfter(70).take(3))
       assert(stampeds.head.eventId ==  80)
       assert(stampeds.last.eventId == 100)
-      assert(eventWatch.lastEventsAfter == 60)  // Rewound to lastRequestedState
+      assert(eventWatch.lastEventsAfter == 60)  // Rewound to lastRequested
     }
 
     "/fatEvent?limit=3&after=80 continue" in {
@@ -83,7 +83,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(stampeds == fatEventsAfter(80).take(3))
       assert(stampeds.head.eventId ==  90)
       assert(stampeds.last.eventId == 110)
-      assert(eventWatch.lastEventsAfter == 70)  // Rewound to lastRequestedState
+      assert(eventWatch.lastEventsAfter == 70)  // Rewound to lastRequested
     }
 
     "/fatEvent?limit=3&after=60 rewind to oldest" in {
