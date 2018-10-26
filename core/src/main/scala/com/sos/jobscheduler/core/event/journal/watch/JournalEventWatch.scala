@@ -75,7 +75,7 @@ with JournalingObserver
         afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
           afterEventId = current.tornEventId,
           current.journalFile,
-          Some(current.toHistoricEventReader)/*Reuse built-up EventIdPositionIndex*/)
+          Some(current.toHistoricEventReader)/*Reuse built-up JournalIndex*/)
         current.closeAfterUse()
       }
       currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config))

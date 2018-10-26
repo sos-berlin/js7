@@ -49,18 +49,18 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   /** Make take minutes for a gigabygte journal..
     * @return false iff `after` is unknown
     */
-  final def skipToEventAfter(eventIdPositionIndex: EventIdPositionIndex, after: EventId): Boolean =
+  final def skipToEventAfter(journalIndex: JournalIndex, after: EventId): Boolean =
     eventId <= after &&
       (eventId == after ||
-        eventIdPositionIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
+        journalIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
           // May take a long time !!!
           val watch = new TimeWatch(after)
           while (eventId < after) {
             if (!hasNext) return false
             next()
             val PositionAnd(position, eventId) = positionAndEventId
-            eventIdPositionIndex.tryAddAfter(eventId, position)
-            watch.onSkipped()  // Occassion to update EventIdPositionIndex
+            journalIndex.tryAddAfter(eventId, position)
+            watch.onSkipped()
           }
           watch.end()
           eventId == after

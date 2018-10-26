@@ -13,7 +13,7 @@ private[journal] final class HistoricEventReader[E <: Event](
   val tornEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config,
-  protected val reusableEventIdPositionIndex: Option[EventIdPositionIndex] = None)
+  protected val reusableJournalIndex: Option[JournalIndex] = None)
 extends AutoCloseable
 with EventReader[E]
 {

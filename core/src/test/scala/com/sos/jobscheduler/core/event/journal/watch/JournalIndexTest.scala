@@ -6,9 +6,9 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdPositionIndexTest extends FreeSpec {
+final class JournalIndexTest extends FreeSpec {
 
-  private val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 6)
+  private val index = new JournalIndex(PositionAnd(100, 1), size = 6)
 
   "No overflow" in {
     intercept[IllegalArgumentException] { index.positionAfter(0) }
@@ -139,7 +139,7 @@ final class EventIdPositionIndexTest extends FreeSpec {
   }
 
   "freeze 2" in {
-    val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 1000)
+    val index = new JournalIndex(PositionAnd(100, 1), size = 1000)
     for (i ← 2 to 10000) index.addAfter(i, i * 100)
     assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 50)
@@ -147,7 +147,7 @@ final class EventIdPositionIndexTest extends FreeSpec {
   }
 
   "freeze to high factor keeps length >= 100" in {
-    val index = new EventIdPositionIndex(PositionAnd(100, 1), size = 1000)
+    val index = new JournalIndex(PositionAnd(100, 1), size = 1000)
     for (i ← 2 to 10000) index.addAfter(i, i * 100)
     assert(index.spreadForTest == 16 && index.lengthForTest == 626)
     index.freeze(toFactor = 1000)

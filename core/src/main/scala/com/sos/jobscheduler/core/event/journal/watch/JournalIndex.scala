@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 import com.sos.jobscheduler.common.scalautil.{Logger, Synchronizer}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
-import com.sos.jobscheduler.core.event.journal.watch.EventIdPositionIndex._
+import com.sos.jobscheduler.core.event.journal.watch.JournalIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
 import org.jetbrains.annotations.TestOnly
@@ -12,7 +12,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size: Int)
+private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 {
   private var positions = new Array[Long]((size + 1) / 2 * 2)
   private var eventIds = new Array[Long](positions.length)
@@ -25,18 +25,18 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
   require(positions.nonEmpty)
 
   addAfter(torn.value, torn.position)
-  logger.debug(s"Building EventIdPositionIndex(${EventId.toString(torn.value)})")
+  logger.debug(s"Building JournalIndex(${EventId.toString(torn.value)})")
 
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
     if (!tryAddAfter(eventId, position, n))
-      throw new IllegalArgumentException(s"EventIdPositionIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
+      throw new IllegalArgumentException(s"JournalIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
   def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean = {
-    require(n >= 1, "EventIdPositionIndex.tryAddAfter")
+    require(n >= 1, "JournalIndex.tryAddAfter")
     eventId > _highestEventId && {
       synchronized {
         eventId > _highestEventId && {
-          if (freezed) throw new IllegalStateException("EventIdPositionIndex: tryAddAfter after freeze?")  // Self-check
+          if (freezed) throw new IllegalStateException("JournalIndex: tryAddAfter after freeze?")  // Self-check
           val a = addedCount
           addedCount += n
           if (addedCount / spread > a / spread) {
@@ -54,7 +54,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     }
   }
 
-  /** toFactor > 1 to keep multiple EventIdPositionIndex small. */
+  /** toFactor > 1 to keep multiple JournalIndex small. */
   def freeze(toFactor: Int) =
     if (!freezed) synchronized {
       if (!freezed) {
@@ -84,7 +84,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     logger.debug(s"Compressed $toString")
   }
 
-  private val buildSynchronizer = new Synchronizer("building EventIdPositionIndex")
+  private val buildSynchronizer = new Synchronizer("building JournalIndex")
 
   def synchronizeBuilding[A](body: ⇒ A): A =
     buildSynchronizer.synchronize {
@@ -96,13 +96,13 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
 
   def positionAndEventIdAfter(after: EventId): PositionAnd[EventId] =
     synchronized {
-      if (length == 0) throw new IllegalStateException("EventIdPositionIndex.positionAfter but length=0")
+      if (length == 0) throw new IllegalStateException("JournalIndex.positionAfter but length=0")
       val index = binarySearch(eventIds, 0, length, after) match {
         case i if i >= 0 ⇒
           i
 
         case i ⇒
-          if (after < eventIds.head) throw new IllegalArgumentException(s"EventIdPositionIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
+          if (after < eventIds.head) throw new IllegalArgumentException(s"JournalIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
           -i - 2
       }
       PositionAnd(positions(index), eventIds(index))
@@ -116,7 +116,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
 
   override def toString = {
     val addedFileSize = synchronized(if (length == 0) 0 else positions(length - 1) - torn.position)
-    "EventIdPositionIndex(" +
+    "JournalIndex(" +
       EventId.toString(torn.value) + " -> " + torn.value +
       s" eventIds=$addedCount ${toKBGB(addedFileSize)}" +
       s" entries=$length/${eventIds.length} spread=$spread ⌀${toKBGB(addedFileSize / length)}"  +
@@ -127,7 +127,7 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
   private[watch] def lengthForTest = length
 }
 
-object EventIdPositionIndex
+object JournalIndex
 {
   private val MinimumLength = 100
   private val logger = Logger(getClass)

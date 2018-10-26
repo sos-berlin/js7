@@ -24,12 +24,12 @@ extends AutoCloseable
   protected def tornPosition: Long
   /** Must be constant if `isHistoric`. */
   protected def flushedLength: Long
-  protected def reusableEventIdPositionIndex: Option[EventIdPositionIndex]
+  protected def reusableJournalIndex: Option[JournalIndex]
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
-  protected lazy val eventIdPositionIndex = reusableEventIdPositionIndex getOrElse
-    new EventIdPositionIndex(PositionAnd(tornPosition, tornEventId), size = config.getInt("jobscheduler.journal.watch.index-size"))
+  protected lazy val journalIndex = reusableJournalIndex getOrElse
+    new JournalIndex(PositionAnd(tornPosition, tornEventId), size = config.getInt("jobscheduler.journal.watch.index-size"))
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
   @volatile
   private var _closeAfterUse = false
@@ -45,15 +45,15 @@ extends AutoCloseable
     iteratorPool.close()
 
   final def freeze(): Unit =
-    if (!eventIdPositionIndex.isFreezed) {
-      eventIdPositionIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
+    if (!journalIndex.isFreezed) {
+      journalIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
     }
 
   /**
     * @return None if torn
     */
   final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
-    val indexPositionAndEventId = eventIdPositionIndex.positionAndEventIdAfter(after)
+    val indexPositionAndEventId = journalIndex.positionAndEventIdAfter(after)
     import indexPositionAndEventId.position
     if (position >= flushedLength)  // Data behind flushedLength is not flushed and probably incomplete
       Some(CloseableIterator.empty)
@@ -67,7 +67,7 @@ extends AutoCloseable
             s"iterator ${iterator.position} (eventId=${iterator.eventId})")
           iterator.seek(indexPositionAndEventId)
         }
-        val exists = iterator.skipToEventAfter(eventIdPositionIndex, after) // May run very long (minutes for gigabyte journals) !!!
+        val exists = iterator.skipToEventAfter(journalIndex, after) // May run very long (minutes for gigabyte journals) !!!
         if (!exists) {
           iteratorPool.returnIterator(iterator)
           None
@@ -96,7 +96,7 @@ extends AutoCloseable
                 val stamped = iterator.next()
                 assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
                 if (isHistoric) {
-                  eventIdPositionIndex.tryAddAfter(stamped.eventId, iterator.position)
+                  journalIndex.tryAddAfter(stamped.eventId, iterator.position)
                 }
 
                 stamped

@@ -17,14 +17,14 @@ private[watch] final class CurrentEventReader[E <: Event](
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId],
   protected val config: Config,
-  protected val reusableEventIdPositionIndex: Option[EventIdPositionIndex] = None)
+  protected val reusableJournalIndex: Option[JournalIndex] = None)
   (implicit
     protected val executionContext: ExecutionContext,
     protected val timerService: TimerService)
 extends EventReader[E]
 {
   def toHistoricEventReader: HistoricEventReader[E] =
-    new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config, Some(eventIdPositionIndex))
+    new HistoricEventReader[E](journalMeta, tornEventId, journalFile, config, Some(journalIndex))
 
   val tornEventId = flushedLengthAndEventId.value
   protected def isHistoric = false
@@ -39,7 +39,7 @@ extends EventReader[E]
     val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
     if (flushedPosition < _flushedLength)
       throw new IllegalArgumentException(s"CurrentEventReader: Added files position $flushedPosition ${EventId.toString(eventId)} < flushedLength $flushedLength")
-    eventIdPositionIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
+    journalIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
     _lastEventId = eventId
     _flushedLength = flushedPosition
   }
