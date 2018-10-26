@@ -57,38 +57,31 @@ final class FileEventIteratorTest extends FreeSpec
       iterator.next() shouldEqual TestEvents(1)
 
       iterator.seek(secondPos)
-      object onOneSkipped extends (PositionAnd[EventId] ⇒ Unit) {
-        var eventId: EventId = -1
-        def apply(positionAndEventId: PositionAnd[EventId]) = eventId = positionAndEventId.value
-        def check(eventId: EventId = -1) = {
-          assert(eventId == this.eventId)
-          this.eventId = -1
-        }
-      }
-      iterator.skipToEventAfter(After)(onOneSkipped) shouldEqual false
-      onOneSkipped.check()
+      val eventIdPositionIndex = new EventIdPositionIndex(PositionAnd(100/*dummy*/, EventId.BeforeFirst), size = 100)
+      iterator.skipToEventAfter(eventIdPositionIndex, After) shouldEqual false
+      assert(eventIdPositionIndex.highestEventId == EventId.BeforeFirst)
       iterator.next() shouldEqual TestEvents(1)
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 15)(onOneSkipped) shouldEqual false
-      onOneSkipped.check(After + 20)
-      iterator.skipToEventAfter(After + 45)(onOneSkipped) shouldEqual false
-      onOneSkipped.check(After + 40)
+      iterator.skipToEventAfter(eventIdPositionIndex, After + 15) shouldEqual false
+      assert(eventIdPositionIndex.highestEventId == After + 20)
+      iterator.skipToEventAfter(eventIdPositionIndex, After + 45) shouldEqual false
+      assert(eventIdPositionIndex.highestEventId == After + 40)
       assert(!iterator.hasNext)
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After)(onOneSkipped) shouldEqual true
-      onOneSkipped.check()
+      iterator.skipToEventAfter(eventIdPositionIndex, After) shouldEqual true
+      assert(eventIdPositionIndex.highestEventId == After + 40)
       assert(iterator.next() == TestEvents(0))
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 10)(onOneSkipped) shouldEqual true
-      onOneSkipped.check(After + 10)
+      iterator.skipToEventAfter(eventIdPositionIndex, After + 10) shouldEqual true
+      assert(eventIdPositionIndex.highestEventId == After + 40)
       assert(iterator.next() == TestEvents(1))
 
       iterator.seek(firstPos)
-      iterator.skipToEventAfter(After + 40)(onOneSkipped) shouldEqual true
-      onOneSkipped.check(After + 40)
+      iterator.skipToEventAfter(eventIdPositionIndex, After + 40) shouldEqual true
+      assert(eventIdPositionIndex.highestEventId == After + 40)
       assert(!iterator.hasNext)
 
       iterator.seek(firstPos)

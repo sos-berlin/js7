@@ -17,7 +17,11 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-private[watch] class FileEventIterator[E <: Event](journalMeta: JournalMeta[E], journalFile: Path, tornEventId: EventId, flushedLength: () ⇒ Long)
+private[watch] class FileEventIterator[E <: Event](
+  journalMeta: JournalMeta[E],
+  journalFile: Path,
+  tornEventId: EventId,
+  flushedLength: () ⇒ Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
   private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)
@@ -42,21 +46,25 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
     nextEvent = null
   }
 
-  /**
+  /** Make take minutes for a gigabygte journal..
     * @return false iff `after` is unknown
     */
-  final def skipToEventAfter(after: EventId)(onEventSkipped: PositionAnd[EventId] ⇒ Unit): Boolean =
-    after >= eventId && {
-      val watch = new TimeWatch(after)
-      while (eventId < after) {
-        if (!hasNext) return false
-        next()
-        onEventSkipped(positionAndEventId)
-        watch.onSkipped()  // Occassion to update EventIdPositionIndex
-      }
-      watch.end()
-      eventId == after
-    }
+  final def skipToEventAfter(eventIdPositionIndex: EventIdPositionIndex, after: EventId): Boolean =
+    eventId <= after &&
+      (eventId == after ||
+        eventIdPositionIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
+          // May take a long time !!!
+          val watch = new TimeWatch(after)
+          while (eventId < after) {
+            if (!hasNext) return false
+            next()
+            val PositionAnd(position, eventId) = positionAndEventId
+            eventIdPositionIndex.tryAddAfter(eventId, position)
+            watch.onSkipped()  // Occassion to update EventIdPositionIndex
+          }
+          watch.end()
+          eventId == after
+        })
 
   final def hasNext = nextEvent != null ||
     journalReader.position < flushedLength() && {
@@ -82,15 +90,16 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
 
   private class TimeWatch(after: EventId) {
     private val PositionAnd(startPosition, startEventId) = positionAndEventId
-    private val t = now
+    private val startedAt = now
     private var skipped = 0
     private var debugIssued = false
 
     def onSkipped(): Unit = {
       skipped += 1
-      def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${(now - t).pretty}" +
+      val duration = now - startedAt
+      def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${duration.pretty}" +
         s" while searching ${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)} in journal, "
-      if (!debugIssued && (position - startPosition >= 100*1000*1000 || now - t > 10.seconds)) {
+      if (!debugIssued && (position - startPosition >= 100*1000*1000 || duration > 10.seconds)) {
         logger.debug(msg)
         debugIssued = true
       }
@@ -98,7 +107,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
 
     def end(): Unit = {
       val skippedSize = position - startPosition
-      val duration = now - t
+      val duration = now - startedAt
       if (skipped > 0)
         logger.trace(s"$skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
       if (skippedSize >= WarnSkippedSize || duration >= WarnDuration)

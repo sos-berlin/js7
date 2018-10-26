@@ -67,13 +67,7 @@ extends AutoCloseable
             s"iterator ${iterator.position} (eventId=${iterator.eventId})")
           iterator.seek(indexPositionAndEventId)
         }
-        val exists =
-          // May run very long (minutes for gigabyte journals). The first caller reads the journal and updates eventIdPositionIndex, others wait until finished.
-          eventIdPositionIndex.synchronize {
-            iterator.skipToEventAfter(after) {
-              positionAndEventId ⇒ eventIdPositionIndex.tryAddAfter(positionAndEventId.value, positionAndEventId.position)
-            }
-          }
+        val exists = iterator.skipToEventAfter(eventIdPositionIndex, after) // May run very long (minutes for gigabyte journals) !!!
         if (!exists) {
           iteratorPool.returnIterator(iterator)
           None

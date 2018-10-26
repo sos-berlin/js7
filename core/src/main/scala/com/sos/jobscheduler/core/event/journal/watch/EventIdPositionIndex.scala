@@ -1,16 +1,13 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, Synchronizer}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.watch.EventIdPositionIndex._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.Arrays.binarySearch
-import java.util.concurrent.TimeUnit.SECONDS
-import java.util.concurrent.locks.ReentrantLock
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
-import scala.concurrent.blocking
 
 /**
   * @author Joacim Zschimmer
@@ -74,6 +71,9 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
 
   def isFreezed = freezed
 
+  @TestOnly
+  def highestEventId = _highestEventId
+
   private def compress(factor: Int): Unit = {
     for (i ← 1 until length / factor) {
       positions(i) = positions(factor * i)
@@ -84,22 +84,11 @@ private[watch] final class EventIdPositionIndex(torn: PositionAnd[EventId], size
     logger.debug(s"Compressed $toString")
   }
 
-  private val synchronizeLock = new ReentrantLock
+  private val buildSynchronizer = new Synchronizer("building EventIdPositionIndex")
 
-  def synchronize[A](body: ⇒ A): A =
-    blocking {
-      try {
-        if (!synchronizeLock.tryLock(1, SECONDS)) {
-          try logger.debug(s"EventIdPositionIndex.synchronize: waiting for lock (#${synchronizeLock.getQueueLength})")
-          catch { case _: Throwable ⇒ }  // No exceptions allowed here
-          synchronizeLock.lock()
-          try logger.debug(s"EventIdPositionIndex.synchronize: continuing")
-          catch { case _: Throwable ⇒ }  // No exceptions allowed here
-        }
-        synchronized {
-          body
-        }
-      } finally synchronizeLock.unlock()
+  def synchronizeBuilding[A](body: ⇒ A): A =
+    buildSynchronizer.synchronize {
+      body
     }
 
   def positionAfter(after: EventId): Long =
