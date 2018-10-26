@@ -84,8 +84,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
             events ⇒ promise.complete(
               try Success(callback(events.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]]))
               catch { case NonFatal(t) ⇒
-                // TODO Ein Fehler sollte zum Abbruch führen?
-                logger.debug(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
+                // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
+                logger.error(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
                 Failure(t)
               }))))
     }

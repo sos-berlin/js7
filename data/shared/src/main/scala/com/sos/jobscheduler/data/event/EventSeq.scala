@@ -20,7 +20,9 @@ object TearableEventSeq {
     * `tornEventId` is for testing only.
     */
   final case class Torn(after: EventId)
-  extends TearableEventSeq[Nothing, Nothing]
+  extends TearableEventSeq[Nothing, Nothing] {
+    override def toString = s"EventSeq.Torn($after)"
+  }
 
   implicit final class Closed[E](private val underlying: TearableEventSeq[CloseableIterator, E]) extends AnyVal {
     def close(): Unit = underlying match {
@@ -51,10 +53,14 @@ object EventSeq {
   final case class NonEmpty[M[_] <: TraversableOnce[_], E](stamped: M[Stamped[E]])
   extends EventSeq[M, E] {
     assert(stamped.nonEmpty)
+
+    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.hasDefiniteSize) stamped.size + " events" else "lazy") + ")"
   }
 
   final case class Empty(lastEventId: EventId)
-  extends EventSeq[Nothing, Nothing]
+  extends EventSeq[Nothing, Nothing] {
+    override def toString = s"EventSeq.Empty($lastEventId)"
+  }
 
   implicit def nonEmptyJsonEncoder[E: ObjectEncoder]: ObjectEncoder[NonEmpty[Seq, E]] =
     eventSeq ⇒ JsonObject.singleton("stamped", eventSeq.stamped.asJson)
