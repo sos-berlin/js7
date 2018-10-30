@@ -12,30 +12,30 @@ import scala.concurrent.duration._
 
 /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.
   */
-private[fatevent] class FatStateCache {
+private[fatevent] final class FatStateCache {
   // May be accessed by multiple clients simultaneously
   @volatile
   private var lastRequested = FatState.Initial
   @volatile
   private var lastDelivered = FatState.Initial  // Modified while on-the-fly built FatEvent stream is being sent to client !!!
 
-  final class Accessor[FatStateCache](requestedAfter: EventId)
+  final class Accessor(after: EventId)
   {
     private var isRebuilding = false
 
     private var state = synchronized {
-      if (requestedAfter >= lastDelivered.eventId) {
+      if (after >= lastDelivered.eventId) {
         logger.trace(s"Using last lastDelivered FatState ${EventId.toString(lastDelivered.eventId)}" +
-          (if (requestedAfter > lastDelivered.eventId) s", after=${EventId.toString(requestedAfter)}" else ""))
+          (if (after > lastDelivered.eventId) s", after=${EventId.toString(after)}" else ""))
         lastRequested = lastDelivered
         lastDelivered
-      } else if (requestedAfter >= lastRequested.eventId) {
+      } else if (after >= lastRequested.eventId) {
         logger.trace(s"Using last requested FatState ${EventId.toString(lastRequested.eventId)}" +
-          (if (requestedAfter > lastRequested.eventId) s", after=${EventId.toString(requestedAfter)}" else ""))
+          (if (after > lastRequested.eventId) s", after=${EventId.toString(after)}" else ""))
         isRebuilding = true
         lastRequested
       } else {
-        logger.trace("Rebuilding from initial FatState, after=${EventId.toString(after)}")
+        logger.trace(s"Rebuilding from initial FatState, after=${EventId.toString(after)}")
         isRebuilding = true
         FatState.Initial  // FIXME Scheitert, wenn erste Journaldatei bereits gelöscht.
       }
@@ -53,7 +53,7 @@ private[fatevent] class FatStateCache {
         case o: TearableEventSeq.Torn ⇒ o
         case o: EventSeq.Empty ⇒ o
         case EventSeq.NonEmpty(stampedIterator) ⇒
-          var lastEventId = requestedAfter
+          var lastEventId = after
           val fatCloseableIterator = stampedIterator
             .flatMap { stamped ⇒
               lastEventId = stamped.eventId
@@ -74,7 +74,7 @@ private[fatevent] class FatStateCache {
     private def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): Option[Stamped[KeyedEvent[FatEvent]]] = {
       val (updated, fatEvents) = state.toFatEvents(stamped)
       state = updated
-      if (state.eventId <= requestedAfter) {
+      if (state.eventId <= after) {
         lastRequested = state
       }
       lastDelivered = state
@@ -90,12 +90,12 @@ private[fatevent] class FatStateCache {
     private def watch(eventId: EventId, rebuildCompleted: Boolean): Unit = {
       eventCount += 1
       lazy val duration = now - startedAt
-      if (!stillRebuilding && eventId <= requestedAfter && duration >= InfoAfter) {
+      if (!stillRebuilding && eventId <= after && duration >= InfoAfter) {
         stillRebuilding = true
         logger.info(s"Still rebuilding requested FatState, $eventCount events processed since ${duration.pretty}")
       }
       if (rebuildCompleted) {
-        if (isRebuilding && !loggedTrace && eventId > requestedAfter) {  // First event read?
+        if (isRebuilding && !loggedTrace && eventId > after) {  // First event read?
           loggedTrace = true
           logger.trace(s"Rebuilding FatState from $eventCount events completed after ${duration.pretty}")
         }
