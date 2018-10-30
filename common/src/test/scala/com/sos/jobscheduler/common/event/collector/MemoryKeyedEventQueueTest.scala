@@ -44,6 +44,14 @@ final class MemoryKeyedEventQueueTest extends FreeSpec {
     assert(queue.reverseEvents(EventId(4)).toVector == (stampeds drop 4).reverse)
     assert(queue.reverseEvents(EventId(5)).isEmpty)
   }
+
+  "tear" in {
+    queue.tear(3)
+    assert(queue.tornEventId == 3)
+    assert(queue.after(EventId.BeforeFirst) == None)
+    assert(queue.after(2) == None)
+    assert((queue.after(EventId(3)) map { _.toVector }) == Some(stampeds drop 3))
+  }
 }
 
 object MemoryKeyedEventQueueTest {

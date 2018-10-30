@@ -22,6 +22,9 @@ extends RealEventWatch[Event]
     onEventsAdded(stamped.eventId)
   }
 
+  def tear(after: EventId): Unit =
+    keyedEventQueue.tear(after)
+
   final def tornEventId: EventId =
     keyedEventQueue.tornEventId
 

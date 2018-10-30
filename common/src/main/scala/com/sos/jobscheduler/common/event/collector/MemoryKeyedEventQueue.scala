@@ -29,6 +29,15 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
       queueLength += 1
     }
 
+  def tear(after: EventId): Unit =
+    synchronized {
+      require(lastRemovedFirstId <= after, "MemoryKeyedEventQueue.after")
+      while(!queue.isEmpty && queue.firstKey() <= after) {
+        lastRemovedFirstId = queue.firstKey
+        queue.remove(lastRemovedFirstId)
+      }
+    }
+
   def hasAfter(after: EventId) = queue.navigableKeySet.higher(after) != null
 
   /**

@@ -154,7 +154,11 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(now - t >= 100.millis)
     }
 
-    "After truncated journal snapshot" in pending  // TODO Test torn event stream
+    "After truncated journal" in {
+      eventWatch.tear(50)
+      assert(getFatEventSeq("/fatEvent?after=49") == TearableEventSeq.Torn(50))
+      assert(getFatEventSeq("/fatEvent?limit=3&after=50") == TearableEventSeq.Torn(50))  // Must rewind to torn EventId.FirstEventId
+    }
   }
 
   private def getFatEvents(uri: String): Seq[Stamped[KeyedEvent[OrderFatEvent]]] =
