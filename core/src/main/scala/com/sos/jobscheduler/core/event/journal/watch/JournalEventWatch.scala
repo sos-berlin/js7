@@ -115,7 +115,7 @@ with JournalingObserver
       case Some(current) if current.tornEventId <= after ⇒
         current.tornEventId
       case _ ⇒
-        historicAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
+        historicJournalFileAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
     }
     for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepAfter) {
       try {
@@ -150,7 +150,7 @@ with JournalingObserver
   }
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
-    historicAfter(after) flatMap { historicJournalFile ⇒
+    historicJournalFileAfter(after) flatMap { historicJournalFile ⇒
       var last = after
       historicJournalFile.eventReader.eventsAfter(after) map { events ⇒
         events.map { stamped ⇒
@@ -177,7 +177,7 @@ with JournalingObserver
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
 
-  private def historicAfter(after: EventId): Option[HistoricJournalFile] =
+  private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
     afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)
 
   @VisibleForTesting
