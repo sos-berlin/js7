@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.common.event.EventBasedState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.EventId
@@ -18,6 +19,7 @@ final case class MasterState(
   orders: Seq[Order[Order.State]],
   agentToEventId: Map[AgentId, EventId],
   orderScheduleEndedAt: Option[Timestamp])
+extends EventBasedState
 {
   def toSnapshots: Seq[Any] =
     repo.eventsFor(MasterTypedPathCompanions) ++

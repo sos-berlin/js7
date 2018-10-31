@@ -85,11 +85,12 @@ extends MainJournalingActor[Event] with Stash {
   private def recover(): Unit = {
     val recoverer = new OrderJournalRecoverer(journalMeta)(askTimeout)
     recoverer.recoverAll()
-    for (workflow ← recoverer.workflows)
+    val state = recoverer.state
+    for (workflow ← state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
         workflowRegister.recover(workflow)
       }
-    for (recoveredOrder ← recoverer.orders)
+    for (recoveredOrder ← state.idToOrder.values)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
         val order = workflowRegister.reuseMemory(recoveredOrder)
         val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered

@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -86,6 +87,5 @@ extends JournalRecoverer[Event] {
       case _ ⇒
     }
 
-  def workflows = workflowRegister.workflows
-  def orders = idToOrder.values
+  def state = AgentState(lastRecoveredEventId, idToOrder.toMap, workflowRegister.workflows toKeyedMap (_.id))
 }
