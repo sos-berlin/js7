@@ -14,7 +14,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
@@ -144,7 +144,7 @@ with MainJournalingActor[Event]
     MasterState(
       eventIdGenerator.lastUsedEventId,
       repo,
-      orderRegister.values.map(_.order).toImmutableSeq,
+      orderRegister.mapValues(_.order).toMap,
       agentRegister.values.map(entry ⇒ entry.agentId → entry.lastAgentEventId).toMap,
       orderScheduleEndedAt = None)
     .toSnapshots)
@@ -161,7 +161,7 @@ with MainJournalingActor[Event]
       for ((agentId, eventId) ← masterState.agentToEventId) {
         agentRegister(agentId).lastAgentEventId = eventId
       }
-      for (order ← masterState.orders) {
+      for (order ← masterState.idToOrder.values) {
         orderRegister.insert(order.id → OrderEntry(order))
       }
       for (at ← masterState.orderScheduleEndedAt) {

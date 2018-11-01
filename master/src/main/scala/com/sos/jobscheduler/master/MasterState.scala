@@ -1,14 +1,20 @@
 package com.sos.jobscheduler.master
 
+import cats.syntax.option.none
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.event.EventBasedState
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.filebased.RepoEvent
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.agent.AgentEventId
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterTypedPathCompanions
+import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEndedAt
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +22,7 @@ import scala.collection.immutable.Seq
 final case class MasterState(
   eventId: EventId,
   repo: Repo,
-  orders: Seq[Order[Order.State]],
+  idToOrder: Map[OrderId, Order[Order.State]],
   agentToEventId: Map[AgentId, EventId],
   orderScheduleEndedAt: Option[Timestamp])
 extends EventBasedState
@@ -24,5 +30,30 @@ extends EventBasedState
   def toSnapshots: Seq[Any] =
     repo.eventsFor(MasterTypedPathCompanions) ++
     agentToEventId.toVector.map(o ⇒ AgentEventId(o._1, o._2)) ++
-    orders
+    idToOrder.values
+}
+
+object MasterState
+{
+  def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
+    var repo = Repo.empty
+    val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
+    val agentToEventId = mutable.Map[AgentId, EventId]()
+    var orderScheduleEndedAt = none[Timestamp]
+
+    snapshotObjects foreach {
+      case order: Order[Order.State] ⇒
+        idToOrder.insert(order.id → order)
+
+      case AgentEventId(agentPath, aEventId) ⇒
+        agentToEventId(agentPath) = aEventId
+
+      case event: RepoEvent ⇒
+        repo = repo.applyEvent(event).orThrow
+
+      case OrderScheduleEndedAt(timestamp) ⇒
+        orderScheduleEndedAt = Some(timestamp)
+    }
+    MasterState(eventId, repo, idToOrder.toMap, agentToEventId.toMap, orderScheduleEndedAt)
+  }
 }

@@ -104,5 +104,5 @@ extends JournalRecoverer[Event]
     }
 
   def masterState: Option[MasterState] =
-    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.values.toVector, agentToEventId.toMap, orderScheduleEndedAt)
+    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.toMap, agentToEventId.toMap, orderScheduleEndedAt)
 }
