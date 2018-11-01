@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -20,14 +21,27 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
-import org.scalatest.FreeSpec
+import org.scalatest.{Args, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
 final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute {
+
+  override protected def runTest(testName: String, args: Args) = {
+    logger.debug("-" * 50)
+    logger.debug(s"""Test "$testName"""")
+    val status = super.runTest(testName, args)
+    status.whenCompleted {
+      case Success(true) ⇒
+      case Success(false) ⇒ logger.warn(s"""Test "$testName" FAILED""")
+      case Failure(t) ⇒ logger.warn(s"""Test "$testName" FAILED: $t""")
+    }
+    status
+  }
 
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
@@ -70,7 +84,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       assert(eventWatch.lastEventsAfter == 60)
     }
 
-    "/fatEvent?limit=1&after=70 rewind in last chunk" in {
+    "/fatEvent?limit=1&after=70 rewind in last read chunk" in {
       val stampeds = getFatEvents("/fatEvent?limit=3&after=70")
       assert(stampeds == fatEventsAfter(70).take(3))
       assert(stampeds.head.eventId ==  80)
@@ -187,6 +201,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 
 object FatEventRouteTest
 {
+  private val logger = Logger(getClass)
   private val TestWorkflowId = WorkflowPath("/test") % "VERSION"
   private val TestEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
     (1 to 18).map(i ⇒

@@ -6,11 +6,13 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.data.event.Event
+import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
 import java.time.Instant.now
 import scala.concurrent.duration.FiniteDuration
+
 
 /**
   * @author Joacim Zschimmer
@@ -50,4 +52,10 @@ extends JournalWriter[E](append = false)
   }
 
   override def toString = s"SnapshotJournalWriter(${file.getFileName})"
+}
+
+object SnapshotJournalWriter
+{
+  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId, observer: Option[JournalingObserver] = None) =
+    new SnapshotJournalWriter[E](journalMeta, journalMeta.file(after), observer, simulateSync = None)
 }

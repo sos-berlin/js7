@@ -41,6 +41,15 @@ object CirceUtils {
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
+  implicit final class RichJsonObject(private val underlying: JsonObject) extends AnyVal
+  {
+    def toPrettyString: String =
+      PrettyPrinter.pretty(Json.fromJsonObject(underlying))
+
+    def compactPrint: String =
+      CompactPrinter.pretty(Json.fromJsonObject(underlying))
+  }
+
   implicit final class RichJson(private val underlying: Json) extends AnyVal
   {
     def toPrettyString: String =

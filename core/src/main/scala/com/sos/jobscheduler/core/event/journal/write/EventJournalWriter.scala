@@ -8,7 +8,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{Commit, Even
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter.{SerializationException, _}
+import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}

@@ -32,7 +32,7 @@ trait FatEventRoute extends MasterRouteProvider
 
   private implicit def implicitScheduler = scheduler
 
-  private val fatStateCache = new FatStateCache
+  private lazy val fatStateCache = new FatStateCache(eventWatch)
   private lazy val synchronizer = new TaskSynchronizer[ToResponseMarshallable]()(scheduler)
 
   final val fatEventRoute: Route =
@@ -51,7 +51,7 @@ trait FatEventRoute extends MasterRouteProvider
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
     val timeoutAt = now + fatRequest.timeout
     Task {
-      val stateAccessor = new fatStateCache.Accessor(fatRequest.after)
+      val stateAccessor = fatStateCache.newAccessor(fatRequest.after)
 
       def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
         eventWatch.when[Event](underlyingRequest.copy[Event](timeout = timeoutAt - now)) map (stateAccessor.toFatEventSeq(fatRequest, _)) map {
@@ -76,6 +76,6 @@ trait FatEventRoute extends MasterRouteProvider
         timeout = fatRequest.timeout,
         delay = fatRequest.delay,
         limit = Int.MaxValue))
-    }.flatten
+    }
   }
 }

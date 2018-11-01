@@ -2,7 +2,8 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -17,7 +18,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.writeJournal
+import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
@@ -231,6 +232,48 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     }
   }
 
+  "snapshotObjectsFor" in {
+    withJournalMeta { journalMeta_ ⇒
+      val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
+
+      // --0.journal with no snapshot objects
+      writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
+      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
+        val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+        assert(eventId == EventId.BeforeFirst)
+        assert(iterator.toVector.isEmpty)
+        iterator.close()
+      }
+
+      // --100.journal with some snapshot objects
+      val snapshotObjects = List[Any](ASnapshot("ONE"), ASnapshot("TWO"))
+      writeJournalSnapshot(journalMeta, after = 100, snapshotObjects)
+      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch ⇒
+        locally {
+          val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+          assert(eventId == EventId.BeforeFirst)
+          assert(iterator.toVector.isEmpty)
+          iterator.close()
+        }
+        locally {
+          val (eventId, iterator) = eventWatch.snapshotObjectsFor(99)
+          assert(eventId == EventId.BeforeFirst && iterator.isEmpty)
+          iterator.close()
+        }
+        locally {
+          val (eventId, iterator) = eventWatch.snapshotObjectsFor(100)
+          assert(eventId == 100 && iterator.toList == snapshotObjects)
+          iterator.close()
+        }
+        locally {
+          val (eventId, iterator) = eventWatch.snapshotObjectsFor(101)
+          assert(eventId == 100 && iterator.toList == snapshotObjects)
+          iterator.close()
+        }
+      }
+    }
+  }
+
   "Read/write synchronization crash test" in {
     pending   // TODO Intensiv schreiben und lesen, um Synchronisation zu prüfen
     // Mit TakeSnapshot prüfen
@@ -301,4 +344,9 @@ private object JournalEventWatchTest
     KeyedSubtype.singleEvent[A2.type],
     KeyedSubtype.singleEvent[B1.type],
     KeyedSubtype.singleEvent[B2.type])
+
+  private case class ASnapshot(string: String)
+
+  implicit private val SnapshotJsonCodec = TypedJsonCodec[Any](
+    Subtype(deriveCodec[ASnapshot]))
 }

@@ -51,6 +51,9 @@ trait EventWatch[E <: Event] {
     predicate: E1 ⇒ Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E1]]
 
+  def snapshotObjectsFor(after: EventId): (EventId, CloseableIterator[Any]) =
+    EventId.BeforeFirst → CloseableIterator.empty
+
   /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E1 <: E: ClassTag](

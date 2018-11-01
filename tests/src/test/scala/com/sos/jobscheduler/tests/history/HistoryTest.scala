@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.AgentFatEvent.AgentReadyFat
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
@@ -61,6 +61,7 @@ final class HistoryTest extends FreeSpec
               assert(listJournalFiles == Vector("master--0.journal"))
             }
           }
+          var keepEventsEventId = EventId.BeforeFirst
           val fatEvents = mutable.Buffer[KeyedEvent[FatEvent]]()
           provider.runMaster() { master ⇒
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
@@ -94,7 +95,7 @@ final class HistoryTest extends FreeSpec
 
               masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId)) await 99.s
               assert(listJournalFiles.length == 1 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
-
+              keepEventsEventId = finishedEventId
             }
           }
           val aAgentUri = runningAgents(0).localUri.toString
@@ -129,6 +130,23 @@ final class HistoryTest extends FreeSpec
             OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
             OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
             NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))
+
+          provider.runMaster() { master ⇒
+            // Test recovering FatState from snapshot stored in journal file
+            assert(listJournalFiles.size == 2 &&  !listJournalFiles.contains("master--0.journal"))  // First file deleted
+            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+
+              // after=0 is torn
+              val torn = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = 99.seconds)) await 99.s
+              assert(torn.isInstanceOf[TearableEventSeq.Torn])
+
+              val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = 99.seconds)) await 99.s
+              assert(stampeds.head.eventId > keepEventsEventId)
+              assert(stampeds.map(_.value.event) ==
+                Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))  // Only MasterReady, nothing else happened
+            }
+          }
         }
       }
     }
