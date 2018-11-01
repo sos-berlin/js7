@@ -66,6 +66,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
       val result = new FileEventIterator[E](journalMeta, journalFile, tornEventId = tornEventId, flushedLength) {
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
+
         override def close() = {
           synchronized {
             freeIterators -= this
@@ -74,6 +75,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
           super.close()
           logger.debug(s"Closed $toString")
         }
+
         override def toString = s"${super.toString} #$number)"
       }
       lentIterators += result

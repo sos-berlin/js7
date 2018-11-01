@@ -9,6 +9,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
+import monix.execution.atomic.AtomicAny
 
 /**
   * @author Joacim Zschimmer
@@ -58,7 +59,11 @@ extends AutoCloseable
     if (position >= flushedLength)  // Data behind flushedLength is not flushed and probably incomplete
       Some(CloseableIterator.empty)
     else {
-      val iterator = iteratorPool.borrowIterator()
+      val iteratorAtomic = AtomicAny(iteratorPool.borrowIterator())
+      def iterator = iteratorAtomic.get match {
+        case null ⇒ throw new IllegalStateException("FileEventIterator closed")
+        case o ⇒ o
+      }
       closeOnError(iterator) {
         if (iterator.position != position &&
           (iterator.position < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
@@ -74,6 +79,7 @@ extends AutoCloseable
         } else
           Some(
             new CloseableIterator[Stamped[KeyedEvent[E]]] {
+              private var eof = false
               var closed = false
 
               def close() = if (!closed) {
@@ -85,8 +91,10 @@ extends AutoCloseable
                 }
               }
 
-              def hasNext = {
+            def hasNext =
+              !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd)
                 val r = iterator.hasNext
+                eof |= !r
                 if (!r && isHistoric) freeze()
                 r
               }
