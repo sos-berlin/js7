@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.common.utils
+package com.sos.jobscheduler.base.utils
 
-import com.sos.jobscheduler.common.utils.DecimalPrefixes.toInt
+import com.sos.jobscheduler.base.utils.DecimalPrefixes.toInt
 import org.scalatest.FreeSpec
 
 /**
