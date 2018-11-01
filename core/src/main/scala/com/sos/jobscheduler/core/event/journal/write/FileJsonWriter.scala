@@ -61,5 +61,7 @@ extends AutoCloseable {
 
   def isSynced = synced
 
-  def fileLength = initialPosition + writer.bytesWritten
+  def fileLength = initialPosition + bytesWritten
+
+  def bytesWritten  = writer.bytesWritten
 }

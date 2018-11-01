@@ -168,6 +168,8 @@ private[journal] object TestActor {
      |jobscheduler.journal.snapshot.log-period = 10ms
      |jobscheduler.journal.snapshot.log-actor-limit = 1
      |jobscheduler.journal.event-buffer-size = 1000
+     |jobscheduler.journal.snapshot.period = 1h
+     |jobscheduler.journal.snapshot.when-bigger-than = 1G
      |""".stripMargin)
   private val logger = Logger(getClass)
 

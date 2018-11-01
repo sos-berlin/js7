@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import com.sos.jobscheduler.base.convert.As.StringAsByteCountWithDecimalPrefix
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -11,6 +12,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, RecoveredJournalingActors}
@@ -49,7 +51,8 @@ extends Actor with Stash {
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
   private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-  private val snapshotPeriod = config.ifPath("jobscheduler.journal.snapshot.period")(p ⇒ config.getDuration(p).toFiniteDuration)
+  private val snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration
+  private val snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix)
   private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
   private var snapshotCancelable: Cancelable = null
 
@@ -220,6 +223,10 @@ extends Actor with Stash {
     totalEventCount += writtenBuffer.iterator.map(_.stamped.size).sum
     writtenBuffer.clear()
     dontSync = true
+    if (eventWriter.bytesWritten > snapshotSizeLimit) {  // Snapshot is not counted
+      logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(snapshotSizeLimit)}")
+      self ! Input.TakeSnapshot
+    }
   }
 
   private def receiveTerminatedOrGet: Receive = {
@@ -324,10 +331,8 @@ extends Actor with Stash {
 
   private def scheduleNextSnapshot(): Unit =
     if (snapshotCancelable == null) {
-      for (period ← snapshotPeriod) {
-        snapshotCancelable = scheduler.scheduleOnce(period) {
-          self ! Input.TakeSnapshot
-        }
+      snapshotCancelable = scheduler.scheduleOnce(snapshotPeriod) {
+        self ! Input.TakeSnapshot
       }
     }
 }

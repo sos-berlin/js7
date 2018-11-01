@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.base.convert
 
+import com.sos.jobscheduler.base.utils.DecimalPrefixes
+
 /**
   * @author Joacim Zschimmer
   */
@@ -39,4 +41,10 @@ object As {
 
   implicit val StringAsBigDecimal: As[String, BigDecimal] =
     As(o ⇒ new java.math.BigDecimal(o))
+
+  val StringAsLongWithDecimalPrefix: As[String, Long] =
+    As(DecimalPrefixes.toInt)
+
+  val StringAsByteCountWithDecimalPrefix: As[String, Long] =
+    As(o ⇒ DecimalPrefixes.toInt(o stripSuffix "B"/*optional*/))
 }

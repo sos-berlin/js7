@@ -53,4 +53,6 @@ extends AutoCloseable {
   final def isFlushed = jsonWriter.isFlushed
 
   final def isSynced = jsonWriter.isSynced
+
+  final def bytesWritten = jsonWriter.bytesWritten
 }
