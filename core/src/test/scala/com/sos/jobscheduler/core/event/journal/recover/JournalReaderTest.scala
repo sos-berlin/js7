@@ -115,6 +115,21 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
       }
+      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+        assert(journalReader.nextEvent() == Some(first))
+        assert(journalReader.eventId == 1000)
+        assert(journalReader.nextEvent() == Some(ta(0)))
+        assert(journalReader.eventId == 1001)
+        assert(journalReader.nextEvent() == Some(ta(1)))
+        assert(journalReader.eventId == 1002)
+        assert(journalReader.nextEvent() == Some(ta(2)))
+        assert(journalReader.eventId == 1003)
+        assert(journalReader.nextEvent() == Some(last))
+        assert(journalReader.eventId == 1004)
+        assert(journalReader.nextEvent() == None)
+        assert(journalReader.eventId == 1004)
+        assert(journalReader.totalEventCount == 5)
+      }
     }
 
     "Uncommitted transaction" in {

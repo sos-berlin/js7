@@ -29,8 +29,51 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   private var snapshotHeaderRead = false
   private var eventHeaderRead = false
   private var _eventId = tornEventId
-  private var transaction: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]] = null
-  private var nextCommitted = 0
+
+  private object transaction
+  {
+    private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]] = null
+    private var next = 0
+
+    def begin(): Unit = {
+      require(!isInTransaction)
+      buffer = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]]
+    }
+
+    def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[E]]]): Unit = {
+      require(isInTransaction)
+      buffer += positionAndStamped
+    }
+
+    def commit(): Unit = {
+      require(isInTransaction)
+      next = 0
+      if (buffer.isEmpty) buffer = null
+    }
+
+    def clear(): Unit =
+      buffer = null
+
+    def readNext(): Stamped[KeyedEvent[E]] = {
+      require(isInTransaction)
+      val stamped = buffer(next).value
+      next += 1
+      if (next == buffer.length) {
+        buffer = null
+      }
+      stamped
+    }
+
+    def positionAndEventId: PositionAnd[EventId] = {
+      require(isInTransaction)
+      // buffer contains >= 2 elements
+      PositionAnd(buffer(next).position, buffer(next - 1).value.eventId)
+    }
+
+    def isInTransaction = buffer != null
+
+    def length = buffer.length
+  }
 
   def close() = jsonReader.close()
 
@@ -84,14 +127,14 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     _eventId = positionAndEventId.value
     eventHeaderRead = true
     _totalEventCount = -1
-    transaction = null
+    transaction.clear()
   }
 
   def nextEvents(): Iterator[Stamped[KeyedEvent[E]]] =
     untilNoneIterator(nextEvent())
 
   def nextEvent(): Option[Stamped[KeyedEvent[E]]] =
-    if (transaction != null)
+    if (transaction.isInTransaction)
       Some(readNextCommitted())
     else {
       val result = nextEvent2()
@@ -127,26 +170,24 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
               Some(stampedEvent)
 
             case Transaction ⇒
-              if (transaction != null) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
-              transaction = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]]
+              if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
+              transaction.begin()
               @tailrec def loop(): Unit =
                 jsonReader.read() match {
                   case None ⇒
-                    transaction = null  // File ends before transaction is committed.
+                    transaction.clear() // File ends before transaction is committed.
                   case Some(PositionAnd(_, Commit)) ⇒
-                    nextCommitted = 0
-                    if (transaction.isEmpty) transaction = null
+                    transaction.commit()
                   case Some(o) if o.value.isObject ⇒
-                    transaction += o.copy(value = deserialize(o.value))
+                    transaction.add(o.copy(value = deserialize(o.value)))
                     loop()
                 }
               loop()
-              if (transaction == null)
-                nextEvent2()
-              else {
+              if (transaction.isInTransaction) {
                 if (_totalEventCount != -1) _totalEventCount += transaction.length
                 Some(readNextCommitted())
-              }
+              } else
+                nextEvent2()
 
             case Commit ⇒  // Only after seek into a transaction
               nextEvent2()
@@ -160,11 +201,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
       }
 
   private def readNextCommitted(): Stamped[KeyedEvent[E]] = {
-    val stamped = transaction(nextCommitted).value
-    nextCommitted += 1
-    if (nextCommitted == transaction.length) {
-      transaction = null
-    }
+    val stamped = transaction.readNext()
     _eventId = stamped.eventId
     stamped
   }
@@ -179,8 +216,8 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   def position = positionAndEventId.position
 
   def positionAndEventId: PositionAnd[EventId] =
-    if (transaction != null)
-      PositionAnd(transaction(nextCommitted).position, transaction(nextCommitted - 1).value.eventId)
+    if (transaction.isInTransaction)
+      transaction.positionAndEventId
     else
       PositionAnd(jsonReader.position, _eventId)
 
