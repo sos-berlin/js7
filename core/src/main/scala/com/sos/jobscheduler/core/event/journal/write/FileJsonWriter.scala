@@ -26,7 +26,7 @@ extends AutoCloseable {
   private val initialPosition = Files.size(file)
 
   def close() =
-    if (closed.compareAndSet(false, true)) {
+    if (!closed.getAndSet(true)) {
       flush()
       writer.close()
       bufferedOut.close()

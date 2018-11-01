@@ -209,7 +209,7 @@ with JournalingObserver
       for (r ← Option(historicEventReader.get)) r.closeAfterUse()
 
     def close(): Unit =
-    for (r ← Option(historicEventReader.get)) r.close()
+      for (r ← Option(historicEventReader.get)) r.close()
 
     @tailrec
     def eventReader: HistoricEventReader[E] =

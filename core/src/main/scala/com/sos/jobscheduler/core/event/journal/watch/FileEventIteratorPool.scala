@@ -22,7 +22,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
 
   def close(): Unit =
     synchronized {
-      if (closed.compareAndSet(false, true)) {
+      if (!closed.getAndSet(true)) {
         val (availables, lent): (Set[FileEventIterator[E]], Set[FileEventIterator[E]]) =
           synchronized {
             (freeIterators.toSet, lentIterators.toSet)
