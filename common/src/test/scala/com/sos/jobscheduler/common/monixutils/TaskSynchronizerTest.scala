@@ -18,10 +18,8 @@ final class TaskSynchronizerTest extends FreeSpec
     val counter = AtomicInt(0)
     def newTask(i: Int) = Task {
       val start = counter.getAndIncrement()
-      println(s"$i start $start")
       sleep(10)
       val end = counter.getAndIncrement()
-      println(s"$i end $end")
       (i, start, end)
     }
     val n = 20
