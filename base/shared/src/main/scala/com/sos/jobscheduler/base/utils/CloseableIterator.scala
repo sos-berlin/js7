@@ -88,6 +88,14 @@ object CloseableIterator {
     override def toString = "CloseableIterator.empty"
   }
 
+  def fromCloseable[C <: AutoCloseable, A](closeable: C)(toIterator: C ⇒ Iterator[A]): CloseableIterator[A] =
+    try fromIterator(toIterator(closeable)) onClosed { closeable.close() }
+    catch { case NonFatal(t) ⇒  // TODO Use AutoClosable.closeOnError
+      try closeable.close()
+      catch { case NonFatal(tt) ⇒ t.addSuppressed(tt) }
+      throw t
+    }
+
   def fromIterator[A](iterator: Iterator[A]): CloseableIterator[A] =
     new CloseableIterator[A] {
       def close() = {}

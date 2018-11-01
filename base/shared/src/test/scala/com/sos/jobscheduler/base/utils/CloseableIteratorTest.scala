@@ -106,6 +106,22 @@ final class CloseableIteratorTest extends FreeSpec
     a.close()
     assert(closed)
   }
+
+  "fromCloseable" in {
+    val closeable = new AutoCloseable {
+      var closed = false
+      def close() = closed = true
+      val iterator = Iterator(1)
+    }
+    val closeableIterator = CloseableIterator.fromCloseable(closeable)(_.iterator)
+    assert(!closeable.closed)
+
+    assert(closeableIterator.toList == 1 :: Nil)
+    assert(!closeable.closed)
+
+    closeableIterator.close()
+    assert(closeable.closed)
+  }
 }
 
 object CloseableIteratorTest {
