@@ -54,6 +54,7 @@ addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
+addCommandAlias("clean-pack"     , "; clean-all; compile-only; pack")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
 addCommandAlias("compile-all"    , "; Test/compile; ForkedTest:compile")
