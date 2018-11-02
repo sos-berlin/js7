@@ -54,7 +54,8 @@ extends Actor with Stash {
   private val snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration
   private val snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix)
   private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
-  private var snapshotCancelable: Cancelable = null
+  private var snapshotRequested = false
+  private var snapshotSchedule: Cancelable = null
 
   private var observerOption: Option[JournalingObserver] = None
   private var eventWriter: EventJournalWriter[E] = null
@@ -66,10 +67,10 @@ extends Actor with Stash {
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
-  for (o ← simulateSync) logger.warn(s"sync is simulated with $o duration")
+  for (o ← simulateSync) logger.warn(s"sync is simulated with ${o.pretty} duration")
 
   override def postStop() = {
-    if (snapshotCancelable != null) snapshotCancelable.cancel()
+    if (snapshotSchedule != null) snapshotSchedule.cancel()
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
     for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
@@ -163,17 +164,16 @@ extends Actor with Stash {
       }
 
     case Input.TakeSnapshot ⇒
+      snapshotRequested = false
       if (!eventWriter.isEventWritten) {
-        sender ! Output.SnapshotTaken
+        if (sender != self) sender ! Output.SnapshotTaken
       } else {
         val sender = this.sender()
         becomeTakingSnapshotThen() {
           becomeReady()  // Writes EventHeader
-          sender ! Output.SnapshotTaken
+          if (sender != self) sender ! Output.SnapshotTaken
         }
       }
-
-    case Output.SnapshotTaken ⇒  // In case, JournalActor itself has sent TakeSnapshot
 
     case Input.Terminate ⇒
       commit()
@@ -225,7 +225,7 @@ extends Actor with Stash {
     dontSync = true
     if (eventWriter.bytesWritten > snapshotSizeLimit) {  // Snapshot is not counted
       logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(snapshotSizeLimit)}")
-      self ! Input.TakeSnapshot
+      requestSnapshot()
     }
   }
 
@@ -256,9 +256,9 @@ extends Actor with Stash {
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
-    if (snapshotCancelable != null) {
-      snapshotCancelable.cancel()
-      snapshotCancelable = null
+    if (snapshotSchedule != null) {
+      snapshotSchedule.cancel()
+      snapshotSchedule = null
     }
     if (eventWriter != null) {
       commit()
@@ -330,11 +330,18 @@ extends Actor with Stash {
   }
 
   private def scheduleNextSnapshot(): Unit =
-    if (snapshotCancelable == null) {
-      snapshotCancelable = scheduler.scheduleOnce(snapshotPeriod) {
-        self ! Input.TakeSnapshot
+    if (snapshotSchedule == null) {
+      snapshotSchedule = scheduler.scheduleOnce(snapshotPeriod) {
+        requestSnapshot()
       }
     }
+
+  private def requestSnapshot(): Unit = {
+    if (!snapshotRequested) {
+      snapshotRequested = true
+      self ! Input.TakeSnapshot
+    }
+  }
 }
 
 object JournalActor
