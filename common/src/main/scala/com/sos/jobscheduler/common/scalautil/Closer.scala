@@ -58,7 +58,7 @@ final class Closer extends AutoCloseable
               logger.debug(s"Throwable.addSuppressed($t)")
               throwable.get.addSuppressed(t)
             }
-          case fatal ⇒
+          case fatal: Throwable ⇒
             throw fatal
         }
         close()
