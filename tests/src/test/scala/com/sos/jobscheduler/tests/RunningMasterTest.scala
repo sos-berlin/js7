@@ -2,9 +2,9 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -18,9 +18,10 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -44,19 +45,15 @@ final class RunningMasterTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(AgentPaths)) { provider ⇒
       for (agentPath ← AgentPaths) {
-        provider.agentToTree(agentPath).writeJson(
-          JobConfiguration(
-            JobPath("/test") % VersionId.Anonymous,
-            JobScript(TestScript),
-            Map("var1" → s"VALUE-${agentPath.withoutStartingSlash}")))
+        provider.agentToTree(agentPath).writeExecutable(ExecutablePath(s"/TEST$sh"), TestScript)
       }
 
       val agent0 = provider.startAgent(AgentPaths(0)) await 10.s
       provider.master.writeJson(
         Workflow(TestWorkflowPath % VersionId.Anonymous,
           Vector(
-            Job(JobPath("/test"), AgentPaths(0)),
-            Job(JobPath("/test"), AgentPaths(1)))))
+            Execute(WorkflowJob(AgentPaths(0), ExecutablePath(s"/TEST$sh"))),
+            Execute(WorkflowJob(AgentPaths(1), ExecutablePath(s"/TEST$sh"))))))
       (provider.master.orderGenerators / "test.order.xml").xml =
         <order job_chain="test">
           <params>

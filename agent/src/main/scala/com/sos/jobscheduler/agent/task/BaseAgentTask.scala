@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.data.views.TaskOverview
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
 import scala.concurrent.Future
 
 /**
@@ -15,7 +15,7 @@ trait BaseAgentTask {
 
   def id: AgentTaskId
 
-  def jobPath: JobPath
+  def jobKey: JobKey
 
   def pidOption: Option[Pid]
 

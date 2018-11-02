@@ -112,8 +112,28 @@ final class AgentCommandTest extends FreeSpec {
               "versionId": "VERSION"
             },
             "instructions": [
-              { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
-              { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" }
+              {
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "defaultArguments": {
+                    "JOB_A": "A-VALUE"
+                  },
+                  "executablePath": "/A.cmd",
+                  "taskLimit": 8
+                }
+              },
+              {
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "defaultArguments": {
+                    "JOB_B": "B-VALUE"
+                  },
+                  "executablePath": "/B.cmd",
+                  "taskLimit": 8
+                }
+              }
             ]
           }
         }""")

@@ -155,7 +155,7 @@ final class EvaluatorTest extends FreeSpec
           Not(LessOrEqual(OrderReturnCode, NumericConstant(9)))),
         NotEqual(OrderReturnCode, NumericConstant(1)))))
 
-  testEval("returnCode in (1, 2, 3)",
+  testEval("returnCode in [1, 2, 3]",
     result = true,
     Valid(
       In(OrderReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))

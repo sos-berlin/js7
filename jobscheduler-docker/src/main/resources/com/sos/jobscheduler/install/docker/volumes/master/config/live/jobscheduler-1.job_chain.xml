@@ -1,9 +1,0 @@
-<job_chain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xsi:noNamespaceSchemaLocation="https://www.sos-berlin.com/repository/scheduler/1.9/scheduler.xsd"
->
-  <job_chain_node     state="A" agent="/test-agent-1" job="/test" next_state="B" error_state="FAILURE"/>
-  <job_chain_node.end state="X"/>
-  <job_chain_node     state="B" agent="/test-agent-2" job="/exit-7" error_state="FAILURE"/>
-  <job_chain_node     state="END"/>
-  <job_chain_node.end state="FAILURE"/>
-</job_chain>

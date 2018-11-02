@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview
 import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -14,7 +15,9 @@ import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import io.circe.Json
 import java.time.Instant
 import monix.execution.Scheduler
@@ -45,7 +48,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
     taskRegister.add(new BaseAgentTask {
       def overview = testTaskOverview(TestAgentTaskId)
       def pidOption = overview.pid
-      def jobPath = overview.jobPath
+      def jobKey = overview.jobKey
       def id = overview.taskId
       def terminated = Promise().future
       def sendProcessSignal(signal: ProcessSignal) = {}
@@ -56,32 +59,51 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   "task" in {
     Get("/agent/api/task") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskRegisterOverview] == TestOverview)
-      assert(responseAs[Json] == Json.obj(
-        "currentTaskCount" → Json.fromInt(1),
-        "totalTaskCount" → Json.fromInt(1)))
+      assert(responseAs[Json] == json"""
+        {
+          "currentTaskCount": 1,
+          "totalTaskCount": 1
+        }""")
     }
   }
 
   "task/" in {
     Get("/agent/api/task/") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TaskOverview]] == TestTaskOverviews)
-      assert(responseAs[Json] == Json.fromValues(List(
-        Json.obj(
-          "taskId" → Json.fromString("1-123"),
-          "pid" → Json.fromInt(123),
-          "startedAt" → Json.fromLong(1433937600000L),  //Json.fromString("2015-06-10T12:00:00Z"),
-          "jobPath" → Json.fromString("/FOLDER/JOB")))))
+      assert(responseAs[Json] == json"""
+        [
+          {
+            "taskId": "1-123",
+            "pid": 123,
+            "startedAt": 1433937600000,
+            "jobKey": {
+              "workflowId": {
+                "path": "/WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "name": "JOB"
+            }
+          }
+        ]""")
     }
   }
 
   "task/1-123" in {
     Get("/agent/api/task/1-123") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskOverview] == testTaskOverview(TestAgentTaskId))
-      assert(responseAs[Json] == Json.obj(
-          "taskId" → Json.fromString("1-123"),
-          "pid" → Json.fromInt(123),
-          "startedAt" → Json.fromLong(1433937600000L),  //Json.fromString("2015-06-10T12:00:00Z"),
-          "jobPath" → Json.fromString("/FOLDER/JOB")))
+      assert(responseAs[Json] == json"""
+        {
+          "taskId": "1-123",
+          "pid": 123,
+          "startedAt": 1433937600000,
+          "jobKey": {
+            "workflowId": {
+              "path": "/WORKFLOW",
+              "versionId": "VERSION"
+            },
+            "name": "JOB"
+          }
+        }""")
     }
   }
 }
@@ -96,7 +118,7 @@ private object TaskWebServiceTest {
   private val TestTaskOverviews = List(testTaskOverview(TestAgentTaskId))
 
   private def testTaskOverview(id: AgentTaskId) = TaskOverview(
-    jobPath = JobPath("/FOLDER/JOB"),
+    JobKey(WorkflowPath("/WORKFLOW") % "VERSION", WorkflowJob.Name("JOB")),
     TestAgentTaskId,
     pid = Some(Pid(123)),
     Instant.parse("2015-06-10T12:00:00Z").toTimestamp)

@@ -70,8 +70,11 @@ object WorkflowComponent {
       " ",
       pi._2.labels.map(_ + ": ").mkString,
       pi._2.instruction match {
-        case job: Job ⇒
-          VdomArray(job.agentPath, " · ", job.jobPath)
+        case Execute.Anonymous(job) ⇒
+          VdomArray("execute ", job.executablePath.string, ", agent=", job.agentPath.string)
+
+        case Execute.Named(name) ⇒
+          VdomArray("execute ", name.string)
 
         case _: ForkJoin ⇒
           "fork"

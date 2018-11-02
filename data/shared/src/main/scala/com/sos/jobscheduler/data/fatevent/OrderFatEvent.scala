@@ -6,9 +6,9 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
@@ -45,7 +45,7 @@ object OrderFatEvent
     workflowPosition: WorkflowPosition,
     agentPath: AgentPath,
     agentUri: String,
-    jobPath: JobPath,
+    jobName: Option[WorkflowJob.Name],
     variables: Map[String, String])
   extends OrderFatEvent
 

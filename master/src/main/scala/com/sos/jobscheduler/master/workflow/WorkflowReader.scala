@@ -1,10 +1,8 @@
 package com.sos.jobscheduler.master.workflow
 
 import akka.util.ByteString
-import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 
@@ -21,9 +19,5 @@ object WorkflowReader extends FileBasedReader
 
     case SourceType.Txt ⇒
       WorkflowParser.parse(source.utf8String) map (_ withId workflowId)
-
-    case SourceType.Xml ⇒
-      val folderPath = FolderPath.parentOf(workflowId.path)
-      LegacyJobchainXmlParser.parseXml(folderPath, simpleByteStringSource(source)) map (_ withId workflowId)
   }
 }

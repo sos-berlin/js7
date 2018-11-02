@@ -79,7 +79,7 @@ object Expression
 
   final case class ListExpression(expressions: List[Expression]) extends Expression {
     def precedence = Precedence.Factor
-    override def toString = expressions.mkString("(", ", ", ")")
+    override def toString = expressions.mkString("[", ", ", "]")
   }
 
   final case class ToNumber(expression: Expression) extends NumericExpression {

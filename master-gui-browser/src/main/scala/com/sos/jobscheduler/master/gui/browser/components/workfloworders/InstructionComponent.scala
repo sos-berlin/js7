@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.Instruction.@:
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin, If, ImplicitEnd}
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
@@ -25,10 +25,13 @@ private[workfloworders] object InstructionComponent
           case instr: If ⇒
             s"if (${instr.predicate})"
 
-          case job: Job ⇒
+          case Execute.Anonymous(job) ⇒
             VdomArray(
-              "job ", <.span(^.cls := "orders-Instruction-Job", job.jobPath.string),
-              <.div("on ", <.span(^.cls := "orders-Instruction-Agent", job.agentPath.string)))
+              "execute ", <.span(^.cls := "orders-Instruction-Executable", job.executablePath.string), ", ",
+              <.div("agent=", <.span(^.cls := "orders-Instruction-Agent", job.agentPath.string)))
+
+          case Execute.Named(name) ⇒
+            VdomArray("execute ", name.string)
 
           case ImplicitEnd ⇒
             "end"

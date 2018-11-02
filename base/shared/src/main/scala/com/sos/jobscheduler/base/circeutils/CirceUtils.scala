@@ -28,6 +28,12 @@ object CirceUtils {
   def stringDecoder[A](from: String ⇒ A): Decoder[A] =
     _.as[String] map from
 
+  def objectCodec[A <: AnyRef: ObjectEncoder: Decoder]: CirceObjectCodec[A] =
+    new ObjectEncoder[A] with Decoder[A] {
+      def encodeObject(a: A) = implicitly[ObjectEncoder[A]].encodeObject(a)
+      def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
+    }
+
   def circeCodec[A: Encoder: Decoder]: CirceCodec[A] =
     new Encoder[A] with Decoder[A] {
       def apply(a: A) = implicitly[Encoder[A]].apply(a)

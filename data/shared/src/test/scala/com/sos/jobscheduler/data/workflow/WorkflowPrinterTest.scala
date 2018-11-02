@@ -3,11 +3,12 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Job, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -18,33 +19,51 @@ import scala.concurrent.duration._
 final class WorkflowPrinterTest extends FreeSpec {
   // Also tested by WorkflowParserTest.
 
-  "Single instruction with absolute job path" in {
+  "execute" in {
     check(
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Job(JobPath("/A"), AgentPath("/AGENT")))),
-      """job "/A" on "/AGENT";
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"))))),
+      """workflow {
+        |  execute executable="/my-script", agent="/AGENT";
+        |}
         |""".stripMargin)
   }
 
-  "job with successReturnCodes" in {
+  "execute defaultArguments" in {
     check(
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Success.of(0, 1, 3)))),
-      """job "/A" on "/AGENT" successReturnCodes=(0, 1, 3);
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"))))),
+      """workflow {
+        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"};
+        |}
         |""".stripMargin)
   }
 
-  "job with failureReturnCodes" in {
+  "execute successReturnCodes=()" in {
     check(
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Failure.of(1, 3)))),
-      """job "/A" on "/AGENT" failureReturnCodes=(1, 3);
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))))))),
+      """workflow {
+        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
+        |}
+        |""".stripMargin)
+  }
+
+  "execute failureReturnCodes=()" in {
+    check(
+      Workflow(
+        WorkflowPath.NoId,
+        Vector(
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.NoFailure)))),
+      """workflow {
+        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
+        |}
         |""".stripMargin)
   }
 
@@ -53,8 +72,10 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          "A" @: Job(JobPath("/A"), AgentPath("/AGENT")))),
-      """A: job "/A" on "/AGENT";
+          "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
+      """workflow {
+        |  A: execute executable="/EXECUTABLE", agent="/AGENT";
+        |}
         |""".stripMargin)
   }
 
@@ -67,9 +88,11 @@ final class WorkflowPrinterTest extends FreeSpec {
             Or(
               In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
-            Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT")))))),
-      """if ((returnCode in (1, 2)) || $KEY == 'VALUE') {
-        |  job "/THEN" on "/AGENT";
+            Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
+      """workflow {
+        |  if ((returnCode in [1, 2]) || $KEY == 'VALUE') {
+        |    execute executable="/EXECUTABLE", agent="/AGENT";
+        |  }
         |}
         |""".stripMargin)
   }
@@ -81,16 +104,18 @@ final class WorkflowPrinterTest extends FreeSpec {
         Vector(
           If(Equal(OrderReturnCode, NumericConstant(-1)),
             Workflow.of(
-              Job(JobPath("/THEN-1"), AgentPath("/AGENT")),
+              Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A-THEN"))),
               If(BooleanConstant(true),
-                Workflow.of(Job(JobPath("/THEN-2"), AgentPath("/AGENT"))),
-                Some(Workflow.of(Job(JobPath("/ELSE-2"), AgentPath("/AGENT"))))))))),
-      """if (returnCode == -1) {
-        |  job "/THEN-1" on "/AGENT";
-        |  if (true) {
-        |    job "/THEN-2" on "/AGENT";
-        |  } else {
-        |    job "/ELSE-2" on "/AGENT";
+                Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B-THEN")))),
+                Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B-ELSE")))))))))),
+      """workflow {
+        |  if (returnCode == -1) {
+        |    execute executable="/A-THEN", agent="/AGENT";
+        |    if (true) {
+        |      execute executable="/B-THEN", agent="/AGENT";
+        |    } else {
+        |      execute executable="/B-ELSE", agent="/AGENT";
+        |    }
         |  }
         |}
         |""".stripMargin)
@@ -100,29 +125,35 @@ final class WorkflowPrinterTest extends FreeSpec {
     check(
       Workflow.of(
         ForkJoin(Vector(
-          ForkJoin.Branch("🥕", Workflow.of(Job(JobPath("/a"), AgentPath("/agent-a")))),
-          ForkJoin.Branch("🍋", Workflow.of(Job(JobPath("/b"), AgentPath("/agent-b"))))))),
-      """fork (
-        |  "🥕" {
-        |    job "/a" on "/agent-a";
-        |  },
-        |  "🍋" {
-        |    job "/b" on "/agent-b";
-        |  });
+          ForkJoin.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))),
+          ForkJoin.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))))),
+      """workflow {
+        |  fork (
+        |    "🥕" {
+        |      execute executable="/A", agent="/AGENT";
+        |    },
+        |    "🍋" {
+        |      execute executable="/B", agent="/AGENT";
+        |    });
+        |}
         |""".stripMargin)
   }
 
   "offer" in {
     check(
       Workflow(WorkflowPath.NoId, Vector(Offer(OrderId("OFFERED"), 60.seconds))),
-      """offer orderId="OFFERED", timeout=60;
+      """workflow {
+        |  offer orderId="OFFERED", timeout=60;
+        |}
         |""".stripMargin)
   }
 
   "await" in {
     check(
       Workflow(WorkflowPath.NoId, Vector(AwaitOrder(OrderId("OFFERED")))),
-      """await orderId="OFFERED";
+      """workflow {
+        |  await orderId="OFFERED";
+        |}
         |""".stripMargin)
   }
 
@@ -131,20 +162,22 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Job(JobPath("/A"), AgentPath("/AGENT")),
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))),
           IfNonZeroReturnCodeGoto(Label("FAILURE")),
-          Job(JobPath("/B"), AgentPath("/AGENT")),
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B"))),
           Goto(Label("END")),
           "FAILURE" @:
-          Job(JobPath("/OnFailure"), AgentPath("/AGENT")),
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/OnFailure"))),
           "END" @:
           ExplicitEnd)),
-      """job "/A" on "/AGENT";
-        |ifNonZeroReturnCodeGoto FAILURE;
-        |job "/B" on "/AGENT";
-        |goto END;
-        |FAILURE: job "/OnFailure" on "/AGENT";
-        |END: end;
+      """workflow {
+        |  execute executable="/A", agent="/AGENT";
+        |  ifNonZeroReturnCodeGoto FAILURE;
+        |  execute executable="/B", agent="/AGENT";
+        |  goto END;
+        |  FAILURE: execute executable="/OnFailure", agent="/AGENT";
+        |  END: end;
+        |}
         |""".stripMargin)
   }
 

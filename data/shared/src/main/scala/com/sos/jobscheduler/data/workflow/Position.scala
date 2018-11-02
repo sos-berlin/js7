@@ -14,13 +14,15 @@ import scala.language.implicitConversions
 final case class Position(parents: List[Parent], nr: InstructionNr) {
 
   def /(branchId: BranchId) = Parents.NonEmpty(this, branchId)
+
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
   def dropChild: Option[Position] =
     for (last ← parents.lastOption) yield
       Position(parents dropRight 1, last.nr)
 
-  def increment: Position = copy(nr = nr + 1)
+  def increment: Position =
+    copy(nr = nr + 1)
 
   def asSeq: IndexedSeq[Any] =
     parents.toVector.flatMap(p ⇒ Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number

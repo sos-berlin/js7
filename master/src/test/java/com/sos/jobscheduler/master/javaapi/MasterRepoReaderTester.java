@@ -30,7 +30,7 @@ final class MasterRepoReaderTester {
     private static final String TestWorkflowJson =
       "{" +
         "\"instructions\": [" +
-          "{ \"TYPE\": \"Job\", \"jobPath\": \"/JOB\", \"agentPath\": \"/AGENT\" }" +
+          "{ \"TYPE\": \"Execute.Anonymous\", \"job\": { \"agentPath\": \"/AGENT\", \"executablePath\": \"/EXECUTABLE\", \"taskLimit\": 1 }}" +
         "]" +
       "}";
 

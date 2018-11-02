@@ -4,8 +4,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.io.File.separator
 import java.nio.file.Paths
@@ -19,12 +19,10 @@ final class TypedPathsTest extends FreeSpec {
   "fileToTypedPath" in {
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.json")) ==
+    assert(fileToTypedPath(Set(WorkflowPath, AgentPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.yaml")) ==
+    assert(fileToTypedPath(Set(WorkflowPath, AgentPath), Paths.get("folder/test.workflow.yaml")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Yaml))
-    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.job.json")) ==
-      Valid(JobPath("/folder/test") → SourceType.Json))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.txt")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Txt))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.job_chain.xml")) ==

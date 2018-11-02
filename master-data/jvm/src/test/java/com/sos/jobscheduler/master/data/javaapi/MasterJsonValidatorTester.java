@@ -16,10 +16,10 @@ final class MasterJsonValidatorTester {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson(
             "{" +
                 "\"instructions\": [" +
-                    "{ \"TYPE\": \"Job\", \"jobPath\": \"/JOB\", \"agentPath\": \"/AGENT\" }" +
+                    "{ \"TYPE\": \"Execute.Anonymous\", \"job\": { \"agentPath\": \"/AGENT\", \"executablePath\": \"/JOB\", \"taskLimit\": 1 }}" +
                 "]" +
             "}");
-        assert maybeProblem.equals(Optional.empty());
+        assert maybeProblem.equals(Optional.empty()) : maybeProblem.toString();
     }
 
     static void testInvalidWorkflow() {
@@ -37,11 +37,14 @@ final class MasterJsonValidatorTester {
     static void testValidInstruction() {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkInstructionJson(
             "{" +
-                "\"TYPE\": \"Job\"," +
-                "\"jobPath\": \"/JOB\"," +
-                "\"agentPath\": \"/AGENT\"" +
+                "\"TYPE\": \"Execute.Anonymous\"," +
+                "\"job\": {" +
+                    "\"agentPath\": \"/AGENT\"," +
+                    "\"executablePath\": \"/EXECUTABLE\"," +
+                    "\"taskLimit\": 1" +
+                "}" +
             "}");
-        assert maybeProblem.equals(Optional.empty());
+        assert maybeProblem.equals(Optional.empty()) : maybeProblem.toString();
     }
 
     static void testInvalidInstruction() {

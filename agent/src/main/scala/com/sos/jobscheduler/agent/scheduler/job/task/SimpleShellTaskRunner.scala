@@ -36,10 +36,10 @@ extends TaskRunner {
 
   val asBaseAgentTask = new BaseAgentTask {
     def id = agentTaskId
-    def jobPath = conf.jobPath
+    def jobKey = conf.jobKey
     def pidOption = richProcessOnce flatMap { _.pidOption }
     def terminated = terminatedPromise.future
-    def overview = TaskOverview(jobPath, id, pidOption, startedAt.toTimestamp)
+    def overview = TaskOverview(jobKey, id, pidOption, startedAt.toTimestamp)
 
     def sendProcessSignal(signal: ProcessSignal) =
       for (o ← richProcessOnce) o.sendProcessSignal(signal)
@@ -71,10 +71,10 @@ extends TaskRunner {
   private def runProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, stdChannels) andThen {
-        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobPath}, script ${conf.shellFile}")
+        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
-        logger.info(s"Process '$richProcess' terminated with $tried after ${richProcess.duration.pretty}")
+        logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
       }
     } yield {
       richProcess.close()
@@ -97,7 +97,7 @@ extends TaskRunner {
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
       val env = {
-        val params = conf.jobConfiguration.variables ++ order.variables
+        val params = conf.workflowJob.defaultArguments ++ order.variables
         val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
         /*environment +*/ paramEnv + returnValuesProvider.env
       }
@@ -126,7 +126,7 @@ extends TaskRunner {
         killedBeforeStart = true
     }
 
-  override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobPath})"
+  override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobKey})"
 }
 
 object SimpleShellTaskRunner {

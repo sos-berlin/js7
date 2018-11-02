@@ -53,7 +53,7 @@ object Outcome
   }
 
   @JsonCodec
-  final case class Succeeded private(returnCode: ReturnCode) extends Undisrupted {
+  final case class Succeeded(returnCode: ReturnCode) extends Undisrupted {
     def isSucceeded = returnCode.isSuccess
   }
   object Succeeded extends Undisrupted.Companion[Succeeded] {
@@ -61,7 +61,7 @@ object Outcome
   }
 
   @JsonCodec
-  final case class Failed private(returnCode: ReturnCode) extends Undisrupted with NotSucceeded {
+  final case class Failed(returnCode: ReturnCode) extends Undisrupted with NotSucceeded {
     def isSucceeded = false
   }
   object Failed extends Undisrupted.Companion[Failed] {

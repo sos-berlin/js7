@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.Done
-import akka.actor.{ActorRef, Stash, Terminated}
+import akka.actor.{DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
@@ -10,6 +9,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOr
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
@@ -34,17 +34,18 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActo
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.ZoneId
-import monix.execution.Scheduler
-import scala.collection.immutable.Seq
+import monix.execution.{Cancelable, Scheduler}
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -55,6 +56,8 @@ import scala.concurrent.{Future, Promise}
 final class AgentOrderKeeper(
   masterId: MasterId,
   journalFileBase: Path,
+  executableDirectory: Path,
+  newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
   keyedEventBus: StampedKeyedEventBus,
   config: Config,
@@ -76,6 +79,8 @@ extends MainJournalingActor[Event] with Stash {
   private val orderRegister = new OrderRegister(timerService)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
   private var terminating = false
+  private var terminatingOrders = false
+  private var stillTerminatingSchedule: Option[Cancelable] = None
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -89,6 +94,7 @@ extends MainJournalingActor[Event] with Stash {
     for (workflow ← state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
         workflowRegister.recover(workflow)
+        startJobActors(workflow)
       }
     for (recoveredOrder ← state.idToOrder.values)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
@@ -102,26 +108,15 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   override def postStop() = {
+    stillTerminatingSchedule foreach (_.cancel())
     eventWatch.close()
     super.postStop()
+    logger.debug("Stopped")
   }
 
   def snapshots = Future.successful(workflowRegister.workflows)
 
   def receive = {
-    case Input.Start(jobPathsAndActors) ⇒
-      for ((jobPath, actorRef) ← jobPathsAndActors) {
-        jobRegister.insert(jobPath, actorRef)
-        watch(actorRef)
-      }
-      become("awaitJournalIsReady")(awaitJournalIsReady)
-      unstashAll()
-
-    case _ ⇒
-      stash()  // We stash all early OrderActor.Output.RecoveryFinished until the jobs are defined (Input.Start)
-  }
-
-  private def awaitJournalIsReady: Receive = {
     case OrderActor.Output.RecoveryFinished(order) ⇒
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
@@ -134,6 +129,11 @@ extends MainJournalingActor[Event] with Stash {
         logger.info("Ready")
       }
 
+    case _: AgentCommand.Terminate ⇒
+      logger.info("Command 'Terminate' terminates Agent while recovering")
+      context.stop(self)
+      sender() ! AgentCommand.Accepted
+
     case _ ⇒
       stash()
   }
@@ -145,12 +145,22 @@ extends MainJournalingActor[Event] with Stash {
     case Input.GetEventWatch ⇒
       sender() ! eventWatch
 
-    case Input.Terminate ⇒
+    case terminate: AgentCommand.Terminate ⇒
       if (!terminating) {
         terminating = true
-        journalActor ! JournalActor.Input.TakeSnapshot
+        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
+        for (a ← jobRegister.values) a.actor ! terminate
+        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 30.seconds) {
+          self ! Internal.StillTerminating
+        })
+        continueTermination()
       }
-      sender() ! Done
+      sender() ! AgentCommand.Accepted
+
+    case JournalActor.Output.SnapshotTaken ⇒
+      if (terminating) {
+        continueTermination()
+      }
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       if (!terminating) {
@@ -161,14 +171,6 @@ extends MainJournalingActor[Event] with Stash {
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
       if (!terminating) {
         tryStartProcessing(jobRegister(sender()))
-      }
-
-    case JournalActor.Output.SnapshotTaken ⇒
-      if (terminating) {
-        for (o ← orderRegister.values if !o.detaching) {
-          o.actor ! OrderActor.Input.Terminate
-        }
-        handleTermination()
       }
 
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
@@ -186,10 +188,7 @@ extends MainJournalingActor[Event] with Stash {
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
-      if (!terminating) {
-        val orderEntry = orderRegister(orderId)
-        onOrderAvailable(orderEntry)
-      }
+      onOrderAvailable(orderRegister(orderId))
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
@@ -197,19 +196,20 @@ extends MainJournalingActor[Event] with Stash {
       order.attachedToAgent match {
         case Invalid(problem) ⇒ Future.failed(problem.throwable)
         case Valid(_) ⇒
-          val workflowResponse = workflowRegister.get(order.workflowId) match {
+          (workflowRegister.get(order.workflowId) match {
             case None ⇒
               persist(WorkflowAttached(workflow)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
-                Accepted
+                startJobActors(workflow)
+                Completed
               }
             case Some(w) if w.withoutSource == workflow.withoutSource ⇒
-              Future.successful(Accepted)
+              Future.successful(Completed)
             case Some(_) ⇒
               Future.failed(new IllegalStateException(s"Changed ${order.workflowId}"))
-          }
-          workflowResponse flatMap { case Accepted ⇒
-            promiseFuture[Accepted.type] { promise ⇒
+          })
+          .flatMap { _: Completed ⇒
+            promiseFuture[Accepted] { promise ⇒
               self ! Internal.ContinueAttachOrder(cmd, promise)
             }
           }
@@ -254,6 +254,12 @@ extends MainJournalingActor[Event] with Stash {
       Future.failed(AgentIsTerminatingProblem.throwable)
   }
 
+  private def startJobActors(workflow: Workflow): Unit =
+    for ((jobKey, job) ← workflow.keyAndJobs) {
+      val jobActor = watch(actorOf(JobActor.props(jobKey, job, newTaskRunner, executableDirectory = executableDirectory)(scheduler)))
+      jobRegister.insert(jobKey, jobActor)
+    }
+
   private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
     orderRegister.checked(orderId) match {
       case Invalid(problem) ⇒
@@ -279,9 +285,9 @@ extends MainJournalingActor[Event] with Stash {
     val checkedFollowUps = orderProcessor.handleEvent(order.id <-: event)
     for (followUps ← checkedFollowUps onProblem (p ⇒ logger.error(p))) {
       followUps foreach {
-        case FollowUp.Processed(job) ⇒
-          assert(orderEntry.jobOption exists (_.jobPath == job.jobPath))
-          for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
+        case FollowUp.Processed(jobKey) ⇒
+          //TODO assert(orderEntry.jobOption exists (_.jobPath == job.jobPath))
+          for (jobEntry ← jobRegister.checked(jobKey) onProblem (p ⇒ logger.error(p withKey order.id))) {
             jobEntry.queue -= order.id
           }
 
@@ -321,23 +327,26 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
-    for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
-      orderEntry.instruction match {
-        case job: Job ⇒
-          jobRegister.get(job.jobPath) match {
-            case None ⇒
-              logger.error(s"Missing '${job.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.workflowPosition}'")
-            case Some(jobEntry) ⇒
+    if (!terminating) {
+      for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
+        orderEntry.instruction match {
+          case _: Execute ⇒
+            val jobKey = (orderEntry.instruction: @unchecked) match {
+              case _: Execute.Anonymous ⇒ JobKey.Anonymous(orderEntry.order.workflowPosition)
+              case o: Execute.Named     ⇒ JobKey.Named(orderEntry.workflow.id, o.name)
+            }
+            for (jobEntry ← jobRegister.checked(jobKey) onProblem (p ⇒ logger.error(p))){
               onOrderAvailableForJob(orderEntry.order.id, jobEntry)
-          }
+            }
 
-        case _ ⇒
-          tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
+          case _ ⇒
+            tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
+        }
       }
     }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit = {
-    logger.debug(s"$orderId is queuing for ${jobEntry.jobPath}")
+    logger.debug(s"$orderId is queuing for ${jobEntry.jobKey}")
     jobEntry.queue += orderId
     if (jobEntry.waitingForOrder) {
       tryStartProcessing(jobEntry)
@@ -351,11 +360,11 @@ extends MainJournalingActor[Event] with Stash {
       case Some(orderId) ⇒
         orderRegister.get(orderId) match {
           case None ⇒
-            logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobPath}. Order has been removed?")  // TODO Why can this happen?
+            logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
           case Some(orderEntry) ⇒
-            for (job ← orderEntry.checkedJob onProblem (o ⇒ logger.error(o))) {
-              startProcessing(orderEntry, job, jobEntry)
+            for (workflowJob ← orderEntry.checkedJob onProblem (o ⇒ logger.error(o))) {
+              startProcessing(orderEntry, jobEntry.jobKey, workflowJob, jobEntry)
             }
             jobEntry.waitingForOrder = false
         }
@@ -364,11 +373,11 @@ extends MainJournalingActor[Event] with Stash {
         jobEntry.waitingForOrder = true
     }
 
-  private def startProcessing(orderEntry: OrderEntry, job: Job, jobEntry: JobEntry): Unit = {
-    logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobPath}")
-    assert(job.jobPath == jobEntry.jobPath)
+  private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
+    logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobKey}")
+    //assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
-    orderEntry.actor ! OrderActor.Input.StartProcessing(job, jobEntry.actor)
+    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor)
   }
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
@@ -389,33 +398,44 @@ extends MainJournalingActor[Event] with Stash {
   override def unhandled(message: Any) =
     message match {
       case Terminated(actorRef) if jobRegister contains actorRef ⇒
-        val jobPath = jobRegister.actorToKey(actorRef)
+        val jobKey = jobRegister.actorToKey(actorRef)
         if (terminating) {
-          logger.debug(s"Actor $jobPath stopped")
+          logger.debug(s"Actor '$jobKey' stopped")
         } else {
-          logger.error(s"Actor '$jobPath' stopped unexpectedly")
+          logger.error(s"Actor '$jobKey' stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-        handleTermination()
+        continueTermination()
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
         val orderId = orderRegister(actorRef).order.id
         logger.debug(s"Actor '$orderId' stopped")
         orderRegister.onActorTerminated(actorRef)
-        handleTermination()
+        continueTermination()
 
       case Terminated(`journalActor`) if terminating ⇒
         context.stop(self)
+
+      case Internal.StillTerminating ⇒
+        logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs")
 
       case _ ⇒
         super.unhandled(message)
     }
 
-  private def handleTermination() = {
-    if (terminating && orderRegister.isEmpty && jobRegister.isEmpty) {
-      journalActor ! JournalActor.Input.Terminate
+  private def continueTermination() =
+    if (terminating) {
+      logger.trace(s"continueTermination: ${orderRegister.size} orders, ${jobRegister.size} jobs")
+      if (jobRegister.isEmpty && !terminatingOrders) {
+        terminatingOrders = true
+        for (o ← orderRegister.values if !o.detaching) {
+          o.actor ! OrderActor.Input.Terminate
+        }
+      }
+      if (orderRegister.isEmpty && jobRegister.isEmpty) {
+        journalActor ! JournalActor.Input.Terminate
+      }
     }
-  }
 
   override def toString = "AgentOrderKeeper"
 }
@@ -430,14 +450,13 @@ object AgentOrderKeeper {
 
   sealed trait Input
   object Input {
-    final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
     final case object GetEventWatch
     final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
-    final case object Terminate
   }
 
   private object Internal {
-    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Accepted.type])
+    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Accepted])
     final case class Due(orderId: OrderId)
+    object StillTerminating extends DeadLetterSuppression
   }
 }

@@ -74,11 +74,19 @@ private[parser] object BasicParsers
   def keyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
     P(name ~ h ~ "=" ~~ valueParser)
 
+  def curly[A](parser: Parser[A]): Parser[A] =
+    P(h ~ "{" ~~/ parser ~~ "}")
+
   def inParentheses[A](parser: Parser[A]): Parser[A] =
     P(h ~ "(" ~~/ parser ~~ ")")
 
-  def parenthesizedCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-    P("(") ~~/ commaSeq(parser) ~~ ")"
+  //def parenthesizedCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+  //  P("(") ~~/
+  //    (P(")").map(_ ⇒ Nil) | commaSeq(parser) ~~ ")")
+
+  def bracketCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+    P("[") ~~/
+      (P("]").map(_ ⇒ Nil) | commaSeq(parser) ~~ "]")
 
   def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P(parser ~ (comma ~ parser).rep ~ w) map {

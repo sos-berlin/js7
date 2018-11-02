@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Job}
+import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 
 /**
@@ -13,42 +14,62 @@ object ForkTestSetting {
   val AAgentPath = AgentPath("/AGENT-A")
   val BAgentPath = AgentPath("/AGENT-B")
   val AgentPaths = List(AAgentPath, BAgentPath)
-  val AJob = Job(JobPath("/JOB"), AAgentPath)
-  val BJob = Job(JobPath("/JOB"), BAgentPath)
-  val TestJobPath = JobPath("/JOB")
+  val TestExecutablePath = ExecutablePath("/executable")
+  val AExecutable = Execute(WorkflowJob(AAgentPath, TestExecutablePath))
+  val BExecutable = Execute(WorkflowJob(BAgentPath, TestExecutablePath))
 
   val TestWorkflowNotation = """
-    |job "JOB" on "AGENT-A";
-    |fork(
-    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
-    |  "🍋" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-B"; });
-    |job "JOB" on "AGENT-A";
-    |fork(
-    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
-    |  "🍋" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; });
-    |job "JOB" on "AGENT-A";
-    |fork(
-    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
-    |  "🍋" { job "JOB" on "AGENT-B"; job "JOB" on "AGENT-B"; });
-    |job "JOB" on "AGENT-A";
-    """.stripMargin.trim
+   |workflow {
+   |  execute executable="/executable", agent="AGENT-A";
+   |  fork(
+   |    "🥕" {
+   |      execute executable="/executable", agent="AGENT-A";
+   |      execute executable="/executable", agent="AGENT-A";
+   |    },
+   |    "🍋" {
+   |      execute executable="/executable", agent="AGENT-A";
+   |      execute executable="/executable", agent="AGENT-B";
+   |    });
+   |  execute executable="/executable", agent="AGENT-A";
+   |  fork(
+   |    "🥕" {
+   |      execute executable="/executable", agent="AGENT-A";
+   |      execute executable="/executable", agent="AGENT-A";
+   |    },
+   |    "🍋" {
+   |      execute executable="/executable", agent="AGENT-A";
+   |      execute executable="/executable", agent="AGENT-A";
+   |    });
+   |  execute executable="/executable", agent="AGENT-A";
+   |  fork(
+   |    "🥕" {
+   |      execute executable="/executable", agent="AGENT-A";
+   |      execute executable="/executable", agent="AGENT-A";
+   |    },
+   |    "🍋" {
+   |      execute executable="/executable", agent="AGENT-B";
+   |      execute executable="/executable", agent="AGENT-B";
+   |    });
+   |  execute executable="/executable", agent="AGENT-A";
+   |}
+   """.stripMargin.trim
 
   val TestWorkflow = Workflow(
     WorkflowPath("/WORKFLOW") % "(initial)" ,
     Vector(
-      /*0*/ AJob,
+      /*0*/ AExecutable,
       /*1*/ ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(AJob, BJob)),
-      /*2*/ AJob,
+        "🥕" → Workflow.of(AExecutable, AExecutable),
+        "🍋" → Workflow.of(AExecutable, BExecutable)),
+      /*2*/ AExecutable,
       /*3*/ ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(AJob, AJob)),
-      /*4*/ AJob,
+        "🥕" → Workflow.of(AExecutable, AExecutable),
+        "🍋" → Workflow.of(AExecutable, AExecutable)),
+      /*4*/ AExecutable,
       /*5*/ ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(BJob, BJob)),
-      /*6*/ AJob),
+        "🥕" → Workflow.of(AExecutable, AExecutable),
+        "🍋" → Workflow.of(BExecutable, BExecutable)),
+      /*6*/ AExecutable),
     source = Some(TestWorkflowNotation/*Must be the source source of this workflow*/))
   //     A
   //  🥕   🍋

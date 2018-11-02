@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+echo Hello "🌻"
+sleep 4
+exit 7

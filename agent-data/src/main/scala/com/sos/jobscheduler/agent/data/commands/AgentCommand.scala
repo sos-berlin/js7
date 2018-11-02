@@ -68,8 +68,9 @@ object AgentCommand {
     }
   }
 
-  case object Accepted extends AgentCommand.Response {
-    implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
+  sealed trait Accepted extends Response
+  case object Accepted extends Accepted {
+    implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
   }
 
   case object EmergencyStop extends TerminateOrAbort {
@@ -82,15 +83,15 @@ object AgentCommand {
     */
   @JsonCodec
   final case class KeepEvents(after: EventId) extends OrderCommand {
-    type Response = Accepted.type
+    type Response = Accepted
   }
 
   case object NoOperation extends AgentCommand {
-    type Response = Accepted.type
+    type Response = Accepted
   }
 
   case object RegisterAsMaster extends AgentCommand {
-    type Response = Accepted.type
+    type Response = Accepted
   }
 
   sealed trait TerminateOrAbort extends AgentCommand
@@ -100,7 +101,7 @@ object AgentCommand {
     sigtermProcesses: Boolean = false,
     sigkillProcessesAfter: Option[FiniteDuration] = None)
   extends TerminateOrAbort {
-    type Response = Accepted.type
+    type Response = Accepted
   }
 
   object Terminate {
@@ -117,7 +118,7 @@ object AgentCommand {
     order.workflowId.requireNonAnonymous()
     order.attachedToAgent.orThrow
 
-    type Response = Accepted.type
+    type Response = Accepted
 
     override def toShortString = s"AttachOrder($order)"
   }
@@ -131,7 +132,7 @@ object AgentCommand {
   @JsonCodec
   final case class DetachOrder(orderId: OrderId)
   extends AttachOrDetachOrder {
-    type Response = Accepted.type
+    type Response = Accepted
   }
 
   @JsonCodec

@@ -86,15 +86,15 @@ final class ExpressionParserTest extends FreeSpec {
         LessOrEqual(OrderReturnCode, NumericConstant(9))),
       Equal(Variable(StringConstant("result")), StringConstant("OK"))))
 
-  testBooleanExpression("""returnCode in (0, 3, 50)""",
+  testBooleanExpression("""returnCode in [0, 3, 50]""",
     In(
       OrderReturnCode,
       ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
-  testError("""returnCode in (0, 3, 50) || $result == "1"""",
-    """Operator || requires Boolean operands: (0, 3, 50) || $result == '1':1:43 ...""""")
+  testError("""returnCode in [0, 3, 50] || $result == "1"""",
+    """Operator || requires Boolean operands: [0, 3, 50] || $result == '1':1:43 ...""""")
 
-  testBooleanExpression("""(returnCode in(0, 3, 50)) || $result == "1"""",
+  testBooleanExpression("""(returnCode in [0, 3, 50]) || $result == "1"""",
     Or(
       In(
         OrderReturnCode,

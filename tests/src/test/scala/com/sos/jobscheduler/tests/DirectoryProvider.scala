@@ -5,7 +5,6 @@ import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -16,13 +15,13 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.tests.TestEventCollector
@@ -32,7 +31,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, ObjectEncoder}
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.file.Files.createTempDirectory
+import java.nio.file.Files.{createDirectory, createTempDirectory, setPosixFilePermissions}
+import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
 import java.time.Duration
 import java.util.concurrent.TimeUnit.SECONDS
@@ -191,18 +191,42 @@ object DirectoryProvider
   sealed trait Tree {
     val directory: Path
     lazy val config = directory / "config"
-    lazy val fileBasedDirectory = config / "live"
     lazy val orderGenerators = {
       val dir = config / "order-generators"
-      Files.createDirectory(dir)
+      createDirectory(dir)
       dir
     }
     lazy val data = directory / "data"
 
     private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
-      Files.createDirectories(fileBasedDirectory)
-      Files.createDirectory(config / "private")
-      Files.createDirectory(data)
+      createDirectory(directory)
+      createDirectory(config)
+      createDirectory(config / "private")
+      createDirectory(data)
+    }
+  }
+
+  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
+    lazy val fileBasedDirectory = config / "live"
+
+    def provideHttpsCertificate(): Unit = {
+      // Keystore
+      (config / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
+
+      // Truststore
+      (config / "private/private.conf").append("""
+        |jobscheduler.https.truststore {
+        |  store-password = "jobscheduler"
+        |}""".stripMargin)
+      val trustStore = config / "private/https-truststore.p12"
+      trustStore.contentBytes = AgentTrustStoreResource.contentBytes
+      for (o ← clientCertificate) importKeyStore(trustStore, o)
+      // KeyStore passwords has been provided
+    }
+
+    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
+      super.createDirectoriesAndFiles()
+      createDirectory(fileBasedDirectory)
     }
 
     def writeJson[A <: FileBased { type Self = A }: ObjectEncoder](fileBased: A): Unit = {
@@ -219,23 +243,6 @@ object DirectoryProvider
       fileBasedDirectory resolve path.toFile(t)
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
-    def provideHttpsCertificate(): Unit = {
-      // Keystore
-      (config / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
-
-      // Truststore
-      (config / "private/private.conf").append("""
-        |jobscheduler.https.truststore {
-        |  store-password = "jobscheduler"
-        |}""".stripMargin)
-      val trustStore = config / "private/https-truststore.p12"
-      trustStore.contentBytes = AgentTrustStoreResource.contentBytes
-      for (o ← clientCertificate) importKeyStore(trustStore, o)
-      // KeyStore passwords has been provided
-    }
-  }
-
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, name: String, https: Boolean, mutualHttps: Boolean,
     provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
@@ -247,9 +254,11 @@ object DirectoryProvider
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
+    lazy val executables = config / "executables"
 
     override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()
+      createDirectory(executables)
       if (provideHttpsCertificate) {
         (config / "private/https-keystore.p12").contentBytes = AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
@@ -262,21 +271,17 @@ object DirectoryProvider
         // KeyStore passwords has been provided by DirectoryProvider (must happen early)
       }
     }
+
+    def writeExecutable(path: ExecutablePath, string: String): Unit = {
+      val file = path.toFile(executables)
+      file := string
+      if (isUnix) setPosixFilePermissions(file, PosixFilePermissions.fromString("rwx------"))
+    }
   }
-
-  final def jobJson(duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
-    jobConfiguration(JobPath.NoId.path, duration, variables).asJson.toPrettyString
-
-  final def jobConfiguration(jobPath: JobPath, duration: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
-    JobConfiguration(
-      jobPath % VersionId.Anonymous,
-      JobScript(script(duration, resultVariable)),
-      variables,
-      taskLimit = 10)
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
-  private def script(duration: Duration, resultVariable: Option[String]) =
+  final def script(duration: Duration, resultVariable: Option[String] = None) =
     if (isWindows)
       (s"""@echo off
           |echo ${StdoutOutput.trim}

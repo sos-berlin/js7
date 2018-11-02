@@ -28,8 +28,12 @@ extends Instruction
       case _ ⇒ Invalid(Problem(s"Invalid index=${branchId.number} for If"))
     }
 
+  override def flattenedInstructions(outer: Position) =
+    thenWorkflow.flattenedInstructions(outer / 0) ++
+      elseWorkflow.toVector.flatMap(_.flattenedInstructions(outer / 1))
+
   override def toString = s"If $predicate then $thenWorkflow" +
-    (elseWorkflow map (w ⇒ s" else $w") getOrElse "")
+    elseWorkflow.fold("")(w ⇒ s" else $w")
 }
 
 object If {

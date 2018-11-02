@@ -10,8 +10,9 @@ import com.sos.jobscheduler.core.filebased.FileBaseds
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Job}
+import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentReader
@@ -87,10 +88,10 @@ object FileBasedsTest {
 
   private[tests] val AWorkflow = Workflow.of(WorkflowPath("/A") % u)
   private[tests] val BWorkflow = Workflow(WorkflowPath("/B") % u, Vector("B-END" @: ExplicitEnd))
-  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "// EMPTY").orThrow
+  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "workflow { /*EMPTY*/ }").orThrow
   private[tests] val DWorkflow = Workflow(WorkflowPath("/D") % u, Vector("D-END" @: ExplicitEnd))
-  private[tests] val EWorkflow = Workflow(WorkflowPath("/E") % u, Vector(Job(JobPath("/JOB"), AgentPath("/AGENT"))))
-  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "CHANGED-D-END: end").orThrow
+  private[tests] val EWorkflow = Workflow(WorkflowPath("/E") % u, Vector(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
+  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "workflow { CHANGED-D-END: end; }").orThrow
   private[tests] val AAgent = Agent(AgentPath("/A") % u, "http://A")
   private[tests] val BAgent = Agent(AgentPath("/folder/B") % u, "http://B")
 

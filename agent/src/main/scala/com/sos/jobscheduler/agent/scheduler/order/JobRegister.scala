@@ -6,30 +6,30 @@ import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderId
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-final class JobRegister extends ActorRegister[JobPath, JobEntry](_.actor) {
+final class JobRegister extends ActorRegister[JobKey, JobEntry](_.actor) {
 
-  def onActorTerminated(actor: ActorRef): Unit = {
+  override protected def noSuchKeyMessage(jobKey: JobKey) = s"No such job '$jobKey'"
+
+  def onActorTerminated(actor: ActorRef): Unit =
     for (jobEntry ← remove(actorToKey(actor))) {
-      logger.debug(s"Removing ${jobEntry.jobPath} after Actor death")
+      logger.debug(s"Removing ${jobEntry.jobKey} after Actor death")
     }
-  }
 
-  def insert(jobPath: JobPath, actor: ActorRef): Unit = {
-    this.insert(jobPath → new JobEntry(jobPath, actor))
-  }
+  def insert(key: JobKey, actor: ActorRef): Unit =
+    this.insert(key → new JobEntry(key, actor))
 }
 
 object JobRegister {
   private val logger = Logger(getClass)
 
-  final class JobEntry private[JobRegister](val jobPath: JobPath, val actor: ActorRef) {
+  final class JobEntry private[JobRegister](val jobKey: JobKey, val actor: ActorRef) {
     val queue = new OrderQueue
     var waitingForOrder = false
   }

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
-import com.sos.jobscheduler.data.job.{JobPath, TaskId}
+import com.sos.jobscheduler.data.job.TaskId
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
@@ -57,8 +57,8 @@ extends AutoCloseable {
     }
   }
 
-  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
-    add(id, Entry(jobPath, taskId, pid))
+  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId): Unit =
+    add(id, Entry(taskId, pid))
 
   private def add(id: AgentTaskId, entry: Entry): Unit =
     synchronized {
@@ -93,7 +93,7 @@ extends AutoCloseable {
   }
 
   private def idToKillCommand(id: AgentTaskId, entry: Entry) = {
-    val args = killScript.toCommandArguments(id, entry.pidOption, entry.jobPath, entry.taskId)
+    val args = killScript.toCommandArguments(id, entry.pidOption, entry.taskId)
     val cleanTail = args.tail collect { case CleanArgument(o) ⇒ o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
   }
@@ -104,8 +104,8 @@ object CrashKillScript {
   private val LineSeparator = sys.props(LINE_SEPARATOR.key)
   private val CleanArgument = "([A-Za-z0-9=,;:.+_/#-]*)".r      // No shell meta characters
 
-  private case class Entry(jobPath: JobPath, taskId: TaskId, pidOption: Option[Pid]) {
-    override def toString = s"$jobPath $taskId ${pidOption getOrElse ""}".trim
+  private case class Entry(taskId: TaskId, pidOption: Option[Pid]) {
+    override def toString = s"$taskId ${pidOption getOrElse ""}".trim
   }
 
   private def open(path: Path, append: Boolean = false): Writer =

@@ -59,8 +59,8 @@ extends CommonConfiguration
     case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
 
-  def fileBasedDirectory: Path =
-    configDirectory / "live"
+  def executableDirectory: Path =
+    (configDirectory / "executables").toRealPath()
 
   def stateDirectory: Path =
     dataDirectory / "state"

@@ -33,11 +33,8 @@ object ExpressionParser
     }
 
   private val parenthesizedExpression = P[Expression](
-    parenthesizedCommaSeq(expression) map {
-      case Seq(o) ⇒ o
-      case seq ⇒ ListExpression(seq.toList)
-    }
-  )
+    (P("(") ~~/ expression ~~ ")") |
+      bracketCommaSeq(expression).map(o ⇒ ListExpression(o.toList)))
 
   private val trueConstant = P[BooleanConstant](
     keyword("true") map (_ ⇒ BooleanConstant(true)))

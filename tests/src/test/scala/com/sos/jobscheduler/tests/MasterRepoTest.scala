@@ -5,18 +5,19 @@ import cats.data.Validated.Invalid
 import cats.syntax.option._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.ReadConfigurationDirectory
@@ -34,8 +35,7 @@ final class MasterRepoTest extends FreeSpec {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       val eventCollector = new TestEventCollector
       for (v ← 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        directoryProvider.agents.head.file(JobPath(s"/JOB-V$v"), SourceType.Xml).xml =
-          <job><script language="shell">echo /VERSION-{v.toString}/</script></job>
+        directoryProvider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 
       directoryProvider.runAgents() { _ ⇒
         directoryProvider.runMaster(eventCollector = Some(eventCollector)) { master ⇒
@@ -132,7 +132,8 @@ object MasterRepoTest {
   private val V6 = VersionId("6")
   private val TestAgentPath = AgentPath("/AGENT")
 
-  private def testWorkflow(versionId: VersionId) = Workflow.of(Job(JobPath(s"/JOB-V${versionId.string}"), TestAgentPath))
+  private def testWorkflow(versionId: VersionId) = Workflow.of(
+    Execute(WorkflowJob(TestAgentPath, ExecutablePath(s"/EXECUTABLE-V${versionId.string}$sh"))))
 
   private implicit class WithVersionWorkflow(private val underlying: Workflow) extends AnyVal {
     def withVersion(versionId: VersionId): Workflow =

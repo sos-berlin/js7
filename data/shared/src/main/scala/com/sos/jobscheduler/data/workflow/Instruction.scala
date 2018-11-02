@@ -11,6 +11,9 @@ import scala.language.implicitConversions
   */
 trait Instruction
 {
+  def flattenedInstructions(parentPosition: Position): Seq[(Position, Instruction.Labeled)] =
+    Nil
+
   final def @:(labels: Seq[Label]) = Labeled(labels, this)
   final def @:(label: Label) = Labeled(label :: Nil, this)
   final def @:(label: String) = Labeled(Label(label) :: Nil, this)

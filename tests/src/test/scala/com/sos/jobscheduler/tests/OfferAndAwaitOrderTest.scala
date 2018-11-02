@@ -4,13 +4,12 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
@@ -27,7 +26,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       for ((id, workflow) ← TestWorkflows) directoryProvider.master.writeTxt(id.path, workflow)
-      for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = <job><script language="shell">:</script></job>
+      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) ⇒
         val eventCollector = new TestEventCollector
@@ -39,13 +38,13 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         eventCollector.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
         master.addOrderBlocking(OfferedOrder)
-        eventCollector.await[OrderJoined]       (_.key == JoinBefore1Order.id)
-        eventCollector.await[OrderJoined]       (_.key == JoinBefore2Order.id)
+        eventCollector.await[OrderJoined]  (_.key == JoinBefore1Order.id)
+        eventCollector.await[OrderJoined]  (_.key == JoinBefore2Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore2Order.id)
 
         master.addOrderBlocking(JoinAfterOrder)
-        eventCollector.await[OrderJoined]       (_.key == JoinAfterOrder.id)
+        eventCollector.await[OrderJoined]  (_.key == JoinAfterOrder.id)
         eventCollector.await[OrderFinished](_.key == JoinAfterOrder.id)
 
         checkEventSeq(eventCollector.all[OrderEvent])
@@ -68,20 +67,21 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 
 object OfferAndAwaitOrderTest {
   private val TestAgentPath = AgentPath("/AGENT")
-  private val TestJobPath = JobPath("/JOB")
   private val JoiningWorkflowId = WorkflowPath("/A") % "(initial)"
   private val PublishingWorkflowId = WorkflowPath("/B") % "(initial)"
   private val TestWorkflows = List(
-    JoiningWorkflowId → """
-       |job "JOB" on "AGENT";
-       |await orderId = "OFFERED-ORDER-ID";
-       |job "JOB" on "AGENT";
-       |""".stripMargin,
-    PublishingWorkflowId → """
-       |job "JOB" on "AGENT";
-       |offer orderId = "OFFERED-ORDER-ID", timeout = 60;
-       |job "JOB" on "AGENT";
-       |""".stripMargin)
+    JoiningWorkflowId → s"""
+      workflow {
+        execute executable="/executable$sh", agent="AGENT";
+        await orderId = "OFFERED-ORDER-ID";
+        execute executable="/executable$sh", agent="AGENT";
+      }""",
+    PublishingWorkflowId → s"""
+      workflow {
+        execute executable="/executable$sh", agent="AGENT";
+        offer orderId = "OFFERED-ORDER-ID", timeout = 60;
+        execute executable="/executable$sh", agent="AGENT";
+      }""")
 
   private val OfferedOrderId = OrderId("🔵")
   private val JoinBefore1Order = FreshOrder(OrderId("🥕"), JoiningWorkflowId.path)

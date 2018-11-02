@@ -6,28 +6,27 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import io.circe.syntax.EncoderOps
-import java.nio.file.{Files, Path}
+import java.nio.file.Files.createDirectory
+import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -40,6 +39,7 @@ final class AgentTest extends FreeSpec with AgentTester
 {
   "state/http-uri" in {
     assert((agentConfiguration.stateDirectory / "http-uri").contentString == s"${agent.localUri}/agent")
+    agent.terminate() await 99.seconds
   }
 
   "Job working directory" - {
@@ -49,10 +49,9 @@ final class AgentTest extends FreeSpec with AgentTester
              ("not default", _ / "working")))
       testName in {
         provideAgentDirectory { directory ⇒
-          Files.createDirectory(directory / "working")
+          createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
-          val jobDir = directory / "config" / "live"
-          (jobDir resolve TestJob.path.toFile(SourceType.Json)).contentString = TestJob.asJson.toPrettyString
+          TestExecutablePath.toFile(directory / "config" / "executables").writeExecutable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory)
           if (directory != WorkingDirectory) {
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
@@ -91,10 +90,9 @@ object AgentTest {
       |echo "WORKDIR=$(pwd)" >$SCHEDULER_RETURN_VALUES
       |""".stripMargin
 
-  private val TestJob =
-    JobConfiguration(JobPath("/JOB") % "(initial)", JobScript(TestScript))
+  private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
 
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW") % "VERSION",
-    Job(TestJob.path, TestAgentPath))
+    Execute(WorkflowJob(TestAgentPath, TestExecutablePath)))
 }

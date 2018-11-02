@@ -7,10 +7,8 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import com.sos.jobscheduler.agent.tests.OrderAgentTest._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
@@ -21,14 +19,11 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.typesafe.config.ConfigFactory
-import io.circe.syntax.EncoderOps
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -42,9 +37,9 @@ final class OrderAgentTest extends FreeSpec {
 
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory ⇒
-      val jobDir = directory / "config" / "live"
-      (jobDir resolve AJob.jobPath.toFile(SourceType.Json)).contentString = AJobConfiguration.asJson.toPrettyString
-      (jobDir resolve BJob.jobPath.toFile(SourceType.Json)).contentString = BJobConfiguration.asJson.toPrettyString
+      val jobDir = directory / "config" / "executables"
+      AExecute.job.executablePath.toFile(jobDir).writeExecutable(TestScript)
+      BExecute.job.executablePath.toFile(jobDir).writeExecutable(TestScript)
       val agentConf = AgentConfiguration.forTest(directory)
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
         withCloser { implicit closer ⇒
@@ -59,8 +54,7 @@ final class OrderAgentTest extends FreeSpec {
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass[OrderEvent](timeout = 10.seconds)
-            .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync)
-            {
+            .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
             }
           val processedOrder = agentClient.order(order.id) await 99.s
@@ -76,9 +70,9 @@ final class OrderAgentTest extends FreeSpec {
   for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
-      val jobDir = directory / "config" / "live"
-      (jobDir / "A.job.json").contentString = AJobConfiguration.asJson.toPrettyString
-      (jobDir / "B.job.json").contentString = BJobConfiguration.asJson.toPrettyString
+      val executableDir = directory / "config" / "executables"
+      AExecute.job.executablePath.toFile(executableDir).writeExecutable(TestScript)
+      BExecute.job.executablePath.toFile(executableDir).writeExecutable(TestScript)
       val agentConf = AgentConfiguration.forTest(directory, ConfigFactory.parseString("""
          |jobscheduler.journal.sync = on
          |jobscheduler.journal.delay = 0ms
@@ -126,21 +120,15 @@ private object OrderAgentTest {
   private val TestScript =
     if (isWindows) """
       |@echo off
-      |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+      |echo result=TEST-RESULT-%SCHEDULER_PARAM_JOB_B% >>"%SCHEDULER_RETURN_VALUES%"
       |""".stripMargin
     else """
-      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_JOB_B" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
-
-  private val AJobConfiguration =
-    JobConfiguration(JobPath.NoId, JobScript(TestScript), Map("var1" → "AAA"), taskLimit = sys.runtime.availableProcessors)
-
-  private val BJobConfiguration =
-    JobConfiguration(JobPath.NoId, JobScript(TestScript), Map("var1" → "BBB"), taskLimit = sys.runtime.availableProcessors)
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath % "(initial)")),
-      payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-BBB")))
+      payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-B-VALUE")))
 }

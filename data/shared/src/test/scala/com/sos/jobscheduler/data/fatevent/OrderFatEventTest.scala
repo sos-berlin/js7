@@ -4,8 +4,9 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -115,7 +116,7 @@ final class OrderFatEventTest extends FreeSpec {
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
         AgentPath("/AGENT"),
         "https://agent-1",
-        JobPath("/JOB"),
+        Some(WorkflowJob.Name("JOB")),
         Map("KEY" → "VALUE")),
       json"""{
         "TYPE": "OrderProcessingStartedFat",
@@ -128,7 +129,7 @@ final class OrderFatEventTest extends FreeSpec {
         },
         "agentPath": "/AGENT",
         "agentUri": "https://agent-1",
-        "jobPath": "/JOB",
+        "jobName": "JOB",
         "variables": {
           "KEY": "VALUE"
         }

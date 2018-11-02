@@ -1,0 +1,11 @@
+set -e
+
+echo Hello ☘
+
+row=$(printf 'x%.0s' {1..1000})   # 1000 times "x"
+#for a in {1..3000}; do
+for a in {1..1}; do
+  echo "$row"
+done
+
+sleep 3

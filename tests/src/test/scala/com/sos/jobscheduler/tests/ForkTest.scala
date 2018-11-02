@@ -9,15 +9,16 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventSeq
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobConfiguration}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, script}
 import com.sos.jobscheduler.tests.ForkTest._
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
@@ -36,9 +37,9 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
     directoryProvider.master.writeJson(Workflow(
       DuplicateWorkflowPath % VersionId.Anonymous,
       Vector(
-        Job(JobPath("/SLOW"), AAgentPath))))
-    for (a ← directoryProvider.agents) a.writeJson(jobConfiguration(TestJobPath, 100.ms))
-    directoryProvider.agents(0).writeJson(jobConfiguration(JobPath("/SLOW"), 60.s))
+        Execute(WorkflowJob(AAgentPath, ExecutablePath("/SLOW"))))))
+    directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW"), script(60.s))
+    for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
     super.beforeAll()
   }
 
@@ -75,9 +76,9 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
          "path": "/WORKFLOW",
          "versionId": "(initial)"
        },
-      "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
+      "source": "$TestWorkflowNotation",
       "instructions": [
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -85,22 +86,22 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
                 ]
               }
             }, {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }}
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -108,22 +109,22 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
                 ]
               }
             }, {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -131,22 +132,22 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
                 ]
               }
             }, {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }},
+                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }}
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+        { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
       ]
     }""")
   }

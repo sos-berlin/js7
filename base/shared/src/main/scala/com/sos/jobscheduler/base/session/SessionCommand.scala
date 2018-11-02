@@ -40,7 +40,7 @@ object SessionCommand
   /** Invalidate the session established by `Login`.
     */
   final case class Logout(sessionToken: SessionToken) extends SessionCommand {
-    type Response = SessionCommand.Response.Accepted.type
+    type Response = SessionCommand.Response.Accepted
   }
   object Logout {
     implicit val jsonEncoder: ObjectEncoder[Logout] =
@@ -56,7 +56,7 @@ object SessionCommand
   object Response {
     sealed trait Accepted extends Response
     case object Accepted extends Accepted {
-      implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
+      implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
     }
 
     implicit val jsonCodec = TypedJsonCodec[Response](

@@ -5,17 +5,19 @@ import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichPartialFunction}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
@@ -24,7 +26,9 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow private(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String])
+final case class Workflow private(id: WorkflowId,
+  labeledInstructions: IndexedSeq[Instruction.Labeled], nameToJob: Map[WorkflowJob.Name, WorkflowJob],
+  source: Option[String])
 extends FileBased
 {
   assert(isCorrectlyEnded(labeledInstructions), "Missing implicit end instruction")
@@ -36,20 +40,17 @@ extends FileBased
   def withId(id: FileBasedId[WorkflowPath]) = copy(id = id)
 
   val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
-  private val _labelToNumber: Map[Label, InstructionNr] =
+  private val labelToNumber: Map[Label, InstructionNr] =
     numberedInstructions.flatMap { case (nr, Labeled(labels, _)) ⇒ labels map (_ → nr) }
       .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   private def checked: Checked[Workflow] = {
-    val problems = instructions collect {
-      case jump: JumpInstruction if !_labelToNumber.contains(jump.to) ⇒
+    val problems = labeledInstructions.map (_.instruction).collect {
+      case o: Execute.Named if !nameToJob.contains(o.name) ⇒
+        Problem.fromEager(s"Undefined '${o.name}'")
+
+      case jump: JumpInstruction if !labelToNumber.contains(jump.to) ⇒
         Problem.fromEager(s"Unknown label '${jump.to}'")
-
-      case job: Job if job.jobPath == JobPath.Anonymous ⇒
-        Problem.fromEager("Anonymous Job in Workflow?")
-
-      case job: Job if job.agentPath == AgentPath.Anonymous ⇒
-        Problem.fromEager("Anonymous Agent in Workflow?")
     }
     if (problems.nonEmpty)
       Invalid(Problem.Multiple(problems))
@@ -62,7 +63,7 @@ extends FileBased
   def labelToPosition(parents: List[Position.Parent], label: Label): Option[Position] =
     for {
       workflow ← workflowOption(parents)
-      nr ← workflow._labelToNumber.get(label)
+      nr ← workflow.labelToNumber.get(label)
     } yield Position(parents, nr)
 
   def lastWorkflowPosition: WorkflowPosition =
@@ -70,6 +71,12 @@ extends FileBased
 
   def lastNr: InstructionNr =
     instructions.length - 1
+
+  def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
+    flattenedInstructions(Position.Parents.Empty)
+
+  def flattenedInstructions(parents: Position.Parents): Seq[(Position, Instruction.Labeled)] =
+    numberedInstructions flatMap { case (nr, labeled)  ⇒ ((parents / nr) → labeled) +: labeled.instruction.flattenedInstructions(parents / nr) }
 
   def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
     labeledInstructions.zipWithIndex.map {
@@ -88,7 +95,8 @@ extends FileBased
 
   def isPartiallyExecutableOnAgent(agentPath: AgentPath): Boolean =
     labeledInstructions map (_.instruction) collect {
-      case o: Job ⇒ o isExecutableOnAgent agentPath
+      case o: Execute.Anonymous ⇒ o.job isExecutableOnAgent agentPath
+      case o: Execute.Named ⇒ ??? // TODO
       case o: ForkJoin ⇒ o isPartiallyExecutableOnAgent agentPath
     } contains true
 
@@ -98,12 +106,13 @@ extends FileBased
   private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
     instruction match {
       case o: ForkJoin ⇒ o.isStartableOnAgent(agentPath)
-      case o: Job ⇒ o.isExecutableOnAgent(agentPath)
+      case o: Execute.Anonymous ⇒ o.job.isExecutableOnAgent(agentPath)
+      case o: Execute.Named ⇒ ???  // TODO
       case _ ⇒ false
     }
 
   def isStartableOnAgent(agentPath: AgentPath): Boolean =
-    instructions.headOption collect { case o: Job ⇒ o } exists (_ isExecutableOnAgent agentPath)
+    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentPath)
 
   //def isEndingOnAgent(agentPath: AgentPath): Boolean =
   //  labeledInstructions.reverse.dropWhile(_.isInstanceOf[End]).headOption collect { case o: Job ⇒ o } exists (_ isExecutableOnAgent agentPath)
@@ -126,14 +135,24 @@ extends FileBased
   def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
 
-  def checkedJob(position: Position): Checked[Job] =
-    instruction(position) match {
-      case o: Job ⇒ Valid(o)
-      case o ⇒ Invalid(Problem(s"Expected a Job at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+  def keyAndJobs: Seq[(JobKey, WorkflowJob)] =
+    nameToJob.toVector.map { case (k, v) ⇒ JobKey.Named(id, k) → v } ++
+      flattenedInstructions.collect {
+        case (pos, _ @: (ex: Execute.Anonymous)) ⇒ JobKey.Anonymous(id /: pos) → ex.job
+      }
+
+  def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
+    checkedExecute(position) flatMap {
+      //case o: Execute.Job ⇒ Valid(JobKey.Global(o.jobPath))
+      case o: Execute.Anonymous ⇒ Valid(o.job)
+      case o: Execute.Named ⇒ nameToJob.checked(o.name)
     }
 
-  def jobOption(position: Position): Option[Job] =
-    Some(instruction(position)) collect { case o: Job ⇒ o }
+  def checkedExecute(position: Position): Checked[Execute] =
+    instruction(position) match {
+      case o: Execute ⇒ Valid(o)
+      case o ⇒ Invalid(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+    }
 
   def instruction(position: Position): Instruction =
     position match {
@@ -192,13 +211,39 @@ object Workflow extends FileBased.Companion[Workflow] {
   val typedPathCompanion = WorkflowPath
   private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty") % VersionId.Anonymous, Vector.empty)
 
-  def apply(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Workflow =
-    checked(id, labeledInstructions, source).orThrow
+  /** Test only. */
+  def single(
+    labeledInstruction: Instruction.Labeled,
+    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    source: Option[String] = None)
+  : Workflow =
+    anonymous(Vector(labeledInstruction), nameToJob, source)
 
-  def checked(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Checked[Workflow] =
+  def anonymous(
+    labeledInstructions: IndexedSeq[Instruction.Labeled],
+    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    source: Option[String] = None)
+  : Workflow =
+    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, source)
+
+  def apply(
+    id: WorkflowId,
+    labeledInstructions: IndexedSeq[Instruction.Labeled],
+    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    source: Option[String] = None)
+  : Workflow =
+    checked(id, labeledInstructions, nameToJob, source).orThrow
+
+  def checked(
+    id: WorkflowId,
+    labeledInstructions: IndexedSeq[Instruction.Labeled],
+    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    source: Option[String] = None)
+  : Checked[Workflow] =
     new Workflow(
       id,
       labeledInstructions = labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd),
+      nameToJob,
       source)
     .checked
 
@@ -217,17 +262,19 @@ object Workflow extends FileBased.Companion[Workflow] {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {
-    case Workflow(id, instructions, source) ⇒
+    case Workflow(id, instructions, namedJobs, source) ⇒
       JsonObject(
         "id" → (!id.isAnonymous ? id).asJson,
         "instructions" → instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
+        "jobs" → emptyToNone(namedJobs).asJson,
         "source" → source.asJson)
   }
   implicit val jsonDecoder: Decoder[Workflow] =
     cursor ⇒ for {
       id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.NoId)
       instructions ← cursor.get[IndexedSeq[Labeled]]("instructions")
+      namedJobs ← cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
       source ← cursor.get[Option[String]]("source")
-      workflow ← Workflow.checked(id, instructions, source).toDecoderResult
+      workflow ← Workflow.checked(id, instructions, namedJobs, source).toDecoderResult
     } yield workflow
 }

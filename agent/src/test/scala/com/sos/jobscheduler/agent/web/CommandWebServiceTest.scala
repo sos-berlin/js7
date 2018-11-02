@@ -53,7 +53,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       }"""
     postJsonCommand(json) ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-      assert(responseAs[AgentCommand.Accepted.type] == AgentCommand.Accepted)
+      assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
         """{ "TYPE": "Accepted" }""".parseJson)
     }

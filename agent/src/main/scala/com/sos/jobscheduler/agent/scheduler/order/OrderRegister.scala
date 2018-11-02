@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import scala.concurrent.ExecutionContext
 
 /**
@@ -64,11 +64,8 @@ private[order] object OrderRegister {
       _order = o
     }
 
-    def checkedJob: Checked[Job] =
-      workflow.checkedJob(order.position) withProblemKey order.id
-
-    def jobOption: Option[Job] =
-      workflow.jobOption(order.position)
+    def checkedJob: Checked[WorkflowJob] =
+      workflow.checkedWorkflowJob(order.position) mapProblem (_ withKey order.id)
 
     def instruction = workflow.instruction(order.position)
 

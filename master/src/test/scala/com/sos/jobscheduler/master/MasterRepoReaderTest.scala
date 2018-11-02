@@ -79,7 +79,7 @@ object MasterRepoReaderTest {
   private val TestWorkflowJson = json"""
     {
       "instructions": [
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT" }
+        { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/EXECUTABLE", "taskLimit": 1 }}
       ]
     }"""
   private val TestWorkflow = TestWorkflowJson.as[Workflow].orThrow

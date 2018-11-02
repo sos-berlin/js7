@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -8,15 +9,17 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.jobConfiguration
+import com.sos.jobscheduler.tests.DirectoryProvider.script
 import com.sos.jobscheduler.tests.KeepEventsTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -29,9 +32,9 @@ final class KeepEventsTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentId.path :: Nil)) { directoryProvider ⇒
       for ((_, tree) ← directoryProvider.agentToTree) {
-        tree.writeJson(jobConfiguration(TestJobPath))
+        tree.writeExecutable(TestExecutablePath, script(0.s))
       }
-      directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
+      directoryProvider.master.writeJson(TestWorkflow)
 
       RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
         RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
@@ -70,8 +73,8 @@ final class KeepEventsTest extends FreeSpec {
 
 private object KeepEventsTest {
   private val TestAgentId = AgentPath("/agent-111") % "(initial)"
-  private val TestJobPath = JobPath("/test")
-  private val TestWorkflow = Workflow.of(WorkflowPath("/test") % "(initial)",
-    Job(TestJobPath, TestAgentId.path))
+  private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
+  private val TestWorkflow = Workflow.of(WorkflowPath("/test") % VersionId.Anonymous,
+    Execute(WorkflowJob(TestAgentId.path, TestExecutablePath)))
   private val TestOrder = FreshOrder(OrderId("TEST"), TestWorkflow.id.path)
 }

@@ -3,10 +3,11 @@ package com.sos.jobscheduler.data.workflow.parser
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Job, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
@@ -30,35 +31,52 @@ object WorkflowParser {
   private object parser {
     private val label = identifier map Label.apply
 
-    private lazy val curlyWorkflow: Parser[Workflow] =
-      P(P("{") ~~ workflow ~~ "}")
-
     private lazy val workflow = P[Workflow](
-      labeledInstruction.rep
-        map (stmts ⇒ Workflow(WorkflowPath.NoId, stmts.toVector)))
+      keyword("workflow") ~~/ curlyWorkflow)
+
+    private lazy val curlyWorkflow = P[Workflow](
+      curly(
+        labeledInstruction.rep.map(stmts ⇒ Workflow(WorkflowPath.NoId, stmts.toVector))))
 
     private val labelDef = P[Label](
-      label ~ h ~ ":" ~ w)
+      label ~ h ~ ":" ~/ w)
 
     private val successReturnCodes = P[ReturnCodeMeaning.Success](
-      parenthesizedCommaSeq(int)
+      bracketCommaSeq(int)
         map(numbers ⇒ ReturnCodeMeaning.Success(numbers.map(ReturnCode.apply).toSet)))
 
     private val failureReturnCodes = P[ReturnCodeMeaning.Failure](
-      parenthesizedCommaSeq(int)
+      bracketCommaSeq(int)
         map(numbers ⇒ ReturnCodeMeaning.Failure(numbers.map(ReturnCode.apply).toSet)))
 
     private val returnCodeMeaning = P[ReturnCodeMeaning](
       keyValue("successReturnCodes", successReturnCodes) |
       keyValue("failureReturnCodes", failureReturnCodes))
 
-    private val jobInstruction = P[Job](
-      (keyword("job") ~~ path[JobPath] ~~ "on" ~~ path[AgentPath] ~~ returnCodeMeaning.?)
-        map { case (jobPath_, agentPath_, rc) ⇒ Job(jobPath_, agentPath_, rc getOrElse ReturnCodeMeaning.Default) })
-
     private val endInstruction = P[EndInstr](
       keyword("end").!
         map (_ ⇒ ExplicitEnd))
+
+    private val jsonObject =
+      P[Map[String, String]](
+        curly(commaSeq(quotedString ~~ ":" ~~/ quotedString))
+          map (_.toMap))
+
+    private val anonymousWorkflowExecutable = P[WorkflowJob](
+      (keyword("executable") ~~ "=" ~~ quotedString ~~ comma ~~ keyword("agent") ~~ "=" ~~/ path[AgentPath] ~~
+        (comma ~~ keyword("arguments") ~~ "=" ~~/ jsonObject).? ~~
+        (comma ~~ returnCodeMeaning).?)
+        map { case (executablePath, agentPath, jsonObject_, returnCodeMeaning_) ⇒
+          WorkflowJob(
+            agentPath,
+            ExecutablePath(executablePath),
+            defaultArguments = jsonObject_ getOrElse Map.empty,
+            returnCodeMeaning = returnCodeMeaning_ getOrElse ReturnCodeMeaning.Default)
+        })
+
+    private val executeInstruction = P[Execute](
+      (keyword("execute") ~~ anonymousWorkflowExecutable)
+        map Execute.Anonymous.apply)
 
     private val forkInstruction = P[ForkJoin]{
       val orderSuffix = P(quotedString map (o ⇒ Position.BranchId.Named(o)))
@@ -96,8 +114,8 @@ object WorkflowParser {
         map { n ⇒ Goto(n) })
 
     private val instruction: Parser[Instruction] =
-      P(jobInstruction |
-        endInstruction |
+      P(endInstruction |
+        executeInstruction |
         forkInstruction |
         offerInstruction |
         awaitInstruction |

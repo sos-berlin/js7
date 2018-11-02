@@ -14,7 +14,7 @@ final class PositionTest extends FreeSpec {
 
   "JSON" in {
     testJson(Position(1)               , json"""[ 1 ]""")
-    testJson(Position(1) / "BRANCH" / 2, json"""[ 1, "BRANCH", 2 ]""")
+    testJson(Position(1) / "BRANCH" / 3, json"""[ 1, "BRANCH", 3 ]""")
     testJson(Position(1) / 2 / 3       , json"""[ 1, 2, 3 ]""")
 
     assert("""[ 1, 2 ]""".parseJson.as[Position].isLeft/*failed*/)
@@ -22,14 +22,14 @@ final class PositionTest extends FreeSpec {
 
   "Represented as array of simple types" in {
     assert(Position(1)                 .asSeq == Vector(1))
-    assert((Position(1) / "BRANCH" / 2).asSeq == Vector(1, "BRANCH", 2))
-    assert((Position(1) / 2 / 2)       .asSeq == Vector(1, 2, 2))
+    assert((Position(1) / "BRANCH" / 3).asSeq == Vector(1, "BRANCH", 3))
+    assert((Position(1) / 2 / 3)       .asSeq == Vector(1, 2, 3))
   }
 
   "Represented as array of JSON types" in {
     assert(Position(1)                 .asJsonArray == Vector(1.asJson))
-    assert((Position(1) / "BRANCH" / 2).asJsonArray == Vector(1.asJson, "BRANCH".asJson, 2.asJson))
-    assert((Position(1) / 2 / 2)       .asJsonArray == Vector(1.asJson, 2.asJson, 2.asJson))
+    assert((Position(1) / "BRANCH" / 3).asJsonArray == Vector(1.asJson, "BRANCH".asJson, 3.asJson))
+    assert((Position(1) / 2 / 3)       .asJsonArray == Vector(1.asJson, 2.asJson, 3.asJson))
   }
 
   "test" in {
@@ -42,6 +42,8 @@ final class PositionTest extends FreeSpec {
   "Parents" in {
     assert((Position.Parents.Empty / 7) == Position(7))
     assert((Position.Parents.NonEmpty(Position(1), Position.BranchId(2)) / 3) == Position(1, 2, 3))
+    //assert(Position.Parents.NonEmpty(Position(1), Position.BranchId(2)) / Position(3, 4, 5) ==
+    //  Position(Position.Parent(1, 2) :: Position.Parent(3, 4) :: Nil, 5))
   }
 
   "Fork" in {
@@ -57,5 +59,4 @@ final class PositionTest extends FreeSpec {
           Position.Parent(InstructionNr(2), "B") :: Nil,
         InstructionNr(3)))
   }
-
 }

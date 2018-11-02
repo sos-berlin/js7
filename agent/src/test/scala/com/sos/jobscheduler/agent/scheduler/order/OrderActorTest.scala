@@ -7,14 +7,15 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
-import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -29,11 +30,11 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
@@ -64,7 +65,9 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   }
 
   "Shell script" in {
-    val (testActor, result) = runTestActor(TestJobConfiguration)
+    val executablePath = ExecutablePath(s"/TEST-1$sh")
+    executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, executablePath, Map("VAR1" → "FROM-JOB")))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
@@ -77,15 +80,15 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i ← 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i ← 1 to n) yield line("o", i) + Nl).mkString
-    val jobConfiguration = JobConfiguration(TestJobId,
-      JobScript(
-        (if (isWindows) "@echo off\n" else "") +
+    val executablePath = ExecutablePath(s"/TEST-2$sh")
+    executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
+      (if (isWindows) "@echo off\n" else "") +
         (for (i ← 1 to n) yield
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
-             |""".stripMargin).mkString))
+             |""".stripMargin).mkString)
     val t = now
-    val (testActor, result) = runTestActor(jobConfiguration)
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, executablePath))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)} took ${(now - t).pretty}")
     assert(result.stdoutStderr(Stderr).toString == expectedStderr)
     assert(result.stdoutStderr(Stdout).toString == expectedStdout)
@@ -94,9 +97,9 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
   private var actorCounter = 0
 
-  private def runTestActor(jobConfiguration: JobConfiguration): (ActorRef, Result) = {
+  private def runTestActor(jobKey: JobKey, workflowJob: WorkflowJob): (ActorRef, Result) = {
     actorCounter += 1
-    def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, promise, config) }
+    def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobKey, workflowJob, promise, config) }
     val (testActor, terminated) = CatchingActor.actorOf(props, s"TestActor-$actorCounter")(actorSystem)
     val result: Result = terminated await 99.s  // Continues when the nested actor has terminated. CatchingActor may still run for some microseconds.
     (testActor, result)
@@ -106,10 +109,8 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 private object OrderActorTest {
   private val TestVersion = VersionId("VERSION")
   private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/WORKFLOW") % TestVersion, Order.Ready)
-  private val TestJobPath = JobPath("/test")
-  private val TestJobId = TestJobPath % TestVersion
+  private val DummyJobKey = JobKey.Named(WorkflowPath.NoId, WorkflowJob.Name("test"))
   private val TestAgentPath = AgentPath("/TEST-AGENT")
-  private val TestJob = Job(TestJobPath, TestAgentPath)
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT") % "(initial)", Payload.empty),
@@ -119,22 +120,20 @@ private object OrderActorTest {
     OrderDetached)
   private val Nl = System.lineSeparator
 
-  private val TestJobConfiguration = JobConfiguration(TestJobId,
-    JobScript(
-      if (isWindows) """
-        |@echo off
-        |echo Hej!
-        |echo THIS IS STDERR>&2
-        |echo var1=%SCHEDULER_PARAM_VAR1%
-        |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-        |""".stripMargin
-      else """
-        |echo "Hej!"
-        |echo THIS IS STDERR >&2
-        |echo "var1=$SCHEDULER_PARAM_VAR1"
-        |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
-        |""".stripMargin),
-    Map("VAR1" → "FROM-JOB"))
+  private val TestScript =
+    if (isWindows) """
+      |@echo off
+      |echo Hej!
+      |echo THIS IS STDERR>&2
+      |echo var1=%SCHEDULER_PARAM_VAR1%
+      |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+      |""".stripMargin
+    else """
+      |echo "Hej!"
+      |echo THIS IS STDERR >&2
+      |echo "var1=$SCHEDULER_PARAM_VAR1"
+      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+      |""".stripMargin
 
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
@@ -142,9 +141,9 @@ private object OrderActorTest {
 
 
 
-  private final class TestActor(dir: Path, jobConfiguration: JobConfiguration, terminatedPromise: Promise[Result], config: Config)
+  private final class TestActor(dir: Path, jobKey: JobKey, workflowJob: WorkflowJob, terminatedPromise: Promise[Result], config: Config)
   extends Actor {
-    import context.{actorOf, become}
+    import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val keyedEventBus = new StampedKeyedEventBus
@@ -161,7 +160,8 @@ private object OrderActorTest {
     private val journalActor = actorOf(
       JournalActor.props(journalMeta, config, keyedEventBus, Scheduler.global),
       "Journal")
-    private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
+    private val jobActor = watch(actorOf(
+      JobActor.props(jobKey, workflowJob, taskRunnerFactory, executableDirectory = dir / "config" / "executables")))
     private val orderActor = actorOf(OrderActor.props(TestOrder.id, journalActor = journalActor, config), s"Order-${TestOrder.id.string}")
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
@@ -174,12 +174,6 @@ private object OrderActorTest {
 
     def receive = {
       case JournalActor.Output.Ready ⇒
-        become(journalReady)
-        (jobActor ? JobActor.Command.StartWithConfiguration(jobConfiguration)) pipeTo self
-    }
-
-    private def journalReady: Receive = {
-      case JobActor.Response.Ready ⇒
         become(jobActorReady)
         jobActor ! JobActor.Input.OrderAvailable
     }
@@ -193,7 +187,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        orderActor ! OrderActor.Input.StartProcessing(TestJob, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, jobActor = jobActor)
         become(ready)
     }
 

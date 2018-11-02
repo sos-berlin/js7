@@ -27,7 +27,7 @@ trait TestAgentDirectoryProvider extends HasCloser {
       deleteDirectoryRecursively(agentDirectory)
       throw t
     }
-    createDirectory(agentDirectory / "config" / "live")
+    createDirectory(agentDirectory / "config" / "executables")
     createDirectory(agentDirectory / "data")
     agentDirectory
   }

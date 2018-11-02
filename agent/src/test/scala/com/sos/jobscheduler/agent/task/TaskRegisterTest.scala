@@ -20,7 +20,9 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.ConfigFactory
 import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -62,8 +64,8 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "crashKillScript (1)" in {
-    assert(crashKillScript == Set(s""""$killFile" -kill-agent-task-id=1-11 -pid=123 -master-task-id=0 -job=/TEST""",
-                                  s""""$killFile" -kill-agent-task-id=2-22 -pid=123 -master-task-id=0 -job=/TEST"""))
+    assert(crashKillScript == Set(s""""$killFile" -kill-agent-task-id=1-11 -pid=123 -master-task-id=0""",
+                                  s""""$killFile" -kill-agent-task-id=2-22 -pid=123 -master-task-id=0"""))
   }
 
   "GetTaskOverview" in {
@@ -97,8 +99,8 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "crashKillScript (2)" in {
-    assert(crashKillScript == Set(s""""$killFile" -kill-agent-task-id=2-22 -pid=123 -master-task-id=0 -job=/TEST""",
-                                  s""""$killFile" -kill-agent-task-id=3-33 -pid=123 -master-task-id=0 -job=/TEST"""))
+    assert(crashKillScript == Set(s""""$killFile" -kill-agent-task-id=2-22 -pid=123 -master-task-id=0""",
+                                  s""""$killFile" -kill-agent-task-id=3-33 -pid=123 -master-task-id=0"""))
   }
 
   "Terminate" in {
@@ -133,9 +135,9 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
 private object TaskRegisterTest {
   private class TestTask(val id: AgentTaskId) extends BaseAgentTask {
 
-    val jobPath = JobPath("/TEST")
+    val jobKey = JobKey(WorkflowPath("/WORKFLOW") % "VERSION", WorkflowJob.Name("JOB"))
     val pidOption = Some(Pid(123))
-    val overview = TaskOverview(jobPath, id, pidOption, now.toTimestamp)
+    val overview = TaskOverview(jobKey, id, pidOption, now.toTimestamp)
     val terminatedPromise = Promise[Completed]()
     var signalled: ProcessSignal = null
 

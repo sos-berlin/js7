@@ -7,11 +7,9 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, Terminate}
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateTest._
 import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -25,11 +23,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
-import io.circe.syntax.EncoderOps
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -86,13 +81,7 @@ object TerminateTest {
       (agentDirectory / "config" / "private" / "private.conf").contentString = """
           |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
           |""".stripMargin
-      (agentDirectory / "config" / "live" resolve AJob.jobPath.toFile(SourceType.Json)).contentString =
-        JobConfiguration(
-          JobPath.NoId,
-          JobScript(AScript),
-          Map.empty,
-          taskLimit = 10
-        ).asJson.toPrettyString
+      AExecute.job.executablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
       val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = agentDirectory)) map (_.closeWithCloser) await 10.s
       implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(

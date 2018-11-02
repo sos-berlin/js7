@@ -10,9 +10,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Job}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
 import io.circe.Json
@@ -80,9 +81,15 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
           position
           instruction {
             TYPE
-            ... on Job {
-              jobPath
-              agentPath
+            ... on Execute_Named {
+              name
+            }
+            ... on Execute_Anonymous {
+              job {
+                agentPath
+                executablePath
+                taskLimit
+              }
             }
           }
         }
@@ -149,9 +156,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 },
                 "position": [ 0 ],
                 "instruction": {
-                  "TYPE": "Job",
-                  "jobPath": "/JOB",
-                  "agentPath": "/AGENT"
+                  "TYPE": "Execute.Named",
+                  "name": "JOB"
                 }
               },
               "state": {
@@ -213,9 +219,12 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 },
                 "position": [ 1, "BRANCH", 0 ],
                 "instruction": {
-                  "TYPE": "Job",
-                  "jobPath": "/BRANCH-0",
-                  "agentPath": "/AGENT"
+                "TYPE": "Execute.Anonymous",
+                  "job": {
+                    "agentPath": "/AGENT",
+                    "executablePath": "/TEST.sh",
+                    "taskLimit": 1
+                  }
                 }
               },
               "attachedTo": {
@@ -408,11 +417,14 @@ object MasterGraphqlSchemaTest
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
       Future.successful(id match {
         case FileBasedId(_: WorkflowPath, VersionId("1")) ⇒
-          Valid(Workflow.of(
-            Job(JobPath("/JOB"), AgentPath("/AGENT")),
-            ForkJoin(Vector(
-              ForkJoin.Branch("BRANCH", Workflow.of(Job(JobPath("/BRANCH-0"), AgentPath("/AGENT"))))
-            ))).asInstanceOf[A])
+          Valid(Workflow(
+            WorkflowPath.NoId,
+            Vector(
+              Execute(WorkflowJob.Name("JOB")),
+              ForkJoin(Vector(
+                ForkJoin.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))))
+              ))),
+            Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ ⇒ Problem(s"No such ''$id'")
     })
   }

@@ -5,17 +5,17 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved, 
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.OrderContext
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
 
 /**
   * @author Joacim Zschimmer
   */
-object JobExecutor extends EventInstructionExecutor {
+object ExecuteExecutor extends EventInstructionExecutor {
 
-  type Instr = Job
+  type Instr = Execute
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Job): Option[KeyedEvent[OrderActorEvent]] =
-    // Order.Ready: Job start has to be done by the caller
+  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Execute): Option[KeyedEvent[OrderActorEvent]] =
+    // Order.Ready: Execution has to be started by the caller
     for (order ← order.ifState[Order.Processed]) yield
       order.id <-: (
         order.state.outcome match {

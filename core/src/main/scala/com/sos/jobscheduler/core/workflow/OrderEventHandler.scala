@@ -6,9 +6,10 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.workflow.OrderEventHandler._
 import com.sos.jobscheduler.data.event.KeyedEvent
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -38,10 +39,12 @@ final class OrderEventHandler(
       case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome ⇒
         for {
           workflow ← idToWorkflow(previousOrder.workflowId)
-          job ← workflow.checkedJob(previousOrder.position)
-            .mapProblem(_ withPrefix s"Problem with '${previousOrder.id}' in state Processed:")
+          jobKey ← workflow.checkedExecute(previousOrder.position) map {
+            case _: Execute.Anonymous ⇒ JobKey.Anonymous(workflow.id /: previousOrder.position)
+            case x: Execute.Named ⇒ JobKey.Named(workflow.id, x.name)
+          }
         } yield
-          FollowUp.Processed(job) :: Nil
+          FollowUp.Processed(jobKey) :: Nil
 
       case event: OrderForked ⇒
         Valid(previousOrder.newForkedOrders(event) map FollowUp.AddChild.apply)
@@ -78,7 +81,7 @@ object OrderEventHandler
 {
   sealed trait FollowUp
   object FollowUp {
-    final case class Processed(job: Job) extends FollowUp
+    final case class Processed(job: JobKey) extends FollowUp
     final case class AddChild(order: Order[Order.Ready]) extends FollowUp
     final case class AddOffered(order: Order[Order.Offered]) extends FollowUp
     final case class Remove(orderId: OrderId) extends FollowUp

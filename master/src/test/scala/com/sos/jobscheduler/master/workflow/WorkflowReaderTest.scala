@@ -6,12 +6,12 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.workflow.instructions.{Job, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.workflow.WorkflowReaderTest._
@@ -29,24 +29,19 @@ final class WorkflowReaderTest extends FreeSpec {
       val expected = mutable.Buffer[Workflow]()
 
       // JSON
-      val jsonWorkflow = Workflow.of(Job(JobPath("/JSON"), AgentPath("/AGENT")))
+      val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/JSON.sh"))))
       (dir / "JSON.workflow.json").contentString = jsonWorkflow.asJson.toPrettyString
       expected += jsonWorkflow.withId(WorkflowPath("/JSON") % TestVersionId)
 
       // YAML
-      val yamlWorkflow = Workflow.of(Job(JobPath("/YAML"), AgentPath("/AGENT")))
+      val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/YAML.sh"))))
       (dir / "YAML.workflow.yaml").contentString = yamlWorkflow.asJson.toYamlString
       expected += yamlWorkflow.withId(WorkflowPath("/YAML") % TestVersionId)
 
       // SCRIPT
-      val script = """ job "/JOB" on "/AGENT"; """
+      val script = """workflow { execute executable="/TEST.sh", agent="/AGENT"; }"""
       (dir / "TXT.workflow.txt").contentString = script
       expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("/TXT") % TestVersionId)
-
-      // XML
-      val xmlWorkflow = Workflow.of("100" @: Job(JobPath("/XML"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure))
-      (dir / "XML.job_chain.xml").xml = <job_chain><job_chain_node state="100" job="/XML" agent="/AGENT"/></job_chain>
-      expected += xmlWorkflow.withId(WorkflowPath("/XML") % TestVersionId)
 
       assert(FileBasedReader.readDirectoryTree(WorkflowReader :: Nil, dir, TestVersionId).map(_.toSet) ==
         Valid(expected.toSet))

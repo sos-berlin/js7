@@ -2,7 +2,8 @@
 set -e
 
 home="$(cd "$(dirname -- "$0")"/../bin/.. && pwd || kill $$)"
-mkdir -p volumes/{master,agent-1,agent-2}/config/live
+mkdir -p volumes/master/config/live
+mkdir -p volumes/{agent-1,agent-2}/config/executables
 mkdir -p volumes/{master,agent-1,agent-2}/data
 
 cp -Rn "$home"/volumes . || true

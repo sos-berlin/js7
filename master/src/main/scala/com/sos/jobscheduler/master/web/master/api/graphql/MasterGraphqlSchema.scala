@@ -7,9 +7,10 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, Job, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import java.util.regex.Pattern
 import sangria.ast
@@ -54,12 +55,13 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OrderIdType      = genericStringType[OrderId]("Identifies the Order in JobScheduler")
   private implicit val WorkflowPathType = genericStringType[WorkflowPath]("Path of Workflow (String)")
   private implicit val AgentPathType    = genericStringType[AgentPath]("Path of Agent (String)")
-  private implicit val JobPathType      = genericStringType[JobPath]("Path of Job (String)")
+  private implicit val ExecutablePathType = genericStringType[ExecutablePath]("Path of an executable (String)")
+  private implicit val WorkflowJobNameType = genericStringType[WorkflowJob.Name]("Job name (String)")
   private implicit val VersionIdType    = genericStringType[VersionId]("Version identifier (String)")
   private implicit val ReturnCodeType   = genericIntType[ReturnCode]("Return code")
 
   private def genericStringType[A <: GenericString](description: String)(implicit A: GenericString.Companion[A]): ScalarType[A] =
-    stringEquivalentType[A](str ⇒ A.checked(str), _.string, A.name, description)
+    stringEquivalentType[A](str ⇒ A.checked(str), _.string, A.name.replace('.', '_'), description)
 
   private def stringEquivalentType[A](fromString: String ⇒ Checked[A], toString: A ⇒ String, name: String, description: String): ScalarType[A] = {
     val violation = valueCoercionViolation(s"'$name' string expected")
@@ -114,11 +116,19 @@ private[graphql] object MasterGraphqlSchema
       Field("path", implicitly[SomeType[P]], resolve = _.value.path),
       Field("versionId", VersionIdType, resolve = _.value.versionId)))
 
+  private val WorkflowJobType = ObjectType[QueryContext, WorkflowJob](
+    "WorkflowJob",
+    "Job",
+    fields[QueryContext, WorkflowJob](
+      Field("agentPath", AgentPathType, resolve = _.value.agentPath),
+      Field("executablePath", ExecutablePathType, resolve = _.value.executablePath),
+      Field("taskLimit", IntType, resolve = _.value.taskLimit)))
+
   private implicit val InstructionType = InterfaceType[QueryContext, Instruction](
     "Instruction",
     "Workflow instruction",
     fields[QueryContext, Instruction](
-      Field("TYPE", StringType, resolve = _.value.getClass.simpleScalaName)))
+      Field("TYPE", StringType, resolve = ctx ⇒ Instructions.jsonCodec.typeName(ctx.value.getClass))))
 
   private implicit val InstructionTypes = List(
     ObjectType[QueryContext, AwaitOrder](
@@ -156,13 +166,18 @@ private[graphql] object MasterGraphqlSchema
       "Workflow instruction Goto",
       interfaces[QueryContext, Goto](InstructionType),
       fields[QueryContext, Goto]()),
-    ObjectType[QueryContext, Job](
-      "Job",
-      "Workflow instruction Job",
-      interfaces[QueryContext, Job](InstructionType),
-      fields[QueryContext, Job](
-        Field("jobPath", OptionType(JobPathType), resolve = ctx ⇒ ctx.value.jobPath),
-        Field("agentPath", OptionType(AgentPathType), resolve = ctx ⇒ ctx.value.agentPath))),
+    ObjectType[QueryContext, Execute.Anonymous](
+      "Execute_Anonymous",
+      "Workflow instruction Execute (named)",
+      interfaces[QueryContext, Execute.Anonymous](InstructionType),
+      fields[QueryContext, Execute.Anonymous](
+        Field("job", WorkflowJobType, resolve = _.value.job))),
+    ObjectType[QueryContext, Execute.Named](
+      "Execute_Named",
+      "Workflow instruction Execute (anonymous)",
+      interfaces[QueryContext, Execute.Named](InstructionType),
+      fields[QueryContext, Execute.Named](
+        Field("name", WorkflowJobNameType, resolve = _.value.name))),
     ObjectType[QueryContext, Offer](
       "Offer",
       "Workflow instruction Offer",

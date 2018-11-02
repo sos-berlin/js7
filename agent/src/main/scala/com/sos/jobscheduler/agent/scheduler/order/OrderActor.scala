@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{ActorRef, Props, Status, Terminated}
+import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -11,10 +11,11 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
 import monix.execution.Scheduler
@@ -112,10 +113,10 @@ extends KeyedJournalingActor[OrderEvent] {
     case command: Command ⇒
       executeOtherCommand(command)
 
-    case Input.StartProcessing(job, jobActor) ⇒
+    case Input.StartProcessing(jobKey, workflowJob, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
       val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
-      become("processing")(processing(job, jobActor,
+      become("processing")(processing(jobKey, workflowJob, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
       persist(OrderProcessingStarted) { event ⇒
@@ -157,7 +158,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
-  private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive = {
+  private def processing(jobKey: JobKey, job: WorkflowJob, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive = {
     case msg: Stdouterr ⇒  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
       stdouterr.handle(msg)
 
@@ -169,12 +170,12 @@ extends KeyedJournalingActor[OrderEvent] {
         case TaskStepFailed(disrupted) ⇒
           OrderProcessed(MapDiff.empty, disrupted)
       }
-      finishProcessing(event, job, stdoutStderrStatistics)
+      finishProcessing(event, stdoutStderrStatistics)
       context.unwatch(jobActor)
 
     case Terminated(`jobActor`) ⇒
-      val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
-      finishProcessing(OrderProcessed(MapDiff.empty, bad), job, stdoutStderrStatistics)
+      val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor for '$jobKey' terminated unexpectedly"))
+      finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)
 
     case command: Command ⇒
       executeOtherCommand(command)
@@ -183,7 +184,7 @@ extends KeyedJournalingActor[OrderEvent] {
       terminating = true
   }
 
-  private def finishProcessing(event: OrderProcessed, job: Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
+  private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     stdouterr.close()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
     become("processed")(processed)
@@ -314,8 +315,8 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddPublished(order: Order[Order.Offered]) extends Input
-    final case class StartProcessing(job: Job, jobActor: ActorRef) extends Input
-    final case object Terminate extends Input
+    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef) extends Input
+    final case object Terminate extends Input with DeadLetterSuppression
     final case class HandleEvent(event: OrderActorEvent) extends Input
   }
 

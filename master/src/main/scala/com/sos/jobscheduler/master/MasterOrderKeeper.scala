@@ -41,7 +41,7 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPosition}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
@@ -503,7 +503,7 @@ with MainJournalingActor[Event]
       case _: Order.Idle ⇒
         val idleOrder = order.castState[Order.Idle]
         instruction(order.workflowPosition) match {
-          case _: Job ⇒ tryAttachOrderToAgent(idleOrder)
+          case _: Execute ⇒ tryAttachOrderToAgent(idleOrder)
           case _ ⇒
         }
 
@@ -528,7 +528,7 @@ with MainJournalingActor[Event]
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit = {
     (for {
       workflow ← repo.idTo[Workflow](order.workflowId)
-      job ← workflow.checkedJob(order.position)
+      job ← workflow.checkedWorkflowJob(order.position)
       agentId ← repo.pathToCurrentId(job.agentPath)
       agentEntry ← agentRegister.checked(agentId)
     } yield {
@@ -552,7 +552,7 @@ with MainJournalingActor[Event]
 
 private[master] object MasterOrderKeeper {
   private val MasterIsTerminatingProblem = Problem.fromEager("Master is terminating")
-  @deprecated
+  @deprecated("", "")
   private val InitialVersion = VersionId("(initial)")  // ???
 
   private val logger = Logger(getClass)
@@ -589,7 +589,7 @@ private[master] object MasterOrderKeeper {
     var lastAgentEventId: EventId = EventId.BeforeFirst)
   {
     def agentId = agent.id
-    @deprecated
+    @deprecated("", "")
     def agentPath = agent.path
 
     def start()(implicit sender: ActorRef): Unit =

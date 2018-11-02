@@ -6,7 +6,6 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
@@ -31,11 +30,12 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin, If}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -58,7 +58,7 @@ import scala.language.implicitConversions
   */
 object TestMasterAgent {
   private val TestWorkflowPath = WorkflowPath("/test")
-  private val TestJobPath = JobPath("/test")
+  private val TestExecutablePath = ExecutablePath("/test")
   private val StdoutRowSize = 1000
 
   def main(args: Array[String]): Unit = {
@@ -80,6 +80,7 @@ object TestMasterAgent {
 
   private def run(conf: Conf): Unit = {
     val env = new TestEnvironment(conf.agentPaths, conf.directory)
+    env.masterDir / "config" / "master.conf" := "jobscheduler.webserver.auth.loopback-is-public = on"
     val agentToPassword = conf.agentPaths.map(_ → newSecretString()).toMap
     withCloser { implicit closer ⇒
       env.masterDir / "config" / "private" / "private.conf" :=
@@ -94,12 +95,7 @@ object TestMasterAgent {
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
-        env.agentDir(agentPath) / "config" / "private" / "private.conf" :=
-          s"""jobscheduler.auth.users.Master = "plain:${agentToPassword(agentPath).string}"
-             |""".stripMargin
-        env.agentFile(agentPath, TestJobPath, SourceType.Json) := JobConfiguration(
-          JobPath.NoId,
-          JobScript(
+        TestExecutablePath.toFile(env.agentDir(agentPath) / "config" / "executables").writeExecutable(
             if (isWindows) s"""
                |@echo off
                |echo Hello
@@ -115,9 +111,7 @@ object TestMasterAgent {
                |done
                |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
-               |""".stripMargin),
-          Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
-          taskLimit = conf.tasksPerJob)
+               |""".stripMargin)
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
         ) map { _.closeWithCloser } await 99.s
@@ -199,20 +193,24 @@ object TestMasterAgent {
   }
 
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
+  private def testJob(conf: Conf, agentPath: AgentPath) =
+    WorkflowJob(agentPath, TestExecutablePath,
+      Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
+      taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(
-      Job(TestJobPath, conf.agentPaths.head),
+      Execute(testJob(conf, conf.agentPaths.head)),
       ForkJoin(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
           ForkJoin.Branch(
             pathName,
             Workflow(
               WorkflowPath("/TestMasterAgent") % "1",
-              Vector.fill(conf.workflowLength) { Job(TestJobPath, agentPath) }))),
+              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentPath, TestExecutablePath)) }))),
       If(Or(Equal(OrderReturnCode, NumericConstant(0)), Equal(OrderReturnCode, NumericConstant(0))),
-        Workflow.of(Job(TestJobPath, conf.agentPaths.head)),
-        Some(Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))
+        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentPaths.head))),
+        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentPaths.head))))))
 
   private case class Conf(
     directory: Path,

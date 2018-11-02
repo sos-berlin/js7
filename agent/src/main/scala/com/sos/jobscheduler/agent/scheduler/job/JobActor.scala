@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import akka.pattern.pipe
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -10,81 +9,66 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
-import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.Outcome.Disrupted
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
-import java.io.{FileOutputStream, OutputStreamWriter}
+import java.nio.file.Files.exists
 import java.nio.file.Path
+import monix.execution.Scheduler
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-final class JobActor private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, timerService: TimerService)(implicit ec: ExecutionContext)
+final class JobActor private(jobKey: JobKey, workflowJob: WorkflowJob, newTaskRunner: TaskRunner.Factory,
+  executableDirectory: Path)
+  (implicit scheduler: Scheduler)
 extends Actor with Stash {
 
-  private val logger = Logger.withPrefix[JobActor](jobPath.toString)
+  private val logger = Logger.withPrefix[JobActor](jobKey.toString)
   private val orderToTask = mutable.Map[OrderId, Entry]()
   private var waitingForNextOrder = false
   private var terminating = false
-  private var jobConfiguration: JobConfiguration = null
-  private lazy val filePool = new FilePool(jobConfiguration)
-  private var shellFileUsed = false
-  private lazy val shellFile = {
-    shellFileUsed = true
-    newTemporaryShellFile(jobConfiguration.path.name) sideEffect { file ⇒
-      autoClosing(new OutputStreamWriter(new FileOutputStream(file), FileEncoding)) { w ⇒
-        val content = jobConfiguration.script.string.trim
-        if (content.nonEmpty) {
-          w.write(jobConfiguration.script.string.trim)
-          w.write("\n")
-        }
-      }
-    }
+  private lazy val filePool = new FilePool(jobKey, workflowJob)
+  private val uncheckedFile = workflowJob.executablePath.toFile(executableDirectory)
+
+  if (!exists(uncheckedFile)) {
+    logger.warn(s"Executable '${workflowJob.executablePath}' is not accessible")
   }
 
   override def postStop() = {
     killAll(SIGKILL)
     filePool.close()
-    if (shellFileUsed) {
-      tryDeleteFile(shellFile)
-    }
     super.postStop()
   }
 
   def receive = {
-    case Command.StartWithConfiguration(conf) ⇒
-      jobConfiguration = conf
-      logger.trace("Job is ready")
-      context.become(ready)
-      sender() ! Response.Ready
-
-    case _: AgentCommand.TerminateOrAbort ⇒
-      stash()
-  }
-
-  private def ready: Receive = {
     case Input.OrderAvailable ⇒
       handleIfReadyForOrder()
 
     case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
       logger.trace(s"ProcessOrder(${cmd.order.id})")
-      assert(taskCount < jobConfiguration.taskLimit, "Task limit exceeded")
+      assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
       val fileSet = filePool.get()
-      newTaskRunner(TaskConfiguration(jobConfiguration, shellFile, fileSet.shellReturnValuesProvider))
-        .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
-        .pipeTo(self)(sender())
+      if (!exists(uncheckedFile)) {
+        val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
+        logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(msg)))
+      } else {
+        Try(uncheckedFile.toRealPath()) match {
+          case Failure(t) ⇒
+            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
+          case Success(executableFile) ⇒
+            assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
+            newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
+              .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
+              .pipeTo(self)(sender())
+        }
+      }
 
     case Internal.TaskRegistered(Command.ProcessOrder(order, stdoutStderrWriter), fileSet, taskRunner) ⇒
       if (terminating) {
@@ -109,14 +93,14 @@ extends Actor with Stash {
       handleIfReadyForOrder()
 
     case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
-      logger.debug("Terminating")
+      logger.debug("Terminate")
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)
       }
       sigkillProcessesAfter match {
         case Some(duration) if taskCount > 0 ⇒
-          timerService.delayedFuture(duration.toJavaDuration) {
+          scheduler.scheduleOnce(duration) {
             self ! Internal.KillAll
           }
         case _ ⇒
@@ -128,7 +112,7 @@ extends Actor with Stash {
   }
 
   private def handleIfReadyForOrder() = {
-    if (!waitingForNextOrder && !terminating && taskCount < jobConfiguration.taskLimit) {
+    if (!waitingForNextOrder && !terminating && taskCount < workflowJob.taskLimit) {
       context.parent ! Output.ReadyForOrder
       waitingForNextOrder = true
     }
@@ -162,24 +146,23 @@ extends Actor with Stash {
     }
   }
 
-  override def toString = s"JobActor(${jobPath.string})"
+  override def toString = s"JobActor(${jobKey.toString})"
 
   private def taskCount = orderToTask.size
 }
 
-object JobActor {
-  def props(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, ts: TimerService)(implicit ec: ExecutionContext): Props =
-    Props { new JobActor(jobPath, newTaskRunner, ts) }
+object JobActor
+{
+  def props(jobKey: JobKey, workflowJob: WorkflowJob, newTaskRunner: TaskRunner.Factory, executableDirectory: Path)
+    (implicit s: Scheduler)
+  = Props { new JobActor(jobKey, workflowJob, newTaskRunner, executableDirectory) }
 
   sealed trait Command
   object Command {
-    final case class StartWithConfiguration(conf: JobConfiguration)
-    final case class ReadConfigurationFile(path: Path)
     final case class ProcessOrder(order: Order[Order.InProcess], stdChannels: StdChannels) extends Command
   }
 
   object Response {
-    case object Ready
     final case class OrderProcessed(orderId: OrderId, moduleStepEnded: TaskStepEnded)
   }
 

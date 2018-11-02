@@ -1,18 +1,18 @@
 package com.sos.jobscheduler.data.workflow
 
-import cats.data.Validated.Invalid
+import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
-import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -21,11 +21,24 @@ final class WorkflowTest extends FreeSpec {
 
   "JSON" - {
     "Workflow without WorkflowID, when placed in configuration directory" in {
-      testJson[Workflow](Workflow.of(Job(JobPath("/JOB"), AgentPath("/AGENT"))),
+      testJson[Workflow](
+        Workflow(WorkflowPath.NoId,
+          Vector(Execute(WorkflowJob.Name("JOB"))),
+          Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
         json"""{
           "instructions": [
-            { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT" }
-          ]
+            {
+              "TYPE": "Execute.Named",
+              "name": "JOB"
+            }
+          ],
+          "jobs": {
+            "JOB": {
+              "agentPath": "/AGENT",
+              "executablePath": "/EXECUTABLE",
+              "taskLimit": 1
+            }
+          }
         }""")
     }
 
@@ -37,18 +50,18 @@ final class WorkflowTest extends FreeSpec {
             "versionId": "VERSION"
           },
           "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}},
             {
               "TYPE": "If",
               "predicate": "returnCode == 1",
               "then": {
                 "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+                  { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}}
                 ]
               },
               "else": {
                 "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+                  { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}}
                 ]
               }
             }, {
@@ -58,31 +71,41 @@ final class WorkflowTest extends FreeSpec {
                   "id": "🥕",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}}
                     ]
                   }
                 }, {
                   "id": "🍋",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}}
                     ]
                   }
                 }
               ]
             },
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}}
           ]
         }""")
     }
 
     "Workflow without path" in {
-      testJson(Workflow.of(AJob),
+      testJson(Workflow.of(AExecute),
         json"""{
           "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+            {
+              "TYPE": "Execute.Anonymous",
+              "job": {
+                "agentPath": "/AGENT",
+                "executablePath": "/A.cmd",
+                "taskLimit": 8,
+                "defaultArguments": {
+                  "JOB_A": "A-VALUE"
+                }
+              }
+            }
           ]
         }""")
     }
@@ -90,10 +113,10 @@ final class WorkflowTest extends FreeSpec {
 
   "labelToPosition" in {
     val workflow = Workflow.of(
-      "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
+      "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
       If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))),
+          "B" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
       "B" @: ExplicitEnd)
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
@@ -103,8 +126,8 @@ final class WorkflowTest extends FreeSpec {
   "Duplicate labels" in {
     assert(intercept[RuntimeException] {
       Workflow.of(
-        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
-        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))
+        "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
+        "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))
     }
     .toString contains "Duplicate labels")
   }
@@ -121,26 +144,13 @@ final class WorkflowTest extends FreeSpec {
     }
   }
 
-  "Anonymous Job is rejected" in {
-    assert(Workflow.checked(WorkflowPath.NoId, Vector(Job(JobPath.Anonymous, TestAgentPath))) ==
-      Invalid(Problem("Anonymous Job in Workflow?")))
-    intercept[ProblemException] {
-      Workflow.of(Job(JobPath.Anonymous, TestAgentPath))
-    } .getMessage shouldEqual "Anonymous Job in Workflow?"
-  }
-
-  "Anonymous Agent is rejected" in {
-    assert(Workflow.checked(WorkflowPath.NoId, Vector(Job(JobPath("/JOB"), AgentPath.Anonymous))) ==
-      Invalid(Problem("Anonymous Agent in Workflow?")))
-  }
-
   "jobOption" in {
-    assert(TestWorkflow.jobOption(Position(0)) == Some(AJob))
-    assert(TestWorkflow.jobOption(Position(1)) == None)  // IfErrorCode
-    assert(TestWorkflow.jobOption(Position(2)) == None)  // ForkJoin
-    assert(TestWorkflow.jobOption(Position(3)) == Some(BJob))
-    assert(TestWorkflow.jobOption(Position(4)) == None)  // ImplicitEnd
-    assert(TestWorkflow.jobOption(Position(999)) == None)
+    assert(TestWorkflow.checkedExecute(Position(0)) == Valid(AExecute))
+    assert(TestWorkflow.checkedExecute(Position(1)) == Invalid(Problem("Expected 'Execute' at workflow position #1 (not: If)")))
+    assert(TestWorkflow.checkedExecute(Position(2)) == Invalid(Problem("Expected 'Execute' at workflow position #2 (not: ForkJoin)")))
+    assert(TestWorkflow.checkedExecute(Position(3)) == Valid(BExecute))
+    assert(TestWorkflow.checkedExecute(Position(4)) == Invalid(Problem("Expected 'Execute' at workflow position #4 (not: ImplicitEnd)")))
+    assert(TestWorkflow.checkedExecute(Position(999)) == Invalid(Problem("Expected 'Execute' at workflow position #999 (not: Gap)")))
   }
 
   "workflowOption" in {
@@ -151,7 +161,7 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "reduce" in {
-    val job = Job(JobPath("/JOB-A"), AgentPath("/AGENT"))
+    val job = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE-A")))
     val B = Label("B")
     val C = Label("C")
     val D = Label("D")
@@ -176,31 +186,58 @@ final class WorkflowTest extends FreeSpec {
 
   "numberedInstruction" in {
     assert(TestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
-      (InstructionNr(0), AJob),
+      (InstructionNr(0), AExecute),
       (InstructionNr(1), TestWorkflow.instruction(1)),
       (InstructionNr(2), TestWorkflow.instruction(2)),
-      (InstructionNr(3), BJob),
+      (InstructionNr(3), BExecute),
       (InstructionNr(4), ImplicitEnd)))
+  }
+
+  "flattenedInstruction" in {
+    assert(TestWorkflow.flattenedInstructions == Vector[(Position, Instruction.Labeled)](
+      (Position(0), AExecute),
+      (Position(1), TestWorkflow.instruction(1)),
+      (Position(1, 0, 0), TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(0)),
+      (Position(1, 0, 1), ImplicitEnd),
+      (Position(1, 1, 0), TestWorkflow.instruction(1).asInstanceOf[If].elseWorkflow.get.instructions(0)),
+      (Position(1, 1, 1), ImplicitEnd),
+      (Position(2), TestWorkflow.instruction(2)),
+      (Position(2, "🥕", 0), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(0).workflow.instructions(0)),
+      (Position(2, "🥕", 1), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(0).workflow.instructions(1)),
+      (Position(2, "🥕", 2), ImplicitEnd),
+      (Position(2, "🍋", 0), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(1).workflow.instructions(0)),
+      (Position(2, "🍋", 1), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(1).workflow.instructions(1)),
+      (Position(2, "🍋", 2), ImplicitEnd),
+      (Position(3), BExecute),
+      (Position(4), ImplicitEnd)))
+  }
+
+  "namedJobs" in {
+    // FIXME Test fehlt
+  }
+
+  "keyToJob" in {
+    // FIXME Test fehlt
   }
 
   "isDefinedAt, instruction" in {
     val addressToInstruction = List(
-      Position(0) → AJob,
+      Position(0) → AExecute,
       Position(1) → If(Equal(OrderReturnCode, NumericConstant(1)),
-        thenWorkflow = Workflow.of(AJob),
-        elseWorkflow = Some(Workflow.of(BJob))),
-      Position(1, 0, 0) → AJob,
-      Position(1, 1, 0) → BJob,
+        thenWorkflow = Workflow.of(AExecute),
+        elseWorkflow = Some(Workflow.of(BExecute))),
+      Position(1, 0, 0) → AExecute,
+      Position(1, 1, 0) → BExecute,
       Position(2) → ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(BJob, BJob)),
-      Position(2, "🥕", 0) → AJob,
-      Position(2, "🥕", 1) → AJob,
+        "🥕" → Workflow.of(AExecute, AExecute),
+        "🍋" → Workflow.of(BExecute, BExecute)),
+      Position(2, "🥕", 0) → AExecute,
+      Position(2, "🥕", 1) → AExecute,
       Position(2, "🥕", 2) → ImplicitEnd,
-      Position(2, "🍋", 0) → BJob,
-      Position(2, "🍋", 1) → BJob,
+      Position(2, "🍋", 0) → BExecute,
+      Position(2, "🍋", 1) → BExecute,
       Position(2, "🍋", 2) → ImplicitEnd,
-      Position(3) → BJob,
+      Position(3) → BExecute,
       Position(4) → ImplicitEnd)
 
     for ((address, instruction) ← addressToInstruction) {
@@ -213,15 +250,15 @@ final class WorkflowTest extends FreeSpec {
   }
 }
 
-object WorkflowTest {
-  val TestWorkflow = Workflow.of(
+private object WorkflowTest {
+  private val TestWorkflow = Workflow.of(
     WorkflowPath("/TEST") % "VERSION",
-    AJob,
+    AExecute,
     If(Equal(OrderReturnCode, NumericConstant(1)),
-      thenWorkflow = Workflow.of(AJob),
-      elseWorkflow = Some(Workflow.of(BJob))),
+      thenWorkflow = Workflow.of(AExecute),
+      elseWorkflow = Some(Workflow.of(BExecute))),
     ForkJoin.of(
-      "🥕" → Workflow.of(AJob, AJob),
-      "🍋" → Workflow.of(BJob, BJob)),
-    BJob)
+      "🥕" → Workflow.of(AExecute, AExecute),
+      "🍋" → Workflow.of(BExecute, BExecute)),
+    BExecute)
 }

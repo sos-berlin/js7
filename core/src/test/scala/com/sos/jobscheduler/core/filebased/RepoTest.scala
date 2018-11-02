@@ -4,9 +4,9 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.filebased.RepoTest._
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{AFileBased, APath, BFileBased, BPath, VersionId}
-import com.sos.jobscheduler.data.job.JobPath
 import org.scalatest.FreeSpec
 
 /**
@@ -62,7 +62,7 @@ final class RepoTest extends FreeSpec
       VersionAdded(V1), FileBasedAdded(a1),
       VersionAdded(V2), FileBasedChanged(a2),
       VersionAdded(V3), FileBasedChanged(a3)))
-    assert(testRepo.eventsFor(Set(JobPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
+    assert(testRepo.eventsFor(Set(AgentPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
   "pathToCurrentId" in {

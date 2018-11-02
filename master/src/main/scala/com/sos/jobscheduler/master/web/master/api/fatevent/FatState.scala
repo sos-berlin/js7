@@ -11,6 +11,7 @@ import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEve
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 
@@ -67,9 +68,12 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
         Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledAt, order.variables))
 
       case _: OrderProcessingStarted ⇒
-        val jobPath = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedJob(order.position)).orThrow.jobPath
+        val jobName = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedExecute(order.position)).orThrow match {
+          case Execute.Named(name) ⇒ Some(name)
+          case _ ⇒ None
+        }
         val agent = order.attachedToAgent.flatMap(a ⇒ repo.idTo[Agent](a)).orThrow
-        Some(OrderProcessingStartedFat(order.workflowPosition, agent.path, agent.uri, jobPath, order.variables))
+        Some(OrderProcessingStartedFat(order.workflowPosition, agent.path, agent.uri, jobName, order.variables))
 
       case OrderStdWritten(stdoutOrStderr, chunk) ⇒
         Some(OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk))

@@ -32,7 +32,7 @@ extends AutoCloseable {
   createDirectories(masterDir / "data")
   for (agentPath ← agentPaths) {
     createDirectories(agentDir(agentPath) / "config/private")
-    createDirectories(agentDir(agentPath) / "config/live")
+    createDirectories(agentDir(agentPath) / "config/executables")
     createDirectory(agentDir(agentPath) / "data")
   }
 

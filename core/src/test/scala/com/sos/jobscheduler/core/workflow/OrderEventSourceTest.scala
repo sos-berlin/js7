@@ -10,11 +10,12 @@ import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -35,10 +36,10 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if" - {
     val workflow = Workflow.of(TestWorkflowId,
-      job,                              // 0
+      executeScript,                              // 0
       If(Equal(OrderReturnCode, NumericConstant(0)), // 1
-        Workflow.of(job)),              // 1,0,0
-      job)                              // 2
+        Workflow.of(executeScript)),              // 1,0,0
+      executeScript)                              // 2
 
     "then branch executed" in {
       assert(step(workflow, Outcome.Succeeded(ReturnCode(1))) == Some(OrderMoved(Position(2))))
@@ -63,11 +64,11 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if returnCode else" - {
     val workflow = Workflow.of(TestWorkflowId,
-      job,                                            // 0
+      executeScript,                                            // 0
       If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
-        thenWorkflow = Workflow.of(job),              // 1,0,0
-        elseWorkflow = Some(Workflow.of(job))),       // 1,1,0
-      job)                                            // 2
+        thenWorkflow = Workflow.of(executeScript),              // 1,0,0
+        elseWorkflow = Some(Workflow.of(executeScript))),       // 1,1,0
+      executeScript)                                            // 2
 
     "then branch executed" in {
       assert(step(workflow, Outcome.succeeded) == Some(OrderMoved(Position(1, 0, 0))))
@@ -118,10 +119,10 @@ final class OrderEventSourceTest extends FreeSpec {
   "applyMoveInstructions" - {
     "Goto, IfFailedGoto" in {
       val workflow = Workflow.of(TestWorkflowId,
-                 job,            // 0
+                 executeScript,            // 0
                  Goto("B"),      // 1
                  Gap,            // 2
-        "C" @:   job,            // 3
+        "C" @:   executeScript,            // 3
         "END" @: ExplicitEnd,    // 4
         "B" @:   IfNonZeroReturnCodeGoto("C")) // 5
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
@@ -169,7 +170,7 @@ object OrderEventSourceTest {
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.StandardFailure)))
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId, Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)))
 
-  private val job = Job(JobPath("/JOB"), AgentPath("/AGENT"))
+  private val executeScript = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/executable")))
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
@@ -220,7 +221,7 @@ object OrderEventSourceTest {
     private def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderEvent]]] = {
       val order = idToOrder(orderId)
       (order.state, workflow.instruction(order.position)) match {
-        case (_: Order.Idle/*Ready!!!*/, _: Job) ⇒
+        case (_: Order.Idle/*Ready!!!*/, _: Execute) ⇒
           Valid(Some(order.id <-: OrderProcessingStarted))
 
         case _ if inProcess contains orderId ⇒

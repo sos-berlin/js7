@@ -65,7 +65,7 @@ trait GenericEventRoute extends RouteProvider
           authorizedUser(ValidUserPermission) { user ⇒
             handleExceptions(exceptionHandler) {
               routeFuture(
-                eventWatchFor(user).runAsync.map { eventWatch ⇒
+                eventWatchFor(user)/*⚡️AkkaAskTimeout*/.runAsync.map { eventWatch ⇒
                   htmlPreferred {
                     oneShot(eventWatch)
                   } ~

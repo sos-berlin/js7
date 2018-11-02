@@ -15,7 +15,7 @@ object Parsers {
         (underlying ~ End).parse(string) match {
           case Parsed.Success(expr, _) ⇒ Valid(expr)
           case o: Parsed.Failure ⇒ Invalid(Problem.fromEager(o.msg))
-          //case o: Parsed.Failure ⇒ Invalid(Problem.fromEager(s"Error at position 0+${o.index}: ${o.lastParser} - ${o.extra}"))
+          //case Parsed.Failure(lastParser, index, extra) ⇒ Invalid(Problem.fromEager(s"Error at position 0+$index: $lastParser - $extra"))
         }
     }
   }

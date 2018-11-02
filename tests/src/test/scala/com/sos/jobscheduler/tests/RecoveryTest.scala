@@ -21,16 +21,17 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobConfiguration}
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, script}
 import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
 import java.time.Instant
@@ -52,8 +53,8 @@ final class RecoveryTest extends FreeSpec {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
       autoClosing(new DirectoryProvider(AgentIds map (_.path), testName = Some("RecoveryTest"))) { directoryProvider ⇒
-        for ((agentPath, tree) ← directoryProvider.agentToTree)
-          tree.writeJson(jobConfiguration(TestJobPath, 1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1")))
+        for (agent ← directoryProvider.agentToTree.values)
+          agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
         withCloser { implicit closer ⇒
           for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
           (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
@@ -142,22 +143,26 @@ private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val AgentIds = List(AgentPath("/agent-111"), AgentPath("/agent-222")) map (_ % "(initial)")
-  private val TestJobPath = JobPath("/test")
+  private val TestExecutablePath = ExecutablePath("/TEST$sh")
 
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
-  private val TestWorkflow = Workflow.of(WorkflowPath("/test") % "(initial)",
-    Job(TestJobPath, AgentIds(0).path),
-    Job(TestJobPath, AgentIds(0).path),
-    Job(TestJobPath, AgentIds(0).path),
-    Job(TestJobPath, AgentIds(1).path),
-    Job(TestJobPath, AgentIds(1).path))
+  private val TestWorkflow = Workflow(WorkflowPath("/test") % "(initial)",
+    Vector(
+      Execute(WorkflowJob.Name("TEST-0")),
+      Execute(WorkflowJob.Name("TEST-0")),
+      Execute(WorkflowJob.Name("TEST-0")),
+      Execute(WorkflowJob.Name("TEST-1")),
+      Execute(WorkflowJob.Name("TEST-1"))),
+    Map(
+      WorkflowJob.Name("TEST-0") → WorkflowJob(AgentIds(0).path, TestExecutablePath, Map("var1" → s"VALUE-${AgentIds(0).path.name}")),
+      WorkflowJob.Name("TEST-1") → WorkflowJob(AgentIds(1).path, TestExecutablePath, Map("var1" → s"VALUE-${AgentIds(1).path.name}"))))
   private val TestOrderGeneratorElem =
     <order job_chain={TestWorkflow.path.string}>
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "(initial)", Job(TestJobPath, AgentIds(0).path))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "(initial)", Execute(WorkflowJob(AgentIds(0).path, TestExecutablePath)))
   private val QuickOrder = FreshOrder(OrderId("FAST-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(

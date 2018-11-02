@@ -56,7 +56,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf], ti
       case Input.Add(task, promise) ⇒
         idToTask += task.id → task
         totalCount += 1
-        for (o ← crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0), task.jobPath)
+        for (o ← crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0))
         task.terminated onComplete { _ ⇒
           self ! Input.Remove(task.id)
         }

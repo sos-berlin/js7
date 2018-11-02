@@ -8,7 +8,6 @@ import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
@@ -19,6 +18,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -27,8 +27,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -152,16 +151,22 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         },
         "instructions": [
           {
-            "TYPE": "Job",
-            "jobPath": "/B",
-            "agentPath": "/AGENT"
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "/AGENT",
+              "executablePath": "/B$sh",
+              "taskLimit": 1
+            }
           }, {
-            "TYPE": "Job",
-            "jobPath": "/MISSING",
-            "agentPath": "/AGENT"
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "/AGENT",
+              "executablePath": "/MISSING$sh",
+              "taskLimit": 1
+            }
           }
         ],
-        "source": "job \"/B\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+        "source": "\nworkflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
       }""")
   }
 
@@ -375,16 +380,22 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             },
             "instructions": [
               {
-                "TYPE": "Job",
-                "jobPath": "/B",
-                "agentPath": "/AGENT"
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "executablePath": "/B$sh",
+                  "taskLimit": 1
+                }
               }, {
-                "TYPE": "Job",
-                "jobPath": "/MISSING",
-                "agentPath": "/AGENT"
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "executablePath": "/MISSING$sh",
+                  "taskLimit": 1
+                }
               }
             ],
-            "source": "job \"/B\" on \"/AGENT\"; job \"/MISSING\" on \"/AGENT\";"
+            "source": "\nworkflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1005,
@@ -397,12 +408,15 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             },
             "instructions": [
               {
-                "TYPE": "Job",
-                "jobPath": "/A",
-                "agentPath": "/AGENT"
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "executablePath": "/A$sh",
+                  "taskLimit": 1
+                }
               }
             ],
-            "source": "job \"/A\" on \"/AGENT\";"
+            "source": "\nworkflow {\n  execute executable=\"/A.sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1006,
@@ -618,8 +632,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 id
                 workflowPosition {
                   instruction {
-                    ... on Job {
-                      jobPath
+                    ... on Execute_Anonymous {
+                      job {
+                        executablePath
+                      }
                     }
                   }
                 }
@@ -635,7 +651,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   "id": "ORDER-MISSING-JOB",
                   "workflowPosition": {
                     "instruction": {
-                      "jobPath": "/MISSING"
+                      "job": {
+                        "executablePath": "/MISSING$sh"
+                      }
                     }
                   }
                 }
@@ -705,7 +723,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
 object MasterWebServiceTest
 {
-  private def writeMasterConfiguration(master: DirectoryProvider.Tree): Unit = {
+  private def writeMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
     (master.config / "master.conf").contentString = """
       |jobscheduler.webserver.test = true
       |""".stripMargin
@@ -714,16 +732,19 @@ object MasterWebServiceTest
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
       |""".stripMargin)
-    master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
-    master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), """job "/B" on "/AGENT"; job "/MISSING" on "/AGENT";""")
+    master.writeTxt(WorkflowPath("/WORKFLOW"), s"""
+       |workflow {
+       |  execute executable="/A$sh", agent="/AGENT";
+       |}""".stripMargin)
+    master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), s"""
+       |workflow {
+       |  execute executable="/B$sh", agent="/AGENT";
+       |  execute executable="/MISSING$sh", agent="/AGENT";
+       |}""".stripMargin)
   }
 
   private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
-    agent.writeJson(JobConfiguration(
-      JobPath("/A") % VersionId.Anonymous,
-      JobScript(operatingSystem.sleepingShellScript(1.second))))  // Allow some time to check web service before order finishes
-    agent.writeJson(JobConfiguration(
-      JobPath("/B") % VersionId.Anonymous,
-      JobScript(operatingSystem.sleepingShellScript(0.seconds))))
+    agent.writeExecutable(ExecutablePath(s"/A$sh"), operatingSystem.sleepingShellScript(1.second))  // Allow some time to check web service before order finishes
+    agent.writeExecutable(ExecutablePath(s"/B$sh"), operatingSystem.sleepingShellScript(0.seconds))
   }
 }

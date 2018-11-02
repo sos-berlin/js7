@@ -1,19 +1,18 @@
 package com.sos.jobscheduler.tests.https
 
 import akka.actor.ActorRefFactory
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobScript}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.tests.TestEventCollector
@@ -85,17 +84,18 @@ private[https] object HttpsTestBase
          |  Master = ${quoteString("plain:" + agent.password.string)}
          |}
          |""".stripMargin)
-    agent.writeJson(JobConfiguration(
-      JobPath("/A") % VersionId.Anonymous,
-      JobScript(operatingSystem.sleepingShellScript(0.seconds))))
+    agent.writeExecutable(ExecutablePath(s"/TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
   }
 
-  private def provideMasterConfiguration(master: DirectoryProvider.Tree): Unit = {
+  private def provideMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
     (master.config / "private/private.conf").append("""
       |jobscheduler.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
       |""".stripMargin)
-    master.writeTxt(WorkflowPath("/TEST-WORKFLOW"), """job "/A" on "/TEST-AGENT";""")
+    master.writeTxt(WorkflowPath("/TEST-WORKFLOW"), s"""
+      workflow {
+        execute executable="/TEST$sh", agent="/TEST-AGENT";
+      }""")
   }
 }

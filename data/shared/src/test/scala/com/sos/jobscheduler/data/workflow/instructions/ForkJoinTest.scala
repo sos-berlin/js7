@@ -2,8 +2,9 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -17,8 +18,8 @@ final class ForkJoinTest extends FreeSpec {
   "JSON" in {
     testJson[Instruction.Labeled](
       ForkJoin.of(
-        "A" → Workflow.of(Job(JobPath("/A"), AgentPath("/AGENT"))),
-        "B" → Workflow.of(Job(JobPath("/B"), AgentPath("/AGENT")))),
+        "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A")))),
+        "B" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B"))))),
       json"""{
         "TYPE": "ForkJoin",
         "branches": [
@@ -26,14 +27,14 @@ final class ForkJoinTest extends FreeSpec {
             "id": "A",
             "workflow": {
               "instructions": [
-                { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" }
+                { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A", "taskLimit": 1 }}
               ]
             }
           }, {
             "id": "B",
             "workflow": {
               "instructions": [
-                { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" }
+                { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B", "taskLimit": 1 }}
               ]
             }
           }
