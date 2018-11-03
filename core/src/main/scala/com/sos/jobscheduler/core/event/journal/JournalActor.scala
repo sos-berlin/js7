@@ -67,7 +67,7 @@ extends Actor with Stash {
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
-  for (o ← simulateSync) logger.warn(s"sync is simulated with ${o.pretty} duration")
+  for (o ← simulateSync) logger.warn(s"Disk sync is simulated with ${o.pretty} duration")
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
