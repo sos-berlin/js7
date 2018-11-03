@@ -241,11 +241,10 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
   }
 
-  private def executeOtherCommand(command: Command): Unit = command match {
-    case _ ⇒
-      val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
-      logger.error(msg)
-      sender() ! Status.Failure(new IllegalStateException(msg))
+  private def executeOtherCommand(command: Command): Unit = {
+    val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
+    logger.error(msg)
+    sender() ! Status.Failure(new IllegalStateException(msg))
   }
 
   private def detach(): Unit =

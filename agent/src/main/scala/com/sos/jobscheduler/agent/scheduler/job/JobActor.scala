@@ -89,7 +89,7 @@ extends Actor with Stash {
       filePool.release(orderToTask(order.id).fileSet)
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
-      handleStop()
+      continueTermination()
       handleIfReadyForOrder()
 
     case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
@@ -105,7 +105,7 @@ extends Actor with Stash {
           }
         case _ ⇒
       }
-      handleStop()
+      continueTermination()
 
     case Internal.KillAll ⇒
       killAll(SIGKILL)
@@ -136,7 +136,7 @@ extends Actor with Stash {
     }
   }
 
-  private def handleStop(): Unit = {
+  private def continueTermination(): Unit =
     if (terminating) {
       if (orderToTask.isEmpty) {
         context.stop(self)
@@ -144,7 +144,7 @@ extends Actor with Stash {
         logger.debug(s"Awaiting termination of ${orderToTask.size} tasks")
       }
     }
-  }
+
 
   override def toString = s"JobActor(${jobKey.toString})"
 
