@@ -78,16 +78,19 @@ object Collections {
 
       def ifNotUnique[K, B >: A](key: A ⇒ K, then_ : Iterable[K] ⇒ Traversable[B]): Traversable[B] =
         duplicateKeys(key) match {
-          case o if o.nonEmpty ⇒ then_(o.keys)
-          case _ ⇒ delegate
+          case Some(o) ⇒ then_(o.keys)
+          case None ⇒ delegate
         }
 
       def duplicates: Traversable[A] =
         delegate groupBy identity collect { case (k, v) if v.size > 1 ⇒ k }
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
-      def duplicateKeys[K](key: A ⇒ K): Map[K, Traversable[A]] =
-        delegate groupBy key filter { _._2.size > 1 }
+      def duplicateKeys[K](key: A ⇒ K): Option[Map[K, Traversable[A]]] =
+        delegate groupBy key filter { _._2.size > 1 } match {
+          case o if o.isEmpty ⇒ None
+          case o ⇒ Some(o)
+        }
 
       /**
         * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),

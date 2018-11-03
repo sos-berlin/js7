@@ -130,14 +130,14 @@ final class CollectionsTest extends FreeSpec {
   "duplicateKeys" in {
     def dup(o: Seq[A]) = o duplicateKeys { _.i }
 
-    dup(Seq[A]()) shouldBe 'empty
-    dup(Seq(a1)) shouldBe 'empty
-    dup(Seq(a1, b1)) shouldBe 'empty
-    dup(Seq(a1, b1, c1)) shouldBe 'empty
-    dup(Seq(a1, a1)) shouldEqual Map(1 → Seq(a1, a1))
-    dup(Seq(a1, a2)) shouldEqual Map(1 → Seq(a1, a2))
-    dup(Seq(a1, a2, b1)) shouldEqual Map(1 → Seq(a1, a2))
-    dup(Seq(a1, a2, b1, c1, c2, c3)) shouldEqual Map(1 → Seq(a1, a2), 3 → Seq(c1, c2, c3))
+    assert(dup(Seq[A]()) == None)
+    assert(dup(Seq(a1)) == None)
+    assert(dup(Seq(a1, b1)) == None)
+    assert(dup(Seq(a1, b1, c1)) == None)
+    assert(dup(Seq(a1, a1)) == Some(Map(1 → Seq(a1, a1))))
+    assert(dup(Seq(a1, a2)) == Some(Map(1 → Seq(a1, a2))))
+    assert(dup(Seq(a1, a2, b1)) == Some(Map(1 → Seq(a1, a2))))
+    assert(dup(Seq(a1, a2, b1, c1, c2, c3)) == Some(Map(1 → Seq(a1, a2), 3 → Seq(c1, c2, c3))))
   }
 
   "requireUniqueness" in {

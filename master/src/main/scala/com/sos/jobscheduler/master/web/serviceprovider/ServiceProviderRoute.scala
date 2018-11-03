@@ -43,7 +43,7 @@ private[web] object ServiceProviderRoute {
           svc.namedRoutes map (r ⇒ NamedRouteService(r, svc))
         }.toVector
       routes.duplicateKeys(_.namedRoute.suburi) match {
-        case duplicates if duplicates.nonEmpty ⇒ sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(_.toString).mkString(", "))
+        case Some(duplicates) ⇒ sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(_.toString).mkString(", "))
         case _ ⇒
       }
       if (routes.isEmpty) logger.trace(s"No service provider for $InterfaceName")
