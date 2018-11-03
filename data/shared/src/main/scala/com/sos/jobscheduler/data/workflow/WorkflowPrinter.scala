@@ -68,9 +68,10 @@ object WorkflowPrinter {
           appendWorkflowExecutable(workflowExecutable)
           sb ++= ";\n"
 
-        //case Execute.Named(name) ⇒
-        //  sb ++= "execute " ???
-        //  sb ++= ";\n"
+        case Execute.Named(name) ⇒
+          sb ++= "job "
+          sb ++= name.string
+          sb ++= ";\n"
 
         case ForkJoin(branches) ⇒
           def appendBranch(branch: ForkJoin.Branch) = {
@@ -117,6 +118,20 @@ object WorkflowPrinter {
           sb.append(timeout.toSeconds)
           sb ++= ";\n"
       }
+    }
+
+    if (workflow.nameToJob.nonEmpty) sb ++= "\n"
+    for ((name, job) ← workflow.nameToJob) {
+      indent(nesting)
+      sb ++= "define job "
+      sb ++= name.string
+      sb ++= " {\n"
+      indent(nesting + 1)
+      sb ++= "execute "
+      appendWorkflowExecutable(job)
+      sb ++= "\n"
+      indent(nesting)
+      sb ++= "}\n"
     }
     sb.toString
   }

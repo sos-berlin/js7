@@ -6,6 +6,7 @@ import io.circe.generic.JsonCodec
 /**
   * @author Joacim Zschimmer
   */
+@deprecated
 @JsonCodec
 final case class Goto(to: Label) extends JumpInstruction {
   def nodes = Nil

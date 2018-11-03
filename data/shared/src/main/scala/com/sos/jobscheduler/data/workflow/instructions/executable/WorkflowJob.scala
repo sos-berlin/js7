@@ -32,12 +32,13 @@ final case class WorkflowJob private(
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
 
-  override def toString = s"XX on ${agentPath.string}" + (
+  override def toString = s"Job(agent=${agentPath.string}, executable=${executablePath.string}" + (
     returnCodeMeaning match {
       case ReturnCodeMeaning.Default ⇒ ""
-      case ReturnCodeMeaning.Success(returnCodes) ⇒ s" successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
-      case ReturnCodeMeaning.Failure(returnCodes) ⇒ s" failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
-    })
+      case ReturnCodeMeaning.Success(returnCodes) ⇒ s", successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
+      case ReturnCodeMeaning.Failure(returnCodes) ⇒ s", failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
+    }) +
+    ")"
 }
 
 object WorkflowJob

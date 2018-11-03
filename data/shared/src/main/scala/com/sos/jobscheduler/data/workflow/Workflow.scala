@@ -26,8 +26,10 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow private(id: WorkflowId,
-  labeledInstructions: IndexedSeq[Instruction.Labeled], nameToJob: Map[WorkflowJob.Name, WorkflowJob],
+final case class Workflow private(
+  id: WorkflowId,
+  labeledInstructions: IndexedSeq[Instruction.Labeled],
+  nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   source: Option[String])
 extends FileBased
 {
@@ -47,7 +49,7 @@ extends FileBased
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
       case o: Execute.Named if !nameToJob.contains(o.name) ⇒
-        Problem.fromEager(s"Undefined '${o.name}'")
+        Problem.fromEager(s"Undefined job '${o.name}'")
 
       case jump: JumpInstruction if !labelToNumber.contains(jump.to) ⇒
         Problem.fromEager(s"Unknown label '${jump.to}'")
@@ -200,7 +202,8 @@ extends FileBased
 
   def withoutSource = copy(source = None)
 
-  override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") + s"{ ${labeledInstructions.mkString("; ")} }"
+  override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") +
+    s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) ⇒ s"define job $k { $v }" }.mkString(" ")}"
 }
 
 object Workflow extends FileBased.Companion[Workflow] {

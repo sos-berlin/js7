@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow.parser
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderId
@@ -47,19 +48,57 @@ final class WorkflowParserTest extends FreeSpec {
             Map("A" → "aaa", "B" → "bbb")))))
   }
 
-  //"Execute named" in {
-  //  check("""
-  //    workflow {
-  //      execute EXECUTABLE;
-  //      executable EXECUTABLE executable="/my/executable", agent="/AGENT", successReturnCodes=[0, 1, 3];
-  //    }""",
-  //    Workflow(
-  //      WorkflowPath.NoId,
-  //      Vector(
-  //        Execute.Named(WorkflowJob.Name("EXECUTABLE"))),
-  //      Map(
-  //        WorkflowJob.Name("EXECUTABLE") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my/executable")))))
-  //}
+  "Execute named" in {
+    check("""
+      workflow {
+        job A;
+        job B;
+        job C;
+        define job A {
+          execute executable="/my/executable", agent="/AGENT", successReturnCodes=[0, 1, 3];
+        }
+        define job B {
+          execute executable="/my/executable", agent="/AGENT"
+        };  // Optional semicolon
+        define job C {
+          execute executable="/my/executable", agent="/AGENT"
+        }
+      }""",
+      Workflow(
+        WorkflowPath.NoId,
+        Vector(
+          Execute.Named(WorkflowJob.Name("A")),
+          Execute.Named(WorkflowJob.Name("B")),
+          Execute.Named(WorkflowJob.Name("C"))),
+        Map(
+          WorkflowJob.Name("A") →
+            WorkflowJob(
+              AgentPath("/AGENT"),
+              ExecutablePath("/my/executable"),
+              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
+          WorkflowJob.Name("B") →
+            WorkflowJob(
+              AgentPath("/AGENT"),
+              ExecutablePath("/my/executable")),
+          WorkflowJob.Name("C") →
+            WorkflowJob(
+              AgentPath("/AGENT"),
+              ExecutablePath("/my/executable")))))
+  }
+
+  "Execute named with duplicate jobs" in {
+    assert(WorkflowParser.parse("""
+      workflow {
+        job DUPLICATE;
+        define job DUPLICATE {
+          execute executable="/my/executable", agent="/AGENT";
+        }
+        define job DUPLICATE {
+          execute executable="/my/executable", agent="/AGENT"
+        }
+      }""")
+      == Invalid(Problem("""Duplicate job definitions: DUPLICATE:10:8 ...""""")))
+  }
 
   "Single instruction with relative job path" in {
     check("""workflow { execute executable="/A", agent="AGENT"; }""",

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -48,7 +48,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))))))),
+          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
       """workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
         |}
@@ -63,6 +63,30 @@ final class WorkflowPrinterTest extends FreeSpec {
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.NoFailure)))),
       """workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
+        |}
+        |""".stripMargin)
+  }
+
+  "job JOB" in {
+    check(
+      Workflow(
+        WorkflowPath.NoId,
+        Vector(
+          Execute(WorkflowJob.Name("A")),
+          Execute(WorkflowJob.Name("B"))),
+        Map(
+          WorkflowJob.Name("A") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("B") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/b-script")))),
+      """workflow {
+        |  job A;
+        |  job B;
+        |
+        |  define job A {
+        |    execute executable="/a-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1]
+        |  }
+        |  define job B {
+        |    execute executable="/b-script", agent="/AGENT"
+        |  }
         |}
         |""".stripMargin)
   }

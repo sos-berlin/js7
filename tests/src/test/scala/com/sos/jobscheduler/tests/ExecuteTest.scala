@@ -58,6 +58,15 @@ object ExecuteTest {
     workflow {
       execute executable="/SCRIPT", agent="AGENT";
       execute executable="/SCRIPT-RC", agent="AGENT", arguments={"RETURN_CODE": "1"}, successReturnCodes=[0, 1];
+      job aJob;
+      job bJob;
+
+      define job aJob {
+        execute executable="/SCRIPT", agent="AGENT";
+      }
+      define job bJob {
+        execute executable="/SCRIPT-RC", agent="AGENT", arguments={"RETURN_CODE": "1"}, successReturnCodes=[0, 1];
+      }
     }"""
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).orThrow
 
@@ -70,8 +79,13 @@ object ExecuteTest {
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
     OrderMoved(Position(2)),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+    OrderMoved(Position(3)),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
+    OrderMoved(Position(4)),
     OrderDetachable,
     OrderTransferredToMaster,
     OrderFinished)
 }
-
