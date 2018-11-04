@@ -5,8 +5,9 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.expression.{Evaluator, Scope}
 import com.sos.jobscheduler.data.order.{Order, Outcome}
+import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.If
-import com.sos.jobscheduler.data.workflow.{OrderContext, Position}
+import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer

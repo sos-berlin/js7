@@ -8,7 +8,8 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved, 
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.{OrderContext, Position, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{OrderContext, WorkflowPath}
 import org.scalatest.FreeSpec
 
 /**

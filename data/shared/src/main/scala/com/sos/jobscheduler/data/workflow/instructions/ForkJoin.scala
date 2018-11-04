@@ -5,7 +5,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.{Instruction, Position, Workflow}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.IndexedSeq
 import scala.language.implicitConversions
@@ -29,7 +30,7 @@ extends Instruction
   //  // If branches end on multiple Agents, only the Master can join the Orders
   //  branches.values forall (_ isEndingOnAgent agentPath)
 
-  def workflowOption(branchId: Position.BranchId.Named): Option[Workflow] =
+  def workflowOption(branchId: BranchId.Named): Option[Workflow] =
     branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow }
 
   override def flattenedInstructions(outer: Position) =
@@ -51,8 +52,8 @@ object ForkJoin {
       Valid(branch)
 
   @JsonCodec
-  final case class Branch(id: Position.BranchId.Named, workflow: Workflow)
+  final case class Branch(id: BranchId.Named, workflow: Workflow)
   object Branch {
-    implicit def fromPair(pair: (Position.BranchId.Named, Workflow)) = new Branch(pair._1, pair._2)
+    implicit def fromPair(pair: (BranchId.Named, Workflow)) = new Branch(pair._1, pair._2)
   }
 }

@@ -34,8 +34,9 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}

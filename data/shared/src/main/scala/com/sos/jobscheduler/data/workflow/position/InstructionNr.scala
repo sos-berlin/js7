@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.workflow
+package com.sos.jobscheduler.data.workflow.position
 
 import com.sos.jobscheduler.base.generic.GenericInt
 import scala.language.implicitConversions
@@ -6,7 +6,8 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class InstructionNr(number: Int) extends GenericInt {
+final case class InstructionNr(number: Int) extends GenericInt
+{
   require(number >= InstructionNr.FirstInt, s"Negative Index? $number")
 
   def +(n: Int) = copy(number + n)
@@ -14,7 +15,8 @@ final case class InstructionNr(number: Int) extends GenericInt {
   override def toString = s"#$number"
 }
 
-object InstructionNr extends GenericInt.Companion[InstructionNr] {
+object InstructionNr extends GenericInt.Companion[InstructionNr]
+{
   private val FirstInt = 0
   val First = InstructionNr(FirstInt)
 

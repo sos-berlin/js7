@@ -9,7 +9,8 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
-import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext, Position, Workflow, WorkflowId, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext, Workflow, WorkflowId}
 import scala.annotation.tailrec
 
 /**

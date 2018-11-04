@@ -14,7 +14,8 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin}
-import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
 import io.circe.Json
 import org.scalatest.FreeSpec

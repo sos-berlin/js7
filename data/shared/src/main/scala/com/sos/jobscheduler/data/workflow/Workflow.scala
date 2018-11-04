@@ -18,6 +18,7 @@ import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
@@ -75,9 +76,9 @@ extends FileBased
     instructions.length - 1
 
   def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
-    flattenedInstructions(Position.Parents.Empty)
+    flattenedInstructions(BranchPath.Empty)
 
-  def flattenedInstructions(parents: Position.Parents): Seq[(Position, Instruction.Labeled)] =
+  def flattenedInstructions(parents: BranchPath): Seq[(Position, Instruction.Labeled)] =
     numberedInstructions flatMap { case (nr, labeled)  ⇒ ((parents / nr) → labeled) +: labeled.instruction.flattenedInstructions(parents / nr) }
 
   def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
@@ -122,12 +123,12 @@ extends FileBased
   def isDefinedAt(position: Position): Boolean =
     position match {
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
-      case Position(Position.Parent(nr, branch: Position.BranchId.Named) :: tail, tailNr) ⇒
+      case Position(Position.Parent(nr, branch: BranchId.Named) :: tail, tailNr) ⇒
         instruction(nr) match {
           case fj: ForkJoin ⇒ fj.workflowOption(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
-      case Position(Position.Parent(nr, branch: Position.BranchId.Indexed) :: tail, tailNr) ⇒
+      case Position(Position.Parent(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
         instruction(nr) match {
           case instr: If ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
@@ -163,9 +164,9 @@ extends FileBased
 
       case Position(Position.Parent(nr, branchId) :: tail, tailNr) ⇒
         (instruction(nr), branchId) match {
-          case (instr: If, Position.BranchId.Indexed(index)) ⇒
+          case (instr: If, BranchId.Indexed(index)) ⇒
             instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
-          case (fj: ForkJoin, branchId: Position.BranchId.Named) ⇒
+          case (fj: ForkJoin, branchId: BranchId.Named) ⇒
             fj.workflowOption(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
             Gap
@@ -188,11 +189,11 @@ extends FileBased
   private def workflowOption(parents: List[Position.Parent]): Option[Workflow] =
     parents match {
       case Nil ⇒ this.some
-      case Position.Parent(nr, branchId: Position.BranchId) :: tail ⇒
+      case Position.Parent(nr, branchId: BranchId) :: tail ⇒
         (instruction(nr), branchId) match {
-          case (o: ForkJoin, branchId: Position.BranchId.Named) ⇒
+          case (o: ForkJoin, branchId: BranchId.Named) ⇒
             o.workflowOption(branchId) flatMap (_.workflowOption(tail))
-          case (o: If, branchId: Position.BranchId.Indexed) ⇒
+          case (o: If, branchId: BranchId.Indexed) ⇒
             o.workflow(branchId).toOption flatMap (_.workflowOption(tail))
           case _ ⇒
             None

@@ -4,8 +4,9 @@ import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.instr
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished}
+import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin}
-import com.sos.jobscheduler.data.workflow.{OrderContext, Position}
+import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer

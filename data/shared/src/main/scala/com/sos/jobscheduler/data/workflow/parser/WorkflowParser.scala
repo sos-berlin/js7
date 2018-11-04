@@ -12,7 +12,8 @@ import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
 import com.sos.jobscheduler.data.workflow.parser.Parsers.ops._
-import com.sos.jobscheduler.data.workflow.{Instruction, Label, Position, Workflow, WorkflowId, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.position.BranchId
+import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.all._
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration.Duration
@@ -96,7 +97,7 @@ object WorkflowParser {
         map (name ⇒ Execute.Named(WorkflowJob.Name(name))))
 
     private val forkInstruction = P[ForkJoin]{
-      val orderSuffix = P(quotedString map (o ⇒ Position.BranchId.Named(o)))
+      val orderSuffix = P(quotedString map (o ⇒ BranchId.Named(o)))
       val forkBranch = P[ForkJoin.Branch](
         (orderSuffix ~~ curlyWorkflow)
           map ForkJoin.Branch.fromPair)

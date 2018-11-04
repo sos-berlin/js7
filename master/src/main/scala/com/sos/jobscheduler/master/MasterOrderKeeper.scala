@@ -42,7 +42,8 @@ import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, Ver
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
 import com.sos.jobscheduler.master.command.CommandMeta

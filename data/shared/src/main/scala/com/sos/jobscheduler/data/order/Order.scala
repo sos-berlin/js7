@@ -12,7 +12,8 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowId, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.WorkflowId
+import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag

@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap}
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 import org.scalatest.FreeSpec
 
 /**

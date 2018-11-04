@@ -1,5 +1,6 @@
-package com.sos.jobscheduler.data.workflow
+package com.sos.jobscheduler.data.workflow.position
 
+import com.sos.jobscheduler.data.workflow.WorkflowId
 import io.circe.generic.JsonCodec
 import scala.language.implicitConversions
 
@@ -12,8 +13,9 @@ final case class WorkflowPosition(workflowId: WorkflowId, position: Position) {
   override def toString = s"$workflowId/$position"
 }
 
-object WorkflowPosition {
-
+object WorkflowPosition
+{
+  // TODO Should be explicit
   implicit def apply(workflowId: WorkflowId): WorkflowPosition =
     WorkflowPosition(workflowId, Position(InstructionNr.First))
 

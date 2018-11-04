@@ -5,7 +5,8 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.BooleanExpression
-import com.sos.jobscheduler.data.workflow.{Instruction, Position, Workflow}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 
@@ -21,7 +22,7 @@ final case class If(
   elseWorkflow: Option[Workflow] = None)
 extends Instruction
 {
-  def workflow(branchId: Position.BranchId.Indexed): Checked[Workflow] =
+  def workflow(branchId: BranchId.Indexed): Checked[Workflow] =
     branchId.number match {
       case 0 ⇒ Valid(thenWorkflow)
       case 1 ⇒ elseWorkflow toChecked Problem("This If has no 'else' branch")

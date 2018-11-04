@@ -17,7 +17,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 
 /**
   * @author Joacim Zschimmer

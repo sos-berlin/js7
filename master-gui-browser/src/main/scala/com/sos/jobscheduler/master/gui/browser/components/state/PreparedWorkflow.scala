@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.master.gui.browser.components.state
 
-import com.sos.jobscheduler.data.workflow.Position.BranchId
 import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd}
-import com.sos.jobscheduler.data.workflow.{Instruction, InstructionNr, Position, Workflow, WorkflowId}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow._
 import com.sos.jobscheduler.master.gui.browser.components.workfloworders.WorkflowComponent.moveElement
 import japgolly.scalajs.react.vdom.html_<^._
@@ -25,7 +25,7 @@ object PreparedWorkflow {
       val positionsWithXY = Vector.newBuilder[(Position, Int, Int)]
       var lastY = 0
       // Same procedure as in WorkflowComponent
-      def renderNested(labeledInstructions: Seq[Instruction.Labeled], parents: Position.Parents, nesting: Int): Unit = {
+      def renderNested(labeledInstructions: Seq[Instruction.Labeled], parents: BranchPath, nesting: Int): Unit = {
         for ((labeled, nr) ← labeledInstructions.zipWithIndex) {
           val y = lastY
           lastY += InstructionHeight
@@ -52,7 +52,7 @@ object PreparedWorkflow {
           }
         }
       }
-      renderNested(workflow.labeledInstructions, Position.Parents.Empty, nesting = 0)
+      renderNested(workflow.labeledInstructions, BranchPath.Empty, nesting = 0)
       positionsWithXY.result()
     }
   }

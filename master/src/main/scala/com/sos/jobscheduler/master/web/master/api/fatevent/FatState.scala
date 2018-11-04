@@ -11,8 +11,9 @@ import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEve
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Execute
-import com.sos.jobscheduler.data.workflow.{Position, Workflow}
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 
 /**

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.workflow
+package com.sos.jobscheduler.data.workflow.position
 
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.workflow.Position._
+import com.sos.jobscheduler.data.workflow.position.Position._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -39,10 +39,10 @@ final class PositionTest extends FreeSpec {
     }
   }
 
-  "Parents" in {
-    assert((Position.Parents.Empty / 7) == Position(7))
-    assert((Position.Parents.NonEmpty(Position(1), Position.BranchId(2)) / 3) == Position(1, 2, 3))
-    //assert(Position.Parents.NonEmpty(Position(1), Position.BranchId(2)) / Position(3, 4, 5) ==
+  "BranchPath" in {
+    assert((BranchPath.Empty / 7) == Position(7))
+    assert((BranchPath.NonEmpty(Position(1), BranchId(2)) / 3) == Position(1, 2, 3))
+    //assert(BranchPath.NonEmpty(Position(1), BranchId(2)) / Position(3, 4, 5) ==
     //  Position(Position.Parent(1, 2) :: Position.Parent(3, 4) :: Nil, 5))
   }
 

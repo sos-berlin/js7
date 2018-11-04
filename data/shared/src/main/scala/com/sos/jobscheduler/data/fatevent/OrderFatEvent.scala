@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 
@@ -31,7 +31,7 @@ object OrderFatEvent
   final case class OrderForkedFat(workflowPosition: WorkflowPosition, children: Seq[OrderForkedFat.Child]) extends OrderFatEvent
   object OrderForkedFat {
     @JsonCodec
-    final case class Child(branchId: Position.BranchId.Named, orderId: OrderId, variables: Map[String, String])
+    final case class Child(branchId: BranchId.Named, orderId: OrderId, variables: Map[String, String])
   }
 
   final case class OrderJoinedFat(childOrderIds: Seq[OrderId], variables: Map[String, String], outcome: Outcome)

@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.master.gui.browser.common
 
+import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.ImplicitEnd
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{AExecutable, BExecutable}
-import com.sos.jobscheduler.data.workflow.{Instruction, Position}
 
 /**
   * @author Joacim Zschimmer

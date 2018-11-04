@@ -6,7 +6,8 @@ import com.sos.jobscheduler.data.event.<-:
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Offer}
-import com.sos.jobscheduler.data.workflow.{OrderContext, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import com.sos.jobscheduler.data.workflow.{OrderContext, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 

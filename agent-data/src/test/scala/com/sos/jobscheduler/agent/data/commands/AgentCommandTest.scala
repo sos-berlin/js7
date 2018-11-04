@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.data.commands
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Position
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json

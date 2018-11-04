@@ -3,7 +3,8 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 

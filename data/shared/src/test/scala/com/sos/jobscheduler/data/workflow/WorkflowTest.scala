@@ -10,6 +10,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.position.{BranchId, InstructionNr, Position}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -157,7 +158,7 @@ final class WorkflowTest extends FreeSpec {
     assert(TestWorkflow.workflowOption(Position(0)) == TestWorkflow.some)
     assert(TestWorkflow.workflowOption(Position(1)) == TestWorkflow.some)
     assert(TestWorkflow.workflowOption(Position(2, "🥕", 1)) == Some(
-      TestWorkflow.instruction(2).asInstanceOf[ForkJoin].workflowOption(Position.BranchId("🥕")).get))
+      TestWorkflow.instruction(2).asInstanceOf[ForkJoin].workflowOption(BranchId("🥕")).get))
   }
 
   "reduce" in {

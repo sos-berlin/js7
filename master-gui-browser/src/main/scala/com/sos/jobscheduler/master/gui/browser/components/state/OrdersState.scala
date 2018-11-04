@@ -7,7 +7,8 @@ import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.system.Stdout
-import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.WorkflowId
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.master.gui.browser.common.Utils._
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{Content, OrderEntry}
 import org.scalajs.dom.window

@@ -8,7 +8,8 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order._
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -155,8 +156,8 @@ final class OrderTest extends FreeSpec {
 
     "Forked" in {
       check(Forked(List(
-        Forked.Child(Position.BranchId("A"), OrderId("A/1"), MapDiff(Map("K" → "V"))),
-        Forked.Child(Position.BranchId("B"), OrderId("B/1")))),
+        Forked.Child(BranchId("A"), OrderId("A/1"), MapDiff(Map("K" → "V"))),
+        Forked.Child(BranchId("B"), OrderId("B/1")))),
         json"""{
           "TYPE": "Forked",
             "children": [

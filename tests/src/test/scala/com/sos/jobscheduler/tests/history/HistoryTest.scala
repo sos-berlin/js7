@@ -22,8 +22,8 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.Outcome.Succeeded
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.Position.BranchId
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.DirectoryProvider

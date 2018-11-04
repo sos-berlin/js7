@@ -11,7 +11,8 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer}
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
 import java.util.regex.Pattern
 import sangria.ast
 import sangria.marshalling.FromInput.CoercedScalaResult

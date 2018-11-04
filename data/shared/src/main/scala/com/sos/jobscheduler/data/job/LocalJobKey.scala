@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.job
 
-import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.position.Position
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import scala.language.implicitConversions

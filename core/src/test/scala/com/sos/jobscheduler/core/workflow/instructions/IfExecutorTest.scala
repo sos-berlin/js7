@@ -7,7 +7,8 @@ import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
-import com.sos.jobscheduler.data.workflow.{OrderContext, Position, Workflow, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{OrderContext, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 
 /**

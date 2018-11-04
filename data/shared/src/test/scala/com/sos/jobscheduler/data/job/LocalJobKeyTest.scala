@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.job
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tester.CirceJsonTester._
 import org.scalatest.FreeSpec
 

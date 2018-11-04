@@ -3,7 +3,8 @@ package com.sos.jobscheduler.master.gui.browser.components.workflow
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.instructions._
-import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowId}
+import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.data.workflow.{Instruction, WorkflowId}
 import com.sos.jobscheduler.master.gui.browser.common.FlatWorkflows.flattenWorkflow
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow

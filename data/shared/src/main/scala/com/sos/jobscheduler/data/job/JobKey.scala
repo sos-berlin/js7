@@ -2,7 +2,8 @@ package com.sos.jobscheduler.data.job
 
 import cats.syntax.either._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowId, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.language.implicitConversions
