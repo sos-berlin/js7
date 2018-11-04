@@ -63,11 +63,11 @@ extends FileBased
 
   def firstExecutablePosition = Position(0)
 
-  def labelToPosition(parents: List[Position.Parent], label: Label): Option[Position] =
+  def labelToPosition(branchPath: BranchPath, label: Label): Option[Position] =
     for {
-      workflow ← workflowOption(parents)
+      workflow ← workflowOption(branchPath)
       nr ← workflow.labelToNumber.get(label)
-    } yield Position(parents, nr)
+    } yield branchPath / nr
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -76,10 +76,10 @@ extends FileBased
     instructions.length - 1
 
   def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
-    flattenedInstructions(BranchPath.Empty)
+    flattenedInstructions(Nil)
 
-  def flattenedInstructions(parents: BranchPath): Seq[(Position, Instruction.Labeled)] =
-    numberedInstructions flatMap { case (nr, labeled)  ⇒ ((parents / nr) → labeled) +: labeled.instruction.flattenedInstructions(parents / nr) }
+  def flattenedInstructions(branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =
+    numberedInstructions flatMap { case (nr, labeled)  ⇒ ((branchPath / nr) → labeled) +: labeled.instruction.flattenedInstructions(branchPath / nr) }
 
   def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
     labeledInstructions.zipWithIndex.map {
@@ -123,12 +123,12 @@ extends FileBased
   def isDefinedAt(position: Position): Boolean =
     position match {
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
-      case Position(Position.Parent(nr, branch: BranchId.Named) :: tail, tailNr) ⇒
+      case Position(BranchPath.Segment(nr, branch: BranchId.Named) :: tail, tailNr) ⇒
         instruction(nr) match {
           case fj: ForkJoin ⇒ fj.workflowOption(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
-      case Position(Position.Parent(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
+      case Position(BranchPath.Segment(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
         instruction(nr) match {
           case instr: If ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
@@ -162,7 +162,7 @@ extends FileBased
       case Position(Nil, nr) ⇒
         instruction(nr)
 
-      case Position(Position.Parent(nr, branchId) :: tail, tailNr) ⇒
+      case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) ⇒
         (instruction(nr), branchId) match {
           case (instr: If, BranchId.Indexed(index)) ⇒
             instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
@@ -174,7 +174,7 @@ extends FileBased
     }
 
   def labeledInstruction(position: Position): Instruction.Labeled =
-    workflowOption(position.parents).flatMap(_.labeledInstructions.get(position.nr.number))
+    workflowOption(position.branchPath).flatMap(_.labeledInstructions.get(position.nr.number))
       .getOrElse(throw new IllegalArgumentException(s"Unknown workflow position $position"))
 
   def instruction(nr: InstructionNr): Instruction =
@@ -184,12 +184,12 @@ extends FileBased
       Gap
 
   def workflowOption(position: Position): Option[Workflow] =
-    workflowOption(position.parents)
+    workflowOption(position.branchPath)
 
-  private def workflowOption(parents: List[Position.Parent]): Option[Workflow] =
-    parents match {
+  private def workflowOption(branchPath: BranchPath): Option[Workflow] =
+    branchPath match {
       case Nil ⇒ this.some
-      case Position.Parent(nr, branchId: BranchId) :: tail ⇒
+      case BranchPath.Segment(nr, branchId) :: tail ⇒
         (instruction(nr), branchId) match {
           case (o: ForkJoin, branchId: BranchId.Named) ⇒
             o.workflowOption(branchId) flatMap (_.workflowOption(tail))

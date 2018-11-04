@@ -25,11 +25,11 @@ object PreparedWorkflow {
       val positionsWithXY = Vector.newBuilder[(Position, Int, Int)]
       var lastY = 0
       // Same procedure as in WorkflowComponent
-      def renderNested(labeledInstructions: Seq[Instruction.Labeled], parents: BranchPath, nesting: Int): Unit = {
+      def renderNested(labeledInstructions: Seq[Instruction.Labeled], branchPath: BranchPath, nesting: Int): Unit = {
         for ((labeled, nr) ← labeledInstructions.zipWithIndex) {
           val y = lastY
           lastY += InstructionHeight
-          val position = parents / InstructionNr(nr)
+          val position = branchPath / InstructionNr(nr)
           positionsWithXY += ((position, nestingPx(nesting), y))
           addVdom(<.div(^.cls := "orders-Instruction", moveElement(nestingPx(nesting), y), instructionToVdom(labeled)))
           labeled.instruction match {
@@ -52,7 +52,7 @@ object PreparedWorkflow {
           }
         }
       }
-      renderNested(workflow.labeledInstructions, BranchPath.Empty, nesting = 0)
+      renderNested(workflow.labeledInstructions, Nil, nesting = 0)
       positionsWithXY.result()
     }
   }

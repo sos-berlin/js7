@@ -12,6 +12,8 @@ final case class InstructionNr(number: Int) extends GenericInt
 
   def +(n: Int) = copy(number + n)
 
+  def /(branchId: BranchId) = BranchPath.Segment(this, branchId)
+
   override def toString = s"#$number"
 }
 

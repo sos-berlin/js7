@@ -6,13 +6,13 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowBranchPath(workflowId: WorkflowId, parents: BranchPath)
+final case class WorkflowBranchPath(workflowId: WorkflowId, branchPath: BranchPath)
 {
   def /(nr: InstructionNr): WorkflowPosition =
-    WorkflowPosition(workflowId, parents / nr)
+    WorkflowPosition(workflowId, branchPath / nr)
 }
 
 object WorkflowBranchPath
 {
-  implicit def apply(workflowId: WorkflowId) = new WorkflowBranchPath(workflowId, BranchPath.Empty)
+  implicit def apply(workflowId: WorkflowId) = new WorkflowBranchPath(workflowId, Nil)
 }

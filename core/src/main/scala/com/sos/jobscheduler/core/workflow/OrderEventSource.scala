@@ -76,11 +76,11 @@ final class OrderEventSource(
     idToWorkflow(order.workflowId).toOption flatMap { workflow ⇒
       workflow.instruction(order.position) match {
         case Goto(label) ⇒
-          workflow.labelToPosition(order.position.parents, label)
+          workflow.labelToPosition(order.position.branchPath, label)
 
         case IfNonZeroReturnCodeGoto(label) ⇒
           if (order.state.outcome.isFailed)
-            workflow.labelToPosition(order.position.parents, label)
+            workflow.labelToPosition(order.position.branchPath, label)
           else
             Some(order.position.increment)
 

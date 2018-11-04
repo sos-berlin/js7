@@ -67,7 +67,7 @@ object WorkflowComponent {
 
   private def renderInstruction(pi: (Position, Instruction.Labeled)): VdomNode =
     VdomArray(
-      pi._1.parents map (_.branchId) mkString "/",
+      pi._1.branchPath map (_.branchId) mkString "/",
       " ",
       pi._2.labels.map(_ + ": ").mkString,
       pi._2.instruction match {

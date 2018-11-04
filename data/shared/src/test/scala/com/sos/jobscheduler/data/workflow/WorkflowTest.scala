@@ -121,7 +121,7 @@ final class WorkflowTest extends FreeSpec {
       "B" @: ExplicitEnd)
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
-    assert(workflow.labelToPosition(Position.Parent(1, 0) :: Nil, Label("B")) == Some(Position(1, 0, 0)))
+    assert(workflow.labelToPosition(Position(1) / 0, Label("B")) == Some(Position(1, 0, 0)))
   }
 
   "Duplicate labels" in {

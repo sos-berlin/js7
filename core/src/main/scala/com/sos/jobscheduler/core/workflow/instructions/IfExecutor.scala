@@ -27,7 +27,7 @@ object IfExecutor extends PositionInstructionExecutor {
             case true ⇒ Some(0)  // Then
             case false ⇒ instruction.elseWorkflow.isDefined ? 1  // Else
           }.map {
-            case Some(thenOrElse) ⇒ Position(Position.Parent(order.position.nr, thenOrElse) :: Nil, 0)
+            case Some(thenOrElse) ⇒ Position((order.position.nr / thenOrElse) :: Nil, 0)
             case None ⇒ order.position.increment  // Skip statement
           }.onProblem(p ⇒ logger.error(s"$p")) // TODO None is an error. Return Invalid
 

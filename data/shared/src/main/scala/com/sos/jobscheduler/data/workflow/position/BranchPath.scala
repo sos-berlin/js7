@@ -1,68 +1,38 @@
 package com.sos.jobscheduler.data.workflow.position
 
-import com.sos.jobscheduler.data.workflow.position.Position.{Parent, decodeParents}
-import com.sos.jobscheduler.data.workflow.WorkflowId
-import io.circe.syntax.EncoderOps
-import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import io.circe.{Decoder, DecodingFailure, Json}
+import scala.collection.mutable
 
 /** Denotes globally a branch in a statement, for example fork or if-then-else, globally unique.
   *
   * @author Joacim Zschimmer
   */
-sealed trait BranchPath
-{
-  def /(nr: InstructionNr): Position
-
-  def /:(workflowId: WorkflowId) = WorkflowBranchPath(workflowId, this)
-
-  final def nonEmpty = !isEmpty
-
-  def isEmpty: Boolean
-
-  protected[workflow] def asJsonArray: Vector[Json]
-}
-
 object BranchPath
 {
-  def fromList(parents: List[Parent]): BranchPath =
-    parents match {
-      case Nil ⇒ Empty
-      case _ ⇒ NonEmpty(Position(parents dropRight 1, parents.last.nr), parents.last.branchId)
-    }
+  final case class Segment(nr: InstructionNr, branchId: BranchId)
+  object Segment {
+    def apply(nr: InstructionNr, branchId: String): Segment =
+      Segment(nr, BranchId.Named(branchId))
 
-  final case class NonEmpty private[position](position: Position, branchId: BranchId) extends BranchPath
-  {
-    def /(nr: InstructionNr) = Position(asList, nr)
-
-    def isEmpty = false
-
-    def dropLast: BranchPath = position.parents match {
-      case Nil ⇒ Empty
-      case _ ⇒ NonEmpty(Position(position.parents.dropRight(1), position.nr), position.parents.last.branchId)
-    }
-
-    def asList = position.parents ::: Parent(position.nr, branchId) :: Nil
-
-    protected[workflow] def asJsonArray = position.asJsonArray :+ branchId.asJson
+    def apply(nr: InstructionNr, index: Int): Segment =
+      Segment(nr, BranchId.Indexed(index))
   }
 
-  case object Empty extends BranchPath
-  {
-    def /(nr: InstructionNr) = Position(nr)
-
-    def isEmpty = true
-
-    def asList = Nil
-
-    protected[workflow] def asJsonArray = Vector.empty
+  private[position] def decodeSegments(pairs: Iterator[List[Json]]): Decoder.Result[BranchPath] = {
+    var left: Option[Left[DecodingFailure, Nothing]] = None
+    val b = mutable.ListBuffer[Segment]()
+    val parentResults: Iterator[Decoder.Result[Segment]] = pairs map decodeSegment
+    parentResults foreach {
+      case Left(error) ⇒ left = Some(Left(error))
+      case Right(parent) ⇒ b += parent
+    }
+    left getOrElse Right(b.toList)
   }
 
-  implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
-
-  implicit val jsonDecoder: Decoder[BranchPath] =
-    _.as[List[Json]] flatMap (parts ⇒
-      if (parts.size % 2 != 0)
-        Left(DecodingFailure("Not a valid BranchPath", Nil))
-      else
-        decodeParents(parts grouped 2) map fromList)
+  private def decodeSegment(pair: List[Json]): Decoder.Result[Segment] =
+    for {
+      nr ← pair.head.as[InstructionNr]
+      branchId ← pair(1).as[BranchId]
+    } yield Segment(nr, branchId)
 }
