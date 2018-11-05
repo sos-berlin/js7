@@ -255,8 +255,10 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def startJobActors(workflow: Workflow): Unit =
-    for ((jobKey, job) ← workflow.keyAndJobs) {
-      val jobActor = watch(actorOf(JobActor.props(jobKey, job, newTaskRunner, executableDirectory = executableDirectory)(scheduler)))
+    for ((jobKey, job) ← workflow.keyToJob) {
+      val jobActor = watch(actorOf(
+        JobActor.props(jobKey, job, newTaskRunner, executableDirectory = executableDirectory)
+        /*TODO name actor?*/))
       jobRegister.insert(jobKey, jobActor)
     }
 
@@ -331,11 +333,11 @@ extends MainJournalingActor[Event] with Stash {
       for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
         orderEntry.instruction match {
           case _: Execute ⇒
-            val jobKey = (orderEntry.instruction: @unchecked) match {
-              case _: Execute.Anonymous ⇒ JobKey.Anonymous(orderEntry.order.workflowPosition)
-              case o: Execute.Named     ⇒ JobKey.Named(orderEntry.workflow.id, o.name)
+            val checkedJobKey = (orderEntry.instruction: @unchecked) match {
+              case _: Execute.Anonymous ⇒ Valid(JobKey.Anonymous(orderEntry.order.workflowPosition))
+              case o: Execute.Named     ⇒ orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)
             }
-            for (jobEntry ← jobRegister.checked(jobKey) onProblem (p ⇒ logger.error(p))){
+            for (jobEntry ← checkedJobKey flatMap jobRegister.checked onProblem (p ⇒ logger.error(p))){
               onOrderAvailableForJob(orderEntry.order.id, jobEntry)
             }
 

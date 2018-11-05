@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.workflow
 
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.data.workflow.position._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, ObjectEncoder}
 import scala.collection.immutable.Seq
@@ -12,8 +14,17 @@ import scala.language.implicitConversions
   */
 trait Instruction
 {
+  def adopt(workflow: Workflow): Instruction =
+    this
+
+  def flattenedWorkflows(parentPosition: Position): List[(BranchPath, Workflow)] =
+    Nil
+
   def flattenedInstructions(parentPosition: Position): Seq[(Position, Instruction.Labeled)] =
     Nil
+
+  def workflow(branchId: BranchId): Checked[Workflow] =
+    Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")
 
   final def @:(labels: Seq[Label]) = Labeled(labels, this)
   final def @:(label: Label) = Labeled(label :: Nil, this)

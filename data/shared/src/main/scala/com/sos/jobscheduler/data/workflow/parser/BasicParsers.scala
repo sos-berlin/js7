@@ -48,10 +48,8 @@ private[parser] object BasicParsers
   //val newline = P(h ~ "\r".? ~ "\n" ~ w)
   //val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
   val int = P[Int](("-".? ~ CharsWhile(c ⇒ c >= '0' && c <= '9')).! map (_.toInt))
-  //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
-  val identifier = P[String]((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
-  def keyword = identifier
-  def keyword(name: String) = P[Unit](name)  // TODO require word boundary
+  val identifierEnd = &(CharPred(c ⇒ !isIdentifierPart(c))) | End
+  val identifier = P[String]((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).! ~ identifierEnd)
   val quotedString = P[String] {
     val singleQuoted = P("'" ~/
       (CharsWhile(ch ⇒ ch != '\'' && ch >= ' ', min = 0).! ~ "'").opaque(
@@ -68,6 +66,10 @@ private[parser] object BasicParsers
   //val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
 
   val pathString = P[String](quotedString)
+
+  def keyword = identifier
+
+  def keyword(name: String) = P[Unit](name ~ identifierEnd)
 
   def path[P <: TypedPath: TypedPath.Companion] = P[P](
     pathString map (p ⇒ FolderPath.Root.resolve[P](p)))

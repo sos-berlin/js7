@@ -29,11 +29,15 @@ object WorkflowParser {
   def parse(id: WorkflowId, string: String): Checked[Workflow] =
     parser.whole.checkedParse(string) map (_.copy(id = id, source = Some(string)))
 
-  private object parser {
+  private object parser
+  {
     private val label = identifier map Label.apply
 
+    private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
+    //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
+
     private lazy val workflow = P[Workflow](
-      keyword("workflow") ~~/ curlyWorkflow)
+      keyword("workflow") ~~/ curlyWorkflow.flatMap(o ⇒ CheckedParser(o.completelyChecked)))
 
     private lazy val curlyWorkflow = P[Workflow](
       curly((labeledInstruction | jobDefinition).rep)
@@ -44,7 +48,7 @@ object WorkflowParser {
             Fail.opaque(s"Duplicate job definitions: ${dups.keys.mkString(", ")}")
           case None ⇒
             CheckedParser(
-              Workflow.checked(
+              Workflow.checkedSub(
                 WorkflowPath.NoId,
                 items.collect { case o: Instruction.Labeled ⇒ o } .toVector,
                 jobs.toMap))
@@ -116,9 +120,9 @@ object WorkflowParser {
         map (orderId_ ⇒ AwaitOrder(OrderId(orderId_))))
 
     private val ifInstruction = P[If](
-      (keyword("if") ~~ "(" ~~ booleanExpression ~~ ")" ~
-        w ~ curlyWorkflow ~
-        (w ~ "else" ~~ curlyWorkflow ~ w).?
+      (keyword("if") ~~/ "(" ~~ booleanExpression ~~ ")" ~~/
+        curlyWorkflow ~/
+        (w ~ "else" ~~/ curlyWorkflow).?
       ) map { case (expr, then_, else_) ⇒
         If(expr, then_, else_)
       }
@@ -143,10 +147,6 @@ object WorkflowParser {
         jobInstruction |
         offerInstruction)
 
-    private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
-
-    private val optionalInstructionTerminator = P(instructionTerminator | w)
-
     private val labeledInstruction = P[Labeled](
       (labelDef.rep ~ instruction ~ instructionTerminator)
         map { case (labels, instruction_) ⇒ Labeled(labels.toImmutableSeq, instruction_)})
@@ -154,8 +154,8 @@ object WorkflowParser {
     private val jobDefinition = P[(WorkflowJob.Name, WorkflowJob)](
       keyword("define") ~~/ keyword("job") ~~/
         identifier.map(WorkflowJob.Name.apply) ~~/
-        curly(executeInstruction ~~ instructionTerminator).map(_.job) ~~/
-        optionalInstructionTerminator)
+        curly(executeInstruction ~~ instructionTerminator).map(_.job) ~/
+        w)
 
     val whole = w ~/ workflow ~~/ End
   }

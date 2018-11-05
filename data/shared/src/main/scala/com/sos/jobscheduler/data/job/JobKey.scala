@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.data.job
 
 import cats.syntax.either._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition, _}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -11,35 +12,35 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-sealed trait JobKey {
-  //def toLocalJobKey: LocalJobKey
-}
+sealed trait JobKey
 
-object JobKey {
+object JobKey
+{
   def apply(workflowPosition: WorkflowPosition) =
     Anonymous(workflowPosition)
 
-  def apply(workflowId: WorkflowId, name: WorkflowJob.Name) =
-    Named(workflowId, name)
+  def apply(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) =
+    Named(workflowBranchPath, name)
 
   def forTest: JobKey = forTest("TEST")
 
-  def forTest(name: String) = Named(WorkflowPath.NoId, WorkflowJob.Name(name))
+  def forTest(name: String) = Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
-  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
-    def toLocalJobKey = LocalJobKey.Anonymous(workflowPosition.position)
-  }
+  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey
 
-  final case class Named(workflowId: WorkflowId, name: WorkflowJob.Name) extends JobKey {
-    def toLocalJobKey = LocalJobKey.Named(name)
-  }
+  final case class Named(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) extends JobKey
 
   implicit val jsonEncoder: ObjectEncoder[JobKey] = {
     case Anonymous(WorkflowPosition(workflowId, position)) ⇒
-      JsonObject("workflowId" → workflowId.asJson, "position" → position.asJson)
+      JsonObject(
+        "workflowId" → workflowId.asJson,
+        "position" → position.asJson)
 
-    case Named(workflowId, name) ⇒
-      JsonObject("workflowId" → workflowId.asJson, "name" → name.asJson)
+    case Named(WorkflowBranchPath(workflowId, branchPath), name) ⇒
+      JsonObject(
+        "workflowId" → workflowId.asJson,
+        "branchPath" → (branchPath.nonEmpty ? branchPath).asJson,
+        "name" → name.asJson)
   }
 
   implicit val jsonDecoder: Decoder[JobKey] =
@@ -47,6 +48,9 @@ object JobKey {
       workflowId ← c.get[WorkflowId]("workflowId")
       jobKey ← c.get[Position]("position").map(o ⇒ Anonymous(workflowId /: o))
         .orElse(
-          c.get[WorkflowJob.Name]("name").map(o ⇒ Named(workflowId, o)))
+          for {
+            branchPath ← c.get[Option[BranchPath]]("branchPath") map (_ getOrElse Nil)
+            name ← c.get[WorkflowJob.Name]("name")
+          } yield Named(WorkflowBranchPath(workflowId, branchPath), name))
     } yield jobKey
 }

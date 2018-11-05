@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -15,7 +16,7 @@ object Workflows {
 
     def reduceForAgent(agentPath: AgentPath): Workflow =
       underlying.copy(
-        labeledInstructions = labeledInstructions map {
+        rawLabeledInstructions = labeledInstructions map {
           case labels @: (instr: If) ⇒
             labels @: instr.copy(
               thenWorkflow = instr.thenWorkflow.reduceForAgent(agentPath),
@@ -26,7 +27,7 @@ object Workflows {
               for (b ← fj.branches) yield
                 b.copy(workflow = b.workflow.reduceForAgent(agentPath)))
 
-          case o @ _ @: (ex: Execute.Named) if underlying.nameToJob(ex.name) isExecutableOnAgent agentPath ⇒
+          case o @ _ @: (ex: Execute.Named) if underlying.findJob(ex.name).orThrow/*never*/ isExecutableOnAgent agentPath ⇒
             o
 
           case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentPath ⇒

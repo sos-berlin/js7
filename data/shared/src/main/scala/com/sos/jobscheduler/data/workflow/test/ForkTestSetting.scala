@@ -15,62 +15,76 @@ object ForkTestSetting {
   val BAgentPath = AgentPath("/AGENT-B")
   val AgentPaths = List(AAgentPath, BAgentPath)
   val TestExecutablePath = ExecutablePath("/executable")
-  val AExecutable = Execute(WorkflowJob(AAgentPath, TestExecutablePath))
-  val BExecutable = Execute(WorkflowJob(BAgentPath, TestExecutablePath))
+  val AJobName = WorkflowJob.Name("A")
+  val BJobName = WorkflowJob.Name("B")
+  val AJob = WorkflowJob(AAgentPath, TestExecutablePath)
+  val BJob = WorkflowJob(BAgentPath, TestExecutablePath)
+  val AExecute = Execute(AJob)
+  val BExecute = Execute(BJob)
 
-  val TestWorkflowNotation = """
+  val TestWorkflowSource = """
    |workflow {
    |  execute executable="/executable", agent="AGENT-A";
    |  fork(
    |    "🥕" {
    |      execute executable="/executable", agent="AGENT-A";
-   |      execute executable="/executable", agent="AGENT-A";
+   |      job A;
    |    },
    |    "🍋" {
    |      execute executable="/executable", agent="AGENT-A";
-   |      execute executable="/executable", agent="AGENT-B";
+   |      job B;
    |    });
    |  execute executable="/executable", agent="AGENT-A";
    |  fork(
    |    "🥕" {
    |      execute executable="/executable", agent="AGENT-A";
-   |      execute executable="/executable", agent="AGENT-A";
+   |      job A;
    |    },
    |    "🍋" {
    |      execute executable="/executable", agent="AGENT-A";
-   |      execute executable="/executable", agent="AGENT-A";
+   |      job A;
    |    });
    |  execute executable="/executable", agent="AGENT-A";
    |  fork(
    |    "🥕" {
    |      execute executable="/executable", agent="AGENT-A";
-   |      execute executable="/executable", agent="AGENT-A";
+   |      job A;
    |    },
    |    "🍋" {
    |      execute executable="/executable", agent="AGENT-B";
-   |      execute executable="/executable", agent="AGENT-B";
+   |      job B;
    |    });
-   |  execute executable="/executable", agent="AGENT-A";
+   |  job A;
+   |
+   |  define job A {
+   |    execute executable="/executable", agent="AGENT-A"
+   |  }
+   |  define job B {
+   |    execute executable="/executable", agent="AGENT-B"
+   |  }
    |}
    """.stripMargin.trim
 
   val TestWorkflow = Workflow(
     WorkflowPath("/WORKFLOW") % "(initial)" ,
     Vector(
-      /*0*/ AExecutable,
+      /*0*/ AExecute,
       /*1*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecutable, AExecutable),
-        "🍋" → Workflow.of(AExecutable, BExecutable)),
-      /*2*/ AExecutable,
+        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
+        "🍋" → Workflow.of(AExecute, Execute.Named(BJobName))),
+      /*2*/ AExecute,
       /*3*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecutable, AExecutable),
-        "🍋" → Workflow.of(AExecutable, AExecutable)),
-      /*4*/ AExecutable,
+        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
+        "🍋" → Workflow.of(AExecute, Execute.Named(AJobName))),
+      /*4*/ AExecute,
       /*5*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecutable, AExecutable),
-        "🍋" → Workflow.of(BExecutable, BExecutable)),
-      /*6*/ AExecutable),
-    source = Some(TestWorkflowNotation/*Must be the source source of this workflow*/))
+        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
+        "🍋" → Workflow.of(BExecute, Execute.Named(BJobName))),
+      /*6*/ Execute.Named(AJobName)),
+    Map(
+      AJobName → AJob,
+      BJobName → BJob),
+    source = Some(TestWorkflowSource/*Must be the source source of this workflow*/))
   //     A
   //  🥕   🍋
   //  Bx   By

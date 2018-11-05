@@ -27,9 +27,10 @@ final class ExecuteTest extends FreeSpec {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
       for (a ← directoryProvider.agents) {
-        a.writeExecutable(ExecutablePath("/SCRIPT"), ":")
-        a.writeExecutable(ExecutablePath("/SCRIPT-RC"),
-          if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
+        for (o ← Array("/SCRIPT-0a", "/SCRIPT-0b")) a.writeExecutable(ExecutablePath(o), ":")
+        for (o ← Array("/SCRIPT-1", "/SCRIPT-2", "/SCRIPT-3", "/SCRIPT-4"))
+          a.writeExecutable(ExecutablePath(o),
+            if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
       directoryProvider.run { (master, _) ⇒
         val eventCollector = new TestEventCollector
@@ -57,16 +58,26 @@ object ExecuteTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = """
     workflow {
-      execute executable="/SCRIPT", agent="AGENT";
-      execute executable="/SCRIPT-RC", agent="AGENT", arguments={"RETURN_CODE": "1"}, successReturnCodes=[0, 1];
+      execute executable="/SCRIPT-0a", agent="AGENT";
+      execute executable="/SCRIPT-1", agent="AGENT", arguments={"RETURN_CODE": "1"}, successReturnCodes=[1];
       job aJob;
-      job bJob;
-
+      job bJob;  // returnCode=2
+      if (true) {
+        job aJob;
+        job bJob;  // returnCode=3
+        job cJob;  // returnCode=4
+        define job bJob {
+          execute executable="/SCRIPT-3", agent="AGENT", arguments={"RETURN_CODE": "3"}, successReturnCodes=[3];
+        }
+        define job cJob {
+          execute executable="/SCRIPT-4", agent="AGENT", arguments={"RETURN_CODE": "4"}, successReturnCodes=[4];
+        }
+      };
       define job aJob {
-        execute executable="/SCRIPT", agent="AGENT";
+        execute executable="/SCRIPT-0b", agent="AGENT";
       }
       define job bJob {
-        execute executable="/SCRIPT-RC", agent="AGENT", arguments={"RETURN_CODE": "1"}, successReturnCodes=[0, 1];
+        execute executable="/SCRIPT-2", agent="AGENT", arguments={"RETURN_CODE": "2"}, successReturnCodes=[2];
       }
     }"""
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).orThrow
@@ -84,8 +95,17 @@ object ExecuteTest {
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
-    OrderMoved(Position(4)),
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(2))),
+    OrderMoved(Position(4, 0, 0)),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+    OrderMoved(Position(4, 0, 1)),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(3))),
+    OrderMoved(Position(4, 0, 2)),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(4))),
+    OrderMoved(Position(5)),
     OrderDetachable,
     OrderTransferredToMaster,
     OrderFinished)

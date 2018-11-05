@@ -40,6 +40,11 @@ extends Actor with Stash {
     logger.warn(s"Executable '${workflowJob.executablePath}' is not accessible")
   }
 
+  override def preStart(): Unit = {
+    super.preStart()
+    logger.debug(s"Ready - executable=${workflowJob.executablePath}")
+  }
+
   override def postStop() = {
     killAll(SIGKILL)
     filePool.close()
@@ -51,26 +56,30 @@ extends Actor with Stash {
       handleIfReadyForOrder()
 
     case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
-      logger.trace(s"ProcessOrder(${cmd.order.id})")
-      assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-      val fileSet = filePool.get()
-      if (!exists(uncheckedFile)) {
-        val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
-        logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(msg)))
-      } else {
-        Try(uncheckedFile.toRealPath()) match {
-          case Failure(t) ⇒
-            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
-          case Success(executableFile) ⇒
-            assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
-            newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-              .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
-              .pipeTo(self)(sender())
+      logger.debug(s"ProcessOrder(${cmd.order.id})")
+      if (cmd.jobKey != jobKey)
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
+      else {
+        assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
+        val fileSet = filePool.get()
+        if (!exists(uncheckedFile)) {
+          val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
+          logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
+          sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(msg)))
+        } else {
+          Try(uncheckedFile.toRealPath()) match {
+            case Failure(t) ⇒
+              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
+            case Success(executableFile) ⇒
+              assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
+              newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
+                .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
+                .pipeTo(self)(sender())
+          }
         }
       }
 
-    case Internal.TaskRegistered(Command.ProcessOrder(order, stdoutStderrWriter), fileSet, taskRunner) ⇒
+    case Internal.TaskRegistered(Command.ProcessOrder(_, order, stdoutStderrWriter), fileSet, taskRunner) ⇒
       if (terminating) {
         taskRunner.kill(SIGKILL)  // Kill before start
       } else {
@@ -145,7 +154,6 @@ extends Actor with Stash {
       }
     }
 
-
   override def toString = s"JobActor(${jobKey.toString})"
 
   private def taskCount = orderToTask.size
@@ -153,13 +161,15 @@ extends Actor with Stash {
 
 object JobActor
 {
+  /** @param jobKey for integrity check
+    */
   def props(jobKey: JobKey, workflowJob: WorkflowJob, newTaskRunner: TaskRunner.Factory, executableDirectory: Path)
     (implicit s: Scheduler)
   = Props { new JobActor(jobKey, workflowJob, newTaskRunner, executableDirectory) }
 
   sealed trait Command
   object Command {
-    final case class ProcessOrder(order: Order[Order.InProcess], stdChannels: StdChannels) extends Command
+    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.InProcess], stdChannels: StdChannels) extends Command
   }
 
   object Response {

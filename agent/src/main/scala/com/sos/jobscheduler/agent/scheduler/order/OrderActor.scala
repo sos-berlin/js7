@@ -122,6 +122,7 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(OrderProcessingStarted) { event ⇒
         update(event)
         jobActor ! JobActor.Command.ProcessOrder(
+          jobKey,
           order.castAfterEvent(event),
           new StdChannels(
             charBufferSize = stdouterr.charBufferSize,

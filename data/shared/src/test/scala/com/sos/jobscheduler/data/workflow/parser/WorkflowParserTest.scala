@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -22,7 +22,17 @@ import scala.util.control.NoStackTrace
 final class WorkflowParserTest extends FreeSpec {
 
   "parse" in {
-    assert(parse(TestWorkflowNotation) == TestWorkflow.withId(WorkflowPath.NoId))
+    assert(parse(TestWorkflowSource) == TestWorkflow.withId(WorkflowPath.NoId))
+  }
+
+  "Unknown job" in {
+    val source = """
+      workflow {
+        if (true) {
+          job A;
+        }
+      }"""
+    assert(WorkflowParser.parse(source) == Invalid(Problem("""Unknown job 'A':6:8 ...""""")))  // TODO Wrong position in error message, should be 4:12
   }
 
   "Execute anonymous" in {
@@ -59,7 +69,7 @@ final class WorkflowParserTest extends FreeSpec {
         }
         define job B {
           execute executable="/my/executable", agent="/AGENT"
-        };  // Optional semicolon
+        }
         define job C {
           execute executable="/my/executable", agent="/AGENT"
         }
@@ -209,13 +219,13 @@ final class WorkflowParserTest extends FreeSpec {
   //for (n ← sys.props.get("test.speed") map (_.toInt)) "Speed" - {
   //  s"Parsing $n processes" in {
   //    info(measureTime(n, "processes") {
-  //      parse(TestWorkflowNotation)
+  //      parse(TestWorkflowSource)
   //    }.toString)
   //  }
   //
   //  s"Parsing and compiling $n processes, parallel" in {
   //    info(measureTimeParallel(n, "processes") {
-  //      parse(TestWorkflowNotation)
+  //      parse(TestWorkflowSource)
   //    }.toString)
   //  }
   //}

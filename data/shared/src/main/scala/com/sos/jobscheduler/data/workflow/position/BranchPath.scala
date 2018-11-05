@@ -35,4 +35,12 @@ object BranchPath
       nr ← pair.head.as[InstructionNr]
       branchId ← pair(1).as[BranchId]
     } yield Segment(nr, branchId)
+
+  object PositionAndBranchId {
+    def unapply(branchPath: BranchPath): Option[(Position, BranchId)] =
+      branchPath.nonEmpty ? {
+        val last = branchPath.last
+        (branchPath.dropChild / last.nr, last.branchId)
+      }
+  }
 }

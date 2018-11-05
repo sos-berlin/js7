@@ -13,10 +13,16 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 private[jobscheduler] object TestSetting {
 
   val TestAgentPath = AgentPath("/AGENT")
-  val AExecute = Execute(WorkflowJob(TestAgentPath, ExecutablePath("/A.cmd"), Map("JOB_A" → "A-VALUE"),
-    taskLimit = sys.runtime.availableProcessors))
-  val BExecute = Execute(WorkflowJob(TestAgentPath, ExecutablePath("/B.cmd"), Map("JOB_B" → "B-VALUE"),
-    taskLimit = sys.runtime.availableProcessors))
+  val AJobName = WorkflowJob.Name("A")
+  val BJobName = WorkflowJob.Name("B")
+  val AJob = WorkflowJob(TestAgentPath, ExecutablePath("/A.cmd"), Map("JOB_A" → "A-VALUE"),
+    taskLimit = sys.runtime.availableProcessors)
+  val BJob = WorkflowJob(TestAgentPath, ExecutablePath("/B.cmd"), Map("JOB_B" → "B-VALUE"),
+    taskLimit = sys.runtime.availableProcessors)
+  val B1Job = WorkflowJob(TestAgentPath, ExecutablePath("/B.cmd"), Map("JOB_B1" → "B1-VALUE"),
+    taskLimit = sys.runtime.availableProcessors)
+  val AExecute = Execute(AJob)
+  val BExecute = Execute(BJob)
   val TestExecutablePaths = Vector(AExecute.job.executablePath, BExecute.job.executablePath)
 
   val SimpleTestWorkflow = Workflow.of(

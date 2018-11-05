@@ -19,6 +19,9 @@ extends Instruction
 {
   for (idAndScript ← branches) ForkJoin.validateBranch(idAndScript).valueOr(throw _)
 
+  override def adopt(outer: Workflow) = copy(
+    branches = branches.map(o ⇒ o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
+
   def isPartiallyExecutableOnAgent(agentPath: AgentPath): Boolean =
     branches exists (_.workflow isPartiallyExecutableOnAgent agentPath)
 
@@ -30,8 +33,12 @@ extends Instruction
   //  // If branches end on multiple Agents, only the Master can join the Orders
   //  branches.values forall (_ isEndingOnAgent agentPath)
 
-  def workflowOption(branchId: BranchId.Named): Option[Workflow] =
-    branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow }
+  override def workflow(branchId: BranchId) =
+    branches.collectFirst({ case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow })
+      .fold(super.workflow(branchId))(Valid.apply)
+
+  override def flattenedWorkflows(outer: Position) =
+    branches.toList flatMap (b ⇒ b.workflow.flattenedWorkflowsOf(outer / b.id))
 
   override def flattenedInstructions(outer: Position) =
     branches flatMap (b ⇒ b.workflow.flattenedInstructions(outer / b.id))

@@ -41,7 +41,7 @@ final class OrderEventHandler(
           workflow ← idToWorkflow(previousOrder.workflowId)
           jobKey ← workflow.checkedExecute(previousOrder.position) map {
             case _: Execute.Anonymous ⇒ JobKey.Anonymous(workflow.id /: previousOrder.position)
-            case x: Execute.Named ⇒ JobKey.Named(workflow.id, x.name)
+            case o: Execute.Named     ⇒ workflow.jobKey(previousOrder.position.branchPath, o.name).orThrow
           }
         } yield
           FollowUp.Processed(jobKey) :: Nil

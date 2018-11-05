@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin, Gap}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import org.scalatest.FreeSpec
@@ -13,38 +13,46 @@ import org.scalatest.FreeSpec
 final class WorkflowsTest extends FreeSpec {
 
   "reduceForAgent A" in {
-    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(TestWorkflow.id,
+    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
+      TestWorkflow.id,
       Vector(
-        AExecutable,
+        AExecute,
         ForkJoin.of(
-          "🥕" → Workflow.of(AExecutable, AExecutable),
-          "🍋" → Workflow.of(AExecutable, Gap)),
-        AExecutable,
+          "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
+          "🍋" → Workflow.of(AExecute, Gap)),
+        AExecute,
         ForkJoin.of(
-          "🥕" → Workflow.of(AExecutable, AExecutable),
-          "🍋" → Workflow.of(AExecutable, AExecutable)),
-        AExecutable,
+          "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
+          "🍋" → Workflow.of(AExecute, Execute.Named(AJobName))),
+        AExecute,
         ForkJoin.of(
-          "🥕" → Workflow.of(AExecutable, AExecutable),
+          "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
           "🍋" → Workflow.of(Gap, Gap)),
-        AExecutable),
+        Execute.Named(AJobName)),
+      Map(
+        AJobName → AJob,
+        BJobName → BJob), // TODO May be deleted, too
       source = TestWorkflow.source))
   }
 
   "reduceForAgent B" in {
-    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(TestWorkflow.id,
+    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(
+      TestWorkflow.id,
       Vector(
         /*0*/ Gap,
         /*1*/ ForkJoin.of(
                 "🥕" → Workflow.of(Gap, Gap),
-                "🍋" → Workflow.of(Gap, BExecutable)),
+                "🍋" → Workflow.of(Gap, Execute.Named(BJobName))),
         /*2*/ Gap,
         /*3*/ Gap,
         /*4*/ Gap,
         /*5*/ ForkJoin.of(
                 "🥕" → Workflow.of(Gap, Gap),
-                "🍋" → Workflow.of(BExecutable, BExecutable)),
+                "🍋" → Workflow.of(BExecute, Execute.Named(BJobName))),
         /*6*/ Gap),
+      Map(
+        AJobName → AJob,  // TODO May be deleted, too
+        BJobName → BJob),
       source = TestWorkflow.source))
   }
 

@@ -18,8 +18,6 @@ package object position
     def /(parent: BranchPath.Segment): BranchPath =
       segments ::: parent :: Nil
 
-    def /:(workflowId: WorkflowId) = WorkflowBranchPath(workflowId, segments)
-
     def dropChild: BranchPath = {
       if (segments.isEmpty) throw new IllegalStateException("dropChild on empty BranchPath ?")
       segments dropRight 1

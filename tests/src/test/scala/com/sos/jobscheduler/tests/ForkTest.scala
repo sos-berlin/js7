@@ -77,7 +77,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
          "path": "/WORKFLOW",
          "versionId": "(initial)"
        },
-      "source": "$TestWorkflowNotation",
+      "source": "$TestWorkflowSource",
       "instructions": [
         { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
         {
@@ -88,7 +88,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
+                  { "TYPE": "Execute.Named", "name": "A" }
                 ]
               }
             }, {
@@ -96,7 +96,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }}
+                  { "TYPE": "Execute.Named", "name": "B" }
                 ]
               }
             }
@@ -111,7 +111,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
+                  { "TYPE": "Execute.Named", "name": "A" }
                 ]
               }
             }, {
@@ -119,7 +119,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
+                  { "TYPE": "Execute.Named", "name": "A" }
                 ]
               }
             }
@@ -134,7 +134,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
+                  { "TYPE": "Execute.Named", "name": "A" }
                 ]
               }
             }, {
@@ -142,14 +142,18 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
               "workflow": {
                 "instructions": [
                   { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }},
-                  { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-B" }}
+                  { "TYPE": "Execute.Named", "name": "B" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Execute.Anonymous", "job": { "executablePath": "/executable", "taskLimit": 1, "agentPath": "/AGENT-A" }}
-      ]
+        { "TYPE": "Execute.Named", "name": "A" }
+      ],
+      "jobs": {
+        "A": { "agentPath": "/AGENT-A", "executablePath": "/executable", "taskLimit": 1 },
+        "B": { "agentPath": "/AGENT-B", "executablePath": "/executable", "taskLimit": 1 }
+      }
     }""")
   }
 }

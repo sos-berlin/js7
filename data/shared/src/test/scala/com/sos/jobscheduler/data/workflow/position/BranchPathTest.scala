@@ -24,4 +24,19 @@ final class BranchPathTest extends FreeSpec
     assert(Nil / 1 == Position(1))
     assert((Segment(1, 2) :: Nil) / 3 == Position(1, 2, 3))
   }
+
+  "PositionAndBranchId" in {
+    intercept[MatchError] {
+      Nil match {
+        //case Nil ⇒
+        case BranchPath.PositionAndBranchId(_, _) ⇒
+      }
+    }
+    Segment(1, 2) :: Nil match {
+      case BranchPath.PositionAndBranchId(Position(Nil, InstructionNr(1)), BranchId.Indexed(2)) ⇒
+    }
+    Segment(1, 2) :: Segment(3, 4) :: Nil match {
+      case BranchPath.PositionAndBranchId(Position(Segment(InstructionNr(1), BranchId.Indexed(2)) :: Nil, InstructionNr(3)), BranchId.Indexed(4)) ⇒
+    }
+  }
 }
