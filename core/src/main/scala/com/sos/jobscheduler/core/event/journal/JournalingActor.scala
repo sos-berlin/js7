@@ -48,23 +48,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     noSync: Boolean = false,
     async: Boolean = false)(
     callback: Stamped[KeyedEvent[EE]] ⇒ A)
-  : Future[A] = {
-    promiseFuture[A] { promise ⇒
-      start(async = async)
-      logger.trace(s"“$toString” Store ${keyedEvent.key} <-: ${typeName(keyedEvent.event.getClass)}")
-      journalActor.forward(
-        JournalActor.Input.Store(Timestamped(keyedEvent, timestamp) :: Nil, self, noSync = noSync, transaction = false,
-          EventCallback(
-            async = async,
-            event ⇒ promise.complete(
-              try Success(callback(event.asInstanceOf[Stamped[KeyedEvent[EE]]]))
-              catch { case NonFatal(t) ⇒
-                // TODO Ein Fehler sollte zum Abbruch führen?
-                logger.debug(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvent($keyedEvent)", t)
-                Failure(t)
-              }))))
+  : Future[A] =
+    persistKeyedEvents(Timestamped(keyedEvent, timestamp) :: Nil, noSync, async) { events ⇒
+      assert(events.size == 1)
+      callback(events.head)
     }
-  }
 
   private[event] final def persistKeyedEvents[EE <: E, A](
     timestamped: Seq[Timestamped[EE]],
@@ -79,7 +67,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
         for (t ← timestamped) logger.trace(s"“$toString” Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, noSync = noSync, transaction = transaction,
-          EventSeqCallback(
+          EventsCallback(
             async = async,
             events ⇒ promise.complete(
               try Success(callback(events.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]]))
@@ -130,11 +118,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       }
       def remaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
       (stampedOptions, item) match {
-        case (Seq(stamped), EventCallback(_, callback)) ⇒
-          logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} <-: ${typeName(stamped.value.event.getClass)}$remaining")
-          callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
-
-        case (stamped, EventSeqCallback(_, callback)) ⇒
+        case (stamped, EventsCallback(_, callback)) ⇒
           if (logger.underlying.isTraceEnabled) for (st ← stamped)
             logger.trace(s"“$toString” Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$remaining")
           callback(stamped.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]])
@@ -169,12 +153,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None) =
     JournalingActor.Timestamped(keyedEvent, timestamp)
 
-  private case class EventCallback(async: Boolean, callback: Stamped[KeyedEvent[E]] ⇒ Unit) extends Item {
-    override def toString = s"EventCallback(${if (async) "async" else ""})"
-  }
-
-  private case class EventSeqCallback(async: Boolean, callback: Seq[Stamped[KeyedEvent[E]]] ⇒ Unit) extends Item {
-    override def toString = s"EventSeqCallback(${if (async) "async" else ""})"
+  private case class EventsCallback(async: Boolean, callback: Seq[Stamped[KeyedEvent[E]]] ⇒ Unit) extends Item {
+    override def toString = s"EventsCallback(${if (async) "async" else ""})"
   }
 
   private case class Deferred(async: Boolean, callback: () ⇒ Unit) extends Item {
