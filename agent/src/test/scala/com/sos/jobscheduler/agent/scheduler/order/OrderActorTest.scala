@@ -13,6 +13,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
@@ -26,9 +27,10 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
@@ -38,9 +40,8 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.file.{Files, Path}
-import java.time.Instant.now
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
@@ -48,7 +49,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -57,6 +58,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
   private lazy val directoryProvider = new TestAgentDirectoryProvider {}
   private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config
+    .withValue("jobscheduler.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
   private lazy val actorSystem = newActorSystem("OrderActorTest")
 
   override def afterAll() = {
@@ -88,9 +90,8 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
              |""".stripMargin).mkString)
-    val t = now
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, executablePath))
-    info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)} took ${(now - t).pretty}")
+    info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
     assert(result.stdoutStderr(Stderr).toString == expectedStderr)
     assert(result.stdoutStderr(Stdout).toString == expectedStdout)
     testActor ! PoisonPill
@@ -138,7 +139,7 @@ private object OrderActorTest {
 
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
-  private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String])
+  private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String], duration: FiniteDuration)
 
 
 
@@ -147,7 +148,6 @@ private object OrderActorTest {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
-    private val keyedEventBus = new StampedKeyedEventBus
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
       new StandardRichProcessStartSynchronizer()(context.system),
@@ -159,8 +159,9 @@ private object OrderActorTest {
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(
-      JournalActor.props(journalMeta, config, keyedEventBus, Scheduler.global),
+      JournalActor.props(journalMeta, config, new StampedKeyedEventBus, Scheduler.global),
       "Journal")
+    private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = watch(actorOf(
       JobActor.props(jobKey, workflowJob, taskRunnerFactory, executableDirectory = dir / "config" / "executables")))
     private val orderActor = actorOf(OrderActor.props(TestOrder.id, journalActor = journalActor, config), s"Order-${TestOrder.id.string}")
@@ -170,8 +171,9 @@ private object OrderActorTest {
     private val stdoutStderr = (for (t ← StdoutOrStderr.values) yield t → new StringBuilder).toMap
     private var jobActorTerminated = false
 
-    keyedEventBus.subscribe(self, classOf[OrderEvent])
-    (journalActor ? JournalActor.Input.StartWithoutRecovery) pipeTo self
+    (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
+    eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Duration.Inf)) foreach self.!
+    val started = now
 
     def receive = {
       case JournalActor.Output.Ready ⇒
@@ -225,16 +227,14 @@ private object OrderActorTest {
             events += event
             orderActor ! OrderActor.Input.HandleEvent(OrderMoved(TestPosition))
 
-            case _: OrderMoved ⇒
-              events += event
+          case _: OrderMoved ⇒
+            events += event
             orderActor ! OrderActor.Command.Detach
             become(detaching)
 
           case OrderDetached ⇒
             events += event
             checkTermination()
-
-          //TODO case OrderStopped | OrderResumed
 
           case _ ⇒
             events += event
@@ -244,7 +244,7 @@ private object OrderActorTest {
     private def checkTermination(): Unit = {
       if (jobActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
-        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }))
+        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, now - started))
         context.stop(self)
       }
     }

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import java.io.Writer
 import java.lang.Thread.currentThread
@@ -25,11 +25,11 @@ private[order] trait BufferedStringWriter extends Writer {
   implicit protected def scheduler: Scheduler
 
   /** Do not block here! */
-  protected def onFlush(string: String): Future[Completed]
+  protected def onFlush(string: String): Future[Accepted]
 
   protected def onBufferingStarted(): Unit
 
-  private var whenReady = Future.successful[Completed](Completed)
+  private var whenReady = Future.successful[Accepted](Accepted)
   private var stringBuilder: StringBuilder = null
   @volatile
   private var blockingThread: Thread = null  // Only one thread is expected to write
@@ -50,17 +50,17 @@ private[order] trait BufferedStringWriter extends Writer {
       whenReady = writeSynchronized(chars, offset, length)
     }
 
-  private def writeSynchronized(chars: Array[Char], offset: Int, length: Int): Future[Completed] =
+  private def writeSynchronized(chars: Array[Char], offset: Int, length: Int): Future[Accepted] =
     synchronized {
       val startWritten =
         if (bufferLength + length > size)
           flushBuffer()
         else
-          Future.successful(Completed)
+          Future.successful(Accepted)
       if (isEmpty && length >= passThroughSize) {
-        val completed = onFlush(new String(chars, offset, length))
+        val accepted = onFlush(new String(chars, offset, length))
         stringBuilder = null
-        completed
+        accepted
       } else {
         if (isEmpty) {
           onBufferingStarted()
@@ -71,7 +71,7 @@ private[order] trait BufferedStringWriter extends Writer {
         stringBuilder.appendAll(chars, offset, length)
         if (bufferLength >= size) {
           val flushed = flushBuffer()
-          Future.sequence(flushed :: startWritten :: Nil) map (_ reduce ((_, _) ⇒ Completed))
+          Future.sequence(flushed :: startWritten :: Nil) map (_ reduce ((_, _) ⇒ Accepted))
         }
         else
           startWritten
@@ -84,13 +84,13 @@ private[order] trait BufferedStringWriter extends Writer {
       stringBuilder = null
     } // Don't wait here for flushBuffer() to be completed
 
-  private def flushBuffer(): Future[Completed] = {
+  private def flushBuffer(): Future[Accepted] = {
     if (isEmpty)
-      Future.successful(Completed)
+      Future.successful(Accepted)
     else {
       val string = stringBuilder.toString
       stringBuilder.clear()
-      onFlush(string)
+      onFlush(string)  // Send to JournalActor for persisting (persistAcceptEarly)
     }
   }
 

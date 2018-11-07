@@ -5,11 +5,12 @@ import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.generic.{Accepted, Completed}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent._
@@ -29,6 +30,7 @@ final class OrderActor private(orderId: OrderId, protected val journalActor: Act
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
+  private val stdoutDelay = config.getDuration("jobscheduler.order.stdout-stderr.sync-delay").toFiniteDuration
 
   private val stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
   private var order: Order[Order.State] = null
@@ -254,10 +256,14 @@ extends KeyedJournalingActor[OrderEvent] {
       update(event)
     }
 
-  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Completed] =
-    persist(OrderStdWritten(t)(chunk)) { _ ⇒
-      Completed
-    }
+  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
+    if (stdoutDelay.isZero)  // slow
+      persist(OrderStdWritten(t)(chunk)) { _ ⇒
+        Accepted
+      }
+    else
+      persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutDelay)
+      // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
   private def update(event: OrderEvent) = {
     updateOrder(event)

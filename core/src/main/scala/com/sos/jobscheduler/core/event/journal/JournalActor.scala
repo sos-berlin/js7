@@ -107,7 +107,8 @@ extends Actor with Stash {
         sender ! Output.Ready
       }
 
-    case Input.StartWithoutRecovery ⇒  // Testing only
+    case Input.StartWithoutRecovery(observer) ⇒  // Testing only
+      observerOption = observer
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
       eventWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
       unstashAll()
@@ -371,7 +372,7 @@ object JournalActor
       journalingObserver: Option[JournalingObserver],
       lastEventId: EventId,
       totalEventCount: Long)
-    final case object StartWithoutRecovery
+    final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
     private[journal] case object RegisterMe
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],

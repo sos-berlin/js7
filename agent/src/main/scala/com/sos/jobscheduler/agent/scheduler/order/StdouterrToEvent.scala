@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorContext, ActorRef, DeadLetterSuppression}
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -19,15 +19,15 @@ import scala.concurrent.{Future, Promise}
 private[order] class StdouterrToEvent(
   orderActorContext: ActorContext,
   config: Config,
-  writeEvent: (StdoutOrStderr, String) ⇒ Future[Completed])
+  writeEvent: (StdoutOrStderr, String) ⇒ Future[Accepted])
   (implicit scheduler: Scheduler)
 {
   import orderActorContext.self
 
-          val charBufferSize = config.getInt    ("jobscheduler.agent.task.stdouterr.char-buffer-size")
-  private val chunkSize = config.getInt         ("jobscheduler.agent.task.stdouterr.chunk-size")
-  private val delay = config.as[Duration]       ("jobscheduler.agent.task.stdouterr.delay")
-  private val noDelayAfter = config.as[Duration]("jobscheduler.agent.task.stdouterr.no-delay-after")
+          val charBufferSize = config.getInt    ("jobscheduler.order.stdout-stderr.char-buffer-size")
+  private val chunkSize = config.getInt         ("jobscheduler.order.stdout-stderr.chunk-size")
+  private val delay = config.as[Duration]       ("jobscheduler.order.stdout-stderr.delay")
+  private val noDelayAfter = config.as[Duration]("jobscheduler.order.stdout-stderr.no-delay-after")
 
   private var lastEventAt = Instant.ofEpochMilli(0)
   private var timer: Cancelable = null
@@ -76,7 +76,7 @@ object StdouterrToEvent {
   extends BufferedStringWriter {
 
     protected def onFlush(string: String) = {
-      val promise = Promise[Completed]()
+      val promise = Promise[Accepted]()
       orderActorSelf ! Stdouterr.StdoutStderrWritten(stdoutOrStderr, string, promise)
       promise.future
     }
@@ -89,7 +89,7 @@ object StdouterrToEvent {
   private[order] sealed trait Stdouterr
   private object Stdouterr {
     final case object BufferingStarted extends Stdouterr
-    final case class StdoutStderrWritten(typ: StdoutOrStderr, chunk: String, completed: Promise[Completed]) extends Stdouterr
+    final case class StdoutStderrWritten(typ: StdoutOrStderr, chunk: String, accepted: Promise[Accepted]) extends Stdouterr
     final case object FlushStdoutStderr extends Stdouterr with DeadLetterSuppression  // May arrive after death, due to timer
   }
 }

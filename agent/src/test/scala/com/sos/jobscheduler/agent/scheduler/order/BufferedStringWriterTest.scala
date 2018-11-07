@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.agent.scheduler.order.BufferedStringWriterTest._
-import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.generic.Accepted
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.mutable
@@ -82,7 +82,7 @@ object BufferedStringWriterTest {
 
     protected def onFlush(string: String) = {
       result += string
-      Future.successful(Completed)
+      Future.successful(Accepted)
     }
   }
 }
