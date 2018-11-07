@@ -83,7 +83,7 @@ private[parser] object BasicParsers
         })
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
-    def apply[A1 <: A](key: String, default: A1): P[A1] =
+    def apply[A1 <: A](key: String, default: ⇒ A1): P[A1] =
       PassWith(keyToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
     def apply[A1 <: A](key: String): P[A1] =

@@ -163,8 +163,8 @@ extends KeyedJournalingActor[OrderEvent] {
     case msg: Stdouterr ⇒  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
       stdouterr.handle(msg)
 
-    case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
-      val event = moduleStepEnded match {
+    case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded) ⇒
+      val event = taskStepEnded match {
         case TaskStepSucceeded(variablesDiff, returnCode) ⇒
           job.toOrderProcessed(variablesDiff, returnCode)
 

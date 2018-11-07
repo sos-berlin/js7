@@ -70,7 +70,7 @@ extends MainJournalingActor[Event] with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
-  private val eventWatch = new JournalEventWatch[Event](journalMeta, config)
+  private val eventWatch = new JournalEventWatch(journalMeta, config)
   protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, config, keyedEventBus, scheduler),
     "Journal"))

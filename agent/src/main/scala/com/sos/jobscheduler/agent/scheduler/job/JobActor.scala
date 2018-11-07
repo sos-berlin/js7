@@ -120,12 +120,11 @@ extends Actor with Stash {
       killAll(SIGKILL)
   }
 
-  private def handleIfReadyForOrder() = {
+  private def handleIfReadyForOrder() =
     if (!waitingForNextOrder && !terminating && taskCount < workflowJob.taskLimit) {
       context.parent ! Output.ReadyForOrder
       waitingForNextOrder = true
     }
-  }
 
   private def recoverFromFailure(tried: Try[TaskStepEnded]): TaskStepEnded =
     tried match {
@@ -173,7 +172,7 @@ object JobActor
   }
 
   object Response {
-    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: TaskStepEnded)
+    final case class OrderProcessed(orderId: OrderId, taskStepEnded: TaskStepEnded)
   }
 
   object Input {
