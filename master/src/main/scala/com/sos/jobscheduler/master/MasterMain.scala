@@ -49,7 +49,7 @@ object MasterMain {
 
   private def onJavaShutdown(master: RunningMaster): Unit =
     try {
-      logger.info("Trying to terminate Master due to Java shutdown")
+      logger.warn("Trying to terminate Master due to Java shutdown")
       master.terminate().runAsync await ShutdownTimeout
       master.close()
     } finally

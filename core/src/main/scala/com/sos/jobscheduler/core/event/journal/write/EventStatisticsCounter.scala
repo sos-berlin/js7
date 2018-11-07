@@ -35,7 +35,7 @@ private[journal] final class EventStatisticsCounter extends StatisticsCounter
             factorFormat.format(commits.toDouble / flushCount) + s" commits/flush" +
               (if (syncs < 10) "" // syncOnCommit?
                else ", " +
-                factorFormat.format(commits.toDouble / syncCount) + s" commits/sync" +
+                factorFormat.format(commits.toDouble / syncCount) + s" commits/sync, " +
                 factorFormat.format(events.toDouble / syncCount) + s" events/sync")
           }))
 }

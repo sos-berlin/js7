@@ -19,7 +19,7 @@ final class JobRegister extends ActorRegister[JobKey, JobEntry](_.actor) {
 
   def onActorTerminated(actor: ActorRef): Unit =
     for (jobEntry ← remove(actorToKey(actor))) {
-      logger.debug(s"Removing ${jobEntry.jobKey} after Actor death")
+      logger.trace(s"Removing ${jobEntry.jobKey} after Actor death")
     }
 
   def insert(key: JobKey, actor: ActorRef): Unit =

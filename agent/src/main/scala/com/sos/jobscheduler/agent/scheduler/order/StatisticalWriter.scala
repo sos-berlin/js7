@@ -13,7 +13,7 @@ import java.time.Instant.now
 private[order] final class StatisticalWriter(writer: Writer) extends Writer {
 
   private val startTime = now
-  private var activeNanos = 0L
+  private var blockedNanos = 0L
   private var messageCount = 0
   private var size = 0L
 
@@ -22,15 +22,17 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer {
     messageCount += 1
     size += length
     writer.write(chars, offset, length)
-    activeNanos += nanoTime - time
+    blockedNanos += nanoTime - time
   }
 
-  override def toString = {
-    val active = Duration.ofNanos(activeNanos)
-    val duration = (now - startTime).toNanos
-    val percentage = if (duration == 0) 1 else 100 * active.toNanos / duration
-    s"$messageCount chunks (${toKBGB(size)}) processed in ${active.pretty} ($percentage%)"  // This is the time an unbuffered stdout/stderr pipe is blocked
-  }
+  override def toString =
+    s"$messageCount chunks" +
+      (if (size == 0) "" else {
+        val bocked = Duration.ofNanos(blockedNanos)
+        val duration = (now - startTime).toNanos
+        val percentage = if (duration == 0) 1 else 100 * bocked.toNanos / duration
+        s" (${toKBGB(size)}) blocked ${bocked.pretty} ($percentage%)"
+      })  // This is the time an unbuffered stdout/stderr pipe is blocked
 
   def flush() = writer.flush()
 

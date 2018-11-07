@@ -150,7 +150,7 @@ extends MainJournalingActor[Event] with Stash {
         terminating = true
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         for (a ← jobRegister.values) a.actor ! terminate
-        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 30.seconds) {
+        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillTerminating
         })
         continueTermination()
