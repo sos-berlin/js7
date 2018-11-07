@@ -152,7 +152,7 @@ extends Actor with Stash {
       }
 
     case Internal.Commit(level) ⇒
-      if (writtenBuffer.length >= eventLimit)
+      if (writtenBuffer.iterator.map(_.eventCount).sum >= eventLimit)
         commit()
       else if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits
