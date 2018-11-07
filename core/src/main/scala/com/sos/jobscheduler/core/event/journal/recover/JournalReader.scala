@@ -133,16 +133,17 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   def nextEvents(): Iterator[Stamped[KeyedEvent[E]]] =
     untilNoneIterator(nextEvent())
 
-  def nextEvent(): Option[Stamped[KeyedEvent[E]]] =
-    if (transaction.isInTransaction)
-      Some(readNextCommitted())
-    else {
-      val result = nextEvent2()
-      for (stamped ← result) {
-        _eventId = stamped.eventId
-      }
-      result
+  def nextEvent(): Option[Stamped[KeyedEvent[E]]] = {
+    val result =
+      if (transaction.isInTransaction)
+        Some(readNextCommitted())
+      else
+        nextEvent2()
+    for (stamped ← result) {
+      _eventId = stamped.eventId
     }
+    result
+  }
 
   @tailrec
   private def nextEvent2(): Option[Stamped[KeyedEvent[E]]] =
@@ -200,11 +201,8 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           }
       }
 
-  private def readNextCommitted(): Stamped[KeyedEvent[E]] = {
-    val stamped = transaction.readNext()
-    _eventId = stamped.eventId
-    stamped
-  }
+  private def readNextCommitted(): Stamped[KeyedEvent[E]] =
+    transaction.readNext()
 
   private def deserialize(json: Json) = {
     import journalMeta.eventJsonCodec

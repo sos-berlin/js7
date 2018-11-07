@@ -64,6 +64,7 @@ with ReceiveLoggingActor.WithStash {
   private var isConnected = false
   private var isAwaitingEventResponse = false
   private var lastEventId = EventId.BeforeFirst
+  private var fetchNumber = 0L
   @volatile
   private var keepEventsCancelable: Option[Cancelable] = None
   private var delayKeepEvents = false
@@ -173,7 +174,8 @@ with ReceiveLoggingActor.WithStash {
           .onComplete {
             // Asynchronous!
             case Failure(t) ⇒
-              self ! Internal.Fetched(Failure(t))
+              fetchNumber += 1
+              self ! Internal.Fetched(Failure(t), fetchNumber)
 
             case Success(EventSeq.Empty(lastEventId_)) ⇒  // No events after timeout
               if (isConnected) scheduler.scheduleOnce(1.second) {
@@ -181,7 +183,8 @@ with ReceiveLoggingActor.WithStash {
               }
 
             case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
-              self ! Internal.Fetched(Success(stampedEvents))
+              fetchNumber += 1
+              self ! Internal.Fetched(Success(stampedEvents), fetchNumber)
 
             case Success(torn: TearableEventSeq.Torn) ⇒
               val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
@@ -284,21 +287,27 @@ with ReceiveLoggingActor.WithStash {
 
     case Internal.CommandQueueReady ⇒
 
-    case Internal.Fetched(Failure(throwable)) ⇒
-      handleConnectionError(throwable) {
-        if (isConnected) {
-          reconnect()
+    case Internal.Fetched(Failure(throwable), number) ⇒
+      if (number == fetchNumber) {
+        handleConnectionError(throwable) {
+          if (isConnected) {
+            reconnect()
+          }
         }
       }
 
-    case Internal.Fetched(Success(stampedEvents)) ⇒
-      if (logger.underlying.isTraceEnabled) for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") }
+    case Internal.Fetched(Success(stampedEvents), number) ⇒
+      if (number != fetchNumber) {
+        logger.debug("Discarding obsolete Agent response Internal.Fetched")
+      } else {
+        if (logger.underlying.isTraceEnabled) for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") }
 
-      context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream or acknowledge
+        context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream or acknowledge
 
-      for (last ← stampedEvents.lastOption) {
-        assert(lastEventId < last.eventId, s"last.eventId=${last.eventId} <= lastEventId=$lastEventId ?")
-        lastEventId = last.eventId
+        for (last ← stampedEvents.lastOption) {
+          assert(lastEventId < last.eventId, s"last.eventId=${last.eventId} <= lastEventId=$lastEventId ?")
+          lastEventId = last.eventId
+        }
       }
   }
 
@@ -395,7 +404,7 @@ private[master] object AgentDriver
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable) extends DeadLetterSuppression
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
-    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]]) extends DeadLetterSuppression
+    final case class Fetched(stampedTry: Try[Seq[Stamped[KeyedEvent[Event]]]], number: Long) extends DeadLetterSuppression
     final case class KeepEvents(agentEventId: EventId) extends DeadLetterSuppression
   }
 }

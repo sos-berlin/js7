@@ -38,10 +38,13 @@ private[journal] object TestEvent {
   @JsonCodec
   final case class Appended(char: Char) extends TestEvent
 
+  final case object NothingDone extends TestEvent
+
   final case object Removed extends TestEvent
 
   implicit val jsonFormat = TypedJsonCodec[TestEvent](
     Subtype[Added],
     Subtype[Appended],
+    Subtype(NothingDone),
     Subtype(Removed))
 }

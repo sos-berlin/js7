@@ -78,22 +78,22 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
     assert(journalFileNames.length == 4)  // Unchanged
   }
 
-  "noSync" in {
+  "acceptEarly" in {
     withTestActor() { (actorSystem, actor) ⇒
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
 
-      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendNoSync('B')) await 99.s
-      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = false))
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AcceptEarly) await 99.s
+      //assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),
-        TestAggregate("TEST-E", "ABCc"))
+        TestAggregate("TEST-E", "ACc"))
     }
     assert(journalFileNames.length == 4)  // Unchanged
   }

@@ -13,19 +13,21 @@ trait SeekableInputStream extends InputStream
 
 object SeekableInputStream {
   def openFile(file: Path): SeekableInputStream =
-    new FileSeekableInputStream(new RandomAccessFile(file.toFile, "r"))
+    new FileSeekableInputStream(new RandomAccessFile(file.toFile, "r"), file)
 
-  private class FileSeekableInputStream(file: RandomAccessFile) extends SeekableInputStream
+  private class FileSeekableInputStream(randomAccess: RandomAccessFile, file: Path) extends SeekableInputStream
   {
-    override def close() = file.close()
+    override def close() = randomAccess.close()
 
     def read() =
-      file.read()
+      randomAccess.read()
 
     override def read(array: Array[Byte], offset: Int, length: Int) =
-      file.read(array, offset, length)
+      randomAccess.read(array, offset, length)
 
     def seek(position: Long) =
-      file.seek(position)
+      randomAccess.seek(position)
+
+    override def toString = file.toString
   }
 }

@@ -28,6 +28,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -50,7 +51,7 @@ extends Actor with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
-  private val experimentalDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
+  private val commitDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
   private val snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration
   private val snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix)
   private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
@@ -63,11 +64,11 @@ extends Actor with Stash {
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
-  private var forwardingCommit = false
+  private var forwardingCommit: Duration = Duration.Inf
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
-  for (o ← simulateSync) logger.warn(s"Disk sync is simulated with ${o.pretty} duration")
+  for (o ← simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
@@ -130,29 +131,27 @@ extends Actor with Stash {
     case Input.RegisterMe ⇒
       handleRegisterMe()
 
-    case Input.Store(timestamped, replyTo, noSync, transaction, item) ⇒
+    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, item) ⇒
       val stampedEvents = for (t ← timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
-      /*try*/ eventWriter.writeEvents(stampedEvents, transaction = transaction)
+      eventWriter.writeEvents(stampedEvents, transaction = transaction)
+      for (lastStamped ← stampedEvents.lastOption) {
+        lastWrittenEventId = lastStamped.eventId
+      }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-      //catch {
-      //  //case t: JournalWriter.SerializationException ⇒
-      //  //  logger.error(t.getCause.toStringWithCauses, t.getCause)
-      //  //  replyTo.forward(Output.SerializationFailure(t.getCause))  // TODO Handle message in JournaledActor
-      //  case NonFatal(t) ⇒
-      //    val tt = t.appendCurrentStackTrace
-      //    logger.error(tt.toStringWithCauses, tt)
-      //    replyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
-      //    throw tt  // Stop Actor
-      //}
-      writtenBuffer += Written(stampedEvents, replyTo, sender(), item)
-      dontSync &= noSync
-      forwardCommit()
+      if (acceptEarly) {
+        reply(sender(), replyTo, Output.Accepted(item))
+        writtenBuffer += AcceptEarlyWritten(stampedEvents.size, sender())
+        // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
+      } else {
+        writtenBuffer += NormallyWritten(stampedEvents, replyTo, sender(), item)
+      }
+      forwardCommit(delay max commitDelay)
       if (stampedEvents.nonEmpty) {
         scheduleNextSnapshot()
       }
 
     case Internal.Commit(level) ⇒
-      forwardingCommit = false
+      forwardingCommit = Duration.Inf
       if (writtenBuffer.iterator.map(_.eventCount).sum >= eventLimit)
         commit()
       else if (level < writtenBuffer.length) {
@@ -195,15 +194,15 @@ extends Actor with Stash {
         })
   }
 
-  private def forwardCommit(): Unit =
-    if (!forwardingCommit) {
-      forwardingCommit = true
+  private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit =
+    if (delay < forwardingCommit) {
+      forwardingCommit = delay
       val commit = Internal.Commit(writtenBuffer.length)
-      if (experimentalDelay.isZero)
+      if (delay.isZero)
         self.forward(commit)
       else {
         if (delayedCommit != null) delayedCommit.cancel()
-        delayedCommit = scheduler.scheduleOnce(experimentalDelay) {
+        delayedCommit = scheduler.scheduleOnce(delay) {
           self.forward(commit)
         }
       }
@@ -212,25 +211,26 @@ extends Actor with Stash {
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(): Unit = {
     if (delayedCommit != null) delayedCommit.cancel()
-    val sync = syncOnCommit && !dontSync
-    try eventWriter.flush(sync = sync)
+    try eventWriter.flush(sync = syncOnCommit)
     catch { case NonFatal(t) ⇒
       val tt = t.appendCurrentStackTrace
-      for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
+      writtenBuffer foreach {
+        case w: NormallyWritten ⇒ reply(sender, w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
+        case _: AcceptEarlyWritten ⇒  // TODO Error handling?
+      }
       throw tt;
     }
-    logWrittenAsStored(sync)
-    for (Written(keyedEvents, replyTo, sender, item) ← writtenBuffer) {
-      replyTo.!(Output.Stored(keyedEvents, item))(sender)
-      for (lastStamped ← keyedEvents.lastOption) {
-        lastWrittenEventId = lastStamped.eventId
-      }
-      keyedEvents foreach keyedEventBus.publish
+    logStored(flushed = true, synced = syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten ⇒ o } flatMap (_.stamped))
+    for (NormallyWritten(keyedEvents, replyTo, sender, item) ← writtenBuffer) {
+      reply(sender, replyTo, Output.Stored(keyedEvents, item))
+      keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
-    totalEventCount += writtenBuffer.iterator.map(_.stamped.size).sum
+    totalEventCount += writtenBuffer.iterator.map(_.eventCount).sum
     writtenBuffer.clear()
-    dontSync = true
   }
+
+  private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
+    replyTo.!(msg)(sender)
 
   private def receiveTerminatedOrGet: Receive = {
     case Terminated(a) if journalingActors contains a ⇒
@@ -245,12 +245,12 @@ extends Actor with Stash {
           Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
   }
 
-  private def logWrittenAsStored(synced: Boolean) =
+  private def logStored(flushed: Boolean, synced: Boolean, stamped: TraversableOnce[Stamped[AnyKeyedEvent]]) =
     if (logger.underlying.isTraceEnabled) {
-      val it = writtenBuffer.iterator flatMap (_.stamped)
-      while (it.hasNext) {
-        val stamped = it.next()
-        val last = if (it.hasNext) "     " else if (synced) "sync " else "flush"  // After the last one, the file buffer was flushed
+      val iterator = stamped.toIterator
+      while (iterator.hasNext) {
+        val stamped = iterator.next()
+        val last = if (iterator.hasNext | !synced & !flushed) "     " else if (synced) "sync " else "flush"   // After the last one, the file buffer was flushed
         logger.trace(s"$last STORED ${stamped.eventId} ${stamped.value}")
       }
     }
@@ -376,8 +376,9 @@ object JournalActor
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,
-      noSync: Boolean,
+      acceptEarly: Boolean,
       transaction: Boolean,
+      delay: FiniteDuration,
       item: CallersItem)
     final case object TakeSnapshot
     final case object Terminate
@@ -394,6 +395,7 @@ object JournalActor
   object Output {
     final case object Ready
     private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
+    private[journal] final case class Accepted(item: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
@@ -406,13 +408,24 @@ object JournalActor
     final case class Commit(writtenLevel: Int)
   }
 
-  private case class Written(
+  sealed trait Written {
+    def eventCount: Int
+  }
+
+  private case class NormallyWritten(
     stamped: Seq[Stamped[AnyKeyedEvent]],  // None means no-operation (for deferAsync)
     replyTo: ActorRef,
     sender: ActorRef,
     item: CallersItem)
+  extends Written
   {
+    def eventCount = stamped.size
+
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
       stamped.reverseIterator.buffered.headOption
   }
+
+  // Without event to keep heap usage low (especially for many big stdout event)
+  private case class AcceptEarlyWritten(eventCount: Int, sender: ActorRef)
+  extends Written
 }

@@ -73,10 +73,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       new Actor {
         val before = disturbanceCounter.getAndAdd(2)
         command match {
-          case _: TestAggregateActor.Command.Add ⇒
-            actor ! TestActor.Input.Forward(key, command)
-
-          case TestAggregateActor.Command.Remove ⇒
+          case _: TestAggregateActor.Command.Add | TestAggregateActor.Command.Remove | TestAggregateActor.Command.AcceptEarly ⇒
             actor ! TestActor.Input.Forward(key, command)
 
           case _ ⇒
@@ -91,6 +88,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
               command match {
                 case _: TestAggregateActor.Command.Add ⇒
                 case TestAggregateActor.Command.Remove ⇒
+                case TestAggregateActor.Command.AcceptEarly ⇒
 
                 case _: TestAggregateActor.Command.IsAsync ⇒
                   // Async persist may be disturbed or not.
