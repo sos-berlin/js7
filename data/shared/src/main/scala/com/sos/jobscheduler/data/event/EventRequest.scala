@@ -14,7 +14,7 @@ import scala.reflect.ClassTag
 final case class EventRequest[E <: Event](
   eventClasses: Set[Class[_ <: E]],
   after: EventId,
-  timeout: FiniteDuration,
+  timeout: Duration,
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit)
 extends SomeEventRequest[E] {
@@ -63,14 +63,18 @@ object EventRequest {
     */
   def singleClass[E <: Event: ClassTag](
     after: EventId = EventId.BeforeFirst,
-    timeout: FiniteDuration = Duration.Zero,
+    timeout: Duration = Duration.Zero,
     delay: FiniteDuration = DefaultDelay,
     limit: Int = DefaultLimit)
   : EventRequest[E] =
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit)
 
-  private def durationToString(duration: FiniteDuration): String =
-    BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
+  private def durationToString(duration: Duration): String =
+    duration match {
+      case Duration.Inf ⇒ "infinite"
+      case duration: FiniteDuration ⇒
+        BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
+    }
 }
 
 final case class ReverseEventRequest[E <: Event](

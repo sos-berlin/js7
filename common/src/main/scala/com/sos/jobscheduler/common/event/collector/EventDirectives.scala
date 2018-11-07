@@ -78,12 +78,21 @@ object EventDirectives {
     }
 
   private implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
-    Unmarshaller.strict((o: String) ⇒ new FiniteDuration((BigDecimal(o) * 1000).toLong, TimeUnit.MILLISECONDS))
+    Unmarshaller.strict(stringToFiniteDuration)
+
+  private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
+    Unmarshaller.strict {
+      case "infinite" ⇒ Duration.Inf
+      case o ⇒ stringToFiniteDuration(o)
+    }
+
+  private def stringToFiniteDuration(string: String) =
+    new FiniteDuration((BigDecimal(string) * 1000).toLong, TimeUnit.MILLISECONDS)
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[_ <: E]],
     defaultAfter: Option[EventId],
-    defaultTimeout: FiniteDuration,
+    defaultTimeout: Duration,
     defaultDelay: FiniteDuration,
     inner: Tuple1[SomeEventRequest[E]] ⇒ Route)
   : Route =
