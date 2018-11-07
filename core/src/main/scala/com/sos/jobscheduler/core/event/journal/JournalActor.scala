@@ -63,7 +63,7 @@ extends Actor with Stash {
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
-  private var dontSync = true
+  private var forwardingCommit = false
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
@@ -152,6 +152,7 @@ extends Actor with Stash {
       }
 
     case Internal.Commit(level) ⇒
+      forwardingCommit = false
       if (writtenBuffer.iterator.map(_.eventCount).sum >= eventLimit)
         commit()
       else if (level < writtenBuffer.length) {
@@ -190,17 +191,19 @@ extends Actor with Stash {
         })
   }
 
-  private def forwardCommit(): Unit = {
-    val commit = Internal.Commit(writtenBuffer.length)
-    if (experimentalDelay.isZero)
-      self.forward(commit)
-    else {
-      if (delayedCommit != null) delayedCommit.cancel()
-      delayedCommit = scheduler.scheduleOnce(experimentalDelay) {
+  private def forwardCommit(): Unit =
+    if (!forwardingCommit) {
+      forwardingCommit = true
+      val commit = Internal.Commit(writtenBuffer.length)
+      if (experimentalDelay.isZero)
         self.forward(commit)
+      else {
+        if (delayedCommit != null) delayedCommit.cancel()
+        delayedCommit = scheduler.scheduleOnce(experimentalDelay) {
+          self.forward(commit)
+        }
       }
     }
-  }
 
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(): Unit = {
