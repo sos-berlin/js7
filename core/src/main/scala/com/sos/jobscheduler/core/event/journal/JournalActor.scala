@@ -163,6 +163,10 @@ extends Actor with Stash {
       } else if (writtenBuffer.nonEmpty) {
         logger.trace(s"Discarded: Commit($level), writtenBuffer.length=${writtenBuffer.length}")
       }
+      if (eventWriter.bytesWritten > snapshotSizeLimit && !snapshotRequested) {  // Snapshot is not counted
+        logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(snapshotSizeLimit)}")
+        requestSnapshot()
+      }
 
     case Input.TakeSnapshot ⇒
       snapshotRequested = false
@@ -226,10 +230,6 @@ extends Actor with Stash {
     totalEventCount += writtenBuffer.iterator.map(_.stamped.size).sum
     writtenBuffer.clear()
     dontSync = true
-    if (eventWriter.bytesWritten > snapshotSizeLimit) {  // Snapshot is not counted
-      logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(snapshotSizeLimit)}")
-      requestSnapshot()
-    }
   }
 
   private def receiveTerminatedOrGet: Receive = {
