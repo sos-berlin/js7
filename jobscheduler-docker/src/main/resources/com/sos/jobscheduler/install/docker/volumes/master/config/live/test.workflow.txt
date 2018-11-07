@@ -1,45 +1,53 @@
-// Workflow containing three forks
+workflow {
+  job TEST1;
 
-execute executable="/test", agent="test-agent-1";
+  // Fork with part of a branch running at another Agent
+  // Each branch starts with a string which is appended to the child Orders.
+  fork(
+    "🥕" {
+      job TEST1;
+      job TEST1;
+    },
+    "🍋" {
+      job TEST1;
+      job TEST2;
+    });
+  job TEST1;
 
-// Fork with part of a branch running at another Agent
-// Each branch starts with a string which is appended to the child Orders.
-fork(
-  "🥕" {
-    execute executable="/test", agent="test-agent-1";
-    execute executable="/test", agent="test-agent-1";
-  },
-  "🍋" {
-    execute executable="/test", agent="test-agent-1";
-    execute executable="/test", agent="test-agent-2";
-  });
-execute executable="/test", agent="test-agent-1";
+  // Fork with all jobs at same (current) Agent
+  fork(
+    "🥕" {
+      job TEST1;
+      job TEST1;
+    },
+    "🍋" {
+      job TEST1;
+      job TEST1;
+    });
+  job TEST1;
 
-// Fork with all jobs at same (current) Agent
-fork(
-  "🥕" {
-    execute executable="/test", agent="test-agent-1";
-    execute executable="/test", agent="test-agent-1";
-  },
-  "🍋" {
-    execute executable="/test", agent="test-agent-1";
-    execute executable="/test", agent="test-agent-1";
-  });
-execute executable="/test", agent="test-agent-1";
+  // Fork with one branch at current Agent, the other branch at the other Agent.
+  fork(
+    "🥕" {
+      job TEST1;
+      job TEST1;
+    },
+    "🍋" {
+      job TEST2;
+      job TEST2;
+    });
 
-// Fork with one branch at current Agent, the other branch at the other Agent.
-fork(
-  "🥕" {
-    execute executable="/test", agent="test-agent-1";
-    execute executable="/test", agent="test-agent-1";
-  },
-  "🍋" {
-    execute executable="/test", agent="test-agent-2";
-    execute executable="/test", agent="test-agent-2";
-  });
+  if (returnCode == 0 || returnCode == 1) {
+    job TEST1;
+  } else {
+    job TEST2;
+  };
 
-if (returnCode == 0 || returnCode == 1) {
-  execute executable="/test", agent="test-agent-1";
-} else {
-  execute executable="/test", agent="test-agent-2";
+  define job TEST1 {
+    execute executable="/test", agent="test-agent-1", taskLimit=30;
+  }
+
+  define job TEST2 {
+    execute executable="/test", agent="test-agent-2", taskLimit=10;
+  }
 }
