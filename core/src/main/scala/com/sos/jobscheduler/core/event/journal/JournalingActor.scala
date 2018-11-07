@@ -94,10 +94,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     if (!async) {
       // async = false (default) lets Actor stash all messages but JournalActor.Output.Stored.
       // async = true means, message Store is intermixed with other messages.
-      stashingCount += 1
-      if (stashingCount == 1) {
-        context.become(journaling, discardOld = false)
-      }
+      beginStashing()
     }
   }
 
@@ -105,16 +102,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     case JournalActor.Output.Stored(stampedOptions, item: Item) ⇒
       // sender() is from persistKeyedEvent or deferAsync
       if (!item.async) {
-        if (stashingCount == 0) {
-          val msg = s"Journal Stored message received (duplicate? stash in callback?) but stashingCount=$stashingCount: $stampedOptions"
-          logger.error(s"“$toString” $msg")
-          throw new RuntimeException(msg)
-        }
-        stashingCount -= 1
-        if (stashingCount == 0) {
-          context.unbecome()
-          unstashAll()
-        }
+        endStashing(stampedOptions)
       }
       def remaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
       (stampedOptions, item) match {
@@ -144,6 +132,28 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     case _ if stashingCount > 0 ⇒
       super.stash()
   }
+
+  private def beginStashing(): Unit = {
+    stashingCount += 1
+    if (stashingCount == 1) {
+      context.become(journaling, discardOld = false)
+    }
+  }
+
+  private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit = {
+    if (stashingCount == 0) {
+      val msg = s"Journal Stored message received (duplicate? stash in callback?) but stashingCount=$stashingCount: $stamped"
+      logger.error(s"“$toString” $msg")
+      throw new RuntimeException(msg)
+    }
+    stashingCount -= 1
+    if (stashingCount == 0) {
+      context.unbecome()
+      unstashAll()
+    }
+  }
+
+  private def stashingCountRemaining = if (stashingCount > 0) s", $stashingCount remaining" else ""
 
   protected def toTimestamped[EE <: E](keyEvents: collection.Iterable[KeyedEvent[EE]]): Seq[Timestamped[EE]] =
     keyEvents.view.map(e ⇒ Timestamped(e)).to[Vector]
