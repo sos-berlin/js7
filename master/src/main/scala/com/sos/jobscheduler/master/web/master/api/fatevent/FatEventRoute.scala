@@ -19,6 +19,7 @@ import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import scala.collection.immutable.Seq
+import scala.concurrent.blocking
 import scala.concurrent.duration._
 
 // For tests see HistoryTest
@@ -41,8 +42,9 @@ trait FatEventRoute extends MasterRouteProvider
         authorizedUser(ValidUserPermission) { _ ⇒
           eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest ⇒
             complete(
-              synchronizer.run(
-                requestFatEvents(fatRequest)))
+              synchronizer.run(  // May take a long time when rebuilding FatState
+                blocking(
+                  requestFatEvents(fatRequest))))
           }
         }
       }

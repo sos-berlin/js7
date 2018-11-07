@@ -12,6 +12,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
+import scala.concurrent.blocking
 import scala.concurrent.duration._
 
 /**
@@ -52,18 +53,20 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   final def skipToEventAfter(journalIndex: JournalIndex, after: EventId): Boolean =
     eventId <= after &&
       (eventId == after ||
-        journalIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
-          // May take a long time !!!
-          val watch = new TimeWatch(after)
-          while (eventId < after) {
-            if (!hasNext) return false
-            next()
-            val PositionAnd(position, eventId) = positionAndEventId
-            journalIndex.tryAddAfter(eventId, position)
-            watch.onSkipped()
+        blocking {
+          journalIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
+            // May take a long time !!!
+            val watch = new TimeWatch(after)
+            while (eventId < after) {
+              if (!hasNext) return false
+              next()
+              val PositionAnd(position, eventId) = positionAndEventId
+              journalIndex.tryAddAfter(eventId, position)
+              watch.onSkipped()
+            }
+            watch.end()
+            eventId == after
           }
-          watch.end()
-          eventId == after
         })
 
   final def hasNext = nextEvent != null ||
