@@ -46,6 +46,10 @@ object WorkflowPrinter {
           sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
           sb += ']'
       }
+      if (workflowExecutable.taskLimit != WorkflowJob.DefaultTaskLimit) {
+        sb ++= ", taskLimit="
+        sb.append(workflowExecutable.taskLimit)
+      }
     }
 
     for (labelled ← workflow.labeledInstructions if labelled.instruction != ImplicitEnd) {

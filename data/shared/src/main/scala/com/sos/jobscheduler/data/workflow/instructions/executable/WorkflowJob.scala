@@ -43,12 +43,14 @@ final case class WorkflowJob private(
 
 object WorkflowJob
 {
+  val DefaultTaskLimit = 1
+
   def apply(
     agentPath: AgentPath,
     executablePath: ExecutablePath,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = 1): WorkflowJob
+    taskLimit: Int = DefaultTaskLimit): WorkflowJob
   = checked(agentPath, executablePath, defaultArguments, returnCodeMeaning, taskLimit).orThrow
 
   def checked(
@@ -56,7 +58,7 @@ object WorkflowJob
     executablePath: ExecutablePath,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = 1): Checked[WorkflowJob]
+    taskLimit: Int = DefaultTaskLimit): Checked[WorkflowJob]
   =
     if (agentPath.isAnonymous)
       Problem.fromEager("Anonymous Agent in Job?")
