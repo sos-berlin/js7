@@ -50,12 +50,13 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
-    check("""workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}; }""",
+    check("""workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
       Workflow.single(
         Execute(
           WorkflowJob(AgentPath("/AGENT"),
             ExecutablePath("/my/executable"),
-            Map("A" → "aaa", "B" → "bbb")))))
+            Map("A" → "aaa", "B" → "bbb"),
+            taskLimit = 3))))
   }
 
   "Execute named" in {

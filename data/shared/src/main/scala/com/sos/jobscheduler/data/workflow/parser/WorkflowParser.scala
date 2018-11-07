@@ -81,15 +81,17 @@ object WorkflowParser {
         "agent" → path[AgentPath],
         "arguments" → jsonObject,
         "successReturnCodes" → successReturnCodes,
-        "failureReturnCodes" → failureReturnCodes))
+        "failureReturnCodes" → failureReturnCodes,
+        "taskLimit" → int))
       .flatMap { keyToValue ⇒
         for {
           agentPath ← keyToValue[AgentPath]("agent")
           executablePath ← keyToValue[String]("executable") map ExecutablePath.apply
           arguments ← keyToValue[Map[String, String]]("arguments", Map.empty[String, String])
           returnCodeMeaning ← keyToValue.oneOfOr[ReturnCodeMeaning](Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
+          taskLimit ← keyToValue[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         } yield
-          WorkflowJob(agentPath, executablePath, arguments, returnCodeMeaning)
+          WorkflowJob(agentPath, executablePath, arguments, returnCodeMeaning, taskLimit = taskLimit)
       })
 
     private val executeInstruction = P[Execute.Anonymous](
