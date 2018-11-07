@@ -361,6 +361,7 @@ object JournalActor
     eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   =
     Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, stopped, eventIdGenerator) }
+      .withDispatcher("jobscheduler.journal.dispatcher")  // Used in thread names
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix
 

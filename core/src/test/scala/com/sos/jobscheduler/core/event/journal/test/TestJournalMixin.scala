@@ -51,7 +51,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
   }
 
   protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
-    val actorSystem = newActorSystem(getClass.simpleScalaName)
+    val actorSystem = newActorSystem(getClass.simpleScalaName, TestConfig)
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
@@ -160,8 +160,14 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     (s"$prefix-B" <-: TestEvent.Removed)
 }
 
-private[journal] object TestJournalMixin {
+private[journal] object TestJournalMixin
+{
   private val logger = Logger(getClass)
+  private val TestConfig = ConfigFactory.parseString("""
+     |jobscheduler.journal.dispatcher {
+     |  type = PinnedDispatcher
+     |}
+     |""".stripMargin)
 
   private def normalizeTimestamp(json: Json): Json = json.asObject match {
     case Some(o) ⇒ o("timestamp").map(_ ⇒ o.add("timestamp", "TIMESTAMP".asJson)).getOrElse(o).asJson
