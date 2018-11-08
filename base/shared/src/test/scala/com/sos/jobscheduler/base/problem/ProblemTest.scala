@@ -28,6 +28,7 @@ final class ProblemTest extends FreeSpec {
     assert(problem.toString == "MESSAGE")
     assert(problem.throwableOption.isEmpty)
     assert(problem.throwable.getMessage == "MESSAGE")
+    assert(problem.throwable.asInstanceOf[ProblemException].problem eq problem)
 
     assert(problem.withKey("KEY").toString == "Problem with 'KEY': MESSAGE")
     assert(problem.withKey("KEY").throwableOption.isEmpty)

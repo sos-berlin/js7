@@ -37,9 +37,11 @@ sealed trait Problem
 
   override def hashCode = toString.hashCode
 
+  /** Message with cause. **/
   override final def toString = message + cause.fold("")(o ⇒ s" [$o]")
 
-  protected def message: String
+  /** Message without cause. **/
+  protected[problem] def message: String
 }
 
 object Problem
@@ -73,8 +75,8 @@ object Problem
 
     final def throwable =
       cause match {
-        case Some(p: FromThrowable) ⇒ new ProblemException(message, p.throwable)
-        case _ ⇒ new ProblemException(toString)
+        case Some(p: FromThrowable) ⇒ new ProblemException(this, p.throwable)
+        case _ ⇒ new ProblemException(this)
       }
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
@@ -101,7 +103,7 @@ object Problem
   final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
-    def throwable = new ProblemException(toString)
+    def throwable = new ProblemException(this)
 
     def throwableOption: None.type = None
 
@@ -140,11 +142,11 @@ object Problem
 
   implicit val semigroup: Semigroup[Problem] = {
     case (a: Problem, b: FromThrowable) ⇒
-      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable) with NoStackTrace)
+      Problem.fromLazyThrowable(new ProblemException(a, b.throwable) with NoStackTrace)
 
     case (a: FromThrowable, b: Problem) ⇒
       Problem.fromLazyThrowable {
-        val t = new ProblemException(a.toString, b.throwable) with NoStackTrace
+        val t = new ProblemException(a, b.throwable) with NoStackTrace
         t.setStackTrace(a.throwable.getStackTrace)
         t
       }
