@@ -13,6 +13,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
+import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -182,7 +183,7 @@ extends MainJournalingActor[Event] with Stash {
           logger.debug(s"Ignoring duplicate $cmd")
           Future.successful(Accepted)
         } else if (terminating)
-          Future.failed(AgentIsTerminatingProblem.throwable)
+          Future.failed(AgentIsShuttingDownProblem.throwable)
         else
           attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
       }
@@ -251,7 +252,7 @@ extends MainJournalingActor[Event] with Stash {
       }
 
     case _ if terminating ⇒
-      Future.failed(AgentIsTerminatingProblem.throwable)
+      Future.failed(AgentIsShuttingDownProblem.throwable)
   }
 
   private def startJobActors(workflow: Workflow): Unit =
@@ -443,7 +444,6 @@ extends MainJournalingActor[Event] with Stash {
 }
 
 object AgentOrderKeeper {
-  private val AgentIsTerminatingProblem = Problem.fromEager("Agent is terminating")  // TODO 503 ServiceUnavailable? Master must not retry before new Login
   private val logger = Logger(getClass)
 
   private val SnapshotJsonFormat = TypedJsonCodec[Any](

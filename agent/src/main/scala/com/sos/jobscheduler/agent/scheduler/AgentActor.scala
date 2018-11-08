@@ -10,6 +10,7 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
+import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp
@@ -182,7 +183,7 @@ extends MainJournalingActor[AgentEvent] {
         }
 
       case _ if terminating ⇒
-        response.failure(new IllegalStateException(s"Agent is terminating"))
+        response.failure(AgentIsShuttingDownProblem.throwable)
     }
   }
 

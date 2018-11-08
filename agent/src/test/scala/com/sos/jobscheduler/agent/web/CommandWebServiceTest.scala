@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.OK
+import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
+import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -29,9 +30,10 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   override protected val uriPathPrefix = "test"
 
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
-    Task.pure(
+    Task(
       command match {
         case TestCommand ⇒ AgentCommand.Accepted
+        case TestCommandWhileShuttingDown ⇒ throw AgentIsShuttingDownProblem.throwable
         case _ ⇒ fail()
       })
 
@@ -56,6 +58,19 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
         """{ "TYPE": "Accepted" }""".parseJson)
+    }
+  }
+
+  "Command while shutting down return 503 Service Unavailable" in {
+    // When Agent is shutting down, the command may be okay and the Master should repeat the command later
+    postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
+      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
+      assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
+      assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
+        """{
+          "TYPE": "Problem",
+          "message": "Agent is shutting down"
+         }""".parseJson)
     }
   }
 
@@ -87,4 +102,5 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 
 private object CommandWebServiceTest {
   private val TestCommand = Terminate(sigkillProcessesAfter = Some(999.seconds))
+  private val TestCommandWhileShuttingDown = Terminate(sigkillProcessesAfter = Some(777.seconds))
 }
