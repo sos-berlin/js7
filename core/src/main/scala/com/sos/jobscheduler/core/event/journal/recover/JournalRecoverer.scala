@@ -36,6 +36,7 @@ trait JournalRecoverer[E <: Event] {
 
   final def recoverAll(): Unit =
     for (file ← journalFileOption) {
+      logger.info(s"Recovering from file ${file.getFileName}")
       blocking {  // May take a long time
         autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
           recoverSnapshots(journalReader)
