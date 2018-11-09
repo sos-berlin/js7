@@ -24,7 +24,6 @@ private[order] class StdouterrToEvent(
 {
   import orderActorContext.self
 
-          val charBufferSize = config.getInt    ("jobscheduler.order.stdout-stderr.char-buffer-size")
   private val chunkSize = config.getInt         ("jobscheduler.order.stdout-stderr.chunk-size")
   private val delay = config.as[Duration]       ("jobscheduler.order.stdout-stderr.delay")
   private val noDelayAfter = config.as[Duration]("jobscheduler.order.stdout-stderr.no-delay-after")

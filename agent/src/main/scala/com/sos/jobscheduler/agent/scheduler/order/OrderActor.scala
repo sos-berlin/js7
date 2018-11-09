@@ -32,8 +32,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
   private val stdoutDelay = config.getDuration("jobscheduler.order.stdout-stderr.sync-delay").toFiniteDuration
+  private val charBufferSize = config.getInt  ("jobscheduler.order.stdout-stderr.char-buffer-size")
 
-  private val stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
+  private var stdouterr: StdouterrToEvent = null
   private var order: Order[Order.State] = null
   private var terminating = false
 
@@ -41,7 +42,7 @@ extends KeyedJournalingActor[OrderEvent] {
   protected def snapshot = Option(order)
 
   override def postStop() = {
-    stdouterr.close()
+    if (stdouterr != null) stdouterr.close()
     super.postStop()
   }
 
@@ -117,6 +118,8 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
 
     case Input.StartProcessing(jobKey, workflowJob, jobActor) ⇒
+      assert(stdouterr == null)
+      stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
       val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
       val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
       become("processing")(processing(jobKey, workflowJob, jobActor,
@@ -128,7 +131,7 @@ extends KeyedJournalingActor[OrderEvent] {
           jobKey,
           order.castAfterEvent(event),
           new StdChannels(
-            charBufferSize = stdouterr.charBufferSize,
+            charBufferSize = charBufferSize,
             stdoutWriter = stdoutWriter,
             stderrWriter = stderrWriter))
       }
@@ -194,6 +197,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     stdouterr.close()
+    stdouterr = null
     for (o ← stdoutStderrStatistics()) logger.debug(o)
     become("processed")(processed)
     persist(event) { event ⇒
