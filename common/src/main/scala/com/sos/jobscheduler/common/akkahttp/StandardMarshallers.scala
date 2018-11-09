@@ -40,7 +40,7 @@ object StandardMarshallers
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
       stringMarshaller[Problem](`text/plain`, _.toString),
-      jsonMarshaller[Problem])
+      jsonMarshaller[Problem](Problem.typedJsonEncoder))  // Add "TYPE": "Problem"
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
     problemToEntityMarshaller map (entity ⇒ HttpResponse(ProblemStatusCode, Nil, entity))

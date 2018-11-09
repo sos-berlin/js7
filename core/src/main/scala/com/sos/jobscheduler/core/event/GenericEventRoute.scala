@@ -134,7 +134,7 @@ trait GenericEventRoute extends RouteProvider
         if (requestedBuildId != BuildInfo.buildId)
           complete(HttpEntity(
             `text/event-stream`,
-            s"data:${Problem("BUILD-CHANGED").asJson.pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
+            s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
           eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) { request ⇒
             optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader ⇒
@@ -176,6 +176,6 @@ object GenericEventRoute
     try java.lang.Long.parseLong(header.id)
     catch {
       case e: NumberFormatException ⇒
-        throw new HttpStatusCodeException(BadRequest, Problem(s"Invalid header Last-Event-Id: $e"))
+        throw new HttpStatusCodeException(BadRequest, Problem.fromEager(s"Invalid header Last-Event-Id: $e"))
     }
 }

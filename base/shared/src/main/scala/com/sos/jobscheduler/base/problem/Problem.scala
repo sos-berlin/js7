@@ -182,8 +182,12 @@ object Problem
 
   implicit val jsonEncoder: ObjectEncoder[Problem] =
     problem ⇒ JsonObject(
-      "TYPE" → Json.fromString("Problem"),
       "message" → Json.fromString(problem.toString))
+
+  val typedJsonEncoder: ObjectEncoder[Problem] = {
+    val typeField = "TYPE" → Json.fromString("Problem")
+    problem ⇒ typeField +: jsonEncoder.encodeObject(problem)
+  }
 
   implicit val jsonDecoder: Decoder[Problem] =
     c ⇒ for (message ← c.get[String]("message")) yield

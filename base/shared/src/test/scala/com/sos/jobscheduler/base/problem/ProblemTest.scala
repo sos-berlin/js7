@@ -3,7 +3,8 @@ package com.sos.jobscheduler.base.problem
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.tester.CirceJsonTester
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Decoder
 import org.scalatest.FreeSpec
 
 /**
@@ -11,13 +12,21 @@ import org.scalatest.FreeSpec
   */
 final class ProblemTest extends FreeSpec {
 
-  "JSON" in {
-    CirceJsonTester.testJson(
-      Problem("A problem"),
-      json"""{
-        "TYPE": "Problem",
-        "message": "A problem"
-      }""")
+  "JSON" - {
+    "standard" in {
+      testJson(Problem("A problem"),
+        json"""{
+          "message": "A problem"
+        }""")
+    }
+
+    "with TYPE" in {
+      testJson(Problem("A problem"),
+        json"""{
+          "TYPE": "Problem",
+          "message": "A problem"
+        }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
+    }
   }
 
   "String" in {
