@@ -168,13 +168,6 @@ object Order {
     sealed trait AgentOrDetachable extends AttachedTo {
       val agentId: AgentId
     }
-    object AgentOrDetachable {
-      def unapply(o: AttachedTo): Option[AgentId] =
-        o match {
-          case o: AgentOrDetachable ⇒ Some(o.agentId)
-          case _ ⇒ None
-        }
-    }
 
     @JsonCodec
     final case class Agent(agentId: AgentId) extends AgentOrDetachable
