@@ -44,7 +44,7 @@ object ForkJoinExecutor extends EventInstructionExecutor
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.fromEager(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       logger.error(problem.toString)
-      orderForked.key <-: OrderStopped(Outcome.Disrupted(problem.toString))
+      orderForked.key <-: OrderStopped(Outcome.Disrupted(problem))
     } else
       orderForked
   }

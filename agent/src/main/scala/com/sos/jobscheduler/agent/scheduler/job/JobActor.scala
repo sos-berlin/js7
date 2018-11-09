@@ -5,6 +5,7 @@ import akka.pattern.pipe
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
@@ -58,18 +59,18 @@ extends Actor with Stash {
     case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
       logger.debug(s"ProcessOrder(${cmd.order.id})")
       if (cmd.jobKey != jobKey)
-        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.fromEager(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey"))))
       else {
         assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
         val fileSet = filePool.get()
         if (!exists(uncheckedFile)) {
           val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
           logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-          sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(msg)))
+          sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.fromEager(msg))))
         } else {
           Try(uncheckedFile.toRealPath()) match {
             case Failure(t) ⇒
-              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
+              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.fromEager(s"Executable '${workflowJob.executablePath}': $t"))))  // Exception.toString is published !!!
             case Success(executableFile) ⇒
               assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
               newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
@@ -131,7 +132,7 @@ extends Actor with Stash {
       case Success(o) ⇒ o
       case Failure(t) ⇒
         logger.error(s"Job step failed: ${t.toStringWithCauses}", t)
-        TaskStepFailed(Disrupted(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
+        TaskStepFailed(Disrupted(Problem.fromEager(s"Job step failed: ${t.toStringWithCauses}")))  // Publish internal exception in event ???
     }
 
   private def killAll(signal: ProcessSignal): Unit = {

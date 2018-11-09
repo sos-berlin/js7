@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.job.ReturnCode
 import io.circe.generic.JsonCodec
 
@@ -74,8 +75,8 @@ object Outcome
     def isSucceeded = false
   }
   object Disrupted {
-    def apply(message: String): Disrupted =
-      Disrupted(Other(message))
+    def apply(problem: Problem): Disrupted =
+      Disrupted(Other(problem))
 
     sealed trait Reason {
       def message: String
@@ -85,7 +86,9 @@ object Outcome
     }
 
     @JsonCodec
-    final case class Other(message: String) extends Reason
+    final case class Other(problem: Problem) extends Reason {
+      def message = problem.toString
+    }
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](

@@ -403,7 +403,7 @@ object MasterGraphqlSchemaTest
           Payload(Map("KEY" → "VALUE", "X" → "XX"))),
         Order(OrderId("4"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Succeeded(ReturnCode(7)))),
         Order(OrderId("5"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Failed(ReturnCode(8)))),
-        Order(OrderId("6"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted("MESSAGE"))),
+        Order(OrderId("6"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted(Problem("MESSAGE")))),
         Order(OrderId("7"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))),
         Order(OrderId("8"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
         Order(OrderId("9"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offered(Timestamp.parse("2018-04-16T11:22:33Z"))),

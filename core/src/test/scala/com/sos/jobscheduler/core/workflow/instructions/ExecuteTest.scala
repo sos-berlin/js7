@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -38,7 +39,7 @@ final class ExecuteTest extends FreeSpec {
     assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
     assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
     assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderStopped(Outcome.Failed(ReturnCode(1)))))
-    assert(toEvent(Outcome.Disrupted("DISRUPTION")) == Some(orderId <-: OrderStopped(Outcome.Disrupted("DISRUPTION"))))
+    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderStopped(Outcome.Disrupted(Problem("DISRUPTION")))))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {

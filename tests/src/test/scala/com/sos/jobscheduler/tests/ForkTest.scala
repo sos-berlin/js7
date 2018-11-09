@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -64,7 +65,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
     master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId
     master.addOrderBlocking(myOrderId)
     assert(master.eventWatch.await[OrderStopped](_.key == myOrderId.id).head.value.event ==
-      OrderStopped(Outcome.Disrupted("Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,InProcess,Some(Agent(Agent:/AGENT-A (initial))),None,Payload())")))
+      OrderStopped(Outcome.Disrupted(Problem("Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,InProcess,Some(Agent(Agent:/AGENT-A (initial))),None,Payload())"))))
 
     // Kill SLOW job
     agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow

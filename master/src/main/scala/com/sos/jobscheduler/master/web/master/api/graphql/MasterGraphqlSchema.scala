@@ -244,7 +244,7 @@ private[graphql] object MasterGraphqlSchema
     fields[QueryContext, Outcome.Disrupted.Reason](
       Field("TYPE", StringType, resolve = _.value.getClass.simpleScalaName),
       Field("message", OptionType(StringType), resolve = _.value match {
-        case Outcome.Disrupted.Other(message) ⇒ Some(message)
+        case Outcome.Disrupted.Other(problem) ⇒ Some(problem.toString)
         case _ ⇒ None
       })))
 

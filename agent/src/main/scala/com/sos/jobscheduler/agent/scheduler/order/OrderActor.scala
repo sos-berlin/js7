@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSu
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import com.sos.jobscheduler.base.generic.{Accepted, Completed}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
@@ -177,7 +178,11 @@ extends KeyedJournalingActor[OrderEvent] {
       context.unwatch(jobActor)
 
     case Terminated(`jobActor`) ⇒
-      val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor for '$jobKey' terminated unexpectedly"))
+      // May occur when ActorSystem suddenly terminates (fatal Throwable or Java shutdown hook <-- ActorSystem registered itself)
+      // JobActor has killed process. Job may be restarted after recovery.
+      val problem = Problem.fromEager(s"Job Actor for '$jobKey' terminated unexpectedly")
+      logger.error(problem.toString)
+      val bad = Outcome.Disrupted(problem)
       finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)
 
     case command: Command ⇒
