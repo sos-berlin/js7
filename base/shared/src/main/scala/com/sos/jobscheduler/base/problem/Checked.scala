@@ -26,13 +26,13 @@ object Checked
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match {
       case Success(o) ⇒ Valid(o)
-      case Failure(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
+      case Failure(t) ⇒ Invalid(Problem.eager(t))
     }
 
   def catchNonFatal[A](f: ⇒ A): Checked[A] =
     try Valid(f)
     catch {
-      case NonFatal(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
+      case NonFatal(t) ⇒ Invalid(Problem.eager(t))
     }
 
   //implicit def checkedEq[A: Eq]: Eq[Checked[A]] = (x, y) ⇒

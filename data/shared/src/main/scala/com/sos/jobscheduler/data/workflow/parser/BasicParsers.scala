@@ -176,7 +176,7 @@ private[parser] object BasicParsers
 
   def valid[A](a: A): Parser[A] = CheckedParser(Valid(a))
 
-  def invalid(message: String): Parser[Nothing] = CheckedParser(Problem.fromEager(message))
+  def invalid(message: String): Parser[Nothing] = CheckedParser(Problem.eager(message))
 
   final case class CheckedParser[T](checked: Checked[T]) extends core.Parser[T, Char, String]{
     def parseRec(cfg: core.ParseCtx[Char, String], index: Int) =

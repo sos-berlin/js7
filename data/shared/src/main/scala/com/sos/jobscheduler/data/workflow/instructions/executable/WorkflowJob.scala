@@ -61,7 +61,7 @@ object WorkflowJob
     taskLimit: Int = DefaultTaskLimit): Checked[WorkflowJob]
   =
     if (agentPath.isAnonymous)
-      Problem.fromEager("Anonymous Agent in Job?")
+      Problem.eager("Anonymous Agent in Job?")
     else
       Valid(new WorkflowJob(agentPath, executablePath, defaultArguments, returnCodeMeaning, taskLimit))
 

@@ -52,14 +52,14 @@ object Problem
   def apply(messageFunction: ⇒ String): Problem =
     new Lazy(messageFunction)
 
-  def fromEager(message: String): Problem =
+  def eager(message: String): Problem =
     apply(message)
 
-  def fromEagerThrowable(throwable: Throwable): Problem =
-    fromLazyThrowable(throwable)
+  def eager(throwable: Throwable): Problem =
+    new FromEagerThrowable(throwable)
 
   def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
-    new FromThrowable(() ⇒ throwable)
+    new FromLazyThrowable(() ⇒ throwable)
 
   private[Problem] trait Simple extends Problem {
     protected def rawMessage: String
@@ -75,7 +75,7 @@ object Problem
 
     final def throwable =
       cause match {
-        case Some(p: FromThrowable) ⇒ new ProblemException(this, p.throwable)
+        case Some(p: FromEagerThrowable) ⇒ new ProblemException(this, p.throwable)
         case _ ⇒ new ProblemException(this)
       }
 
@@ -126,8 +126,23 @@ object Problem
     override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
   }
 
-  private final class FromThrowable(throwableFunction: () ⇒ Throwable) extends Problem {
+  sealed trait FromThrowable extends Problem
+
+  private final class FromEagerThrowable(val throwable: Throwable) extends FromThrowable
+  {
+    lazy val message = throwable.toStringWithCauses
+
+    def throwableOption: Some[Throwable] =
+      Some(throwable)
+
+    def cause: None.type =
+      None
+  }
+
+  private final class FromLazyThrowable(throwableFunction: () ⇒ Throwable) extends FromThrowable
+  {
     private lazy val throwable_ = throwableFunction()
+    lazy val message = throwable_.toStringWithCauses
 
     def throwable = throwable_
 
@@ -136,8 +151,6 @@ object Problem
 
     def cause: None.type =
       None
-
-    lazy val message = throwable_.toStringWithCauses
   }
 
   implicit val semigroup: Semigroup[Problem] = {
@@ -191,5 +204,5 @@ object Problem
 
   implicit val jsonDecoder: Decoder[Problem] =
     c ⇒ for (message ← c.get[String]("message")) yield
-      Problem.fromEager(message)
+      Problem.eager(message)
 }

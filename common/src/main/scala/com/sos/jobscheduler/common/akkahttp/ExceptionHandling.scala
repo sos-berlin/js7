@@ -29,14 +29,14 @@ trait ExceptionHandling
       case e: PublicException ⇒
         extractRequest { request ⇒
           webLogger.warn(toLogMessage(request, e), e)
-          complete((BadRequest, Problem.fromEagerThrowable(e)))
+          complete((BadRequest, Problem.eager(e)))
         }
 
       case e ⇒
         extractRequest { request ⇒
           webLogger.warn(toLogMessage(request, e), e)
           if (respondWithException)
-            complete((InternalServerError, Problem.fromEagerThrowable(e)))
+            complete((InternalServerError, Problem.eager(e)))
           else
             complete(InternalServerError)
         }
