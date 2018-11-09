@@ -219,11 +219,13 @@ extends MainJournalingActor[Event] with Stash {
     case DetachOrder(orderId) if !terminating ⇒
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
+          // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
+          // Bei langsamem Agenten, schnellem Master-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
           orderEntry.order.detachableFromAgent match {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is terminating
-              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }  // TODO ask will time-out when Journal blocks
+              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }  // TODO AskTimeoutException when Journal blocks
           }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
