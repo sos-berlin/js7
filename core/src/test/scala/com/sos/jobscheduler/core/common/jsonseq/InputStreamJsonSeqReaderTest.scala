@@ -72,7 +72,14 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
     }
 
     "Truncated file before LF" in {
-      assert(read(RS, '{', '}').isEmpty)
+      val in = new ByteArrayInputStream(Array[Byte](RS, '{')) with SeekableInputStream {
+        var _seek = -1L
+        def seek(pos: Long) = _seek = pos
+      }
+      val reader = new InputStreamJsonSeqReader(in, blockSize = 1)
+      assert(reader.read().isEmpty)
+      assert(reader.position == 0)  // Position unchanged, before the truncated record
+      assert(in._seek == 0)
     }
 
     "Truncated file after RS" in {
@@ -81,7 +88,6 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
   }
 
   "Corrupt data" - {
-
     "Missing RS" in {
       assert(expectException('{', '}', LF).toStringWithCauses ==
         "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record")
@@ -145,6 +151,6 @@ private object InputStreamJsonSeqReaderTest {
 
   private def simplifiedSeekableInputStream(bytes: Array[Byte]): SeekableInputStream =
     new ByteArrayInputStream(bytes) with SeekableInputStream {
-      def seek(pos: Long) = throw new NotImplementedError
+      def seek(pos: Long) = assert(pos == 0)  // Only seek(0) after truncated last record
     }
 }

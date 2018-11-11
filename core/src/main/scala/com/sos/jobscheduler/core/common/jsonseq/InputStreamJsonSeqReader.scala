@@ -52,6 +52,7 @@ extends AutoCloseable {
   }
 
   private def readByteString(): Option[ByteString] = {
+    val startPosition = position
     var rsReached = false
     var lfReached = false
     var eof = false
@@ -73,7 +74,9 @@ extends AutoCloseable {
       }
     }
     if (rsReached && !lfReached) {
-      logger.warn(s"Ignoring last truncated record in: $in")
+      logger.warn(s"Discarding truncated last record in '$in': ${byteStringBuilder.result().utf8String}")
+      byteStringBuilder.clear()
+      seek(startPosition)  // Keep a proper file position at start of record
     }
     lfReached ? {
       if (lineNumber != -1) lineNumber += 1
