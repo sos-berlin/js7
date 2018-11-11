@@ -80,6 +80,10 @@ fi
 
 logs="$data/logs"
 [ -d "$logs" ] || mkdir "$logs"
+
+stateDir="$data/state"
+[ -d "$stateDir" ] || mkdir "$stateDir"
+
 echo -e "\n-------\n$(date --iso-8601=ns)" >>$logs/stdouterr.log
 exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
 export SCHEDULER_LOGS="$logs"  # Used in logging configuration
@@ -109,6 +113,8 @@ execute=(
 echo "${execute[@]}"
 "${execute[@]}" &
 pid=$!
+pidFile="$stateDir/pid"
+echo "$pid" >$pidFile
 echo PID $pid
 
 function terminate() {
@@ -133,7 +139,8 @@ function terminate() {
 }
 
 trap "terminate" SIGTERM SIGINT SIGHUP
-wait $pid
+wait $pid || echo "JobScheduler Agent exited with exit code $?"
+rm $pidFile
 trap - SIGTERM SIGINT SIGHUP
 
 returnCode=$?
@@ -144,5 +151,5 @@ if [ -n "$crashKillScript" -a -s "$crashKillScript" ]; then :
   (. "$crashKillScript" || true)
   ps fux || true
 fi
-echo -e "\n------- End time is $(date --iso-8601=ns)" >>$logs/stdouterr.log
+echo -e "\n$(date --iso-8601=ns) JobScheduler Agent has been shut down" >>$logs/stdouterr.log
 exit $returnCode

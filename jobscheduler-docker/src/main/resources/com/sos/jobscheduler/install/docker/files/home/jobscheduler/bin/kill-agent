@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+
+kill "$@" "$(cat /var/opt/jobscheduler/agent/data/state/pid)"
