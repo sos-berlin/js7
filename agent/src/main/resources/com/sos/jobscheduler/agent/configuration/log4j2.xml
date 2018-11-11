@@ -2,7 +2,7 @@
 <configuration status="WARN" shutdownHook="disable">
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
                              fileName="${env:SCHEDULER_LOGS}/agent.log"
