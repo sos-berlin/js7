@@ -82,35 +82,47 @@ extends AutoCloseable
       } else
         Some(
           new CloseableIterator[Stamped[KeyedEvent[E]]] {
-            private var eof = false
-            var closed = false
+            @volatile private var eof = false
+            @volatile var closed = false
 
-            def close() = if (!closed) {
-              closed = true
-              returnIterator()
-              if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
-                logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
-                EventReader.this.close()
+            // May be called asynchronously (parallel to hasNext or next), as by Monix doOnSubscriptionCancel
+            def close() =
+              synchronized {
+                if (!closed) {
+                  closed = true
+                  returnIterator()
+                  if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
+                    logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
+                    EventReader.this.close()
+                  }
+                }
               }
-            }
 
             def hasNext =
-              !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd)
-                val r = iterator.hasNext
-                eof |= !r
-                if (!r && isHistoric) freeze()
-                r
+              synchronized {
+                !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd)
+                  requireNotClosed()
+                  val r = iterator.hasNext
+                  eof |= !r
+                  if (!r && isHistoric) freeze()
+                  r
+                }
               }
 
-            def next() = {
-              _lastUsed = Timestamp.currentTimeMillis
-              val stamped = iterator.next()
-              assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
-              if (isHistoric) {
-                 journalIndex.tryAddAfter(stamped.eventId, iterator.position)
+            def next() =
+              synchronized {
+                requireNotClosed()
+                _lastUsed = Timestamp.currentTimeMillis
+                val stamped = iterator.next()
+                assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
+                if (isHistoric) {
+                   journalIndex.tryAddAfter(stamped.eventId, iterator.position)
+                }
+                stamped
               }
-              stamped
-            }
+
+            private def requireNotClosed() =
+              if (closed) throw new IllegalStateException("FileEventIterator has been closed")
           }.closeAtEnd)
     }
   }
