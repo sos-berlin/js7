@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPool._
 import com.sos.jobscheduler.data.event.{Event, EventId}
@@ -83,7 +84,8 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
     }
 
   def returnIterator(iterator: FileEventIterator[E]): Unit = {
-    logger.trace(s"returnIterator $iterator eventId=${iterator.eventId} position=${iterator.position}")
+    lazy val PositionAnd(position, eventId) = iterator.positionAndEventId
+    logger.trace(s"returnIterator $iterator eventId=$eventId position=$position")
     synchronized {
       if (!iterator.isClosed) {
         freeIterators += iterator

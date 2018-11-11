@@ -61,8 +61,9 @@ extends AutoCloseable {
         eof = !fillByteBuffer()
       }
       if (!rsReached && blockRead < blockLength) {
-        if (block(blockRead) != RS)
-          throwCorrupt("Missing ASCII RS at start of JSON sequence record")
+        val byte = block(blockRead)
+        if (byte != RS)
+          throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
         blockRead += 1
         rsReached = true
       }
@@ -74,7 +75,7 @@ extends AutoCloseable {
       }
     }
     if (rsReached && !lfReached) {
-      logger.warn(s"Discarding truncated last record in '$in': ${byteStringBuilder.result().utf8String}")
+      logger.warn(s"Discarding truncated last record in '$in': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
       byteStringBuilder.clear()
       seek(startPosition)  // Keep a proper file position at start of record
     }

@@ -90,7 +90,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
   "Corrupt data" - {
     "Missing RS" in {
       assert(expectException('{', '}', LF).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record")
+        "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record (instead read: 7b)")
     }
 
     "Missing separators" in {

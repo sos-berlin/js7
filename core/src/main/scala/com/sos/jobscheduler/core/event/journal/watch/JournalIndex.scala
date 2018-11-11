@@ -36,7 +36,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
     eventId > _highestEventId && {
       synchronized {
         eventId > _highestEventId && {
-          if (freezed) throw new IllegalStateException("JournalIndex: tryAddAfter after freeze?")  // Self-check
+          if (freezed) throw new IllegalStateException(s"JournalIndex: tryAddAfter($eventId) after freeze ${_highestEventId} ?")  // Self-check
           val a = addedCount
           addedCount += n
           if (addedCount / spread > a / spread) {

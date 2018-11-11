@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
@@ -14,6 +15,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import java.nio.file.Files
 import scala.concurrent.blocking
 
 /**
@@ -36,7 +38,7 @@ trait JournalRecoverer[E <: Event] {
 
   final def recoverAll(): Unit =
     for (file ← journalFileOption) {
-      logger.info(s"Recovering from file ${file.getFileName}")
+      logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
       blocking {  // May take a long time
         autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
           recoverSnapshots(journalReader)
