@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
@@ -14,8 +12,7 @@ private[journal] final class HistoricEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
   val tornEventId: EventId,
   protected val journalFile: Path,
-  protected val config: Config,
-  protected val reusableJournalIndex: Option[JournalIndex] = None)
+  protected val config: Config)
 extends AutoCloseable
 with EventReader[E]
 {
@@ -24,7 +21,4 @@ with EventReader[E]
 
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = iteratorPool.firstEventPosition
-
-  def snapshotObjects: CloseableIterator[Any] =
-    CloseableIterator.fromCloseable(new JournalReader(journalMeta, journalFile))(_.nextSnapshots())
 }

@@ -75,14 +75,13 @@ with JournalingObserver
         afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
           afterEventId = current.tornEventId,
           current.journalFile,
-          Some(current.toHistoricEventReader)/*Reuse built-up JournalIndex*/)
-        current.closeAfterUse()
+          Some(current)/*Reuse built-up JournalIndex*/)
       }
       currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
-    evictUnusedHistoricEventReaders()
+    evictUnusedEventReaders()
   }
 
   def tornEventId =
@@ -145,7 +144,7 @@ with JournalingObserver
       case _ ⇒
         historicEventsAfter(after)
     }
-    evictUnusedHistoricEventReaders()
+    evictUnusedEventReaders()
     result
   }
 
@@ -167,7 +166,7 @@ with JournalingObserver
     }
 
   /** Close unused HistoricEventReader. **/
-  private def evictUnusedHistoricEventReaders(): Unit =
+  private def evictUnusedEventReaders(): Unit =
     afterEventIdToHistoric.values
       .filter(_.isEvictable)
       .toVector.sortBy(_.lastUsedAt)
@@ -201,22 +200,22 @@ with JournalingObserver
   private final class HistoricJournalFile(
     val afterEventId: EventId,
     val file: Path,
-    initialHistoricReader: Option[HistoricEventReader[E]] = None)
+    initialEventReader: Option[EventReader[E]] = None)
   {
-    private val historicEventReader = AtomicAny[HistoricEventReader[E]](initialHistoricReader.orNull)
+    private val _eventReader = AtomicAny[EventReader[E]](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
-      for (r ← Option(historicEventReader.get)) r.closeAfterUse()
+      for (r ← Option(_eventReader.get)) r.closeAfterUse()
 
     def close(): Unit =
-      for (r ← Option(historicEventReader.get)) r.close()
+      for (r ← Option(_eventReader.get)) r.close()
 
     @tailrec
-    def eventReader: HistoricEventReader[E] =
-      historicEventReader.get match {
+    def eventReader: EventReader[E] =
+      _eventReader.get match {
         case null ⇒
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
-          if (historicEventReader.compareAndSet(null, r)) {
+          if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
           } else {
@@ -227,9 +226,9 @@ with JournalingObserver
       }
 
     def evictEventReader(): Unit = {
-      val reader = historicEventReader.get
+      val reader = _eventReader.get
       if (reader != null) {
-        if (!reader.isInUse && historicEventReader.compareAndSet(reader, null)) {  // Race condition, may be become in-use before compareAndSet
+        if (!reader.isInUse && _eventReader.compareAndSet(reader, null)) {  // Race condition, may be become in-use before compareAndSet
           logger.debug(s"Evict HistoricEventReader(${file.getFileName}' lastUsedAt=${Timestamp.ofEpochMilli(reader.lastUsedAt)})")
           reader.closeAfterUse()
         }
@@ -237,13 +236,13 @@ with JournalingObserver
     }
 
     def lastUsedAt: Long =
-      historicEventReader.get match {
+      _eventReader.get match {
         case null ⇒ 0L
         case reader ⇒ reader.lastUsedAt
       }
 
     def isEvictable: Boolean = {
-      val reader = historicEventReader.get
+      val reader = _eventReader.get
       reader != null && !reader.isInUse
     }
 
