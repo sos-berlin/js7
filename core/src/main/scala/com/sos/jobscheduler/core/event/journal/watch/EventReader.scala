@@ -31,6 +31,7 @@ extends AutoCloseable
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
   protected lazy val journalIndex =
     new JournalIndex(PositionAnd(tornPosition, tornEventId), size = config.getInt("jobscheduler.journal.watch.index-size"))
+  private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
   @volatile
   private var _closeAfterUse = false
@@ -45,11 +46,6 @@ extends AutoCloseable
 
   final def close(): Unit =
     iteratorPool.close()
-
-  final def freeze(): Unit =
-    if (!journalIndex.isFreezed) {
-      journalIndex.freeze(config.getInt("jobscheduler.journal.watch.index-factor"))
-    }
 
   /**
     * @return None if torn
@@ -100,12 +96,14 @@ extends AutoCloseable
 
             def hasNext =
               synchronized {
-                !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd)
+                !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
                   requireNotClosed()
-                  val r = iterator.hasNext
-                  eof |= !r
-                  if (!r && isHistoric) freeze()
-                  r
+                  val has = iterator.hasNext
+                  eof |= !has
+                  if (!has && isHistoric) {
+                    journalIndex.freeze(journalIndexFactor)
+                  }
+                  has
                 }
               }
 

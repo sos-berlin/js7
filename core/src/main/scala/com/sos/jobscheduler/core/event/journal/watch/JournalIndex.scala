@@ -69,8 +69,6 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
       }
     }
 
-  def isFreezed = freezed
-
   @TestOnly
   def highestEventId = _highestEventId
 
