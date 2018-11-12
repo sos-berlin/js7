@@ -80,10 +80,11 @@ object Renderers {
       case _: Order.Forked    ⇒ "⨁"
       case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"
       case Order.Processed(_: Outcome.Failed) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy") // "☁"
-      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥"
-      case Order.Ready        ⇒ "◯"
-      case Order.Finished     ⇒ "☆"
-      case _                  ⇒ "·"
+      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥"  // Explosion
+      case Order.Ready        ⇒ "◯"  // Circle
+      case Order.Finished     ⇒ "☆"  // Star
+      case _: Order.Stopped   ⇒ "❗"  // Red exclamation mark
+      case _                  ⇒ "·"   // Dot
     }
 
   implicit def orderAttachedToVdom(attachedTo: Order.AttachedTo): VdomNode =

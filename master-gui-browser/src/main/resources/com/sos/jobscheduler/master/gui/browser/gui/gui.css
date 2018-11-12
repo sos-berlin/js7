@@ -113,7 +113,7 @@ header, main, footer { padding-left: 150px; }
   cursor: pointer; transition: background-color 100ms ease-in; }
 .orders-Order-OrderId { white-space: nowrap; font-weight: 600; padding-bottom: 2px; }
 .orders-Order-compact { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 36ex; }
-.orders-Order-State   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 18ex; }
+.orders-Order-State   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 34ex; }
 .orders-Order-changed { background-color: #fff8a0; }
 .orders-Order-changed-phaseout { background-color: transparent; transition: background-color 700ms ease-in; }
 .orders-Order-more { display: inline-grid; margin: 0 0 0 10px; }
