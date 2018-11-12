@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
-import akka.pattern.pipe
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -60,40 +59,30 @@ extends Actor with Stash {
       logger.debug(s"ProcessOrder(${cmd.order.id})")
       if (cmd.jobKey != jobKey)
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey"))))
-      else {
-        assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-        if (!exists(uncheckedFile)) {
-          val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
-          logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-          sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(msg))))
-        } else {
-          Try(uncheckedFile.toRealPath()) match {
-            case Failure(t) ⇒
-              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Executable '${workflowJob.executablePath}': $t"))))  // Exception.toString is published !!!
-            case Success(executableFile) ⇒
-              assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
-              val fileSet = filePool.get()
-              newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-                .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
-                .pipeTo(self)(sender())
-          }
+      else
+      if (!exists(uncheckedFile)) {
+        val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
+        logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(msg))))
+      } else
+        Try(uncheckedFile.toRealPath()) match {
+          case Failure(t) ⇒
+            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Executable '${workflowJob.executablePath}': $t"))))  // Exception.toString is published !!!
+          case Success(executableFile) ⇒
+            assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
+            assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
+            val fileSet = filePool.get()
+            val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
+            orderToTask.insert(cmd.order.id → Entry(fileSet, taskRunner))
+            val sender = this.sender()
+            taskRunner.processOrder(cmd.order, cmd.stdChannels)
+              .andThen { case _ ⇒ taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
+              .onComplete { triedStepEnded ⇒
+                self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
+              }
+            waitingForNextOrder = false
+            handleIfReadyForOrder()
         }
-      }
-
-    case Internal.TaskRegistered(Command.ProcessOrder(_, order, stdoutStderrWriter), fileSet, taskRunner) ⇒
-      if (terminating) {
-        taskRunner.kill(SIGKILL)  // Kill before start
-      } else {
-        orderToTask.insert(order.id → Entry(fileSet, taskRunner))
-        val sender = this.sender()
-        taskRunner.processOrder(order, stdoutStderrWriter)
-          .andThen { case _ ⇒ taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
-          .onComplete { triedStepEnded ⇒
-            self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
-          }
-        waitingForNextOrder = false
-        handleIfReadyForOrder()
-      }
 
     case Internal.TaskFinished(order, triedStepEnded) ⇒
       filePool.release(orderToTask(order.id).fileSet)
@@ -186,7 +175,6 @@ object JobActor
   }
 
   private object Internal {
-    final case class TaskRegistered(processOrder: Command.ProcessOrder, fileSet: FilePool.FileSet, taskRunner: TaskRunner)
     final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll extends DeadLetterSuppression
   }

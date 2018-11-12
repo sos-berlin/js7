@@ -25,6 +25,6 @@ trait TaskRunner {
 object TaskRunner {
   @ImplementedBy(classOf[SimpleShellTaskRunner.Factory])
   trait Factory {
-    def apply(conf: TaskConfiguration): Future[TaskRunner]
+    def apply(conf: TaskConfiguration): TaskRunner
   }
 }

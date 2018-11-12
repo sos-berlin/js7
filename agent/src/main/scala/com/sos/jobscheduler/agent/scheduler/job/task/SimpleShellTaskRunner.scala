@@ -143,7 +143,7 @@ object SimpleShellTaskRunner {
   {
     def apply(conf: TaskConfiguration) = {
       val agentTaskId = agentTaskIdGenerator.next()
-      Future.successful(new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration))
+      new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration)
     }
   }
 }
