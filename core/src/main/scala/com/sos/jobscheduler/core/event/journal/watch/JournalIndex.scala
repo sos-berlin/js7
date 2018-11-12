@@ -37,10 +37,10 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
       synchronized {
         eventId > _highestEventId && {
           if (freezed) throw new IllegalStateException(s"JournalIndex: tryAddAfter($eventId) after freeze ${_highestEventId} ?")  // Self-check
+          _highestEventId = eventId
           val a = addedCount
           addedCount += n
           if (addedCount / spread > a / spread) {
-            _highestEventId = eventId
             if (length == positions.length) {
               compress(factor = 2)
             }
@@ -117,7 +117,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   override def toString = {
     val addedFileSize = synchronized(if (length == 0) 0 else positions(length - 1) - torn.position)
     "JournalIndex(" +
-      EventId.toString(torn.value) + " -> " + torn.value +
+      EventId.toString(torn.value) + ".." + EventId.toString(_highestEventId) +
       s" eventIds=$addedCount ${toKBGB(addedFileSize)}" +
       s" entries=$length/${eventIds.length} spread=$spread ⌀${toKBGB(addedFileSize / length)}"  +
       ")"

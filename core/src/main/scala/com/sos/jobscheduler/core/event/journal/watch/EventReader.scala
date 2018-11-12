@@ -116,6 +116,7 @@ extends AutoCloseable
                 val stamped = iterator.next()
                 assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
                 if (isHistoric) {
+                  if (eof/*freezed*/) sys.error(s"FileEventIterator: !hasNext but next() returns a value, eventId=${stamped.eventId} position=${iterator.position}")
                    journalIndex.tryAddAfter(stamped.eventId, iterator.position)
                 }
                 stamped

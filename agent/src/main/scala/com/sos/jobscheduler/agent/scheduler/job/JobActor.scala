@@ -62,7 +62,6 @@ extends Actor with Stash {
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey"))))
       else {
         assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-        val fileSet = filePool.get()
         if (!exists(uncheckedFile)) {
           val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
           logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
@@ -73,6 +72,7 @@ extends Actor with Stash {
               sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Executable '${workflowJob.executablePath}': $t"))))  // Exception.toString is published !!!
             case Success(executableFile) ⇒
               assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
+              val fileSet = filePool.get()
               newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
                 .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
                 .pipeTo(self)(sender())

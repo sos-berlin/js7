@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import org.scalatest.FreeSpec
+import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -136,6 +137,13 @@ final class JournalIndexTest extends FreeSpec {
     intercept[IllegalStateException] {
       index.addAfter(99999900, 999)
     }
+  }
+
+  "addAfter with known value when freezed" in {
+    index.tryAddAfter(1000000, 1000000*100) shouldBe false  // Ignored
+    intercept[IllegalStateException] {
+      index.tryAddAfter(1000001, 1000001*100)
+    }.getMessage shouldEqual "JournalIndex: tryAddAfter(1000001) after freeze 1000000 ?"
   }
 
   "freeze 2" in {
