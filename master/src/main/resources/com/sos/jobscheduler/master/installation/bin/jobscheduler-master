@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# SimpleSession JobScheduler Master starter
-
-# Example usage:
-#   cd /tmp
-#   rm -rf engine
-#   tar xfz .../master/target/jobscheduler-master-bin.tar.gz
-#   export SCHEDULER_DATA=data (containing config/, config/live/ and log/)
-#   jobscheduler-x.y.z/bin/jobscheduler-master
+# JobScheduler Master starter
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
@@ -18,7 +11,7 @@ config=/var/opt/jobscheduler/master/config
 data=/var/opt/jobscheduler/master/data
 httpPort=4444
 masterOptions=()
-javaOptions=()
+javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
 
 for arg in "$@"; do :
