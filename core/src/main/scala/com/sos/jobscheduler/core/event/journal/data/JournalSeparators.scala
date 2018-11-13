@@ -5,7 +5,7 @@ import io.circe.Json
 /**
   * @author Joacim Zschimmer
   */
-private[journal] object JournalHeaders
+private[journal] object JournalSeparators
 {
   val SnapshotHeader = Json.fromString("-------SNAPSHOTS-------")
   val SnapshotFooter = Json.fromString("-------END OF SNAPSHOTS-------")

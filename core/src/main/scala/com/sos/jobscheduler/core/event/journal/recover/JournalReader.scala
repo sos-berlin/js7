@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
-import com.sos.jobscheduler.core.event.journal.data.JournalHeaders.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}

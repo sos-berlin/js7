@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeaders, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestEvent, TestKeyedEventJsonCodec, writeJournal}
@@ -125,7 +125,7 @@ final class FileEventIteratorTest extends FreeSpec
       iterator.seek(c)
       assert(iterator.positionAndEventId == c)
       assert(iterator.next() == TestEvents(2))
-      val commitOffset = 2 + JournalHeaders.Commit.asJson.compactPrint.length  // Positions before and after Commit are equivalent (Commit is ignored)
+      val commitOffset = 2 + JournalSeparators.Commit.asJson.compactPrint.length  // Positions before and after Commit are equivalent (Commit is ignored)
       assert(iterator.positionAndEventId.copy(position = iterator.positionAndEventId.position + commitOffset) == d)
       assert(iterator.next() == TestEvents(3))
 

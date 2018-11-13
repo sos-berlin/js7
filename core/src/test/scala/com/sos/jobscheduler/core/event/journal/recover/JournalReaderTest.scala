@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalHeaders}
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
@@ -141,9 +141,9 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
         write(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0).asJson)
-        write(JournalHeaders.EventHeader)
+        write(JournalSeparators.EventHeader)
         writeEvent(first)
-        write(JournalHeaders.Transaction)
+        write(JournalSeparators.Transaction)
         writeEvent(ta(0))
         writeEvent(ta(1))
         writeEvent(ta(2))
