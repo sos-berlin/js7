@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.taskserver.task.process
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.log.LogLevel
+import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
@@ -87,19 +90,18 @@ extends HasCloser with ClosedFuture {
       }
     }
 
-  private def executeKillScript(args: Seq[String]): Future[Unit] =
+  private def executeKillScript(args: Seq[String]): Future[Completed] =
     if (isMac) {
       logger.warn("Execution of kill script is suppressed on MacOS")  // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
-      Future.successful(())
+      Future.successful(Completed)
     } else {
       logger.info("Executing kill script: " + args.mkString("  "))
       val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
       namedThreadFuture("Kill script") {
         waitForProcessTermination(onKillProcess)
-        onKillProcess.exitValue match {
-          case 0 ⇒
-          case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
-        }
+        val exitCode = onKillProcess.exitValue
+        logger.log(if (exitCode == 0) LogLevel.Debug else LogLevel.Warn, s"Kill script '${args(0)}' has returned exit code $exitCode")
+        Completed
       }
     }
 
