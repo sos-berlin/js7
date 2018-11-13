@@ -29,8 +29,8 @@ extends AutoCloseable
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
-  protected lazy val journalIndex =
-    new JournalIndex(PositionAnd(tornPosition, tornEventId), size = config.getInt("jobscheduler.journal.watch.index-size"))
+  protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
+    size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
   protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
   @volatile

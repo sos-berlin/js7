@@ -67,10 +67,10 @@ import scala.util.{Failure, Success}
 final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
   journalMeta: JournalMeta[Event],
+  eventWatch: JournalEventWatch[Event],
   eventIdClock: EventIdClock)
   (implicit
     timerService: TimerService,
-    eventWatch: JournalEventWatch[Event],
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
 extends Stash

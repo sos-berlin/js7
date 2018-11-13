@@ -192,9 +192,9 @@ object RunningMaster {
               new MasterOrderKeeper(
                 masterConfiguration,
                 injector.instance[JournalMeta[Event]],
+                injector.instance[JournalEventWatch[Event]],
                 injector.instance[EventIdClock])(
                 injector.instance[TimerService],
-                injector.instance[JournalEventWatch[Event]],
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },
