@@ -299,7 +299,7 @@ extends Actor with Stash {
   }
 
   private def newEventJsonWriter(withoutSnapshots: Boolean = false) = {
-    val symLink = Paths.get(journalMeta.fileBase + ".journal")
+    val symLink = Paths.get(journalMeta.fileBase + "-journal")  // We preserve the suffix ".journal" for the real journal files
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = lastWrittenEventId)
