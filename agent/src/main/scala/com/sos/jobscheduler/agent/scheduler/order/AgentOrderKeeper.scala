@@ -79,9 +79,58 @@ extends MainJournalingActor[Event] with Stash {
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
-  private var terminating = false
-  private var terminatingOrders = false
-  private var stillTerminatingSchedule: Option[Cancelable] = None
+
+  private object termination {
+    private var _terminating = false
+    private var snapshotTaken = false
+    private var stillTerminatingSchedule: Option[Cancelable] = None
+    private var terminatingOrders = false
+    private var terminatingJournal = false
+
+    def terminating = _terminating
+
+    def start(terminate: AgentCommand.Terminate): Unit =
+      if (!_terminating) {
+        _terminating = true
+        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
+        for (a ← jobRegister.values) a.actor ! terminate
+        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+          self ! Internal.StillTerminating
+        })
+        continue()
+      }
+
+    def close() = {
+      stillTerminatingSchedule foreach (_.cancel())
+    }
+
+    def onStillTerminating() =
+      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs")
+
+    def onSnapshotTaken(): Unit =
+      if (_terminating) {
+        snapshotTaken = true
+        continue()
+      }
+
+    def continue() =
+      if (_terminating) {
+        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs")
+        if (snapshotTaken && jobRegister.isEmpty) {
+          if (orderRegister.nonEmpty && !terminatingOrders) {
+            terminatingOrders = true
+            for (o ← orderRegister.values if !o.detaching) {
+              o.actor ! OrderActor.Input.Terminate
+            }
+          } else
+          if (orderRegister.isEmpty && !terminatingJournal) {
+            terminatingJournal = true
+            journalActor ! JournalActor.Input.Terminate
+          }
+        }
+      }
+  }
+  import termination.terminating
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -109,7 +158,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   override def postStop() = {
-    stillTerminatingSchedule foreach (_.cancel())
+    termination.close()
     eventWatch.close()
     super.postStop()
     logger.debug("Stopped")
@@ -147,21 +196,11 @@ extends MainJournalingActor[Event] with Stash {
       sender() ! eventWatch
 
     case terminate: AgentCommand.Terminate ⇒
-      if (!terminating) {
-        terminating = true
-        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-        for (a ← jobRegister.values) a.actor ! terminate
-        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-          self ! Internal.StillTerminating
-        })
-        continueTermination()
-      }
+      termination.start(terminate)
       sender() ! AgentCommand.Accepted
 
     case JournalActor.Output.SnapshotTaken ⇒
-      if (terminating) {
-        continueTermination()
-      }
+      termination.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       if (!terminating) {
@@ -224,7 +263,7 @@ extends MainJournalingActor[Event] with Stash {
           orderEntry.order.detachableFromAgent match {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
-              orderEntry.detaching = true  // OrderActor is terminating
+              orderEntry.detaching = true  // OrderActor is isTerminating
               (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }  // TODO AskTimeoutException when Journal blocks
           }
         case None ⇒
@@ -410,36 +449,22 @@ extends MainJournalingActor[Event] with Stash {
           logger.error(s"Actor '$jobKey' stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-        continueTermination()
+        termination.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
         val orderId = orderRegister(actorRef).order.id
         logger.debug(s"Actor '$orderId' stopped")
         orderRegister.onActorTerminated(actorRef)
-        continueTermination()
+        termination.continue()
 
       case Terminated(`journalActor`) if terminating ⇒
         context.stop(self)
 
       case Internal.StillTerminating ⇒
-        logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs")
+        termination.onStillTerminating()
 
       case _ ⇒
         super.unhandled(message)
-    }
-
-  private def continueTermination() =
-    if (terminating) {
-      logger.trace(s"continueTermination: ${orderRegister.size} orders, ${jobRegister.size} jobs")
-      if (jobRegister.isEmpty && !terminatingOrders) {
-        terminatingOrders = true
-        for (o ← orderRegister.values if !o.detaching) {
-          o.actor ! OrderActor.Input.Terminate
-        }
-      }
-      if (orderRegister.isEmpty && jobRegister.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
-      }
     }
 
   override def toString = "AgentOrderKeeper"
