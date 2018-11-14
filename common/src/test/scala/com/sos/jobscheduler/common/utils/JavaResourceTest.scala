@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.utils
 
 import com.google.common.io.Resources.getResource
+import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileAlreadyExistsException
@@ -71,7 +72,7 @@ final class JavaResourceTest extends FreeSpec {
 
   "requireExists" in {
     JavaResource(path).requireExistence()
-    intercept[IllegalArgumentException] {
+    intercept[ProblemException] {
       JavaResource(nonExistentPath).requireExistence()
     }
   }
