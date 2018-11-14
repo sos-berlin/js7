@@ -117,7 +117,7 @@ extends KeyedJournalingActor[OrderEvent] {
     case command: Command ⇒
       executeOtherCommand(command)
 
-    case Input.StartProcessing(jobKey, workflowJob, jobActor) ⇒
+    case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
       assert(stdouterr == null)
       stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
       val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
@@ -130,6 +130,7 @@ extends KeyedJournalingActor[OrderEvent] {
         jobActor ! JobActor.Command.ProcessOrder(
           jobKey,
           order.castAfterEvent(event),
+          defaultArguments,
           new StdChannels(
             charBufferSize = charBufferSize,
             stdoutWriter = stdoutWriter,
@@ -330,7 +331,8 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddPublished(order: Order[Order.Offered]) extends Input
-    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef) extends Input
+    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
+      extends Input
     final case object Terminate extends Input with DeadLetterSuppression
     final case class HandleEvent(event: OrderActorEvent) extends Input
   }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-echo "はじめまして。"
+echo "はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT"
+sleep 2
 exit

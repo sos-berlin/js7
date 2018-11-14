@@ -72,9 +72,13 @@ object WorkflowPrinter {
           appendWorkflowExecutable(workflowExecutable)
           sb ++= ";\n"
 
-        case Execute.Named(name) ⇒
+        case Execute.Named(name, arguments) ⇒
           sb ++= "job "
           sb ++= name.string
+          if (arguments.nonEmpty) {
+            sb ++= ", arguments="
+            sb ++= arguments.asJson.pretty(JsonPrinter)
+          }
           sb ++= ";\n"
 
         case ForkJoin(branches) ⇒

@@ -62,15 +62,15 @@ extends TaskRunner {
         Future.successful(Completed)
     }
 
-  def processOrder(order: Order[Order.InProcess], stdChannels: StdChannels): Future[TaskStepEnded] =
-    for (returnCode ← runProcess(order, stdChannels)) yield
+  def processOrder(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
+    for (returnCode ← runProcess(order, defaultArguments, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
         returnCode)
 
-  private def runProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[ReturnCode] =
+  private def runProcess(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
     for {
-      richProcess ← startProcess(order, stdChannels) andThen {
+      richProcess ← startProcess(order, defaultArguments, stdChannels) andThen {
         case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
@@ -92,14 +92,14 @@ extends TaskRunner {
     result
   }
 
-  private def startProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] = {
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
       val env = {
-        val params = conf.workflowJob.defaultArguments ++ order.variables
-        val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
-        /*environment +*/ paramEnv + returnValuesProvider.env
+        val params = conf.workflowJob.defaultArguments ++ defaultArguments ++ order.variables
+        val paramEnv = params map { case (k, v) ⇒ (variablePrefix + k.toUpperCase) → v }
+        paramEnv + returnValuesProvider.env
       }
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map(),

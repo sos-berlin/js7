@@ -377,7 +377,7 @@ extends MainJournalingActor[Event] with Stash {
           case _: Execute ⇒
             val checkedJobKey = (orderEntry.instruction: @unchecked) match {
               case _: Execute.Anonymous ⇒ Valid(JobKey.Anonymous(orderEntry.order.workflowPosition))
-              case o: Execute.Named     ⇒ orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)
+              case o: Execute.Named     ⇒ orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
             }
             for (jobEntry ← checkedJobKey flatMap jobRegister.checked onProblem (p ⇒ logger.error(p))){
               onOrderAvailableForJob(orderEntry.order.id, jobEntry)
@@ -419,9 +419,13 @@ extends MainJournalingActor[Event] with Stash {
 
   private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
     logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobKey}")
+    val defaultArguments = orderEntry.instruction match {
+      case o: Execute.Named ⇒ o.defaultArguments
+      case _ ⇒ Map.empty[String, String]
+    }
     //assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
-    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor)
+    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
   }
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {

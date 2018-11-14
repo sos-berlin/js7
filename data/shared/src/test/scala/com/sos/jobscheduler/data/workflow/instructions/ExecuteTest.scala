@@ -24,6 +24,18 @@ final class ExecuteTest extends FreeSpec
         }""")
     }
 
+    "Named with defaultArguments" in {
+      CirceJsonTester.testJson[Instruction.Labeled](
+        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" → "VALUE")),
+        json"""{
+          "TYPE": "Execute.Named",
+          "name": "EXECUTABLE",
+          "defaultArguments": {
+            "ARG": "VALUE"
+          }
+        }""")
+    }
+
     "Anonymous" in {
       CirceJsonTester.testJson[Instruction.Labeled](
         Execute(
@@ -36,6 +48,26 @@ final class ExecuteTest extends FreeSpec
             "agentPath": "/AGENT",
             "executablePath": "/EXECUTABLE",
             "taskLimit": 1
+          }
+        }""")
+    }
+
+    "Anonymous with defaultArguments" in {
+      CirceJsonTester.testJson[Instruction.Labeled](
+        Execute(
+          WorkflowJob(
+            AgentPath("/AGENT"),
+            ExecutablePath("/EXECUTABLE"),
+            Map("ARG" → "VALUE"))),
+        json"""{
+          "TYPE": "Execute.Anonymous",
+          "job": {
+            "agentPath": "/AGENT",
+            "executablePath": "/EXECUTABLE",
+            "taskLimit": 1,
+            "defaultArguments": {
+              "ARG": "VALUE"
+            }
           }
         }""")
     }

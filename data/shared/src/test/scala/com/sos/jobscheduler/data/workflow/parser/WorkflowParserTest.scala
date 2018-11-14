@@ -63,7 +63,7 @@ final class WorkflowParserTest extends FreeSpec {
     check("""
       workflow {
         job A;
-        job B;
+        job B, arguments = { "KEY": "VALUE" };
         job C;
         define job A {
           execute executable="/my/executable", agent="/AGENT", successReturnCodes=[0, 1, 3];
@@ -79,7 +79,7 @@ final class WorkflowParserTest extends FreeSpec {
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A")),
-          Execute.Named(WorkflowJob.Name("B")),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" → "VALUE")),
           Execute.Named(WorkflowJob.Name("C"))),
         Map(
           WorkflowJob.Name("A") →
@@ -125,14 +125,14 @@ final class WorkflowParserTest extends FreeSpec {
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))))
   }
 
-  "job with successReturnCodes" in {
+  "execute with successReturnCodes" in {
     check("""workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
   }
 
-  "job with failureReturnCodes" in {
+  "execute with failureReturnCodes" in {
     check("""workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
       Workflow.anonymous(
         Vector(

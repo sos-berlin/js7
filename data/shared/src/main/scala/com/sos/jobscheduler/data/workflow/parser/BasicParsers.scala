@@ -130,7 +130,7 @@ private[parser] object BasicParsers
         .reduce((a, b) ⇒ a | b))
 
   def keyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
-    P(name ~ h ~ "=" ~~/ valueParser)
+    P(P(name) ~~ "=" ~~/ valueParser)
 
   def curly[A](parser: Parser[A]): Parser[A] =
     P(h ~ "{" ~~/ parser ~~ "}")

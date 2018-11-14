@@ -1,11 +1,10 @@
+#!/usr/bin/env bash
 set -e
 
-echo Hello ☘
-
-row=$(printf 'x%.0s' {1..1000})   # 1000 times "x"
-#for a in {1..3000}; do
-for a in {1..1}; do
+row=$(printf '.%.0s' {1..1000})   # 1000 times "."
+for i in {1..1}; do
   echo "$row"
 done
 
+echo "$SCHEDULER_PARAM_HELLO ☘"
 sleep 3

@@ -75,7 +75,7 @@ extends Actor with Stash {
             val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
             orderToTask.insert(cmd.order.id → Entry(fileSet, taskRunner))
             val sender = this.sender()
-            taskRunner.processOrder(cmd.order, cmd.stdChannels)
+            taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
               .andThen { case _ ⇒ taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
               .onComplete { triedStepEnded ⇒
                 self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
@@ -158,7 +158,8 @@ object JobActor
 
   sealed trait Command
   object Command {
-    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.InProcess], stdChannels: StdChannels) extends Command
+    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels)
+    extends Command
   }
 
   object Response {

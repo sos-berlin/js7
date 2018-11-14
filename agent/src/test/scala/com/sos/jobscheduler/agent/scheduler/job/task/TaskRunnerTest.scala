@@ -61,7 +61,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
-      val ended = taskRunner.processOrder(order, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
+      val ended = taskRunner.processOrder(order, Map.empty, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
       assert(ended == TaskStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-VALUE1")), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")

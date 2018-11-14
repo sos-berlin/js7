@@ -30,8 +30,8 @@ private[workfloworders] object InstructionComponent
               "execute ", <.span(^.cls := "orders-Instruction-Executable", job.executablePath.string), ", ",
               <.div("agent=", <.span(^.cls := "orders-Instruction-Agent", job.agentPath.string)))
 
-          case Execute.Named(name) ⇒
-            VdomArray("execute ", name.string)
+          case named: Execute.Named ⇒
+            VdomArray("job ", named.name.string)
 
           case ImplicitEnd ⇒
             "end"

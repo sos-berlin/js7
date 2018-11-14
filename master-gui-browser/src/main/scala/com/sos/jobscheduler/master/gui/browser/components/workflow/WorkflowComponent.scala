@@ -74,8 +74,8 @@ object WorkflowComponent {
         case Execute.Anonymous(job) ⇒
           VdomArray("execute ", job.executablePath.string, ", agent=", job.agentPath.string)
 
-        case Execute.Named(name) ⇒
-          VdomArray("execute ", name.string)
+        case named: Execute.Named ⇒
+          VdomArray("job ", named.name.string)
 
         case _: ForkJoin ⇒
           "fork"

@@ -70,16 +70,16 @@ object WorkflowParser {
       keyword("end").!
         map (_ ⇒ ExplicitEnd))
 
-    private val jsonObject =
-      P[Map[String, String]](
+    private val arguments =
+      P[Arguments](
         curly(commaSeq(quotedString ~~ ":" ~~/ quotedString))
-          map (_.toMap))
+          map (kvs ⇒ Arguments(kvs.toMap)))
 
     private val anonymousWorkflowExecutable = P[WorkflowJob](
       keyValueMap(Map(
         "executable" → quotedString,
         "agent" → path[AgentPath],
-        "arguments" → jsonObject,
+        "arguments" → arguments,
         "successReturnCodes" → successReturnCodes,
         "failureReturnCodes" → failureReturnCodes,
         "taskLimit" → int))
@@ -87,11 +87,11 @@ object WorkflowParser {
         for {
           agentPath ← keyToValue[AgentPath]("agent")
           executablePath ← keyToValue[String]("executable") map ExecutablePath.apply
-          arguments ← keyToValue[Map[String, String]]("arguments", Map.empty[String, String])
+          arguments ← keyToValue[Arguments]("arguments", Arguments.empty)
           returnCodeMeaning ← keyToValue.oneOfOr[ReturnCodeMeaning](Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
           taskLimit ← keyToValue[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         } yield
-          WorkflowJob(agentPath, executablePath, arguments, returnCodeMeaning, taskLimit = taskLimit)
+          WorkflowJob(agentPath, executablePath, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit)
       })
 
     private val executeInstruction = P[Execute.Anonymous](
@@ -99,8 +99,17 @@ object WorkflowParser {
         map Execute.Anonymous.apply)
 
     private val jobInstruction = P[Execute](
-      (keyword("job") ~~ identifier)
-        map (name ⇒ Execute.Named(WorkflowJob.Name(name))))
+      (keyword("job") ~~ identifier ~~
+        (comma ~~
+          keyValueMap(Map("arguments" → arguments))
+        ).?
+      ).flatMap {
+        case (name, None) ⇒
+          valid(Execute.Named(WorkflowJob.Name(name)))
+        case (name, Some(keyToValue)) ⇒
+          for (arguments ← keyToValue[Arguments]("arguments", Arguments.empty)) yield
+            Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments.toMap)
+      })
 
     private val forkInstruction = P[ForkJoin]{
       val orderSuffix = P(quotedString map (o ⇒ BranchId.Named(o)))
@@ -160,5 +169,10 @@ object WorkflowParser {
         w)
 
     val whole = w ~/ workflow ~~/ End
+  }
+
+  private case class Arguments(toMap: Map[String, String])
+  private object Arguments {
+    val empty = new Arguments(Map.empty)
   }
 }

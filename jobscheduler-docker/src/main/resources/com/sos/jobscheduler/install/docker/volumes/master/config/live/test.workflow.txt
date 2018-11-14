@@ -1,30 +1,32 @@
 workflow {
-  job TEST1;
+  job TEST1, arguments={"hello": "გამარჯობა!"};
 
   // Fork with part of a branch running at another Agent
   // Each branch starts with a string which is appended to the child Orders.
   fork(
     "🥕" {
-      job TEST1;
-      job TEST1;
+      job TEST1, arguments={"hello": "Здравей!"};
+      job TEST1, arguments={"hello": "გამარჯობა!"};
     },
     "🍋" {
-      job TEST1;
+      job TEST1, arguments={"hello": "やあ"};
       job TEST2;
     });
-  job TEST1;
+
+  job TEST2, arguments={"testArgument": "🍊"};
+  job TEST1, arguments={"hello": "مرحبًا"};
+  job TEST2;
 
   // Fork with all jobs at same (current) Agent
   fork(
     "🥕" {
-      job TEST1;
+      execute executable="/test", agent="test-agent-1", taskLimit=10, arguments={"hello": "你好"};
       job TEST1;
     },
     "🍋" {
       job TEST1;
       job TEST1;
     });
-  job TEST1;
 
   // Fork with one branch at current Agent, the other branch at the other Agent.
   fork(
@@ -44,10 +46,14 @@ workflow {
   };
 
   define job TEST1 {
-    execute executable="/test", agent="test-agent-1", taskLimit=30;
+    execute executable="/test", agent="test-agent-1", taskLimit=30, arguments={"hello": "Hello"};
   }
 
   define job TEST2 {
-    execute executable="/test", agent="test-agent-2", taskLimit=10;
+    execute executable="/test", agent="test-agent-2", taskLimit=10,
+      arguments={
+        "testArgument": "☘",
+        "other": "other value"
+      };
   }
 }

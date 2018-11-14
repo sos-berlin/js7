@@ -15,7 +15,7 @@ trait TaskRunner {
 
   def terminate(): Future[Completed]
 
-  def processOrder(order: Order[Order.InProcess], stdChannels: StdChannels): Future[TaskStepEnded]
+  def processOrder(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded]
 
   def kill(signal: ProcessSignal): Unit
 

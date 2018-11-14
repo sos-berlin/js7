@@ -190,7 +190,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, defaultArguments = Map.empty, jobActor = jobActor)
         become(ready)
     }
 

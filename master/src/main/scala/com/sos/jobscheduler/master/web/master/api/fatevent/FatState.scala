@@ -70,7 +70,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
 
       case _: OrderProcessingStarted ⇒
         val jobName = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedExecute(order.position)).orThrow match {
-          case Execute.Named(name) ⇒ Some(name)
+          case named: Execute.Named ⇒ Some(named.name)
           case _ ⇒ None
         }
         val agent = order.attachedToAgent.flatMap(a ⇒ repo.idTo[Agent](a)).orThrow
