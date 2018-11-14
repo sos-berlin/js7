@@ -91,17 +91,17 @@ object OrdersState {
     }
 
     def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[OrderEvent]]]): FetchedContent = {
-      val updated = mutable.Map[OrderId, OrderEntry]()
-      val added = mutable.Map[WorkflowId, js.Array[OrderId]]()
       val deleted = mutable.Set[OrderId]()
+      val updated = mutable.Map[OrderId, OrderEntry]()
+      val added = mutable.Map[WorkflowId, OrderedSet[OrderId]]()
       var evtCount = 0
       val nowMillis = Timestamp.currentTimeMillis
       stampedEvents foreach { stamped ⇒
         try stamped match {
           case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
-            updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
-            added.getOrElseUpdate(event.workflowId, new js.Array) += orderId
             deleted -= orderId
+            updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
+            added.getOrElseUpdate(event.workflowId, new OrderedSet) += orderId
             evtCount += 1
 
           case Stamped(eId, _, KeyedEvent(orderId, event: OrderEvent)) ⇒
@@ -128,19 +128,20 @@ object OrdersState {
                 })
                 event match {
                   case event: OrderForked ⇒
-                    for (childOrder ← entry.order.newForkedOrders(event)) {
-                      updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
-                      deleted -= childOrder.id
-                      added.getOrElseUpdate(entry.order.workflowId, new js.Array) += childOrder.id
-                    }
+                    val childOrders = entry.order.newForkedOrders(event)
+                    val childOrderIds = childOrders map (_.id)
+                    deleted --= childOrderIds
+                    updated ++= childOrders.map(o ⇒ o.id → OrderEntry(o, updatedAt = nowMillis))
+                    added.getOrElseUpdate(entry.order.workflowId, new OrderedSet) ++= childOrderIds
 
                   case _: OrderJoined ⇒
                     for (order ← entry.order.ifState[Order.Forked]) {
-                      deleted ++= order.state.childOrderIds
-                      updated --= order.state.childOrderIds
+                      val childOrderIds = order.state.childOrderIds
+                      deleted ++= childOrderIds
+                      updated --= childOrderIds
                       val w = entry.order.workflowId
-                      for (a ← added.get(w)) {
-                        added(w) = a filterNot order.state.childOrderIds.toSet
+                      if (added isDefinedAt w) {
+                        added(w) --= childOrderIds
                       }
                     }
 
@@ -151,7 +152,7 @@ object OrdersState {
                       orderIds -= orderId
 
                   case _ ⇒
-                }
+              }
               evtCount += 1
           }
 
@@ -182,14 +183,22 @@ object OrdersState {
 
   private def concatOrderIds(
     wToO: WorkflowToOrderIds,
-    added: mutable.Map[WorkflowId, js.Array[OrderId]])
+    added: mutable.Map[WorkflowId, OrderedSet[OrderId]])
   : WorkflowToOrderIds =
       wToO ++
         (for ((workflowId, orderIds) ← added) yield
           workflowId →
             (wToO.get(workflowId) match {
-              case Some(a) ⇒ a ++ orderIds
-              case None ⇒ orderIds.toVector
+              case Some(a) ⇒
+                if (orderIds.array.isEmpty)
+                  a
+                else {
+                  val isAdded = orderIds.array.toSet
+                  if (a exists isAdded) a.filterNot(isAdded) ++ orderIds.array
+                  else a ++ orderIds.array
+                }
+              case None ⇒
+                orderIds.array.toVector
             })
         ).toMap
 
@@ -221,6 +230,30 @@ object OrdersState {
     updatedAt: Long)
   {
     def id = order.id
+  }
+
+  private class OrderedSet[A] {
+    var array = new js.Array[A]
+
+    def +=(a: A): Unit =
+      if (!array.contains(a)) {
+        array.push(a)
+      }
+
+    def -=(a: A): Unit =
+      array = array.filterNot(_ == a)  // Optimierbar, wenn a letztes Element ist
+
+    def ++=(as: Iterable[A]): Unit =
+      if (as.nonEmpty) {
+        val duplicates = array filter as.toSet
+        if (duplicates.isEmpty)
+          array.appendAll(as)
+        else
+          array = array.filterNot(duplicates.toSet) ++ as
+      }
+
+    def --=(as: Iterable[A]): Unit =  // Optimierbar, wenn alle as am Ende stehen
+      array = array.filterNot(as.toSet)
   }
 }
 
