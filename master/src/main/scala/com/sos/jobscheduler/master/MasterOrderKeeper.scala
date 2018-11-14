@@ -394,7 +394,7 @@ with MainJournalingActor[Event]
   private def readScheduledOrderGeneratorConfiguration(): Checked[IO[Unit]] = {
     val dir = masterConfiguration.orderGeneratorsDirectory
     if (!Files.exists(dir))
-    Valid(IO.unit)
+      Valid(IO.unit)
     else {
       val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
       for (events ← FileBaseds.readDirectory(reader :: Nil, dir, scheduledOrderGenerators, repo.versionId)) yield
