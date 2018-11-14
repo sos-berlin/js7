@@ -519,7 +519,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test")
+lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test", `jobscheduler-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

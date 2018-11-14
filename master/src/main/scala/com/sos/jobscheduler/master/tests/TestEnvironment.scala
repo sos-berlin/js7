@@ -63,8 +63,10 @@ extends AutoCloseable {
 
   def agentDir(agentPath: AgentPath): Path = {
     require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")
-    temporaryDirectory / s"agents/${agentPath.withoutStartingSlash}"
+    agentsDir / agentPath.withoutStartingSlash
   }
+
+  def agentsDir = temporaryDirectory / "agents"
 }
 
 object TestEnvironment {

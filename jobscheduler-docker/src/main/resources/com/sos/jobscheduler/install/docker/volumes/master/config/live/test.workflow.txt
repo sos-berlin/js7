@@ -20,7 +20,7 @@ workflow {
   // Fork with all jobs at same (current) Agent
   fork(
     "🥕" {
-      execute executable="/test", agent="test-agent-1", taskLimit=10, arguments={"hello": "你好"};
+      execute executable="/test", agent="agent-1", taskLimit=10, arguments={"hello": "你好"};
       job TEST1;
     },
     "🍋" {
@@ -46,11 +46,11 @@ workflow {
   };
 
   define job TEST1 {
-    execute executable="/test", agent="test-agent-1", taskLimit=30, arguments={"hello": "Hello"};
+    execute executable="/test", agent="agent-1", taskLimit=30, arguments={"hello": "Hello"};
   }
 
   define job TEST2 {
-    execute executable="/test", agent="test-agent-2", taskLimit=10,
+    execute executable="/test", agent="agent-2", taskLimit=10,
       arguments={
         "testArgument": "☘",
         "other": "other value"
