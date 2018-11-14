@@ -69,6 +69,7 @@ with ReceiveLoggingActor.WithStash {
   private var keepEventsCancelable: Option[Cancelable] = None
   private var delayKeepEvents = false
   private var logCount = 0
+  private var lastError: Option[String] = None
   private var terminating = false
 
   become("disconnected")(disconnected)
@@ -130,6 +131,7 @@ with ReceiveLoggingActor.WithStash {
 
   private def connecting: Receive = {
     case Internal.AfterConnect(Success(Completed)) ⇒
+      lastError = None
       isConnected = true
       reconnectPause.onConnectSucceeded()
       commandQueue.onReconnected()
@@ -197,10 +199,12 @@ with ReceiveLoggingActor.WithStash {
           }
         }
 
-    case Internal.KeepEvents(after) ⇒  // TODO isConnected, terminating?
-      client.commandExecute(AgentCommand.KeepEvents(after = after)).runOnComplete { tried ⇒
-        tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
-        keepEventsCancelable = None  // Asynchronous!
+    case Internal.KeepEvents(after) ⇒
+      if (!terminating && isConnected) {
+        client.commandExecute(AgentCommand.KeepEvents(after = after)).runOnComplete { tried ⇒
+          tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
+          keepEventsCancelable = None  // Asynchronous!
+        }
       }
 
     case Internal.CommandQueueReady ⇒
@@ -254,6 +258,7 @@ with ReceiveLoggingActor.WithStash {
       }
 
     case Internal.BatchSucceeded(responses) ⇒
+      lastError = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
       val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) ⇒ orderId }
       if (detachedOrderIds.nonEmpty) {
@@ -297,6 +302,7 @@ with ReceiveLoggingActor.WithStash {
       }
 
     case Internal.Fetched(Success(stampedEvents), number) ⇒
+      lastError = None
       if (number != fetchNumber) {
         logger.debug("Discarding obsolete Agent response Internal.Fetched")
       } else {
@@ -312,10 +318,15 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def handleConnectionError(throwable: Throwable)(andThen: ⇒ Unit): Unit = {
+    val msg = throwable.toStringWithCauses
     if (terminating)
-      logger.debug(s"While terminating: ${throwable.toStringWithCauses}")
-    else {
-      logger.warn(throwable.toStringWithCauses)
+      logger.debug(s"While terminating: $msg")
+    else if (lastError contains msg) {
+      logger.debug(msg)
+      andThen
+    } else {
+      lastError = Some(msg)
+      logger.warn(msg)
       if (throwable.getStackTrace.nonEmpty) logger.debug("", throwable)
       persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ ⇒
         andThen
