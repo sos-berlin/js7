@@ -50,66 +50,108 @@ final case class Order[+S <: Order.State](
   def position: Position =
     workflowPosition.position
 
-  def update(event: OrderEvent.OrderCoreEvent): Order[State] =
+  def forceUpdate(event: OrderEvent.OrderCoreEvent): Order[State] =
+    update(event).orThrow
+
+  def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
+    def inapplicable = Invalid(Problem(s"Order '${id.string}' in state '${state.getClass.simpleScalaName}' ($attachedToString) has received an inapplicable event: " + event))
+    def if_[A](okay: Boolean)(updated: ⇒ Order[State]) = if (okay && !isDetachable) Valid(updated) else inapplicable
+    def ifState[A <: State: ClassTag](updated: ⇒ Order[State]) = if_(isState[A])(updated)
+
     event match {
       case _: OrderAdded | _: OrderAttached ⇒
-        throw new IllegalArgumentException("OrderAdded and OrderAttached are not handled by the Order itself")
+        Problem(throw new IllegalArgumentException("OrderAdded and OrderAttached are not handled by the Order itself"))
 
-      case OrderTransferredToAgent(o) ⇒
-        copy(
-          attachedTo = Some(AttachedTo.Agent(o)))
+      case OrderProcessingStarted ⇒
+        ifState[Idle](copy(
+          state = InProcess))
 
-      case OrderTransferredToMaster ⇒ copy(
-        attachedTo = None)
+      case OrderProcessed(diff, outcome_) ⇒
+        ifState[InProcess](copy(
+          state = Processed(outcome_),
+          payload = Payload(diff.applyTo(payload.variables))))
 
-      case OrderProcessingStarted ⇒ copy(
-        state = InProcess)
-
-      case OrderProcessed(diff, outcome_) ⇒ copy(
-        state = Processed(outcome_),
-        payload = Payload(diff.applyTo(payload.variables)))
-
-      case OrderForked(children) ⇒ copy(
-        state = Forked(children))
+      case OrderForked(children) ⇒
+        ifState[Idle](copy(
+          state = Forked(children)))
 
       case OrderJoined(variablesDiff, outcome_) ⇒
-        copy(
-          state = Processed(outcome_),
-          payload = Payload(variablesDiff applyTo variables))
+        if (isDetachable)
+          inapplicable
+        else
+          state match {
+            case _: Forked | _: Awaiting  ⇒
+              Valid(copy(
+                state = Processed(outcome_),
+                payload = Payload(variablesDiff applyTo variables)))
+            case _ ⇒
+              inapplicable
+          }
 
-      case _: OrderOffered ⇒ copy(
-        state = Processed(Outcome.succeeded))
+      case _: OrderOffered ⇒
+        ifState[Idle](copy(
+          state = Processed(Outcome.succeeded)))
 
-      case OrderAwaiting(orderId) ⇒ copy(
-        state = Awaiting(orderId))
+      case OrderAwaiting(orderId) ⇒
+        ifState[Idle](copy(
+          state = Awaiting(orderId)))
 
       case OrderMoved(to) ⇒
-        withPosition(to).copy(state = Ready)
+        ifState[Processed](
+          withPosition(to).copy(state = Ready))
 
-      case OrderStopped(message) ⇒ copy(
-        state = Stopped(message))
-
-      case OrderDetachable ⇒
-        attachedTo match {
-          case None ⇒
-            throw new IllegalStateException(s"Event OrderDetachable but '$id' is AttachedTo.$attachedTo")
-          case Some(AttachedTo.Agent(agentId)) ⇒
-            copy(attachedTo = Some(AttachedTo.Detachable(agentId)))
-          case Some(AttachedTo.Detachable(_)) ⇒
-            this
-        }
-
-      case OrderDetached ⇒ copy(
-        attachedTo = None)
+      case OrderStopped(message) ⇒
+        ifState[Processed](copy(
+          state = Stopped(message)))
 
       case OrderFinished ⇒
-        position.dropChild match {
-          case Some(position) ⇒
-            copy(workflowPosition = workflowPosition.copy(position = position))
-          case None ⇒
-            copy(state = Finished)
+        ifState[Idle](
+          position.dropChild match {
+            case Some(position) ⇒
+              copy(workflowPosition = workflowPosition.copy(position = position))
+            case None ⇒
+              copy(state = Finished)
+          })
+
+      case OrderTransferredToAgent(o) ⇒
+        if (attachedTo.isEmpty)
+          Valid(copy(attachedTo = Some(AttachedTo.Agent(o))))
+        else
+          inapplicable
+
+      case OrderTransferredToMaster ⇒
+        if (detachableFromAgent.isValid)
+          Valid(copy(attachedTo = None))
+        else
+          inapplicable
+
+      case OrderDetachable ⇒
+        state match {
+          case _: Idle | _: Forked ⇒
+            attachedTo match {
+              case None ⇒
+                inapplicable
+              case Some(AttachedTo.Agent(agentId)) ⇒
+                Valid(copy(attachedTo = Some(AttachedTo.Detachable(agentId))))
+              case Some(AttachedTo.Detachable(_)) ⇒
+                inapplicable  // Allow duplicate event?
+            }
+          case _ ⇒
+            inapplicable
+        }
+
+      case OrderDetached ⇒
+        state match {
+          case _: Idle | _: Forked ⇒
+            if (!isDetachable)
+              inapplicable
+            else
+              Valid(copy(attachedTo = None))
+          case _ ⇒
+            inapplicable
         }
     }
+  }
 
   def withInstructionNr(to: InstructionNr): Order[S] =
     withPosition(position.copy(nr = to))
@@ -131,11 +173,18 @@ final case class Order[+S <: Order.State](
   def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
     Checked.fromOption(ifState[A], Problem(s"'$id' should be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
 
-  def ifState[A <: State: ClassTag]: Option[Order[A]] = {
-    val cls = implicitClass[A]
-    cls.isAssignableFrom(state.getClass) option
-      this.asInstanceOf[Order[A]]
-  }
+  def ifState[A <: State: ClassTag]: Option[Order[A]] =
+    isState[A] ? this.asInstanceOf[Order[A]]
+
+  private def isState[A <: State: ClassTag] =
+    implicitClass[A] isAssignableFrom state.getClass
+
+  def attachedToString: String =
+    attachedTo match {
+      case None ⇒ "on Master"
+      case Some(AttachedTo.Agent(agentId)) ⇒ s"attached to $agentId"
+      case Some(AttachedTo.Detachable(agentId)) ⇒ s"detachable from $agentId"
+    }
 
   def isAttachedToAgent = attachedToAgent.isValid
 
@@ -145,6 +194,12 @@ final case class Order[+S <: Order.State](
         Valid(agentId)
       case o ⇒
         Invalid(Problem(s"'$id' should be AttachedTo.Agent, but is $o"))
+    }
+
+  private def isDetachable: Boolean =
+    attachedTo match {
+      case Some(_: AttachedTo.Detachable) ⇒ true
+      case _ ⇒ false
     }
 
   def detachableFromAgent: Checked[AgentId] =

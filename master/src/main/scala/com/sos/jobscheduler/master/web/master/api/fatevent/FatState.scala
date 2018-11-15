@@ -48,14 +48,14 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
     val order = event match {
       case event: OrderAdded ⇒ Order.fromOrderAdded(orderId, event)
-      case event: OrderCoreEvent ⇒ idToOrder(orderId).update(event)
+      case event: OrderCoreEvent ⇒ idToOrder(orderId).forceUpdate(event)
       case _ ⇒ idToOrder(orderId)
     }
     val updatedFatState = event match {
       case _: OrderAdded      ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _: OrderFinished   ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder - order.id)
-      case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
-      case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
+      case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
+      case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
       case _ ⇒ this
     }

@@ -115,7 +115,7 @@ object OrdersState {
                       case _ ⇒ entry.lastOutputOfCurrentJob
                     }
                     entry.copy(
-                      order = entry.order.update(event),
+                      order = entry.order.forceUpdate(event),
                       lastOutputOfCurrentJob = lastOutput,
                       updatedAt = nowMillis)
 

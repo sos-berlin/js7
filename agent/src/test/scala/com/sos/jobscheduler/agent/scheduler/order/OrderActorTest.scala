@@ -33,7 +33,7 @@ import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -119,6 +119,7 @@ private object OrderActorTest {
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),
+    OrderDetachable,
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -198,6 +199,8 @@ private object OrderActorTest {
       case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
     }
 
+    private def detachable: Receive = receiveOrderEvent
+
     private def detaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
         jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))
@@ -228,6 +231,11 @@ private object OrderActorTest {
             orderActor ! OrderActor.Input.HandleEvent(OrderMoved(TestPosition))
 
           case _: OrderMoved ⇒
+            events += event
+            orderActor ! OrderActor.Input.HandleEvent(OrderDetachable)
+            become(detachable)
+
+          case OrderDetachable ⇒
             events += event
             orderActor ! OrderActor.Command.Detach
             become(detaching)

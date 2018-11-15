@@ -242,7 +242,7 @@ object OrderEventSourceTest {
         case event: OrderCoreEvent ⇒
           processEvent(keyedEvent)
           if (event != OrderFinished) {
-            idToOrder(orderId) = idToOrder(orderId).update(event)
+            idToOrder(orderId) = idToOrder(orderId).forceUpdate(event)
           }
 
         case _ ⇒

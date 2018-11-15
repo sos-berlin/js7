@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderStdoutWritten, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderStdoutWritten, OrderTransferredToAgent}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
@@ -118,11 +118,11 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     }
 
     "/fatEvent?after=180 no more events" in {
-      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(181))  // One OrderEvent processed, not yet resulting in a OrderFatEvent
+      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(181))  // One OrderEvent processed, not yet resulting in an OrderFatEvent
     }
 
     "/fatEvent?after=180, intermediate event added" in {
-      eventWatch.addStamped(Stamped(EventId(190), OrderId("10") <-: OrderTransferredToAgent(AgentPath("/AGENT") % "1")))  // Does not yield an OrderFatEvent
+      eventWatch.addStamped(Stamped(EventId(190), OrderId("10") <-: OrderDetachable))  // Does not yield an OrderFatEvent
       assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(190))
     }
 

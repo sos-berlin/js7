@@ -296,7 +296,7 @@ extends KeyedJournalingActor[OrderEvent] {
         order
 
       case event: OrderCoreEvent if order != null ⇒
-        order.update(event)
+        order.forceUpdate(event)
 
       case _ ⇒
         sys.error(s"Unexpected event for '$orderId': $event")
