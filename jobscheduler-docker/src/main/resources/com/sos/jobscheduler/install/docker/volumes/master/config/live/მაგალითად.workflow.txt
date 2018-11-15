@@ -1,0 +1,4 @@
+workflow {
+  execute executable="/test", agent="agent-1", taskLimit=10, arguments={"hello": "გამარჯობა!"};
+  execute executable="/test", agent="agent-2", taskLimit=10;
+}
