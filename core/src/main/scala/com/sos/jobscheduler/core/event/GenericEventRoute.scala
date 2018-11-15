@@ -94,7 +94,7 @@ trait GenericEventRoute extends RouteProvider
 
           case EventSeq.NonEmpty(events) ⇒
             implicit val x = NonEmptyEventSeqJsonStreamingSupport
-            ToResponseMarshallable(closeableIteratorToAkkaSource(events))
+            closeableIteratorToMarshallable(events)
         }
         complete(marshallable)
       }
@@ -112,8 +112,8 @@ trait GenericEventRoute extends RouteProvider
                 : ToResponseMarshallable
 
             case EventSeq.Empty(_) ⇒
-              Observable.empty[Stamped[KeyedEvent[Event]]]
-                : ToResponseMarshallable
+              monixObservableToMarshallable(
+                Observable.empty[Stamped[KeyedEvent[Event]]])
 
             case EventSeq.NonEmpty(closeableIterator) ⇒
               val head = autoClosing(closeableIterator) (_.next())
@@ -124,8 +124,8 @@ trait GenericEventRoute extends RouteProvider
                   limit = request.limit - 1,
                   delay = (request.delay - (now - t)) min Duration.Zero),
                 predicate = isRelevantEvent)
-              Observable(head) ++ tail
-                : ToResponseMarshallable
+              monixObservableToMarshallable(
+                Observable(head) ++ tail)
             })
     }
 
@@ -141,11 +141,12 @@ trait GenericEventRoute extends RouteProvider
               val req = lastEventIdHeader.fold(request)(header ⇒
                 request.copy[Event](after = toLastEventId(header)))
               val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-              val source = eventWatch.observe(req, predicate = isRelevantEvent)
-                .map(stamped ⇒ ServerSentEvent(
-                  data = stamped.asJson.pretty(mutableJsonPrinter),
-                  id = Some(stamped.eventId.toString)))
-                .toAkkaSource
+              val source = logErrorToWebLog(
+                eventWatch.observe(req, predicate = isRelevantEvent)
+                  .map(stamped ⇒ ServerSentEvent(
+                    data = stamped.asJson.pretty(mutableJsonPrinter),
+                    id = Some(stamped.eventId.toString)))
+                  .toAkkaSource)
               complete(source)
             }
           }

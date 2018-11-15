@@ -69,7 +69,7 @@ trait FatEventRoute extends MasterRouteProvider
 
           case EventSeq.NonEmpty(stampedIterator) ⇒
             implicit val x = NonEmptyEventSeqJsonStreamingSupport
-            ToResponseMarshallable(closeableIteratorToAkkaSource(stampedIterator))
+            closeableIteratorToMarshallable(stampedIterator)
         }
 
       requestFat(EventRequest[Event](

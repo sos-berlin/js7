@@ -48,7 +48,7 @@ trait ExceptionHandling
 
 object ExceptionHandling
 {
-  private val webLogger = Logger("web.exception")
+  val webLogger = Logger("web.exception")
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
     s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"
