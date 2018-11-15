@@ -75,6 +75,8 @@ final class RunningMaster private(
   @TestOnly val injector: Injector)
 extends AutoCloseable
 {
+  val config: Config = injector.instance[Config]
+
   def terminate(): Task[Completed] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)

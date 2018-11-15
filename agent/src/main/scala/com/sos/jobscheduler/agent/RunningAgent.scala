@@ -24,6 +24,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
+import com.typesafe.config.Config
 import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -52,6 +53,7 @@ extends AutoCloseable {
 
   webServer.setRunningAgent(this)
 
+  val config: Config = injector.instance[Config]
   val localUri: Uri = webServer.localUri
   //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)
 
