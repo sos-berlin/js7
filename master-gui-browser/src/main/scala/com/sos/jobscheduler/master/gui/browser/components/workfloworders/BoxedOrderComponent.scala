@@ -57,10 +57,11 @@ private[workfloworders] final class BoxedOrderComponent
 
   private def orderToClass(order: Order[Order.State]): String =
     order.state match {
-      case _: Order.Fresh      ⇒ "Order-Fresh "
-      case Order.InProcess     ⇒ "Order-InProcess "
-      case _: Order.Forked     ⇒ "Order-Forked "
-      case Order.Finished      ⇒ "Order-Finished "
-      case _                   ⇒ ""
+      case _: Order.Fresh   ⇒ "Order-Fresh "
+      case Order.InProcess  ⇒ "Order-InProcess "
+      case _: Order.Forked  ⇒ "Order-Forked "
+      case Order.Finished   ⇒ "Order-Finished "
+      case _: Order.Stopped ⇒ "Order-Stopped "
+      case _                ⇒ ""
     }
 }
