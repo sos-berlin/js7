@@ -10,13 +10,27 @@ final class CloseableIteratorTest extends FreeSpec
 {
   "strict" in {
     val a = new TestIterator(Iterator(1, 2, 3))
+    assert(!a.closed)
     assert(a.strict == Vector(1, 2, 3))
     assert(a.closed)
   }
 
   ":+" in {
     val a = new TestIterator(Iterator(1, 2, 3))
-    assert((a :+ 11).toVector == Vector(1, 2, 3, 11))
+    val b = a :+ 11
+    assert(b.toVector == Vector(1, 2, 3, 11))
+    assert(!a.closed)
+    b.close()
+    assert(a.closed)
+  }
+
+  "+:" in {
+    val a = new TestIterator(Iterator(1, 2, 3))
+    val b = -1 +: a
+    assert(b.toVector == Vector(-1, 1, 2, 3))
+    assert(!a.closed)
+    b.close()
+    assert(a.closed)
   }
 
   "++" in {
