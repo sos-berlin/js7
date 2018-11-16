@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.gui.browser
 
-import com.sos.jobscheduler.master.gui.browser.GuiBackend._
 import com.sos.jobscheduler.master.gui.browser.ScreenBackground.setScreenClass
 import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.browser.services.MasterApi
@@ -23,9 +22,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       //.memoizePositionForUri(event.oldURL))
     .runNow()
   }
-  private val eventHandler =
-    if (ServerSentEventsSupported) new ServerSentEventHandler(scope)
-    else new ClassicEventHandler(scope)
+  private val eventHandler = new ClassicEventHandler(scope)
   private var unmounted = false
 
   def componentDidMount() = start()
@@ -92,14 +89,4 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
             Callback.empty
         }
     } yield callback
-}
-
-object GuiBackend {
-  private val ServerSentEventsSupported = false
-    // No way to send header X-JobScheduler-SessionToken
-    //guiConfig.fetchEventsWith == "SSE" &&
-    //(js.typeOf(js.Dynamic.global.EventSource) != "undefined" || {
-    //  window.console.log("This browser does not seam to support server-sent events (EventSource is undefined)")
-    //  false
-    //})*&
 }

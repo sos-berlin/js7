@@ -52,13 +52,8 @@ final class IndexHtml(config: Config) extends HtmlPage.Cached {
           }))
 
   private def guiConfig = Json.obj(
-    "buildId"           → buildId.asJson,
-    "buildVersion"      → buildVersion.asJson,
-    "fetchEventsWith"   → config.as[String] ("jobscheduler.gui.fetch-events-with", "").asJson,
-    "sseBatchDelay"     → config.getDuration("jobscheduler.gui.sse.batch-delay").toMillis.asJson,
-    "sseBatchSize"      → config.getInt     ("jobscheduler.gui.sse.batch-size").asJson,
-    "sseServerTimeout"  → config.getDuration("jobscheduler.gui.sse.server-timeout").toMillis.asJson)
-
+    "buildId"      → buildId.asJson,
+    "buildVersion" → buildVersion.asJson)
   private def jsName: Checked[String] =
     (try Configs.loadResource(resource).optionAs[String]("jsName")
     catch { case t: Throwable ⇒
