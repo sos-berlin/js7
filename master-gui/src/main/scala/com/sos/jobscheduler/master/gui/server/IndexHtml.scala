@@ -53,7 +53,8 @@ final class IndexHtml(config: Config) extends HtmlPage.Cached {
 
   private def guiConfig = Json.obj(
     "buildId"      → buildId.asJson,
-    "buildVersion" → buildVersion.asJson)
+    "buildVersion" → buildVersion.asJson,
+    "tornOlderSeconds" → config.getDuration("jobscheduler.gui.torn-older").getSeconds.toInt.asJson)
   private def jsName: Checked[String] =
     (try Configs.loadResource(resource).optionAs[String]("jsName")
     catch { case t: Throwable ⇒

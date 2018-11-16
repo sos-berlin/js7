@@ -5,12 +5,14 @@ import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEv
 import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.master.gui.browser.EventHandler.{AfterTimeoutDelay, ContinueDelay, FirstEventTimeout, TornDelay}
 import com.sos.jobscheduler.master.gui.browser.components.state.{AppState, GuiState, OrdersState}
+import com.sos.jobscheduler.master.gui.browser.services.JsBridge.guiConfig
 import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import japgolly.scalajs.react.{BackendScope, Callback}
+import java.util.concurrent.TimeUnit.SECONDS
 import monix.execution.Scheduler.Implicits.global
 import org.scalajs.dom.window
 import scala.collection.immutable.Seq
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -18,6 +20,9 @@ import scala.util.{Failure, Success, Try}
   */
 final class ClassicEventHandler(protected val scope: BackendScope[GuiComponent.Props, GuiState]) extends EventHandler
 {
+  private var tornDelay = Duration.Zero
+  private var tornTimer: Option[Int] = None
+
   protected def fetchAndHandleEvents(
     after: EventId,
     forStep: Int,
@@ -75,7 +80,8 @@ final class ClassicEventHandler(protected val scope: BackendScope[GuiComponent.P
 
     Callback.future {
       _isRequestingEvents = true
-      MasterApi.events(EventRequest.singleClass[OrderEvent](after = after, timeout = timeout, limit = 1000/*limit Master's memory usage*/))
+      MasterApi.events(EventRequest.singleClass[OrderEvent](after = after, timeout = timeout, limit = 1000/*limit Master's memory usage*/,
+          tornOlder = Duration(guiConfig.tornOlderSeconds, SECONDS)))
         .runAsync
         .andThen { case _ ⇒
           _isRequestingEvents = false  // TODO Falls requestStateAndEvents() aufgerufen wird, während Events geholt werden, wird _isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchAndHandleEvents)

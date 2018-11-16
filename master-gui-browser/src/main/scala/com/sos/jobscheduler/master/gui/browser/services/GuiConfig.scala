@@ -9,4 +9,5 @@ import scala.scalajs.js
 trait GuiConfig extends js.Object {
   val buildId: String
   val buildVersion: String
+  val tornOlderSeconds: Int
 }

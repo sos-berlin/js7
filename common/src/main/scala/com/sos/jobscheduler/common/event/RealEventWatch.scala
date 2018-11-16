@@ -72,7 +72,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = originalTimeout))
         }
     }
-    Observable.fromAsyncStateAction(next)(() ⇒ request.copy[E1](timeout = EventRequest.LongTimeout))
+    Observable.fromAsyncStateAction(next)(() ⇒ request/*.copy[E1](timeout = EventRequest.LongTimeout)*/)
       .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
       .map(_.get).flatten
   }
@@ -119,12 +119,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
     }
 
-  final def whenKey[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 ⇒ Boolean)
-  : Task[TearableEventSeq[CloseableIterator, E1]]
-  =
+  final def whenKey[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Task[TearableEventSeq[CloseableIterator, E1]] =
     whenAnyKeyedEvents(
       request,
       collect = {
@@ -135,23 +130,32 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
   : Task[TearableEventSeq[CloseableIterator, A]] = {
     val until = now + (request.timeout min EventRequest.LongTimeout)  // Protected agains Timestamp overflow
-    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit)
+    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit, tornOlder = request.tornOlder)
   }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
+  private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, tornOlder: Duration)
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ ⇒
       Task.deferFutureAction(implicit s ⇒
         sync.whenEventIsAvailable(after, until, delay))
           .flatMap (_ ⇒
             collectEventsSince(after, collect, limit) match {
-              case o @ EventSeq.NonEmpty(_) ⇒
-                Task.pure(o)
+              case eventSeq @ EventSeq.NonEmpty(iterator) ⇒
+                if (tornOlder.isFinite()) {
+                  // If the first event is not fresh, we have a read congestion.
+                  // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+                  val head = iterator.next()
+                  if (head.timestamp + tornOlder < now)
+                    Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
+                  else
+                    Task.pure(EventSeq.NonEmpty(head +: iterator))
+                } else
+                  Task.pure(eventSeq)
 
               case EventSeq.Empty(lastEventId) ⇒
                 val nw = now
                 if (nw < until)
-                  whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
+                  whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, tornOlder)
                 else
                   Task.pure(EventSeq.Empty(lastEventId))
 

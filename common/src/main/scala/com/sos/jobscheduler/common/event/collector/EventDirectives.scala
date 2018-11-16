@@ -107,14 +107,16 @@ object EventDirectives {
             case Some(after) ⇒
               parameter("timeout" ? defaultTimeout) { timeout ⇒
                 parameter("delay" ? defaultDelay) { delay ⇒
-                  optionalHeaderValueByType[`Timeout-Access`](()) { h ⇒  // Setting akka.http.server.request-timeout
-                    val akkaTimeout = h map (_.timeoutAccess.timeout) match {
-                      case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
-                      case _ ⇒ timeout
+                  parameter("tornOlder" ? (Duration.Inf: Duration)) { tornOlder ⇒
+                    optionalHeaderValueByType[`Timeout-Access`](()) { h ⇒  // Setting akka.http.server.request-timeout
+                      val akkaTimeout = h map (_.timeoutAccess.timeout) match {
+                        case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
+                        case _ ⇒ timeout
+                      }
+                      val eventRequest = EventRequest[E](eventClasses, after = after,
+                        timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit, tornOlder = tornOlder)
+                      inner(Tuple1(eventRequest))
                     }
-                    val eventRequest = EventRequest[E](eventClasses, after = after,
-                      timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit)
-                    inner(Tuple1(eventRequest))
                   }
                 }
               }

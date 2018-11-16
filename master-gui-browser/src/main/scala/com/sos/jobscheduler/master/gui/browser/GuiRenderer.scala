@@ -86,13 +86,14 @@ final class GuiRenderer(
       })
 }
 
-object GuiRenderer {
-  val Connected = VdomArray(
+object GuiRenderer
+{
+  private val Connected = VdomArray(
     <.i(^.cls := "material-icons rotate-slowly top-line")("autorenew"),
     " connected")
   val Moon = "\uD83C\uDF19"
 
-  lazy val topLineleft = {
+  private lazy val topLineleft = {
     val Array(version, versionExt) = (guiConfig.buildVersion + " ").split(" ", 2)
     <.td(^.cls := "page-top-left")(
       <.span(^.cls := "page-top-left-segment")(

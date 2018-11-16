@@ -16,8 +16,10 @@ final case class EventRequest[E <: Event](
   after: EventId,
   timeout: Duration,
   delay: FiniteDuration = DefaultDelay,
-  limit: Int = DefaultLimit)
-extends SomeEventRequest[E] {
+  limit: Int = DefaultLimit,
+  tornOlder: Duration = Duration.Inf)
+extends SomeEventRequest[E]
+{
   require(eventClasses.nonEmpty, "Missing Event class")
   require(limit >= 0, "Limit must not be below zero")
 
@@ -27,6 +29,7 @@ extends SomeEventRequest[E] {
     if (timeout != Duration.Zero) builder += "timeout" → durationToString(timeout)
     if (delay != DefaultDelay) builder += "delay" → durationToString(delay)
     if (limit != DefaultLimit) builder += "limit" → limit.toString
+    if (tornOlder != Duration.Inf) builder += "tornOlder" → durationToString(tornOlder)
     builder += "after" → after.toString
     builder.result()
   }
@@ -62,12 +65,18 @@ object EventRequest {
     * Convenience for only one Event class.
     */
   def singleClass[E <: Event: ClassTag](
+    /** Begin with events after `after`. `after` must be a known EventId. */
     after: EventId = EventId.BeforeFirst,
+    /** Wait not longer then `timeout` for events. */
     timeout: Duration = Duration.Zero,
+    /** Delay after the first event to collect more events at once. **/
     delay: FiniteDuration = DefaultDelay,
-    limit: Int = DefaultLimit)
+    /** Limit the number of events. */
+    limit: Int = DefaultLimit,
+    /** Return Torn if the first event is older than `tornOlder`. */
+    tornOlder: Duration = Duration.Inf)
   : EventRequest[E] =
-    new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit)
+    new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
 
   private def durationToString(duration: Duration): String =
     duration match {

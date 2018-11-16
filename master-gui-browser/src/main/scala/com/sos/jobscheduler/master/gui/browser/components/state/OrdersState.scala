@@ -230,6 +230,8 @@ object OrdersState {
     updatedAt: Long)
   {
     def id = order.id
+
+    override def toString = s"OrderEntry($order)"
   }
 
   private class OrderedSet[A] {
