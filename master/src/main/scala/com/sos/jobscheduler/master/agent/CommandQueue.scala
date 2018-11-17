@@ -92,6 +92,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case QueuedInputResponse(input, Batch.Failed(message)) ⇒
         logger.error(s"Agent has rejected the command ${input.toShortString}: $message")
         // Agent's state does not match master's state ???
+        // TODO: But "Agent is shutting down" is okay
         None
     }
   }

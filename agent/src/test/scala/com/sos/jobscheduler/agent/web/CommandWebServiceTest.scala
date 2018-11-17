@@ -63,6 +63,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 
   "Command while shutting down return 503 Service Unavailable" in {
     // When Agent is shutting down, the command may be okay and the Master should repeat the command later
+    // Not valid for commands packaged in AgentCommand.Batch
     postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
       if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
       assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
