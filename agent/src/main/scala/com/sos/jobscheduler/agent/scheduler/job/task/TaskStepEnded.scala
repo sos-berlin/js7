@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Outcome
 
 /**
   * @author Joacim Zschimmer
@@ -14,5 +14,5 @@ final case class TaskStepSucceeded(
   returnCode: ReturnCode)
 extends TaskStepEnded
 
-final case class TaskStepFailed(disrupted: Outcome.Disrupted)
+final case class TaskStepFailed(problem: Problem)
 extends TaskStepEnded

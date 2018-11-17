@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.order.Outcome.Disrupted
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
@@ -58,16 +57,16 @@ extends Actor with Stash {
     case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
       logger.debug(s"ProcessOrder(${cmd.order.id})")
       if (cmd.jobKey != jobKey)
-        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey"))))
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.eager(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
       else
       if (!exists(uncheckedFile)) {
         val msg = s"Executable '${workflowJob.executablePath}' is not accessible"
         logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(msg))))
+        sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.eager(msg)))
       } else
         Try(uncheckedFile.toRealPath()) match {
           case Failure(t) ⇒
-            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Disrupted(Problem.eager(s"Executable '${workflowJob.executablePath}': $t"))))  // Exception.toString is published !!!
+            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.eager(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
           case Success(executableFile) ⇒
             assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
             assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
@@ -121,7 +120,7 @@ extends Actor with Stash {
       case Success(o) ⇒ o
       case Failure(t) ⇒
         logger.error(s"Job step failed: ${t.toStringWithCauses}", t)
-        TaskStepFailed(Disrupted(Problem.eager(s"Job step failed: ${t.toStringWithCauses}")))  // Publish internal exception in event ???
+        TaskStepFailed(Problem.eager(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
     }
 
   private def killAll(signal: ProcessSignal): Unit = {

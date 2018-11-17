@@ -62,6 +62,7 @@ private[workfloworders] final class BoxedOrderComponent
       case _: Order.Forked  ⇒ "Order-Forked "
       case Order.Finished   ⇒ "Order-Finished "
       case _: Order.Stopped ⇒ "Order-Stopped "
+      case _: Order.Broken  ⇒ "Order-Broken "
       case _                ⇒ ""
     }
 }

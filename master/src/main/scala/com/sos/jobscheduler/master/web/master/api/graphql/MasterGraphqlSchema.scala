@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master.web.master.api.graphql
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
@@ -237,12 +236,12 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OutcomeType = InterfaceType(
     "Outcome",
     fields[QueryContext, Outcome](
-      Field("TYPE", StringType, resolve = _.value.getClass.simpleScalaName)))
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.typeName(o.value.getClass))))
 
   private implicit val DisruptedOutcomeReasonType = InterfaceType(
     "DisruptedOutcomeReason",
     fields[QueryContext, Outcome.Disrupted.Reason](
-      Field("TYPE", StringType, resolve = _.value.getClass.simpleScalaName),
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.typeName(o.value.getClass)),
       Field("message", OptionType(StringType), resolve = _.value match {
         case Outcome.Disrupted.Other(problem) ⇒ Some(problem.toString)
         case _ ⇒ None
@@ -279,7 +278,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OrderStateType = InterfaceType(
     "OrderState",
     fields[QueryContext, Order.State](
-      Field("TYPE", StringType, resolve = _.value.getClass.simpleScalaName)))
+      Field("TYPE", StringType, resolve = o ⇒ Order.StateJsonCodec.typeName(o.value.getClass))))
 
   private val OrderStateSubtypes = List(
     ObjectType(
@@ -322,7 +321,12 @@ private[graphql] object MasterGraphqlSchema
     ObjectType(
       "FinishedOrderState",
       interfaces[QueryContext, Order.Finished](OrderStateType),
-      fields[QueryContext, Order.Finished]()))
+      fields[QueryContext, Order.Finished]()),
+    ObjectType(
+      "BrokenOrderState",
+      interfaces[QueryContext, Order.Broken](OrderStateType),
+      fields[QueryContext, Order.Broken](
+        Field("message", StringType, resolve = _.value.problem.toString))))
 
   private implicit val OrderType = ObjectType(
     "Order",

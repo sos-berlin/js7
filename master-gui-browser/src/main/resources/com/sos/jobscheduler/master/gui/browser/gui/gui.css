@@ -131,6 +131,7 @@ header, main, footer { padding-left: 150px; }
 .Order-Finished  { background-color: #f4f4f4; }
 .Order-InProcess { background-color: #ffc744; }
 .Order-Stopped   { background-color: #ffe800; }
+.Order-Broken    { background-color: #ff625b; }
 /*.Order-Forked    { background-color: #ffe366; }*/
 /*.Order-highlight      { box-shadow: 0 0 7px 2px #f99b00; }*/
 .Order-highlight      { border-color: #708af9; }

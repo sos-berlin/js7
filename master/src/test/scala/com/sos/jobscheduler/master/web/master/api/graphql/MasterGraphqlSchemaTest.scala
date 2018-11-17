@@ -34,7 +34,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
   "order" in {
     testGraphql(
       graphql"""{
-        order(id: "1") {
+        order(id: "11") {
           id
           workflowPath
         }
@@ -42,7 +42,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
       json"""{
         "data": {
           "order": {
-            "id": "1",
+            "id": "11",
             "workflowPath": "/A-WORKFLOW"
           }
         }
@@ -59,12 +59,12 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
           }
         }""",
       """{
-        "id": "1"
+        "id": "11"
       }""".parseJson,
       json"""{
         "data": {
           "order": {
-            "id": "1",
+            "id": "11",
             "workflowPath": "/A-WORKFLOW"
           }
         }
@@ -122,6 +122,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
           ... on AwaitingOrderState {
             offeredOrderId
           }
+          ... on BrokenOrderState {
+            message
+          }
         }
         variables
       }
@@ -149,7 +152,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
         "data": {
           "orders": [
             {
-              "id": "1",
+              "id": "11",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/A-WORKFLOW",
@@ -166,38 +169,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 "scheduledAt": 1523877753000
               }
             }, {
-              "id": "10",
-              "workflowPosition": {
-                "workflowId": {
-                  "path": "/B-WORKFLOW",
-                  "versionId": "1"
-                },
-                "position": [ 2 ],
-                "instruction": {
-                  "TYPE": "ImplicitEnd"
-                }
-              },
-              "state": {
-                "TYPE": "Awaiting",
-                "offeredOrderId": "OFFERED"
-              }
-            }, {
-              "id": "11",
-              "workflowPosition": {
-                "workflowId": {
-                  "path": "/B-WORKFLOW",
-                  "versionId": "1"
-                },
-                "position": [ 2 ],
-                "instruction": {
-                  "TYPE": "ImplicitEnd"
-                }
-              },
-              "state": {
-                "TYPE": "Finished"
-              }
-            }, {
-              "id": "2",
+              "id": "12",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -212,7 +184,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 "TYPE": "Ready"
               }
             }, {
-              "id": "3",
+              "id": "13",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/A-WORKFLOW",
@@ -243,7 +215,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 "X": "XX"
               }
             }, {
-              "id": "4",
+              "id": "14",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -262,7 +234,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               }
             }, {
-              "id": "5",
+              "id": "15",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -281,7 +253,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               }
             }, {
-              "id": "6",
+              "id": "16",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -303,7 +275,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               }
             }, {
-              "id": "7",
+              "id": "17",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -324,7 +296,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               }
             }, {
-              "id": "8",
+              "id": "18",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -340,7 +312,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 "childOrderIds": [ "A/1", "B/1" ]
               }
             }, {
-              "id": "9",
+              "id": "19",
               "workflowPosition": {
                 "workflowId": {
                   "path": "/B-WORKFLOW",
@@ -353,6 +325,53 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
               },
               "state": {
                 "TYPE": "Offered"
+              }
+            }, {
+              "id": "20",
+              "workflowPosition": {
+                "workflowId": {
+                  "path": "/B-WORKFLOW",
+                  "versionId": "1"
+                },
+                "position": [ 2 ],
+                "instruction": {
+                  "TYPE": "ImplicitEnd"
+                }
+              },
+              "state": {
+                "TYPE": "Awaiting",
+                "offeredOrderId": "OFFERED"
+              }
+            }, {
+              "id": "21",
+              "workflowPosition": {
+                "workflowId": {
+                  "path": "/B-WORKFLOW",
+                  "versionId": "1"
+                },
+                "position": [ 2 ],
+                "instruction": {
+                  "TYPE": "ImplicitEnd"
+                }
+              },
+              "state": {
+                "TYPE": "Finished"
+              }
+            }, {
+              "id": "22",
+              "workflowPosition": {
+                "workflowId": {
+                  "path": "/B-WORKFLOW",
+                  "versionId": "1"
+                },
+                "position": [ 2 ],
+                "instruction": {
+                  "TYPE": "ImplicitEnd"
+                }
+              },
+              "state": {
+                "TYPE": "Broken",
+                "message": "PROBLEM"
               }
             }
           ]
@@ -395,20 +414,21 @@ object MasterGraphqlSchemaTest
     def executionContext = ExecutionContext.global
 
     protected val idToOrder = Vector[Order[Order.State]](
-        Order(OrderId("1"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))),
-        Order(OrderId("2"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready),
-        Order(OrderId("3"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.InProcess,
+        Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))),
+        Order(OrderId("12"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready),
+        Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.InProcess,
           Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "2")),
           Some(OrderId("PARENT")),
           Payload(Map("KEY" → "VALUE", "X" → "XX"))),
-        Order(OrderId("4"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Succeeded(ReturnCode(7)))),
-        Order(OrderId("5"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Failed(ReturnCode(8)))),
-        Order(OrderId("6"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted(Problem("MESSAGE")))),
-        Order(OrderId("7"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))),
-        Order(OrderId("8"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
-        Order(OrderId("9"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offered(Timestamp.parse("2018-04-16T11:22:33Z"))),
-        Order(OrderId("10"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
-        Order(OrderId("11"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Finished)
+        Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Succeeded(ReturnCode(7)))),
+        Order(OrderId("15"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Failed(ReturnCode(8)))),
+        Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted(Problem("MESSAGE")))),
+        Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))),
+        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
+        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offered(Timestamp.parse("2018-04-16T11:22:33Z"))),
+        Order(OrderId("20"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
+        Order(OrderId("21"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Finished),
+        Order(OrderId("22"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Broken(Problem("PROBLEM")))
       ).toKeyedMap(_.id)
 
     def order(orderId: OrderId) = Future.successful(idToOrder.get(orderId))

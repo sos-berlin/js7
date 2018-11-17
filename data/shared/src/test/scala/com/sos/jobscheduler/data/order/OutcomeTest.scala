@@ -33,7 +33,7 @@ final class OutcomeTest extends FreeSpec {
       }""")
     }
 
-    "Disrupted(AgenAborted)" in {
+    "Disrupted(JobSchedulerRestarted)" in {
       testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted),"""{
         "TYPE": "Disrupted",
         "reason": {

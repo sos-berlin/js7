@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
@@ -129,6 +130,8 @@ object OrderEvent {
 
   final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
 
+  final case class OrderBroken(problem: Problem) extends OrderActorEvent
+
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
@@ -167,5 +170,6 @@ object OrderEvent {
     Subtype(OrderProcessingStarted),
     Subtype(deriveCodec[OrderMoved]),
     Subtype(deriveCodec[OrderStopped]),
+    Subtype(deriveCodec[OrderBroken]),
     Subtype(OrderFinished))
 }

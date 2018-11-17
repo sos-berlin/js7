@@ -8,10 +8,10 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
@@ -49,12 +49,14 @@ final class OrderEventSourceTest extends FreeSpec {
     "again, all events" in {
       val process = new SingleOrderProcess(workflow)
       process.update(OrderAdded(TestWorkflowId))
+      process.transferToAgent(TestAgentId)
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(1, 0, 0))))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(2))))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(3))))
+      process.transferToMaster(TestAgentId)
       assert(process.step() == Some(OrderFinished))
     }
 
@@ -85,13 +87,16 @@ final class OrderEventSourceTest extends FreeSpec {
     val orderId = succeededOrderId
 
     process.update(orderId <-: OrderAdded(TestWorkflowId))
+    process.update(orderId <-: OrderTransferredToAgent(TestAgentId))
     assert(process.run(orderId) == List(
       orderId <-: OrderProcessingStarted,
       orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
       orderId <-: OrderMoved(Position(1)),
       orderId <-: OrderForked(List(
         OrderForked.Child("🥕", orderId / "🥕", MapDiff.empty),
-        OrderForked.Child("🍋", orderId / "🍋", MapDiff.empty)))))
+        OrderForked.Child("🍋", orderId / "🍋", MapDiff.empty))),
+      orderId <-: OrderDetachable,
+      orderId <-: OrderTransferredToMaster))
 
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderProcessingStarted,
@@ -99,7 +104,9 @@ final class OrderEventSourceTest extends FreeSpec {
       orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 1)),
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 2))))
+      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 2)),
+      orderId / "🥕" <-: OrderDetachable,
+      orderId / "🥕" <-: OrderTransferredToMaster))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
@@ -110,9 +117,12 @@ final class OrderEventSourceTest extends FreeSpec {
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 2)),
+      orderId / "🍋" <-: OrderDetachable,
+      orderId / "🍋" <-: OrderTransferredToMaster,
       orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
 
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(2))))
+    assert(process.step(orderId) == Some(orderId <-: OrderTransferredToAgent(TestAgentId)))
     assert(process.step(orderId) == Some(orderId <-: OrderProcessingStarted))
     // and so forth...
   }
@@ -166,6 +176,7 @@ final class OrderEventSourceTest extends FreeSpec {
 object OrderEventSourceTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
+  private val TestAgentId = AgentPath("/AGENT") % "VERSION"
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.Success)))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.StandardFailure)))
@@ -176,12 +187,21 @@ object OrderEventSourceTest {
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
+    process.transferToAgent(TestAgentId)
     process.jobStep(outcome = outcome)
     process.step()
   }
 
   final class SingleOrderProcess(val workflow: Workflow, val orderId: OrderId = OrderId("ORDER")) {
     private val process = new Process(workflow)
+
+    def transferToAgent(agentId: AgentId) =
+      update(OrderTransferredToAgent(agentId))
+
+    def transferToMaster(agentId: AgentId) = {
+      update(OrderDetachable)
+      update(OrderTransferredToMaster)
+    }
 
     def jobStep(variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Succeeded(ReturnCode.Success)) =
       process.jobStep(orderId, variablesDiff, outcome)
@@ -221,16 +241,22 @@ object OrderEventSourceTest {
 
     private def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderEvent]]] = {
       val order = idToOrder(orderId)
-      (order.state, workflow.instruction(order.position)) match {
-        case (_: Order.Idle/*Ready!!!*/, _: Execute) ⇒
-          Valid(Some(order.id <-: OrderProcessingStarted))
+      if (order.detachableFromAgent.isValid)
+        Valid(Some(order.id <-: OrderTransferredToMaster))
+      else
+        (order.state, workflow.instruction(order.position)) match {
+          case (_: Order.Idle/*Ready!!!*/, _: Execute) ⇒
+            if (order.isOnMaster)
+              Valid(Some(order.id <-: OrderTransferredToAgent(TestAgentId)))
+            else
+              Valid(Some(order.id <-: OrderProcessingStarted))
 
-        case _ if inProcess contains orderId ⇒
-          Valid(Some(orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded)))
+          case _ if inProcess contains orderId ⇒
+            Valid(Some(orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded)))
 
-        case _ ⇒
-          eventSource.nextEvent(orderId)
-      }
+          case _ ⇒
+            eventSource.nextEvent(orderId)
+        }
     }
 
     def update(keyedEvent: KeyedEvent[OrderEvent]): Unit = {

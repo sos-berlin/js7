@@ -84,6 +84,7 @@ object Renderers {
       case Order.Ready        ⇒ "◯"  // Circle
       case Order.Finished     ⇒ "☆"  // Star
       case _: Order.Stopped   ⇒ "❗"  // Red exclamation mark
+      case _: Order.Broken    ⇒ "💥"  // Explosion
       case _                  ⇒ "·"   // Dot
     }
 

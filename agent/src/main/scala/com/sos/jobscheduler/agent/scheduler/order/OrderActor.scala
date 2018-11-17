@@ -72,7 +72,10 @@ extends KeyedJournalingActor[OrderEvent] {
         become("forked")(forked)
 
       case _: Order.Stopped ⇒
-        become("stopped")(stopped)
+        become("stopped")(stoppedOrDisrupted)
+
+      case _: Order.Broken ⇒
+        become("disrupted")(stoppedOrDisrupted)
 
       case _: Order.Awaiting | _: Order.Stopped | _: Order.Offered | Order.Finished ⇒
         sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
@@ -148,14 +151,18 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(OrderDetachable)(update)
 
     case Input.HandleEvent(event: OrderStopped) ⇒
-      become("stopped")(stopped)
+      become("stopped")(stoppedOrDisrupted)
+      persist(event)(update)
+
+    case Input.HandleEvent(event: OrderBroken) ⇒
+      become("disrupted")(stoppedOrDisrupted)
       persist(event)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
   }
 
-  private def stopped: Receive = {
+  private def stoppedOrDisrupted: Receive = {
     case Command.Detach ⇒
       detach()
 
@@ -175,8 +182,8 @@ extends KeyedJournalingActor[OrderEvent] {
         case TaskStepSucceeded(variablesDiff, returnCode) ⇒
           job.toOrderProcessed(variablesDiff, returnCode)
 
-        case TaskStepFailed(disrupted) ⇒
-          OrderProcessed(MapDiff.empty, disrupted)
+        case TaskStepFailed(problem) ⇒
+          OrderProcessed(MapDiff.empty, Outcome.Disrupted(problem))
       }
       finishProcessing(event, stdoutStderrStatistics)
       context.unwatch(jobActor)
@@ -215,7 +222,7 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(event)(update)
 
     case Input.HandleEvent(event: OrderStopped) ⇒
-      become("stopped")(stopped)
+      become("stopped")(stoppedOrDisrupted)
       persist(event)(update)
 
     case Input.HandleEvent(OrderDetachable) ⇒
@@ -289,14 +296,14 @@ extends KeyedJournalingActor[OrderEvent] {
     order = event match {
       case event: OrderAttached ⇒
         Order.fromOrderAttached(orderId, event)
-        // Order.state = Attached / MovedToAgent ???
 
       case _: OrderStdWritten ⇒
         // Not collected
         order
 
       case event: OrderCoreEvent if order != null ⇒
-        order.forceUpdate(event)
+        order.forceUpdate(event)  // 🔥 ProblemException, snapshot will be lost!
+        // Vielleicht anschließend: order.forceUpdate(OrderBroken(problem)) ?
 
       case _ ⇒
         sys.error(s"Unexpected event for '$orderId': $event")

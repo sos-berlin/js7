@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
@@ -116,6 +117,33 @@ final class OrderEventTest extends FreeSpec {
         "outcome": {
           "TYPE": "Succeeded",
           "returnCode": 0
+        }
+      }""")
+  }
+
+  "OrderStopped(Failed)" in {
+    check(OrderStopped(Outcome.Failed(ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderStopped",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1
+        }
+      }""")
+  }
+
+  "OrderStopped(Disrupted(PROBLEM))" in {
+    check(OrderStopped(Outcome.Disrupted(Problem("PROBLEM"))), json"""
+      {
+        "TYPE": "OrderStopped",
+        "outcome": {
+          "TYPE": "Disrupted",
+          "reason": {
+            "TYPE": "Other",
+            "problem": {
+              "message": "PROBLEM"
+            }
+          }
         }
       }""")
   }

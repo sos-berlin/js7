@@ -71,6 +71,7 @@ object Outcome
 
   /** No response from job - some other error has occurred. */
   @JsonCodec
+  // TODO Differentiate name from Order State "Disrupted". Disturbed?
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
     def isSucceeded = false
   }
