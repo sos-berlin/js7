@@ -250,8 +250,8 @@ with MainJournalingActor[Event]
       var lastAgentEventId = none[EventId]
       var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
         case stamped @ Stamped(agentEventId, timestamp, keyedEvent) ⇒
-          if (agentEventId < lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
-            logger.error(s"Agent ${ agentEntry.agentId } has returned old (<= ${ lastAgentEventId.getOrElse(agentEntry.lastAgentEventId) }) event: $stamped")
+          if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
+            logger.error(s"Agent ${agentEntry.agentId} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
             None
           } else
             keyedEvent match {
@@ -276,7 +276,7 @@ with MainJournalingActor[Event]
 
         case KeyedEvent(_: AgentId, AgentEventIdEvent(agentEventId)) ⇒
           agentEntry.lastAgentEventId = agentEventId
-          agentEntry.actor ! AgentDriver.Input.KeepEvents(agentEventId)
+          agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
 
         case _ ⇒
       }
@@ -292,16 +292,13 @@ with MainJournalingActor[Event]
 
     case JournalActor.Output.SnapshotTaken ⇒
       if (terminating) {
+        // TODO termination wie in AgentOrderKeeper
         orderScheduleGenerator ! PoisonPill
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
           journalActor ! JournalActor.Input.Terminate
       }
-
-    //case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
-    //  logger.error(msg.toString, throwable)
-    //  // Ignore this ???
 
     case Terminated(a) if agentRegister contains a ⇒
       agentRegister -= a

@@ -44,7 +44,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     def iterator = detachQueue.iterator ++ attachQueue.iterator
   }
 
-  final def onReconnected() =
+  final def onRecoupled() =
     freshReconnected = true
 
   final def enqueue(input: Input.QueueableInput): Unit = {

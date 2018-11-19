@@ -46,7 +46,7 @@ final class CommandQueueTest extends FreeSpec {
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()
 
-    commandQueue.onReconnected()
+    commandQueue.onRecoupled()
 
     // The first Input is sent alone to the Agent regardless of batchSize.
     val aOrder = toOrder("A")
