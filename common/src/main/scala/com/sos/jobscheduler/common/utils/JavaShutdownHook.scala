@@ -11,11 +11,14 @@ final class JavaShutdownHook private(onShutdown: () ⇒ Unit, name: String) exte
 
   private val hook = new Thread {
     setName(name)
-    override def run() = onShutdown()
+    override def run() = {
+      logger.trace(s"Calling shutdown hook '$name'")
+      onShutdown()
+    }
   }
 
   Runtime.getRuntime.addShutdownHook(hook)
-  logger.debug(s"JavaShutdownHook '$name' added")
+  logger.trace(s"JavaShutdownHook '$name' added")
 
   def close(): Unit = remove()
 
