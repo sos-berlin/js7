@@ -291,9 +291,9 @@ private[graphql] object MasterGraphqlSchema
       interfaces[QueryContext, Order.Ready](OrderStateType),
       fields[QueryContext, Order.Ready]()),
     ObjectType(
-      "InProcessOrderState",
-      interfaces[QueryContext, Order.InProcess](OrderStateType),
-      fields[QueryContext, Order.InProcess]()),
+      "ProcessingOrderState",
+      interfaces[QueryContext, Order.Processing](OrderStateType),
+      fields[QueryContext, Order.Processing]()),
     ObjectType(
       "ProcessedOrderState",
       interfaces[QueryContext, Order.Processed](OrderStateType),

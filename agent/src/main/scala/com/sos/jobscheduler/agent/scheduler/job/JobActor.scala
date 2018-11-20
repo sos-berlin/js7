@@ -157,7 +157,7 @@ object JobActor
 
   sealed trait Command
   object Command {
-    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels)
+    final case class ProcessOrder(jobKey: JobKey, order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels)
     extends Command
   }
 

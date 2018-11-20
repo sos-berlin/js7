@@ -208,7 +208,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               },
               "state": {
-                "TYPE": "InProcess"
+                "TYPE": "Processing"
               },
               "variables": {
                 "KEY": "VALUE",
@@ -416,7 +416,7 @@ object MasterGraphqlSchemaTest
     protected val idToOrder = Vector[Order[Order.State]](
         Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))),
         Order(OrderId("12"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready),
-        Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.InProcess,
+        Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
           Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "2")),
           Some(OrderId("PARENT")),
           Payload(Map("KEY" → "VALUE", "X" → "XX"))),

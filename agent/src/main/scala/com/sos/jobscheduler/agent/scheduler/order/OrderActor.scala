@@ -60,7 +60,7 @@ extends KeyedJournalingActor[OrderEvent] {
       case _: Order.Idle ⇒
         become("idle")(idle)
 
-      case Order.InProcess ⇒
+      case Order.Processing ⇒
         become("processed")(processed)
         val event = OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome)
         persist(event)(update)

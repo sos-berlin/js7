@@ -62,13 +62,13 @@ extends TaskRunner {
         Future.successful(Completed)
     }
 
-  def processOrder(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
+  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
     for (returnCode ← runProcess(order, defaultArguments, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
         returnCode)
 
-  private def runProcess(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
+  private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, defaultArguments, stdChannels) andThen {
         case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
@@ -92,7 +92,7 @@ extends TaskRunner {
     result
   }
 
-  private def startProcess(order: Order[Order.InProcess], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[RichProcess] = {
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {

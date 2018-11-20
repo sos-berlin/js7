@@ -39,7 +39,7 @@ private[workfloworders] final class BoxedOrderComponent
               <.div(^.cls := "orders-Order-compact",
                 order.state)
 
-            case Order.InProcess ⇒
+            case Order.Processing ⇒
               <.div(^.cls := "orders-Order-compact",
                 orderStateToSymbol(order.state), " ",
                 lastOutput getOrElse order.state.toString: String)
@@ -58,7 +58,7 @@ private[workfloworders] final class BoxedOrderComponent
   private def orderToClass(order: Order[Order.State]): String =
     order.state match {
       case _: Order.Fresh   ⇒ "Order-Fresh "
-      case Order.InProcess  ⇒ "Order-InProcess "
+      case Order.Processing ⇒ "Order-Processing "
       case _: Order.Forked  ⇒ "Order-Forked "
       case Order.Finished   ⇒ "Order-Finished "
       case _: Order.Stopped ⇒ "Order-Stopped "

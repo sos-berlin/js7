@@ -55,7 +55,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
       val order = Order(
         OrderId("TEST"),
         WorkflowPath("/JOBCHAIN") % "VERSION",
-        Order.InProcess,
+        Order.Processing,
         payload = Payload(Map("a" → "A")))
       val taskRunner = newTaskRunner(taskConfiguration)
       val stdoutWriter = new TestStdoutStderrWriter

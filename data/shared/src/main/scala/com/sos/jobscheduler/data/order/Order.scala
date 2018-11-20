@@ -63,10 +63,10 @@ final case class Order[+S <: Order.State](
 
       case OrderProcessingStarted ⇒
         check(isState[Idle] && isAttachedToAgent)(copy(
-          state = InProcess))
+          state = Processing))
 
       case OrderProcessed(diff, outcome_) ⇒
-        check(isState[InProcess] && isAttachedToAgent)(copy(
+        check(isState[Processing] && isAttachedToAgent)(copy(
           state = Processed(outcome_),
           payload = Payload(diff.applyTo(payload.variables))))
 
@@ -140,8 +140,8 @@ final case class Order[+S <: Order.State](
 
   def variables = payload.variables
 
-  def castAfterEvent(event: OrderProcessingStarted): Order[Order.InProcess] =
-    castState[Order.InProcess]
+  def castAfterEvent(event: OrderProcessingStarted): Order[Order.Processing] =
+    castState[Order.Processing]
 
   def castAfterEvent(event: OrderProcessed): Order[Order.Processed] =
     castState[Order.Processed]
@@ -242,8 +242,8 @@ object Order {
   @JsonCodec
   final case class Broken(problem: Problem) extends Detachable
 
-  sealed trait InProcess extends Started
-  case object InProcess extends InProcess
+  sealed trait Processing extends Started
+  case object Processing extends Processing
 
   @JsonCodec
   final case class Processed(outcome: Outcome) extends Transitionable
@@ -273,7 +273,7 @@ object Order {
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[Idle],
-    Subtype(InProcess),
+    Subtype(Processing),
     Subtype[Processed],
     Subtype[Stopped],
     Subtype[Forked],

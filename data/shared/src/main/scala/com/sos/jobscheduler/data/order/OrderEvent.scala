@@ -70,11 +70,11 @@ object OrderEvent {
 
   sealed trait OrderProcessingStarted extends OrderCoreEvent
   case object OrderProcessingStarted extends OrderProcessingStarted {
-    //type State = InProcess
+    //type State = Processing
   }
 
   sealed trait OrderStdWritten extends OrderEvent {
-    //type State = InProcess
+    //type State = Processing
 
     def stdoutStderrType: StdoutOrStderr
     protected def chunk: String

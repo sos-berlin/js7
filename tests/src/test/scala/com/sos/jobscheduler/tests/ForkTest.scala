@@ -65,7 +65,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
     master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId
     master.addOrderBlocking(myOrderId)
     assert(master.eventWatch.await[OrderBroken](_.key == myOrderId.id).head.value.event ==
-      OrderBroken(Problem("Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,InProcess,Some(Agent(Agent:/AGENT-A (initial))),None,Payload())")))
+      OrderBroken(Problem("Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Agent(Agent:/AGENT-A (initial))),None,Payload())")))
 
     // Kill SLOW job
     agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow

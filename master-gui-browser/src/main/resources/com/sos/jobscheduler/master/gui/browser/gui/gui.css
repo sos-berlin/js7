@@ -127,11 +127,11 @@ header, main, footer { padding-left: 150px; }
 .order-td-value { white-space: nowrap; padding-top: 0; padding-bottom: 0; padding-right: 0; }
 .order-variable {}
 
-.Order-Fresh     { background-color: #f4f4f4; }
-.Order-Finished  { background-color: #f4f4f4; }
-.Order-InProcess { background-color: #ffc744; }
-.Order-Stopped   { background-color: #ffe800; }
-.Order-Broken    { background-color: #ff625b; }
+.Order-Fresh      { background-color: #f4f4f4; }
+.Order-Finished   { background-color: #f4f4f4; }
+.Order-Processing { background-color: #ffc744; }
+.Order-Stopped    { background-color: #ffe800; }
+.Order-Broken     { background-color: #ff625b; }
 /*.Order-Forked    { background-color: #ffe366; }*/
 /*.Order-highlight      { box-shadow: 0 0 7px 2px #f99b00; }*/
 .Order-highlight      { border-color: #708af9; }
@@ -147,7 +147,7 @@ header, main, footer { padding-left: 150px; }
 .Instruction                { border: solid 1px transparent; padding: 1px 3px; }
 .Instruction-Idle           { border-left: solid 1px #02f; border-top: solid 1px #02f; }
 .Instruction-Ready          { border-left: solid 1px #02f; border-top: solid 1px #02f }
-.Instruction-InProcess      { border: solid 1px #02f; color: #02f }
+.Instruction-Processing     { border: solid 1px #02f; color: #02f }
 .Instruction-Transitionable { border-left: solid 1px #02f; border-bottom: solid 1px #02f }
 .Instruction-Finished       { border-left: solid 1px #02f; border-bottom: solid 1px #02f; }
 .Workflow-symbol-col { width: 38px; }

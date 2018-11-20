@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, Idle, InProcess, Offered, Processed, Ready, State, Stopped}
+import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, Idle, Processing, Offered, Processed, Ready, State, Stopped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
@@ -102,10 +102,10 @@ final class OrderTest extends FreeSpec {
           }""")
       }
 
-      "InProcess" in {
-        check(InProcess,
+      "Processing" in {
+        check(Processing,
           json"""{
-            "TYPE": "InProcess"
+            "TYPE": "Processing"
           }""")
       }
 
@@ -231,7 +231,7 @@ final class OrderTest extends FreeSpec {
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh())) {
-        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[InProcess]
+        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[Processing]
         case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
         case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
         case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
@@ -246,7 +246,7 @@ final class OrderTest extends FreeSpec {
 
     "Ready" - {
       checkAllEvents(Order(orderId, workflowId, Ready)) {
-        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[InProcess]
+        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[Processing]
         case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
         case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
         case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
@@ -259,8 +259,8 @@ final class OrderTest extends FreeSpec {
       }
     }
 
-    "InProcess" - {
-      checkAllEvents(Order(orderId, workflowId, InProcess)) {
+    "Processing" - {
+      checkAllEvents(Order(orderId, workflowId, Processing)) {
         case (_: OrderProcessed, `attached`) ⇒ _.isInstanceOf[Processed]
         case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
       }

@@ -55,7 +55,7 @@ object WorkflowComponent {
 
   private def stateToClass(state: Order.State): String =
     state match {
-      case Order.InProcess          ⇒ "Instruction Instruction-InProcess"
+      case Order.Processing          ⇒ "Instruction Instruction-Processing"
       case Order.Ready              ⇒ "Instruction Instruction-Ready"
       case _: Order.Transitionable  ⇒ "Instruction Instruction-Transitionable"
       case Order.Finished           ⇒ "Instruction Instruction-Finished"
