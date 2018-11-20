@@ -27,7 +27,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   "Unknown job" in {
     val source = """
-      workflow {
+      define workflow {
         if (true) {
           job A;
         }
@@ -36,21 +36,21 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute anonymous" in {
-    check("""workflow { execute executable="/my/executable", agent="/AGENT"; }""",
+    check("""define workflow { execute executable="/my/executable", agent="/AGENT"; }""",
       Workflow.single(
         Execute(
           WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my/executable")))))
   }
 
   "Execute anonymous with relative agent path" in {
-    check("""workflow { execute executable="/my/executable", agent="AGENT"; }""",
+    check("""define workflow { execute executable="/my/executable", agent="AGENT"; }""",
       Workflow.single(
         Execute(
           WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my/executable")))))
   }
 
   "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
-    check("""workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
+    check("""define workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
       Workflow.single(
         Execute(
           WorkflowJob(AgentPath("/AGENT"),
@@ -61,7 +61,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   "Execute named" in {
     check("""
-      workflow {
+      define workflow {
         job A;
         job B, arguments = { "KEY": "VALUE" };
         job C;
@@ -99,7 +99,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   "Execute named with duplicate jobs" in {
     assert(WorkflowParser.parse("""
-      workflow {
+      define workflow {
         job DUPLICATE;
         define job DUPLICATE {
           execute executable="/my/executable", agent="/AGENT";
@@ -112,42 +112,42 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Single instruction with relative job path" in {
-    check("""workflow { execute executable="/A", agent="AGENT"; }""",
+    check("""define workflow { execute executable="/A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))))
   }
 
   "Single instruction with absolute job path" in {
-    check("""workflow { execute executable="/A", agent="/AGENT"; }""",
+    check("""define workflow { execute executable="/A", agent="/AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))))
   }
 
   "execute with successReturnCodes" in {
-    check("""workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
+    check("""define workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
   }
 
   "execute with failureReturnCodes" in {
-    check("""workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
+    check("""define workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3))))))
   }
 
   "Label and single instruction" in {
-    check("""workflow { A: execute executable="/A", agent="AGENT"; }""",
+    check("""define workflow { A: execute executable="/A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))))
   }
 
   "if (...)" in {
-    check("""workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
+    check("""define workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(
@@ -158,7 +158,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "if (...) else" in {
-    check("""workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
+    check("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(Equal(OrderReturnCode, NumericConstant(-1)),
@@ -168,7 +168,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   "fork" in {
     check(
-      """workflow {
+      """define workflow {
         |  fork(
         |    "🥕" {
         |      execute executable="/a", agent="/agent-a";
@@ -185,18 +185,18 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "offer" in {
-    check("""workflow { offer orderId = "OFFERED", timeout = 60; }""",
+    check("""define workflow { offer orderId = "OFFERED", timeout = 60; }""",
       Workflow(WorkflowPath.NoId, Vector(Offer(OrderId("OFFERED"), 60.seconds))))
   }
 
   "await" in {
-    check("""workflow { await orderId = "OFFERED"; }""",
+    check("""define workflow { await orderId = "OFFERED"; }""",
       Workflow(WorkflowPath.NoId, Vector(AwaitOrder(OrderId("OFFERED")))))
   }
 
   "onError and goto" in {
     check("""
-      workflow {
+      define workflow {
         execute executable="/A", agent="/AGENT";
         ifNonZeroReturnCodeGoto FAILURE;
         execute executable="/B", agent="/AGENT";
@@ -234,7 +234,7 @@ final class WorkflowParserTest extends FreeSpec {
   "Comments" in {
     val source = """/*comment
         */
-        workflow {
+        define workflow {
           //comment
           /*comment/**/execute/***/executable="/A"/**/,agent/**/=/**/"AGENT"/**/;/**///comment
         }

@@ -94,7 +94,7 @@ private[https] object HttpsTestBase
       |}
       |""".stripMargin)
     master.writeTxt(WorkflowPath("/TEST-WORKFLOW"), s"""
-      workflow {
+      define workflow {
         execute executable="/TEST$sh", agent="/TEST-AGENT";
       }""")
   }

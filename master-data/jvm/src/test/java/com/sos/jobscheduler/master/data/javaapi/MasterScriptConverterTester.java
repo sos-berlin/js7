@@ -11,13 +11,13 @@ final class MasterScriptConverterTester
 {
     private static final MasterScriptConverter MasterScriptConverter = new MasterScriptConverter();
     private static final String WorkflowScript =
-        "workflow {\n" +
+        "define workflow {\n" +
         "  execute executable=\"/EXECUTABLE\", agent=\"/AGENT\";\n" +
         "}\n";
     private static final String WorkflowJson =
         "{" +
             "\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/EXECUTABLE\",\"taskLimit\":1}}]," +
-            "\"source\":\"workflow {\\n  execute \\\"/EXECUTABLE\\\", agent=\\\"/AGENT\\\";\\n}\\n\"" +
+            "\"source\":\"define workflow {\\n  execute \\\"/EXECUTABLE\\\", agent=\\\"/AGENT\\\";\\n}\\n\"" +
         "}";
 
     private MasterScriptConverterTester() {}

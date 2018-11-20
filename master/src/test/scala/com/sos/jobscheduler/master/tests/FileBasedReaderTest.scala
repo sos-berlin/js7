@@ -30,7 +30,7 @@ final class FileBasedReaderTest extends FreeSpec {
         Valid(AWorkflow withVersion V0),
         Valid(BWorkflow withVersion V0),
         Valid(CWorkflow withVersion V0),
-        Invalid(Problem("""Problem with 'Workflow:/D' (txt) ["workflow":1:1 ..."ERROR"]""")),
+        Invalid(Problem("""Problem with 'Workflow:/D' (txt) ["define":1:1 ..."ERROR"]""")),
         Invalid(Problem("""Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""")),
         Invalid(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")),
         Valid(AAgent withVersion V0),
@@ -38,7 +38,7 @@ final class FileBasedReaderTest extends FreeSpec {
 
       assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==
         Invalid(Problem.set(
-          """Problem with 'Workflow:/D' (txt) ["workflow":1:1 ..."ERROR"]""",
+          """Problem with 'Workflow:/D' (txt) ["define":1:1 ..."ERROR"]""",
           """Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]""",
          s"""File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file""")))
 
@@ -55,7 +55,7 @@ object FileBasedReaderTest {
     (directory / "A.workflow.json") := AWorkflow.withoutId.asJson
     //(directory / "B.job_chain.xml").xml = <job_chain><job_chain_node.end state="B-END"/></job_chain>
     (directory / "B.workflow.json") := BWorkflow.withoutId.asJson
-    (directory / "C.workflow.txt") := "workflow { /*EMPTY*/ }"
+    (directory / "C.workflow.txt") := "define workflow { /*EMPTY*/ }"
     (directory / "D.workflow.txt") := "ERROR"
     (directory / "E.workflow.json") := "NO-JSON"
     (directory / "A.agent.json") := """{ "uri": "http://A" }"""

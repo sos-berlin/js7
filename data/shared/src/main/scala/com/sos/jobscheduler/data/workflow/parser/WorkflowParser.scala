@@ -36,8 +36,8 @@ object WorkflowParser {
     private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
     //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
-    private lazy val workflow = P[Workflow](
-      keyword("workflow") ~~/ curlyWorkflow.flatMap(o ⇒ CheckedParser(o.completelyChecked)))
+    private lazy val workflowDefinition = P[Workflow](
+      keyword("define") ~~/ keyword("workflow") ~~/ curlyWorkflow.flatMap(o ⇒ CheckedParser(o.completelyChecked)))
 
     private lazy val curlyWorkflow = P[Workflow](
       curly((labeledInstruction | jobDefinition).rep)
@@ -168,7 +168,7 @@ object WorkflowParser {
         curly(executeInstruction ~~ instructionTerminator).map(_.job) ~/
         w)
 
-    val whole = w ~/ workflow ~~/ End
+    val whole = w ~/ workflowDefinition ~~/ End
   }
 
   private case class Arguments(toMap: Map[String, String])

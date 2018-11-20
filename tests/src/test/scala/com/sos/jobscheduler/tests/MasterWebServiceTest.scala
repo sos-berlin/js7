@@ -166,7 +166,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             }
           }
         ],
-        "source": "\nworkflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
+        "source": "\ndefine workflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
       }""")
   }
 
@@ -395,7 +395,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             ],
-            "source": "\nworkflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
+            "source": "\ndefine workflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1005,
@@ -416,7 +416,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             ],
-            "source": "\nworkflow {\n  execute executable=\"/A.sh\", agent=\"/AGENT\";\n}"
+            "source": "\ndefine workflow {\n  execute executable=\"/A.sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1006,
@@ -733,11 +733,11 @@ object MasterWebServiceTest
       |}
       |""".stripMargin)
     master.writeTxt(WorkflowPath("/WORKFLOW"), s"""
-       |workflow {
+       |define workflow {
        |  execute executable="/A$sh", agent="/AGENT";
        |}""".stripMargin)
     master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), s"""
-       |workflow {
+       |define workflow {
        |  execute executable="/B$sh", agent="/AGENT";
        |  execute executable="/MISSING$sh", agent="/AGENT";
        |}""".stripMargin)

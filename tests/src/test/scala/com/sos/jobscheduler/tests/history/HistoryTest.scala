@@ -161,7 +161,7 @@ object HistoryTest
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
   private val TestWorkflowNotation = s"""
-     |workflow {
+     |define workflow {
      |  execute executable="/TEST$sh", agent="AGENT-A";
      |  fork(
      |    "🥕" {

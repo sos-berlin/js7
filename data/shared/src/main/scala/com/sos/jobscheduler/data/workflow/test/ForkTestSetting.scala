@@ -23,7 +23,7 @@ object ForkTestSetting {
   val BExecute = Execute(BJob)
 
   val TestWorkflowSource = """
-   |workflow {
+   |define workflow {
    |  execute executable="/executable", agent="AGENT-A";
    |  fork(
    |    "🥕" {

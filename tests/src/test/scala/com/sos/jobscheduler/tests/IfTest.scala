@@ -62,7 +62,7 @@ final class IfTest extends FreeSpec {
 object IfTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = s"""
-     |workflow {
+     |define workflow {
      |  execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1]; // #0
      |  if (returnCode == 0) {   // #1
      |    execute executable="/TEST$sh", agent="AGENT";  // #1/0/0

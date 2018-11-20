@@ -16,7 +16,7 @@ object WorkflowPrinter {
 
   def print(workflow: Workflow): String = {
     val sb = new StringBuilder(1000)
-    sb ++= "workflow {\n"
+    sb ++= "define workflow {\n"
     appendWorkflowContent(sb, nesting = 1, workflow)
     sb ++= "}\n"
     sb.toString

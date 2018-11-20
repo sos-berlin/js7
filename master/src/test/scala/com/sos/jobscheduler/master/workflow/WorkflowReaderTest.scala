@@ -39,7 +39,7 @@ final class WorkflowReaderTest extends FreeSpec {
       expected += yamlWorkflow.withId(WorkflowPath("/YAML") % TestVersionId)
 
       // SCRIPT
-      val script = """workflow { execute executable="/TEST.sh", agent="/AGENT"; }"""
+      val script = """define workflow { execute executable="/TEST.sh", agent="/AGENT"; }"""
       (dir / "TXT.workflow.txt").contentString = script
       expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("/TXT") % TestVersionId)
 

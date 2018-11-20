@@ -57,7 +57,7 @@ final class ExecuteTest extends FreeSpec {
 object ExecuteTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = """
-    workflow {
+    define workflow {
       execute executable="/SCRIPT-0a", agent="AGENT";
       execute executable="/SCRIPT-1", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
       job aJob;

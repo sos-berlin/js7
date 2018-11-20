@@ -1,4 +1,4 @@
-workflow {
+define workflow {
   job TEST1, arguments={"hello": "გამარჯობა!"};
 
   // Fork with part of a branch running at another Agent

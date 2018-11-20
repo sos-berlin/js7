@@ -72,13 +72,13 @@ object OfferAndAwaitOrderTest {
   private val PublishingWorkflowId = WorkflowPath("/B") % "(initial)"
   private val TestWorkflows = List(
     JoiningWorkflowId → s"""
-      workflow {
+      define workflow {
         execute executable="/executable$sh", agent="AGENT";
         await orderId = "OFFERED-ORDER-ID";
         execute executable="/executable$sh", agent="AGENT";
       }""",
     PublishingWorkflowId → s"""
-      workflow {
+      define workflow {
         execute executable="/executable$sh", agent="AGENT";
         offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         execute executable="/executable$sh", agent="AGENT";
