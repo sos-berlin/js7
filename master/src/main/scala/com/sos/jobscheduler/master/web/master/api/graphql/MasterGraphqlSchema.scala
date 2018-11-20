@@ -310,9 +310,9 @@ private[graphql] object MasterGraphqlSchema
       fields[QueryContext, Order.Forked](
         Field("childOrderIds", ListType(OrderIdType), resolve = _.value.childOrderIds))),
     ObjectType(
-      "OfferedOrderState",
-      interfaces[QueryContext, Order.Offered](OrderStateType),
-      fields[QueryContext, Order.Offered]()),
+      "OfferingOrderState",
+      interfaces[QueryContext, Order.Offering](OrderStateType),
+      fields[QueryContext, Order.Offering]()),
     ObjectType(
       "AwaitingOrderState",
       interfaces[QueryContext, Order.Awaiting](OrderStateType),

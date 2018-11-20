@@ -78,7 +78,7 @@ extends KeyedJournalingActor[OrderEvent] {
       case _: Order.Broken ⇒
         become("disrupted")(stoppedOrDisrupted)
 
-      case _: Order.Awaiting | _: Order.Stopped | _: Order.Offered | Order.Finished ⇒
+      case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished ⇒
         sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
     }
     logger.debug(s"Recovered $order")
@@ -338,7 +338,7 @@ private[order] object OrderActor
   object Input {
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
-    final case class AddPublished(order: Order[Order.Offered]) extends Input
+    final case class AddPublished(order: Order[Order.Offering]) extends Input
     final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
       extends Input
     final case object Terminate extends Input with DeadLetterSuppression

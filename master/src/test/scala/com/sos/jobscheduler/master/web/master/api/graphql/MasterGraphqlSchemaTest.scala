@@ -324,7 +324,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                 }
               },
               "state": {
-                "TYPE": "Offered"
+                "TYPE": "Offering"
               }
             }, {
               "id": "20",
@@ -425,7 +425,7 @@ object MasterGraphqlSchemaTest
         Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped(Outcome.Disrupted(Problem("MESSAGE")))),
         Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))),
         Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
-        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offered(Timestamp.parse("2018-04-16T11:22:33Z"))),
+        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offering(Timestamp.parse("2018-04-16T11:22:33Z"))),
         Order(OrderId("20"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
         Order(OrderId("21"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Finished),
         Order(OrderId("22"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Broken(Problem("PROBLEM")))

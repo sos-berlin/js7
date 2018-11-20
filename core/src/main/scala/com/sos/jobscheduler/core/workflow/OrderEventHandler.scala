@@ -56,7 +56,7 @@ final class OrderEventHandler(
 
           case Order.Awaiting(_) ⇒
             _offeredToAwaitingOrder -= previousOrder.castState[Order.Awaiting].state.offeredOrderId
-            Valid(Nil)  // Offered order is being kept
+            Valid(Nil)  // Offering order is being kept
 
           case state ⇒
             Invalid(Problem(s"Event $joined, but Order is in state $state"))
@@ -83,7 +83,7 @@ object OrderEventHandler
   object FollowUp {
     final case class Processed(job: JobKey) extends FollowUp
     final case class AddChild(order: Order[Order.Ready]) extends FollowUp
-    final case class AddOffered(order: Order[Order.Offered]) extends FollowUp
+    final case class AddOffered(order: Order[Order.Offering]) extends FollowUp
     final case class Remove(orderId: OrderId) extends FollowUp
   }
 }

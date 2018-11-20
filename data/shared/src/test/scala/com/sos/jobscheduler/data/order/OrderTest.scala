@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, Idle, Processing, Offered, Processed, Ready, State, Stopped}
+import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, Idle, Processing, Offering, Processed, Ready, State, Stopped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
@@ -146,10 +146,10 @@ final class OrderTest extends FreeSpec {
             }""")
       }
 
-      "Offered" in {
-        check(Offered(Timestamp.ofEpochMilli(123)),
+      "Offering" in {
+        check(Offering(Timestamp.ofEpochMilli(123)),
           json"""{
-            "TYPE": "Offered",
+            "TYPE": "Offering",
             "until": 123
           }""")
       }
@@ -303,8 +303,8 @@ final class OrderTest extends FreeSpec {
       }
     }
 
-    "Offered" - {
-      checkAllEvents(Order(orderId, workflowId, Offered(Timestamp("2018-11-19T12:00:00Z")))) {
+    "Offering" - {
+      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z")))) {
         case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
       }
     }

@@ -50,7 +50,7 @@ object Recovering
     order.ifState[Order.Forked].map(order ⇒
       order.id <-: OrderForked(order.state.children))
     //.orElse(
-    //  order.ifState[Order.Offered].map(order ⇒
+    //  order.ifState[Order.Offering].map(order ⇒
     //    Valid(FollowUp.AddOffered(order.newPublishedOrder(event)) :: Nil)))
     //.orElse(
     //  order.ifState[Order.Awaiting].map(order ⇒   TODO Missing?

@@ -505,7 +505,7 @@ with MainJournalingActor[Event]
           case _ ⇒
         }
 
-      case _: Order.Offered ⇒
+      case _: Order.Offering ⇒
         for (awaitingOrderId ← orderProcessor.offeredToAwaitingOrder(orderEntry.orderId);
              awaitingOrder ← orderRegister.checked(awaitingOrderId).onProblem(p ⇒ logger.warn(p.toString));
              _ ← awaitingOrder.order.checkedState[Order.Awaiting].onProblem(p ⇒ logger.error(p.toString)))

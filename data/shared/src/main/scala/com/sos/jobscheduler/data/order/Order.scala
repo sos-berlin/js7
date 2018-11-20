@@ -39,9 +39,9 @@ final case class Order[+S <: Order.State](
         parent = Some(id),
         Payload(child.variablesDiff.applyTo(payload.variables)))
 
-  def newPublishedOrder(event: OrderOffered): Order[Offered] = copy(
+  def newPublishedOrder(event: OrderOffered): Order[Offering] = copy(
     event.orderId,
-    state = Offered(event.until),
+    state = Offering(event.until),
     parent = None)
 
   def workflowId: WorkflowId =
@@ -258,7 +258,7 @@ object Order {
   }
 
   @JsonCodec
-  final case class Offered(until: Timestamp)
+  final case class Offering(until: Timestamp)
   extends Started
 
   @JsonCodec
@@ -277,7 +277,7 @@ object Order {
     Subtype[Processed],
     Subtype[Stopped],
     Subtype[Forked],
-    Subtype[Offered],
+    Subtype[Offering],
     Subtype[Awaiting],
     Subtype(Finished),
     Subtype[Broken])
