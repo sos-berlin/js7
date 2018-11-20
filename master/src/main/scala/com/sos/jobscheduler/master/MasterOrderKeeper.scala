@@ -601,7 +601,7 @@ private[master] object MasterOrderKeeper {
     def update(event: OrderEvent): Unit =
       event match {
         case _: OrderStdWritten ⇒
-        case event: OrderCoreEvent ⇒ order = order.forceUpdate(event)  // 🔥 ProblemException
+        case event: OrderCoreEvent ⇒ order = order.update(event).orThrow  // 🔥 ProblemException
       }
   }
 

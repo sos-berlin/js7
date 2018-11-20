@@ -48,7 +48,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
     val order = event match {
       case event: OrderAdded ⇒ Order.fromOrderAdded(orderId, event)
-      case event: OrderCoreEvent ⇒ idToOrder(orderId).forceUpdate(event)
+      case event: OrderCoreEvent ⇒ idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
       case _ ⇒ idToOrder(orderId)
     }
     val updatedFatState = event match {

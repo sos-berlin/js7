@@ -50,9 +50,6 @@ final case class Order[+S <: Order.State](
   def position: Position =
     workflowPosition.position
 
-  def forceUpdate(event: OrderEvent.OrderCoreEvent): Order[State] =   // 🔥 ProblemException
-    update(event).orThrow
-
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Invalid(Problem(
       s"Order '${id.string}' in state '${state.getClass.simpleScalaName}' ($attachedToString) has received an inapplicable event: " + event))

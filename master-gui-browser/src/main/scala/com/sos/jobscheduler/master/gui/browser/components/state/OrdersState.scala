@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.components.state
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -115,7 +116,7 @@ object OrdersState {
                       case _ ⇒ entry.lastOutputOfCurrentJob
                     }
                     entry.copy(
-                      order = entry.order.forceUpdate(event),
+                      order = entry.order.update(event).orThrow,  // 🔥 ProblemException
                       lastOutputOfCurrentJob = lastOutput,
                       updatedAt = nowMillis)
 

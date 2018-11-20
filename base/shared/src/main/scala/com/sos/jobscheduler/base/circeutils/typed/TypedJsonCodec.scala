@@ -49,6 +49,11 @@ extends ObjectEncoder[A] with Decoder[A]
 
   def typeName(getClass: Class[_ <: A]): String =
     classToName(getClass)
+
+  def classes[A1 <: A : ClassTag]: Set[Class[_ <: A1]] =
+    classToEncoder.keySet collect {
+      case c if implicitClass[A1] isAssignableFrom c ⇒ c.asInstanceOf[Class[A1]]
+    }
 }
 
 object TypedJsonCodec {

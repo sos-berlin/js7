@@ -153,7 +153,7 @@ object OrderEvent {
     //type State = Finished
   }
 
-  implicit val OrderEventJsonCodec = TypedJsonCodec[OrderEvent](
+  implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderTransferredToAgent]),

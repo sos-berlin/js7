@@ -43,6 +43,11 @@ final class TypedJsonCodecTest extends FreeSpec {
     testJson[Any](A0, json"""{ "TYPE": "A0" }""")
     testJson[Any](B0, json"""{ "TYPE": "B0" }""")
   }
+
+  "classes" in {
+    assert(AJsonCodec.classes[A] == Set(A0.getClass, classOf[A1], classOf[A2], classOf[AA1]))
+    assert(AJsonCodec.classes[AA] == Set(classOf[AA1]))
+  }
 }
 
 object TypedJsonCodecTest {

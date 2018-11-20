@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSu
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import com.sos.jobscheduler.base.generic.{Accepted, Completed}
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
@@ -302,7 +303,7 @@ extends KeyedJournalingActor[OrderEvent] {
         order
 
       case event: OrderCoreEvent if order != null ⇒
-        order.forceUpdate(event)  // 🔥 ProblemException, snapshot will be lost!
+        order.update(event).orThrow  // 🔥 ProblemException, snapshot will be lost!
         // Vielleicht anschließend: order.forceUpdate(OrderBroken(problem)) ?
 
       case _ ⇒

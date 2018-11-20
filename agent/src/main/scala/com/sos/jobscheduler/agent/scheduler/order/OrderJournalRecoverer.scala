@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -62,7 +63,7 @@ extends JournalRecoverer[Event] {
         event match {
           case event: OrderCoreEvent ⇒
             handleForkJoinEvent(orderId, event)
-            idToOrder(orderId) = idToOrder(orderId).forceUpdate(event)
+            idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
           case _: OrderStdWritten ⇒
             // OrderStdWritten is not handled (but forwarded to Master)
         }

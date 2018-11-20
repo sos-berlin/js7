@@ -201,6 +201,145 @@ final class OrderTest extends FreeSpec {
     }
   }
 
+  "Order transitions: event to state" - {
+    val orderId = OrderId("ID")
+    val workflowId = WorkflowPath("/WORKFLOW") % "VERSION"
+    val agentId = AgentPath("/AGENT") % "version"
+    val allEvents = Set[OrderCoreEvent](
+      OrderAdded(workflowId),
+      OrderProcessingStarted,
+      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderStopped(Outcome.Failed(ReturnCode(1))),
+      OrderMoved(Position(1)),
+      OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
+      OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
+      OrderAwaiting(OrderId("OFFERED")),
+      OrderFinished,
+      //OrderStdoutWritten("stdout") is not an OrderCoreEvent
+      //OrderStderrWritten("stderr") is not an OrderCoreEvent
+      OrderTransferredToAgent(agentId),
+      OrderTransferredToMaster,
+      OrderAttached(workflowId /: Position(0), Fresh(), None, agentId, Payload.empty),
+      OrderDetachable,
+      OrderDetached,
+      OrderBroken(Problem("Problem")))
+    assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
+    val detached = none[AttachedTo]
+    val attached = Some(AttachedTo.Agent(agentId))
+    val detachable = Some(AttachedTo.Detachable(agentId))
+
+    "Fresh" - {
+      checkAllEvents(Order(orderId, workflowId, Fresh())) {
+        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[InProcess]
+        case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
+        case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
+        case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
+        case (_: OrderFinished          , `detached`             ) ⇒ _.isInstanceOf[Finished]
+        case (_: OrderTransferredToAgent, `detached`             ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderTransferredToMaster  , `detachable`           ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderDetachable           , `attached`             ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderDetached             , `detachable`           ) ⇒ _.isInstanceOf[Fresh]
+        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Ready" - {
+      checkAllEvents(Order(orderId, workflowId, Ready)) {
+        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[InProcess]
+        case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
+        case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
+        case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
+        case (_: OrderFinished          , `detached`             ) ⇒ _.isInstanceOf[Finished]
+        case (_: OrderTransferredToAgent, `detached`             ) ⇒ _.isInstanceOf[Ready]
+        case (OrderTransferredToMaster  , `detachable`           ) ⇒ _.isInstanceOf[Ready]
+        case (OrderDetachable           , `attached`             ) ⇒ _.isInstanceOf[Ready]
+        case (OrderDetached             , `detachable`           ) ⇒ _.isInstanceOf[Ready]
+        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "InProcess" - {
+      checkAllEvents(Order(orderId, workflowId, InProcess)) {
+        case (_: OrderProcessed, `attached`) ⇒ _.isInstanceOf[Processed]
+        case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Processed" - {
+      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0))))) {
+        case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
+        case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
+        case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Stopped" - {
+      checkAllEvents(Order(orderId, workflowId, Stopped(Outcome.Failed(ReturnCode(1))))) {
+        case (OrderTransferredToMaster, `detachable`         ) ⇒ _.isInstanceOf[Stopped]
+        case (_: OrderDetachable      , `attached`           ) ⇒ _.isInstanceOf[Stopped]
+        case (_: OrderDetached        , `detachable`         ) ⇒ _.isInstanceOf[Stopped]
+        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Broken" - {
+      checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM")))) {
+        case (OrderTransferredToMaster, `detachable`         ) ⇒ _.isInstanceOf[Broken]
+        case (_: OrderDetachable      , `attached`           ) ⇒ _.isInstanceOf[Broken]
+        case (_: OrderDetached        , `detachable`         ) ⇒ _.isInstanceOf[Broken]
+        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Forked" - {
+      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil))) {
+        case (_: OrderJoined            , `detached`  ) ⇒ _.isInstanceOf[Processed]
+        case (_: OrderTransferredToAgent, `detached`  ) ⇒ _.isInstanceOf[Forked]
+        case (OrderTransferredToMaster  , `detachable`) ⇒ _.isInstanceOf[Forked]
+        case (_: OrderDetachable        , `attached`  ) ⇒ _.isInstanceOf[Forked]
+        case (_: OrderDetached          , `detachable`) ⇒ _.isInstanceOf[Forked]
+        case (_: OrderBroken            , _           ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Offered" - {
+      checkAllEvents(Order(orderId, workflowId, Offered(Timestamp("2018-11-19T12:00:00Z")))) {
+        case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Awaiting" - {
+      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED")))) {
+        case (_: OrderJoined, `detached`) ⇒ _.isInstanceOf[Processed]
+        case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    "Finished" - {
+      checkAllEvents(Order(orderId, workflowId, Finished)) {
+        case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+      }
+    }
+
+    /** Checks each event in `allEvents`. */
+    def checkAllEvents(order: Order[State])(toState: PartialFunction[(OrderEvent, Option[AttachedTo]), State ⇒ Boolean])
+      (implicit pos: source.Position)
+    : Unit =
+      for (event ← allEvents) s"$event" - {
+        for (a ← None :: attached :: detachable :: Nil) s"$a" in {
+          val updated = order.copy(attachedTo = a).update(event)
+          val maybeState = updated.toOption.map(_.state)
+          val maybePredicate = toState.lift((event, a))
+          (maybeState, maybePredicate) match {
+            case (Some(state), Some(predicate)) ⇒ assert(predicate(state))
+            case (None, None) ⇒
+            case _ ⇒ fail
+          }
+        }
+      }
+  }
+
   "Operations" - {
     "attachedToAgent" in {
       val agentId = AgentPath("/A") % "1"
@@ -244,147 +383,6 @@ final class OrderTest extends FreeSpec {
         assert(problem.toString contains "ORDER-ID")
       }
     }
-  }
-
-  "Order transitions: event to state" - {
-    val freshOnMaster = Order(OrderId("ID"), WorkflowPath("/WORKFLOW") % "VERSION", Fresh())
-    val attachedOrder = freshOnMaster.copy(attachedTo = Some(AttachedTo.Agent(AgentPath("/AGENT") % "version")))
-    val agentId = AgentPath("/AGENT") % "version"
-    val allEvents = List[OrderCoreEvent](
-      OrderAdded(freshOnMaster.workflowId),
-      OrderFinished,
-      //OrderStdoutWritten("stdout"),   not an OrderCoreEvent
-      //OrderStderrWritten("stderr"),
-      OrderAwaiting(OrderId("OFFERED")),
-      OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
-      OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
-      OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
-      OrderStopped(Outcome.Failed(ReturnCode(1))),
-      OrderBroken(Problem("Problem")),
-      OrderForked(OrderForked.Child("BRANCH", freshOnMaster.id / "BRANCH") :: Nil),
-      OrderTransferredToAgent(agentId),
-      OrderTransferredToMaster,
-      OrderAttached(freshOnMaster.workflowPosition, freshOnMaster.state, freshOnMaster.parent, agentId, Payload.empty),
-      OrderDetachable,
-      OrderDetached)
-    val IsDetached = none[AttachedTo]
-    val IsAttached = Some(AttachedTo.Agent(agentId))
-    val IsDetachable = Some(AttachedTo.Detachable(agentId))
-    val allAttachedTo = None :: IsAttached :: IsDetachable :: Nil
-
-    "Fresh" - {
-      val order = freshOnMaster
-      checkAllEvents(order) {
-        case (_: OrderProcessingStarted , IsAttached             ) ⇒ _.isInstanceOf[InProcess]
-        case (_: OrderForked            , IsDetached | IsAttached) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderOffered           , IsDetached             ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderAwaiting          , IsDetached             ) ⇒ _.isInstanceOf[Awaiting]
-        case (_: OrderFinished          , IsDetached             ) ⇒ _.isInstanceOf[Finished]
-        case (_: OrderTransferredToAgent, IsDetached             ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderTransferredToMaster  , IsDetachable           ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetachable           , IsAttached             ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetached             , IsDetachable           ) ⇒ _.isInstanceOf[Fresh]
-        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Ready" - {
-      checkAllEvents(freshOnMaster.copy(state = Ready)) {
-        case (_: OrderProcessingStarted , IsAttached             ) ⇒ _.isInstanceOf[InProcess]
-        case (_: OrderForked            , IsDetached | IsAttached) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderOffered           , IsDetached             ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderAwaiting          , IsDetached             ) ⇒ _.isInstanceOf[Awaiting]
-        case (_: OrderFinished          , IsDetached             ) ⇒ _.isInstanceOf[Finished]
-        case (_: OrderTransferredToAgent, IsDetached             ) ⇒ _.isInstanceOf[Ready]
-        case (OrderTransferredToMaster  , IsDetachable           ) ⇒ _.isInstanceOf[Ready]
-        case (OrderDetachable           , IsAttached             ) ⇒ _.isInstanceOf[Ready]
-        case (OrderDetached             , IsDetachable           ) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "InProcess" - {
-      checkAllEvents(attachedOrder.copy(state = InProcess)) {
-        case (_: OrderProcessed, IsAttached) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Processed" - {
-      checkAllEvents(attachedOrder.copy(state = Processed(Outcome.Succeeded(ReturnCode(0))))) {
-        case (_: OrderMoved  , IsAttached) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderStopped, IsAttached) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderBroken , _         ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Stopped" - {
-      checkAllEvents(attachedOrder.copy(state = Stopped(Outcome.Failed(ReturnCode(1))))) {
-        case (OrderTransferredToMaster, IsDetachable         ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderDetachable      , IsAttached           ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderDetached        , IsDetachable         ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Broken" - {
-      checkAllEvents(attachedOrder.copy(state = Broken(Problem("PROBLEM")))) {
-        case (OrderTransferredToMaster, IsDetachable         ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderDetachable      , IsAttached           ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderDetached        , IsDetachable         ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Forked" - {
-      checkAllEvents(attachedOrder.copy(state = Forked(Forked.Child("BRANCH", attachedOrder.id / "CHILD") :: Nil))) {
-        case (_: OrderJoined            , IsDetached  ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderTransferredToAgent, IsDetached  ) ⇒ _.isInstanceOf[Forked]
-        case (OrderTransferredToMaster  , IsDetachable) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderDetachable        , IsAttached  ) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderDetached          , IsDetachable) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderBroken            , _           ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Offered" - {
-      checkAllEvents(attachedOrder.copy(state = Offered(Timestamp.ofEpochSecond(1)))) {
-        case (_: OrderMoved , IsDetached) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Awaiting" - {
-      checkAllEvents(attachedOrder.copy(state = Awaiting(OrderId("OFFERED")))) {
-        case (_: OrderJoined, IsDetached) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    "Finished" - {
-      checkAllEvents(attachedOrder.copy(state = Finished)) {
-        case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
-      }
-    }
-
-    /** Checks each event in `allEvents`. */
-    def checkAllEvents(order: Order[State])(toState: PartialFunction[(OrderEvent, Option[AttachedTo]), State ⇒ Boolean])
-      (implicit pos: source.Position)
-    : Unit =
-      for (event ← allEvents; a ← allAttachedTo)
-        event.toString - {
-          a.toString in {
-            val checkedOrder = order.copy(attachedTo = a).update(event)
-            val maybeState = checkedOrder.toOption.map(_.state)
-            val maybePredicate = toState.lift((event, a))
-            (maybeState, maybePredicate) match {
-              case (Some(state), Some(predicate)) ⇒ assert(predicate(state))
-              case (None, None) ⇒
-              case _ ⇒ fail
-            }
-          }
-        }
   }
 
   "Error message when updated failed" in {

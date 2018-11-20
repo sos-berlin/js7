@@ -72,7 +72,7 @@ extends JournalRecoverer[Event]
 
             case event: OrderCoreEvent ⇒
               handleForkJoinEvent(orderId, event)
-              idToOrder(orderId) = idToOrder(orderId).forceUpdate(event)
+              idToOrder(orderId) = idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
 
             case _: OrderStdWritten ⇒
           }
