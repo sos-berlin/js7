@@ -1,4 +1,3 @@
-SOS GmbH repositories
+JobScheduler 2
 
-You will find basic information about JobScheduler and YADE repositories at: 
-https://sos-berlin.github.io
+[Änderungen](doc/src/doc.de/Änderungen/README.md)
