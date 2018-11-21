@@ -11,7 +11,7 @@ import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
@@ -32,15 +32,15 @@ final class OrderEventSourceTest extends FreeSpec {
       Map(TestWorkflowId → ForkWorkflow).toChecked,
       Map(disruptedOrder.id → disruptedOrder))
     assert(eventSource.nextEvent(disruptedOrder.id) ==
-      Valid(Some(disruptedOrder.id <-: OrderMoved(Position(0)))))  // Move to same InstructionNr, and set Order.Ready
+      Valid(Some(disruptedOrder.id <-: OrderMoved(Position(1)))))  // Move to same InstructionNr, and set Order.Ready
   }
 
   "if" - {
     val workflow = Workflow.of(TestWorkflowId,
-      executeScript,                              // 0
-      If(Equal(OrderReturnCode, NumericConstant(0)), // 1
-        Workflow.of(executeScript)),              // 1,0,0
-      executeScript)                              // 2
+      executeScript,                                  // 0
+      If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
+        Workflow.of(executeScript)),                  // 1,0,0
+      executeScript)                                  // 2
 
     "then branch executed" in {
       assert(step(workflow, Outcome.Succeeded(ReturnCode(1))) == Some(OrderMoved(Position(2))))
@@ -50,6 +50,7 @@ final class OrderEventSourceTest extends FreeSpec {
       val process = new SingleOrderProcess(workflow)
       process.update(OrderAdded(TestWorkflowId))
       process.transferToAgent(TestAgentId)
+      process.update(OrderStarted)
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(1, 0, 0))))
       process.jobStep()
@@ -67,11 +68,11 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if returnCode else" - {
     val workflow = Workflow.of(TestWorkflowId,
-      executeScript,                                            // 0
-      If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
-        thenWorkflow = Workflow.of(executeScript),              // 1,0,0
-        elseWorkflow = Some(Workflow.of(executeScript))),       // 1,1,0
-      executeScript)                                            // 2
+      executeScript,                                        // 0
+      If(Equal(OrderReturnCode, NumericConstant(0)),        // 1
+        thenWorkflow = Workflow.of(executeScript),          // 1,0,0
+        elseWorkflow = Some(Workflow.of(executeScript))),   // 1,1,0
+      executeScript)                                        // 2
 
     "then branch executed" in {
       assert(step(workflow, Outcome.succeeded) == Some(OrderMoved(Position(1, 0, 0))))
@@ -89,9 +90,7 @@ final class OrderEventSourceTest extends FreeSpec {
     process.update(orderId <-: OrderAdded(TestWorkflowId))
     process.update(orderId <-: OrderTransferredToAgent(TestAgentId))
     assert(process.run(orderId) == List(
-      orderId <-: OrderProcessingStarted,
-      orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId <-: OrderMoved(Position(1)),
+      orderId <-: OrderStarted,
       orderId <-: OrderForked(List(
         OrderForked.Child("🥕", orderId / "🥕", MapDiff.empty),
         OrderForked.Child("🍋", orderId / "🍋", MapDiff.empty))),
@@ -101,10 +100,7 @@ final class OrderEventSourceTest extends FreeSpec {
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 1)),
-      orderId / "🥕" <-: OrderProcessingStarted,
-      orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 2)),
+      orderId / "🥕" <-: OrderMoved(Position(0, "🥕", 1)),
       orderId / "🥕" <-: OrderDetachable,
       orderId / "🥕" <-: OrderTransferredToMaster))
 
@@ -113,10 +109,31 @@ final class OrderEventSourceTest extends FreeSpec {
     assert(process.run(orderId / "🍋") == List(
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 1)),
+      orderId / "🍋" <-: OrderMoved(Position(0, "🍋", 1)),
+      orderId / "🍋" <-: OrderDetachable,
+      orderId / "🍋" <-: OrderTransferredToMaster,
+      orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
+    assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(1))))
+
+    assert(process.step(orderId) == Some(orderId <-: OrderForked(List(
+      OrderForked.Child("🥕", orderId / "🥕", MapDiff.empty),
+      OrderForked.Child("🍋", orderId / "🍋", MapDiff.empty)))))
+
+    assert(process.run(orderId / "🥕") == List(
+      orderId / "🥕" <-: OrderTransferredToAgent(TestAgentId),
+      orderId / "🥕" <-: OrderProcessingStarted,
+      orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 1)),
+      orderId / "🥕" <-: OrderDetachable,
+      orderId / "🥕" <-: OrderTransferredToMaster))
+
+    assert(process.step(orderId).isEmpty)  // Nothing to join
+
+    assert(process.run(orderId / "🍋") == List(
+      orderId / "🍋" <-: OrderTransferredToAgent(TestAgentId),
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 2)),
+      orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 1)),
       orderId / "🍋" <-: OrderDetachable,
       orderId / "🍋" <-: OrderTransferredToMaster,
       orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
@@ -130,10 +147,10 @@ final class OrderEventSourceTest extends FreeSpec {
   "applyMoveInstructions" - {
     "Goto, IfFailedGoto" in {
       val workflow = Workflow.of(TestWorkflowId,
-                 executeScript,            // 0
+                 executeScript,  // 0
                  Goto("B"),      // 1
                  Gap,            // 2
-        "C" @:   executeScript,            // 3
+        "C" @:   executeScript,  // 3
         "END" @: ExplicitEnd,    // 4
         "B" @:   IfNonZeroReturnCodeGoto("C")) // 5
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
@@ -188,6 +205,7 @@ object OrderEventSourceTest {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
     process.transferToAgent(TestAgentId)
+    process.update(OrderStarted)
     process.jobStep(outcome = outcome)
     process.step()
   }
@@ -245,8 +263,8 @@ object OrderEventSourceTest {
         Valid(Some(order.id <-: OrderTransferredToMaster))
       else
         (order.state, workflow.instruction(order.position)) match {
-          case (_: Order.Idle/*Ready!!!*/, _: Execute) ⇒
-            if (order.isOnMaster)
+          case (_: Order.Ready, _: Execute) ⇒
+            if (order.isDetached)
               Valid(Some(order.id <-: OrderTransferredToAgent(TestAgentId)))
             else
               Valid(Some(order.id <-: OrderProcessingStarted))

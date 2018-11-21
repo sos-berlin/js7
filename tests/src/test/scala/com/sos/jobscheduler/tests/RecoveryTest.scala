@@ -23,7 +23,7 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdd
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -169,6 +169,7 @@ private object RecoveryTest {
   private val ExpectedOrderEvents = Vector(
     OrderAdded(TestWorkflow.id, Some(SomeTimestamp), Payload(Map())),
     OrderTransferredToAgent(AgentIds(0)),
+    OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),

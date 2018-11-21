@@ -34,7 +34,7 @@ object OrderEvent {
   final case class OrderAdded(workflowId: WorkflowId, scheduledAt: Option[Timestamp] = None, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
-    //type State = Idle
+    //type State = FreshOrReady
   }
   object OrderAdded {
     private[OrderEvent] implicit val jsonCodec: ObjectEncoder[OrderAdded] =
@@ -51,15 +51,15 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledAt, payload)
   }
 
-  final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentId: AgentId, payload: Payload)
+  final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, parent: Option[OrderId], agentId: AgentId, payload: Payload)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
-    //type State = Idle
+    //type State = FreshOrReady
   }
 
   final case class OrderTransferredToAgent(agentId: AgentId)
   extends OrderCoreEvent {
-    //type State = Idle
+    //type State = FreshOrReady
   }
 
   sealed trait OrderTransferredToMaster
@@ -67,6 +67,9 @@ object OrderEvent {
   extends OrderCoreEvent {
     //type State = Detached.type
   }
+
+  sealed trait OrderStarted extends OrderActorEvent
+  case object OrderStarted extends OrderStarted
 
   sealed trait OrderProcessingStarted extends OrderCoreEvent
   case object OrderProcessingStarted extends OrderProcessingStarted {
@@ -155,21 +158,22 @@ object OrderEvent {
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
-    Subtype(deriveCodec[OrderAttached]),
-    Subtype(deriveCodec[OrderTransferredToAgent]),
-    Subtype(OrderTransferredToMaster),
+    Subtype(OrderStarted),
+    Subtype(OrderProcessingStarted),
     Subtype(deriveCodec[OrderStdoutWritten]),
     Subtype(deriveCodec[OrderStderrWritten]),
     Subtype(deriveCodec[OrderProcessed]),
+    Subtype(deriveCodec[OrderStopped]),
+    Subtype(deriveCodec[OrderMoved]),
     Subtype(deriveCodec[OrderForked]),
     Subtype(deriveCodec[OrderJoined]),
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
-    Subtype(OrderDetached),
+    Subtype(OrderFinished),
+    Subtype(deriveCodec[OrderTransferredToAgent]),
+    Subtype(OrderTransferredToMaster),
+    Subtype(deriveCodec[OrderAttached]),
     Subtype(OrderDetachable),
-    Subtype(OrderProcessingStarted),
-    Subtype(deriveCodec[OrderMoved]),
-    Subtype(deriveCodec[OrderStopped]),
-    Subtype(deriveCodec[OrderBroken]),
-    Subtype(OrderFinished))
+    Subtype(OrderDetached),
+    Subtype(deriveCodec[OrderBroken]))
 }

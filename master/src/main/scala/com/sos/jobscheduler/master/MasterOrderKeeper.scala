@@ -270,17 +270,18 @@ with MainJournalingActor[Event]
       }
       masterStamped ++= lastAgentEventId.map(agentEventId ⇒ Timestamped(agentId <-: AgentEventIdEvent(agentEventId)))
 
-      persistTransactionTimestamped(masterStamped) { _.map(_.value) foreach {
-        case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
-          handleOrderEvent(orderId, event)
+      persistTransactionTimestamped(masterStamped) {
+        _ map (_.value) foreach {
+          case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+            handleOrderEvent(orderId, event)
 
-        case KeyedEvent(_: AgentId, AgentEventIdEvent(agentEventId)) ⇒
-          agentEntry.lastAgentEventId = agentEventId
-          agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
+          case KeyedEvent(_: AgentId, AgentEventIdEvent(agentEventId)) ⇒
+            agentEntry.lastAgentEventId = agentEventId
+            agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
 
-        case _ ⇒
+          case _ ⇒
+        }
       }
-    }
 
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
       val unknown = orderIds -- orderRegister.keySet
@@ -292,7 +293,7 @@ with MainJournalingActor[Event]
 
     case JournalActor.Output.SnapshotTaken ⇒
       if (terminating) {
-        // TODO termination wie in AgentOrderKeeper
+        // TODO termination wie in AgentOrderKeeper, dabei AgentDriver ordentlich beenden
         orderScheduleGenerator ! PoisonPill
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
@@ -498,8 +499,8 @@ with MainJournalingActor[Event]
   private def proceedWithOrderOnMaster(orderEntry: OrderEntry): Unit = {
     val order = orderEntry.order
     order.state match {
-      case _: Order.Idle ⇒
-        val idleOrder = order.castState[Order.Idle]
+      case _: Order.FreshOrReady ⇒
+        val idleOrder = order.castState[Order.FreshOrReady]
         instruction(order.workflowPosition) match {
           case _: Execute ⇒ tryAttachOrderToAgent(idleOrder)
           case _ ⇒
@@ -523,7 +524,7 @@ with MainJournalingActor[Event]
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit = {
+  private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit = {
     (for {
       workflow ← repo.idTo[Workflow](order.workflowId)
       job ← workflow.checkedWorkflowJob(order.position)

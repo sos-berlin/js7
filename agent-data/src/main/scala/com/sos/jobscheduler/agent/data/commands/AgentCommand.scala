@@ -113,7 +113,7 @@ object AgentCommand {
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   @JsonCodec
-  final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
+  final case class AttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
     order.attachedToAgent.orThrow
@@ -123,7 +123,7 @@ object AgentCommand {
     override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.Idle], agentId: AgentId, workflow: Workflow) =
+    def apply(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) =
       new AttachOrder(
         order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentId))),
         workflow)

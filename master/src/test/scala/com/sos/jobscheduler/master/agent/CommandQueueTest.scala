@@ -93,7 +93,7 @@ object CommandQueueTest {
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") % "VERSION",
     Execute(WorkflowJob(TestAgentPath, ExecutablePath("/EXECUTABLE"))))
 
-  private def toQueuedInputResponse(order: Order[Order.Idle]) =
+  private def toQueuedInputResponse(order: Order[Order.FreshOrReady]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow), Batch.Succeeded(Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)

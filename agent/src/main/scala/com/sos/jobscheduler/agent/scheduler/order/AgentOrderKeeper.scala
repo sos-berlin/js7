@@ -37,6 +37,7 @@ import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.data.order.OrderEvent.OrderStarted
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
@@ -205,7 +206,11 @@ extends MainJournalingActor[Event] with Stash {
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       if (!terminating) {
         handleOrderEvent(order, event)
-        proceedWithOrder(order.id)
+        (event, orderRegister(order.id).instruction) match {
+          case (_: OrderStarted, _: Execute) ⇒  // Special for OrderActor: it issues immediately an OrderProcessingStarted
+          case _ ⇒
+            proceedWithOrder(order.id)
+        }
       }
 
     case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
@@ -312,7 +317,7 @@ extends MainJournalingActor[Event] with Stash {
         body(orderEntry)
     }
 
-  private def attachOrder(order: Order[Order.Idle], workflow: Workflow): Future[Completed] = {
+  private def attachOrder(order: Order[Order.FreshOrReady], workflow: Workflow): Future[Completed] = {
     val actor = newOrderActor(order)
     orderRegister.insert(order, workflow, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
@@ -361,7 +366,7 @@ extends MainJournalingActor[Event] with Stash {
             self ! Internal.Due(orderId)
           }
 
-        case _: Order.Idle ⇒
+        case _: Order.FreshOrReady ⇒
           onOrderAvailable(orderEntry)
 
         case _ ⇒
@@ -374,8 +379,8 @@ extends MainJournalingActor[Event] with Stash {
     if (!terminating) {
       for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
         orderEntry.instruction match {
-          case _: Execute ⇒
-            val checkedJobKey = (orderEntry.instruction: @unchecked) match {
+          case execute: Execute ⇒
+            val checkedJobKey = execute match {
               case _: Execute.Anonymous ⇒ Valid(JobKey.Anonymous(orderEntry.order.workflowPosition))
               case o: Execute.Named     ⇒ orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
             }

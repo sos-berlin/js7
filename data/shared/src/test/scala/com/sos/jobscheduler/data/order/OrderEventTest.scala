@@ -76,6 +76,13 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
+  "OrderStarted" in {
+    check(OrderStarted, json"""
+      {
+        "TYPE": "OrderStarted"
+      }""")
+  }
+
   "OrderProcessingStarted" in {
     check(OrderProcessingStarted, json"""
       {

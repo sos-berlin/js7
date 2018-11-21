@@ -150,8 +150,28 @@ extends FileBased
   private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
     checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentPath)
 
-  //def isEndingOnAgent(agentPath: AgentPath): Boolean =
-  //  labeledInstructions.reverse.dropWhile(_.isInstanceOf[End]).headOption collect { case o: Job ⇒ o } exists (_ isExecutableOnAgent agentPath)
+  //def determinedExecutingAgent(position: Position): Option[AgentPath] =
+  //  executingAgents(position) match {
+  //    case a if a.size <= 1 ⇒ a.headOption
+  //    case _ ⇒ None
+  //  }
+  //
+  //private[workflow] def determinedExecutingAgent: Option[AgentPath] =
+  //  determinedExecutingAgent(Position(0))
+  //
+  //def executingAgents(position: Position): Set[AgentPath] =
+  //  instruction(position) match {
+  //    case _: Execute ⇒
+  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentPath).toSet
+  //
+  //    case fork: ForkJoin ⇒
+  //      fork.startAgents
+  //
+  //    case _ ⇒ Set.empty
+  //  }
+
+  //private[workflow] def executingAgents: Set[AgentPath] =
+  //  executingAgents(Position(0))
 
   def isDefinedAt(position: Position): Boolean =
     position match {

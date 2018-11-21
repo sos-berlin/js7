@@ -13,48 +13,33 @@ object ForkTestSetting {
 
   val AAgentPath = AgentPath("/AGENT-A")
   val BAgentPath = AgentPath("/AGENT-B")
+  val AAgentId = AAgentPath % "(initial)"
+  val BAgentId = BAgentPath % "(initial)"
   val AgentPaths = List(AAgentPath, BAgentPath)
   val TestExecutablePath = ExecutablePath("/executable")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
   val AJob = WorkflowJob(AAgentPath, TestExecutablePath)
   val BJob = WorkflowJob(BAgentPath, TestExecutablePath)
-  val AExecute = Execute(AJob)
-  val BExecute = Execute(BJob)
+  val AExecute = Execute.Named(AJobName)
+  val BExecute = Execute.Named(BJobName)
 
   val TestWorkflowSource = """
    |define workflow {
-   |  execute executable="/executable", agent="AGENT-A";
+   |  // First statement is a fork: Event OrderStarted here
    |  fork(
-   |    "🥕" {
-   |      execute executable="/executable", agent="AGENT-A";
-   |      job A;
-   |    },
-   |    "🍋" {
-   |      execute executable="/executable", agent="AGENT-A";
-   |      job B;
-   |    });
-   |  execute executable="/executable", agent="AGENT-A";
+   |    "🥕" { job A },
+   |    "🍋" { job A });
    |  fork(
-   |    "🥕" {
-   |      execute executable="/executable", agent="AGENT-A";
-   |      job A;
-   |    },
-   |    "🍋" {
-   |      execute executable="/executable", agent="AGENT-A";
-   |      job A;
-   |    });
-   |  execute executable="/executable", agent="AGENT-A";
+   |    "🥕" { job A },
+   |    "🍋" { job A });
+   |  job B;
    |  fork(
-   |    "🥕" {
-   |      execute executable="/executable", agent="AGENT-A";
-   |      job A;
-   |    },
-   |    "🍋" {
-   |      execute executable="/executable", agent="AGENT-B";
-   |      job B;
-   |    });
-   |  job A;
+   |    "🥕" { job B },
+   |    "🍋" { job A; job B });
+   |  fork(
+   |    "🥕" { job A },
+   |    "🍋" { job B });
    |
    |  define job A {
    |    execute executable="/executable", agent="AGENT-A"
@@ -68,24 +53,23 @@ object ForkTestSetting {
   val TestWorkflow = Workflow(
     WorkflowPath("/WORKFLOW") % "(initial)" ,
     Vector(
-      /*0*/ AExecute,
+      /*0*/ ForkJoin.of(
+        "🥕" → Workflow.of(AExecute),
+        "🍋" → Workflow.of(AExecute)),
       /*1*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
-        "🍋" → Workflow.of(AExecute, Execute.Named(BJobName))),
-      /*2*/ AExecute,
+        "🥕" → Workflow.of(AExecute),
+        "🍋" → Workflow.of(AExecute)),
+      /*2*/ BExecute,
       /*3*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
-        "🍋" → Workflow.of(AExecute, Execute.Named(AJobName))),
-      /*4*/ AExecute,
-      /*5*/ ForkJoin.of(
-        "🥕" → Workflow.of(AExecute, Execute.Named(AJobName)),
-        "🍋" → Workflow.of(BExecute, Execute.Named(BJobName))),
-      /*6*/ Execute.Named(AJobName)),
+        "🥕" → Workflow.of(BExecute),
+        "🍋" → Workflow.of(AExecute, BExecute)),
+      /*4*/ ForkJoin.of(
+        "🥕" → Workflow.of(AExecute),
+        "🍋" → Workflow.of(BExecute))),
     Map(
       AJobName → AJob,
       BJobName → BJob),
     source = Some(TestWorkflowSource/*Must be the source source of this workflow*/))
-  //     A
   //  🥕   🍋
   //  Bx   By
   //  Cx   Cy   ⟵ Cy runs on BAgentPath

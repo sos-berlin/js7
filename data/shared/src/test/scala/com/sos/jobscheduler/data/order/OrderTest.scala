@@ -8,8 +8,8 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, Idle, Processing, Offering, Processed, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -207,6 +207,7 @@ final class OrderTest extends FreeSpec {
     val agentId = AgentPath("/AGENT") % "version"
     val allEvents = Set[OrderCoreEvent](
       OrderAdded(workflowId),
+      OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
       OrderStopped(Outcome.Failed(ReturnCode(1))),
@@ -231,16 +232,12 @@ final class OrderTest extends FreeSpec {
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh())) {
-        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[Processing]
-        case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
-        case (_: OrderFinished          , `detached`             ) ⇒ _.isInstanceOf[Finished]
-        case (_: OrderTransferredToAgent, `detached`             ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderTransferredToMaster  , `detachable`           ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetachable           , `attached`             ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetached             , `detachable`           ) ⇒ _.isInstanceOf[Fresh]
-        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
+        case (_: OrderStarted           , `detached`|  `attached` ) ⇒ _.isInstanceOf[Ready]
+        case (_: OrderTransferredToAgent, `detached`              ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderTransferredToMaster  , `detachable`            ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderDetachable           , `attached`              ) ⇒ _.isInstanceOf[Fresh]
+        case (OrderDetached             , `detachable`            ) ⇒ _.isInstanceOf[Fresh]
+        case (_: OrderBroken            , _                       ) ⇒ _.isInstanceOf[Broken]
       }
     }
 
@@ -357,7 +354,7 @@ final class OrderTest extends FreeSpec {
 
     "castState" in {
       assert(testOrder.castState[Ready] eq testOrder)
-      assert(testOrder.castState[Idle] eq testOrder)
+      assert(testOrder.castState[FreshOrReady] eq testOrder)
       assert(testOrder.castState[State] eq testOrder)
       intercept[ProblemException] {
         testOrder.castState[Processed]
@@ -366,7 +363,7 @@ final class OrderTest extends FreeSpec {
 
     "ifState" in {
       assert(testOrder.ifState[Ready] == Some(testOrder))
-      assert(testOrder.ifState[Idle] == Some(testOrder))
+      assert(testOrder.ifState[FreshOrReady] == Some(testOrder))
       assert(testOrder.ifState[State] == Some(testOrder))
       assert(testOrder.ifState[Processed] == None)
     }

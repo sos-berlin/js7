@@ -10,9 +10,12 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -32,7 +35,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
 
   override def beforeAll() = {
     super.beforeAll()
-    env.writeTxt(TestWorkflowId.path, TestWorkflowSource)
+    env.writeJson(TestWorkflowId.path, TestWorkflow)
     env.masterPrivateConf.contentString = """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
     master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
@@ -75,5 +78,8 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
 private object AkkaHttpMasterApiTest {
   private val logger = Logger(getClass)
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
+  private val TestWorkflow = Workflow.of(
+    WorkflowPath("/WORKFLOW") % "(initial)",
+      Execute(WorkflowJob(AgentPath("/MISSING"), ExecutablePath("/MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflowId, Order.Fresh.StartImmediately)
 }

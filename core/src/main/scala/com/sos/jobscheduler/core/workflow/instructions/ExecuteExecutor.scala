@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderStarted, OrderStopped}
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.OrderContext
@@ -16,16 +16,19 @@ object ExecuteExecutor extends EventInstructionExecutor {
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Execute): Option[KeyedEvent[OrderActorEvent]] =
     // Order.Ready: Execution has to be started by the caller
-    for (order ← order.ifState[Order.Processed]) yield
-      order.id <-: (
-        order.state.outcome match {
-          case Outcome.Disrupted(JobSchedulerRestarted) ⇒
-            OrderMoved(order.position)  // Repeat
+    //order.ifState[Order.Fresh].map(order ⇒
+    //  order.id <-: OrderStarted)
+    //.orElse(
+      order.ifState[Order.Processed].map(order ⇒
+        order.id <-: (
+          order.state.outcome match {
+            case Outcome.Disrupted(JobSchedulerRestarted) ⇒
+              OrderMoved(order.position) // Repeat
 
-          case _: Outcome.Succeeded ⇒
-            OrderMoved(order.position.increment)
+            case _: Outcome.Succeeded ⇒
+              OrderMoved(order.position.increment)
 
-          case failed: Outcome.NotSucceeded ⇒
-            OrderStopped(failed)
-        })
+            case failed: Outcome.NotSucceeded ⇒
+              OrderStopped(failed)
+          }))
 }

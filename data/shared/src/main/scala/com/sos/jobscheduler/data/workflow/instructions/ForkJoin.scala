@@ -33,6 +33,9 @@ extends Instruction
   //  // If branches end on multiple Agents, only the Master can join the Orders
   //  branches.values forall (_ isEndingOnAgent agentPath)
 
+  //def startAgents: Set[AgentPath] =
+  //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
+
   override def workflow(branchId: BranchId) =
     branches.collectFirst({ case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow })
       .fold(super.workflow(branchId))(Valid.apply)

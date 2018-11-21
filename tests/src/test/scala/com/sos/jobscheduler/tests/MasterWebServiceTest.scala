@@ -446,10 +446,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         }, {
           "eventId": 1010,
-          "TYPE": "OrderProcessingStarted",
+          "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
           "eventId": 1011,
+          "TYPE": "OrderProcessingStarted",
+          "key": "ORDER-ID"
+        }, {
+          "eventId": 1012,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "variablesDiff": {
@@ -461,20 +465,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "returnCode": 0
           }
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderTransferredToMaster",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }

@@ -57,8 +57,11 @@ extends KeyedJournalingActor[OrderEvent] {
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
     order.state match {
-      case _: Order.Idle ⇒
-        become("idle")(idle)
+      case _: Order.Fresh ⇒
+        become("freshOrReady")(fresh)
+
+      case Order.Ready ⇒
+        become("ready")(ready)
 
       case Order.Processing ⇒
         become("processed")(processed)
@@ -93,7 +96,7 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.AddChild(o) ⇒
       assert(order == null)
       order = o
-      become("idle")(idle)
+      become("ready")(ready)
 
     case Input.AddPublished(o) ⇒
       assert(order == null)
@@ -102,8 +105,11 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), parent, payload)) ⇒
-          become("idle")(idle)
+        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.AttachedTo.Agent(agentPath)), parent, payload)) ⇒
+          state match {
+            case _: Order.Fresh ⇒ become("fresh")(fresh)
+            case Order.Ready ⇒ become("ready")(ready)
+          }
           persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
             sender() ! Completed
             update(event)
@@ -114,12 +120,32 @@ extends KeyedJournalingActor[OrderEvent] {
       }
   }
 
-  private val idle: Receive = {
+  private val fresh: Receive =
+    freshOrReady orElse {
+      case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
+
+    }
+
+  private val ready: Receive =
+    freshOrReady orElse {
+      case command: Command ⇒
+        executeOtherCommand(command)
+
+      case Input.HandleEvent(event: OrderForked) ⇒
+        become("forked")(forked)
+        persist(event)(update)
+
+      case Input.HandleEvent(event: OrderOffered) ⇒
+        persist(event)(update)
+
+      //case Input.HandleEvent(event: OrderStopped) ⇒
+      //  become("stopped")(stoppedOrDisrupted)
+      //  persist(event)(update)
+    }
+
+  private def freshOrReady: Receive = {
     case Command.Detach ⇒
       detach()
-
-    case command: Command ⇒
-      executeOtherCommand(command)
 
     case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
       assert(stdouterr == null)
@@ -129,11 +155,12 @@ extends KeyedJournalingActor[OrderEvent] {
       become("processing")(processing(jobKey, workflowJob, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
-      persist(OrderProcessingStarted) { event ⇒
-        update(event)
+      val orderStarted = order.isState[Order.Fresh] list OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
+      persistTransaction(orderStarted :+ OrderProcessingStarted) { events ⇒
+        events foreach update
         jobActor ! JobActor.Command.ProcessOrder(
           jobKey,
-          order.castAfterEvent(event),
+          order.castState[Order.Processing],
           defaultArguments,
           new StdChannels(
             charBufferSize = charBufferSize,
@@ -141,19 +168,8 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.HandleEvent(event: OrderForked) ⇒
-      become("forked")(forked)
-      persist(event)(update)
-
-    case Input.HandleEvent(event: OrderOffered) ⇒
-      persist(event)(update)
-
     case Input.HandleEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
-
-    case Input.HandleEvent(event: OrderStopped) ⇒
-      become("stopped")(stoppedOrDisrupted)
-      persist(event)(update)
 
     case Input.HandleEvent(event: OrderBroken) ⇒
       become("disrupted")(stoppedOrDisrupted)
@@ -219,7 +235,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def processed: Receive = {
     case Input.HandleEvent(event: OrderMoved) ⇒
-      become("idle")(idle)
+      become("read")(ready)
       persist(event)(update)
 
     case Input.HandleEvent(event: OrderStopped) ⇒
@@ -241,7 +257,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def forked: Receive = {
     case Input.HandleEvent(event: OrderJoined) ⇒
-      become("idle")(idle)
+      become("ready")(ready)
       persist(event)(update)
 
     case Input.HandleEvent(OrderDetachable) ⇒
@@ -330,7 +346,7 @@ private[order] object OrderActor
 
   sealed trait Command
   object Command {
-    final case class  Attach(order: Order[Order.Idle]) extends Command
+    final case class  Attach(order: Order[Order.FreshOrReady]) extends Command
     final case object Detach extends Command
   }
 

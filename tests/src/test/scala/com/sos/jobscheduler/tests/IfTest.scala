@@ -11,7 +11,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -77,6 +77,7 @@ object IfTest {
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(1, 0/*then*/, 0)),
@@ -92,6 +93,7 @@ object IfTest {
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
       OrderMoved(Position(1, 1/*else*/, 0)),
@@ -107,6 +109,7 @@ object IfTest {
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
       OrderStopped(Outcome.Failed(ReturnCode(2)))))
