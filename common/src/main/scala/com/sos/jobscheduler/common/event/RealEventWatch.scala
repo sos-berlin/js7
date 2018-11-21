@@ -234,9 +234,4 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
 object RealEventWatch {
   private val NoMoreObservable = Task.pure((None, () ⇒ throw new NoSuchElementException/*dead code*/))
-
-  final class TornException private[RealEventWatch](val after: EventId, val tornEventId: EventId)
-  extends RuntimeException {
-    override def getMessage = s"EventSeq is torn - after=$after tornEventId=$tornEventId"
-  }
 }

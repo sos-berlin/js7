@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.event.RealEventWatch
+import com.sos.jobscheduler.common.event.TornException
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -206,7 +206,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
     "observe Torn" in {
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
       withJournalEventWatch(lastEventId = EventId(1000)) { (_, eventWatch) ⇒
-        val e = intercept[RealEventWatch.TornException] {
+        val e = intercept[TornException] {
           eventWatch.observe(EventRequest.singleClass[AEvent](after = 10, timeout = 99.seconds)).countL await 9.s
         }
         assert(e.after == 10 && e.tornEventId == 1000)
@@ -219,7 +219,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
           writer.writeEvents(MyEvents1)
           writer.flush(sync = false)
 
-          val e = intercept[RealEventWatch.TornException] {
+          val e = intercept[TornException] {
             eventWatch.observe(EventRequest.singleClass[AEvent](after = 115, timeout = 99.seconds)).countL await 9.s
           }
           assert(e.after == 115 && e.tornEventId == 100)

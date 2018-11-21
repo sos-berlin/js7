@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.RealEventWatch.TornException
 import com.sos.jobscheduler.common.event.RealEventWatchTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
