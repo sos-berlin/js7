@@ -82,7 +82,7 @@ extends AutoCloseable
     else {
       logger.debug("terminate")
       for {
-        _ ← executeCommandAsSystemUser(MasterCommand.Terminate)
+        _ ← executeCommandAsSystemUser(MasterCommand.Terminate) map (_.orThrow)
         t ← Task.fromFuture(terminated)
       } yield t
     }
@@ -131,7 +131,7 @@ object RunningMaster {
       try {
         body(master)
         if (!master.terminated.isCompleted && !injector.instance[ActorSystem].whenTerminated.isCompleted) {
-          master.executeCommandAsSystemUser(MasterCommand.Terminate) await 99.s
+          master.executeCommandAsSystemUser(MasterCommand.Terminate).await(99.s).orThrow
           master.terminated await 99.s
         }
       } catch { case NonFatal(t) if master.terminated.isCompleted && master.terminated.value.get.isFailure && t != master.terminated.failed.successValue ⇒

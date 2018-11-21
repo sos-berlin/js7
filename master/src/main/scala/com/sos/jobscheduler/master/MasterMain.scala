@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -11,7 +12,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 /**
   * JobScheduler Master.
@@ -27,8 +28,12 @@ object MasterMain {
     runMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master ⇒
-        try master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration)).runAsync // Will block on recovery until Agents are started: await 99.s
-        catch { case NonFatal(t) ⇒ logger.error(s"ScheduleOrdersEvery FAILED: ${t.toStringWithCauses}") }  // SchedulerOrdersEvery ist nur zum Test
+        master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
+          .runOnComplete {  // On recovery, executeCommand will delay execution until Agents are started
+            case Success(Valid(_)) ⇒
+            case Success(Invalid(problem)) ⇒ logger.error(problem.toString)
+            case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
+          }
         handleJavaShutdown(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
           master.terminated.awaitInfinite
         }

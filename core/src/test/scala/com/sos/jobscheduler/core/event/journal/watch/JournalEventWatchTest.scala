@@ -52,19 +52,19 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(when(210) == EventSeq.NonEmpty(MyEvents2.tail))
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](after = 220, timeout = 10.millis)).await(99.s).strict == EventSeq.Empty(220))
 
-        eventWatch.keepEvents(after = 0) shouldEqual Checked.unit
+        eventWatch.keepEvents(after = 0) shouldEqual Checked.completed
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 110) shouldEqual Checked.unit
+        eventWatch.keepEvents(after = 110) shouldEqual Checked.completed
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(0), journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
-        eventWatch.keepEvents(after = 120) shouldEqual Checked.unit
+        eventWatch.keepEvents(after = 120) shouldEqual Checked.completed
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 220) shouldEqual Checked.unit
+        eventWatch.keepEvents(after = 220) shouldEqual Checked.completed
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 

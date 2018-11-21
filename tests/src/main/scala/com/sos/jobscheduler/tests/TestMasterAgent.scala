@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.auth.SecretStringGenerator.newSecretString
@@ -145,7 +146,7 @@ object TestMasterAgent {
 
       val master = RunningMaster(injector) await 99.s
       val startTime = now
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)) await 99.s
+      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)).await(99.s).orThrow
       injector.instance[ActorSystem].actorOf(Props {
         new Actor {
           injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])

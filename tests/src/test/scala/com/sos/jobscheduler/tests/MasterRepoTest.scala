@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import cats.data.Validated.Invalid
 import cats.syntax.option._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -38,8 +39,8 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommandAsSystemUser(ReadConfigurationDirectory(V1.some)) await 99.s }
-            .failed.get.getMessage contains s"Duplicate VersionId '${V1.string}'")
+          assert(master.executeCommandAsSystemUser(ReadConfigurationDirectory(V1.some)).await(99.s) ==
+            Invalid(Problem(s"Duplicate VersionId '${V1.string}'")))
 
           // Add Workflow
           addWorkflowAndRunOrder(master, V2, BWorkflowPath, OrderId("B"))
@@ -58,17 +59,17 @@ final class MasterRepoTest extends FreeSpec {
 
           // Change workflow
           directoryProvider.master.writeJson(testWorkflow(V5) withId CWorkflowPath % VersionId.Anonymous)
-          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V5.some)) await 99.s
+          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V5.some)).await(99.s).orThrow
 
           // Delete workflow
           delete(directoryProvider.master.file(CWorkflowPath, SourceType.Json))
-          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V6.some)) await 99.s
+          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V6.some)).await(99.s).orThrow
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommandAsSystemUser(ReadConfigurationDirectory(V2.some)) await 99.s }
-            .failed.get.getMessage contains s"Duplicate VersionId '${V2.string}'")
+          assert(master.executeCommandAsSystemUser(ReadConfigurationDirectory(V2.some)).await(99.s) ==
+            Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3
           runOrder(master, AWorkflowPath % V3, OrderId("A-3"))
@@ -92,7 +93,7 @@ final class MasterRepoTest extends FreeSpec {
         val order = FreshOrder(orderId, path)
         // Add Workflow
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
-        master.executeCommandAsSystemUser(ReadConfigurationDirectory(versionId.some)) await 99.s
+        master.executeCommandAsSystemUser(ReadConfigurationDirectory(versionId.some)).await(99.s).orThrow
         master.addOrderBlocking(order)
         awaitOrder(master, order.id, path % versionId)
       }

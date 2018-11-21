@@ -10,6 +10,7 @@ import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -54,6 +55,7 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -206,9 +208,9 @@ with MainJournalingActor[Event]
     case Command.Execute(command, meta) ⇒
       val sender = this.sender()
       if (terminating)
-        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+        sender ! Invalid(MasterIsTerminatingProblem)
       else
-        executeMasterCommand(command, meta) onComplete {
+        executeMasterCommand(command, meta).runOnComplete {
           case Success(response) ⇒ sender ! response
           case Failure(t) ⇒ sender ! Status.Failure(t)
         }
@@ -313,12 +315,12 @@ with MainJournalingActor[Event]
       context.stop(self)
   }
 
-  private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Future[MasterCommand.Response] =
+  private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[MasterCommand.Response]] =
     command match {
       case MasterCommand.KeepEvents(eventId) ⇒
-        Future {
-          eventWatch.keepEvents(eventId).orThrow
-          MasterCommand.Response.Accepted
+        Task {
+          eventWatch.keepEvents(eventId)
+            .map (_ ⇒ MasterCommand.Response.Accepted)
         }
 
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
@@ -326,24 +328,25 @@ with MainJournalingActor[Event]
           a ← readConfiguration(versionId)  // Persists events
           b ← readScheduledOrderGeneratorConfiguration()
         } yield a >> b
-        (for (sideEffect ← checkedSideEffect) yield {
-          sideEffect.unsafeRunSync()
-          MasterCommand.Response.Accepted
-        }).toFuture
+        Task.now(
+          for (sideEffect ← checkedSideEffect) yield {
+            sideEffect.unsafeRunSync()
+            MasterCommand.Response.Accepted
+          })
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
-        Future.successful(MasterCommand.Response.Accepted)
+        Task.now(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
-        Future.failed(new NotImplementedError)
+        Task.now(Invalid(Problem("NOT IMPLEMENTED")))  // Never called
 
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
         terminating = true
         terminateRespondedAt = Some(now)
-        Future.successful(MasterCommand.Response.Accepted)
+        Task.now(Valid(MasterCommand.Response.Accepted))
     }
 
   private def readConfiguration(versionId: Option[VersionId]): Checked[IO[Unit]] = {

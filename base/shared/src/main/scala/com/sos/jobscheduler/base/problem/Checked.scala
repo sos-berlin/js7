@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.problem
 
 import cats.Applicative
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.concurrent.Future
 import scala.language.higherKinds
@@ -14,6 +15,7 @@ import scala.util.{Failure, Success, Try}
 object Checked
 {
   val unit = Checked(())
+  val completed = Checked(Completed)
 
   def apply[A](a: A): Checked[A] = Valid(a)
 

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -55,7 +56,7 @@ final class KeepEventsTest extends FreeSpec {
           val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(masterJournalCount == 2)
           assert(agentJournalCount == 2)
-          master.executeCommandAsSystemUser(MasterCommand.KeepEvents(finished.head.eventId)) await 99.s
+          master.executeCommandAsSystemUser(MasterCommand.KeepEvents(finished.head.eventId)).await(99.s).orThrow
           assert(masterJournalCount == 1)
 
           // Master sends KeepOrder after some events from Agent have arrived. So we start an order.

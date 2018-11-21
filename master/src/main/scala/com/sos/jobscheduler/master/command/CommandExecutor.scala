@@ -40,8 +40,7 @@ private[master] final class CommandExecutor(
       case _ ⇒
         Task.deferFuture(
           (orderKeeper ? MasterOrderKeeper.Command.Execute(command, meta))
-            .mapTo[MasterCommand.Response]) map Valid.apply
-        // TODO MasterOrderKeeper should return Checked
+            .mapTo[Checked[MasterCommand.Response]])
     }
 }
 

@@ -5,6 +5,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
@@ -95,7 +96,7 @@ object TestDockerExample
       } .closeWithCloser
 
       val master = RunningMaster(injector) await 99.s
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runAsync await 99.s
+      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runAsync.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
       for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
@@ -79,7 +80,7 @@ final class RunningMasterTest extends FreeSpec {
         //waitForCondition(10.s, 10.ms) { orderApi.orderCount.await(99.s) == 0 }   // MasterOrderKeeper updates orderCount with persitAsync
         assert(orderApi.orderCount.await(99.s) == 0)
 
-        master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
+        master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)).await(99.s).orThrow  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
         waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))

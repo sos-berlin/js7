@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -116,7 +117,7 @@ final class RecoveryTest extends FreeSpec {
 
   private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
     directoryProvider.runMaster() { master ⇒
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)) await 99.s  // Will block on recovery until Agents are started: await 99.s
+      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)).await(99.s).orThrow
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
       // Kill Master ActorSystem

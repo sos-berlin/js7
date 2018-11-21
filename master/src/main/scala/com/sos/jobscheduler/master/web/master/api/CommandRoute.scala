@@ -10,7 +10,6 @@ import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
-import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
