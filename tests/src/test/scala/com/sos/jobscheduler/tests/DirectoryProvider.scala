@@ -24,7 +24,6 @@ import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
@@ -106,8 +105,8 @@ extends HasCloser {
       runMaster()(master ⇒
         body(master, agents)))
 
-  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(master.directory, eventCollector, name = masterName)(body)
+  def runMaster()(body: RunningMaster ⇒ Unit): Unit =
+    RunningMaster.runForTest(master.directory, name = masterName)(body)
 
   def startMaster(
     module: Module = EMPTY_MODULE,

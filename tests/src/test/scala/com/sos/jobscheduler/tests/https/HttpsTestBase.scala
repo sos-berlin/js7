@@ -1,21 +1,17 @@
 package com.sos.jobscheduler.tests.https
 
-import akka.actor.ActorRefFactory
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.https.HttpsTestBase._
 import com.typesafe.config.ConfigUtil.quoteString
@@ -47,8 +43,6 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
   protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
   override protected def agentHttps = true
 
-  protected lazy val eventCollector = new TestEventCollector
-
   override def beforeAll() = {
     // Reference to agents implicitly starts them (before master)
     provideAgentConfiguration(directoryProvider.agents(0))
@@ -61,7 +55,6 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
     keyStore.contentBytes = ClientKeyStoreResource.contentBytes
     trustStore.contentBytes = DirectoryProvider.MasterTrustStoreResource.contentBytes
 
-    eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     super.beforeAll()
   }
 

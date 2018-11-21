@@ -41,7 +41,6 @@ import com.sos.jobscheduler.master.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
@@ -120,11 +119,10 @@ object RunningMaster {
       master.terminated await timeout
     }
 
-  def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None, name: String = MasterConfiguration.DefaultName)
+  def runForTest(directory: Path, name: String = MasterConfiguration.DefaultName)
     (body: RunningMaster ⇒ Unit)(implicit s: Scheduler)
   : Unit = {
     val injector = newInjectorForTest(directory, name = name)
-    eventCollector foreach (_.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus]))
     runForTest(injector)(body)
   }
 

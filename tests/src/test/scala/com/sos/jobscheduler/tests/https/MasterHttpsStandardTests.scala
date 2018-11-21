@@ -28,7 +28,7 @@ private[https] trait MasterHttpsStandardTests extends HttpsTestBase
 
   "Run a job" in {
     masterApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("/TEST-WORKFLOW"))) await 99.s
-    eventCollector.await[OrderFinished]()
+    master.eventWatch.await[OrderFinished]()
   }
 
   "Terminate" in {

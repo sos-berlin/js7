@@ -1,12 +1,9 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
@@ -15,7 +12,6 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.ExecuteTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -33,12 +29,10 @@ final class ExecuteTest extends FreeSpec {
             if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
       directoryProvider.run { (master, _) ⇒
-        val eventCollector = new TestEventCollector
-        eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-          val orderId = OrderId("🔺")
-          master.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-          eventCollector.await[OrderFinished](_.key == orderId)
-          checkEventSeq(orderId, eventCollector.all[OrderEvent])
+        val orderId = OrderId("🔺")
+        master.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+        master.eventWatch.await[OrderFinished](_.key == orderId)
+        checkEventSeq(orderId, master.eventWatch.all[OrderEvent])
       }
     }
   }

@@ -1,16 +1,13 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.ActorSystem
 import cats.data.Validated.Invalid
 import cats.syntax.option._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -21,7 +18,6 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.ReadConfigurationDirectory
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import java.nio.file.Files.delete
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -33,12 +29,11 @@ final class MasterRepoTest extends FreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      val eventCollector = new TestEventCollector
       for (v ← 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         directoryProvider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 
       directoryProvider.runAgents() { _ ⇒
-        directoryProvider.runMaster(eventCollector = Some(eventCollector)) { master ⇒
+        directoryProvider.runMaster() { master ⇒
           // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
@@ -55,7 +50,6 @@ final class MasterRepoTest extends FreeSpec {
         // Recovery
         directoryProvider.runMaster() { master ⇒
           // V2
-          eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
           // Previously defined workflow is still known
           runOrder(master, BWorkflowPath % V2, OrderId("B-AGAIN"))
 
@@ -100,21 +94,21 @@ final class MasterRepoTest extends FreeSpec {
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
         master.executeCommandAsSystemUser(ReadConfigurationDirectory(versionId.some)) await 99.s
         master.addOrderBlocking(order)
-        awaitOrder(order.id, path % versionId)
+        awaitOrder(master, order.id, path % versionId)
       }
 
       def runOrder(master: RunningMaster, workflowId: WorkflowId, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, workflowId.path)
         master.addOrderBlocking(order)
-        awaitOrder(orderId, workflowId)
+        awaitOrder(master, orderId, workflowId)
       }
 
-      def awaitOrder(orderId: OrderId, workflowId: WorkflowId): Unit = {
-        val orderAdded: OrderAdded = eventCollector.await[OrderAdded](_.key == orderId).head.value.event
+      def awaitOrder(master: RunningMaster, orderId: OrderId, workflowId: WorkflowId): Unit = {
+        val orderAdded: OrderAdded = master.eventWatch.await[OrderAdded](_.key == orderId).head.value.event
         assert(orderAdded.workflowId == workflowId)
-        val written = eventCollector.await[OrderStdoutWritten](_.key == orderId).head.value.event
+        val written = master.eventWatch.await[OrderStdoutWritten](_.key == orderId).head.value.event
         assert(written.chunk contains s"/VERSION-${workflowId.versionId.string}/")
-        eventCollector.await[OrderFinished](_.key == orderId)
+        master.eventWatch.await[OrderFinished](_.key == orderId)
       }
     }
   }

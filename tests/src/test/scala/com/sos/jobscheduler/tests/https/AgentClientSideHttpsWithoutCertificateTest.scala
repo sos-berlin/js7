@@ -26,7 +26,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 
   "Run a job" in {
     masterApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("/TEST-WORKFLOW"))) await 99.s
-    val KeyedEvent(AgentPath("/TEST-AGENT"), AgentCouplingFailed(msg)) = eventCollector.await[AgentCouplingFailed](timeout = 99.seconds).head.value
+    val KeyedEvent(AgentPath("/TEST-AGENT"), AgentCouplingFailed(msg)) = master.eventWatch.await[AgentCouplingFailed](timeout = 99.seconds).head.value
     assert(msg == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
            msg == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
   }

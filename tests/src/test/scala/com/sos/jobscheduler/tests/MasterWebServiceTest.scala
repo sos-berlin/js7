@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
@@ -14,7 +13,6 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
@@ -24,7 +22,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -33,7 +30,6 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
-import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
 import io.circe.syntax.EncoderOps
@@ -58,7 +54,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest", uri, "/master")
 
-  private lazy val eventCollector = new TestEventCollector
   private var sessionToken: String = "INVALID"
 
   override val masterModule = new AbstractModule {
@@ -70,7 +65,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   override def beforeAll() = {
     writeMasterConfiguration(directoryProvider.master)
     writeAgentConfiguration(directoryProvider.agents(0))
-    eventCollector.start(master.injector.instance[ActorRefFactory], master.injector.instance[StampedKeyedEventBus])
     super.beforeAll()
   }
 
@@ -333,7 +327,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   }
 
   "(await OrderFinished)" in {
-    eventCollector.await[OrderFinished]()  // Needed for test /master/api/events
+    master.eventWatch.await[OrderFinished]()  // Needed for test /master/api/events
   }
 
   "/master/api/event (only JSON)" in {
@@ -552,7 +546,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       "(add order)" in {
         master.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
         master.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/FOLDER/WORKFLOW-2")))
-        eventCollector.await[OrderProcessed](_.key == order2Id)
+        master.eventWatch.await[OrderProcessed](_.key == order2Id)
       }
 
       "Single order" in {
