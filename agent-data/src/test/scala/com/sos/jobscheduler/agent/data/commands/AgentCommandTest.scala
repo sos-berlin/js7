@@ -90,12 +90,12 @@ final class AgentCommandTest extends FreeSpec {
             "payload": {
               "variables": {}
             },
-            "attachedTo": {
+            "attachedState": {
+              "TYPE": "Attached",
               "agentId": {
                 "path": "/AGENT",
                 "versionId": "1"
-              },
-              "TYPE": "Agent"
+              }
             },
             "id": "ORDER-ID",
             "workflowPosition": {

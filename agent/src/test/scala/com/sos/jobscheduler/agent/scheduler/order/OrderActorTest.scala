@@ -185,17 +185,17 @@ private object OrderActorTest {
     private def jobActorReady: Receive = {
       case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
-          attachedTo = Some(Order.AttachedTo.Agent(TestAgentPath % "(initial)"))))
+          attachedState = Some(Order.Attached(TestAgentPath % "(initial)"))))
         become(attaching)
     }
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
         orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, defaultArguments = Map.empty, jobActor = jobActor)
-        become(ready)
+        become(processing)
     }
 
-    private def ready: Receive = receiveOrderEvent orElse {
+    private def processing: Receive = receiveOrderEvent orElse {
       case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
     }
 

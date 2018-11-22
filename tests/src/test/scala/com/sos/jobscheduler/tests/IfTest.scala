@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -70,6 +70,7 @@ object IfTest {
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
+      OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderStarted,
       OrderProcessingStarted,
@@ -86,6 +87,7 @@ object IfTest {
       OrderFinished),
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
+      OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderStarted,
       OrderProcessingStarted,
@@ -102,6 +104,7 @@ object IfTest {
       OrderFinished),
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
+      OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderStarted,
       OrderProcessingStarted,

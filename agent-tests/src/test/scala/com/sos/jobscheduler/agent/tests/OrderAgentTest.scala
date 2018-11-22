@@ -90,7 +90,7 @@ final class OrderAgentTest extends FreeSpec {
 
           val orders = for (i ← 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
-              Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
+              Some(Order.Attached(AgentPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(orders map { AttachOrder(_, SimpleTestWorkflow) })) await 99.s
@@ -129,6 +129,6 @@ private object OrderAgentTest {
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath % "(initial)")),
+      attachedState = Some(Order.Detaching(TestAgentPath % "(initial)")),
       payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-B-VALUE")))
 }

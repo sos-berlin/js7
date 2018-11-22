@@ -33,7 +33,7 @@ final class OrderEventSource(
         instruction(order.workflowPosition).isInstanceOf[End] &&
           order.state == Order.Ready &&
           order.position.dropChild.contains(parentOrder.position) &&
-          order.attachedTo == parentOrder.attachedTo
+          order.attachedState == parentOrder.attachedState
       case _ ⇒ false
     }
 

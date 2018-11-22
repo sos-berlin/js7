@@ -52,13 +52,13 @@ private[graphql] object MasterGraphqlSchema
 
   private implicit val PatternType = stringEquivalentType[Pattern](str ⇒ Checked.catchNonFatal(Pattern.compile(str)), _.toString,
     "Pattern", "Regular expression pattern")
-  private implicit val OrderIdType      = genericStringType[OrderId]("Identifies the Order in JobScheduler")
-  private implicit val WorkflowPathType = genericStringType[WorkflowPath]("Path of Workflow (String)")
-  private implicit val AgentPathType    = genericStringType[AgentPath]("Path of Agent (String)")
-  private implicit val ExecutablePathType = genericStringType[ExecutablePath]("Path of an executable (String)")
+  private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JobScheduler")
+  private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
+  private implicit val AgentPathType       = genericStringType[AgentPath]("Path of Agent (String)")
+  private implicit val ExecutablePathType  = genericStringType[ExecutablePath]("Path of an executable (String)")
   private implicit val WorkflowJobNameType = genericStringType[WorkflowJob.Name]("Job name (String)")
-  private implicit val VersionIdType    = genericStringType[VersionId]("Version identifier (String)")
-  private implicit val ReturnCodeType   = genericIntType[ReturnCode]("Return code")
+  private implicit val VersionIdType       = genericStringType[VersionId]("Version identifier (String)")
+  private implicit val ReturnCodeType      = genericIntType[ReturnCode]("Return code")
 
   private def genericStringType[A <: GenericString](description: String)(implicit A: GenericString.Companion[A]): ScalarType[A] =
     stringEquivalentType[A](str ⇒ A.checked(str), _.string, A.name.replace('.', '_'), description)
@@ -222,14 +222,15 @@ private[graphql] object MasterGraphqlSchema
     }
 
   private implicit val OrderAttachedToType = ObjectType(
-    "Order_AttachedTo",
-    fields[Unit, Order.AttachedTo](
+    "Order_AttachedState",
+    fields[Unit, Order.AttachedState](
       Field("TYPE", StringType, resolve = _.value match {
-        case _: Order.AttachedTo.Agent ⇒ "Agent"
-        case _: Order.AttachedTo.Detachable ⇒ "Detachable"
+        case _: Order.Attaching ⇒ "Attaching"
+        case _: Order.Attached ⇒ "Attached"
+        case _: Order.Detaching ⇒ "Detaching"
       }),
       Field("agentId", OptionType(AgentIdType), resolve = _.value match {
-        case o: Order.AttachedTo.AgentOrDetachable ⇒ Some(o.agentId)
+        case o: Order.AgentOrDetachable ⇒ Some(o.agentId)
         case _ ⇒ None
       })))
 
@@ -337,8 +338,8 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowPosition", WorkflowPositionType, resolve = _.value.workflowPosition,
         description = "The Order's current WorkflowId and Position in this Workflow"),
       Field("workflowPath", WorkflowPathType, resolve = _.value.workflowId.path),
-      Field("attachedTo", OptionType(OrderAttachedToType), resolve = _.value.attachedTo,
-        description = "Agent the Order is attached to"),
+      Field("attachedState", OptionType(OrderAttachedToType), resolve = _.value.attachedState,
+        description = "Order is attaching to, attached to, or detaching from an Agent"),
       Field("state", OrderStateType, resolve = _.value.state),
       Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables)))
 

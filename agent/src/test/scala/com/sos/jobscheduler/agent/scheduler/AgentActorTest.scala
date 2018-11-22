@@ -52,7 +52,7 @@ final class AgentActorTest extends FreeSpec {
               orderId,
               SimpleTestWorkflow.lastWorkflowPosition,
               Order.Ready,
-              Some(Order.AttachedTo.Detachable(TestAgentPath % "(initial)")),
+              Some(Order.Detaching(TestAgentPath % "(initial)")),
               payload = TestOrder.payload.copy(
                 variables = TestOrder.payload.variables + ("result" → "TEST-RESULT-B-VALUE"))
             )).toSet)

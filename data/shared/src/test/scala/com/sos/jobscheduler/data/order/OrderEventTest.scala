@@ -35,6 +35,15 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
+  "OrderAttachable" in {
+    check(
+      OrderAttachable(AgentPath("/AGENT")),
+      json"""{
+        "TYPE": "OrderAttachable",
+        "agentPath": "/AGENT"
+      }""")
+  }
+
   "OrderAttached" in {
     check(
       OrderAttached(

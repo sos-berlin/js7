@@ -238,7 +238,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
     case cmd @ AttachOrder(order, workflow) if !terminating ⇒
-      order.attachedToAgent match {
+      order.attached match {
         case Invalid(problem) ⇒ Future.failed(problem.throwable)
         case Valid(_) ⇒
           (workflowRegister.get(order.workflowId) match {
@@ -265,7 +265,7 @@ extends MainJournalingActor[Event] with Stash {
         case Some(orderEntry) ⇒
           // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
           // Bei langsamem Agenten, schnellem Master-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-          orderEntry.order.detachableFromAgent match {
+          orderEntry.order.detaching match {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is isTerminating
@@ -359,7 +359,7 @@ extends MainJournalingActor[Event] with Stash {
   private def proceedWithOrder(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
     val order = orderEntry.order
-    if (order.isAttachedToAgent) {
+    if (order.isAttached) {
       order.state match {
         case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
           orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
@@ -377,7 +377,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     if (!terminating) {
-      for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
+      for (_ ← orderEntry.order.attached onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
         orderEntry.instruction match {
           case execute: Execute ⇒
             val checkedJobKey = execute match {
@@ -434,7 +434,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
-    assert(order.isAttachedToAgent)
+    assert(order.isAttached)
     for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }

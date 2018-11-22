@@ -88,10 +88,11 @@ object Renderers {
       case _                  ⇒ "·"   // Dot
     }
 
-  implicit def orderAttachedToVdom(attachedTo: Order.AttachedTo): VdomNode =
+  implicit def orderAttachedToVdom(attachedTo: Order.AttachedState): VdomNode =
     attachedTo match {
-      case Order.AttachedTo.Agent(agentId) ⇒ agentId.toSimpleString
-      case Order.AttachedTo.Detachable(agentId) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentId.toSimpleString)
+      case Order.Attaching(agentPath) ⇒ <.span(^.cls := "AttachedState-Attaching")('(', agentPath.string, ')')
+      case Order.Attached(agentId) ⇒ agentId.toSimpleString
+      case Order.Detaching(agentId) ⇒ <.span(^.cls := "AttachedState-Detaching")('(', agentId.toSimpleString, ')')
       case _ ⇒ attachedTo.toString
     }
 

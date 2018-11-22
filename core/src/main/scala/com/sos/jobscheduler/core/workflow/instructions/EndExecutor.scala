@@ -19,7 +19,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
     order.position.dropChild match {
       case None ⇒
         for (order ← order.ifState[Order.Ready]) yield
-          if (order.isAttachedToAgent)
+          if (order.isAttached)
             order.id <-: OrderDetachable
           else
             order.id <-: OrderFinished
@@ -27,8 +27,8 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
       case Some(returnPosition) ⇒
         context.instruction(order.workflowId /: returnPosition) match {
           case _: ForkJoin ⇒
-            //if (order.attachedToAgent forall forkjoin.isJoinableOnAgent)
-            if (order.isAttachedToAgent)
+            //if (order.attached forall forkjoin.isJoinableOnAgent)
+            if (order.isAttached)
               Some(order.id <-: OrderDetachable)
             else
               for {

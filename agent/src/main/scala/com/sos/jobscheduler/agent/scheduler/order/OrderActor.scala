@@ -105,7 +105,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.AttachedTo.Agent(agentPath)), parent, payload)) ⇒
+        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload)) ⇒
           state match {
             case _: Order.Fresh ⇒ become("fresh")(fresh)
             case Order.Ready ⇒ become("ready")(ready)

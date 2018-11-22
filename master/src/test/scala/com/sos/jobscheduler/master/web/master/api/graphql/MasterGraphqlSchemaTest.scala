@@ -94,7 +94,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
             }
           }
         }
-        attachedTo {
+        attachedState {
           TYPE
           agentId {
             path
@@ -200,8 +200,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec {
                   }
                 }
               },
-              "attachedTo": {
-                "TYPE": "Agent",
+              "attachedState": {
+                "TYPE": "Attached",
                 "agentId": {
                   "path": "/AGENT",
                   "versionId": "2"
@@ -417,7 +417,7 @@ object MasterGraphqlSchemaTest
         Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))),
         Order(OrderId("12"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready),
         Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
-          Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "2")),
+          Some(Order.Attached(AgentPath("/AGENT") % "2")),
           Some(OrderId("PARENT")),
           Payload(Map("KEY" → "VALUE", "X" → "XX"))),
         Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed(Outcome.Succeeded(ReturnCode(7)))),

@@ -5,19 +5,27 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderStdoutWrittenFat}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderStdoutWritten, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
+import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
@@ -49,7 +57,8 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
   protected val eventWatch = new TestEventWatch
   protected implicit def scheduler = Scheduler.global
 
-  TestEvents.flatten foreach eventWatch.addStamped
+  InitialEvents foreach eventWatch.addStamped
+  OrderEvents.flatten foreach eventWatch.addStamped
 
   private def route = pathSegments("fatEvent")(fatEventRoute)
 
@@ -118,53 +127,65 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     }
 
     "/fatEvent?after=180 no more events" in {
-      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(181))  // One OrderEvent processed, not yet resulting in an OrderFatEvent
+      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(182))  // One OrderEvent processed, not yet resulting in an OrderFatEvent
     }
 
     "/fatEvent?after=180, intermediate event added" in {
-      eventWatch.addStamped(Stamped(EventId(190), OrderId("10") <-: OrderDetachable))  // Does not yield an OrderFatEvent
-      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.Empty(190))
+      eventWatch.addStamped(Stamped(EventId(190), OrderId("10") <-: OrderStarted))
+      eventWatch.addStamped(Stamped(EventId(191), OrderId("10") <-: OrderProcessingStarted))
+      eventWatch.addStamped(Stamped(EventId(192), OrderId("10") <-: OrderProcessed(MapDiff.empty, Outcome.succeeded)))
+      eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderMoved(Position(1))))
+
+      assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.NonEmpty(List(
+        Stamped(191, OrderId("10") <-: OrderProcessingStartedFat(TestWorkflow.id /: Position(0), TestAgentId.path, "http://127.0.0.1:0", None, Map.empty)),
+        Stamped(192, OrderId("10") <-: OrderProcessedFat(Outcome.succeeded, Map.empty)))))
+
+      eventWatch.addStamped(Stamped(EventId(200), OrderId("10") <-: OrderDetachable))  // Does not yield an OrderFatEvent
+      assert(getFatEventSeq("/fatEvent?after=193") == EventSeq.Empty(200))
+      assert(getFatEventSeq("/fatEvent?after=194") == EventSeq.Empty(200))
+      assert(getFatEventSeq("/fatEvent?after=200") == EventSeq.Empty(200))
+      assert(getFatEventSeq("/fatEvent?after=201") == EventSeq.Empty(200))
     }
 
-    "/fatEvent?after=180, intermediate event added, with timeout" in {
+    "/fatEvent?after=193, intermediate event added (OrderDetached), with timeout" in {
       val t = now
-      assert(getFatEventSeq("/fatEvent?after=180&timeout=0.1") == EventSeq.Empty(190))
+      assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(200))
       assert(now - t >= 100.millis)
     }
 
-    "/fatEvent?after=190, OrderFinished added" in {
+    "/fatEvent?after=200, OrderFinished added" in {
       val t = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(Stamped(EventId(191), OrderId("10") <-: OrderStdoutWritten("1")))
+        eventWatch.addStamped(Stamped(EventId(201), OrderId("10") <-: OrderStdoutWritten("1")))
       }
-      assert(getFatEventSeq("/fatEvent?timeout=30&after=190") == EventSeq.NonEmpty(
-        Stamped(191, OrderId("10") <-: OrderStdoutWrittenFat("1")):: Nil))
+      assert(getFatEventSeq("/fatEvent?timeout=30&after=200") == EventSeq.NonEmpty(
+        Stamped(201, OrderId("10") <-: OrderStdoutWrittenFat("1")):: Nil))
       assert(now - t >= 100.millis + EventDirectives.DefaultDelay, "(DefaultDelay)")
     }
 
-    "/fatEvent?after=191, with delay" in {
+    "/fatEvent?after=201, with delay" in {
       val t = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(Stamped(EventId(192), OrderId("10") <-: OrderStdoutWritten("2")))
+        eventWatch.addStamped(Stamped(EventId(202), OrderId("10") <-: OrderStdoutWritten("2")))
       }
-      assert(getFatEventSeq("/fatEvent?delay=0.1&timeout=30&after=191") == EventSeq.NonEmpty(
-        Stamped(192, OrderId("10") <-: OrderStdoutWrittenFat("2")):: Nil))
+      assert(getFatEventSeq("/fatEvent?delay=0.1&timeout=30&after=201") == EventSeq.NonEmpty(
+        Stamped(202, OrderId("10") <-: OrderStdoutWrittenFat("2")):: Nil))
       assert(now - t >= 100.millis)
     }
 
-    "/fatEvent?after=192, with delay=0" in {
+    "/fatEvent?after=202, with delay=0" in {
       val t = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderStdoutWritten("3")))
+        eventWatch.addStamped(Stamped(EventId(203), OrderId("10") <-: OrderStdoutWritten("3")))
       }
-      assert(getFatEventSeq("/fatEvent?delay=0&timeout=30&after=192") == EventSeq.NonEmpty(
-        Stamped(193, OrderId("10") <-: OrderStdoutWrittenFat("3")):: Nil))
+      assert(getFatEventSeq("/fatEvent?delay=0&timeout=30&after=202") == EventSeq.NonEmpty(
+        Stamped(203, OrderId("10") <-: OrderStdoutWrittenFat("3")):: Nil))
       assert(now - t >= EventDirectives.MinimumDelay)
     }
 
-    "/fatEvent?after=193 no more events, with timeout" in {
+    "/fatEvent?after=203 no more events, with timeout" in {
       val t = now
-      assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(193))
+      assert(getFatEventSeq("/fatEvent?after=203&timeout=0.1") == EventSeq.Empty(203))
       assert(now - t >= 100.millis)
     }
 
@@ -202,15 +223,25 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 object FatEventRouteTest
 {
   private val logger = Logger(getClass)
-  private val TestWorkflowId = WorkflowPath("/test") % "VERSION"
-  private val TestEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
+  private val TestVersionId = VersionId("VERSION")
+  private val TestAgentId = AgentPath("/AGENT") % TestVersionId
+  private val TestWorkflow = Workflow.of(
+    WorkflowPath("/test") % TestVersionId,
+    Execute(WorkflowJob(TestAgentId.path, ExecutablePath("/executable"))))
+  private val InitialEvents =
+    Stamped(EventId(1), NoKey <-: VersionAdded(TestVersionId)) ::
+    Stamped(EventId(2), NoKey <-: FileBasedAdded(Agent(TestAgentId, "http://127.0.0.1:0"))) ::
+    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow)) :: Nil
+
+  private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
     (1 to 18).map(i ⇒
-      Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflowId, None, Payload.empty)) ::  // Yields OrderFatEvent
-      Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderTransferredToAgent(AgentPath("/AGENT") % "1")) :: Nil)  // No FatEvent
+      Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Payload.empty)) ::     // Yields OrderFatEvent
+      Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentId.path)) ::     // No FatEvent
+      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentId)) ::  // No FatEvent
+      Nil)
   private val TestFatEvents =
-    for (events ← TestEvents; event = events.head) yield
-      Stamped(event.eventId, event.timestamp,
-        event.value.key <-: OrderAddedFat(TestWorkflowId, None, Map.empty))
+    for (events ← OrderEvents; event = events.head) yield
+      Stamped(event.eventId, event.timestamp, event.value.key <-: OrderAddedFat(TestWorkflow.id, None, Map.empty))
 
   private def fatEventsAfter(after: EventId) = TestFatEvents dropWhile (_.eventId <= after)
 }

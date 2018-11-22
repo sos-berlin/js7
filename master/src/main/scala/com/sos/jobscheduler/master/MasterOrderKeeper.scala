@@ -10,7 +10,6 @@ import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -40,7 +39,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
@@ -288,7 +287,7 @@ with MainJournalingActor[Event]
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
       val unknown = orderIds -- orderRegister.keySet
       if (unknown.nonEmpty) {
-        logger.error(s"Received OrdersDetached from Agent for unknown orders: "+ unknown.mkString(", "))
+        logger.error(s"Response to AgentCommand.DetachOrder from Agent for unknown orders: "+ unknown.mkString(", "))
       }
       persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster))(
         _ foreach handleOrderEvent)
@@ -456,7 +455,7 @@ with MainJournalingActor[Event]
             val checkedFollowUps = orderProcessor.handleEvent(orderId <-: event)
             for (followUps ← checkedFollowUps onProblem (p ⇒ logger.error(p)))  {
               followUps foreach {
-                case _: FollowUp.Processed if orderEntry.order.isAttachedToAgent ⇒
+                case _: FollowUp.Processed if orderEntry.order.isAttached ⇒
 
                 case FollowUp.AddChild(childOrder) ⇒
                   registerOrderAndProceed(childOrder)
@@ -488,14 +487,11 @@ with MainJournalingActor[Event]
   private def proceedWithOrder(orderEntry: OrderEntry): Unit =
     if (!terminating) {
       val order = orderEntry.order
-      order.attachedTo match {
-        case None ⇒
-          proceedWithOrderOnMaster(orderEntry)
-
-        case Some(_: Order.AttachedTo.Detachable) ⇒
-          detachOrderFromAgent(order.id)
-
-        case _ ⇒
+      order.attachedState match {
+        case None |
+             Some(_: Order.Attaching) ⇒ proceedWithOrderOnMaster(orderEntry)
+        case Some(_: Order.Attached)  ⇒
+        case Some(_: Order.Detaching) ⇒ detachOrderFromAgent(order.id)
       }
     }
 
@@ -503,9 +499,9 @@ with MainJournalingActor[Event]
     val order = orderEntry.order
     order.state match {
       case _: Order.FreshOrReady ⇒
-        val idleOrder = order.castState[Order.FreshOrReady]
+        val freshOrReady = order.castState[Order.FreshOrReady]
         instruction(order.workflowPosition) match {
-          case _: Execute ⇒ tryAttachOrderToAgent(idleOrder)
+          case _: Execute ⇒ tryAttachOrderToAgent(freshOrReady)
           case _ ⇒
         }
 
@@ -534,14 +530,19 @@ with MainJournalingActor[Event]
       agentId ← repo.pathToCurrentId(job.agentPath)
       agentEntry ← agentRegister.checked(agentId)
     } yield {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentId, workflow.reduceForAgent(job.agentPath))
+      if (order.isDetached)
+        persist(order.id <-: OrderAttachable(agentId.path)) { stamped ⇒
+          handleOrderEvent(stamped)
+        }
+      else
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentId, workflow.reduceForAgent(job.agentPath))
       ()
     }).onProblem(p ⇒ logger.error(p))
   }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
-    orderRegister(orderId).order.detachableFromAgent
-      .onProblem(p ⇒ logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $p"))
+    orderRegister(orderId).order.detaching
+      .onProblem(p ⇒ logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
       .foreach { agentId ⇒
         agentRegister(agentId).actor ! AgentDriver.Input.DetachOrder(orderId)
       }

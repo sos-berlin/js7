@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.WorkflowId
@@ -25,7 +25,7 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   workflowPosition: WorkflowPosition,
   state: S,
-  attachedTo: Option[AttachedTo] = None,
+  attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   payload: Payload = Payload.empty)
 {
@@ -35,7 +35,7 @@ final case class Order[+S <: Order.State](
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First),
         Ready,
-        attachedTo,
+        attachedState,
         parent = Some(id),
         Payload(child.variablesDiff.applyTo(payload.variables)))
 
@@ -62,77 +62,80 @@ final case class Order[+S <: Order.State](
         Invalid(Problem("OrderAdded and OrderAttached are not handled by the Order itself"))
 
       case OrderStarted ⇒
-        check(isState[Fresh] && (isDetached || isAttachedToAgent), copy(
-          state = Ready))
+        check(isState[Fresh] && (isDetached || isAttached),
+          copy(state = Ready))
 
       case OrderProcessingStarted ⇒
-        check(isState[Ready] && isAttachedToAgent, copy(
-          state = Processing))
+        check(isState[Ready] && isAttached,
+          copy(state = Processing))
 
       case OrderProcessed(diff, outcome_) ⇒
-        check(isState[Processing] && isAttachedToAgent, copy(
-          state = Processed(outcome_),
-          payload = Payload(diff.applyTo(payload.variables))))
+        check(isState[Processing] && isAttached,
+          copy(
+            state = Processed(outcome_),
+            payload = Payload(diff.applyTo(payload.variables))))
 
       case OrderStopped(message) ⇒
-        check(isState[Processed] && isAttachedToAgent, copy(
-          state = Stopped(message)))
+        check(isState[Processed] && isAttached,
+          copy(state = Stopped(message)))
 
       case OrderForked(children) ⇒
-        check(isState[Ready] && (isDetached || isAttachedToAgent), copy(
-          state = Forked(children)))
+        check(isState[Ready] && (isDetached || isAttached),
+          copy(state = Forked(children)))
 
       case OrderJoined(variablesDiff, outcome_) ⇒
-        check((isState[Forked] || isState[Awaiting]) && isDetached, copy(
-          state = Processed(outcome_),
-          payload = Payload(variablesDiff applyTo variables)))
+        check((isState[Forked] || isState[Awaiting]) && isDetached,
+          copy(
+            state = Processed(outcome_),
+            payload = Payload(variablesDiff applyTo variables)))
 
       case _: OrderOffered ⇒
-        check(isState[Ready] && isDetached, copy(
-          state = Processed(Outcome.succeeded)))
+        check(isState[Ready] && isDetached,
+          copy(state = Processed(Outcome.succeeded)))
 
       case OrderAwaiting(orderId) ⇒
-        check(isState[Ready] && isDetached, copy(
-          state = Awaiting(orderId)))
+        check(isState[Ready] && isDetached,
+          copy(state = Awaiting(orderId)))
 
       case OrderMoved(to) ⇒
-        check(isState[Processed] && (isDetached || isAttachedToAgent),
+        check(isState[Processed] && (isDetached || isAttached),
           withPosition(to).copy(state = Ready))
-
-      case OrderBroken(message) ⇒
-        // No state check ???
-        Valid(copy(
-          state = Broken(message)))
 
       case OrderFinished ⇒
         check(isState[Ready] && isDetached,
           position.dropChild match {
-            case Some(position) ⇒ copy(
-              workflowPosition = workflowPosition.copy(position = position))
-            case None ⇒ copy(
-              state = Finished)
+            case Some(position) ⇒ copy(workflowPosition = workflowPosition.copy(position = position))
+            case None ⇒ copy(state = Finished)
           })
 
-      case OrderTransferredToAgent(o) ⇒
-        check(isState[Attachable] && isDetached, copy(
-          attachedTo = Some(AttachedTo.Agent(o))))
+      case OrderBroken(message) ⇒
+        // No state check ???
+        Valid(copy(state = Broken(message)))
 
-      case OrderTransferredToMaster ⇒
-        check(isState[Detachable] && isDetachable, copy(
-          attachedTo = None))
+      case OrderAttachable(agentPath) ⇒
+        check(isDetached && (isState[Fresh] || isState[Ready] || isState[Forked]),
+          copy(attachedState = Some(Attaching(agentPath))))
+
+      case OrderTransferredToAgent(agentId) ⇒
+        check(isAttaching && (isState[Fresh] || isState[Ready] || isState[Forked]),
+          copy(attachedState = Some(Attached(agentId))))
 
       case OrderDetachable ⇒
-        attachedTo match {
-          case Some(AttachedTo.Agent(agentId)) if isState[Detachable] ⇒
-            Valid(copy(
-              attachedTo = Some(AttachedTo.Detachable(agentId))))
+        attachedState match {
+          case Some(Attached(agentId))
+            if isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] ⇒
+              Valid(copy(attachedState = Some(Detaching(agentId))))
           case _ ⇒
             inapplicable
         }
 
       case OrderDetached ⇒
-        check(isState[Detachable] && isDetachable, copy(
-          attachedTo = None))
+        check(isDetaching && (isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+          copy(attachedState = None))
+
+      case OrderTransferredToMaster ⇒
+        check(isDetaching && (isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+          copy(attachedState = None))
     }
   }
 
@@ -163,37 +166,43 @@ final case class Order[+S <: Order.State](
     implicitClass[A] isAssignableFrom state.getClass
 
   def attachedToString: String =
-    attachedTo match {
+    attachedState match {
       case None ⇒ "on Master"
-      case Some(AttachedTo.Agent(agentId)) ⇒ s"attached to $agentId"
-      case Some(AttachedTo.Detachable(agentId)) ⇒ s"detachable from $agentId"
+      case Some(Attaching(agentId)) ⇒ s"attachable to $agentId"
+      case Some(Attached(agentId)) ⇒ s"attached to $agentId"
+      case Some(Detaching(agentId)) ⇒ s"detaching from $agentId"
     }
 
-  /** `true` iff order is processable on Master, `false` iff Order is attached to or detachable from an Agent. */
+  /** `true` iff order is going to be attached to an Agent.. */
+  def isAttaching: Boolean =
+    attachedState exists (_.isInstanceOf[Attaching])
+
+  /** `true` iff order is attached to and processable on an Agent. */
+  def isAttached: Boolean =
+    attachedState exists (_.isInstanceOf[Attached])
+
+  /** `true` iff order is going to be detached from an Agent. */
+  def isDetaching: Boolean =
+    attachedState exists (_.isInstanceOf[Detaching])
+
+  /** `true` iff order is processable on Master.. */
   def isDetached: Boolean =
-    attachedTo.isEmpty
+    attachedState.isEmpty
 
-  /** `true` iff order is attached to an Agent (but not detachable). */
-  def isAttachedToAgent: Boolean =
-    attachedTo exists (_.isInstanceOf[AttachedTo.Agent])
-
-  def attachedToAgent: Checked[AgentId] =
-    attachedTo match {
-      case Some(AttachedTo.Agent(agentId)) ⇒
+  def attached: Checked[AgentId] =
+    attachedState match {
+      case Some(Attached(agentId)) ⇒
         Valid(agentId)
       case o ⇒
-        Invalid(Problem(s"'$id' should be AttachedTo.Agent, but is $o"))
+        Invalid(Problem(s"'$id' should be Agent, but is $o"))
     }
 
-  private def isDetachable: Boolean =
-    attachedTo exists (_.isInstanceOf[AttachedTo.Detachable])
-
-  def detachableFromAgent: Checked[AgentId] =
-    attachedTo match {
-      case Some(AttachedTo.Detachable(agentId)) ⇒
+  def detaching: Checked[AgentId] =
+    attachedState match {
+      case Some(Detaching(agentId)) ⇒
         Valid(agentId)
       case o ⇒
-        Invalid(Problem(s"'$id' should be AttachedTo.Detachable, but is $o"))
+        Invalid(Problem(s"'$id' should be Detaching, but is $o"))
     }
 }
 
@@ -202,32 +211,28 @@ object Order {
     Order(id, event.workflowId, Fresh(event.scheduledAt), payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[FreshOrReady] =
-    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentId)), payload = event.payload)
+    Order(id, event.workflowPosition, event.state, Some(Attached(event.agentId)), payload = event.payload)
 
-  sealed trait AttachedTo
-  object AttachedTo {
-    sealed trait AgentOrDetachable extends AttachedTo {
-      val agentId: AgentId
-    }
-
-    @JsonCodec
-    final case class Agent(agentId: AgentId) extends AgentOrDetachable
-
-    @JsonCodec
-    final case class Detachable(agentId: AgentId) extends AgentOrDetachable
-
-    implicit val jsonCodec = TypedJsonCodec[AttachedTo](
-      Subtype[Agent],
-      Subtype[Detachable])
+  sealed trait AttachedState
+  object AttachedState {
+    implicit val jsonCodec = TypedJsonCodec[AttachedState](
+      Subtype(deriveCodec[Attaching]),
+      Subtype(deriveCodec[Attached]),
+      Subtype(deriveCodec[Detaching]))
   }
+  sealed trait AgentOrDetachable extends AttachedState {
+    val agentId: AgentId
+  }
+  /** Order is going to be attached to an Agent. */
+  final case class Attaching(agentPath: AgentPath) extends AttachedState
+  /** Order is attached to an Agent. */
+  final case class Attached(agentId: AgentId) extends AgentOrDetachable
+  /** Order is going to be detached from Agent. */
+  final case class Detaching(agentId: AgentId) extends AgentOrDetachable
 
   sealed trait State
 
-  sealed trait Attachable extends State
-
-  sealed trait Detachable extends State
-
-  sealed trait FreshOrReady extends State with Attachable with Detachable
+  sealed trait FreshOrReady extends State
 
   @JsonCodec
   final case class Fresh(scheduledAt: Option[Timestamp] = None) extends FreshOrReady
@@ -243,10 +248,10 @@ object Order {
   case object Ready extends Ready
 
   @JsonCodec
-  final case class Stopped(outcome: Outcome.NotSucceeded) extends Started with Detachable
+  final case class Stopped(outcome: Outcome.NotSucceeded) extends Started
 
   @JsonCodec
-  final case class Broken(problem: Problem) extends Detachable
+  final case class Broken(problem: Problem) extends Started/*!!!*/
 
   sealed trait Processing extends Started
   case object Processing extends Processing
@@ -255,7 +260,7 @@ object Order {
   final case class Processed(outcome: Outcome) extends Transitionable
 
   @JsonCodec
-  final case class Forked(children: Seq[Forked.Child]) extends Transitionable with Attachable with Detachable {
+  final case class Forked(children: Seq[Forked.Child]) extends Transitionable {
     def childOrderIds = children map (_.orderId)
   }
   object Forked {

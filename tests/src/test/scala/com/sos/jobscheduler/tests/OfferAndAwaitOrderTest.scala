@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -46,6 +46,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         checkEventSeq(master.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(PublishingWorkflowId),
+              OrderAttachable(TestAgentPath),
               OrderTransferredToAgent(TestAgentPath % "(initial)"),
               OrderStarted,
               OrderProcessingStarted,
@@ -55,6 +56,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderTransferredToMaster,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
               OrderMoved(Position(2)),
+              OrderAttachable(TestAgentPath),
               OrderTransferredToAgent(TestAgentPath % "(initial)"),
               OrderProcessingStarted,
               OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -64,6 +66,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
+            OrderAttachable(TestAgentPath),
             OrderTransferredToAgent(TestAgentPath % "(initial)"),
             OrderStarted,
             OrderProcessingStarted,
@@ -74,6 +77,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(MapDiff.empty, Outcome.succeeded),
             OrderMoved(Position(2)),
+            OrderAttachable(TestAgentPath),
             OrderTransferredToAgent(TestAgentPath % "(initial)"),
             OrderProcessingStarted,
             OrderProcessed(MapDiff.empty, Outcome.succeeded),

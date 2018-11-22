@@ -65,8 +65,8 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
         |  workflowPosition: WorkflowPosition!
         |  workflowPath: WorkflowPath!
         |
-        |  "Agent the Order is attached to"
-        |  attachedTo: Order_AttachedTo
+        |  "Order is attaching to, attached to, or detaching from an Agent"
+        |  attachedState: Order_AttachedState
         |  state: OrderState!
         |  variables: StringMap
         |}

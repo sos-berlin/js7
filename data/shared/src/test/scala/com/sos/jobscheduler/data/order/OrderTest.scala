@@ -6,10 +6,11 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{AttachedTo, Awaiting, Broken, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -17,6 +18,8 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalactic.source
 import org.scalatest.FreeSpec
+import scala.collection.immutable.ListSet
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -35,7 +38,7 @@ final class OrderTest extends FreeSpec {
     "Order" in {
       check(
         testOrder.copy(
-          attachedTo = Some(AttachedTo.Agent(AgentPath("/AGENT") % "1")),
+          attachedState = Some(Attached(AgentPath("/AGENT") % "1")),
           parent = Some(OrderId("PARENT"))),
         json"""{
           "id": "ID",
@@ -49,8 +52,8 @@ final class OrderTest extends FreeSpec {
           "state": {
             "TYPE": "Ready"
           },
-          "attachedTo": {
-            "TYPE": "Agent",
+          "attachedState": {
+            "TYPE": "Attached",
             "agentId": {
               "path": "/AGENT",
               "versionId": "1"
@@ -174,11 +177,11 @@ final class OrderTest extends FreeSpec {
       def check(o: State, json: Json) = testJson(o, json)
     }
 
-    "AttachedTo" - {
-      "Agent" in {
-        check(AttachedTo.Agent(AgentPath("/AGENT") % "1"),
+    "AttachedState" - {
+      "Attached" in {
+        check(Attached(AgentPath("/AGENT") % "1"),
           """{
-            "TYPE": "Agent",
+            "TYPE": "Attached",
             "agentId": {
               "path": "/AGENT",
               "versionId": "1"
@@ -186,10 +189,10 @@ final class OrderTest extends FreeSpec {
           }""")
       }
 
-      "Detachable" in {
-        check(AttachedTo.Detachable(AgentPath("/AGENT") % "1"),
+      "Detaching" in {
+        check(Detaching(AgentPath("/AGENT") % "1"),
           """{
-            "TYPE": "Detachable",
+            "TYPE": "Detaching",
             "agentId": {
               "path": "/AGENT",
               "versionId": "1"
@@ -197,7 +200,7 @@ final class OrderTest extends FreeSpec {
           }""")
       }
 
-      def check(o: AttachedTo, j: String) = testJson(o, j)
+      def check(o: AttachedState, j: String) = testJson(o, j)
     }
   }
 
@@ -205,10 +208,17 @@ final class OrderTest extends FreeSpec {
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("/WORKFLOW") % "VERSION"
     val agentId = AgentPath("/AGENT") % "version"
-    val allEvents = Set[OrderCoreEvent](
+    val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
+
+      OrderAttachable(agentId.path),
+      OrderAttached(workflowId /: Position(0), Fresh(), None, agentId, Payload.empty),
+      OrderTransferredToAgent(agentId),
+
       OrderStarted,
       OrderProcessingStarted,
+      //OrderStdoutWritten("stdout") is not an OrderCoreEvent
+      //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
       OrderStopped(Outcome.Failed(ReturnCode(1))),
       OrderMoved(Position(1)),
@@ -217,117 +227,119 @@ final class OrderTest extends FreeSpec {
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
       OrderFinished,
-      //OrderStdoutWritten("stdout") is not an OrderCoreEvent
-      //OrderStderrWritten("stderr") is not an OrderCoreEvent
-      OrderTransferredToAgent(agentId),
-      OrderTransferredToMaster,
-      OrderAttached(workflowId /: Position(0), Fresh(), None, agentId, Payload.empty),
+      OrderBroken(Problem("Problem")),
+
       OrderDetachable,
       OrderDetached,
-      OrderBroken(Problem("Problem")))
+      OrderTransferredToMaster
+    )
+
     assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
-    val detached = none[AttachedTo]
-    val attached = Some(AttachedTo.Agent(agentId))
-    val detachable = Some(AttachedTo.Detachable(agentId))
+    val detached  = none[AttachedState]
+    val attaching = Some(Attaching(agentId.path))
+    val attached  = Some(Attached(agentId))
+    val detaching = Some(Detaching(agentId))
 
     "Fresh" - {
-      checkAllEvents(Order(orderId, workflowId, Fresh())) {
-        case (_: OrderStarted           , `detached`|  `attached` ) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderTransferredToAgent, `detached`              ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderTransferredToMaster  , `detachable`            ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetachable           , `attached`              ) ⇒ _.isInstanceOf[Fresh]
-        case (OrderDetached             , `detachable`            ) ⇒ _.isInstanceOf[Fresh]
-        case (_: OrderBroken            , _                       ) ⇒ _.isInstanceOf[Broken]
-      }
+      checkAllEvents(Order(orderId, workflowId, Fresh()),
+        attachingAllowed[Fresh] orElse {
+          case (_: OrderStarted, `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
+          case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Ready" - {
-      checkAllEvents(Order(orderId, workflowId, Ready)) {
-        case (_: OrderProcessingStarted , `attached`             ) ⇒ _.isInstanceOf[Processing]
-        case (_: OrderForked            , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderOffered           , `detached`             ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderAwaiting          , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
-        case (_: OrderFinished          , `detached`             ) ⇒ _.isInstanceOf[Finished]
-        case (_: OrderTransferredToAgent, `detached`             ) ⇒ _.isInstanceOf[Ready]
-        case (OrderTransferredToMaster  , `detachable`           ) ⇒ _.isInstanceOf[Ready]
-        case (OrderDetachable           , `attached`             ) ⇒ _.isInstanceOf[Ready]
-        case (OrderDetached             , `detachable`           ) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderBroken            , _                      ) ⇒ _.isInstanceOf[Broken]
-      }
+      checkAllEvents(Order(orderId, workflowId, Ready),
+        attachingAllowed[Ready] orElse
+        detachingAllowed[Ready] orElse {
+          case (_: OrderProcessingStarted, `attached`             ) ⇒ _.isInstanceOf[Processing]
+          case (_: OrderForked           , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
+          case (_: OrderOffered          , `detached`             ) ⇒ _.isInstanceOf[Processed]
+          case (_: OrderAwaiting         , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
+          case (_: OrderFinished         , `detached`             ) ⇒ _.isInstanceOf[Finished]
+          case (_: OrderBroken           , _                      ) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Processing" - {
-      checkAllEvents(Order(orderId, workflowId, Processing)) {
+      checkAllEvents(Order(orderId, workflowId, Processing), {
         case (_: OrderProcessed, `attached`) ⇒ _.isInstanceOf[Processed]
         case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
-      }
+      })
     }
 
     "Processed" - {
-      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0))))) {
+      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0)))), {
         case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
         case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
         case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
-      }
+      })
     }
 
     "Stopped" - {
-      checkAllEvents(Order(orderId, workflowId, Stopped(Outcome.Failed(ReturnCode(1))))) {
-        case (OrderTransferredToMaster, `detachable`         ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderDetachable      , `attached`           ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderDetached        , `detachable`         ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
-      }
+      checkAllEvents(Order(orderId, workflowId, Stopped(Outcome.Failed(ReturnCode(1)))),
+        detachingAllowed[Stopped] orElse {
+          case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Broken" - {
-      checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM")))) {
-        case (OrderTransferredToMaster, `detachable`         ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderDetachable      , `attached`           ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderDetached        , `detachable`         ) ⇒ _.isInstanceOf[Broken]
-        case (_: OrderBroken          , _                    ) ⇒ _.isInstanceOf[Broken]
-      }
+      checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
+        detachingAllowed[Broken] orElse {
+          case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Forked" - {
-      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil))) {
-        case (_: OrderJoined            , `detached`  ) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderTransferredToAgent, `detached`  ) ⇒ _.isInstanceOf[Forked]
-        case (OrderTransferredToMaster  , `detachable`) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderDetachable        , `attached`  ) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderDetached          , `detachable`) ⇒ _.isInstanceOf[Forked]
-        case (_: OrderBroken            , _           ) ⇒ _.isInstanceOf[Broken]
-      }
+      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil)),
+        attachingAllowed[Forked] orElse
+        detachingAllowed[Forked] orElse {
+          case (_: OrderJoined, `detached` ) ⇒ _.isInstanceOf[Processed]
+          case (_: OrderBroken, _          ) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Offering" - {
-      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z")))) {
+      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))), {
         case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
-      }
+      })
     }
 
     "Awaiting" - {
-      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED")))) {
+      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))), {
         case (_: OrderJoined, `detached`) ⇒ _.isInstanceOf[Processed]
         case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
-      }
+      })
     }
 
     "Finished" - {
-      checkAllEvents(Order(orderId, workflowId, Finished)) {
+      checkAllEvents(Order(orderId, workflowId, Finished), {
         case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
-      }
+      })
+    }
+
+    type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State ⇒ Boolean]
+
+    def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+      case (_: OrderAttachable        , `detached` ) ⇒ implicitClass[S] isAssignableFrom _.getClass
+      case (_: OrderTransferredToAgent, `attaching`) ⇒ implicitClass[S] isAssignableFrom _.getClass
+    }
+
+    def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+      case (OrderDetachable         , `attached` ) ⇒ implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetached           , `detaching`) ⇒ implicitClass[S] isAssignableFrom _.getClass
+      case (OrderTransferredToMaster, `detaching`) ⇒ implicitClass[S] isAssignableFrom _.getClass
     }
 
     /** Checks each event in `allEvents`. */
-    def checkAllEvents(order: Order[State])(toState: PartialFunction[(OrderEvent, Option[AttachedTo]), State ⇒ Boolean])
+    def checkAllEvents(order: Order[State], toPredicate: ToPredicate)
       (implicit pos: source.Position)
     : Unit =
       for (event ← allEvents) s"$event" - {
-        for (a ← None :: attached :: detachable :: Nil) s"$a" in {
-          val updated = order.copy(attachedTo = a).update(event)
+        for (a ← None :: attached :: detaching :: Nil) s"$a" in {
+          val updated = order.copy(attachedState = a).update(event)
           val maybeState = updated.toOption.map(_.state)
-          val maybePredicate = toState.lift((event, a))
+          val maybePredicate = toPredicate.lift((event, a))
           (maybeState, maybePredicate) match {
             case (Some(state), Some(predicate)) ⇒ assert(predicate(state))
             case (None, None) ⇒
@@ -338,18 +350,18 @@ final class OrderTest extends FreeSpec {
   }
 
   "Operations" - {
-    "attachedToAgent" in {
+    "attached" in {
       val agentId = AgentPath("/A") % "1"
-      assert(testOrder.attachedToAgent.isInvalid)
-      assert(testOrder.copy(attachedTo = Some(AttachedTo.Agent(agentId)))     .attachedToAgent == Valid(agentId))
-      assert(testOrder.copy(attachedTo = Some(AttachedTo.Detachable(agentId))).attachedToAgent.isInvalid)
+      assert(testOrder.attached.isInvalid)
+      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .attached == Valid(agentId))
+      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).attached.isInvalid)
     }
 
-    "detachableFromAgent" in {
+    "detaching" in {
       val agentId = AgentPath("/A") % "1"
-      assert(testOrder.detachableFromAgent.isInvalid)
-      assert(testOrder.copy(attachedTo = Some(AttachedTo.Agent(agentId)))     .detachableFromAgent.isInvalid)
-      assert(testOrder.copy(attachedTo = Some(AttachedTo.Detachable(agentId))).detachableFromAgent == Valid(agentId))
+      assert(testOrder.detaching.isInvalid)
+      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .detaching.isInvalid)
+      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).detaching == Valid(agentId))
     }
 
     "castState" in {
@@ -368,15 +380,15 @@ final class OrderTest extends FreeSpec {
       assert(testOrder.ifState[Processed] == None)
     }
 
-    "isAttachable" in {
+    "isAttaching" in {
       val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Ready,
-        Some(AttachedTo.Detachable(AgentPath("/AGENT") % "1")))
-      assert(order.detachableFromAgent == Valid(AgentPath("/AGENT") % "1"))
+        Some(Detaching(AgentPath("/AGENT") % "1")))
+      assert(order.detaching == Valid(AgentPath("/AGENT") % "1"))
 
       for (o ← Array(
-            order.copy(attachedTo = Some(AttachedTo.Agent(AgentPath("/AGENT") % "1"))),
-            order.copy(attachedTo = None))) {
-        val problem = o.detachableFromAgent.asInstanceOf[Invalid[Problem]].e
+            order.copy(attachedState = Some(Attached(AgentPath("/AGENT") % "1"))),
+            order.copy(attachedState = None))) {
+        val problem = o.detaching.asInstanceOf[Invalid[Problem]].e
         assert(problem.toString contains "ORDER-ID")
       }
     }
@@ -389,7 +401,7 @@ final class OrderTest extends FreeSpec {
 
   if (sys.props contains "test.speed") "Speed" in {
     val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Ready,
-      Some(AttachedTo.Agent(AgentPath("/AGENT") % "1")))
+      Some(Attached(AgentPath("/AGENT") % "1")))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {

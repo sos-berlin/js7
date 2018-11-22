@@ -142,7 +142,8 @@ header, main, footer { padding-left: 150px; }
 
 .Order-State-symbol-width { display: inline-block; width: 18px; }
 
-.AttachedTo-Detachable { color: darkgreen; text-decoration: line-through; }
+.AttachedState-Attaching    { color: darkgreen; }
+.AttachedState-Detaching    { color: darkgreen; text-decoration: line-through; }
 
 .Instruction                { border: solid 1px transparent; padding: 1px 3px; }
 .Instruction-Idle           { border-left: solid 1px #02f; border-top: solid 1px #02f; }

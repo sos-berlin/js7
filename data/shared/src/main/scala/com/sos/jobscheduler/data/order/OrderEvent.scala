@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -136,11 +136,18 @@ object OrderEvent {
   final case class OrderBroken(problem: Problem) extends OrderActorEvent
 
   /**
+    * Master may have started to attach Order to Agent..
+    */
+  final case class OrderAttachable(agentPath: AgentPath) extends OrderCoreEvent {
+    //type State = Attaching.type
+  }
+
+  /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
   sealed trait OrderDetachable extends OrderActorEvent
   case object OrderDetachable extends OrderDetachable {
-    //type State = Detachable.type
+    //type State = Detaching.type
   }
 
   /**
@@ -173,6 +180,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToMaster),
     Subtype(deriveCodec[OrderAttached]),
+    Subtype(deriveCodec[OrderAttachable]),
     Subtype(OrderDetachable),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]))

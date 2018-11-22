@@ -116,7 +116,7 @@ object AgentCommand {
   final case class AttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
-    order.attachedToAgent.orThrow
+    order.attached.orThrow
 
     type Response = Accepted
 
@@ -125,7 +125,7 @@ object AgentCommand {
   object AttachOrder {
     def apply(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) =
       new AttachOrder(
-        order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentId))),
+        order.copy(attachedState = Some(Order.Attached(agentId))),
         workflow)
   }
 

@@ -52,7 +52,7 @@ object OrderComponent {
             case o ⇒ o
           }),
           showField("Position"   , orderEntry.order.workflowPosition.toString),
-          showField("Attached to", orderEntry.order.attachedTo.orMissing)))
+          showField("Attached to", orderEntry.order.attachedState.orMissing)))
 
     private def showField(key: String, value: VdomNode): VdomNode =
       <.tr(

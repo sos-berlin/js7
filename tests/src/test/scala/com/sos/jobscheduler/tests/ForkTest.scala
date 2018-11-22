@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventSeq
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -59,10 +59,12 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
   "Existing child OrderId" in {
     val myOrderId = TestOrder.copy(id = OrderId("DUPLICATE"))
-    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId
+    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId, check is suppressed
+    master.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE/🥕"))
     master.addOrderBlocking(myOrderId)
     assert(master.eventWatch.await[OrderBroken](_.key == myOrderId.id).head.value.event ==
-      OrderBroken(Problem("Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Fresh(None),None,None,Payload())")))
+      OrderBroken(Problem(
+        "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload())")))
 
     // Kill SLOW job
     agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
@@ -82,6 +84,7 @@ object ForkTest {
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentId.path),                             YOrderId <-: OrderAttachable(AAgentId.path),
       XOrderId <-: OrderTransferredToAgent(AAgentId),                          YOrderId <-: OrderTransferredToAgent(AAgentId),
 
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
@@ -96,6 +99,7 @@ object ForkTest {
 
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentId.path),                             YOrderId <-: OrderAttachable(AAgentId.path),
       XOrderId <-: OrderTransferredToAgent(AAgentId),                          YOrderId <-: OrderTransferredToAgent(AAgentId),
 
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
@@ -108,6 +112,7 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(2)),
 
+    TestOrder.id <-: OrderAttachable(BAgentId.path),
     TestOrder.id <-: OrderTransferredToAgent(BAgentId),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
@@ -120,6 +125,7 @@ object ForkTest {
     TestOrder.id <-: OrderTransferredToMaster,
                                                                                YOrderId <-: OrderDetachable,
                                                                                YOrderId <-: OrderTransferredToMaster,
+                                                                               YOrderId <-: OrderAttachable(AAgentId.path),
                                                                                YOrderId <-: OrderTransferredToAgent(AAgentId),
 
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
@@ -129,6 +135,7 @@ object ForkTest {
 
                                                                                YOrderId <-: OrderDetachable,
                                                                                YOrderId <-: OrderTransferredToMaster,
+                                                                               YOrderId <-: OrderAttachable(BAgentId.path),
                                                                                YOrderId <-: OrderTransferredToAgent(BAgentId),
 
                                                                                YOrderId <-: OrderProcessingStarted,
@@ -143,6 +150,7 @@ object ForkTest {
 
     TestOrder.id <-: OrderForked(Vector(
       OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentId.path),                             YOrderId <-: OrderAttachable(BAgentId.path),
       XOrderId <-: OrderTransferredToAgent(AAgentId),                          YOrderId <-: OrderTransferredToAgent(BAgentId),
 
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
