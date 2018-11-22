@@ -7,15 +7,13 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProviderTest._
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.ConfigFactory
-import java.time.Instant.now
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -35,11 +33,10 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
   protected val gateKeeper = new GateKeeper(
     GateKeeper.Configuration[SimpleUser](
       realm = "TEST-REALM",
-      invalidAuthenticationDelay = 100.ms,
+      invalidAuthenticationDelay = 100.millis,
       idToUser = IdToUser.fromConfig(
         ConfigFactory.parseString("""jobscheduler.auth.users.TEST-USER: "plain:123" """),
-        SimpleUser.apply)),
-    new TimerService(Some(1.s)))
+        SimpleUser.apply)))
 
   private var sessionToken = SessionToken(SecretString("INVALID"))
 

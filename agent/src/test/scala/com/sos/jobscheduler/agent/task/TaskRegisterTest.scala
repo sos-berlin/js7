@@ -19,7 +19,6 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -41,8 +40,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
     ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles
-  private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
-  private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf, timerService) )
+  private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf) )
   private lazy val handle = new TaskRegister(actor)
   private lazy val aTask = new TestTask(AgentTaskId(1, 11))
   private lazy val bTask = new TestTask(AgentTaskId(2, 22))

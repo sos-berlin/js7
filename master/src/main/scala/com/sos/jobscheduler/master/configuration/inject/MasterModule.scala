@@ -12,7 +12,6 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.agent.Agent
@@ -40,7 +39,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     p
 
   @Provides @Singleton
-  def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, ts: TimerService, config: Config, closer: Closer): JournalEventWatch[Event] =
+  def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, config: Config, closer: Closer): JournalEventWatch[Event] =
     new JournalEventWatch[Event](journalMeta, config)
       .closeWithCloser
 
@@ -78,7 +77,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     actorSystem
 
   @Provides @Singleton
-  def actorSystem(implicit closer: Closer, timerService: TimerService/*closed after ActorSystem*/): ActorSystem = {
+  def actorSystem(implicit closer: Closer): ActorSystem = {
     val actorSystem = ActorSystem(configuration.name, configuration.config)
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
@@ -93,10 +92,6 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     DeadLetterActor.subscribe(actorSystem)
     actorSystem
   }
-
-  @Provides @Singleton
-  def timerService(closer: Closer): TimerService =
-    TimerService() closeWithCloser closer
 
   @Provides @Singleton
   def config(): Config =

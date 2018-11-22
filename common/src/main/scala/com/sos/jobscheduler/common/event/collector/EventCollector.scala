@@ -4,14 +4,14 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.event.collector.EventCollector._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
-import scala.concurrent.{ExecutionContext, Future}
+import monix.execution.Scheduler
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-abstract class EventCollector(configuration: Configuration)(implicit protected val timerService: TimerService)
+abstract class EventCollector(configuration: Configuration)(implicit protected val scheduler: Scheduler)
 extends RealEventWatch[Event]
 {
   protected val started = Future.successful(Completed)
@@ -45,8 +45,6 @@ object EventCollector
 
   final class ForTest(
     configuration: Configuration = Configuration.ForTest)
-    (implicit
-      timerService: TimerService,
-      executionContext: ExecutionContext)
+    (implicit scheduler: Scheduler)
     extends EventCollector(configuration)
 }

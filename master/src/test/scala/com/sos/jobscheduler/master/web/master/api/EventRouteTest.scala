@@ -18,7 +18,6 @@ import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-se
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
@@ -37,8 +36,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
 
   private implicit val timeout = 9.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
-  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
-  protected val eventWatch = new EventCollector.ForTest
+  protected val eventWatch = new EventCollector.ForTest()(Scheduler.global)
   protected implicit def scheduler = Scheduler.global
 
   TestEvents foreach eventWatch.addStamped

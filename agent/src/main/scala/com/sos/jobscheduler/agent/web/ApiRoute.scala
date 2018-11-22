@@ -15,7 +15,6 @@ with CommandWebService
 with MastersEventWebService
 with OrderWebService
 //with TaskWebService
-with TimerWebService
 with SessionRoute
 {
   protected final val apiRoute: Route =
@@ -31,9 +30,6 @@ with SessionRoute
     //pathSegments("task") {
     //  taskRoute
     //} ~
-    pathSegments("timer") {
-      timerRoute
-    } ~
     pathSegments("session") {
       sessionRoute
     } ~

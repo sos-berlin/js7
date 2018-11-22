@@ -12,9 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
-import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
 
@@ -27,11 +25,10 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected def uriPathPrefix = ""
 
   protected final val gateKeeper = new GateKeeper(
-    GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply),
-    TimerService(idleTimeout = Some(1.s)))
+    GateKeeper.Configuration.fromConfig(testConfig, SimpleUser.apply))
 
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
-    actorRefFactory, SimpleSession.apply, SessionRegister.TestConfig)(Scheduler.global)
+    actorRefFactory, SimpleSession.apply, SessionRegister.TestConfig)
 
   override def testConfig = AgentConfiguration.DefaultsConfig
   protected final def actorSystem = system
@@ -41,7 +38,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   protected lazy val testSessionHeader: HttpHeader = {
     val token = sessionRegister.login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), None)
-      .await(99.seconds)(Scheduler.global)
+      .await(99.seconds)
     RawHeader(SessionToken.HeaderName, token.secret.string)
   }
 

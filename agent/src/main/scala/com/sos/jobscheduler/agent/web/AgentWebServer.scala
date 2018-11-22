@@ -17,9 +17,7 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger, SetOnce}
-import com.sos.jobscheduler.common.time.timer.TimerService
 import monix.execution.Scheduler
-import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -27,12 +25,10 @@ import scala.concurrent.ExecutionContext
 final class AgentWebServer(
   conf: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  timerService: TimerService,
   closer: Closer,
-  injector: Injector)
-  (implicit
-    protected val actorSystem: ActorSystem,
-    protected val executionContext: ExecutionContext)
+  injector: Injector,
+  implicit protected val actorSystem: ActorSystem,
+  implicit protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
 
   closer.register(this)
@@ -49,7 +45,9 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
     new CompleteRoute {
       private lazy val anonymousApi = runningAgent.api(CommandMeta())
 
-      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration, timerService,
+      protected implicit def scheduler = AgentWebServer.this.scheduler
+
+      protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
@@ -63,11 +61,9 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected def commandOverview = anonymousApi.commandOverview
       protected def commandDetailed = anonymousApi.commandDetailed
 
-      protected def timerService = AgentWebServer.this.timerService
       protected def akkaAskTimeout = conf.akkaAskTimeout
       protected def config = AgentWebServer.this.conf.config
       protected def actorSystem = AgentWebServer.this.actorSystem
-      protected def scheduler = injector.instance[Scheduler]
 
       logger.info(gateKeeper.boundMessage(binding))
     }.completeRoute

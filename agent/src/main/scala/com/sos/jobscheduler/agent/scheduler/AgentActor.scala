@@ -20,7 +20,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -40,8 +39,7 @@ import scala.concurrent.{Future, Promise, blocking}
 private[agent] final class AgentActor @Inject private(
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
-  keyedEventBus: StampedKeyedEventBus,
-  timerService: TimerService)
+  keyedEventBus: StampedKeyedEventBus)
   (implicit scheduler: Scheduler)
 extends MainJournalingActor[AgentEvent] {
 
@@ -214,8 +212,7 @@ extends MainJournalingActor[AgentEvent] {
           newTaskRunner,
           askTimeout = akkaAskTimeout,
           keyedEventBus,
-          agentConfiguration.config,
-          timerService)(
+          agentConfiguration.config)(
           scheduler)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))

@@ -14,7 +14,6 @@ import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -32,7 +31,7 @@ import scala.concurrent.duration.DurationInt
 final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
 
   protected lazy val taskRegister = {
-    val actor = actorSystem.actorOf(TaskRegisterActor.props(None, new TimerService(idleTimeout = Some(1.s))))
+    val actor = actorSystem.actorOf(TaskRegisterActor.props(None))
     new TaskRegister(actor)(99.seconds)
   }
 

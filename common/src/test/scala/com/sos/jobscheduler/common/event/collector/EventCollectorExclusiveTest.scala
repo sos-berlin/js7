@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -19,12 +18,6 @@ import scala.reflect.ClassTag
 final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll {
 
   private implicit val eventIdGenerator = new EventIdGenerator
-  private implicit lazy val timerService = TimerService()
-
-  override protected def afterAll() = {
-    timerService.close()
-    super.afterAll()
-  }
 
   "eventCollector.keyedEventQueue.after" in {
     val eventCollector = new MyEventCollector
@@ -91,7 +84,6 @@ private object EventCollectorExclusiveTest {
   private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
     (implicit
       protected val eventIdGenerator: EventIdGenerator,
-      timerService: TimerService,
       executionContext: ExecutionContext)
   extends EventCollector(configuration)
   with EventIdGenerating

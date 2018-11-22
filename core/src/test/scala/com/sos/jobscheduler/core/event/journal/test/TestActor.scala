@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -54,8 +53,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {
     protected val sender = TestActor.this.sender()
     protected val journalMeta = TestActor.this.journalMeta
-    protected val journalEventWatch = new JournalEventWatch[TestEvent](journalMeta, JournalEventWatch.TestConfig)(
-      Scheduler.global, TimerService(Some(1.s)))
+    protected val journalEventWatch = new JournalEventWatch[TestEvent](journalMeta, JournalEventWatch.TestConfig)(Scheduler.global)
 
     protected def snapshotToKey = {
       case a: TestAggregate ⇒ a.key

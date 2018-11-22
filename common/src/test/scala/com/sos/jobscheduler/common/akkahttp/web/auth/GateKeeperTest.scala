@@ -13,13 +13,13 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
 import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, SimpleUser, User, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import io.circe.Json
-import java.time.Instant.now
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -33,13 +33,12 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
-    invalidAuthenticationDelay = 100.ms,
+    invalidAuthenticationDelay = 100.millis,
     idToUser = {   // Like master.conf and agent.conf
       case UserId("USER")      ⇒ Some(TestUser)
       case UserId("Anonymous") ⇒ Some(SimpleUser.Anonymous)
       case _ ⇒ None
     })
-  private lazy val timerService = TimerService(idleTimeout = Some(1.s))
 
   "isAllowed" - {
     "isPublic" in {
@@ -333,7 +332,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
     "GET /ValidUserPermission with invalid credentials is rejected" in {
       implicit def routeTestTimeout(implicit system: ActorSystem) =
-        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
+        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).dilated)
 
       val t = now
       Get(validUserUri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
@@ -345,7 +344,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) = {
     implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
-    new GateKeeper(conf, timerService, isLoopback = isLoopback)
+    implicit val s = Scheduler.global
+    new GateKeeper(conf, isLoopback = isLoopback)
   }
 
   /** Error message does not contain a hint. */

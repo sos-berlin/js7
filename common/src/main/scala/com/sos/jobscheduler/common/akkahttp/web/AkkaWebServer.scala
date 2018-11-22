@@ -15,8 +15,9 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.net.InetSocketAddress
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
@@ -24,7 +25,8 @@ import scala.concurrent.{ExecutionContext, Future}
 trait AkkaWebServer extends AutoCloseable {
 
   protected implicit def actorSystem: ActorSystem
-  protected implicit def executionContext: ExecutionContext
+  protected def scheduler: Scheduler
+  private implicit def implicitScheduler = scheduler
   protected def newRoute(binding: WebServerBinding): Route
   protected def bindings: Seq[WebServerBinding]
   private val akkaHttp = Http(actorSystem)

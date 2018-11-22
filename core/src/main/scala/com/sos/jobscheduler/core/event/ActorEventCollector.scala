@@ -3,10 +3,10 @@ package com.sos.jobscheduler.core.event
 import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.ActorEventCollector._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import javax.inject.{Inject, Singleton}
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
@@ -14,10 +14,10 @@ import javax.inject.{Inject, Singleton}
 final class ActorEventCollector private(
   isCollectable: Event ⇒ Boolean)(
   configuration: EventCollector.Configuration,
-  timerService: TimerService,
+  scheduler: Scheduler,
   keyedEventBus: StampedKeyedEventBus,
   actorSystem: ActorSystem)
-extends EventCollector(configuration)(timerService)
+extends EventCollector(configuration)(scheduler)
 with AutoCloseable {
 
   private val actorRef = actorSystem.actorOf(
@@ -54,7 +54,7 @@ object ActorEventCollector {
   @Singleton
   final class Factory @Inject private(
     configuration: EventCollector.Configuration,
-    timerService: TimerService,
+    scheduler: Scheduler,
     keyedEventBus: StampedKeyedEventBus,
     actorSystem: ActorSystem)
   {
@@ -64,7 +64,7 @@ object ActorEventCollector {
       new ActorEventCollector(
         isEventCollectable)(
         configuration,
-        timerService,
+        scheduler,
         keyedEventBus,
         actorSystem)
   }

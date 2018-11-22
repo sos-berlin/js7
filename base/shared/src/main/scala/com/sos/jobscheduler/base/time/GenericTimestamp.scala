@@ -8,6 +8,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * @author Joacim Zschimmer
   */
 trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
+  this: A ⇒
 
   def toEpochMilli: Long
 
@@ -22,9 +23,18 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   def compare(o: A) = toEpochMilli compare o.toEpochMilli
 
-  def +(o: Duration) = copy(epochMilli = toEpochMilli + o.toMillis)
+  def +(o: Duration): A =
+    copy(epochMilli = toEpochMilli + o.toMillis)
 
-  def -(o: GenericTimestamp[A]) = new FiniteDuration(toEpochMilli - o.toEpochMilli, MILLISECONDS)
+  def -(o: Duration): A =
+    copy(epochMilli = toEpochMilli - o.toMillis)
+
+  def -(o: A): FiniteDuration =
+    new FiniteDuration(toEpochMilli - o.toEpochMilli, MILLISECONDS)
+
+  final def min(o: A) = if (this < o) this else o
+
+  final def max(o: A) = if (this > o) this else o
 
   def copy(epochMilli: Long): A
 

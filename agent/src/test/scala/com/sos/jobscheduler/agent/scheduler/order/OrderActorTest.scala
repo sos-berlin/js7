@@ -22,7 +22,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -148,7 +147,6 @@ private object OrderActorTest {
   extends Actor {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
-    private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
       new StandardRichProcessStartSynchronizer()(context.system),

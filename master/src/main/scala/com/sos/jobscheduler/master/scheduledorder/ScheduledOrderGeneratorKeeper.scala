@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.scheduledorder
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.ScalaTime.RichInstant
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorKeeper._
-import java.time.Instant
 import scala.collection.immutable.{Iterable, Seq}
 
 /**
@@ -21,7 +21,7 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
     (for (orderGenerator ← pathToOrderGenerator.values;
           instant ← orderGenerator.schedule.instants(instantInterval)) yield
       FreshOrder(
-        toOrderId(orderGenerator.path, instant),
+        toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,
         Some(instant.toTimestamp),
         Payload(orderGenerator.variables)))
@@ -31,6 +31,6 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
 object ScheduledOrderGeneratorKeeper {
   private val Separator = "@"
 
-  private def toOrderId(path: ScheduledOrderGeneratorPath, instant: Instant) =
-    OrderId(s"${path.string}$Separator$instant")
+  private def toOrderId(path: ScheduledOrderGeneratorPath, timestamp: Timestamp) =
+    OrderId(s"${path.string}$Separator$timestamp")
 }

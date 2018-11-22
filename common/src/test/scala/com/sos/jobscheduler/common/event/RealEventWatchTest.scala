@@ -3,9 +3,8 @@ package com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventWatchTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.mutable
@@ -19,7 +18,7 @@ final class RealEventWatchTest extends FreeSpec {
   "tornOlder" in {
     val events = Stamped(1, 1 <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch[TestEvent] {
-      protected val timerService = new TimerService(Some(1.s))
+      protected def scheduler = Scheduler.global
       def tornEventId = 0
       protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
@@ -64,7 +63,7 @@ object RealEventWatchTest {
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
   private class EndlessEventWatch extends RealEventWatch[TestEvent] {
-    protected val timerService = new TimerService(Some(1.s))
+    protected def scheduler = Scheduler.global
     val tornEventId = 0
 
     protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty

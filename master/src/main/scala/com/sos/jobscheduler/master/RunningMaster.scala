@@ -26,7 +26,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -194,7 +193,6 @@ object RunningMaster {
                 injector.instance[JournalMeta[Event]],
                 injector.instance[JournalEventWatch[Event]],
                 injector.instance[EventIdClock])(
-                injector.instance[TimerService],
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },

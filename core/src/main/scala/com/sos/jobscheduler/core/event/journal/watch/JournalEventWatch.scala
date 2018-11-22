@@ -10,7 +10,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
 import com.sos.jobscheduler.common.event.RealEventWatch
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
@@ -21,10 +20,11 @@ import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.Promise
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -32,9 +32,7 @@ import scala.concurrent.{ExecutionContext, Promise}
   * @author Joacim Zschimmer
   */
 final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E], config: Config)
-  (implicit
-    protected val executionContext: ExecutionContext,
-    protected val timerService: TimerService)
+  (implicit protected val scheduler: Scheduler)
 extends AutoCloseable
 with RealEventWatch[E]
 with JournalingObserver

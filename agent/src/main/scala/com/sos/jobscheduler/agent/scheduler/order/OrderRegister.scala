@@ -5,19 +5,19 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichScheduler
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import scala.concurrent.ExecutionContext
+import monix.execution.{Cancelable, Scheduler}
 
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class OrderRegister(timerService: TimerService) extends ActorRegister[OrderId, OrderEntry](_.actor) {
+private[order] final class OrderRegister(scheduler: Scheduler) extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
   def recover(order: Order[Order.State], workflow: Workflow, actor: ActorRef): OrderEntry = {
     val orderEntry = new OrderEntry(order, workflow, actor)
@@ -38,7 +38,7 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
 
   override def remove(orderId: OrderId): Option[OrderEntry] =
     for (orderEntry ← super.remove(orderId)) yield {
-      orderEntry.timer foreach timerService.cancel
+      orderEntry.timer foreach (_.cancel())
       orderEntry
     }
 
@@ -55,7 +55,7 @@ private[order] object OrderRegister {
     val actor: ActorRef)
   {
     var detaching: Boolean = false
-    private[OrderRegister] var timer: Option[Timer[Unit]] = None
+    @volatile private[OrderRegister] var timer: Option[Cancelable] = None
 
     def order = _order
 
@@ -69,13 +69,12 @@ private[order] object OrderRegister {
 
     def instruction = workflow.instruction(order.position)
 
-    def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
-      val t = timerService.at(timestamp.toInstant, name = order.id.string)
-      t onElapsed {
+    def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit scheduler: Scheduler): Unit = {
+      val t = scheduler.scheduleFor(timestamp) {
         timer = None
         body
       }
-      timer foreach timerService.cancel
+      timer foreach (_.cancel())
       timer = Some(t)
     }
   }

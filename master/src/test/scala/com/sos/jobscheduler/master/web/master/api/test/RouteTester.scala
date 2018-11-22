@@ -5,11 +5,9 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
-import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Suite
 import scala.concurrent.duration._
 
@@ -26,11 +24,10 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
       ConfigFactory.parseString("jobscheduler.webserver.auth.loopback-is-public = true")
         withFallback DefaultConfig,
       SimpleUser.apply),
-    new TimerService(Some(1.s)),
     isLoopback = true)
 
   protected final lazy val sessionRegister =
-    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)(Scheduler.global)
+    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
 }

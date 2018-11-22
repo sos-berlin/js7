@@ -12,6 +12,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -25,11 +26,9 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
-import java.time.Instant.now
 import monix.execution.Scheduler
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -47,8 +46,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
   private lazy val actorSystem = ActorSystem("SessionRouteTest")
 
   protected lazy val gateKeeper = new GateKeeper(
-    GateKeeper.Configuration.fromConfig(TestConfig, SimpleUser.apply),
-    TimerService(Some(1.s)))
+    GateKeeper.Configuration.fromConfig(TestConfig, SimpleUser.apply))
 
   protected lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
@@ -71,7 +69,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     def actorSystem = SessionRouteTest.this.actorSystem
-    def executionContext = actorSystem.dispatcher
+    def scheduler = Scheduler.global
     val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findRandomFreeTcpPort())) :: Nil
     def newRoute(binding: WebServerBinding) = route
   }

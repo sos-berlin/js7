@@ -19,8 +19,10 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 private[web] trait ServiceProviderRoute {
-  protected implicit def scheduler: Scheduler
+  protected def scheduler: Scheduler
   protected implicit def injector: Injector
+
+  implicit private def implicitScheduler = scheduler
 
   private lazy val _route: Coeval[Route] = routeServices(injector).map(
     _.map {

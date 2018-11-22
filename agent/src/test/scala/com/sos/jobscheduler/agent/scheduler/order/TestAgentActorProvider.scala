@@ -16,8 +16,6 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{Closer, HasCloser}
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.{ActorEventCollector, StampedKeyedEventBus}
 import java.nio.file.Path
 import javax.inject.Singleton
@@ -52,7 +50,6 @@ object TestAgentActorProvider {
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
     implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
-    implicit val timerService = TimerService(idleTimeout = Some(1.s))
     implicit val keyedEventBus = injector.instance[StampedKeyedEventBus]
 
     val eventCollector = injector.createChildInjector(new AbstractModule {

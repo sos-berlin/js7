@@ -43,6 +43,15 @@ final class TimestampTest extends FreeSpec {
 
   "minus" in {
     assert(Timestamp.parse("2017-12-04T12:22:33.567Z") - timestamp == 1.hour + 111.milliseconds)
+    assert(Timestamp.parse("2017-12-04T12:22:33.567Z") - 1.minute == Timestamp.parse("2017-12-04T12:21:33.567Z") )
+  }
+
+  "min" in {
+    assert(Timestamp.parse("2018-11-21T12:00:00Z").min(Timestamp.parse("2019-11-21T12:00:00Z")) == Timestamp.parse("2018-11-21T12:00:00Z"))
+  }
+
+  "max" in {
+    assert(Timestamp.parse("2018-11-21T12:00:00Z").max(Timestamp.parse("2019-11-21T12:00:00Z")) == Timestamp.parse("2019-11-21T12:00:00Z"))
   }
 
   if (sys.props contains "test.speed")

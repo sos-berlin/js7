@@ -25,7 +25,6 @@ import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -62,8 +61,7 @@ final class AgentOrderKeeper(
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
   keyedEventBus: StampedKeyedEventBus,
-  config: Config,
-  implicit private val timerService: TimerService)(
+  config: Config)(
   implicit scheduler: Scheduler)
 extends MainJournalingActor[Event] with Stash {
 
@@ -78,7 +76,7 @@ extends MainJournalingActor[Event] with Stash {
     "Journal"))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
-  private val orderRegister = new OrderRegister(timerService)
+  private val orderRegister = new OrderRegister(scheduler)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
   private object termination {
@@ -362,7 +360,7 @@ extends MainJournalingActor[Event] with Stash {
     if (order.isAttached) {
       order.state match {
         case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
-          orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
+          orderEntry.at(scheduledAt) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }
 

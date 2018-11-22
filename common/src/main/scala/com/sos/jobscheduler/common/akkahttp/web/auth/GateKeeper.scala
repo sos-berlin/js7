@@ -14,17 +14,17 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
-import java.time.Duration
-import scala.concurrent._
+import monix.eval.Task
+import monix.execution.Scheduler
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: TimerService,
+final class GateKeeper[U <: User](configuraton: Configuration[U],
   isLoopback: Boolean = false, mutual: Boolean = false)
-  (implicit ec: ExecutionContext,
+  (implicit scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
 {
@@ -38,11 +38,8 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], timerService: 
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) ⇒
         logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
-          complete {
-            timerService.delayedFuture(invalidAuthenticationDelay, name = "Invalid HTTP authentication") {
-              Unauthorized
-            }
-          }
+          complete(
+            Task.pure(Unauthorized).delayExecution(invalidAuthenticationDelay).runAsync)
         }
 
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) ⇒
@@ -133,7 +130,7 @@ object GateKeeper {
     /** Basic authentication realm */
     realm: String,
     /** To hamper an attack */
-    invalidAuthenticationDelay: Duration,
+    invalidAuthenticationDelay: FiniteDuration,
     /* Anything is allowed for Anonymous */
     isPublic: Boolean = false,
     /** HTTP bound to a loopback interface is allowed for Anonymous */
@@ -146,7 +143,7 @@ object GateKeeper {
     def fromConfig[U <: User](config: Config, toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U) =
       Configuration[U](
         realm                       = config.getString  ("jobscheduler.webserver.auth.realm"),
-        invalidAuthenticationDelay  = config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay"),
+        invalidAuthenticationDelay  = config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay").toFiniteDuration,
         isPublic                    = config.getBoolean ("jobscheduler.webserver.auth.public"),
         loopbackIsPublic            = config.getBoolean ("jobscheduler.webserver.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("jobscheduler.webserver.auth.get-is-public"),

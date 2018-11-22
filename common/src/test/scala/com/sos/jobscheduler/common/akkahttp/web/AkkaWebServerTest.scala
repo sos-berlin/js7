@@ -22,8 +22,8 @@ import com.typesafe.config.ConfigFactory
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
+import monix.execution.Scheduler
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -39,8 +39,8 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
-    implicit def actorSystem = AkkaWebServerTest.this.actorSystem
-    implicit def executionContext = ExecutionContext.global
+    protected def actorSystem = AkkaWebServerTest.this.actorSystem
+    protected def scheduler = Scheduler.global
 
     private val keyStoreRef: KeyStoreRef = {
       createDirectory(directory / "private")

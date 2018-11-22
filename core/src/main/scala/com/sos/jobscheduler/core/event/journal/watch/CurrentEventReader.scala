@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
@@ -17,9 +16,7 @@ private[watch] final class CurrentEventReader[E <: Event](
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId],
   protected val config: Config)
-  (implicit
-    protected val executionContext: ExecutionContext,
-    protected val timerService: TimerService)
+  (implicit protected val executionContext: ExecutionContext)
 extends EventReader[E]
 {
   val tornEventId = flushedLengthAndEventId.value

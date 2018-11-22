@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.event.RealEventWatch._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
@@ -25,7 +24,7 @@ import scala.reflect.ClassTag
   */
 trait RealEventWatch[E <: Event] extends EventWatch[E]
 {
-  protected def timerService: TimerService
+  protected def scheduler: Scheduler
 
   def whenStarted: Task[this.type] = Task.pure(this)
 
@@ -34,7 +33,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   protected def reverseEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]]
 
-  private lazy val sync = new Sync(initialLastEventId = tornEventId, timerService)  // Initialize not before whenStarted!
+  private lazy val sync = new Sync(initialLastEventId = tornEventId)  // Initialize not before whenStarted!
 
   protected final def onEventsAdded(eventId: EventId): Unit =
     sync.onEventAdded(eventId)
@@ -136,32 +135,31 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, tornOlder: Duration)
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ ⇒
-      Task.deferFutureAction(implicit s ⇒
-        sync.whenEventIsAvailable(after, until, delay))
-          .flatMap (_ ⇒
-            collectEventsSince(after, collect, limit) match {
-              case eventSeq @ EventSeq.NonEmpty(iterator) ⇒
-                if (tornOlder.isFinite()) {
-                  // If the first event is not fresh, we have a read congestion.
-                  // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
-                  val head = iterator.next()
-                  if (head.timestamp + tornOlder < now)
-                    Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
-                  else
-                    Task.pure(EventSeq.NonEmpty(head +: iterator))
-                } else
-                  Task.pure(eventSeq)
-
-              case EventSeq.Empty(lastEventId) ⇒
-                val nw = now
-                if (nw < until)
-                  whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, tornOlder)
+      sync.whenEventIsAvailable(after, until, delay)
+        .flatMap (_ ⇒
+          collectEventsSince(after, collect, limit) match {
+            case eventSeq @ EventSeq.NonEmpty(iterator) ⇒
+              if (tornOlder.isFinite()) {
+                // If the first event is not fresh, we have a read congestion.
+                // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+                val head = iterator.next()
+                if (head.timestamp + tornOlder < now)
+                  Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
                 else
-                  Task.pure(EventSeq.Empty(lastEventId))
+                  Task.pure(EventSeq.NonEmpty(head +: iterator))
+              } else
+                Task.pure(eventSeq)
 
-              case o: TearableEventSeq.Torn ⇒
-                Task.pure(o)
-            }))
+            case EventSeq.Empty(lastEventId) ⇒
+              val nw = now
+              if (nw < until)
+                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, tornOlder)
+              else
+                Task.pure(EventSeq.Empty(lastEventId))
+
+            case o: TearableEventSeq.Torn ⇒
+              Task.pure(o)
+          }))
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : TearableEventSeq[CloseableIterator, A] =

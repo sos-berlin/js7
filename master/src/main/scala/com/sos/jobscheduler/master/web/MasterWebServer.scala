@@ -11,7 +11,6 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, Simple
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.OrderApi
@@ -22,7 +21,6 @@ import com.sos.jobscheduler.master.web.MasterWebServer._
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import monix.execution.Scheduler
-import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -30,14 +28,12 @@ import scala.concurrent.ExecutionContext
 final class MasterWebServer private(
   masterConfiguration: MasterConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  timerService: TimerService,
   injector: Injector,
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
-  commandExecutor: CommandExecutor)
-  (implicit
-    protected val actorSystem: ActorSystem,
-    protected val executionContext: ExecutionContext)
+  commandExecutor: CommandExecutor,
+  implicit protected val actorSystem: ActorSystem,
+  protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def uriPathPrefix = ""
@@ -50,13 +46,13 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val injector            = MasterWebServer.this.injector
       protected val actorSystem         = injector.instance[ActorSystem]
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem
+      protected implicit val scheduler  = MasterWebServer.this.scheduler
       protected val config              = injector.instance[Config]
-      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration, timerService,
+      protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
       protected val eventWatch          = injector.instance[EventWatch[Event]]
-      protected val scheduler           = injector.instance[Scheduler]
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi
       protected def orderCount = orderApi.orderCount
@@ -74,14 +70,12 @@ object MasterWebServer {
   final class Factory @Inject private(
     masterConfiguration: MasterConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-    timerService: TimerService,
-    injector: Injector)
-    (implicit
-      protected val actorSystem: ActorSystem,
-      protected val executionContext: ExecutionContext)
+    injector: Injector,
+    actorSystem: ActorSystem,
+    scheduler: Scheduler)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands, commandExecutor: CommandExecutor): MasterWebServer =
-      new MasterWebServer(masterConfiguration, gateKeeperConfiguration, timerService, injector,
-        fileBasedApi, orderApi, commandExecutor)
+      new MasterWebServer(masterConfiguration, gateKeeperConfiguration, injector,
+        fileBasedApi, orderApi, commandExecutor, actorSystem, scheduler)
   }
 }

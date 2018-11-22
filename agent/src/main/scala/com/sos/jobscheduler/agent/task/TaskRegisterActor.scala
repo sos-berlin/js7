@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.job.TaskId
 import com.typesafe.config.Config
 import java.time.Instant
@@ -25,7 +24,7 @@ import scala.util.control.NonFatal
   *
   * @author Joacim Zschimmer
   */
-final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf], timerService: TimerService) extends Actor {
+final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) extends Actor {
 
   import context.dispatcher
 
@@ -131,8 +130,8 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf], ti
 object TaskRegisterActor {
   private val logger = Logger(getClass)
 
-  def props(killScriptConf: Option[KillScriptConf], timerService: TimerService) =
-    Props { new TaskRegisterActor(killScriptConf, timerService) }
+  def props(killScriptConf: Option[KillScriptConf]) =
+    Props { new TaskRegisterActor(killScriptConf) }
       .withDispatcher("jobscheduler.agent.internal.TaskRegisterActor.mailbox")
 
   sealed trait Input

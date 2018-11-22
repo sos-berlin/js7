@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -34,12 +33,8 @@ extends AbstractModule {
   def actorRefFactory(o: ActorSystem): ActorRefFactory = o
 
   @Provides @Singleton
-  def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config, timerService: TimerService/*closed after ActorSystem*/): ActorSystem =
+  def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config): ActorSystem =
     newActorSystem(conf.name, config)(closer)
-
-  @Provides @Singleton
-  def timerService(closer: Closer): TimerService =
-    TimerService() closeWithCloser closer
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =
@@ -60,8 +55,7 @@ extends AbstractModule {
 
   @Provides @Singleton
   def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-    timerService: TimerService,
-    closer: Closer, injector: Injector, actorSystem: ActorSystem, executionContext: ExecutionContext): AgentWebServer =
-      new AgentWebServer(conf, gateKeeperConfiguration, timerService, closer, injector)(actorSystem, executionContext)
+    closer: Closer, injector: Injector, actorSystem: ActorSystem, scheduler: Scheduler): AgentWebServer =
+      new AgentWebServer(conf, gateKeeperConfiguration, closer, injector, actorSystem, scheduler)
         .closeWithCloser(closer)
 }

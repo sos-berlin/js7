@@ -22,8 +22,6 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
@@ -71,7 +69,6 @@ final class MasterOrderKeeper(
   eventWatch: JournalEventWatch[Event],
   eventIdClock: EventIdClock)
   (implicit
-    timerService: TimerService,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
 extends Stash
@@ -334,7 +331,7 @@ with MainJournalingActor[Event]
           })
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
-        orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
+        orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
         Task.now(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already

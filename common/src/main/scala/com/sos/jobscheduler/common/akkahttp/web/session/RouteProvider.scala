@@ -90,7 +90,7 @@ trait RouteProvider extends ExceptionHandling
     respondWithHeader(LoginWWWAuthenticate) {
       logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
       complete {
-        Task.pure(Unauthorized → problem) delayExecution gateKeeper.invalidAuthenticationDelay.toFiniteDuration
+        Task.pure(Unauthorized → problem) delayExecution gateKeeper.invalidAuthenticationDelay
       }
     }
 }

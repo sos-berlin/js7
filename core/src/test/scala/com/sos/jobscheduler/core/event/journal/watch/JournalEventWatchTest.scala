@@ -13,7 +13,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
@@ -33,8 +32,6 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
-
-  private implicit lazy val timerService = TimerService(idleTimeout = Some(1.s))
 
   "eventWatch.when, .keepEvents" in {
     withJournalMeta { journalMeta ⇒
