@@ -221,7 +221,7 @@ private[graphql] object MasterGraphqlSchema
       case _ ⇒ false
     }
 
-  private implicit val OrderAttachedToType = ObjectType(
+  private implicit val OrderAttachedStateType = ObjectType(
     "Order_AttachedState",
     fields[Unit, Order.AttachedState](
       Field("TYPE", StringType, resolve = _.value match {
@@ -338,7 +338,7 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowPosition", WorkflowPositionType, resolve = _.value.workflowPosition,
         description = "The Order's current WorkflowId and Position in this Workflow"),
       Field("workflowPath", WorkflowPathType, resolve = _.value.workflowId.path),
-      Field("attachedState", OptionType(OrderAttachedToType), resolve = _.value.attachedState,
+      Field("attachedState", OptionType(OrderAttachedStateType), resolve = _.value.attachedState,
         description = "Order is attaching to, attached to, or detaching from an Agent"),
       Field("state", OrderStateType, resolve = _.value.state),
       Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables)))

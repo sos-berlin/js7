@@ -52,7 +52,7 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Invalid(Problem(
-      s"Order '${id.string}' in state '${state.getClass.simpleScalaName}' ($attachedToString) has received an inapplicable event: " + event))
+      s"Order '${id.string}' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: " + event))
 
     def check[A](okay: Boolean, updated: A) =
       if (okay) Valid(updated) else inapplicable
@@ -165,7 +165,7 @@ final case class Order[+S <: Order.State](
   def isState[A <: State: ClassTag] =
     implicitClass[A] isAssignableFrom state.getClass
 
-  def attachedToString: String =
+  def attachedStateString: String =
     attachedState match {
       case None ⇒ "on Master"
       case Some(Attaching(agentId)) ⇒ s"attachable to $agentId"
