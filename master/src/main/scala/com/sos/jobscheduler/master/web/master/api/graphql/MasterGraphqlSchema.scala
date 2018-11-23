@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web.master.api.graphql
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
-import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
@@ -105,6 +105,11 @@ private[graphql] object MasterGraphqlSchema
     }
 
   private def valueCoercionViolation(message: String) = new ValueCoercionViolation(message) {}
+
+  private implicit val ProblemType = ObjectType[QueryContext, Problem](
+    "Problem",
+    fields[QueryContext, Problem](
+      Field("message", StringType, resolve = _.value.toString)))  // Not value.message, JSON differs from Scala !!!
 
   private implicit val WorkflowIdType = fileBasedIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
   private implicit val AgentIdType = fileBasedIdType[AgentPath]("AgentId", "Agent's path and VersionId")
@@ -229,22 +234,34 @@ private[graphql] object MasterGraphqlSchema
         case _: Order.Attached ⇒ "Attached"
         case _: Order.Detaching ⇒ "Detaching"
       }),
+      Field("agentPath", OptionType(AgentPathType), resolve = _.value match {
+        case o: Order.AttachedState.HasAgentPath ⇒ Some(o.agentPath)
+        case _ ⇒ None
+      }),
       Field("agentId", OptionType(AgentIdType), resolve = _.value match {
-        case o: Order.AgentOrDetachable ⇒ Some(o.agentId)
+        case o: Order.AttachedState.HasAgentId ⇒ Some(o.agentId)
+        case _ ⇒ None
+      })))
+
+  private implicit val DisruptedOutcomeReasonType = InterfaceType(
+    "DisruptedOutcomeReason",
+    fields[QueryContext, Outcome.Disrupted.Reason](
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.typeName(o.value.getClass)),
+      Field("problem", OptionType(ProblemType), resolve = _.value match {
+        case Outcome.Disrupted.Other(problem) ⇒ Some(problem)
         case _ ⇒ None
       })))
 
   private implicit val OutcomeType = InterfaceType(
     "Outcome",
     fields[QueryContext, Outcome](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.typeName(o.value.getClass))))
-
-  private implicit val DisruptedOutcomeReasonType = InterfaceType(
-    "DisruptedOutcomeReason",
-    fields[QueryContext, Outcome.Disrupted.Reason](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.typeName(o.value.getClass)),
-      Field("message", OptionType(StringType), resolve = _.value match {
-        case Outcome.Disrupted.Other(problem) ⇒ Some(problem.toString)
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.typeName(o.value.getClass)),
+      Field("returnCode", OptionType(ReturnCodeType), resolve = _.value match {
+        case o: Outcome.Undisrupted ⇒ Some(o.returnCode)
+        case _ ⇒ None
+      }),
+      Field("reason", OptionType(DisruptedOutcomeReasonType), resolve = _.value match {
+        case o: Outcome.Disrupted ⇒ Some(o.reason)
         case _ ⇒ None
       })))
 
@@ -257,77 +274,26 @@ private[graphql] object MasterGraphqlSchema
       "DisruptedOutcomeOtherReason",
       interfaces[QueryContext, Outcome.Disrupted.Other](DisruptedOutcomeReasonType),
       fields[QueryContext, Outcome.Disrupted.Other](
-        Field("message", StringType, resolve = _.value.message))))
+        Field("problem", ProblemType, resolve = _.value.problem))))
 
   private val OutcomeSubtypes = List(
     ObjectType(
       "DisruptedOutcome",
       interfaces[QueryContext, Outcome.Disrupted](OutcomeType),
-      fields[QueryContext, Outcome.Disrupted](
-        Field("reason", DisruptedOutcomeReasonType, resolve = _.value.reason))),
+      fields[QueryContext, Outcome.Disrupted]()),
     ObjectType(
       "FailedOutcome",
       interfaces[QueryContext, Outcome.Failed](OutcomeType),
-      fields[QueryContext, Outcome.Failed](
-        Field("returnCode", ReturnCodeType, resolve = _.value.returnCode))),
+      fields[QueryContext, Outcome.Failed]()),
     ObjectType(
       "SucceededOutcome",
       interfaces[QueryContext, Outcome.Succeeded](OutcomeType),
-      fields[QueryContext, Outcome.Succeeded](
-        Field("returnCode", ReturnCodeType, resolve = _.value.returnCode))))
+      fields[QueryContext, Outcome.Succeeded]()))
 
-  private implicit val OrderStateType = InterfaceType(
+  private implicit val OrderStateType = ObjectType(
     "OrderState",
     fields[QueryContext, Order.State](
       Field("TYPE", StringType, resolve = o ⇒ Order.StateJsonCodec.typeName(o.value.getClass))))
-
-  private val OrderStateSubtypes = List(
-    ObjectType(
-      "FreshOrderState",
-      interfaces[QueryContext, Order.Fresh](OrderStateType),
-      fields[QueryContext, Order.Fresh](
-        Field("scheduledAt", OptionType(LongType), resolve = _.value.scheduledAt map (_.toEpochMilli)))),
-    ObjectType(
-      "ReadyOrderState",
-      interfaces[QueryContext, Order.Ready](OrderStateType),
-      fields[QueryContext, Order.Ready]()),
-    ObjectType(
-      "ProcessingOrderState",
-      interfaces[QueryContext, Order.Processing](OrderStateType),
-      fields[QueryContext, Order.Processing]()),
-    ObjectType(
-      "ProcessedOrderState",
-      interfaces[QueryContext, Order.Processed](OrderStateType),
-      fields[QueryContext, Order.Processed](
-        Field("outcome", OutcomeType, resolve = _.value.outcome))),
-    ObjectType(
-      "StoppedOrderState",
-      interfaces[QueryContext, Order.Stopped](OrderStateType),
-      fields[QueryContext, Order.Stopped](
-        Field("outcome", OutcomeType, resolve = _.value.outcome))),
-    ObjectType(
-      "ForkOrderState",
-      interfaces[QueryContext, Order.Forked](OrderStateType),
-      fields[QueryContext, Order.Forked](
-        Field("childOrderIds", ListType(OrderIdType), resolve = _.value.childOrderIds))),
-    ObjectType(
-      "OfferingOrderState",
-      interfaces[QueryContext, Order.Offering](OrderStateType),
-      fields[QueryContext, Order.Offering]()),
-    ObjectType(
-      "AwaitingOrderState",
-      interfaces[QueryContext, Order.Awaiting](OrderStateType),
-      fields[QueryContext, Order.Awaiting](
-        Field("offeredOrderId", OrderIdType  , resolve = _.value.offeredOrderId))),
-    ObjectType(
-      "FinishedOrderState",
-      interfaces[QueryContext, Order.Finished](OrderStateType),
-      fields[QueryContext, Order.Finished]()),
-    ObjectType(
-      "BrokenOrderState",
-      interfaces[QueryContext, Order.Broken](OrderStateType),
-      fields[QueryContext, Order.Broken](
-        Field("message", StringType, resolve = _.value.problem.toString))))
 
   private implicit val OrderType = ObjectType(
     "Order",
@@ -341,7 +307,28 @@ private[graphql] object MasterGraphqlSchema
       Field("attachedState", OptionType(OrderAttachedStateType), resolve = _.value.attachedState,
         description = "Order is attaching to, attached to, or detaching from an Agent"),
       Field("state", OrderStateType, resolve = _.value.state),
-      Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables)))
+      Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
+      Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
+        case o: Order.Fresh ⇒ o.scheduledAt map (_.toEpochMilli)
+        case _ ⇒ None
+      }),
+      Field("outcome", OptionType(OutcomeType), resolve = _.value.state match {
+        case o: Order.Processed ⇒ Some(o.outcome)
+        case o: Order.Stopped ⇒ Some(o.outcome)
+        case _ ⇒ None
+      }),
+      Field("childOrderIds", OptionType(ListType(OrderIdType)), resolve = _.value.state match {
+        case o: Order.Forked ⇒ Some(o.childOrderIds)
+        case _ ⇒ None
+      }),
+      Field("offeredOrderId", OptionType(OrderIdType), resolve = _.value.state match {
+        case o: Order.Awaiting ⇒ Some(o.offeredOrderId)
+        case _ ⇒ None
+      }),
+      Field("problem", OptionType(ProblemType), resolve = _.value.state match {
+        case o: Order.Broken ⇒ Some(o.problem)
+        case _ ⇒ None
+      })))
 
   private val OrderIdArg        = Argument("id", OrderIdType)
   private val OrderIdPatternArg = Argument("idPattern", OptionInputType(PatternType),
@@ -371,5 +358,5 @@ private[graphql] object MasterGraphqlSchema
 
   val schema: Schema[QueryContext, Unit] = Schema(
     OrderQuery,
-    additionalTypes = OrderStateSubtypes ::: OutcomeSubtypes ::: ReasonTypes ::: InstructionTypes)
+    additionalTypes = OutcomeSubtypes ::: ReasonTypes ::: InstructionTypes ::: ProblemType :: Nil)
 }

@@ -69,6 +69,11 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
         |  attachedState: Order_AttachedState
         |  state: OrderState!
         |  variables: StringMap
+        |  scheduledFor: Long
+        |  outcome: Outcome
+        |  childOrderIds: [OrderId!]
+        |  offeredOrderId: OrderId
+        |  problem: Problem
         |}
         |""".stripMargin)
     }

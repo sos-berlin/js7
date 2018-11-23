@@ -215,20 +215,27 @@ object Order {
 
   sealed trait AttachedState
   object AttachedState {
+    sealed trait HasAgentId extends AttachedState {
+      val agentId: AgentId
+    }
+    sealed trait HasAgentPath extends AttachedState {
+      def agentPath: AgentPath
+    }
     implicit val jsonCodec = TypedJsonCodec[AttachedState](
       Subtype(deriveCodec[Attaching]),
       Subtype(deriveCodec[Attached]),
       Subtype(deriveCodec[Detaching]))
   }
-  sealed trait AgentOrDetachable extends AttachedState {
-    val agentId: AgentId
-  }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentPath: AgentPath) extends AttachedState
+  final case class Attaching(agentPath: AgentPath) extends AttachedState.HasAgentPath
   /** Order is attached to an Agent. */
-  final case class Attached(agentId: AgentId) extends AgentOrDetachable
+  final case class Attached(agentId: AgentId) extends AttachedState.HasAgentId with AttachedState.HasAgentPath {
+    def agentPath = agentId.path
+  }
   /** Order is going to be detached from Agent. */
-  final case class Detaching(agentId: AgentId) extends AgentOrDetachable
+  final case class Detaching(agentId: AgentId) extends AttachedState.HasAgentId with AttachedState.HasAgentPath {
+    def agentPath = agentId.path
+  }
 
   sealed trait State
 

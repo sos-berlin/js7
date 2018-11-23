@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.job.ReturnCode
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -23,13 +23,6 @@ object Outcome
   /** The job has terminated. */
   sealed trait Undisrupted extends Outcome {
     def returnCode: ReturnCode
-  }
-
-  sealed trait NotSucceeded extends Outcome
-  object NotSucceeded {
-    implicit val jsonCodec = TypedJsonCodec[NotSucceeded](
-      Subtype[Failed],
-      Subtype[Disrupted])
   }
 
   object Undisrupted {
@@ -53,7 +46,6 @@ object Outcome
     }
   }
 
-  @JsonCodec
   final case class Succeeded(returnCode: ReturnCode) extends Undisrupted {
     def isSucceeded = returnCode.isSuccess
   }
@@ -61,7 +53,6 @@ object Outcome
     def newInstance(returnCode: ReturnCode): Succeeded = new Succeeded(returnCode)
   }
 
-  @JsonCodec
   final case class Failed(returnCode: ReturnCode) extends Undisrupted with NotSucceeded {
     def isSucceeded = false
   }
@@ -70,8 +61,6 @@ object Outcome
   }
 
   /** No response from job - some other error has occurred. */
-  @JsonCodec
-  // TODO Differentiate name from Order State "Disrupted". Disturbed?
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
     def isSucceeded = false
   }
@@ -80,26 +69,31 @@ object Outcome
       Disrupted(Other(problem))
 
     sealed trait Reason {
-      def message: String
-    }
-    final case object JobSchedulerRestarted extends Reason {
-      def message = "JobScheduler stopped while order was in-process"
+      def problem: Problem
     }
 
-    @JsonCodec
-    final case class Other(problem: Problem) extends Reason {
-      def message = problem.toString
+    final case object JobSchedulerRestarted extends Reason {
+      val problem = Problem.eager("JobScheduler stopped while order was in-process")
     }
+
+    final case class Other(problem: Problem) extends Reason
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](
         Subtype(JobSchedulerRestarted),
-        Subtype[Other])
+        Subtype(deriveCodec[Other]))
     }
   }
 
+  sealed trait NotSucceeded extends Outcome
+  object NotSucceeded {
+    implicit val jsonCodec = TypedJsonCodec[NotSucceeded](
+      Subtype(deriveCodec[Failed]),
+      Subtype(deriveCodec[Disrupted]))
+  }
+
   implicit val jsonCodec = TypedJsonCodec[Outcome](
-    Subtype[Succeeded],
-    Subtype[Failed],
-    Subtype[Disrupted])
+    Subtype(deriveCodec[Succeeded]),
+    Subtype(deriveCodec[Failed]),
+    Subtype(deriveCodec[Disrupted]))
 }

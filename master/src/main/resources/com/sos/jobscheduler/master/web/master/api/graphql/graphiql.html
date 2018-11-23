@@ -1,33 +1,14 @@
 <!--
- * LICENSE AGREEMENT For GraphiQL software
+ *  Copyright (c) Facebook, Inc.
+ *  All rights reserved.
  *
- * Facebook, Inc. (“Facebook”) owns all right, title and interest, including all
- * intellectual property and other proprietary rights, in and to the GraphiQL
- * software. Subject to your compliance with these terms, you are hereby granted a
- * non-exclusive, worldwide, royalty-free copyright license to (1) use and copy the
- * GraphiQL software; and (2) reproduce and distribute the GraphiQL software as
- * part of your own software (“Your Software”). Facebook reserves all rights not
- * expressly granted to you in this license agreement.
- *
- * THE SOFTWARE AND DOCUMENTATION, IF ANY, ARE PROVIDED "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES (INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE) ARE DISCLAIMED. IN NO
- * EVENT SHALL FACEBOOK OR ITS AFFILIATES, OFFICES, DIRECTORS OR EMPLOYEES BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
- * THE USE OF THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * You will include in Your Software (e.g., in the file(s), documentation or other
- * materials accompanying your software): (1) the disclaimer set forth above; (2)
- * this sentence; and (3) the following copyright notice:
- *
- * Copyright (c) 2015, Facebook, Inc. All rights reserved.
+ *  This source code is licensed under the license (MIT license) found in the
+ *  graphiql.html.license.txt file in the directory of this source.
+
+ *  Modified source.
 -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>JobScheduler Master · GraphQL</title>
     <style>
@@ -37,23 +18,40 @@
         width: 100%;
         overflow: hidden;
       }
-
       #graphiql {
         height: 100vh;
       }
     </style>
 
-    <link rel="icon" type="image/vnd.microsoft.icon" sizes="64x64" href="/master/gui/images/jobscheduler.ico"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphiql@0.11.11/graphiql.css" />
-    <script src="https://cdn.jsdelivr.net/es6-promise/4.0.5/es6-promise.auto.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/graphiql@0.11.11/graphiql.min.js"></script>
+    <!--
+      This GraphiQL example depends on Promise and fetch, which are available in
+      modern browsers, but can be "polyfilled" for older browsers.
+      GraphiQL itself depends on React DOM.
+      If you do not want to rely on a CDN, you can host these files locally or
+      include them directly in your favored resource bunder.
+    -->
+    <script src="https://cdn.jsdelivr.net/es6-promise/4.0.5/es6-promise.auto.min.js"
+            crossorigin="anonymous" integrity="sha384-P7H7xoPNRDx3OzhfEMRrEmkmLcmqbLAl5PY5d6HHzvkfdowewKlFPHk5OE1K2o2n"></script>
+    <script src="https://cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"
+            crossorigin="anonymous" integrity="sha384-i/sP67QIigwZ6+TgP26iOlG1YN3G4il/fKCWgFSy/BatM7i2B/moDMkjl5YSQ6Ob"></script>
+    <script src="https://cdn.jsdelivr.net/react/15.4.2/react.min.js"
+            crossorigin="anonymous" integrity="sha384-LQJt2WYLVjqR6CtPmZ7RlCwSnRxagESW5PKN9LCewWq4KnCIZIQewStnUJ/KEc+w"></script>
+    <script src="https://cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"
+            crossorigin="anonymous" integrity="sha384-s7tOAUHnUBShLPptKaX9Zt4W4KPFr/mQ2TXWbxuY4TRv+7cl9zFzVPcR31MfzphO"></script>
+
+    <!--
+      These two files can be found in the npm module, however you may wish to
+      copy them directly into your environment, or perhaps include them in your
+      favored resource bundler.
+     -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphiql@0.12.0/graphiql.min.css"
+          crossorigin="anonymous" integrity="sha384-9VJT8caltEnbKpfcbhJ6pO/NBBh6YUsxCkEb/wBxqWKATKE0C2hTEMZEJAa7JPyY"/>
+    <script src="https://cdn.jsdelivr.net/npm/graphiql@0.12.0/graphiql.min.js" charset="utf-8"
+            crossorigin="anonymous" integrity="sha384-ir1myorzXR34cELCnL446eq0feBH9Pv4xpEg7WXjnu7mGsRrAweWwfFAHLZhr28U"></script>
+
   </head>
   <body>
     <div id="graphiql">Loading...</div>
-
     <script>
 
       /**
@@ -114,9 +112,13 @@
         history.replaceState(null, null, newSearch);
       }
 
-      // Defines a GraphQL fetcher using the fetch API.
+      // Defines a GraphQL fetcher using the fetch API. You're not required to
+      // use fetch, and could instead implement graphQLFetcher however you like,
+      // as long as it returns a Promise or Observable.
       function graphQLFetcher(graphQLParams) {
-        return fetch('', {
+        // This example expects a GraphQL server at the path /graphql.
+        // Change this to point wherever you host your GraphQL server.
+        return fetch('/master/api/graphql', {
           method: 'post',
           headers: {
             'Accept': 'application/json',
@@ -136,15 +138,18 @@
       }
 
       // Render <GraphiQL /> into the body.
+      // See the README in the top level of this module to learn more about
+      // how you can customize GraphiQL by providing different values or
+      // additional child elements.
       ReactDOM.render(
         React.createElement(GraphiQL, {
-            fetcher: graphQLFetcher,
-            query: parameters.query,
-            variables: parameters.variables,
-            operationName: parameters.operationName,
-            onEditQuery: onEditQuery,
-            onEditVariables: onEditVariables,
-            onEditOperationName: onEditOperationName
+          fetcher: graphQLFetcher,
+          query: parameters.query,
+          variables: parameters.variables,
+          operationName: parameters.operationName,
+          onEditQuery: onEditQuery,
+          onEditVariables: onEditVariables,
+          onEditOperationName: onEditOperationName
         }),
         document.getElementById('graphiql')
       );

@@ -195,7 +195,7 @@ object Problem
 
   implicit val jsonEncoder: ObjectEncoder[Problem] =
     problem ⇒ JsonObject(
-      "message" → Json.fromString(problem.toString))
+      "message" → Json.fromString(problem.toString))  // Not value.message, JSON differs from Scala !!!
 
   val typedJsonEncoder: ObjectEncoder[Problem] = {
     val typeField = "TYPE" → Json.fromString("Problem")
