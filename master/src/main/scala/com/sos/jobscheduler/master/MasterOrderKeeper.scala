@@ -237,6 +237,8 @@ with MainJournalingActor[Event]
       sender() ! (orderRegister.get(orderId) map { _.order })
 
     case Command.GetOrders ⇒
+      // TODO eventIdGenerator kann bereits weitergezählt haben, ohne dass der Auftrag mit dem letzten (asynchronem empfangenen) Event aktualisiert worden wäre.
+      //      Lösung: JournalActor verwaltet Zustand (snapshot). MasterOrderKeeper hält dann eine (verzögerte) Kopie?
       sender() ! eventIdGenerator.stampWithLast((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
 
     case Command.GetOrderCount ⇒
