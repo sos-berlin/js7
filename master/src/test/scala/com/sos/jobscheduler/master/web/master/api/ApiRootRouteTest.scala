@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.data.MasterOverview
@@ -24,7 +24,7 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
   protected def orderCount = Task.pure(7)
 
   private def route: Route =
-    pathSegments("api") {
+    pathSegment("api") {
       apiRootRoute
     }
 

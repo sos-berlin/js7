@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.akkahttp
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{ContentNegotiator, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
 import scala.annotation.tailrec
@@ -167,6 +168,22 @@ object AkkaHttpServerUtils {
       }
   }
 
+  /** Like `pathPrefix`, but `prefix` denotes a path segment. */
+  def pathSegment(segment: String): Directive0 = {
+    pathPrefix(matchSegment(segment))
+  }
+
+  private def matchSegment(segment: String): PathMatcher0 =
+    new SegmentPathMatcher(segment)
+
+  private class SegmentPathMatcher[Unit](segment: String) extends PathMatcher0 {
+    def apply(path: Uri.Path) =
+      if (path.head == segment)
+        Matched(path.tail, HNil)
+      else
+        Unmatched
+    }
+
   /**
     * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
     */
@@ -185,7 +202,7 @@ object AkkaHttpServerUtils {
   /**
     * A `PathMatcher` for Directive `pathPrefix` matching complete segments.
     */
-  def matchSegments(prefix: Uri.Path): PathMatcher0 = {
+  private def matchSegments(prefix: Uri.Path): PathMatcher0 = {
     import akka.http.scaladsl.server.PathMatcher._
     if (prefix.isEmpty)
       provide(HNil)

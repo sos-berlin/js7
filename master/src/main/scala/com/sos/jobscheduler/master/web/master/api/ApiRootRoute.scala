@@ -12,7 +12,6 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
-import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer

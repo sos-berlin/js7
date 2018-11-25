@@ -16,16 +16,11 @@ trait EventRoute extends MasterRouteProvider with GenericEventRoute
 {
   protected def eventWatch: EventWatch[Event]
 
-  protected final lazy val eventRoute = new RouteProvider().route
-
-  private class RouteProvider extends GenericEventRouteProvider
-  {
+  protected final lazy val eventRoute = new GenericEventRouteProvider {
     def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec
-
     def eventWatchFor(user: SimpleUser) = Task.pure(eventWatch)
-
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = EventRoute.isRelevantEvent(keyedEvent)
-  }
+  }.route
 }
 
 object EventRoute

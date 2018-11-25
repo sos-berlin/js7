@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.master.web.master.api
 
+import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{RawHeader, `Cache-Control`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.ApiRoute._
@@ -35,32 +35,17 @@ with SessionRoute
       pathEnd {
         apiRootRoute
       } ~
-      pathSegments("session") {
-        sessionRoute
-      } ~
-      pathSegments("event") {
-        eventRoute
-      } ~
-      pathSegments("command") {
-        commandRoute
-      } ~
-      pathSegments("fatEvent") {
-        fatEventRoute
-      } ~
-      pathSegments("order") {
-        orderRoute
-      } ~
-      pathSegments("workflow") {
-        workflowRoute
-      } ~
-      pathSegments("agent") {
-        agentRoute
-      } ~
-      pathSegments("agent-proxy") {
-        agentProxyRoute
-      } ~
-      pathSegments("graphql") {
-        graphqlRoute
+      pathPrefix(Segment) {
+        case "session"     ⇒ sessionRoute
+        case "event"       ⇒ eventRoute
+        case "command"     ⇒ commandRoute
+        case "fatEvent"    ⇒ fatEventRoute
+        case "order"       ⇒ orderRoute
+        case "workflow"    ⇒ workflowRoute
+        case "agent"       ⇒ agentRoute
+        case "agent-proxy" ⇒ agentProxyRoute
+        case "graphql"     ⇒ graphqlRoute
+        case _ ⇒ complete(NotFound)
       }
     }
 }

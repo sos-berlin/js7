@@ -40,6 +40,32 @@ final class AkkaHttpServerUtilsTest extends FreeSpec with ScalatestRouteTest {
     }
   }
 
+  "pathSegment" in {
+    def route =
+      pathSegment("prefix") {
+        complete("A")
+      } ~
+      pathSegment("prefix/b") {
+        complete("B")
+      }
+
+    Get("/prefix/") ~> route ~> check {
+      assert(responseAs[String] == "A")
+    }
+
+    Get("/prefix/x") ~> route ~> check {
+      assert(responseAs[String] == "A")
+    }
+
+    Get("/prefix/b") ~> route ~> check {
+      assert(responseAs[String] == "A")
+    }
+
+    Get("/prefix%2Fb/") ~> route ~> check {
+      assert(responseAs[String] == "B")
+    }
+  }
+
   "pathSegments" in {
     def aRoute =
       pathSegments("prefix") {

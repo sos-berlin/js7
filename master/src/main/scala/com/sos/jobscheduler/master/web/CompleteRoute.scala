@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF.forbidCSRF
@@ -34,7 +34,7 @@ trait CompleteRoute extends ServiceProviderRoute with MasterRoute with WebLogDir
     }
 
   private val route =
-    pathSegments("master") {
+    pathSegment("master") {
       masterRoute
     } ~
     pathEndOrSingleSlash {

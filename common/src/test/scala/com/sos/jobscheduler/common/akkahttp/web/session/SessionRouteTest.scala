@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
@@ -55,7 +55,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 
   private val route = Route.seal(
     decodeRequest {
-      pathSegments("session") {
+      pathSegment("session") {
         sessionRoute
       } ~
       path("test") {

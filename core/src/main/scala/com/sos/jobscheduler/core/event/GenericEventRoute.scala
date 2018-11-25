@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeFuture
+import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
@@ -50,7 +50,7 @@ trait GenericEventRoute extends RouteProvider
 
     protected def eventWatchFor(user: Session#User): Task[EventWatch[Event]]
 
-    protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]):Boolean = true
+    protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
 
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
@@ -59,13 +59,13 @@ trait GenericEventRoute extends RouteProvider
         complete((StatusCodes.ServiceUnavailable, Problem.eager(t.getMessage)))
     }
 
-    final val route: Route =
+    final lazy val route: Route =
       get {
         pathEnd {
-          authorizedUser(ValidUserPermission) { user ⇒
-            handleExceptions(exceptionHandler) {
-              routeFuture(
-                eventWatchFor(user)/*⚡️AkkaAskTimeout*/.runAsync.map { eventWatch ⇒
+          handleExceptions(exceptionHandler) {
+            authorizedUser(ValidUserPermission) { user ⇒
+              routeTask(
+                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map { eventWatch ⇒
                   htmlPreferred {
                     oneShot(eventWatch)
                   } ~
@@ -77,7 +77,7 @@ trait GenericEventRoute extends RouteProvider
                   } ~
                   oneShot(eventWatch)
                 })
-              }
+            }
           }
         }
       }
