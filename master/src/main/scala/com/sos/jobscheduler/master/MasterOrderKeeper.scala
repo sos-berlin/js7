@@ -34,10 +34,10 @@ import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.agent.{Agent, AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
@@ -367,7 +367,7 @@ with MainJournalingActor[Event]
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(IO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield IO {
-      persistTransaction(events map (e ⇒ KeyedEvent(e)))(_ foreach logNotableEvent)
+      persistTransaction(events map (e ⇒ KeyedEvent(e))){ _ ⇒ }
       defer {
         changeRepo(changedRepo)
         foldedSideEffects.unsafeRunSync()
@@ -435,10 +435,8 @@ with MainJournalingActor[Event]
     }
   }
 
-  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit = {
-    logNotableEvent(stamped)
+  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
     handleOrderEvent(stamped.value.key, stamped.value.event)
-  }
 
   private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {
     event match {
@@ -608,15 +606,4 @@ private[master] object MasterOrderKeeper {
         case event: OrderCoreEvent ⇒ order = order.update(event).orThrow  // 🔥 ProblemException
       }
   }
-
-  private def logNotableEvent(stamped: Stamped[AnyKeyedEvent]): Unit =
-    if (false)
-      stamped.value.event match {
-      case _ @ (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
-                _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting | _: OrderStdWritten |
-                _: RepoEvent ) ⇒
-        def string = if (stamped.value.key == NoKey) stamped.value.event.toString else stamped.value.toString
-        logger.debug(Logger.Event, s"${stamped.timestamp} $string")
-      case _ ⇒
-    }
 }
