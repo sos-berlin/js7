@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.server.common
 
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model.MediaTypes.`text/html`
-import akka.http.scaladsl.model.{ContentType, HttpEntity}
+import akka.http.scaladsl.model.{ContentType, HttpCharset, HttpEntity}
 import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.language.implicitConversions
@@ -12,8 +12,12 @@ import scalatags.Text.all._
 /**
   * @author Joacim Zschimmer
   */
-trait HtmlPage {
+trait HtmlPage
+{
   def wholePage: TypedTag[String]
+
+  def toHttpEntity(charset: HttpCharset): HttpEntity.Strict =
+    HttpEntity(ContentType(`text/html`, charset), ByteString.fromString(toString,  charset.nioCharset))
 
   override def toString: String = {
     val sb = new StringBuilder(10000)
@@ -29,7 +33,7 @@ object HtmlPage {
 
   implicit val marshaller: ToEntityMarshaller[HtmlPage] =
     Marshaller.withOpenCharset(`text/html`) { (htmlPage, charset) ⇒
-      try HttpEntity(ContentType(`text/html`, charset), ByteString.fromString(htmlPage.toString, charset.nioCharset))
+      try htmlPage.toHttpEntity(charset)
       catch { case e: OutOfMemoryError ⇒
         logger.error(e.toString)
         throw new RuntimeException(e.toString, e)  // To avoid termination of Akka

@@ -246,7 +246,8 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
-      BuildInfoKey.action("buildId")(newBuildId)),
+      BuildInfoKey.action("buildId")(newBuildId),
+      BuildInfoKey.action("buildTime")(System.currentTimeMillis)),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)

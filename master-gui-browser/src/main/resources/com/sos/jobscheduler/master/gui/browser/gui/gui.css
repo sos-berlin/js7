@@ -6,9 +6,9 @@
   font-weight: 400;
   src: local('Material Icons'),
     local('MaterialIcons-Regular'),
-    url(webjars/material-design-icons/3.0.1/MaterialIcons-Regular.woff2) format('woff2'),
-    url(webjars/material-design-icons/3.0.1/MaterialIcons-Regular.woff) format('woff'),
-    url(webjars/material-design-icons/3.0.1/MaterialIcons-Regular.ttf) format('truetype');
+    url(../webjars/material-design-icons/3.0.1/MaterialIcons-Regular.woff2) format('woff2'),
+    url(../webjars/material-design-icons/3.0.1/MaterialIcons-Regular.woff) format('woff'),
+    url(../webjars/material-design-icons/3.0.1/MaterialIcons-Regular.ttf) format('truetype');
 }
 .material-icons {
   font-family: 'Material Icons';

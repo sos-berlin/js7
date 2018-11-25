@@ -1,16 +1,24 @@
 package com.sos.jobscheduler.common.akkahttp
 
+import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, immutableDirective}
+import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
+import akka.http.scaladsl.server.Directives.{mapResponse, respondWithHeader}
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import akka.http.scaladsl.server.{PathMatcher1, Route}
+import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString}
+import com.sos.jobscheduler.common.BuildInfo
+import monix.eval.Task
+import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
-object StandardDirectives {
+object StandardDirectives
+{
   /**
     * A PathMatcher that matches a single segment or the whole remaining path,
     * treating encoded slashes (%2F) like unencoded ones.
@@ -36,6 +44,27 @@ object StandardDirectives {
   def lazyRoute(lazyRoute: ⇒ Route): Route =
     ctx ⇒ Future.successful(lazyRoute(ctx)).flatten
 
+  def routeTask(routeTask: Task[Route])(implicit s: Scheduler): Route =
+    routeFuture(routeTask.runAsync)
+
   def routeFuture(routeFuture: Future[Route])(implicit ec: ExecutionContext): Route =
     ctx ⇒ routeFuture flatMap (_(ctx))
+
+  private val removeEtag: Directive0 =
+    mapResponse(r ⇒ r.withHeaders(r.headers filter {
+      case _: ETag ⇒ false
+      case _ ⇒ true
+    }))
+
+  private val resetLastModifiedToBuildTime: Directive0 = {
+    val immutableLastModified = Some(`Last-Modified`(DateTime(BuildInfo.buildTime)))
+    mapResponse(r ⇒ r.withHeaders(r.headers flatMap {
+      case _: `Last-Modified` ⇒ immutableLastModified
+      case o ⇒ Some(o)
+    }))
+  }
+
+  val immutableResource: Directive0 =
+    respondWithHeader(`Cache-Control`(`max-age`(365*24*3600), `immutableDirective`)) &
+      removeEtag  // Assure client about immutability
 }
