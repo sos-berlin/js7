@@ -26,7 +26,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
       bindInstance[CommandHandler](new CommandHandler {
         def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
           val response = command match {
-            case ExpectedTerminate ⇒ AgentCommand.Accepted
+            case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
             case _ ⇒ fail()
           }
           Future.successful(response.asInstanceOf[command.Response])

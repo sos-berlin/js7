@@ -163,12 +163,12 @@ extends MainJournalingActor[AgentEvent] {
 
       case AgentCommand.RegisterAsMaster if !terminating ⇒
         if (masterToOrderKeeper contains masterId) {
-          response.success(AgentCommand.Accepted)
+          response.success(AgentCommand.Response.Accepted)
         } else {
           response completeWith
             persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) ⇒
               update(event)
-              AgentCommand.Accepted
+              AgentCommand.Response.Accepted
             }
         }
 
@@ -190,11 +190,11 @@ extends MainJournalingActor[AgentEvent] {
       journalActor ! JournalActor.Input.Terminate
     }
 
-  private def terminateOrderKeepers(terminate: AgentCommand.Terminate): Future[AgentCommand.Accepted] =
+  private def terminateOrderKeepers(terminate: AgentCommand.Terminate): Future[AgentCommand.Response.Accepted] =
     Future.sequence(
       for (a ← masterToOrderKeeper.values) yield
-        (a ? terminate).mapTo[AgentCommand.Accepted])
-    .map { _ ⇒ AgentCommand.Accepted }
+        (a ? terminate).mapTo[AgentCommand.Response.Accepted])
+    .map { _ ⇒ AgentCommand.Response.Accepted }
 
   private def update(event: AgentEvent): Unit =
     event match {

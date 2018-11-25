@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.singletonCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -33,8 +33,13 @@ object AgentCommand {
   intelliJuseImport(FiniteDurationJsonDecoder)
 
   trait Response
+  object Response {
+    sealed trait Accepted extends Response
+    case object Accepted extends Accepted {
+      implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
+    }
+  }
 
-  @JsonCodec
   final case class Batch(commands: Seq[AgentCommand])
   extends AgentCommand {
     type Response = Batch.Response
@@ -44,21 +49,18 @@ object AgentCommand {
   object Batch {
     sealed trait SingleResponse
 
-    @JsonCodec
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
 
     /** Failed commands let the web service succeed and are returns as Failed. */
-    @JsonCodec
     final case class Failed(message: String) extends SingleResponse
 
     object SingleResponse {
       implicit val jsonFormat = TypedJsonCodec[SingleResponse](
-        Subtype[Succeeded],
-        Subtype[Failed])
+        Subtype(deriveCodec[Succeeded]),
+        Subtype(deriveCodec[Failed]))
     }
 
-    @JsonCodec
     final case class Response(responses: Seq[SingleResponse])
     extends AgentCommand.Response {
       override def toString = {
@@ -66,11 +68,6 @@ object AgentCommand {
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
     }
-  }
-
-  sealed trait Accepted extends Response
-  case object Accepted extends Accepted {
-    implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
   }
 
   case object EmergencyStop extends TerminateOrAbort {
@@ -81,27 +78,25 @@ object AgentCommand {
   /** Some outer component has accepted the events until (including) the given `eventId`.
     * JobScheduler may delete these events to reduce the journal, keeping all events after `after`.
     */
-  @JsonCodec
   final case class KeepEvents(after: EventId) extends OrderCommand {
-    type Response = Accepted
+    type Response = Response.Accepted
   }
 
   case object NoOperation extends AgentCommand {
-    type Response = Accepted
+    type Response = Response.Accepted
   }
 
   case object RegisterAsMaster extends AgentCommand {
-    type Response = Accepted
+    type Response = Response.Accepted
   }
 
   sealed trait TerminateOrAbort extends AgentCommand
 
-  @JsonCodec
   final case class Terminate(
     sigtermProcesses: Boolean = false,
     sigkillProcessesAfter: Option[FiniteDuration] = None)
   extends TerminateOrAbort {
-    type Response = Accepted
+    type Response = Response.Accepted
   }
 
   object Terminate {
@@ -112,13 +107,12 @@ object AgentCommand {
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
-  @JsonCodec
   final case class AttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
 
-    type Response = Accepted
+    type Response = Response.Accepted
 
     override def toShortString = s"AttachOrder($order)"
   }
@@ -129,13 +123,11 @@ object AgentCommand {
         workflow)
   }
 
-  @JsonCodec
   final case class DetachOrder(orderId: OrderId)
   extends AttachOrDetachOrder {
-    type Response = Accepted
+    type Response = Response.Accepted
   }
 
-  @JsonCodec
   final case class GetOrder(orderId: OrderId)
   extends OrderCommand {
     type Response = GetOrder.Response
@@ -155,19 +147,19 @@ object AgentCommand {
 
   implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
     TypedJsonCodec[AgentCommand](
-      Subtype[Batch],
+      Subtype(deriveCodec[Batch]),
       Subtype(EmergencyStop),
-      Subtype[KeepEvents],
+      Subtype(deriveCodec[KeepEvents]),
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
-      Subtype[Terminate],
-      Subtype[AttachOrder],
-      Subtype[DetachOrder],
-      Subtype[GetOrder],
+      Subtype(deriveCodec[Terminate]),
+      Subtype(deriveCodec[AttachOrder]),
+      Subtype(deriveCodec[DetachOrder]),
+      Subtype(deriveCodec[GetOrder]),
       Subtype(GetOrderIds))
 
   implicit val ResponseJsonFormat: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
-      Subtype.named[Batch.Response]("BatchResponse"),
-      Subtype(Accepted))
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
+      Subtype(Response.Accepted))
 }

@@ -42,7 +42,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     def commandExecutor(): CommandHandler = new CommandHandler {
       def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
         val response = command match {
-          case ExpectedTerminate ⇒ AgentCommand.Accepted
+          case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
           case _ ⇒ fail()
         }
         Future.successful(response.asInstanceOf[command.Response])

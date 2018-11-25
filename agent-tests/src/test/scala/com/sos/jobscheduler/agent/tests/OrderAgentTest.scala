@@ -49,17 +49,17 @@ final class OrderAgentTest extends FreeSpec {
             agentClient.commandExecute(RegisterAsMaster) await 99.s
           } .status shouldEqual Unauthorized
           agentClient.login(Some(TestUserAndPassword)) await 99.s
-          agentClient.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
+          agentClient.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Response.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Response.Accepted
           EventRequest.singleClass[OrderEvent](timeout = 10.seconds)
             .repeat(eventRequest ⇒ agentClient.mastersEvents(eventRequest).runAsync) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
             }
           val processedOrder = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
-          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Response.Accepted
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
           agentClient.commandExecute(AgentCommand.Terminate()) await 99.s
         }

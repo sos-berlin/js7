@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -44,7 +44,7 @@ extends Actor {
       sender() ! CommandHandlerDetailed((idToCommand.values map { _.overview }).toVector)
 
     case Internal.Respond(run, promise, response) ⇒
-      if (run.batchInternalId.isEmpty || response != Success(Batch.Succeeded(Accepted))) {
+      if (run.batchInternalId.isEmpty || response != Success(Batch.Succeeded(AgentCommand.Response.Accepted))) {
         logger.debug(s"Response to ${run.idString} ${run.command.getClass.getSimpleName stripSuffix "$"} (${(now - run.startedAt).pretty}): $response")
       }
       idToCommand -= run.internalId
@@ -84,7 +84,7 @@ extends Actor {
           Future.sequence(singleResponseFutures) map Batch.Response.apply)
 
       case NoOperation ⇒
-        response.success(AgentCommand.Accepted)
+        response.success(AgentCommand.Response.Accepted)
 
       case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) ⇒
         agentHandle.executeCommand(command, meta.user.id, response)

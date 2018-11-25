@@ -60,10 +60,10 @@ final class AgentTest extends FreeSpec with AgentTester
             withCloser { implicit closer ⇒
               implicit val actorSystem = newActorSystem(getClass.getSimpleName)
               val agentApi = agent.api(CommandMeta(TestUser))
-              agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted
+              agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Response.Accepted
 
               val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-              agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
+              agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual AgentCommand.Response.Accepted
               val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
               val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
               assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))

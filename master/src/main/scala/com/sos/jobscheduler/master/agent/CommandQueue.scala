@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.master.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
@@ -85,7 +85,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
     responses.flatMap {
-      case QueuedInputResponse(input, Batch.Succeeded(Accepted)) ⇒
+      case QueuedInputResponse(input, Batch.Succeeded(AgentCommand.Response.Accepted)) ⇒
         Some(input)
       case QueuedInputResponse(_, Batch.Succeeded(o)) ⇒
         sys.error(s"Unexpected response from agent: $o")

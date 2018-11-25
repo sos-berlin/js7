@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -181,7 +181,7 @@ extends MainJournalingActor[Event] with Stash {
     case _: AgentCommand.Terminate ⇒
       logger.info("Command 'Terminate' terminates Agent while recovering")
       context.stop(self)
-      sender() ! AgentCommand.Accepted
+      sender() ! AgentCommand.Response.Accepted
 
     case _ ⇒
       stash()
@@ -196,7 +196,7 @@ extends MainJournalingActor[Event] with Stash {
 
     case terminate: AgentCommand.Terminate ⇒
       termination.start(terminate)
-      sender() ! AgentCommand.Accepted
+      sender() ! AgentCommand.Response.Accepted
 
     case JournalActor.Output.SnapshotTaken ⇒
       termination.onSnapshotTaken()
@@ -223,11 +223,11 @@ extends MainJournalingActor[Event] with Stash {
         else if (orderRegister contains order.id) {
           // May occur after Master restart when Master is not sure about order has been attached previously.
           logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(Accepted)
+          Future.successful(Response.Accepted)
         } else if (terminating)
           Future.failed(AgentIsShuttingDownProblem.throwable)
         else
-          attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
+          attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Response.Accepted }
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
@@ -252,7 +252,7 @@ extends MainJournalingActor[Event] with Stash {
               Future.failed(new IllegalStateException(s"Changed ${order.workflowId}"))
           })
           .flatMap { _: Completed ⇒
-            promiseFuture[Accepted] { promise ⇒
+            promiseFuture[AgentCommand.Response.Accepted] { promise ⇒
               self ! Internal.ContinueAttachOrder(cmd, promise)
             }
           }
@@ -267,12 +267,12 @@ extends MainJournalingActor[Event] with Stash {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is isTerminating
-              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }  // TODO AskTimeoutException when Journal blocks
+              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }  // TODO AskTimeoutException when Journal blocks
           }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(Accepted)
+          Future.successful(AgentCommand.Response.Accepted)
       }
 
     case GetOrder(orderId) ⇒
@@ -292,7 +292,7 @@ extends MainJournalingActor[Event] with Stash {
     case KeepEvents(eventId) if !terminating ⇒
       Future {
         eventWatch.keepEvents(eventId).orThrow
-        AgentCommand.Accepted
+        AgentCommand.Response.Accepted
       }
 
     case _ if terminating ⇒
@@ -491,7 +491,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
-    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Accepted])
+    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[AgentCommand.Response.Accepted])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

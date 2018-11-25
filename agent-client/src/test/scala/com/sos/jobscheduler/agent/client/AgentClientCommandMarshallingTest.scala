@@ -4,7 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, EmergencyStop, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
@@ -30,8 +30,8 @@ extends FreeSpec with ScalaFutures with AgentTester {
       def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
         Future {
           (command match {
-            case ExpectedTerminate ⇒ Accepted
-            case EmergencyStop ⇒ Accepted
+            case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
+            case EmergencyStop ⇒ AgentCommand.Response.Accepted
             case _ ⇒ throw new NotImplementedError
           })
           .asInstanceOf[command.Response]
@@ -46,8 +46,8 @@ extends FreeSpec with ScalaFutures with AgentTester {
     .sideEffect(_.setSessionToken(agent.sessionToken))
 
   List[(AgentCommand, AgentCommand.Response)](
-    ExpectedTerminate → Accepted,
-    EmergencyStop → Accepted)
+    ExpectedTerminate → AgentCommand.Response.Accepted,
+    EmergencyStop → AgentCommand.Response.Accepted)
   .foreach { case (command, response) ⇒
     command.getClass.simpleScalaName in {
       assert(client.commandExecute(command).await(99.s) == response)

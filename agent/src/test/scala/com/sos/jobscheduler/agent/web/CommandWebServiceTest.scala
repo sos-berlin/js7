@@ -32,7 +32,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
     Task(
       command match {
-        case TestCommand ⇒ AgentCommand.Accepted
+        case TestCommand ⇒ AgentCommand.Response.Accepted
         case TestCommandWhileShuttingDown ⇒ throw AgentIsShuttingDownProblem.throwable
         case _ ⇒ fail()
       })
@@ -55,7 +55,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       }"""
     postJsonCommand(json) ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-      assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
+      assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
         """{ "TYPE": "Accepted" }""".parseJson)
     }
@@ -66,7 +66,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     // Not valid for commands packaged in AgentCommand.Batch
     postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
       if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-      assert(responseAs[AgentCommand.Accepted] == AgentCommand.Accepted)
+      assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
         """{
           "TYPE": "Problem",
