@@ -26,13 +26,18 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   protected def snapshots: Future[Iterable[Any]]
 
   private var stashingCount = 0
+  private var _actorStateName: String = ""
 
   import context.dispatcher
 
   become("receive")(receive)
 
-  protected def become(state: String)(recv: Receive) =
+  final def actorStateName = _actorStateName
+
+  protected def become(stateName: String)(recv: Receive) = {
+    _actorStateName = stateName
     context.become(journaling orElse recv)
+  }
 
   override def preStart() = {
     journalActor ! JournalActor.Input.RegisterMe
