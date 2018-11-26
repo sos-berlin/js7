@@ -37,24 +37,24 @@ final class SyncExclusiveTest extends FreeSpec {
   "timeout" in {
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     for (eventId ← 1L to 3L) {
-      val a = sync.whenEventIsAvailable(eventId, until = now + 200.milliseconds, delay = 100.milliseconds).runAsync
-      val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour          , delay = 100.milliseconds).runAsync
+      val a = sync.whenEventIsAvailable(eventId, until = now + 400.milliseconds, delay = 200.milliseconds).runAsync
+      val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour          , delay = 200.milliseconds).runAsync
       assert(a ne b)
 
-      sleep(50.ms)
+      sleep(100.ms)
       assert(!a.isCompleted)
 
-      a await 250.ms
+      a await 500.ms
       assert(!a.successValue)  // false: Timed out
       assert(!b.isCompleted)
 
       sync.onEventAdded(eventId)
       assert(!b.isCompleted)
 
-      sleep(50.milliseconds)
+      sleep(100.milliseconds)
       assert(!b.isCompleted)
 
-      sleep(100.milliseconds)
+      sleep(200.milliseconds)
       assert(b.isCompleted)
       assert(b.successValue)  // true: Event arrived
     }
