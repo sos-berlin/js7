@@ -36,7 +36,7 @@ import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.OrderStarted
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderStarted}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
@@ -267,7 +267,7 @@ extends MainJournalingActor[Event] with Stash {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is isTerminating
-              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }  // TODO AskTimeoutException when Journal blocks
+              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }
           }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
@@ -434,7 +434,7 @@ extends MainJournalingActor[Event] with Stash {
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttached)
     for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
-      orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
+      orderRegister(orderId).actor ? OrderActor.Command.HandleEvent(event)
     }
   }
 

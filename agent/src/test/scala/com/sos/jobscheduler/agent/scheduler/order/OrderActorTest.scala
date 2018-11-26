@@ -200,7 +200,7 @@ private object OrderActorTest {
     private def detachable: Receive = receiveOrderEvent
 
     private def detaching: Receive = receiveOrderEvent orElse {
-      case Completed ⇒
+      case "DETACHED" ⇒
         jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))
         become(terminatingJobActor)
 
@@ -226,16 +226,16 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleEvent(OrderMoved(TestPosition))
+            orderActor ? OrderActor.Command.HandleEvent(OrderMoved(TestPosition)) await 99.s
 
           case _: OrderMoved ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleEvent(OrderDetachable)
+            orderActor ? OrderActor.Command.HandleEvent(OrderDetachable) await 99.s
             become(detachable)
 
           case OrderDetachable ⇒
             events += event
-            orderActor ! OrderActor.Command.Detach
+            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ ⇒ self ! "DETACHED" }
             become(detaching)
 
           case OrderDetached ⇒

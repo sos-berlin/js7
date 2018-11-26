@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
+import akka.pattern.pipe
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -57,32 +59,8 @@ extends KeyedJournalingActor[OrderEvent] {
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
     order.state match {
-      case _: Order.Fresh ⇒
-        become("freshOrReady")(fresh)
-
-      case Order.Ready ⇒
-        become("ready")(ready)
-
-      case Order.Processing ⇒
-        become("processed")(processed)
-        val event = OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome)
-        persist(event)(update)
-
-      case _: Order.Processed ⇒
-        become("processed")(processed)
-        // Next event 'OrderMoved' is initiated by AgentOrderKeeper
-
-      case _: Order.Forked ⇒
-        become("forked")(forked)
-
-      case _: Order.Stopped ⇒
-        become("stopped")(stoppedOrDisrupted)
-
-      case _: Order.Broken ⇒
-        become("disrupted")(stoppedOrDisrupted)
-
-      case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished ⇒
-        sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
+      case Order.Processing ⇒ handleEvent(OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome))
+      case _ ⇒ becomeAsStateOf(order, force = true)
     }
     logger.debug(s"Recovered $order")
     sender() ! Output.RecoveryFinished(order)  // Sent via JournalRecoverer to AgentOrderKeeper
@@ -96,20 +74,17 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.AddChild(o) ⇒
       assert(order == null)
       order = o
-      become("ready")(ready)
+      becomeAsStateOf(order, force = true)
 
-    case Input.AddPublished(o) ⇒
+    case Input.AddOffering(o) ⇒
       assert(order == null)
       order = o
-      become("offered")(offered)
+      becomeAsStateOf(order, force = true)
 
     case command: Command ⇒
       command match {
-        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload)) ⇒
-          state match {
-            case _: Order.Fresh ⇒ become("fresh")(fresh)
-            case Order.Ready ⇒ become("ready")(ready)
-          }
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload)) ⇒
+          becomeAsStateOf(attached, force = true)
           persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
             sender() ! Completed
             update(event)
@@ -120,175 +95,166 @@ extends KeyedJournalingActor[OrderEvent] {
       }
   }
 
-  private val fresh: Receive =
-    freshOrReady orElse {
-      case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
-
-    }
+  private val fresh = freshOrReady
 
   private val ready: Receive =
     freshOrReady orElse {
       case command: Command ⇒
         executeOtherCommand(command)
-
-      case Input.HandleEvent(event: OrderForked) ⇒
-        become("forked")(forked)
-        persist(event)(update)
-
-      case Input.HandleEvent(event: OrderOffered) ⇒
-        persist(event)(update)
-
-      //case Input.HandleEvent(event: OrderStopped) ⇒
-      //  become("stopped")(stoppedOrDisrupted)
-      //  persist(event)(update)
     }
 
-  private def freshOrReady: Receive = {
-    case Command.Detach ⇒
-      detach()
+  private def freshOrReady: Receive =
+    receiveEvent orElse {
+      case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
+        assert(stdouterr == null)
+        stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
+        val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
+        val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
+        become("processing")(processing(jobKey, workflowJob, jobActor,
+          () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
+        context.watch(jobActor)
+        val orderStarted = order.isState[Order.Fresh] list OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
+        persistTransaction(orderStarted :+ OrderProcessingStarted) { events ⇒
+          events foreach update
+          jobActor ! JobActor.Command.ProcessOrder(
+            jobKey,
+            order.castState[Order.Processing],
+            defaultArguments,
+            new StdChannels(
+              charBufferSize = charBufferSize,
+              stdoutWriter = stdoutWriter,
+              stderrWriter = stderrWriter))
+        }
 
-    case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
-      assert(stdouterr == null)
-      stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
-      val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
-      val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
-      become("processing")(processing(jobKey, workflowJob, jobActor,
-        () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
-      context.watch(jobActor)
-      val orderStarted = order.isState[Order.Fresh] list OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
-      persistTransaction(orderStarted :+ OrderProcessingStarted) { events ⇒
-        events foreach update
-        jobActor ! JobActor.Command.ProcessOrder(
-          jobKey,
-          order.castState[Order.Processing],
-          defaultArguments,
-          new StdChannels(
-            charBufferSize = charBufferSize,
-            stdoutWriter = stdoutWriter,
-            stderrWriter = stderrWriter))
-      }
+      case Input.Terminate ⇒
+        context.stop(self)
+    }
 
-    case Input.HandleEvent(OrderDetachable) ⇒
-      persist(OrderDetachable)(update)
+  private def stoppedOrBroken: Receive =
+    receiveEvent orElse {
+      case command: Command ⇒
+        executeOtherCommand(command)
 
-    case Input.HandleEvent(event: OrderBroken) ⇒
-      become("disrupted")(stoppedOrDisrupted)
-      persist(event)(update)
+      case Input.Terminate ⇒
+        context.stop(self)
+    }
 
-    case Input.Terminate ⇒
-      context.stop(self)
-  }
+  private def processing(jobKey: JobKey, job: WorkflowJob, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
+    receiveEvent orElse {
+      case msg: Stdouterr ⇒  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
+        stdouterr.handle(msg)
 
-  private def stoppedOrDisrupted: Receive = {
-    case Command.Detach ⇒
-      detach()
+      case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded) ⇒
+        val event = taskStepEnded match {
+          case TaskStepSucceeded(variablesDiff, returnCode) ⇒
+            job.toOrderProcessed(variablesDiff, returnCode)
 
-    case command: Command ⇒
-      executeOtherCommand(command)
+          case TaskStepFailed(problem) ⇒
+            OrderProcessed(MapDiff.empty, Outcome.Disrupted(problem))
+        }
+        finishProcessing(event, stdoutStderrStatistics)
+        context.unwatch(jobActor)
 
-    case Input.Terminate ⇒
-      context.stop(self)
-  }
+      case Terminated(`jobActor`) ⇒
+        // May occur when ActorSystem suddenly terminates (fatal Throwable or Java shutdown hook <-- ActorSystem registered itself)
+        // JobActor has killed process. Job may be restarted after recovery.
+        val problem = Problem.eager(s"Job Actor for '$jobKey' terminated unexpectedly")
+        logger.error(problem.toString)
+        val bad = Outcome.Disrupted(problem)
+        finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)
 
-  private def processing(jobKey: JobKey, job: WorkflowJob, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive = {
-    case msg: Stdouterr ⇒  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
-      stdouterr.handle(msg)
+      case command: Command ⇒
+        executeOtherCommand(command)
 
-    case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded) ⇒
-      val event = taskStepEnded match {
-        case TaskStepSucceeded(variablesDiff, returnCode) ⇒
-          job.toOrderProcessed(variablesDiff, returnCode)
-
-        case TaskStepFailed(problem) ⇒
-          OrderProcessed(MapDiff.empty, Outcome.Disrupted(problem))
-      }
-      finishProcessing(event, stdoutStderrStatistics)
-      context.unwatch(jobActor)
-
-    case Terminated(`jobActor`) ⇒
-      // May occur when ActorSystem suddenly terminates (fatal Throwable or Java shutdown hook <-- ActorSystem registered itself)
-      // JobActor has killed process. Job may be restarted after recovery.
-      val problem = Problem.eager(s"Job Actor for '$jobKey' terminated unexpectedly")
-      logger.error(problem.toString)
-      val bad = Outcome.Disrupted(problem)
-      finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)
-
-    case command: Command ⇒
-      executeOtherCommand(command)
-
-    case Input.Terminate ⇒
-      terminating = true
-  }
+      case Input.Terminate ⇒
+        terminating = true
+    }
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     stdouterr.close()
     stdouterr = null
     for (o ← stdoutStderrStatistics()) logger.debug(o)
-    become("processed")(processed)
-    persist(event) { event ⇒
-      update(event)
-      if (terminating) {
+    handleEvent(event)
+  }
+
+  private def processed: Receive =
+    receiveEvent orElse {
+      case Input.Terminate ⇒
         context.stop(self)
+
+      case command: Command ⇒
+        executeOtherCommand(command)
+    }
+
+  private def forked: Receive =
+    receiveEvent orElse {
+      case Input.Terminate ⇒
+        context.stop(self)
+
+      case command: Command ⇒
+        executeOtherCommand(command)
+    }
+
+  private def offering: Receive =
+    receiveEvent orElse {
+      case command: Command ⇒
+        executeOtherCommand(command)
+    }
+
+  private def receiveEvent: Receive = {
+    case Command.HandleEvent(event) ⇒ handleEvent(event) pipeTo sender()
+  }
+
+  private def handleEvent(event: OrderCoreEvent): Future[Completed] =
+    order.update(event) match {
+      case Invalid(problem) ⇒
+        logger.error(problem.toString)
+        Future.successful(Completed)
+
+      case Valid(updated) ⇒
+        becomeAsStateOf(updated)
+        persist(event) { event ⇒
+          update(event)
+          if (terminating) {
+            context.stop(self)
+          }
+          Completed
+        }
+    }
+
+  private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
+    if (anOrder.isDetaching)
+      become("detaching")(detaching)
+    else
+    if (force || anOrder.state.getClass != order.state.getClass) {
+      anOrder.state match {
+        case _: Order.Fresh     ⇒ become("fresh")(fresh)
+        case _: Order.Ready     ⇒ become("ready")(ready)
+        case _: Order.Processed ⇒ become("processed")(processed)
+        case _: Order.Offering  ⇒ become("offering")(offering)
+        case _: Order.Forked    ⇒ become("forked")(forked)
+        case _: Order.Stopped   ⇒ become("stopped")(stoppedOrBroken)
+        case _: Order.Broken    ⇒ become("broken")(stoppedOrBroken)
+        case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished ⇒
+          sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
       }
     }
   }
 
-  private def processed: Receive = {
-    case Input.HandleEvent(event: OrderMoved) ⇒
-      become("read")(ready)
-      persist(event)(update)
+  private def detaching: Receive =
+    receiveEvent orElse {
+      case Input.Terminate ⇒
+        context.stop(self)
 
-    case Input.HandleEvent(event: OrderStopped) ⇒
-      become("stopped")(stoppedOrDisrupted)
-      persist(event)(update)
-
-    case Input.HandleEvent(OrderDetachable) ⇒
-      persist(OrderDetachable)(update)
-
-    case Input.Terminate ⇒
-      context.stop(self)
-
-    case Command.Detach ⇒
-      detach()
-
-    case command: Command ⇒
-      executeOtherCommand(command)
-  }
-
-  private def forked: Receive = {
-    case Input.HandleEvent(event: OrderJoined) ⇒
-      become("ready")(ready)
-      persist(event)(update)
-
-    case Input.HandleEvent(OrderDetachable) ⇒
-      persist(OrderDetachable)(update)
-
-    case Command.Detach ⇒
-      detach()
-
-    case Input.Terminate ⇒
-      context.stop(self)
-
-    case command: Command ⇒
-      executeOtherCommand(command)
-  }
-
-  private def offered: Receive = {
-    case command: Command ⇒
-      executeOtherCommand(command)
-  }
+      case cmd: Command ⇒
+        executeOtherCommand(cmd)
+    }
 
   private def executeOtherCommand(command: Command): Unit = {
     val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
     logger.error(msg)
     sender() ! Status.Failure(new IllegalStateException(msg))
   }
-
-  private def detach(): Unit =
-    persist(OrderDetached) { event ⇒
-      sender() ! Completed
-      update(event)
-    }
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
     if (stdoutDelay.isZero)  // slow
@@ -330,7 +296,7 @@ extends KeyedJournalingActor[OrderEvent] {
   override def unhandled(msg: Any) =
     msg match {
       case msg @ (_: Command | _: Input) ⇒
-        logger.error(s"Unhandled message $msg in state ${order.state}")
+        logger.error(s"Unhandled message $msg in state '$actorStateName', Order ${order.state}")
 
       case _ ⇒
         super.unhandled(msg)
@@ -346,19 +312,18 @@ private[order] object OrderActor
 
   sealed trait Command
   object Command {
-    final case class  Attach(order: Order[Order.FreshOrReady]) extends Command
-    final case object Detach extends Command
+    final case class Attach(order: Order[Order.FreshOrReady]) extends Command
+    final case class HandleEvent(event: OrderCoreEvent) extends Input
   }
 
   sealed trait Input
   object Input {
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
-    final case class AddPublished(order: Order[Order.Offering]) extends Input
+    final case class AddOffering(order: Order[Order.Offering]) extends Input
     final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
       extends Input
     final case object Terminate extends Input with DeadLetterSuppression
-    final case class HandleEvent(event: OrderActorEvent) extends Input
   }
 
   object Output {
