@@ -81,6 +81,8 @@ object EventRequest {
   private def durationToString(duration: Duration): String =
     duration match {
       case Duration.Inf ⇒ "infinite"
+      case Duration.MinusInf ⇒ "-∞"
+      case Duration.Undefined ⇒ "undefined"
       case duration: FiniteDuration ⇒
         BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
     }

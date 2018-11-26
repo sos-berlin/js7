@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web.master.api.graphql
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
@@ -37,6 +38,7 @@ private[graphql] object MasterGraphqlSchema
       coerceOutput = {
         case (v: String, _) ⇒ v
         case (v: Int, _) ⇒ v
+        case (v, _) ⇒ sys.error(s"GraphQL schema: Int or String expected, not: ${v.getClass.scalaName}:$v")
       },
       coerceInput = {
         case o: ast.StringValue ⇒ Right(o)
@@ -215,6 +217,7 @@ private[graphql] object MasterGraphqlSchema
       case ast.ObjectValue(fields, _, _) ⇒
         val tuples = fields.map {
           case ast.ObjectField(k, v: ast.StringValue, _, _) ⇒ k → v.value
+          case ast.ObjectField(k, v, _, _) ⇒ sys.error(s"GraphQL schema: String expected for entry '$k', not: ${v.getClass.scalaName}:$v")
         }
         Right(tuples.toMap)
       case _ ⇒ Left(StringCoercionViolation)

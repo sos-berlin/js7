@@ -83,6 +83,9 @@ object EventDirectives {
   private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
     Unmarshaller.strict {
       case "infinite" ⇒ Duration.Inf
+      case "∞" ⇒ Duration.Inf
+      case "-∞" ⇒ Duration.MinusInf
+      case "undefined" ⇒ Duration.Undefined
       case o ⇒ stringToFiniteDuration(o)
     }
 

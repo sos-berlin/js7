@@ -81,6 +81,8 @@ extends JournalRecoverer[Event]
           agentToEventId(a % v) = agentEventId
 
         case KeyedEvent(_, _: MasterAgentEvent) ⇒
+
+        case _ ⇒ sys.error(s"Unknown event recovered from journal: $keyedEvent")
       }
   }
 

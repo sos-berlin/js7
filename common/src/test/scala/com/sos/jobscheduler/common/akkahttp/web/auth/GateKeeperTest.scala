@@ -351,7 +351,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   /** Error message does not contain a hint. */
   private def assertPlainStatus(statusCode: StatusCode): Unit = {
     assert(status == statusCode)
-    status match {
+    (status: @unchecked) match {
       case OK ⇒
       case Unauthorized ⇒
         assert(headers contains `WWW-Authenticate`(HttpChallenges.basic(defaultConf.realm)))

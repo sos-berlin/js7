@@ -31,7 +31,7 @@ object AkkaHttpServerUtils {
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o ⇒ mediaTypes exists o.matches } ⇒
           route
         case _ ⇒
-          reject(UnacceptedResponseContentTypeRejection(mediaTypes map {
+          reject(UnacceptedResponseContentTypeRejection(mediaTypes collect {
             case m: MediaType.WithOpenCharset ⇒ ContentNegotiator.Alternative.MediaType(m)
             case m: MediaType.WithFixedCharset ⇒ ContentNegotiator.Alternative.ContentType(m)
           }))

@@ -41,6 +41,7 @@ final class OurMemoizingAuthenticatorTest extends FreeSpec
   "Missing credential rejected if user account Anonymous has a non-empty password" in {
     val authenticator = new OurMemoizingAuthenticator[SimpleUser]({
       case UserId.Anonymous ⇒ Some(SimpleUser(UserId.Anonymous, HashedPassword(SecretString("NON-EMPTY"), identity)))
+      case o ⇒ throw new MatchError(o)
     })
     assert(authenticator(Credentials(None)) == None)
   }

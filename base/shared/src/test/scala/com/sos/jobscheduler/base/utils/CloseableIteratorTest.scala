@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.CloseableIteratorTest._
 import org.scalatest.FreeSpec
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer

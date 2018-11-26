@@ -275,7 +275,7 @@ with MainJournalingActor[Event]
           case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
             handleOrderEvent(orderId, event)
 
-          case KeyedEvent(_: AgentId, AgentEventIdEvent(agentEventId)) ⇒
+          case KeyedEvent(_, AgentEventIdEvent(agentEventId)) ⇒
             agentEntry.lastAgentEventId = agentEventId
             agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
 
