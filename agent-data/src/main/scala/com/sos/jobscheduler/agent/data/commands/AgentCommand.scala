@@ -70,6 +70,10 @@ object AgentCommand {
     }
   }
 
+  final case class CancelOrder(orderId: OrderId) extends OrderCommand {
+    type Response = Response.Accepted
+  }
+
   case object EmergencyStop extends TerminateOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
@@ -148,6 +152,7 @@ object AgentCommand {
   implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
+      Subtype(deriveCodec[CancelOrder]),
       Subtype(EmergencyStop),
       Subtype(deriveCodec[KeepEvents]),
       Subtype(NoOperation),

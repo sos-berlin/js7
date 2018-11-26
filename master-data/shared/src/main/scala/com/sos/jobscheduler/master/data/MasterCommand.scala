@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.data.MasterCommand._
 import scala.concurrent.duration.FiniteDuration
 
@@ -18,6 +19,10 @@ sealed trait MasterCommand {
 
 object MasterCommand {
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
+
+  final case class CancelOrder(orderId: OrderId) extends MasterCommand {
+    type MyResponse = Response.Accepted
+  }
 
   /** Master stops immediately with exit(). */
   case object EmergencyStop extends MasterCommand {
@@ -55,6 +60,7 @@ object MasterCommand {
   }
 
   implicit val jsonCodec = TypedJsonCodec[MasterCommand](
+    Subtype(deriveCodec[CancelOrder]),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ScheduleOrdersEvery]),

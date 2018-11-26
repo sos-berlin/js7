@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -231,7 +231,7 @@ extends MainJournalingActor[Event] with Stash {
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
-      onOrderAvailable(orderRegister(orderId))
+      onOrderFreshOrReady(orderRegister(orderId))
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
@@ -273,6 +273,22 @@ extends MainJournalingActor[Event] with Stash {
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
           Future.successful(AgentCommand.Response.Accepted)
+      }
+
+    case CancelOrder(orderId) ⇒
+      orderRegister.checked(orderId) match {
+        case Invalid(problem) ⇒
+          Future.failed(problem.throwable)
+        case Valid(orderEntry) ⇒
+          if (orderEntry.detaching)
+            Future.successful(AgentCommand.Response.Accepted)
+          else
+            orderProcessor.cancel(orderId, isAgent = true) match {
+              case Invalid(problem) ⇒ Future.failed(problem.throwable)
+              case Valid(None) ⇒ Future.successful(AgentCommand.Response.Accepted)
+              case Valid(Some(event)) ⇒
+                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }
+            }
       }
 
     case GetOrder(orderId) ⇒
@@ -364,18 +380,23 @@ extends MainJournalingActor[Event] with Stash {
             self ! Internal.Due(orderId)
           }
 
-        case _: Order.FreshOrReady ⇒
-          onOrderAvailable(orderEntry)
-
         case _ ⇒
-          tryExecuteInstruction(order, orderEntry.workflow)
+          orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten match {
+            case Some(KeyedEvent(orderId_, event)) ⇒
+              orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
+
+            case None ⇒
+              if (order.isState[Order.FreshOrReady]) {
+                onOrderFreshOrReady(orderEntry)
+              }
+          }
       }
     }
   }
 
-  private def onOrderAvailable(orderEntry: OrderEntry): Unit =
+  private def onOrderFreshOrReady(orderEntry: OrderEntry): Unit =
     if (!terminating) {
-      for (_ ← orderEntry.order.attached onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
+      for (_ ← orderEntry.order.attached onProblem (p ⇒ logger.error(s"onOrderFreshOrReady: $p"))) {
         orderEntry.instruction match {
           case execute: Execute ⇒
             val checkedJobKey = execute match {
@@ -387,7 +408,6 @@ extends MainJournalingActor[Event] with Stash {
             }
 
           case _ ⇒
-            tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
         }
       }
     }
@@ -429,13 +449,6 @@ extends MainJournalingActor[Event] with Stash {
     //assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
     orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
-  }
-
-  private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
-    assert(order.isAttached)
-    for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
-      orderRegister(orderId).actor ? OrderActor.Command.HandleEvent(event)
-    }
   }
 
   private def removeOrder(orderId: OrderId): Unit = {

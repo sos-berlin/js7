@@ -3,10 +3,12 @@ package com.sos.jobscheduler.core.workflow
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -37,15 +39,52 @@ final class OrderEventSource(
       case _ ⇒ false
     }
 
-  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
-    val order = idToOrder(orderId)
-    InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-      case Some(oId <-: (moved: OrderMoved)) ⇒
-        applyMoveInstructions(oId, moved) map Some.apply
+  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    idToOrder.checked(orderId) flatMap (order ⇒
+      canceledEvent(order) match {
+        case Some(event) ⇒
+          Valid(Some(order.id <-: event))
+        case None ⇒
+          InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
+            case Some(oId <-: (moved: OrderMoved)) ⇒
+              applyMoveInstructions(oId, moved) map Some.apply
 
-      case o ⇒ Valid(o)
-    }
-  }
+            case o ⇒ Valid(o)
+          }
+      })
+
+  /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
+  private def canceledEvent(order: Order[Order.State]): Option[OrderActorEvent] =
+    if (order.cancelationMarked && isOrderInCancelableState(order))
+      (order.isAttached ? OrderDetachable) orElse order.isDetached ? OrderCanceled
+    else
+      None
+
+  /** Returns a `Valid(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
+  def cancel(orderId: OrderId, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
+    idToOrder.checked(orderId) flatMap (order ⇒
+      if (order.parent.isDefined)  // Should not happen when !isStarted
+        Invalid(Problem.eager(s"CancelOrder(${orderId.string}): A child order cannot be canceled"))
+      else
+        Valid(
+          !order.cancelationMarked ? (
+            if (isAgent)
+              if (isOrderInCancelableState(order))
+                OrderDetachable
+              else
+                OrderCancelationMarked
+            else
+              if (order.isDetached && isOrderInCancelableState(order))
+                OrderCanceled
+              else
+                OrderCancelationMarked)))
+
+  private def isOrderInCancelableState(order: Order[Order.State]): Boolean =
+    (order.isState[Order.FreshOrReady] || order.isState[Order.Stopped] || order.isState[Order.Broken]) &&
+      (order.isDetached || order.isAttached) &&
+      order.parent.isEmpty &&
+      order.position.branchPath.isEmpty &&
+      !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
     for {

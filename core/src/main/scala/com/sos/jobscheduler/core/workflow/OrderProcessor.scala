@@ -22,6 +22,9 @@ final class OrderProcessor(
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     eventSource.nextEvent(orderId) mapProblem (_ withPrefix s"Problem with '$orderId':")
 
+  def cancel(orderId: OrderId, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
+    eventSource.cancel(orderId, isAgent = isAgent)
+
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] =
     eventHandler.handleEvent(keyedEvent) mapProblem (_ withPrefix s"Problem with event $keyedEvent:")
 

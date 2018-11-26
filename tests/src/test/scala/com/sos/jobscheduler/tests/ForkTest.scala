@@ -8,15 +8,15 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventSeq
-import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCanceled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, script}
 import com.sos.jobscheduler.tests.ForkTest._
 import com.typesafe.config.ConfigFactory
@@ -34,9 +34,9 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
   override def beforeAll() = {
     directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
     directoryProvider.master.writeJson(Workflow(
-      DuplicateWorkflowPath % VersionId.Anonymous,
+      DuplicateWorkflowId,
       Vector(
-        Execute(WorkflowJob(AAgentPath, ExecutablePath("/SLOW"))))))
+        Execute(WorkflowJob(AAgentPath, ExecutablePath("/SLOW"))))).withoutVersion)
     directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW"), script(60.s))
     for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
     super.beforeAll()
@@ -57,14 +57,23 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
     }
   }
 
-  "Existing child OrderId" in {
-    val myOrderId = TestOrder.copy(id = OrderId("DUPLICATE"))
-    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowPath))  // Invalid syntax is allowed for this OrderId, check is suppressed
+  "Existing child OrderId yield broken (and cancelable) order" in {
+    val order = TestOrder.copy(id = OrderId("DUPLICATE"))
+    master.addOrderBlocking(FreshOrder(OrderId("DUPLICATE/🥕"), DuplicateWorkflowId.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     master.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE/🥕"))
-    master.addOrderBlocking(myOrderId)
-    assert(master.eventWatch.await[OrderBroken](_.key == myOrderId.id).head.value.event ==
-      OrderBroken(Problem(
-        "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload())")))
+
+    master.addOrderBlocking(order)
+    val expectedBroken = OrderBroken(Problem(
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload(),false)"))
+    assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
+
+    master.executeCommandAsSystemUser(CancelOrder(order.id)).await(99.s).orThrow
+    master.eventWatch.await[OrderCanceled](_.key == order.id)
+    assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+      OrderAdded(TestWorkflow.id, None, order.payload),
+      OrderStarted,
+      expectedBroken,
+      OrderCanceled))
 
     // Kill SLOW job
     agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
@@ -73,7 +82,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
 }
 
 object ForkTest {
-  private val DuplicateWorkflowPath = WorkflowPath("/DUPLICATE")
+  private val DuplicateWorkflowId = WorkflowPath("/DUPLICATE") % "(initial)"
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")

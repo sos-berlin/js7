@@ -37,9 +37,10 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
@@ -253,20 +254,27 @@ with MainJournalingActor[Event]
           if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
             logger.error(s"Agent ${agentEntry.agentId} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
             None
-          } else
+          } else {
+            lastAgentEventId = agentEventId.some
             keyedEvent match {
+              case KeyedEvent(_, OrderCancelationMarked) ⇒  // We (the Master) issue our own OrderCancelationMarked
+                None
+
               case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
                 val ownEvent = event match {
                   case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ ⇒ event
                 }
-                lastAgentEventId = agentEventId.some
                 Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
               case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
-                lastAgentEventId = agentEventId.some
                 Some(Timestamped(agentEntry.agentId.path <-: AgentReady(timezone), Some(timestamp)))
+
+              case _ ⇒
+                logger.warn(s"Unknown event received from ${agentEntry.agentId}: $keyedEvent")
+                None
             }
+          }
       }
       masterStamped ++= lastAgentEventId.map(agentEventId ⇒ Timestamped(agentId <-: AgentEventIdEvent(agentEventId)))
 
@@ -290,6 +298,15 @@ with MainJournalingActor[Event]
       }
       persistMultipleAsync(orderIds -- unknown map (_ <-: OrderTransferredToMaster))(
         _ foreach handleOrderEvent)
+
+    case AgentDriver.Output.OrdersCancelationMarked(orderIds) ⇒
+      val unknown = orderIds -- orderRegister.keySet
+      if (unknown.nonEmpty) {
+        logger.error(s"Response to AgentCommand.CancelOrder from Agent for unknown orders: "+ unknown.mkString(", "))
+      }
+      for (orderId ← orderIds) {
+        orderRegister(orderId).cancelationMarkedOnAgent = true
+      }
 
     case JournalActor.Output.SnapshotTaken ⇒
       if (terminating) {
@@ -315,6 +332,24 @@ with MainJournalingActor[Event]
 
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[MasterCommand.Response]] =
     command match {
+      case MasterCommand.CancelOrder(orderId) ⇒
+        orderRegister.checked(orderId) map (_.order) match {
+          case Invalid(problem) ⇒ Task.pure(Invalid(problem))
+          case Valid(order) ⇒
+            orderProcessor.cancel(order.id, isAgent = false) match {
+              case invalid @ Invalid(_) ⇒
+                Task.pure(invalid)
+              case Valid(None) ⇒
+                Task.pure(Valid(MasterCommand.Response.Accepted))
+              case Valid(Some(event)) ⇒
+                Task.deferFuture(
+                  persist(orderId <-: event) { stamped ⇒  // Event may be inserted between events coming from Agent
+                    handleOrderEvent(stamped)
+                    Valid(MasterCommand.Response.Accepted)
+                })
+            }
+        }
+
       case MasterCommand.KeepEvents(eventId) ⇒
         Task {
           eventWatch.keepEvents(eventId)
@@ -367,7 +402,7 @@ with MainJournalingActor[Event]
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(IO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield IO {
-      persistTransaction(events map (e ⇒ KeyedEvent(e))){ _ ⇒ }
+      persistTransaction(events map (e ⇒ KeyedEvent(e))) { _ ⇒ }
       defer {
         changeRepo(changedRepo)
         foldedSideEffects.unsafeRunSync()
@@ -484,6 +519,12 @@ with MainJournalingActor[Event]
   private def proceedWithOrder(orderEntry: OrderEntry): Unit =
     if (!terminating) {
       val order = orderEntry.order
+      if (order.cancelationMarked && (order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
+        // On Recovery, CancelOrder is sent again, because orderEntry.cancelationMarkedOnAgent is lost
+        for ((_, _, agentEntry) ← checkedWorkflowJobAndAgentEntry(order) onProblem (p ⇒ logger.error(p))) {
+          agentEntry.actor ! AgentDriver.Input.CancelOrder(order.id)
+        }
+      }
       order.attachedState match {
         case None |
              Some(_: Order.Attaching) ⇒ proceedWithOrderOnMaster(orderEntry)
@@ -496,10 +537,12 @@ with MainJournalingActor[Event]
     val order = orderEntry.order
     order.state match {
       case _: Order.FreshOrReady ⇒
-        val freshOrReady = order.castState[Order.FreshOrReady]
-        instruction(order.workflowPosition) match {
-          case _: Execute ⇒ tryAttachOrderToAgent(freshOrReady)
-          case _ ⇒
+        if (!order.cancelationMarked) {
+          val freshOrReady = order.castState[Order.FreshOrReady]
+          instruction(order.workflowPosition) match {
+            case _: Execute ⇒ tryAttachOrderToAgent(freshOrReady)
+            case _ ⇒
+          }
         }
 
       case _: Order.Offering ⇒
@@ -513,29 +556,32 @@ with MainJournalingActor[Event]
       case _ ⇒
     }
 
-    // When recovering, proceedWithOrderOnMaster may issue the same event multiple times, so OrderJoined for each parent and child order.
+    // When recovering, proceedWithOrderOnMaster may issue the same event multiple times,
+    // for example OrderJoined for each parent and child order.
     // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
     for (keyedEvent ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
       afterProceedEvents.persistAndHandleLater(keyedEvent)
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit = {
-    (for {
+  private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
+    for ((workflow, job, agentEntry) ← checkedWorkflowJobAndAgentEntry(order).onProblem(p ⇒ logger.error(p))) {
+      if (order.isDetached)
+        persist(order.id <-: OrderAttachable(agentEntry.agentId.path)) { stamped ⇒
+          handleOrderEvent(stamped)
+        }
+      else if (order.isAttaching) {
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, workflow.reduceForAgent(job.agentPath))
+      }
+    }
+
+  private def checkedWorkflowJobAndAgentEntry(order: Order[Order.State]): Checked[(Workflow, WorkflowJob, AgentEntry)] =
+    for {
       workflow ← repo.idTo[Workflow](order.workflowId)
       job ← workflow.checkedWorkflowJob(order.position)
       agentId ← repo.pathToCurrentId(job.agentPath)
       agentEntry ← agentRegister.checked(agentId)
-    } yield {
-      if (order.isDetached)
-        persist(order.id <-: OrderAttachable(agentId.path)) { stamped ⇒
-          handleOrderEvent(stamped)
-        }
-      else
-        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentId, workflow.reduceForAgent(job.agentPath))
-      ()
-    }).onProblem(p ⇒ logger.error(p))
-  }
+    } yield (workflow, job, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     orderRegister(orderId).order.detaching
@@ -598,6 +644,8 @@ private[master] object MasterOrderKeeper {
 
   private case class OrderEntry(var order: Order[Order.State])
   {
+    var cancelationMarkedOnAgent = false
+
     def orderId = order.id
 
     def update(event: OrderEvent): Unit =

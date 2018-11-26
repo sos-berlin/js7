@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.EventWatch.Every
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -68,6 +68,22 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]]
   = eventWatch.await(predicate, after, timeout)
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
+  def keyedEvents[E1 <: E: ClassTag](key: E1#Key)(implicit s: Scheduler): Seq[E1] =
+    keyedEvents[E1] collect {
+      case o if o.key == key ⇒ o.event
+    }
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
+  def keyedEvents[E1 <: E: ClassTag](implicit s: Scheduler): Seq[KeyedEvent[E1]] =
+    eventWatch.all[E1].strict match {
+      case EventSeq.NonEmpty(stamped) ⇒ stamped map (_.value)
+      case EventSeq.Empty(_) ⇒ Nil
+      case TearableEventSeq.Torn(eventId) ⇒ throw new TornException(after = EventId(0), tornEventId = eventId)
+    }
 
   /** TEST ONLY - Blocking. */
   @TestOnly

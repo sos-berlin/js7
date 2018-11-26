@@ -251,6 +251,20 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
+  "OrderCancelationMarked" in {
+    check(OrderCancelationMarked, json"""
+      {
+        "TYPE": "OrderCancelationMarked"
+      }""")
+  }
+
+  "OrderCanceled" in {
+    check(OrderCanceled, json"""
+      {
+        "TYPE": "OrderCanceled"
+      }""")
+  }
+
   private def check(event: OrderEvent, json: ⇒ Json) = testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {

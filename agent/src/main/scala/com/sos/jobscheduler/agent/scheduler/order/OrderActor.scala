@@ -83,11 +83,11 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload)) ⇒
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload, cancelationMarked/*???*/)) ⇒
           becomeAsStateOf(attached, force = true)
           persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
-            sender() ! Completed
             update(event)
+            sender() ! Completed
           }
 
         case _ ⇒
@@ -213,13 +213,16 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Valid(updated) ⇒
         becomeAsStateOf(updated)
-        persist(event) { event ⇒
-          update(event)
-          if (terminating) {
-            context.stop(self)
+        if (event == OrderCancelationMarked && updated == order)  // Duplicate, already cancelationMarked?
+          Future.successful(Completed)
+        else
+          persist(event) { event ⇒
+            update(event)
+            if (terminating) {
+              context.stop(self)
+            }
+            Completed
           }
-          Completed
-        }
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
@@ -235,7 +238,7 @@ extends KeyedJournalingActor[OrderEvent] {
         case _: Order.Forked    ⇒ become("forked")(forked)
         case _: Order.Stopped   ⇒ become("stopped")(stoppedOrBroken)
         case _: Order.Broken    ⇒ become("broken")(stoppedOrBroken)
-        case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished ⇒
+        case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished | Order.Canceled ⇒
           sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
       }
     }

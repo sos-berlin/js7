@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -24,8 +24,8 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderTest extends FreeSpec {
-
+final class OrderTest extends FreeSpec
+{
   private val testOrder = Order(
     OrderId("ID"),
     WorkflowPath("/WORKFLOW") % "VERSION",
@@ -35,38 +35,62 @@ final class OrderTest extends FreeSpec {
       "var2" → "value2")))
 
   "JSON" - {
-    "Order" in {
-      check(
-        testOrder.copy(
-          attachedState = Some(Attached(AgentPath("/AGENT") % "1")),
-          parent = Some(OrderId("PARENT"))),
-        json"""{
-          "id": "ID",
-          "workflowPosition": {
-            "workflowId": {
-              "path": "/WORKFLOW",
-              "versionId": "VERSION"
+    "Order" - {
+      "Ready" in {
+        check(
+          testOrder.copy(
+            attachedState = Some(Attached(AgentPath("/AGENT") % "1")),
+            parent = Some(OrderId("PARENT"))),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "/WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
             },
-            "position": [ 0 ]
-          },
-          "state": {
-            "TYPE": "Ready"
-          },
-          "attachedState": {
-            "TYPE": "Attached",
-            "agentId": {
-              "path": "/AGENT",
-              "versionId": "1"
+            "state": {
+              "TYPE": "Ready"
+            },
+            "attachedState": {
+              "TYPE": "Attached",
+              "agentId": {
+                "path": "/AGENT",
+                "versionId": "1"
+              }
+            },
+            "parent": "PARENT",
+            "payload": {
+              "variables": {
+                "var1": "value1",
+                "var2": "value2"
+              }
             }
-          },
-          "parent": "PARENT",
-          "payload": {
-            "variables": {
-              "var1": "value1",
-              "var2": "value2"
-            }
-          }
-        }""")
+          }""")
+      }
+
+      "cancelationMarked" in {
+        check(
+          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") % "VERSION", Fresh(), cancelationMarked = true),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "/WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Fresh"
+            },
+            "payload": {
+              "variables": {}
+            },
+            "cancelationMarked": true
+          }""")
+      }
 
       def check(o: Order[State], json: Json) = testJson(o, json)
     }
@@ -227,6 +251,9 @@ final class OrderTest extends FreeSpec {
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
       OrderFinished,
+
+      OrderCancelationMarked,
+      OrderCanceled,
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
@@ -242,74 +269,88 @@ final class OrderTest extends FreeSpec {
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh()),
-        attachingAllowed[Fresh] orElse {
-          case (_: OrderStarted, `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
-          case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
+        attachingAllowed[Fresh] orElse
+        detachingAllowed[Fresh] orElse {
+          case (_: OrderStarted       , `detached` | `attached`              ) ⇒ _.isInstanceOf[Ready]
+          case (OrderCancelationMarked, `detached` | `attaching` | `attached`) ⇒ _.isInstanceOf[Fresh]
+          case (OrderCanceled         , `detached`                           ) ⇒ _.isInstanceOf[Order.Canceled]
+          case (_: OrderBroken        , _                                    ) ⇒ _.isInstanceOf[Broken]
         })
     }
 
     "Ready" - {
       checkAllEvents(Order(orderId, workflowId, Ready),
         attachingAllowed[Ready] orElse
-        detachingAllowed[Ready] orElse {
+        detachingAllowed[Ready] orElse
+        cancelationMarkingAllowed[Ready] orElse {
           case (_: OrderProcessingStarted, `attached`             ) ⇒ _.isInstanceOf[Processing]
           case (_: OrderForked           , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) ⇒ _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
           case (_: OrderFinished         , `detached`             ) ⇒ _.isInstanceOf[Finished]
+          case (OrderCanceled            , `detached`             ) ⇒ _.isInstanceOf[Order.Canceled]
           case (_: OrderBroken           , _                      ) ⇒ _.isInstanceOf[Broken]
         })
     }
 
     "Processing" - {
-      checkAllEvents(Order(orderId, workflowId, Processing), {
-        case (_: OrderProcessed, `attached`) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
+      checkAllEvents(Order(orderId, workflowId, Processing),
+        cancelationMarkingAllowed[Processing] orElse {
+          case (_: OrderProcessed, `attached`) ⇒ _.isInstanceOf[Processed]
+          case (_: OrderBroken   , _         ) ⇒ _.isInstanceOf[Broken]
       })
     }
 
     "Processed" - {
-      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0)))), {
-        case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
-        case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
-        case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
-      })
+      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0)))),
+        cancelationMarkingAllowed[Processed] orElse {
+          case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
+          case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
+          case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Stopped" - {
       checkAllEvents(Order(orderId, workflowId, Stopped(Outcome.Failed(ReturnCode(1)))),
-        detachingAllowed[Stopped] orElse {
-          case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+        detachingAllowed[Stopped] orElse
+        cancelationMarkingAllowed[Stopped] orElse {
+          case (OrderCanceled , `detached`) ⇒ _.isInstanceOf[Order.Canceled]
+          case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
         })
     }
 
     "Broken" - {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
-        detachingAllowed[Broken] orElse {
-          case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+        detachingAllowed[Broken] orElse
+        cancelationMarkingAllowed[Broken] orElse {
+          case (OrderCanceled , `detached`) ⇒ _.isInstanceOf[Order.Canceled]
+          case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
         })
     }
 
     "Forked" - {
       checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId / "CHILD") :: Nil)),
         attachingAllowed[Forked] orElse
-        detachingAllowed[Forked] orElse {
+        detachingAllowed[Forked] orElse
+        cancelationMarkingAllowed[Forked] orElse {
           case (_: OrderJoined, `detached` ) ⇒ _.isInstanceOf[Processed]
           case (_: OrderBroken, _          ) ⇒ _.isInstanceOf[Broken]
         })
     }
 
     "Offering" - {
-      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))), {
-        case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
-      })
+      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
+        cancelationMarkingAllowed[Offering] orElse {
+          case (_: OrderBroken, _) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Awaiting" - {
-      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))), {
-        case (_: OrderJoined, `detached`) ⇒ _.isInstanceOf[Processed]
-        case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
-      })
+      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
+        cancelationMarkingAllowed[Awaiting] orElse {
+          case (_: OrderJoined, `detached`) ⇒ _.isInstanceOf[Processed]
+          case (_: OrderBroken, _         ) ⇒ _.isInstanceOf[Broken]
+        })
     }
 
     "Finished" - {
@@ -319,6 +360,10 @@ final class OrderTest extends FreeSpec {
     }
 
     type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State ⇒ Boolean]
+
+    def cancelationMarkingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
+      case (OrderCancelationMarked, `detached` | `attaching` | `attached`) ⇒ implicitClass[S] isAssignableFrom _.getClass
+    }
 
     def attachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
       case (_: OrderAttachable        , `detached` ) ⇒ implicitClass[S] isAssignableFrom _.getClass
@@ -338,12 +383,16 @@ final class OrderTest extends FreeSpec {
       for (event ← allEvents) s"$event" - {
         for (a ← None :: attached :: detaching :: Nil) s"$a" in {
           val updated = order.copy(attachedState = a).update(event)
-          val maybeState = updated.toOption.map(_.state)
+          val maybeState = updated.map(_.state)
           val maybePredicate = toPredicate.lift((event, a))
           (maybeState, maybePredicate) match {
-            case (Some(state), Some(predicate)) ⇒ assert(predicate(state))
-            case (None, None) ⇒
-            case _ ⇒ fail
+            case (Valid(state), Some(predicate)) ⇒
+              assert(predicate(state), s"- for  ${order.state} $a -> $event -> $state")
+            case (Valid(state), None) ⇒
+              fail(s"Missing test case for ${order.state} $a -> $event -> $state")
+            case (Invalid(_), Some(_)) ⇒
+              fail(s"Non-matching test case for ${order.state} $a -> $event -> ?")
+            case (Invalid(_), None) ⇒
           }
         }
       }

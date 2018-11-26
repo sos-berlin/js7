@@ -25,23 +25,24 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   private var openRequestCount = 0
 
   private object queue {
-    private val attachQueue = mutable.Queue[Input.QueueableInput]()
+    private val attachOrCancelQueue = mutable.Queue[Input.QueueableInput]()
     private val detachQueue = mutable.Queue[Input.QueueableInput]()  // DetachOrder is sent to Agent prior any AttachOrder, to relieve the Agent
 
     def enqueue(input: Input.QueueableInput): Unit =
       input match {
-        case o: Input.AttachOrder ⇒ attachQueue += o
+        case o: Input.AttachOrder ⇒ attachOrCancelQueue += o
         case o: Input.DetachOrder ⇒ detachQueue += o
+        case o: Input.CancelOrder ⇒ attachOrCancelQueue += o
       }
 
     def dequeueAll(what: Set[Input.QueueableInput]): Unit = {
-      attachQueue.dequeueAll(what)
+      attachOrCancelQueue.dequeueAll(what)
       detachQueue.dequeueAll(what)
     }
 
-    def size = attachQueue.size + detachQueue.size
+    def size = attachOrCancelQueue.size + detachQueue.size
 
-    def iterator = detachQueue.iterator ++ attachQueue.iterator
+    def iterator = detachQueue.iterator ++ attachOrCancelQueue.iterator
   }
 
   final def onRecoupled() =
@@ -77,6 +78,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.AttachOrder(order, agentId, workflow)
       case Input.DetachOrder(orderId) ⇒
         AgentCommand.DetachOrder(orderId)
+      case Input.CancelOrder(orderId) ⇒
+        AgentCommand.CancelOrder(orderId)
     }
 
   final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Input.QueueableInput] = {

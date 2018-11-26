@@ -244,6 +244,10 @@ with ReceiveLoggingActor.WithStash {
       if (detachedOrderIds.nonEmpty) {
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
+      val canceledOrderIds = succeededInputs collect { case Input.CancelOrder(orderId) ⇒ orderId }
+      if (canceledOrderIds.nonEmpty) {
+        context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
+      }
 
     case Internal.BatchFailed(inputs, throwable) ⇒
       commandQueue.handleBatchFailed(inputs)
@@ -392,6 +396,10 @@ private[master] object AgentDriver
       def toShortString = s"DetachOrder($orderId)"
     }
 
+    final case class CancelOrder(orderId: OrderId) extends QueueableInput {
+      def toShortString = s"CancelOrder($orderId)"
+    }
+
     final case class EventsAccepted(agentEventId: EventId)
 
     case object Terminate
@@ -400,6 +408,7 @@ private[master] object AgentDriver
   object Output {
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]])
     final case class OrdersDetached(orderIds: Set[OrderId])
+    final case class OrdersCancelationMarked(orderIds: Set[OrderId])
   }
 
   private object Internal {

@@ -163,6 +163,15 @@ object OrderEvent {
     //type State = Finished
   }
 
+  sealed trait OrderCancelationMarked extends OrderActorEvent
+  /** A OrderCancelationMarked on Agent is different from same Event on Master.
+    * Master will ignore the Agent's OrderCancelationMarked.
+    * Master should have issued the event independendly. **/
+  case object OrderCancelationMarked extends OrderCancelationMarked
+
+  sealed trait OrderCanceled extends OrderActorEvent
+  case object OrderCanceled extends OrderCanceled
+
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
     Subtype(OrderStarted),
@@ -177,6 +186,8 @@ object OrderEvent {
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderFinished),
+    Subtype(OrderCancelationMarked),
+    Subtype(OrderCanceled),
     Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToMaster),
     Subtype(deriveCodec[OrderAttached]),

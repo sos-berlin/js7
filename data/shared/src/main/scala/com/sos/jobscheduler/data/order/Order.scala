@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.order
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -15,6 +14,8 @@ import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, DecodingFailure, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
@@ -27,7 +28,8 @@ final case class Order[+S <: Order.State](
   state: S,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
-  payload: Payload = Payload.empty)
+  payload: Payload = Payload.empty,
+  cancelationMarked: Boolean = false)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child ← event.children) yield
@@ -123,19 +125,27 @@ final case class Order[+S <: Order.State](
       case OrderDetachable ⇒
         attachedState match {
           case Some(Attached(agentId))
-            if isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] ⇒
+            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] ⇒
               Valid(copy(attachedState = Some(Detaching(agentId))))
           case _ ⇒
             inapplicable
         }
 
       case OrderDetached ⇒
-        check(isDetaching && (isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderTransferredToMaster ⇒
-        check(isDetaching && (isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
+
+      case OrderCancelationMarked ⇒
+        check(!isState[Canceled] && !isDetaching && !isState[Finished],
+          copy(cancelationMarked = true))
+
+      case OrderCanceled ⇒
+        check((isState[FreshOrReady] || isState[Stopped] || isState[Broken]) && isDetached,
+          copy(state = Canceled))
     }
   }
 
@@ -146,6 +156,8 @@ final case class Order[+S <: Order.State](
     workflowPosition = workflowPosition.copy(position = to))
 
   def variables = payload.variables
+
+  def isStarted = isState[Started]
 
   def castAfterEvent(event: OrderProcessingStarted): Order[Order.Processing] =
     castState[Order.Processing]
@@ -282,8 +294,11 @@ object Order {
   @JsonCodec
   final case class Awaiting(offeredOrderId: OrderId) extends Transitionable
 
-  sealed trait Finished extends State
+  sealed trait Finished extends Started
   case object Finished extends Finished
+
+  sealed trait Canceled extends State
+  case object Canceled extends Canceled
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[FreshOrReady] = TypedJsonCodec[FreshOrReady](
     Subtype[Fresh],
@@ -298,8 +313,37 @@ object Order {
     Subtype[Offering],
     Subtype[Awaiting],
     Subtype(Finished),
+    Subtype(Canceled),
     Subtype[Broken])
 
-  implicit val FreshOrReadyOrderJsonCodec: CirceObjectCodec[Order[FreshOrReady]] = deriveCodec[Order[FreshOrReady]]
-  implicit val jsonCodec: CirceObjectCodec[Order[State]] = deriveCodec[Order[State]]
+  implicit val jsonEncoder: ObjectEncoder[Order[State]] = order ⇒
+    JsonObject(
+      "id" →  order.id.asJson,
+      "workflowPosition" → order.workflowPosition.asJson,
+      "state" → order.state.asJson,
+      "attachedState" → order.attachedState.asJson,
+      "parent" → order.parent.asJson,
+      "payload" → order.payload.asJson,
+      "cancelationMarked" → (order.cancelationMarked ? true).asJson)
+
+  implicit val jsonDecoder: Decoder[Order[State]] = cursor ⇒
+    for {
+      id ← cursor.get[OrderId]("id")
+      workflowPosition ← cursor.get[WorkflowPosition]("workflowPosition")
+      state ← cursor.get[State]("state")
+      attachedState ← cursor.get[Option[AttachedState]]("attachedState")
+      parent ← cursor.get[Option[OrderId]]("parent")
+      payload ← cursor.get[Payload]("payload")
+      cancelationMarked ← cursor.get[Option[Boolean]]("cancelationMarked") map (_ getOrElse false)
+    } yield
+      Order(id, workflowPosition, state, attachedState, parent, payload, cancelationMarked)
+
+  implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o ⇒ jsonEncoder.encodeObject(o)
+  implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor ⇒
+    jsonDecoder(cursor) flatMap {
+      o ⇒ o.ifState[FreshOrReady] match {
+        case None ⇒ Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", Nil))
+        case Some(x) ⇒ Right(x)
+      }
+    }
 }

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -82,7 +82,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case event: OrderProcessed ⇒
         Some(OrderProcessedFat(event.outcome, order.variables))
 
-      case OrderFinished ⇒
+      case OrderFinished | OrderCanceled/*TODO OrderCanceledFat ?*/ ⇒
         Some(OrderFinishedFat(order.workflowPosition))
 
       case OrderForked(children) ⇒

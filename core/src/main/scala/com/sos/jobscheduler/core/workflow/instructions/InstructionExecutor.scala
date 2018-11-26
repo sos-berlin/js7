@@ -43,8 +43,10 @@ object InstructionExecutor
 
   def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Option[KeyedEvent[OrderActorEvent]] =
     instructionToExecutor(instruction) match {
-      case exec: EventInstructionExecutor ⇒ exec.toEvent(context, order, instruction.asInstanceOf[exec.Instr])
-      case _ ⇒ None
+      case exec: EventInstructionExecutor ⇒
+        exec.toEvent(context, order, instruction.asInstanceOf[exec.Instr])
+      case _ ⇒
+        None
     }
 
   private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =
