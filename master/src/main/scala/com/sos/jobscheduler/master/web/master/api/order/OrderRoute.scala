@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound}
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Directive, Route}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.problem.Problem
@@ -16,6 +16,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
+import com.sos.jobscheduler.master.web.master.api.order.OrderRoute._
 
 /**
   * @author Joacim Zschimmer
@@ -62,14 +63,8 @@ trait OrderRoute extends MasterRouteProvider
               complete(Problem(s"Unrecognized return=$unrecognized"))
           }
         } ~
-        path(Segment) { orderIdString ⇒
-          singleOrder(OrderId(orderIdString))
-        } ~
-        extractUnmatchedPath {
-          case Uri.Path.Slash(tail) if !tail.isEmpty ⇒
-            singleOrder(OrderId(tail.toString))  // Slashes not escaped
-          case _ ⇒
-            complete(NotFound)
+        matchOrderId { orderId ⇒
+          singleOrder(orderId)
         }
       }
     }
@@ -83,8 +78,22 @@ trait OrderRoute extends MasterRouteProvider
           Problem(s"Does not exist: $orderId"): ToResponseMarshallable
       }
     }
+
 }
 
 object OrderRoute {
   intelliJuseImport(keyedEventJsonCodec)
+
+  private val matchOrderId = new Directive[Tuple1[OrderId]] {
+    def tapply(inner: Tuple1[OrderId] ⇒ Route) =
+      path(Segment) { orderIdString ⇒
+        inner(Tuple1(OrderId(orderIdString)))
+      } ~
+      extractUnmatchedPath {
+        case Uri.Path.Slash(tail) if !tail.isEmpty ⇒
+          inner(Tuple1(OrderId(tail.toString)))  // Slashes not escaped
+        case _ ⇒
+          complete(NotFound)  // Invalid OrderId syntax
+      }
+  }
 }
