@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.system.Stdout
 import com.sos.jobscheduler.data.workflow.WorkflowId
@@ -63,7 +63,8 @@ object OrdersState {
     idToEntry: Map[OrderId, OrderEntry],
     workflowToOrderIds: WorkflowToOrderIds,
     eventId: EventId,
-    eventCount: Int)
+    eventCount: Int,
+    markedOrders: Map[Mark, OrderId] = Map.empty)
   extends Content
   {
     private val positionCache = mutable.Map[WorkflowId, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
@@ -132,7 +133,7 @@ object OrdersState {
                     val childOrders = entry.order.newForkedOrders(event)
                     val childOrderIds = childOrders map (_.id)
                     deleted --= childOrderIds
-                    updated ++= childOrders.map(o ⇒ o.id → OrderEntry(o, updatedAt = nowMillis))
+                    updated ++= childOrders.map(o ⇒ o.id → OrderEntry(o, mark = entry.mark.map(_.copy(isRelative = true)), updatedAt = nowMillis))
                     added.getOrElseUpdate(entry.order.workflowId, new OrderedSet) ++= childOrderIds
 
                   case _: OrderJoined ⇒
@@ -146,7 +147,7 @@ object OrdersState {
                       }
                     }
 
-                  case _: OrderFinished ⇒
+                  case OrderFinished | OrderCanceled ⇒
                     deleted += orderId
                     updated -= orderId
                     for (orderIds ← added.get(entry.order.workflowId))
@@ -180,6 +181,65 @@ object OrdersState {
         from = this,
         dirty = deleted.flatMap(o ⇒ idToEntry.get(o)).map(_.order.workflowPosition) ++ updatedWorkflowPositions)
     }
+
+    def markOrder(orderId: OrderId, mark: Mark): FetchedContent =
+      idToEntry.get(orderId) match {
+        case Some(orderEntry) if !orderEntry.mark.contains(mark) ⇒
+          val meAndRelatives = thisAndRelatives(orderId)
+          copy(
+            idToEntry = idToEntry ++
+              meAndRelatives.flatMap(idToEntry.get)
+                .map(o ⇒ o.id → o.copy(mark = Some(mark.copy(isRelative = o.id != orderId)))) ++
+              (markedOrders.get(mark).toVector.flatMap(thisAndRelatives).toSet -- meAndRelatives)
+                .flatMap(idToEntry.get)
+                .map(o ⇒ o.id → o.copy(mark = None)),
+            markedOrders = markedOrders.filterNot(o ⇒ o._1 == mark || o == (Mark.Volatile → orderId)) + (mark → orderId))
+        case _ ⇒
+          copy(markedOrders = markedOrders - mark)
+      }
+
+    def unmarkOrder(orderId: OrderId, mark: Mark): FetchedContent =
+      idToEntry.get(orderId) match {
+        case Some(orderEntry) if orderEntry.mark contains mark ⇒
+          copy(
+            idToEntry = idToEntry ++
+              thisAndRelatives(orderId)
+                .flatMap(idToEntry.get)
+                .map(relative ⇒ relative.id → relative.copy(mark = None)),
+            markedOrders = markedOrders filterNot (_ == (mark → orderId)))
+        case _ ⇒ this
+      }
+
+    private def thisAndRelatives(orderId: OrderId): Set[OrderId] = {
+      val known = mutable.Set[OrderId]()
+      def loop(orderId: OrderId): Unit =
+        for (orderEntry ← idToEntry.get(orderId)) {
+          known += orderId
+          val order = orderEntry.order
+          val children = order.ifState[Order.Forked].toVector.flatMap(_.state.children.map(_.orderId))
+          val added = (children ++ order.parent) filterNot known
+          known ++= added
+          added foreach loop
+        }
+      loop(orderId)
+      known.toSet
+    }
+
+    //private def relatives(orderId: OrderId): Seq[OrderId] =
+    //  descendants(orderId) ++ ancestors(orderId)
+    //
+    //private def descendants(orderId: OrderId): Seq[OrderId] =
+    //  idToEntry.get(orderId).toVector flatMap { orderEntry ⇒
+    //    val children = orderEntry.order.ifState[Order.Forked].toVector.flatMap(_.state.children.map(_.orderId))
+    //    children ++ children.flatMap(descendants)
+    //  }
+    //
+    //private def ancestors(orderId: OrderId): Seq[OrderId] =
+    //  idToEntry.get(orderId).toVector flatMap (orderEntry ⇒
+    //    orderEntry.order.parent ++: orderEntry.order.parent.toList.flatMap(ancestors))
+
+    def isMarked(orderId: OrderId, mark: Mark) =
+      idToEntry.get(orderId).exists(_.mark contains mark)
   }
 
   private def concatOrderIds(
@@ -228,6 +288,7 @@ object OrdersState {
     order: Order[Order.State],
     output: Vector[String] = Vector(),
     lastOutputOfCurrentJob: Option[String] = None,
+    mark: Option[Mark] = None,
     updatedAt: Long)
   {
     def id = order.id
@@ -257,6 +318,12 @@ object OrdersState {
 
     def --=(as: Iterable[A]): Unit =  // Optimierbar, wenn alle as am Ende stehen
       array = array.filterNot(as.toSet)
+  }
+
+  final case class Mark(isVolatile: Boolean, isRelative: Boolean = false)
+  object Mark {
+    val Permanent = Mark(isVolatile = false)
+    val Volatile = Mark(isVolatile = true)
   }
 }
 

@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.master.gui.browser.components.order
 
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.OrderEntry
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow
 import com.sos.jobscheduler.master.gui.browser.components.workflow.WorkflowComponent
+import com.sos.jobscheduler.master.gui.browser.services.MasterApi
 import io.circe.syntax.EncoderOps
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
@@ -35,6 +37,8 @@ object OrderComponent {
       <.div(
         <.div(^.cls := "sheet-headline")(
           "Order ", <.span(^.whiteSpace := "nowrap")(props.orderEntry.order.id.string)),
+        <.div(^.float := "right")(
+          renderCancelButton(props.orderEntry)),
         <.div(^.float := "left")(
           renderCore(props.orderEntry)),
         <.div(^.float := "right")(
@@ -51,8 +55,9 @@ object OrderComponent {
             case o: Order.Forked ⇒ VdomArray(<.div("Forked"), o.childOrderIds.toVdomArray(orderId ⇒ <.div(orderId)))
             case o ⇒ o
           }),
-          showField("Position"   , orderEntry.order.workflowPosition.toString),
-          showField("Attached to", orderEntry.order.attachedState.orMissing)))
+          showField("Position", orderEntry.order.workflowPosition.toString),
+          showField("Attached", orderEntry.order.attachedState.orMissing),
+          showField("CancelationMarked", orderEntry.order.cancelationMarked.toString).when(orderEntry.order.cancelationMarked)))
 
     private def showField(key: String, value: VdomNode): VdomNode =
       <.tr(
@@ -69,6 +74,10 @@ object OrderComponent {
             }
           else
             <.i("(no variables)"))
+
+    private def renderCancelButton(orderEntry: OrderEntry): VdomNode =
+      <.button(^.`type` := "button", ^.cls := "btn btn-danger", "Cancel",
+        ^.onClick --> MasterApi.executeCommandCallback(CancelOrder(orderEntry.id)))
 
     private def renderOutput(lines: Vector[String]) =
       VdomArray(

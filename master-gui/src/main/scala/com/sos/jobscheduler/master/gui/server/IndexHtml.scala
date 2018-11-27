@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked.CheckedOption
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.BuildInfo.{buildId, buildVersion}
+import com.sos.jobscheduler.common.BuildInfo.{bootstrapVersion, buildId, buildVersion, toastrVersion}
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -31,7 +31,8 @@ final class IndexHtml(config: Config) extends HtmlPage.Cached {
         tags2.title("JobScheduler Master"),
         meta(name := "viewport", content := "width=device-width, initial-scale=1.0, shrink-to-fit=no"),
         link(rel := "icon", `type` := "image/vnd.microsoft.icon", attr("sizes") := "64x64", `href` := s"master/gui/v=$buildId/images/jobscheduler.ico"),
-        link(rel := "stylesheet", href := "master/gui/webjars/bootstrap/4.0.0/dist/css/bootstrap.min.css"),
+        link(rel := "stylesheet", href := s"master/gui/webjars/bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css"),
+        link(rel := "stylesheet", href := s"master/gui/webjars/toastr/$toastrVersion/build/toastr.min.css"),
         link(rel := "stylesheet", href := s"master/gui/v=$buildId/gui.css")),
         body(
           div(id := "GUI")(
@@ -43,7 +44,25 @@ final class IndexHtml(config: Config) extends HtmlPage.Cached {
            |  jQuery('#GUI').on('click', '.clickable-row', function() {
            |    window.location = jQuery(this).data('href');
            |  });
-           |});""".stripMargin + "\n")),
+           |});
+           |toastr.options = {
+           |  closeButton: false,
+           |  debug: false,
+           |  newestOnTop: false,
+           |  progressBar: false,
+           |  positionClass: "toast-bottom-full-width",
+           |  preventDuplicates: false,
+           |  onclick: null,
+           |  showDuration: "300",
+           |  hideDuration: "1000",
+           |  timeOut: "5000",
+           |  extendedTimeOut: "1000",
+           |  showEasing: "swing",
+           |  hideEasing: "linear",
+           |  showMethod: "fadeIn",
+           |  hideMethod: "fadeOut"
+           |}
+           |""".stripMargin + "\n")),
           jsName match {
             case Invalid(problem) ⇒
               p(b(color := "red", problem.toString))

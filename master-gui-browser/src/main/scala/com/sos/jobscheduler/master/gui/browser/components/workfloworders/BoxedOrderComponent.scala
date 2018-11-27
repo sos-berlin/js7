@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.gui.browser.common.Renderers.forTable.orderStateToVdom
 import com.sos.jobscheduler.master.gui.browser.common.Renderers.orderStateToSymbol
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState
-import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.OrderEntry
+import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{Mark, OrderEntry}
 import com.sos.jobscheduler.master.gui.browser.router.Router
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
@@ -14,40 +14,39 @@ import org.scalajs.dom.window
 /**
   * @author Joacim Zschimmer
   */
-private[workfloworders] final class BoxedOrderComponent
+private[workfloworders] final class BoxedOrderComponent(
+  orderOnMouseOver: OrderId ⇒ Callback,
+  orderOnMouseOut: OrderId ⇒ Callback,
+  orderOnClick: OrderId ⇒ Callback)
 {
-  private val orderSelector = new OrderSelector  // Has state
-
   def apply(orderEntry: OrderEntry) = component(orderEntry)
 
   private val component = ScalaComponent.builder[OrdersState.OrderEntry]("Little-Order")
     .render_P {
-      case OrdersState.OrderEntry(order, _, lastOutput, updatedAt) ⇒
-        orderSelector.updateOrder(order)
-        val selectedClass = orderSelector.cssClass(order.id)
-        val highlighted = false //updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
-        <.div(^.id := OrderSelector.elementId(order.id),
-              ^.cls := "sheet depth-1 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
-              ^.title := "Double-click for details",
-              ^.onMouseOver --> Callback { orderSelector.onMouseOver(order) },
-              ^.onMouseOut --> Callback { orderSelector.onMouseOut(order.id) },
-              ^.onClick --> Callback { orderSelector.onClick(order) },
-              ^.onDoubleClick --> Callback { window.document.location.assign(Router.hash(order.id)) },
-          <.div(^.cls := "orders-Order-OrderId", order.id.string),
+      case OrdersState.OrderEntry(order, _, lastOutput, mark, updatedAt) ⇒
+        <.div(^.cls := "sheet depth-1 Boxed-Order " + orderToClass(order) + markToClass(mark),
+          ^.title := "Double-click for details",
+          ^.onMouseOver --> orderOnMouseOver(order.id),
+          ^.onMouseOut --> orderOnMouseOut(order.id),
+          ^.onClick --> orderOnClick(order.id),
+          ^.onDoubleClick --> Callback { window.document.location.assign(Router.hash(order.id)) },
+          <.div(^.cls := "Boxed-Order-OrderId",
+            order.id.string),
           order.state match {
             case _: Order.Fresh | _: Order.Forked ⇒
-              <.div(^.cls := "orders-Order-compact",
+              <.div(^.cls := "Boxed-Order-compact",
                 order.state)
 
             case Order.Processing ⇒
-              <.div(^.cls := "orders-Order-compact",
+              <.div(^.cls := "Boxed-Order-compact",
                 orderStateToSymbol(order.state), " ",
                 lastOutput getOrElse order.state.toString: String)
 
             case _ ⇒
               <.div(
-                <.span(^.cls := "orders-Order-State", order.state))
-          })
+                <.span(^.cls := "Boxed-Order-State", order.state))
+          },
+          <.div(^.cls := "Boxed-Order-cancelationMarked", "CANCELED") when order.cancelationMarked)
     }
     .configure {
       implicit val orderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]
@@ -64,5 +63,14 @@ private[workfloworders] final class BoxedOrderComponent
       case _: Order.Stopped ⇒ "Order-Stopped "
       case _: Order.Broken  ⇒ "Order-Broken "
       case _                ⇒ ""
+    }
+
+  private def markToClass(mark: Option[Mark]) =
+    mark match {
+      case None ⇒ ""
+      case Some(Mark(false, false)) ⇒ "Boxed-Order-marked-permanently "
+      case Some(Mark(false, true )) ⇒ "Boxed-Order-relative-marked-permanently "
+      case Some(Mark(true , false)) ⇒ "Boxed-Order-marked-volatile "
+      case Some(Mark(true , true )) ⇒ "Boxed-Order-relative-marked-volatile "
     }
 }

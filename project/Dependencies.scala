@@ -22,7 +22,8 @@ object Dependencies {
   val monocleVersion = "1.5.0"
   val scalaJsDomVersion = "0.9.6"
   val scajaJsJQueryVersion = "0.9.3"
-  val bootstrapVersion = "4.0.0"
+  val bootstrapVersion = "4.1.3"
+  val toastrVersion = "2.1.4"
   val sangriaVersion = "1.4.2"
   val sangriaCirceVersion = "1.2.1"
 
@@ -73,8 +74,9 @@ object Dependencies {
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
 
   object webjars {
-    val bootstrap = "org.webjars.npm" % "bootstrap" % bootstrapVersion
+    val bootstrap     = "org.webjars.npm" % "bootstrap" % bootstrapVersion
     val materialIcons = "org.webjars" % "material-design-icons" % "3.0.1"
+    val toastr        = "org.webjars.npm" % "toastr" % toastrVersion
   }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil

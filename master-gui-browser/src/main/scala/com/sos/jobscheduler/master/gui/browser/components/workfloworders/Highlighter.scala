@@ -31,8 +31,8 @@ private class Highlighter {
     val phasingOut = orderToHighlighted.filter(_._2.startPhaseoutAt < now)
     for (h ← phasingOut.values) {
       val o = h.row.classList
-      o.remove("orders-Order-changed")
-      o.add("orders-Order-changed-phaseout")
+      o.remove("Boxed-Order-changed")
+      o.add("Boxed-Order-changed-phaseout")
     }
     orderToHighlighted --= phasingOut.keys
     orderToCleanup ++= phasingOut
@@ -43,7 +43,7 @@ private class Highlighter {
     val now = Timestamp.currentTimeMillis
     val cleansing = orderToCleanup filter (_._2.endPhaseoutAt < now)
     for (h ← cleansing.values) {
-      h.row.classList.remove("orders-Order-changed-phaseout")
+      h.row.classList.remove("Boxed-Order-changed-phaseout")
     }
     orderToCleanup --= cleansing.keys
   }
@@ -51,7 +51,7 @@ private class Highlighter {
   def abortPhasingOut(orderId: OrderId): Callback =
     Callback {
       for (h ← orderToCleanup.get(orderId)) {
-        h.row.classList.remove("orders-Order-changed-phaseout")
+        h.row.classList.remove("Boxed-Order-changed-phaseout")
       }
     }
 }

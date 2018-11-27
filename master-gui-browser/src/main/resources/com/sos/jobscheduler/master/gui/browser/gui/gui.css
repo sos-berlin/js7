@@ -1,4 +1,6 @@
 @import url('fonts/open-sans.css');
+b { font-weight: 600; }
+
 @font-face {
   /* https://google.github.io/material-design-icons/#icon-font-for-the-web */
   font-family: 'Material Icons';
@@ -10,6 +12,7 @@
     url(../webjars/material-design-icons/3.0.1/MaterialIcons-Regular.woff) format('woff'),
     url(../webjars/material-design-icons/3.0.1/MaterialIcons-Regular.ttf) format('truetype');
 }
+
 .material-icons {
   font-family: 'Material Icons';
   font-weight: normal;
@@ -95,28 +98,47 @@ header, main, footer { padding-left: 150px; }
 .page-center { padding: 0 0.5rem; }
 
 .experimental-monitor { letter-spacing: 1.5px; }
-.freezed { color: #7ccefd; font-weight: bold;  }
-.disconnected { color: orangered; font-weight: bold; }
+.freezed { color: #7ccefd; font-weight: 600;  }
+.disconnected { color: orangered; font-weight: 600; }
 
 .OrderId { white-space: nowrap; }
 
 .Workflow-with-orders { margin-top: 1rem; }
 .orders-Instruction { position: absolute; width: 100%; border-top: 0.5px solid #c0c0c0; margin: 3px 0; padding: 4px; height: 42px; }
 .orders-Instruction-head { overflow: hidden; text-overflow: ellipsis; line-height: 1.2rem; }
-.orders-Instruction-Executable { font-weight: bold; }
-.orders-Instruction-Agent { font-weight: bold; }
+.orders-Instruction-Executable { font-weight: 600; }
+.orders-Instruction-Agent { font-weight: 600; }
 .orders-Branch { position: absolute; padding: 0 4px; z-index: 1; background-color: white; }
-.orders-Order-moving { position: absolute; transition: transform 500ms cubic-bezier(0.4, 0.0, 0.2, 1); z-index: 2; }
-.orders-Order { position: relative; top: 6px; border: 3px solid transparent; padding: 0 2px; line-height: 1.1rem;
+
+.Boxed-Order-moving { position: absolute; transition: transform 500ms cubic-bezier(0.4, 0.0, 0.2, 1); z-index: 2; }
+.Boxed-Order { position: relative; top: 6px; border: 0px solid transparent; padding: 3px 5px; line-height: 1.1rem;
   height: 36px; overflow-y: hidden/*no scrollbar*/;
   width: 220px; overflow-x: hidden; text-overflow: ellipsis;
   cursor: pointer; transition: background-color 100ms ease-in; }
-.orders-Order-OrderId { white-space: nowrap; font-weight: 600; padding-bottom: 2px; }
-.orders-Order-compact { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 36ex; }
-.orders-Order-State   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 34ex; }
-.orders-Order-changed { background-color: #fff8a0; }
-.orders-Order-changed-phaseout { background-color: transparent; transition: background-color 700ms ease-in; }
-.orders-Order-more { display: inline-grid; margin: 0 0 0 10px; }
+.Boxed-Order-OrderId { white-space: nowrap; font-weight: 600; padding-bottom: 2px; }
+.Boxed-Order-compact { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 36ex; }
+.Boxed-Order-State   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 34ex; }
+.Boxed-Order-changed { background-color: #fff8a0; }
+.Boxed-Order-changed-phaseout { background-color: transparent; transition: background-color 700ms ease-in; }
+.Boxed-Order-more { display: inline-grid; margin: 0 0 0 10px; }
+/*.Boxed-Order-cancelationMarked {
+  background: no-repeat center center
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='36px' width='220px' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M3 0 L0 0 L97 100 L100 100' fill='red'/></svg>");
+    /* Firefox: https://bugzilla.mozilla.org/show_bug.cgi?id=1228460 * /
+}*/
+.Boxed-Order-cancelationMarked {
+  position: relative; top: -14px; text-align: right; transform: rotate(-10deg);
+  color: red; opacity: 0.2; font-size: 22px; font-weight: 800; letter-spacing: 1px;
+  text-decoration: overline underline;
+}
+
+/*.Boxed-Order-marked-permanently      { box-shadow: 0 0 7px 2px #f99b00; }*/
+.Boxed-Order-marked-permanently          { border-color: #708af9; border-width: 3px; padding: 0 2px; }
+.Boxed-Order-relative-marked-permanently { border-color: #708af9; border-width: 3px; padding: 0 2px; border-style: dotted }
+.Boxed-Order-marked-volatile             { border-color: #708af9; border-width: 2px; padding: 1px 3px; }
+.Boxed-Order-relative-marked-volatile    { border-color: #708af9; border-width: 2px; padding: 1px 3px; border-style: dotted }
+/*.Boxed-Order-marked-permanently { cursor: pointer; background-color: gold !important; }
+.Order-join-highlight { background-color: #FFA000 !important; }*/
 
 /*@media (max-width: 1499px) {
   .orders-preview { display:none !important }
@@ -133,11 +155,6 @@ header, main, footer { padding-left: 150px; }
 .Order-Stopped    { background-color: #ffe800; }
 .Order-Broken     { background-color: #ff625b; }
 /*.Order-Forked    { background-color: #ffe366; }*/
-/*.Order-highlight      { box-shadow: 0 0 7px 2px #f99b00; }*/
-.Order-highlight      { border-color: #708af9; }
-.Order-child-highlight { border-color: #708af9; border-style: dotted }
-/*.Order-highlight { cursor: pointer; background-color: gold !important; }
-.Order-join-highlight { background-color: #FFA000 !important; }*/
 .orders-preview { position: fixed; float: right; background-color: #fffefc; z-index: 1; right: 10px }
 
 .Order-State-symbol-width { display: inline-block; width: 18px; }
@@ -152,3 +169,5 @@ header, main, footer { padding-left: 150px; }
 .Instruction-Transitionable { border-left: solid 1px #02f; border-bottom: solid 1px #02f }
 .Instruction-Finished       { border-left: solid 1px #02f; border-bottom: solid 1px #02f; }
 .Workflow-symbol-col { width: 38px; }
+
+/*.toast-message { width: 400px; }*/

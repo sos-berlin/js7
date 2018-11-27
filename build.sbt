@@ -24,7 +24,7 @@
   * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
-import Dependencies.bootstrapVersion
+import Dependencies.{bootstrapVersion, toastrVersion}
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.{CrossVersion, Def}
@@ -246,8 +246,11 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
+      BuildInfoKey.action("commitMessage")(git.gitHeadMessage.value),
       BuildInfoKey.action("buildId")(newBuildId),
-      BuildInfoKey.action("buildTime")(System.currentTimeMillis)),
+      BuildInfoKey.action("buildTime")(System.currentTimeMillis),
+      BuildInfoKey.action("bootstrapVersion")(bootstrapVersion),
+      BuildInfoKey.action("toastrVersion")(toastrVersion)),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
@@ -385,6 +388,8 @@ lazy val `master-gui-browser` = project
     resourceGenerators in Compile += provideWebjarEntryAsResource(s"bootstrap-$bootstrapVersion.jar", Seq(
       s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css",
       s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css.map")),
+    resourceGenerators in Compile += provideWebjarEntryAsResource(s"toastr-$toastrVersion.jar", Seq(
+      s"toastr/$toastrVersion/build/toastr.min.css")),
     libraryDependencies ++= {
       import Dependencies._
       Seq(
@@ -402,7 +407,7 @@ lazy val `master-gui-browser` = project
     jsDependencies ++= Seq(
       "org.webjars.npm" % "jquery" % "3.3.1" / "dist/jquery.js" minified "dist/jquery.min.js"
         commonJSName "jQuery",
-      "org.webjars.npm" % "bootstrap" % "4.0.0" / "dist/js/bootstrap.bundle.js" minified "dist/js/bootstrap.bundle.min.js"
+      "org.webjars.npm" % "bootstrap" % bootstrapVersion / "dist/js/bootstrap.bundle.js" minified "dist/js/bootstrap.bundle.min.js"
         commonJSName "Bootstrap"
         dependsOn "dist/jquery.js",
       "org.webjars.bower" % "react" % "16.1.0" / "react.development.js" minified "react.production.min.js"
@@ -412,7 +417,8 @@ lazy val `master-gui-browser` = project
         dependsOn "react.development.js",
       "org.webjars.bower" % "react" % "16.1.0" / "react-dom-server.browser.development.js" minified "react-dom-server.browser.production.min.js"
         commonJSName "ReactDOMServer"
-        dependsOn "react-dom.development.js"))
+        dependsOn "react-dom.development.js",
+      "org.webjars.npm" % "toastr" % toastrVersion / s"$toastrVersion/toastr.js" minified "build/toastr.min.js"))
 
 def provideWebjarEntryAsResource(jarName: String, entries: Seq[String]) =
   provideJarEntryAsResource(jarName, entries map (e ⇒ s"META-INF/resources/webjars/$e" → s"$masterGuiPath/webjars/$e"))

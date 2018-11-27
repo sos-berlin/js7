@@ -13,4 +13,5 @@ object JsBridge extends js.Object {
 
   val guiConfig: GuiConfig = js.native
   val jQuery: JQueryStatic = js.native
+  val toastr: Toastr = js.native
 }

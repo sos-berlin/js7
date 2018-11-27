@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
@@ -67,7 +67,7 @@ extends JournalRecoverer[Event]
             case event: OrderAdded ⇒
               idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
 
-            case OrderFinished ⇒
+            case OrderFinished | OrderCanceled ⇒
               idToOrder -= orderId
 
             case event: OrderCoreEvent ⇒

@@ -13,4 +13,9 @@ final class UtilsTest extends FreeSpec {
     assert(toUriQueryString(("a" → "A") :: Nil) == "a=A")
     assert(toUriQueryString(("a" → "Ä") :: ("b=" → "B&") :: Nil) == "a=%C3%84&b%3D=B%26")
   }
+
+  "stringToHtml" in {
+    assert(stringToHtml("<script>hallo&amp;</script>") == "&lt;script>hallo&amp;amp;&lt;/script")
+    assert(stringToHtml("<![CDATA[ bla ]]>") == "&lt;![CDATA[ bla ]]&g;t")
+  }
 }

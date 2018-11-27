@@ -17,7 +17,10 @@ import scala.math.min
 private[workfloworders] final class WorkflowOrdersBackend(scope: BackendScope[Props, Unit])
 extends OnUnmount {
 
-  private val boxedOrderComponent = new BoxedOrderComponent
+  private val boxedOrderComponent = new BoxedOrderComponent(
+    orderOnMouseOver = orderId ⇒ scope.props.flatMap(_.onMouseOver(orderId)),
+    orderOnMouseOut  = orderId ⇒ scope.props.flatMap(_.onMouseOut(orderId)),
+    orderOnClick     = orderId ⇒ scope.props.flatMap(_.onClick(orderId)))
 
   def render(props: Props): VdomElement = {
     val ordersState = props.ordersStateSnapshot.value
@@ -52,7 +55,7 @@ extends OnUnmount {
         } yield (orderEntry, x, y))
       .sortBy(_._1.id)  // Sort to allow React to identify known orders
       .toVdomArray { case (orderEntry, x, y) ⇒
-        <.div(^.key := orderEntry.id.string, ^.cls := "orders-Order-moving", moveElement(x, y),
+        <.div(^.key := orderEntry.id.string, ^.cls := "Boxed-Order-moving", moveElement(x, y),
           boxedOrderComponent(orderEntry))
       })
 }

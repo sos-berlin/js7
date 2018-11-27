@@ -18,3 +18,12 @@
   src: local('Open Sans SemiBold'), local('OpenSans-SemiBold'),
        url('open-sans-v15-cyrillic-ext_greek_cyrillic_latin-ext_greek-ext_latin_vietnamese-600.woff2') format('woff2');
 }
+
+/* open-sans-800 - latin */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 800;
+  src: local('Open Sans ExtraBold'), local('OpenSans-ExtraBold'),
+       url('open-sans-v15-latin-800.woff2') format('woff2');
+}

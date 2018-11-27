@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.http
 
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.web.HttpClient
@@ -46,17 +47,31 @@ trait JsHttpClient extends HttpClient with HasSessionToken {
 
   private def sessionHeaders = sessionToken.map(SessionToken.HeaderName → _.secret.string).toList
 
-  private def decodeResponse[A: Decoder](body: ⇒ Task[XMLHttpRequest]): Task[A] =
-    for (xhr ← checkResponse(body)) yield circe.parser.decode[A](xhr.responseText) match {
-      case Right(o) ⇒ o
-      case Left(t) ⇒ logAndThrow(OtherFailure(s"Error in JSON decoding: ${t.toStringWithCauses}", Some(t)))
+  private def decodeResponse[A: Decoder](body: ⇒ Task[XMLHttpRequest]): Task[A] = {
+    val problemRecovered = body.onErrorRecover {
+      case e: AjaxException /*if e.xhr.responseType == "json"*/ ⇒
+        io.circe.parser.parse(e.xhr.responseText) flatMap (_.as[Problem]) match {
+          case Left(_) ⇒ throw e
+          case Right(problem) ⇒
+            window.console.log(problem.toString)
+            throw problem.throwable
+        }
     }
+    checkResponse(problemRecovered) map (xhr ⇒ circe.parser.decode[A](xhr.responseText) match {
+      case Right(o) ⇒ o
+      case Left(t) ⇒ logAndThrow(OtherFailure(s"Error in JSON decoding: $t.toStringWithCauses", Some(t)))
+    })
+  }
 
   private def checkResponse[A](body: ⇒ Task[XMLHttpRequest]): Task[XMLHttpRequest] =
     body.materialize.map(tried ⇒ Success(checkResponse(tried))).dematerialize
 
   private def checkResponse(tried: Try[XMLHttpRequest]): XMLHttpRequest =
     tried match {
+      case Failure(e: ProblemException) ⇒
+        window.console.warn(e.toString)
+        throw e
+
       //case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
       //  logAndThrow(OtherFailure(s"Problem while accessing JobScheduler: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
 

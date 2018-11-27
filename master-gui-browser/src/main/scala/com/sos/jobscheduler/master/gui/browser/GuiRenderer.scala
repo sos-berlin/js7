@@ -53,7 +53,7 @@ final class GuiRenderer(
         (TagMod.empty,
           <.span(^.cls := "page-top-right-segment")(
             "..."))
-      case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
+      case OrdersState.FetchedContent(_, _, eventId, eventCount, _) ⇒
         val dateTime = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset take 19
         val events = <.span(^.cls := "page-top-right-segment unimportant")(s"$eventCount events")
         val dt =

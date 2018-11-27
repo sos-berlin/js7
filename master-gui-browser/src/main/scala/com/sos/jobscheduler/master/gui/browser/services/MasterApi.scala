@@ -1,11 +1,19 @@
 package com.sos.jobscheduler.master.gui.browser.services
 
 import com.sos.jobscheduler.base.auth.SessionToken
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.{HttpClientException, JsHttpClient}
 import com.sos.jobscheduler.master.client.HttpMasterApi
+import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.gui.browser.common.Utils.stringToHtml
 import com.sos.jobscheduler.master.gui.browser.services.JsBridge.guiConfig.buildId
+import com.sos.jobscheduler.master.gui.browser.services.JsBridge.toastr
+import japgolly.scalajs.react.Callback
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.FiniteDuration
+import scala.scalajs.js
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -40,4 +48,22 @@ object MasterApi extends HttpMasterApi with JsHttpClient
       case Left(t) ⇒ throw t
       case Right(o) ⇒ Task.pure(o)  // Success
     }
+
+  def executeCommandCallback[C <: MasterCommand](
+    command: C,
+    onComplete: PartialFunction[Try[C#MyResponse], Unit] = PartialFunction.empty)
+  : Callback =
+    Callback.future(
+      MasterApi.executeCommand(command)
+        .materialize.map { tried ⇒
+          def toast(level: String, msg: String) =
+            toastr(level)(stringToHtml(command.toString) + "<br>" + stringToHtml(msg))
+          val default: PartialFunction[Try[command.MyResponse], Unit] = {
+            case Success(response)  ⇒ toast("success", response.toString)
+            case Failure(throwable) ⇒ toast("error", throwable.toSimplifiedString)
+          }
+          onComplete.applyOrElse(tried, default)
+          Callback.empty
+        }
+      .runAsync)
 }
