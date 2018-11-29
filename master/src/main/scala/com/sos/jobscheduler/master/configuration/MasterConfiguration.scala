@@ -9,6 +9,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.{Config, ConfigFactory}
@@ -43,7 +44,7 @@ extends CommonConfiguration
 
 object MasterConfiguration
 {
-  val DefaultName = "Master"
+  val DefaultName = if (isTest) "Master" else "JobScheduler"
 
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,

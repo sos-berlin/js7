@@ -15,6 +15,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
@@ -101,6 +102,7 @@ extends CommonConfiguration
 
 object AgentConfiguration {
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
+  private[configuration] val DefaultName = if (isTest) "Agent" else "JobScheduler"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
@@ -125,7 +127,7 @@ object AgentConfiguration {
       jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
-      name = "Agent",
+      name = DefaultName,
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
     //for (o ← config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {

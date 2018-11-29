@@ -32,7 +32,7 @@ final class AgentConfigurationTest extends FreeSpec  {
         jobJavaOptions = Nil,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
         akkaAskTimeout = 60.seconds,
-        name = "Agent",
+        name = AgentConfiguration.DefaultName,
         ConfigFactory.empty))
     }
   }
