@@ -83,7 +83,6 @@ final class OrderEventSource(
     (order.isState[Order.FreshOrReady] || order.isState[Order.Stopped] || order.isState[Order.Broken]) &&
       (order.isDetached || order.isAttached) &&
       order.parent.isEmpty &&
-      order.position.branchPath.isEmpty &&
       !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
