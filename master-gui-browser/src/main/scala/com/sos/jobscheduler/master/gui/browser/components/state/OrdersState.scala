@@ -185,15 +185,23 @@ object OrdersState {
     def markOrder(orderId: OrderId, mark: Mark): FetchedContent =
       idToEntry.get(orderId) match {
         case Some(orderEntry) if !orderEntry.mark.contains(mark) ⇒
-          val meAndRelatives = thisAndRelatives(orderId)
-          copy(
-            idToEntry = idToEntry ++
-              meAndRelatives.flatMap(idToEntry.get)
-                .map(o ⇒ o.id → o.copy(mark = Some(mark.copy(isRelative = o.id != orderId)))) ++
-              (markedOrders.get(mark).toVector.flatMap(thisAndRelatives).toSet -- meAndRelatives)
-                .flatMap(idToEntry.get)
-                .map(o ⇒ o.id → o.copy(mark = None)),
-            markedOrders = markedOrders.filterNot(o ⇒ o._1 == mark || o == (Mark.Volatile → orderId)) + (mark → orderId))
+          val volatilesDoNotTouchPermanents = mark match {
+            case Mark.Permanent ⇒ Set.empty[OrderId]
+            case Mark.Volatile ⇒ markedOrders.get(Mark.Permanent).toVector.flatMap(thisAndRelatives).toSet  // Don't touch permanent mark
+          }
+          if (volatilesDoNotTouchPermanents(orderId))
+            this
+          else {
+            val meAndRelatives = thisAndRelatives(orderId)
+            copy(
+              idToEntry = idToEntry ++
+                (meAndRelatives -- volatilesDoNotTouchPermanents).flatMap(idToEntry.get)
+                  .map(o ⇒ o.id → o.copy(mark = Some(mark.copy(isRelative = o.id != orderId)))) ++
+                (markedOrders.get(mark).toVector.flatMap(thisAndRelatives).toSet -- meAndRelatives)
+                  .flatMap(idToEntry.get)
+                  .map(o ⇒ o.id → o.copy(mark = None)),
+              markedOrders = markedOrders.filterNot(o ⇒ o._1 == mark || o == (Mark.Volatile → orderId)) + (mark → orderId))
+          }
         case _ ⇒
           copy(markedOrders = markedOrders - mark)
       }
@@ -205,6 +213,7 @@ object OrdersState {
             idToEntry = idToEntry ++
               thisAndRelatives(orderId)
                 .flatMap(idToEntry.get)
+                .filter(_.mark exists (_.isVolatile == mark.isVolatile))  // Unmark same type only
                 .map(relative ⇒ relative.id → relative.copy(mark = None)),
             markedOrders = markedOrders filterNot (_ == (mark → orderId)))
         case _ ⇒ this
