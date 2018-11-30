@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.system
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
+import java.net.InetAddress
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
@@ -23,15 +24,16 @@ trait OperatingSystem {
 
   def getDynamicLibraryEnvironmentVariableName: String
 
-  def hostname: String = alternativeHostname
+  final lazy val hostname: String =
+    sys.env.getOrElse(hostnameEnvName, InetAddress.getLocalHost.getHostName)
+
+  protected def hostnameEnvName: String
 
   def distributionNameAndVersionOption: Option[String]
 
   def cpuModel: Option[String]
 
   def sleepingShellScript(duration: FiniteDuration): String
-
-  protected def alternativeHostname: String
 }
 
 object OperatingSystem {
@@ -64,7 +66,7 @@ object OperatingSystem {
 
     def getDynamicLibraryEnvironmentVariableName: String = "PATH"
 
-    protected def alternativeHostname: String = sys.env.getOrElse("COMPUTERNAME", "")
+    protected def hostnameEnvName = "COMPUTERNAME"
 
     def distributionNameAndVersionOption = None
 
@@ -82,7 +84,7 @@ object OperatingSystem {
 
     def getDynamicLibraryEnvironmentVariableName: String = "LD_LIBRARY_PATH"
 
-    protected def alternativeHostname: String = sys.env.getOrElse("HOSTNAME", "")
+    protected def hostnameEnvName = "HOSTNAME"
 
     lazy val distributionNameAndVersionOption: Option[String] = {
       def readFirstLine(file: Path): String =
