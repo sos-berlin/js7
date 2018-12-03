@@ -16,7 +16,7 @@ final case class OrderId(string: String) extends GenericString
   def pretty = s"Order $string"
 
   def /(childId: String): OrderId =
-    this / (ChildId(childId))
+    this / ChildId(childId)
 
   def /(childId: ChildId): OrderId =
     OrderId(string + ChildSeparator + childId.string)

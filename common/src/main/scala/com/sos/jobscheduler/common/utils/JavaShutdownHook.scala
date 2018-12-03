@@ -17,13 +17,13 @@ final class JavaShutdownHook private(onShutdown: () ⇒ Unit, name: String) exte
     }
   }
 
-  Runtime.getRuntime.addShutdownHook(hook)
+  sys.runtime.addShutdownHook(hook)
   logger.trace(s"JavaShutdownHook '$name' added")
 
   def close(): Unit = remove()
 
   def remove(): Unit =
-    try Runtime.getRuntime.removeShutdownHook(hook)
+    try sys.runtime.removeShutdownHook(hook)
     catch {
       case t: IllegalStateException ⇒ logger.trace(s"JavaShutdownHook.remove: $t")  // "Shutdown in progress"
       case NonFatal(t) ⇒ logger.warn(s"JavaShutdownHook.remove: : $t", t)
