@@ -4,14 +4,41 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.instances.all._
 import cats.syntax.all._
 import cats.{Applicative, Apply}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class CheckedTest extends FreeSpec  {
+final class CheckedTest extends FreeSpec
+{
+  "JSON" - {
+    import Checked.implicits.checkedJsonCodec
+
+    sealed trait A
+    case class A1(number: Int) extends A
+    implicit val jsonCodec = TypedJsonCodec[A](Subtype.named(deriveCodec[A1], "A"))
+
+    "Valid" in {
+      testJson[Checked[A]](Valid(A1(1)),
+        json"""{
+          "TYPE": "A",
+          "number": 1
+        }""")
+    }
+
+    "Invalid" in {
+      testJson[Checked[A]](Invalid(Problem("PROBLEM")),
+        json"""{
+          "TYPE": "Problem",
+          "message": "PROBLEM"
+        }""")
+    }
+  }
 
   "===" in {
     assert(Checked(1) === Checked(1))
