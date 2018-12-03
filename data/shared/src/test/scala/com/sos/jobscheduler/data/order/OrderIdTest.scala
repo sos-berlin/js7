@@ -10,9 +10,12 @@ import org.scalatest.FreeSpec
 final class OrderIdTest extends FreeSpec {
 
   "officialSyntaxChecked" in {
+    assert(OrderId.checked("") == Invalid(Problem("OrderId must not be empty")))
+    assert(OrderId("a/b").checkedNameSyntax == Invalid(Problem("OrderId must not contain reserved characters /")))
+
+    assert(OrderId("a@b").checkedNameSyntax == Valid(OrderId("a@b")))
+    assert(OrderId("1").checkedNameSyntax == Valid(OrderId("1")))
     assert(OrderId("A").checkedNameSyntax == Valid(OrderId("A")))
     assert(OrderId("A-_.B").checkedNameSyntax == Valid(OrderId("A-_.B")))
-    assert(OrderId("a@b").checkedNameSyntax == Invalid(Problem("Problem with 'OrderId': Invalid character or character combination in name 'a@b'")))
-    assert(OrderId("a/b").checkedNameSyntax == Invalid(Problem("Problem with 'OrderId': Invalid character or character combination in name 'a/b'")))
   }
 }

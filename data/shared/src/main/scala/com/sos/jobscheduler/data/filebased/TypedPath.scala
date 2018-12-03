@@ -20,14 +20,9 @@ import scala.reflect.ClassTag
 
 trait TypedPath extends GenericString {
 
-  validate()
-
   def companion: Companion[_ <: TypedPath]
 
   final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
-
-  /** Has to be called in every implementing constructor. */
-  final def validate() = companion.check(string).orThrow
 
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
@@ -88,13 +83,11 @@ object TypedPath {
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
-  abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Companion[P]
+  abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Checked_[P]
   {
     final val NameOrdering: Ordering[P] = Ordering by { _.name }
-    final lazy val Anonymous: P = apply(InternalPrefix + "anonymous")
+    final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
     final lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
-
-    def apply(o: String): P
 
     def isEmptyAllowed = false
     def isSingleSlashAllowed = false
@@ -104,7 +97,7 @@ object TypedPath {
       if (string == Anonymous.string)
         Problem(s"Anonymous $name?")
       else
-        check(string) map (_ ⇒ apply(string))
+        check(string) flatMap (_ ⇒ super.checked(string))
 
     final private[TypedPath] def check(string: String): Checked[Unit] = {
       def errorString = s"$name '$string'"

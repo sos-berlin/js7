@@ -28,4 +28,6 @@ case class BPath(string: String) extends TypedPath {
 object BPath extends TypedPath.Companion[BPath] {
   val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
     SourceType.Json → ".b.json")
+
+  protected def unchecked(string: String) = new BPath(string)
 }

@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.data.job
 
-import cats.data.Validated.{Invalid, Valid}
+import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import java.nio.file.Path
 
@@ -15,9 +14,9 @@ final case class ExecutablePath private(string: String) extends GenericString
     directory resolve string.stripPrefix("/")
 }
 
-object ExecutablePath extends GenericString.Companion[ExecutablePath]
+object ExecutablePath extends GenericString.Checked_[ExecutablePath]
 {
-  def apply(string: String) = checked(string).orThrow
+  protected def unchecked(string: String) = new ExecutablePath(string)
 
   def sh(string: String) = apply(if (sys.props("os.name") startsWith "Windows") s"$string.cmd" else string)
 
@@ -27,5 +26,5 @@ object ExecutablePath extends GenericString.Companion[ExecutablePath]
     else if (!string.startsWith("/") || string == "/" || string.contains('\\') || string.startsWith(".") || string.contains("/."))
       Invalid(Problem(s"Invalid executable path: $string"))
     else
-      Valid(new ExecutablePath(string))
+      super.checked(string)
 }

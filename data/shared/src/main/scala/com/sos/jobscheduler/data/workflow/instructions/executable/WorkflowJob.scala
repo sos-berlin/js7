@@ -65,10 +65,12 @@ object WorkflowJob
     else
       Valid(new WorkflowJob(agentPath, executablePath, defaultArguments, returnCodeMeaning, taskLimit))
 
-  final case class Name(string: String) extends GenericString
+  final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
-    val Anonymous = Name("")
+    val Anonymous = Name.unchecked("")
     override val name = "WorkflowJob.Name"
+
+    protected def unchecked(string: String) = new Name(string)
   }
 
   /** To be used in Workflow with known WorkflowId. */

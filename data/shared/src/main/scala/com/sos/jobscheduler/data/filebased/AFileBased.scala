@@ -21,13 +21,16 @@ object AFileBased extends FileBased.Companion[AFileBased] {
   def typedPathCompanion = APath
 }
 
-case class APath(string: String) extends TypedPath {
-
+case class APath(string: String) extends TypedPath
+{
   def companion = APath
 }
 
-object APath extends TypedPath.Companion[APath] {
+object APath extends TypedPath.Companion[APath]
+{
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json → ".a.json",
     SourceType.Txt → ".a.txt")
+
+  def unchecked(string: String) = new APath(string)
 }

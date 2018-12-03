@@ -10,7 +10,7 @@ import scala.util.Random
  * @see C++ Process_id
  * @author Joacim Zschimmer
  */
-final case class AgentTaskId(string: String) extends GenericString {
+final case class AgentTaskId private(string: String) extends GenericString {
   import data.AgentTaskId._
 
   if (!pattern.matcher(string).matches) throw new IllegalArgumentException(s"Invalid AgentTaskId($string)")
@@ -23,9 +23,11 @@ final case class AgentTaskId(string: String) extends GenericString {
   override def toString = s"AgentTaskId($string)"
 }
 
-object AgentTaskId extends GenericString.HasJsonCodec[AgentTaskId] {
-
+object AgentTaskId extends GenericString.Checked_[AgentTaskId]
+{
   private val pattern = "[A-Za-z0-9-][A-Za-z0-9._-]*".r.pattern  // Try to exclude any meta characters
+
+  protected def unchecked(string: String) = new AgentTaskId(string)
 
   def apply(index: Long, salt: Long) = new AgentTaskId(s"$index-$salt")
 

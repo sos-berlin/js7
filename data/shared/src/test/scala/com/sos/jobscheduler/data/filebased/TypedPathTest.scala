@@ -119,9 +119,9 @@ final class TypedPathTest extends FreeSpec {
   }
 
   "Anonymous" in {
-    assert(APath.Anonymous == APath("/?/anonymous"))
+    assert(APath.Anonymous == APath.unchecked("/?/anonymous"))
     assert(APath.Anonymous.officialSyntaxChecked == Invalid(Problem("Internal path is not allowed here: A:/?/anonymous")))
-    assert(APath.NoId == APath("/?/anonymous") % "⊥")
+    assert(APath.NoId == APath.unchecked("/?/anonymous") % VersionId.unchecked("⊥"))
   }
 
   "name etc." in {

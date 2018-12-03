@@ -2,10 +2,9 @@ package com.sos.jobscheduler.data.order
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.standards.NameValidator
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
-final case class OrderId(string: String) extends GenericString
+final case class OrderId private(string: String) extends GenericString
 {
   import OrderId._
 
@@ -22,21 +21,29 @@ final case class OrderId(string: String) extends GenericString
     OrderId(string + ChildSeparator + childId.string)
 
   def checkedNameSyntax: Checked[this.type] =
-    NameValidator.checked(string) map (_ ⇒ this) match {
-      case Invalid(problem) ⇒ Invalid(problem withKey "OrderId")
-      case Valid(_) ⇒ Valid(this)
-    }
+    if (string.isEmpty)
+      Invalid(Problem("OrderId must not be empty"))
+    else if (string.exists(ReservedCharacters))
+      Invalid(Problem("OrderId must not contain reserved characters " + ReservedCharacters.mkString(", ")))
+    else
+      Valid(this)
     //firstProblem(string.stripPrefix("/").split('/').iterator map nameValidator.checked) match {
     //  case Some(problem) ⇒ problem withKey toString
     //  case None ⇒ Valid(this)
     //}
 }
 
-object OrderId extends GenericString.Companion[OrderId] {
+object OrderId extends GenericString.NonEmpty[OrderId]
+{
   val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
+  private val ReservedCharacters = Set('/')
 
-  final case class ChildId(string: String) extends GenericString {
-    if (string.isEmpty) throw new IllegalArgumentException("OrderId.ChildId must not be empty")
+  protected def unchecked(string: String) = new OrderId(string)
+
+  final case class ChildId private(string: String) extends GenericString
+  object ChildId extends GenericString.NonEmpty[ChildId] {
+    override val name = "OrderId.Child"
+
+    protected def unchecked(string: String) = new ChildId(string)
   }
-  object ChildId extends GenericString.Companion[ChildId]
 }

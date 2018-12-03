@@ -6,10 +6,13 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Label(string: String) extends GenericString {
+final case class Label private(string: String) extends GenericString {
   //scala.js Identifier.requireIdentifier(string)  TODO Syntax für Label?
 }
 
-object Label extends GenericString.Companion[Label] {
-  implicit def fromString(label: String) = new Label(label)
+object Label extends GenericString.Checked_[Label]
+{
+  def unchecked(string: String) = new Label(string)
+
+  implicit def fromString(label: String) = super.apply(label)
 }

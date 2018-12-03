@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.folder
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.util.UUID.randomUUID
 
-final case class FolderPath(string: String) extends TypedPath {
+final case class FolderPath private(string: String) extends TypedPath {
   import FolderPath._
 
   def companion = FolderPath
@@ -42,6 +42,8 @@ object FolderPath extends TypedPath.Companion[FolderPath]
   val sourceTypeToFilenameExtension = Map.empty
 
   override def isSingleSlashAllowed = true
+
+  protected def unchecked(string: String) = new FolderPath(string)
 
   def fromTrailingSlash(string: String) = {
     require(string endsWith "/", "Trailing slash required for FolderPath")

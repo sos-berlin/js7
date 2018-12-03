@@ -62,7 +62,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val VersionIdType       = genericStringType[VersionId]("Version identifier (String)")
   private implicit val ReturnCodeType      = genericIntType[ReturnCode]("Return code")
 
-  private def genericStringType[A <: GenericString](description: String)(implicit A: GenericString.Companion[A]): ScalarType[A] =
+  private def genericStringType[A <: GenericString](description: String)(implicit A: GenericString.Checked_[A]): ScalarType[A] =
     stringEquivalentType[A](str ⇒ A.checked(str), _.string, A.name.replace('.', '_'), description)
 
   private def stringEquivalentType[A](fromString: String ⇒ Checked[A], toString: A ⇒ String, name: String, description: String): ScalarType[A] = {

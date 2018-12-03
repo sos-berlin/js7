@@ -12,11 +12,11 @@ final case class MasterId private(string: String) extends GenericString
   def toUserId = UserId(string)
 }
 
-object MasterId extends GenericString.Companion[MasterId]
+object MasterId extends GenericString.Checked_[MasterId]
 {
-  def apply(o: String) = checked(o).orThrow
+  def unchecked(string: String) = new MasterId(string)
 
-  override def checked(o: String) = UserId.checked(o) map (u ⇒ new MasterId(u.string))
+  override def checked(o: String) = UserId.checked(o) flatMap (u ⇒ super.checked(u.string))
 
   def fromUserId(userId: UserId) = MasterId(userId.string)
 }

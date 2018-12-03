@@ -22,9 +22,9 @@ final case class VersionId(string: String) extends GenericString
   override def toString = s"version $string"
 }
 
-object VersionId extends GenericString.Companion[VersionId]
+object VersionId extends GenericString.Checked_[VersionId]
 {
-  val Anonymous = VersionId("⊥")
+  val Anonymous = VersionId.unchecked("⊥")
 
   override implicit val jsonEncoder: Encoder[VersionId] = o ⇒ {
     if (o.isAnonymous) throw new IllegalArgumentException("JSON-serialize VersionId.Anonymous?")
@@ -34,12 +34,14 @@ object VersionId extends GenericString.Companion[VersionId]
   override implicit val jsonDecoder: Decoder[VersionId] =
     _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
 
+  def unchecked(string: String) = new VersionId(string)
+
   override def checked(string: String): Checked[VersionId] =
     for {
       _ ← check(string)
-      versionId ← apply(string) match {
-        case VersionId.Anonymous ⇒ Invalid(Problem("VersionId.Anonymous?"))
-        case o ⇒ Valid(o)
+      versionId ← super.checked(string) match {
+        case Valid(VersionId.Anonymous) ⇒ Invalid(Problem.eager("VersionId.Anonymous?"))
+        case o ⇒ o
       }
     } yield versionId
 

@@ -10,7 +10,11 @@ import org.scalatest.FreeSpec
   */
 final class GenericStringTest extends FreeSpec
 {
-  "checked" in {
+  "NonEmpty.checked" in {
+    assert(NonEmptyA.checked("") == Invalid(Problem("Problem with 'NonEmptyA': Name must not be empty")))
+  }
+
+  "NameValidating.checked" in {
     assert(ValidatedA.checked("validated") == Valid(ValidatedA("validated")))
     assert(ValidatedA.checked("") == Invalid(Problem("Problem with 'ValidatedA': Name must not be empty")))
     assert(ValidatedA.checked("/") == Invalid(Problem("Problem with 'ValidatedA': Invalid character or character combination in name '/'")))
@@ -19,5 +23,13 @@ final class GenericStringTest extends FreeSpec
 
 private object GenericStringTest {
   private case class ValidatedA(string: String) extends GenericString
-  private object ValidatedA extends GenericString.NameValidating[ValidatedA]
+  private object ValidatedA extends GenericString.NameValidating[ValidatedA] {
+    protected def unchecked(string: String) = new ValidatedA(string)
+  }
+
+  private case class NonEmptyA(string: String) extends GenericString
+  private object NonEmptyA extends GenericString.NameValidating[NonEmptyA] {
+    protected def unchecked(string: String) = new NonEmptyA(string)
+  }
+
 }

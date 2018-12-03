@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.data.folder
 
-import cats.data.Validated.Invalid
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPathTest._
 import org.scalatest.FreeSpec
@@ -95,16 +93,16 @@ final class FolderPathTest extends FreeSpec {
   }
 }
 
-private object FolderPathTest {
-
+private object FolderPathTest
+{
   private case class TestPath(string: String) extends TypedPath {
-    validate()
-
     def companion = TestPath
   }
 
   private object TestPath extends TypedPath.Companion[TestPath] {
     val sourceTypeToFilenameExtension = Map(
       SourceType.Json → ".test.json")
+
+    protected def unchecked(string: String) = new TestPath(string)
   }
 }

@@ -8,7 +8,7 @@ import java.net.URI
   *
   * @author Joacim Zschimmer
   */
-final case class AgentAddress(string: String) extends GenericString {
+final case class AgentAddress private(string: String) extends GenericString {
   require(!string.endsWith("/"), s"Invalid AgentAddress: $string")
 
   def requireURI(): Unit = new URI(string)  // Throws exception
@@ -16,9 +16,12 @@ final case class AgentAddress(string: String) extends GenericString {
   def toURI = new URI(string)
 }
 
-object AgentAddress extends GenericString.Companion[AgentAddress] {
+object AgentAddress extends GenericString.Checked_[AgentAddress]
+{
+  def unchecked(string: String) = new AgentAddress(string)
+
   def apply(uri: URI) = normalized(uri.toString)
 
-  def normalized(string: String) = new AgentAddress(
+  def normalized(string: String) = super.apply(
     if (string != "/") string stripSuffix "/" else string)
 }

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 
-final case class WorkflowPath(string: String)
+final case class WorkflowPath private(string: String)
 extends TypedPath
 {
   def companion = WorkflowPath
@@ -15,4 +15,6 @@ object WorkflowPath extends TypedPath.Companion[WorkflowPath]
     SourceType.Yaml → ".workflow.yaml",
     SourceType.Txt → ".workflow.txt",
     SourceType.Xml → ".job_chain.xml")
+
+  protected def unchecked(string: String) = new WorkflowPath(string)
 }
