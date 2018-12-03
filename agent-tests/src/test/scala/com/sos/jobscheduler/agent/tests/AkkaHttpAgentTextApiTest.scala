@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
+import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.TestUserAndPassword
@@ -19,6 +19,7 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global

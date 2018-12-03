@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.command.CommonCommand
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -18,19 +19,15 @@ import scala.concurrent.duration.FiniteDuration
 /**
  * @author Joacim Zschimmer
  */
-sealed trait AgentCommand {
+sealed trait AgentCommand extends CommonCommand {
   type Response <: AgentCommand.Response
-
-  def toShortString = toString
-
-  /**
-   * true if toString returns a longer string than toShortString.
-   */
-  def toStringIsLonger = false
 }
 
-object AgentCommand {
+object AgentCommand extends CommonCommand.Companion
+{
   intelliJuseImport(FiniteDurationJsonDecoder)
+
+  protected type Command = AgentCommand
 
   trait Response
   object Response {
@@ -41,10 +38,8 @@ object AgentCommand {
   }
 
   final case class Batch(commands: Seq[AgentCommand])
-  extends AgentCommand {
+  extends AgentCommand with CommonBatch {
     type Response = Batch.Response
-
-    override def toString = s"Batch(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
   }
   object Batch {
     sealed trait SingleResponse
@@ -52,7 +47,7 @@ object AgentCommand {
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
 
-    /** Failed commands let the web service succeed and are returns as Failed. */
+    /** Failed commands let the web service succeed and are returned as Failed. */
     final case class Failed(message: String) extends SingleResponse
 
     object SingleResponse {
@@ -149,7 +144,7 @@ object AgentCommand {
     final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response
   }
 
-  implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
+  implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[CancelOrder]),
@@ -163,7 +158,7 @@ object AgentCommand {
       Subtype(deriveCodec[GetOrder]),
       Subtype(GetOrderIds))
 
-  implicit val ResponseJsonFormat: TypedJsonCodec[AgentCommand.Response] =
+  implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
       Subtype(Response.Accepted))

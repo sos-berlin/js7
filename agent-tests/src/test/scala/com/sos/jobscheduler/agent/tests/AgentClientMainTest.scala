@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.tests
 
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
+import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.TestAgentProvider
@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.core.command.CommandMeta
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.Future

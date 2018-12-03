@@ -12,7 +12,6 @@ import japgolly.scalajs.react.Callback
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.FiniteDuration
-import scala.scalajs.js
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -51,14 +50,14 @@ object MasterApi extends HttpMasterApi with JsHttpClient
 
   def executeCommandCallback[C <: MasterCommand](
     command: C,
-    onComplete: PartialFunction[Try[C#MyResponse], Unit] = PartialFunction.empty)
+    onComplete: PartialFunction[Try[C#Response], Unit] = PartialFunction.empty)
   : Callback =
     Callback.future(
       MasterApi.executeCommand(command)
         .materialize.map { tried ⇒
           def toast(level: String, msg: String) =
             toastr(level)(stringToHtml(command.toString) + "<br>" + stringToHtml(msg))
-          val default: PartialFunction[Try[command.MyResponse], Unit] = {
+          val default: PartialFunction[Try[command.Response], Unit] = {
             case Success(response)  ⇒ toast("success", response.toString)
             case Failure(throwable) ⇒ toast("error", throwable.toSimplifiedString)
           }

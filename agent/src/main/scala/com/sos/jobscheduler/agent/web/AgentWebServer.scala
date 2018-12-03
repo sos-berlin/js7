@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.AgentWebServer._
@@ -17,6 +16,7 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger, SetOnce}
+import com.sos.jobscheduler.core.command.CommandMeta
 import monix.execution.Scheduler
 
 /**
@@ -43,7 +43,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def newRoute(binding: WebServerBinding) =
     new CompleteRoute {
-      private lazy val anonymousApi = runningAgent.api(CommandMeta())
+      private lazy val anonymousApi = runningAgent.api(CommandMeta.Anonymous)
 
       protected implicit def scheduler = AgentWebServer.this.scheduler
 

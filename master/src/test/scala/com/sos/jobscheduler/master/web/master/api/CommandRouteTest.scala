@@ -6,8 +6,8 @@ import akka.http.scaladsl.server.Route
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task

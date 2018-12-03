@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.client
 
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
+import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTester
@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.command.CommandMeta
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec

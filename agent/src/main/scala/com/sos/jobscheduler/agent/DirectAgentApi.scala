@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.agent
 
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
+import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.AgentApi
-import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.common.event.EventWatch
+import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -16,7 +17,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class DirectAgentApi(commandHandler: CommandHandler, agentHandle: AgentHandle, meta: CommandMeta = CommandMeta())
+final class DirectAgentApi(commandHandler: CommandHandler, agentHandle: AgentHandle, meta: CommandMeta = CommandMeta.Anonymous)
 extends AgentApi
 {
   def commandExecute(command: AgentCommand): Task[command.Response] =
@@ -25,7 +26,7 @@ extends AgentApi
   def commandOverview: Task[CommandHandlerOverview] =
     Task.deferFuture(commandHandler.overview)
 
-  def commandDetailed: Task[CommandHandlerDetailed] =
+  def commandDetailed: Task[CommandHandlerDetailed[AgentCommand]] =
     Task.deferFuture(commandHandler.detailed)
 
   def overview: Task[AgentOverview] =

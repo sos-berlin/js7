@@ -6,8 +6,6 @@ import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.agent.command.CommandMeta
-import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
@@ -16,6 +14,8 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 import scala.util.Failure
 
@@ -26,7 +26,7 @@ trait CommandWebService extends AgentRouteProvider {
 
   protected def commandExecute(meta: CommandMeta, command: AgentCommand): Task[AgentCommand.Response]
   protected def commandOverview: Task[CommandHandlerOverview]
-  protected def commandDetailed: Task[CommandHandlerDetailed]
+  protected def commandDetailed: Task[CommandHandlerDetailed[AgentCommand]]
 
   private implicit def implicitScheduler = scheduler
 

@@ -3,42 +3,60 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Checked.implicits.checkedJsonCodec
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.command.CommonCommand
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.master.data.MasterCommand._
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait MasterCommand {
-  type MyResponse <: Response
+sealed trait MasterCommand extends CommonCommand
+{
+  type Response <: MasterCommand.Response
 }
 
-object MasterCommand {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
+object MasterCommand extends CommonCommand.Companion
+{
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonCodec, Problem))
 
-  final case class Batch(commands: Seq[MasterCommand]) extends MasterCommand {
-    type MyResponse = Response.Accepted
+  protected type Command = MasterCommand
+
+  final case class Batch(commands: Seq[MasterCommand])
+  extends MasterCommand with CommonBatch {
+    type Response = Batch.Response
+  }
+  object Batch {
+    final case class Response(responses: Seq[Checked[MasterCommand.Response]])
+    extends MasterCommand.Response with CommonBatch.Response {
+      override def productPrefix = "BatchResponse"
+    }
   }
 
   final case class CancelOrder(orderId: OrderId) extends MasterCommand {
-    type MyResponse = Response.Accepted
+    type Response = Response.Accepted
+  }
+
+  sealed trait NoOperation extends MasterCommand
+  case object NoOperation extends NoOperation {
+    type Response = Response.Accepted
   }
 
   /** Master stops immediately with exit(). */
   case object EmergencyStop extends MasterCommand {
-    type MyResponse = Response.Accepted
+    type Response = Response.Accepted
   }
 
   /** Some outer component has accepted the events until (including) the given `eventId`.
     * JobScheduler may delete these events to reduce the journal, keeping all events after `after`.
     */
   final case class KeepEvents(after: EventId) extends MasterCommand {
-    type MyResponse = Response.Accepted
+    type Response = Response.Accepted
   }
 
   /** Test only. */
@@ -46,12 +64,12 @@ object MasterCommand {
 
   /** Shut down the Master properly. */
   case object Terminate extends MasterCommand {
-    type MyResponse = Response.Accepted
+    type Response = Response.Accepted
   }
 
   /** Read the configured objects (workflows, agents) from the directory config/live. */
   final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
-    type MyResponse = Response.Accepted
+    type Response = Response.Accepted
   }
 
   sealed trait Response
@@ -60,12 +78,15 @@ object MasterCommand {
     sealed trait Accepted extends Response
     case object Accepted extends Accepted
 
-    implicit val ResponseJsonCodec = TypedJsonCodec[Response](
-      Subtype(Accepted))
+    implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
+      Subtype(Accepted),
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
   }
 
-  implicit val jsonCodec = TypedJsonCodec[MasterCommand](
+  implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
+    Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[CancelOrder]),
+    Subtype(NoOperation),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ScheduleOrdersEvery]),

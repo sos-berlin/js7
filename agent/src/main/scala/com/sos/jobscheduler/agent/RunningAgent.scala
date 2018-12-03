@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.Uri
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
-import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
+import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -24,6 +24,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.typesafe.config.Config
 import java.time.Duration
 import monix.eval.Task
@@ -81,7 +82,7 @@ extends AutoCloseable {
   def api(meta: CommandMeta): DirectAgentApi =
     new DirectAgentApi(commandHandler, agentHandle, meta)
 
-  def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Default): Task[Checked[AgentCommand.Response]] =
+  def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
       commandHandler.execute(command, meta)).materialize map Checked.fromTry
 }

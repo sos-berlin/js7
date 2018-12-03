@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.tests
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -14,7 +16,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestExecutablePath
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
+import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, Response}
 import com.sos.jobscheduler.tests.CancelOrderTest._
 import com.sos.jobscheduler.tests.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
@@ -89,6 +91,20 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
       OrderDetachable,
       OrderTransferredToMaster,
       OrderCanceled))
+  }
+
+  "Cancel unknown order" in {
+    assert(master.executeCommandAsSystemUser(CancelOrder(OrderId("UNKNOWN"))).await(99.seconds) ==
+      Invalid(Problem("Unknown OrderId 'UNKNOWN'")))
+  }
+
+  "Cancel multiple orders with Batch" in {
+    val orders = for (i ← 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledAt = Some(now + 99.seconds))
+    for (o ← orders) master.addOrderBlocking(o)
+    for (o ← orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
+    val response = master.executeCommandAsSystemUser(Batch(for (o ← orders) yield CancelOrder(o.id))).await(99.seconds).orThrow
+    assert(response == Batch.Response(Vector.fill(orders.length)(Valid(Response.Accepted))))
+    for (o ← orders) master.eventWatch.await[OrderCanceled](_.key == o.id)
   }
 }
 

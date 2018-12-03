@@ -22,6 +22,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
@@ -45,7 +46,6 @@ import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
-import com.sos.jobscheduler.master.command.CommandMeta
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
@@ -91,7 +91,9 @@ with MainJournalingActor[Event]
   private val repoReader = new MasterRepoReader(masterConfiguration.fileBasedDirectory)
   private var repo = Repo.empty
   private val agentRegister = new AgentRegister
-  private val orderRegister = mutable.Map[OrderId, OrderEntry]()
+  private val orderRegister = new mutable.HashMap[OrderId, OrderEntry] {
+    def checked(orderId: OrderId) = get(orderId).toChecked(Problem(s"Unknown OrderId '${orderId.string}'"))
+  }
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
@@ -334,7 +336,9 @@ with MainJournalingActor[Event]
     command match {
       case MasterCommand.CancelOrder(orderId) ⇒
         orderRegister.checked(orderId) map (_.order) match {
-          case Invalid(problem) ⇒ Task.pure(Invalid(problem))
+          case Invalid(problem) ⇒
+            Task.pure(Invalid(problem))
+
           case Valid(order) ⇒
             orderProcessor.cancel(order.id, isAgent = false) match {
               case invalid @ Invalid(_) ⇒

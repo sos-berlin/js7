@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent
 
 import com.sos.jobscheduler.agent.AgentTest._
-import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -17,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed

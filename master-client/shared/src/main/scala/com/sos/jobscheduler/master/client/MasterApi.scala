@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
   */
 trait MasterApi {
 
-  def executeCommand(command: MasterCommand): Task[command.MyResponse]
+  def executeCommand(command: MasterCommand): Task[command.Response]
 
   def overview: Task[MasterOverview]
 

@@ -3,19 +3,19 @@ package com.sos.jobscheduler.agent.web
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
-import com.sos.jobscheduler.agent.command.CommandMeta
-import com.sos.jobscheduler.agent.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import java.time.Instant
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
@@ -40,7 +40,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected def commandOverview = Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
 
   protected def commandDetailed = Task.pure(CommandHandlerDetailed(List(
-    CommandRunOverview(InternalCommandId(333), Instant.parse("2015-06-22T12:00:00Z"), TestCommand))))
+    CommandRunOverview(InternalCommandId(333), Timestamp("2015-06-22T12:00:00Z"), TestCommand))))
 
   private val route =
     pathSegments("agent/api/command") {
@@ -94,8 +94,8 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       assert(status == OK)
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(
-          "internalId" → Json.fromString("333"),
-          "startedAt" → Json.fromString("2015-06-22T12:00:00Z"),
+          "internalId" → "333".asJson,
+          "startedAt" → Timestamp("2015-06-22T12:00:00Z").toEpochMilli.asJson,
           "command" → (TestCommand: AgentCommand).asJson))))
     }
   }

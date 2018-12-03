@@ -28,6 +28,7 @@ import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
+import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
@@ -36,7 +37,7 @@ import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
-import com.sos.jobscheduler.master.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -64,7 +65,7 @@ import shapeless.tag.@@
  */
 final class RunningMaster private(
   val sessionRegister: SessionRegister[SimpleSession],
-  val commandExecutor: CommandExecutor,
+  val commandExecutor: MasterCommandExecutor,
   val webServer: MasterWebServer,
   val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
@@ -86,13 +87,13 @@ extends AutoCloseable
       } yield t
     }
 
-  def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.MyResponse]] =
+  def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.Response]] =
     for {
       checkedSession ← sessionRegister.systemSession
       checkedChecked ← checkedSession.map(session ⇒ executeCommand(command, CommandMeta(session.user))).evert
     } yield checkedChecked.flatten
 
-  def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.MyResponse]] =
+  def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
@@ -211,8 +212,14 @@ object RunningMaster {
 
       val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper()
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
+      val orderKeeperCommandExecutor = new CommandExecutor[MasterCommand] {
+        def executeCommand(command: MasterCommand, meta: CommandMeta) =
+          Task.deferFuture(
+            (orderKeeper ? MasterOrderKeeper.Command.Execute(command, meta))(masterConfiguration.akkaAskTimeout)
+              .mapTo[Checked[command.Response]])
+      }
+      val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
-      val commandExecutor = new CommandExecutor(masterConfiguration, sessionRegister, orderKeeper)
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) ⇒ logger.error(t.toStringWithCauses, t) }

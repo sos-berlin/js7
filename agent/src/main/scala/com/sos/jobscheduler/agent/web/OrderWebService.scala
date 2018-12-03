@@ -3,11 +3,11 @@ package com.sos.jobscheduler.agent.web
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.DirectAgentApi
-import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.{SimpleUser, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
 import scala.collection.immutable.Seq

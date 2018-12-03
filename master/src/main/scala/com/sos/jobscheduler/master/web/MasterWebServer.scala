@@ -11,10 +11,11 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, Simple
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.OrderApi
-import com.sos.jobscheduler.master.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.web.MasterWebServer._
@@ -31,7 +32,7 @@ final class MasterWebServer private(
   injector: Injector,
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
-  commandExecutor: CommandExecutor,
+  commandExecutor: MasterCommandExecutor,
   implicit protected val actorSystem: ActorSystem,
   protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
@@ -74,7 +75,7 @@ object MasterWebServer {
     actorSystem: ActorSystem,
     scheduler: Scheduler)
   {
-    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands, commandExecutor: CommandExecutor): MasterWebServer =
+    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands, commandExecutor: MasterCommandExecutor): MasterWebServer =
       new MasterWebServer(masterConfiguration, gateKeeperConfiguration, injector,
         fileBasedApi, orderApi, commandExecutor, actorSystem, scheduler)
   }
