@@ -10,7 +10,14 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemTest extends FreeSpec {
+final class ProblemTest extends FreeSpec
+{
+  private implicit val codeToString: ProblemCode ⇒ Option[String] = _  match {
+    case ProblemCode("PROBLEM-CODE") ⇒ Some("PROBLEM MESSAGE")
+    case ProblemCode("PROBLEM-CODE-1") ⇒ Some("PROBLEM MESSAGE-1 first=$1")
+    case ProblemCode("PROBLEM-CODE-1-3") ⇒ Some("PROBLEM MESSAGE-1-3 first=$1 third=$3")
+    case _ ⇒ None
+  }
 
   "JSON" - {
     "standard" in {
@@ -27,11 +34,42 @@ final class ProblemTest extends FreeSpec {
           "message": "A problem"
         }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
     }
+
+    "with ProblemCode" in {
+      testJson(Problem(ProblemCode("PROBLEM-CODE")),
+        json"""{
+          "TYPE": "Problem",
+          "code": "PROBLEM-CODE",
+          "message": "PROBLEM MESSAGE"
+        }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
+    }
+  }
+
+  "ProblemCode" - {
+    "without insertions" in {
+      val problem = Problem(ProblemCode("PROBLEM-CODE"))
+      assert(problem.toString == "PROBLEM MESSAGE")
+    }
+
+    "with insertions" in {
+      assert(Problem(ProblemCode("PROBLEM-CODE-1"), "FIRST")
+        .toString  == "PROBLEM MESSAGE-1 first=FIRST")
+    }
+
+    "with to much insertions" in {
+      val problem = Problem(ProblemCode("PROBLEM-CODE-1-3"), "FIRST", "SECOND", "THIRD", "FORTH")
+      assert(problem.toString == "PROBLEM MESSAGE-1-3 first=FIRST third=THIRD [SECOND, FORTH]")
+    }
+
+    "with missing insertions" in {
+      assert(Problem(ProblemCode("PROBLEM-CODE-1-3"), "FIRST")
+        .toString  == "PROBLEM MESSAGE-1-3 first=FIRST third=[]")
+    }
   }
 
   "String" in {
     assert(Problem("").toString == "A problem occurred (no message)")
-    assert(Problem(null).toString == "A problem occurred (null)")
+    assert(Problem(null: String).toString == "A problem occurred (null)")
 
     val problem = Problem("MESSAGE")
     assert(problem.toString == "MESSAGE")
@@ -111,10 +149,10 @@ final class ProblemTest extends FreeSpec {
   }
 
   "Problem is lazy" in {
-    Problem(throw new Exception)
-    Problem(throw new Exception).withKey("KEY")
+    Problem((throw new Exception): String)
+    Problem((throw new Exception): String).withKey("KEY")
     intercept[Exception] {
-      Problem(throw new Exception).toString
+      Problem((throw new Exception): String).toString
     }
   }
 
@@ -138,6 +176,10 @@ final class ProblemTest extends FreeSpec {
   }
 
   "equals" in {
+    assert(Problem(ProblemCode("A")) == Problem(ProblemCode("A")))
+    assert(Problem(ProblemCode("A"), 1) == Problem(ProblemCode("A"), 1))
+    assert(Problem(ProblemCode("A"), 1) != Problem(ProblemCode("A"), 2))
+    assert(Problem(ProblemCode("B")) != Problem(ProblemCode("A")))
     assert(Problem("TEST") == Problem("TEST"))
     assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))

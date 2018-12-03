@@ -6,8 +6,10 @@ import cats.{Eq, Semigroup}
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
-import scala.collection.immutable.Iterable
+import scala.collection.immutable.{Iterable, Seq}
 import scala.language.implicitConversions
 import scala.util.control.NoStackTrace
 
@@ -16,6 +18,8 @@ import scala.util.control.NoStackTrace
   */
 sealed trait Problem
 {
+  def code: ProblemCode = ProblemCode.empty
+
   def throwable: Throwable
 
   def throwableOption: Option[Throwable]
@@ -31,6 +35,7 @@ sealed trait Problem
   final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
 
   override def equals(o: Any) = o match {
+    case o: HasCode ⇒ false
     case o: Problem ⇒ toString == o.toString
     case _ ⇒ false
   }
@@ -51,6 +56,9 @@ object Problem
 
   def apply(messageFunction: ⇒ String): Problem =
     new Lazy(messageFunction)
+
+  def apply(code: ProblemCode, insertions: Any*)(implicit codeToString: ProblemCode ⇒ Option[String]): Problem =
+    DynamicMessage(code, insertions.toVector)(codeToString)
 
   def eager(message: String): Problem =
     apply(message)
@@ -80,6 +88,64 @@ object Problem
       }
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
+  }
+
+  private sealed trait HasCode extends Simple {
+    def insertions: Seq[Any]
+
+    override def equals(o: Any) = o match {
+      case o: HasCode ⇒ code == o.code && insertions == o.insertions && cause == o.cause
+      case _ ⇒ false
+    }
+  }
+
+  private case class StaticMessage private[Problem](
+    override val code: ProblemCode,
+    insertions: Seq[Any],
+    rawMessage: String,
+    cause: Option[Problem] = None)
+  extends HasCode
+
+  private case class DynamicMessage private[Problem](
+    override val code: ProblemCode,
+    insertions: Seq[Any],
+    originalMessage: Option[String] = None,
+    cause: Option[Problem] = None)
+    (implicit codeToString: ProblemCode ⇒ Option[String])
+  extends HasCode {
+    protected def rawMessage = {
+      val used = scala.collection.mutable.BitSet()
+      val message =
+        codeToString(code) match {
+          case Some(pattern) ⇒
+            val it = pattern.iterator.buffered
+            val sb = new StringBuilder(pattern.length)
+            while (it.hasNext) {
+              val c = it.next()
+              if (c == '$' && it.headOption.exists(c ⇒ c >= '1' && c <= '9')) {
+                val n = it.next() - '1'
+                if (n >= insertions.length) {
+                  sb ++= "[]"
+                } else {
+                  sb ++= insertions(n).toString
+                  used += n
+                }
+              } else
+                sb += c
+            }
+            sb.toString
+          case None ⇒ code.string
+        }
+      val unused = insertions.zipWithIndex.collect {
+        case (s, i) if !used(i) ⇒ s
+      }
+      message + (if (unused.isEmpty) "" else unused.mkString(" [", ", ", "]"))
+    }
+
+    override def equals(o: Any) = o match {
+      case o: HasCode ⇒ code == o.code && insertions == o.insertions && cause == o.cause
+      case _ ⇒ false
+    }
   }
 
   class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None) extends Simple {
@@ -193,9 +259,17 @@ object Problem
     else
       prefix + "\n & "
 
-  implicit val jsonEncoder: ObjectEncoder[Problem] =
-    problem ⇒ JsonObject(
-      "message" → Json.fromString(problem.toString))  // Not value.message, JSON differs from Scala !!!
+  implicit val jsonEncoder: ObjectEncoder[Problem] = _ match {
+    case problem: HasCode ⇒
+      JsonObject(
+        "code" → problem.code.asJson,
+        "insertions" → (problem.insertions.nonEmpty ? problem.insertions.map(_.toString)).asJson,
+        "message" → Json.fromString(problem.toString))  // Not value.message, JSON differs from Scala
+
+    case problem: Problem ⇒
+      JsonObject(
+        "message" → Json.fromString(problem.toString))  // Not value.message, JSON differs from Scala
+  }
 
   val typedJsonEncoder: ObjectEncoder[Problem] = {
     val typeField = "TYPE" → Json.fromString("Problem")
@@ -203,6 +277,13 @@ object Problem
   }
 
   implicit val jsonDecoder: Decoder[Problem] =
-    c ⇒ for (message ← c.get[String]("message")) yield
-      Problem.eager(message)
+    c ⇒ for {
+      maybeCode ← c.get[Option[ProblemCode]]("code")
+      insertions ← c.get[Option[Seq[String]]]("insertions") map (_ getOrElse Nil)
+      message ← c.get[String]("message")
+    } yield
+      maybeCode match {
+        case None ⇒ Problem.eager(message)
+        case Some(code) ⇒ StaticMessage(code, insertions, message)
+      }
 }

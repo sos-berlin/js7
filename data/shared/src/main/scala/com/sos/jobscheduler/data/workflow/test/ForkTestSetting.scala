@@ -42,10 +42,10 @@ object ForkTestSetting {
    |    "🍋" { job B });
    |
    |  define job A {
-   |    execute executable="/executable", agent="AGENT-A"
+   |    execute executable="/executable.cmd", agent="AGENT-A"
    |  }
    |  define job B {
-   |    execute executable="/executable", agent="AGENT-B"
+   |    execute executable="/executable.cmd", agent="AGENT-B"
    |  }
    |}
    """.stripMargin.trim
