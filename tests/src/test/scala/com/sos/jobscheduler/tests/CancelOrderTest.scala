@@ -7,6 +7,8 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
+import com.sos.jobscheduler.core.message.ProblemCodes
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -95,7 +97,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
   "Cancel unknown order" in {
     assert(master.executeCommandAsSystemUser(CancelOrder(OrderId("UNKNOWN"))).await(99.seconds) ==
-      Invalid(Problem("Unknown OrderId 'UNKNOWN'")))
+      Invalid(Problem(ProblemCodes.UnknownOrder, "UNKNOWN")))
   }
 
   "Cancel multiple orders with Batch" in {

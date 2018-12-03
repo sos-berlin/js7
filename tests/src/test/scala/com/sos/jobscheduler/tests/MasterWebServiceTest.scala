@@ -689,11 +689,45 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     "text/plain like HTML form POST is forbidden" in {
       val forbidden = httpClient.postRaw(testUri, Nil, HttpEntity(`text/plain(UTF-8)`, "STRING")) await 99.s
       assert(forbidden.status == Forbidden)
-      assert(forbidden.utf8StringFuture.await(99.s) == Forbidden.defaultMessage)  //"HTML form POST is forbidden")
+      assert(forbidden.utf8StringFuture.await(99.s) == Forbidden.defaultMessage)
     }
   }
 
   "Commands" - {
+    "CancelOrder" in {
+      val cmd = json"""
+        {
+          "TYPE": "Batch",
+          "commands": [
+            {
+              "TYPE": "CancelOrder",
+              "orderId": "UNKNOWN"
+            }, {
+              "TYPE": "CancelOrder",
+              "orderId": "ORDER-FRESH"
+            }
+          ]
+        }"""
+      val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+      testJson(
+        httpClient.post[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
+        json"""{
+          "TYPE": "BatchResponse",
+          "responses": [
+            {
+              "TYPE": "Problem",
+              "code": "UnknownOrder",
+              "insertions": [
+                "UNKNOWN"
+              ],
+              "message": "Unknown OrderId 'UNKNOWN'"
+            }, {
+              "TYPE": "Accepted"
+            }
+          ]
+        }""")
+    }
+
     "Terminate" in {
       val cmd = json"""{ "TYPE": "Terminate" }"""
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil

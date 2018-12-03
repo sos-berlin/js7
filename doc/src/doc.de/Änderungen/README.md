@@ -1,8 +1,91 @@
 # Änderungen
 
+## 2018-12-03
+
+### Neues Kommando Batch
+
+Erlaubt die Übergabe von mehreren Kommandos, die der Master unabhängig voneinander und ungeordnet ausführt.
+
+Beispiel für zwei CancelOrder:
+```
+{
+  "TYPE": "Batch",
+  "commands": [
+    {
+      "TYPE": "CancelOrder",
+      "orderId": "UNKNOWN-ORDER"
+    }, {
+      "TYPE": "CancelOrder",
+      "orderId": "ANOTHER-ORDER"
+    }
+  ]
+}
+```
+
+Die Antwort enthält das Array ```responses```.
+Das Array enthält für jedes Kommando ein Objekt mit folgendem Inhalt.
+- Wenn ein Problem auftretreten ist
+  - ```"TYPE": "Problem"```
+  - ```"code": "(fehlercode)"```, optional (einziger Fehlercode bislang: ```"UnknownOrder"```)
+  - ```"message": "(fehlertext)"```
+- Wenn kein Problem aufgetreten ist
+  - ```"TYPE": "Accepted"```, oder abhängig vom Kommando ein anderer Typ, aber nicht "Problem".  
+  
+JSON auf das obige Batch-Kommando, wenn der Auftrag UNKNOWN-ORDER nicht bekannt ist.
+ 
+```
+{
+  "TYPE": "BatchResponse",
+  "responses": [
+    {
+      "TYPE": "Problem",
+      "code": "UnknownOrder",
+      "insertions": [
+        "UNKNOWN"
+      ],
+      "message": "Unknown OrderId 'UNKNOWN-ORDER'"
+    }, {
+      "TYPE": "Accepted"
+    }
+  ]
+}
+```
+
+
+### Neues Kommando CancelOrder
+
+Zur Stornierung von Aufträgen.
+Das Kommando antwortet mit ```{ "TYPE": "Accepted" }```, wenn die OrderId bekannt ist, andernfalls mit einem Fehler.
+Das Kommando vermerkt den Stornierungswusch. 
+Die Stornierung selbst ist asynchron. 
+Der Master verfolgt dazu den Auftrag bis auf den Agenten, wo er storniert wird. Anschließend wird er zurückgeholt und gelöscht.
+
+Storniert werden können Aufträge
+- die noch nicht gestartet sind (erster Job noch nicht gestartet und keine Fork-Anweisung am Anfang des Workflow)
+- die gestartet sind und kein Kindauftrag sind (Fork)
+
+CancelOrder ist wirkungslos bei Aufträgen, die das Ende des Workflows erreicht haben.
+
+Ein Auftrag wird nur storniert, wenn er im Zustand Ready ist, zum Beispiel nach einem Fork oder einer Job-Ausführung.
+In anderen Fällen wird der Stornierungswunsch vorgemerkt.                                             
+
+**JSON**
+```
+{
+  "TYPE": "CancelOrder",
+  "orderId": "MY-ORDER-ID"
+}
+```
+
+(Kommandos werden über den Webservice ```POST /master/api/command``` gegeben).
+
+
 ## 2018-10-20
 
-Ein Workflow wird jetzt definiert mit ```define workflow { ... }```, zum Beispiel:
+### Geänderte Workflow-Syntax 
+
+Ein Workflow wird jetzt definiert mit ```define workflow { ... }```.
+Zum Beispiel:
 
 ```
 define workflow {
@@ -28,7 +111,7 @@ define workflow {
 }
 ```
 
-**Neue Anweisungen**
+### Neue Workflow-Anweisungen
 
 - ```job``` gibt den Namen eines Jobs an, der im Workflow mit ```define job``` definiert ist.
 - ```define job``` definiert einen Job mit genau einer ```execute```-Anweisung.
@@ -47,7 +130,7 @@ define workflow {
 ```
 
   
-**Konfiguration im Agenten**
+### Konfiguration im Agenten
 
 Statt der Jobs erwartet der Agent bloß die zugelassenen Programme in seinem Konfigurationsverzeichnis ```config/executables```. 
 Unterverzeichnisse und symbolische Links sind möglich.

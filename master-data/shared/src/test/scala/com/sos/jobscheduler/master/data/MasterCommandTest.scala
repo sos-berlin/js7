@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -48,6 +49,14 @@ final class MasterCommandTest extends FreeSpec {
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
       assert(Batch.Response(threeResponses ::: Valid(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
     }
+  }
+
+  "CancelOrder" in {
+    testJson[MasterCommand](CancelOrder(OrderId("ORDER")),
+      json"""{
+        "TYPE": "CancelOrder",
+        "orderId": "ORDER"
+      }""")
   }
 
   "EmergencyStop" in {
