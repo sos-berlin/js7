@@ -48,6 +48,21 @@ final class TypedJsonCodecTest extends FreeSpec {
     assert(AJsonCodec.classes[A] == Set(A0.getClass, classOf[A1], classOf[A2], classOf[AA1]))
     assert(AJsonCodec.classes[AA] == Set(classOf[AA1]))
   }
+
+  "classToName" in {
+    assert(AJsonCodec.classToName(A0.getClass) == "A0")
+    intercept[NoSuchElementException] {
+      assert(AJsonCodec.classToName(classOf[A]) == "A")
+    } .getMessage shouldEqual "key not found: interface com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A"
+  }
+
+  "typeName" in {
+    assert(AJsonCodec.typeName(A0) == "A0")
+    assert(AJsonCodec.typeName(A1(1)) == "A1")
+    intercept[NoSuchElementException] {
+      AJsonCodec.typeName(Other)
+    } .getMessage shouldEqual "key not found: class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$Other$"
+  }
 }
 
 object TypedJsonCodecTest {
@@ -59,6 +74,8 @@ object TypedJsonCodecTest {
 
   sealed trait AA extends A
   @JsonCodec final case class AA1(int: Int) extends AA
+
+  object Other extends A
 
   private implicit val AAJsonCodec: TypedJsonCodec[AA] = TypedJsonCodec[AA](
     Subtype[AA1])

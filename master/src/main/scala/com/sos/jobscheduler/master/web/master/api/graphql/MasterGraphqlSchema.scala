@@ -135,7 +135,7 @@ private[graphql] object MasterGraphqlSchema
     "Instruction",
     "Workflow instruction",
     fields[QueryContext, Instruction](
-      Field("TYPE", StringType, resolve = ctx ⇒ Instructions.jsonCodec.typeName(ctx.value.getClass))))
+      Field("TYPE", StringType, resolve = ctx ⇒ Instructions.jsonCodec.classToName(ctx.value.getClass))))
 
   private implicit val InstructionTypes = List(
     ObjectType[QueryContext, AwaitOrder](
@@ -249,7 +249,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val DisruptedOutcomeReasonType = InterfaceType(
     "DisruptedOutcomeReason",
     fields[QueryContext, Outcome.Disrupted.Reason](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.typeName(o.value.getClass)),
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.classToName(o.value.getClass)),
       Field("problem", OptionType(ProblemType), resolve = _.value match {
         case Outcome.Disrupted.Other(problem) ⇒ Some(problem)
         case _ ⇒ None
@@ -258,7 +258,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OutcomeType = InterfaceType(
     "Outcome",
     fields[QueryContext, Outcome](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.typeName(o.value.getClass)),
+      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.classToName(o.value.getClass)),
       Field("returnCode", OptionType(ReturnCodeType), resolve = _.value match {
         case o: Outcome.Undisrupted ⇒ Some(o.returnCode)
         case _ ⇒ None
@@ -296,7 +296,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OrderStateType = ObjectType(
     "OrderState",
     fields[QueryContext, Order.State](
-      Field("TYPE", StringType, resolve = o ⇒ Order.StateJsonCodec.typeName(o.value.getClass))))
+      Field("TYPE", StringType, resolve = o ⇒ Order.StateJsonCodec.classToName(o.value.getClass))))
 
   private implicit val OrderType = ObjectType(
     "Order",

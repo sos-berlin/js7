@@ -15,7 +15,7 @@ final class TypedJsonCodec[A](
   val nameToClass: Map[String, Class[_ <: A]])
 extends ObjectEncoder[A] with Decoder[A]
 {
-  private val classToName: Map[Class[_ <: A], String] =
+  private val _classToName: Map[Class[_ <: A], String] =
     nameToClass.map(o ⇒ o._2 → o._1).toMap
 
   /** Union. */
@@ -47,8 +47,11 @@ extends ObjectEncoder[A] with Decoder[A]
       case _ ⇒ false
     }
 
-  def typeName(getClass: Class[_ <: A]): String =
-    classToName(getClass)
+  def typeName[A1 <: A](a: A1): String =
+    _classToName(a.getClass)
+
+  def classToName(getClass: Class[_ <: A]): String =
+    _classToName(getClass)
 
   def classes[A1 <: A : ClassTag]: Set[Class[_ <: A1]] =
     classToEncoder.keySet collect {
