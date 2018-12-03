@@ -145,7 +145,7 @@ private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val AgentIds = List(AgentPath("/agent-111"), AgentPath("/agent-222")) map (_ % "(initial)")
-  private val TestExecutablePath = ExecutablePath("/TEST$sh")
+  private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 

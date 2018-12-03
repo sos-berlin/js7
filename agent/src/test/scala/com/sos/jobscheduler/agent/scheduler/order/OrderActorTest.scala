@@ -73,7 +73,8 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
-    testActor ! PoisonPill
+    actorSystem.stop(testActor)
+    if (isWindows) sleep(1.second)
     Files.delete(directoryProvider.dataDirectory / "state/agent--0.journal")
   }
 

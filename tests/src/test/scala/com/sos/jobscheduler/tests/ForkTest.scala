@@ -36,8 +36,8 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
     directoryProvider.master.writeJson(Workflow(
       DuplicateWorkflowId,
       Vector(
-        Execute(WorkflowJob(AAgentPath, ExecutablePath("/SLOW"))))).withoutVersion)
-    directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW"), script(60.s))
+        Execute(WorkflowJob(AAgentPath, ExecutablePath("/SLOW.cmd"))))).withoutVersion)
+    directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW.cmd"), script(60.s))
     for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
     super.beforeAll()
   }

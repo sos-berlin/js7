@@ -109,7 +109,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 }
 
 object CancelOrderTest {
-  private val TestExecutablePath = ExecutablePath("/executable")
+  private val TestExecutablePath = ExecutablePath("/executable.cmd")
   private val TestAgentPath = AgentPath("/AGENT")
   private val SingleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") % "(initial)",

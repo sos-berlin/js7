@@ -16,7 +16,7 @@ object ForkTestSetting {
   val AAgentId = AAgentPath % "(initial)"
   val BAgentId = BAgentPath % "(initial)"
   val AgentPaths = List(AAgentPath, BAgentPath)
-  val TestExecutablePath = ExecutablePath("/executable")
+  val TestExecutablePath = ExecutablePath("/executable.cmd")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
   val AJob = WorkflowJob(AAgentPath, TestExecutablePath)

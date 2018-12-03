@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
 import com.google.inject.{AbstractModule, Provides}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -160,7 +161,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             }
           }
         ],
-        "source": "\ndefine workflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
+        "source": "\ndefine workflow {\n  execute executable=\"/B$sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING$sh\", agent=\"/AGENT\";\n}"
       }""")
   }
 
@@ -389,7 +390,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             ],
-            "source": "\ndefine workflow {\n  execute executable=\"/B.sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING.sh\", agent=\"/AGENT\";\n}"
+            "source": "\ndefine workflow {\n  execute executable=\"/B$sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING$sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1005,
@@ -410,7 +411,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             ],
-            "source": "\ndefine workflow {\n  execute executable=\"/A.sh\", agent=\"/AGENT\";\n}"
+            "source": "\ndefine workflow {\n  execute executable=\"/A$sh\", agent=\"/AGENT\";\n}"
           }
         }, {
           "eventId": 1006,
