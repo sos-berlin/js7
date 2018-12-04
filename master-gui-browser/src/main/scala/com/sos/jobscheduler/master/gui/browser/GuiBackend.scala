@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser
 
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
 import com.sos.jobscheduler.master.gui.browser.ScreenBackground.setScreenClass
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, Mark}
@@ -37,7 +38,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
               case content: FetchedContent ⇒
                 content.markedOrders.get(Mark.Permanent) match {
                   case None ⇒ Callback.empty
-                  case Some(orderId) ⇒ MasterApi.executeCommandCallback(CancelOrder(orderId))
+                  case Some(orderId) ⇒ MasterApi.executeCommandCallback(CancelOrder(orderId, CancelMode.FreshOrStarted))
                 }
               case _ ⇒ Callback.empty
             }

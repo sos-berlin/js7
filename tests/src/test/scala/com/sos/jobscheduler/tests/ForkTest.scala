@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.EventSeq
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCanceled, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -64,10 +65,10 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
     master.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload(),false)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload(),None)"))
     assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
-    master.executeCommandAsSystemUser(CancelOrder(order.id)).await(99.s).orThrow
+    master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.s).orThrow
     master.eventWatch.await[OrderCanceled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, None, order.payload),

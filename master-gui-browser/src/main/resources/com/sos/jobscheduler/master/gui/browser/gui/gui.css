@@ -121,12 +121,12 @@ header, main, footer { padding-left: 150px; }
 .Boxed-Order-changed { background-color: #fff8a0; }
 .Boxed-Order-changed-phaseout { background-color: transparent; transition: background-color 700ms ease-in; }
 .Boxed-Order-more { display: inline-grid; margin: 0 0 0 10px; }
-/*.Boxed-Order-cancelationMarked {
+/*.Boxed-Order-cancel {
   background: no-repeat center center
     url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='36px' width='220px' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='M3 0 L0 0 L97 100 L100 100' fill='red'/></svg>");
     /* Firefox: https://bugzilla.mozilla.org/show_bug.cgi?id=1228460 * /
 }*/
-.Boxed-Order-cancelationMarked {
+.Boxed-Order-cancel {
   position: relative; top: -14px; text-align: right; transform: rotate(-10deg);
   color: red; opacity: 0.2; font-size: 22px; font-weight: 800; letter-spacing: 1px;
   text-decoration: overline underline;

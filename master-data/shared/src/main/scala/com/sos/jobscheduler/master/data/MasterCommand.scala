@@ -6,10 +6,13 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.implicits.checkedJsonCodec
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.data.command.CommonCommand
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
@@ -38,8 +41,19 @@ object MasterCommand extends CommonCommand.Companion
     }
   }
 
-  final case class CancelOrder(orderId: OrderId) extends MasterCommand {
+  final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends MasterCommand {
     type Response = Response.Accepted
+  }
+  object CancelOrder {
+    implicit val jsonEncoder: ObjectEncoder[CancelOrder] = o ⇒
+      JsonObject.fromIterable(
+        ("orderId" → o.orderId.asJson) ::
+          (o.mode != CancelMode.Default).list("mode" → o.mode.asJson))
+    implicit val jsonDecoder: Decoder[CancelOrder] = c ⇒
+      for {
+        orderId ← c.get[OrderId]("orderId")
+        mode ← c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
+      } yield CancelOrder(orderId, mode)
   }
 
   sealed trait NoOperation extends MasterCommand
@@ -85,7 +99,7 @@ object MasterCommand extends CommonCommand.Companion
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
     Subtype(deriveCodec[Batch]),
-    Subtype(deriveCodec[CancelOrder]),
+    Subtype[CancelOrder],
     Subtype(NoOperation),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),

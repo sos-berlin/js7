@@ -261,7 +261,7 @@ with MainJournalingActor[Event]
           } else {
             lastAgentEventId = agentEventId.some
             keyedEvent match {
-              case KeyedEvent(_, OrderCancelationMarked) ⇒  // We (the Master) issue our own OrderCancelationMarked
+              case KeyedEvent(_, _: OrderCancelationMarked) ⇒  // We (the Master) issue our own OrderCancelationMarked
                 None
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
@@ -336,13 +336,13 @@ with MainJournalingActor[Event]
 
   private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[MasterCommand.Response]] =
     command match {
-      case MasterCommand.CancelOrder(orderId) ⇒
+      case MasterCommand.CancelOrder(orderId, mode) ⇒
         orderRegister.checked(orderId) map (_.order) match {
           case Invalid(problem) ⇒
             Task.pure(Invalid(problem))
 
           case Valid(order) ⇒
-            orderProcessor.cancel(order.id, isAgent = false) match {
+            orderProcessor.cancel(order.id, mode, isAgent = false) match {
               case invalid @ Invalid(_) ⇒
                 Task.pure(invalid)
               case Valid(None) ⇒
@@ -525,10 +525,12 @@ with MainJournalingActor[Event]
   private def proceedWithOrder(orderEntry: OrderEntry): Unit =
     if (!terminating) {
       val order = orderEntry.order
-      if (order.cancelationMarked && (order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
-        // On Recovery, CancelOrder is sent again, because orderEntry.cancelationMarkedOnAgent is lost
-        for ((_, _, agentEntry) ← checkedWorkflowJobAndAgentEntry(order) onProblem (p ⇒ logger.error(p))) {
-          agentEntry.actor ! AgentDriver.Input.CancelOrder(order.id)
+      for (mode ← order.cancel) {
+        if ((order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
+          // On Recovery, CancelOrder is sent again, because orderEntry.cancelationMarkedOnAgent is lost
+          for ((_, _, agentEntry) ← checkedWorkflowJobAndAgentEntry(order) onProblem (p ⇒ logger.error(p))) {
+            agentEntry.actor ! AgentDriver.Input.CancelOrder(order.id, mode)
+          }
         }
       }
       order.attachedState match {
@@ -543,12 +545,10 @@ with MainJournalingActor[Event]
     val order = orderEntry.order
     order.state match {
       case _: Order.FreshOrReady ⇒
-        if (!order.cancelationMarked) {
-          val freshOrReady = order.castState[Order.FreshOrReady]
-          instruction(order.workflowPosition) match {
-            case _: Execute ⇒ tryAttachOrderToAgent(freshOrReady)
-            case _ ⇒
-          }
+        val freshOrReady = order.castState[Order.FreshOrReady]
+        instruction(order.workflowPosition) match {
+          case _: Execute ⇒ tryAttachOrderToAgent(freshOrReady)
+          case _ ⇒
         }
 
       case _: Order.Offering ⇒
@@ -572,7 +572,7 @@ with MainJournalingActor[Event]
 
   private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
     for ((workflow, job, agentEntry) ← checkedWorkflowJobAndAgentEntry(order).onProblem(p ⇒ logger.error(p))) {
-      if (order.isDetached)
+      if (order.isDetached && !orderProcessor.isOrderCancelable(order))
         persist(order.id <-: OrderAttachable(agentEntry.agentId.path)) { stamped ⇒
           handleOrderEvent(stamped)
         }

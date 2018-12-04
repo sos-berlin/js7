@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.auth.{SimpleUser, UserId}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{Batch, CancelOrder, KeepEvents, NoOperation, Response}
@@ -20,7 +21,7 @@ import scala.language.reflectiveCalls
   */
 final class MasterCommandExecutorTest extends FreeSpec
 {
-  private val cancelOrder = CancelOrder(OrderId("ORDER-ID"))
+  private val cancelOrder = CancelOrder(OrderId("ORDER-ID"), CancelMode.NotStarted)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private val otherCommandExecutor = new CommandExecutor[MasterCommand] {

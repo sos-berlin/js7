@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -163,11 +164,10 @@ object OrderEvent {
     //type State = Finished
   }
 
-  sealed trait OrderCancelationMarked extends OrderActorEvent
   /** A OrderCancelationMarked on Agent is different from same Event on Master.
     * Master will ignore the Agent's OrderCancelationMarked.
     * Master should have issued the event independendly. **/
-  case object OrderCancelationMarked extends OrderCancelationMarked
+  final case class OrderCancelationMarked(mode: CancelMode) extends OrderActorEvent
 
   sealed trait OrderCanceled extends OrderActorEvent
   case object OrderCanceled extends OrderCanceled
@@ -186,7 +186,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderFinished),
-    Subtype(OrderCancelationMarked),
+    Subtype(deriveCodec[OrderCancelationMarked]),
     Subtype(OrderCanceled),
     Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToMaster),

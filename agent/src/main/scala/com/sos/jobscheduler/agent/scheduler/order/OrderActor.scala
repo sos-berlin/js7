@@ -213,7 +213,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Valid(updated) ⇒
         becomeAsStateOf(updated)
-        if (event == OrderCancelationMarked && updated == order)  // Duplicate, already cancelationMarked?
+        if (event.isInstanceOf[OrderCancelationMarked] && updated == order)  // Duplicate, already canceling with same CancelMode?
           Future.successful(Completed)
         else
           persist(event) { event ⇒

@@ -6,9 +6,12 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
+import com.sos.jobscheduler.core.message.ProblemCodes
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -198,55 +201,87 @@ final class OrderEventSourceTest extends FreeSpec
       OrderForked.Child("🥕", OrderId("ORDER/🥕"), MapDiff.empty),
       OrderForked.Child("🍋", OrderId("ORDER/🍋"), MapDiff.empty)))
 
-    "Not cancelationMarked" - {
-      "Detached Ready" in {
+    "Order.cancel.isEmpty" - {  // Order is not marked as being canceled
+      "Fresh Detached" in {
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCanceled)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCanceled)))
+      }
+
+      "Fresh Attached" in {
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Some(Order.Attached(TestAgentId)))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.NotStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+      }
+
+      "Ready Detached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready)
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(Some(OrderCanceled)))
-        assert(eventSource.cancel(order.id, isAgent = true) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCanceled)))
       }
 
-      "Attached Ready" in {
+      "Ready Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(Some(OrderCancelationMarked)))
-        assert(eventSource.cancel(order.id, isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
 
-      "Attached Processing" in {
+      "Processing Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(Some(OrderCancelationMarked)))
-        assert(eventSource.cancel(order.id, isAgent = true ) == Valid(Some(OrderCancelationMarked)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
     }
 
-    "cancelationMarked" - {
-      "Detached Ready" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, cancelationMarked = true)
+    "Order.cancel.isDefined" - {  // Order is marked as being canceled
+      "Ready Detached" in {
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderCanceled)))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(None))
-        assert(eventSource.cancel(order.id, isAgent = true ) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
 
-      "Attached Ready" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)), cancelationMarked = true)
+      "Ready Attached" in {
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderDetachable)))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(None))
-        assert(eventSource.cancel(order.id, isAgent = true ) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
 
-      "Attached Processing" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)), cancelationMarked = true)
+      "Processing Attached" in {
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
-        assert(eventSource.cancel(order.id, isAgent = false) == Valid(None))
-        assert(eventSource.cancel(order.id, isAgent = true) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
     }
   }

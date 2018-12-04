@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.WorkflowId
@@ -29,7 +30,7 @@ final case class Order[+S <: Order.State](
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   payload: Payload = Payload.empty,
-  cancelationMarked: Boolean = false)
+  cancel: Option[CancelMode] = None)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child ← event.children) yield
@@ -139,9 +140,9 @@ final case class Order[+S <: Order.State](
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderCancelationMarked ⇒
+      case OrderCancelationMarked(mode) ⇒
         check(!isState[Canceled] && !isDetaching && !isState[Finished],
-          copy(cancelationMarked = true))
+          copy(cancel = Some(mode)))
 
       case OrderCanceled ⇒
         check((isState[FreshOrReady] || isState[Stopped] || isState[Broken]) && isDetached,
@@ -324,7 +325,7 @@ object Order {
       "attachedState" → order.attachedState.asJson,
       "parent" → order.parent.asJson,
       "payload" → order.payload.asJson,
-      "cancelationMarked" → (order.cancelationMarked ? true).asJson)
+      "cancel" → order.cancel.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor ⇒
     for {
@@ -334,9 +335,9 @@ object Order {
       attachedState ← cursor.get[Option[AttachedState]]("attachedState")
       parent ← cursor.get[Option[OrderId]]("parent")
       payload ← cursor.get[Payload]("payload")
-      cancelationMarked ← cursor.get[Option[Boolean]]("cancelationMarked") map (_ getOrElse false)
+      cancel ← cursor.get[Option[CancelMode]]("cancel")
     } yield
-      Order(id, workflowPosition, state, attachedState, parent, payload, cancelationMarked)
+      Order(id, workflowPosition, state, attachedState, parent, payload, cancel)
 
   implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o ⇒ jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor ⇒

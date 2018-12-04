@@ -6,7 +6,10 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
+import com.sos.jobscheduler.core.message.ProblemCodes
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -55,32 +58,40 @@ final class OrderEventSource(
 
   /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
   private def canceledEvent(order: Order[Order.State]): Option[OrderActorEvent] =
-    if (order.cancelationMarked && isOrderInCancelableState(order))
-      (order.isAttached ? OrderDetachable) orElse order.isDetached ? OrderCanceled
+    if (isOrderCancelable(order))
+      (order.isAttached ? OrderDetachable) orElse (order.isDetached ? OrderCanceled)
     else
       None
 
   /** Returns a `Valid(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
-  def cancel(orderId: OrderId, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
+  def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
     idToOrder.checked(orderId) flatMap (order ⇒
-      if (order.parent.isDefined)  // Should not happen when !isStarted
-        Invalid(Problem.eager(s"CancelOrder(${orderId.string}): A child order cannot be canceled"))
+      if (order.parent.isDefined)
+        Invalid(Problem(ProblemCodes.CancelChildOrder, orderId.string))
+      else if (mode == CancelMode.NotStarted && order.isStarted)
+        Invalid(Problem(ProblemCodes.CancelStartedOrder, orderId.string))
+      else if (order.cancel.nonEmpty)
+        Valid(None)  // Already marked as being canceled
+      else if (isAgent)
+        if (isOrderCancelable(order, mode))
+          Valid(Some(OrderDetachable))
+        else
+          Valid(Some(OrderCancelationMarked(mode)))
+      else if (order.isDetached && isOrderCancelable(order, mode))
+        Valid(Some(OrderCanceled))
       else
-        Valid(
-          !order.cancelationMarked ? (
-            if (isAgent)
-              if (isOrderInCancelableState(order))
-                OrderDetachable
-              else
-                OrderCancelationMarked
-            else
-              if (order.isDetached && isOrderInCancelableState(order))
-                OrderCanceled
-              else
-                OrderCancelationMarked)))
+        Valid(Some(OrderCancelationMarked(mode))))
 
-  private def isOrderInCancelableState(order: Order[Order.State]): Boolean =
-    (order.isState[Order.FreshOrReady] || order.isState[Order.Stopped] || order.isState[Order.Broken]) &&
+  def isOrderCancelable(order: Order[Order.State]): Boolean =
+    order.cancel match {
+      case None ⇒ false
+      case Some(mode) ⇒ isOrderCancelable(order, mode)
+    }
+
+  private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
+    (order.isState[Order.Fresh] ||
+      (mode == CancelMode.FreshOrStarted && (order.isState[Order.Ready] || order.isState[Order.Stopped] || order.isState[Order.Broken]))
+    ) &&
       (order.isDetached || order.isAttached) &&
       order.parent.isEmpty &&
       !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)

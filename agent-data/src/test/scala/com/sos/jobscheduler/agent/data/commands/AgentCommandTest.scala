@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
@@ -23,6 +24,16 @@ final class AgentCommandTest extends FreeSpec {
           { "TYPE": "NoOperation" },
           { "TYPE": "EmergencyStop" }
         ]
+      }""")
+  }
+
+  "CancelOrder" in {
+    check(AgentCommand.CancelOrder(OrderId("ORDER"), CancelMode.NotStarted),
+      json"""{
+        "TYPE": "CancelOrder",
+        "orderId": "ORDER",
+        "mode": {
+          "TYPE": OOnlyFresh        }
       }""")
   }
 

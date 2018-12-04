@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
-import com.sos.jobscheduler.data.command.CommonCommand
+import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -65,7 +65,7 @@ object AgentCommand extends CommonCommand.Companion
     }
   }
 
-  final case class CancelOrder(orderId: OrderId) extends OrderCommand {
+  final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends OrderCommand {
     type Response = Response.Accepted
   }
 

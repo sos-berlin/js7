@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -244,7 +245,7 @@ with ReceiveLoggingActor.WithStash {
       if (detachedOrderIds.nonEmpty) {
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
-      val canceledOrderIds = succeededInputs collect { case Input.CancelOrder(orderId) ⇒ orderId }
+      val canceledOrderIds = succeededInputs collect { case o: Input.CancelOrder ⇒ o.orderId }
       if (canceledOrderIds.nonEmpty) {
         context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
       }
@@ -396,7 +397,7 @@ private[master] object AgentDriver
       def toShortString = s"DetachOrder($orderId)"
     }
 
-    final case class CancelOrder(orderId: OrderId) extends QueueableInput {
+    final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends QueueableInput {
       def toShortString = s"CancelOrder($orderId)"
     }
 

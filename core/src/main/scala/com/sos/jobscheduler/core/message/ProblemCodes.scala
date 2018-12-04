@@ -7,5 +7,7 @@ import com.sos.jobscheduler.base.problem.ProblemCode
   */
 object ProblemCodes {
   val UnknownOrder = ProblemCode("UnknownOrder")
+  val CancelStartedOrder = ProblemCode("CancelStartedOrder")
+  val CancelChildOrder = ProblemCode("CancelChildOrder")
   private[message] val ForTesting = ProblemCode("ForTesting")
 }

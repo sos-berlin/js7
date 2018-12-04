@@ -275,7 +275,7 @@ extends MainJournalingActor[Event] with Stash {
           Future.successful(AgentCommand.Response.Accepted)
       }
 
-    case CancelOrder(orderId) ⇒
+    case CancelOrder(orderId, mode) ⇒
       orderRegister.checked(orderId) match {
         case Invalid(problem) ⇒
           Future.failed(problem.throwable)
@@ -283,7 +283,7 @@ extends MainJournalingActor[Event] with Stash {
           if (orderEntry.detaching)
             Future.successful(AgentCommand.Response.Accepted)
           else
-            orderProcessor.cancel(orderId, isAgent = true) match {
+            orderProcessor.cancel(orderId, mode, isAgent = true) match {
               case Invalid(problem) ⇒ Future.failed(problem.throwable)
               case Valid(None) ⇒ Future.successful(AgentCommand.Response.Accepted)
               case Valid(Some(event)) ⇒

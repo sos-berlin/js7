@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.data
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.data.MasterCommand._
@@ -51,12 +52,25 @@ final class MasterCommandTest extends FreeSpec {
     }
   }
 
-  "CancelOrder" in {
-    testJson[MasterCommand](CancelOrder(OrderId("ORDER")),
-      json"""{
-        "TYPE": "CancelOrder",
-        "orderId": "ORDER"
-      }""")
+  "CancelOrder" - {
+    "CancelOrder NotStarted" in {
+      testJson[MasterCommand](CancelOrder(OrderId("ORDER"), CancelMode.NotStarted),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER"
+        }""")
+    }
+
+    "CancelOrder FreshOrStarted" in {
+      testJson[MasterCommand](CancelOrder(OrderId("ORDER"), CancelMode.FreshOrStarted),
+        json"""{
+          "TYPE": "CancelOrder",
+          "orderId": "ORDER",
+          "mode": {
+            "TYPE": "FreshOrStarted"
+          }
+        }""")
+    }
   }
 
   "EmergencyStop" in {

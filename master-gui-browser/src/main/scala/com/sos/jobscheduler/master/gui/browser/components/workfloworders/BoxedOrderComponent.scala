@@ -46,7 +46,7 @@ private[workfloworders] final class BoxedOrderComponent(
               <.div(
                 <.span(^.cls := "Boxed-Order-State", order.state))
           },
-          <.div(^.cls := "Boxed-Order-cancelationMarked", "CANCELED") when order.cancelationMarked)
+          <.div(^.cls := "Boxed-Order-cancel", "CANCELED") when order.cancel.isDefined)
     }
     .configure {
       implicit val orderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]

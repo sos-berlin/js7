@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.workflow
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -22,8 +23,11 @@ final class OrderProcessor(
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     eventSource.nextEvent(orderId) mapProblem (_ withPrefix s"Problem with '$orderId':")
 
-  def cancel(orderId: OrderId, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
-    eventSource.cancel(orderId, isAgent = isAgent)
+  def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
+    eventSource.cancel(orderId, mode, isAgent = isAgent)
+
+  def isOrderCancelable(order: Order[Order.State]): Boolean =
+    eventSource.isOrderCancelable(order)
 
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] =
     eventHandler.handleEvent(keyedEvent) mapProblem (_ withPrefix s"Problem with event $keyedEvent:")

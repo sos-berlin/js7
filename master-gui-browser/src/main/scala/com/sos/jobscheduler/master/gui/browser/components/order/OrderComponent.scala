@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.components.order
 
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
@@ -57,7 +58,7 @@ object OrderComponent {
           }),
           showField("Position", orderEntry.order.workflowPosition.toString),
           showField("Attached", orderEntry.order.attachedState.orMissing),
-          showField("CancelationMarked", orderEntry.order.cancelationMarked.toString).when(orderEntry.order.cancelationMarked)))
+          orderEntry.order.cancel map (mode ⇒ showField("Cancel", mode.toString))))
 
     private def showField(key: String, value: VdomNode): VdomNode =
       <.tr(
@@ -77,7 +78,7 @@ object OrderComponent {
 
     private def renderCancelButton(orderEntry: OrderEntry): VdomNode =
       <.button(^.`type` := "button", ^.cls := "btn btn-danger", "Cancel",
-        ^.onClick --> MasterApi.executeCommandCallback(CancelOrder(orderEntry.id)))
+        ^.onClick --> MasterApi.executeCommandCallback(CancelOrder(orderEntry.id, CancelMode.FreshOrStarted)))
 
     private def renderOutput(lines: Vector[String]) =
       VdomArray(

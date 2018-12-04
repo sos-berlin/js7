@@ -78,8 +78,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.AttachOrder(order, agentId, workflow)
       case Input.DetachOrder(orderId) ⇒
         AgentCommand.DetachOrder(orderId)
-      case Input.CancelOrder(orderId) ⇒
-        AgentCommand.CancelOrder(orderId)
+      case Input.CancelOrder(orderId, mode) ⇒
+        AgentCommand.CancelOrder(orderId, mode)
     }
 
   final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Input.QueueableInput] = {
@@ -93,6 +93,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case QueuedInputResponse(_, Batch.Succeeded(o)) ⇒
         sys.error(s"Unexpected response from agent: $o")
       case QueuedInputResponse(input, Batch.Failed(message)) ⇒
+        // CancelOrder(NotStarted) fails if order has started !!!
         logger.error(s"Agent has rejected the command ${input.toShortString}: $message")
         // Agent's state does not match master's state ???
         // TODO: But "Agent is shutting down" is okay

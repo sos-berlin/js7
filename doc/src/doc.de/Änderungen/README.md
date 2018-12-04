@@ -1,6 +1,40 @@
 # Änderungen
 
-## 2018-12-03
+## 2018-12-04
+
+### Neues Kommando CancelOrder
+
+Zur Stornierung von Aufträgen.
+Das Kommando antwortet mit ```{ "TYPE": "Accepted" }```, wenn die OrderId bekannt ist, andernfalls mit einem Fehler.
+Das Kommando vermerkt den Stornierungswusch. 
+Die Stornierung selbst ist asynchron. 
+Der Master verfolgt dazu den Auftrag bis auf den Agenten, wo er storniert wird. Anschließend wird er zurückgeholt und gelöscht.
+
+Storniert werden können Aufträge
+- die kein Kindauftrag sind (Fork)
+- die noch nicht gestartet sind (erster Job noch nicht gestartet und keine Fork-Anweisung am Anfang des Workflow)
+- optional mit dem Parameter ````mode``` 
+  - ```"mode": { "TYPE": "NotStarted" }``` nur Aufträge, die noch nicht gestartet sind (voreingestellt) 
+  - ```"mode": { "TYPE": "FreshOrStarted" }``` auch Aufträge, die gestartet sind und 
+
+CancelOrder ist wirkungslos bei Aufträgen, die das Ende des Workflows erreicht haben.
+Diese Aufträge beenden sich normal.
+
+Ein Auftrag wird nur storniert, wenn er im Zustand Ready ist, zum Beispiel nach einem Fork oder einer Job-Ausführung.
+In anderen Fällen wird der Stornierungswunsch vorgemerkt.                                             
+
+**JSON**
+```
+{
+  "TYPE": "CancelOrder",
+  "orderId": "MY-ORDER-ID",
+  "mode": {
+    "TYPE": "FreshOrStarted"
+  }
+}
+```
+
+Der Master nimmt Kommandos über den Webservice ```POST /master/api/command``` entgegen.
 
 ### Neues Kommando Batch
 
@@ -51,33 +85,8 @@ JSON auf das obige Batch-Kommando, wenn der Auftrag UNKNOWN-ORDER nicht bekannt 
 }
 ```
 
-
-### Neues Kommando CancelOrder
-
-Zur Stornierung von Aufträgen.
-Das Kommando antwortet mit ```{ "TYPE": "Accepted" }```, wenn die OrderId bekannt ist, andernfalls mit einem Fehler.
-Das Kommando vermerkt den Stornierungswusch. 
-Die Stornierung selbst ist asynchron. 
-Der Master verfolgt dazu den Auftrag bis auf den Agenten, wo er storniert wird. Anschließend wird er zurückgeholt und gelöscht.
-
-Storniert werden können Aufträge
-- die noch nicht gestartet sind (erster Job noch nicht gestartet und keine Fork-Anweisung am Anfang des Workflow)
-- die gestartet sind und kein Kindauftrag sind (Fork)
-
-CancelOrder ist wirkungslos bei Aufträgen, die das Ende des Workflows erreicht haben.
-
-Ein Auftrag wird nur storniert, wenn er im Zustand Ready ist, zum Beispiel nach einem Fork oder einer Job-Ausführung.
-In anderen Fällen wird der Stornierungswunsch vorgemerkt.                                             
-
-**JSON**
-```
-{
-  "TYPE": "CancelOrder",
-  "orderId": "MY-ORDER-ID"
-}
-```
-
-(Kommandos werden über den Webservice ```POST /master/api/command``` gegeben).
+Wenn der Master schob bei Annahme des Kommandos erkennt, dass der Auftrag nicht storniert werden kann,
+dann antwortet er mit einer Fehlermeldung (```"TYPE": "Problem"```). 
 
 
 ## 2018-10-20

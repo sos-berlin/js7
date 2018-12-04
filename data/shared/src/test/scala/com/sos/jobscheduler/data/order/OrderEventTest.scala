@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent._
@@ -252,9 +253,12 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderCancelationMarked" in {
-    check(OrderCancelationMarked, json"""
+    check(OrderCancelationMarked(CancelMode.NotStarted), json"""
       {
-        "TYPE": "OrderCancelationMarked"
+        "TYPE": "OrderCancelationMarked",
+        "mode": {
+          "TYPE": "NotStarted"
+        }
       }""")
   }
 
