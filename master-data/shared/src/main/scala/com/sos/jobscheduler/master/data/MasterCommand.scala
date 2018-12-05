@@ -48,7 +48,7 @@ object MasterCommand extends CommonCommand.Companion
     implicit val jsonEncoder: ObjectEncoder[CancelOrder] = o ⇒
       JsonObject.fromIterable(
         ("orderId" → o.orderId.asJson) ::
-          (o.mode != CancelMode.Default).list("mode" → o.mode.asJson))
+          (o.mode != CancelMode.Default).thenList("mode" → o.mode.asJson))
     implicit val jsonDecoder: Decoder[CancelOrder] = c ⇒
       for {
         orderId ← c.get[OrderId]("orderId")

@@ -32,7 +32,7 @@ object ScalazStyle {
       * <p>`(true option a) == List(a)`
       * <br>`(false option a) == Nil`
       */
-    def list[A](a: ⇒ A): List[A] =
+    def thenList[A](a: ⇒ A): List[A] =
       if (delegate) a :: Nil else Nil
 
     /**
@@ -40,7 +40,7 @@ object ScalazStyle {
       * <p>`(true option a) == Vector(a)`
       * <br>`(false option a) == Vector()`
       */
-    def vector[A](a: ⇒ A): Vector[A] =
+    def thenVector[A](a: ⇒ A): Vector[A] =
       if (delegate) Vector(a) else Vector()
 
     /**
@@ -48,7 +48,7 @@ object ScalazStyle {
       * <p>`(true option a) == Set(a)`
       * <br>`(false option a) == Set()`
       */
-    def set[A](a: ⇒ A): Set[A] =
+    def thenSet[A](a: ⇒ A): Set[A] =
       if (delegate) Set(a) else Set()
   }
 }

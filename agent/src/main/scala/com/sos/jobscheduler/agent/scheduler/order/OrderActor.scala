@@ -113,7 +113,7 @@ extends KeyedJournalingActor[OrderEvent] {
         become("processing")(processing(jobKey, workflowJob, jobActor,
           () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
         context.watch(jobActor)
-        val orderStarted = order.isState[Order.Fresh] list OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
+        val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
         persistTransaction(orderStarted :+ OrderProcessingStarted) { events ⇒
           events foreach update
           jobActor ! JobActor.Command.ProcessOrder(

@@ -82,8 +82,8 @@ object WorkflowJob
       //}) :::
       ("agentPath" → workflowJob.agentPath.asJson) ::
       ("executablePath" → workflowJob.executablePath.asJson) ::
-      workflowJob.defaultArguments.nonEmpty.list("defaultArguments" → workflowJob.defaultArguments.asJson) :::
-      (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default list ("returnCodeMeaning" → workflowJob.returnCodeMeaning.asJson)) :::
+      workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" → workflowJob.defaultArguments.asJson) :::
+      (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" → workflowJob.returnCodeMeaning.asJson)) :::
       ("taskLimit" → workflowJob.taskLimit.asJson) ::
       Nil)
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor ⇒

@@ -26,7 +26,7 @@ object Execute
     implicit val jsonEncoder: ObjectEncoder[Named] = named ⇒
       JsonObject.fromIterable(
         ("name" → named.name.asJson) ::
-        named.defaultArguments.nonEmpty.list("defaultArguments" → named.defaultArguments.asJson) :::
+        named.defaultArguments.nonEmpty.thenList("defaultArguments" → named.defaultArguments.asJson) :::
         Nil)
     implicit val jsonDecoder: Decoder[Named] = cursor ⇒
       for {

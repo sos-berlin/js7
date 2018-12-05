@@ -28,7 +28,7 @@ object JavaMainSupport
     }
 
   def handleJavaShutdown[A](config: Config, name: String, onJavaShutdown: Duration ⇒ Unit)(body: ⇒ A): A = {
-    val hooks = !config.getBoolean("akka.coordinated-shutdown.run-by-jvm-shutdown-hook") list
+    val hooks = !config.getBoolean("akka.coordinated-shutdown.run-by-jvm-shutdown-hook") thenList
       JavaShutdownHook.add(name) {
         try onJavaShutdown(config.getDuration("jobscheduler.termination.shutdown-hook-timeout").toFiniteDuration)
         finally Log4j.shutdown()
