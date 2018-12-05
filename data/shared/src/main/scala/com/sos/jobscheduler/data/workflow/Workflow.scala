@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -133,7 +133,7 @@ extends FileBased
     labeledInstructions map (_.instruction) collect {
       case o: Execute.Anonymous ⇒ o.job isExecutableOnAgent agentPath
       case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentPath)
-      case o: ForkJoin ⇒ o isPartiallyExecutableOnAgent agentPath
+      case o: Fork ⇒ o isPartiallyExecutableOnAgent agentPath
     } contains true
 
   def isStartableOnAgent(position: Position, agentPath: AgentPath): Boolean =
@@ -141,7 +141,7 @@ extends FileBased
 
   private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
     instruction match {
-      case o: ForkJoin ⇒ o.isStartableOnAgent(agentPath)
+      case o: Fork ⇒ o.isStartableOnAgent(agentPath)
       case o: Execute.Anonymous ⇒ o.job.isExecutableOnAgent(agentPath)
       case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentPath)
       case _ ⇒ false
@@ -164,7 +164,7 @@ extends FileBased
   //    case _: Execute ⇒
   //      checkedWorkflowJob(Position(0)).toOption.map(_.agentPath).toSet
   //
-  //    case fork: ForkJoin ⇒
+  //    case fork: Fork ⇒
   //      fork.startAgents
   //
   //    case _ ⇒ Set.empty
@@ -178,7 +178,7 @@ extends FileBased
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
       case Position(BranchPath.Segment(nr, branch: BranchId.Named) :: tail, tailNr) ⇒
         instruction(nr) match {
-          case fj: ForkJoin ⇒ fj.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
+          case fj: Fork ⇒ fj.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
       case Position(BranchPath.Segment(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
@@ -255,7 +255,7 @@ extends FileBased
         (instruction(nr), branchId) match {
           case (instr: If, BranchId.Indexed(index)) ⇒
             instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
-          case (fj: ForkJoin, branchId: BranchId.Named) ⇒
+          case (fj: Fork, branchId: BranchId.Named) ⇒
             fj.workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
             Gap

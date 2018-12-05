@@ -186,7 +186,7 @@ final class OrderEventSourceTest extends FreeSpec
       assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: #0 A: goto B --> #1 B: goto A")))
     }
 
-    "Job, ForkJoin" in {
+    "Job, Fork" in {
       val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(1)))

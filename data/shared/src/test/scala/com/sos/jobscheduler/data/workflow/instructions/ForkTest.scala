@@ -14,17 +14,17 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ForkJoinTest extends FreeSpec {
+final class ForkTest extends FreeSpec {
 
-  private val forkJoin = ForkJoin.of(
+  private val fork = Fork.of(
     "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A")))),
     "B" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))
 
   "JSON" in {
     testJson[Instruction.Labeled](
-      forkJoin,
+      fork,
       json"""{
-        "TYPE": "ForkJoin",
+        "TYPE": "Fork",
         "branches": [
           {
             "id": "A",
@@ -46,22 +46,22 @@ final class ForkJoinTest extends FreeSpec {
   }
 
   "workflow" in {
-    assert(forkJoin.workflow("A") == Valid(forkJoin.branches(0).workflow))
-    assert(forkJoin.workflow("B") == Valid(forkJoin.branches(1).workflow))
-    assert(forkJoin.workflow(1).isInvalid)
+    assert(fork.workflow("A") == Valid(fork.branches(0).workflow))
+    assert(fork.workflow("B") == Valid(fork.branches(1).workflow))
+    assert(fork.workflow(1).isInvalid)
   }
 
   "flattenedWorkflows" in {
-    assert(forkJoin.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / "A") → forkJoin.branches(0).workflow) ::
-      ((Position(7) / "B") → forkJoin.branches(1).workflow) :: Nil)
+    assert(fork.flattenedWorkflows(Position(7)) ==
+      ((Position(7) / "A") → fork.branches(0).workflow) ::
+      ((Position(7) / "B") → fork.branches(1).workflow) :: Nil)
   }
 
   "flattenedInstructions" in {
-    assert(forkJoin.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
-      Position(7, "A", 0) → forkJoin.branches(0).workflow.instructions(0),
+    assert(fork.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
+      Position(7, "A", 0) → fork.branches(0).workflow.instructions(0),
       Position(7, "A", 1) → ImplicitEnd,
-      Position(7, "B", 0) → forkJoin.branches(1).workflow.instructions(0),
+      Position(7, "B", 0) → fork.branches(1).workflow.instructions(0),
       Position(7, "B", 1) → ImplicitEnd))
   }
 }

@@ -1,6 +1,18 @@
 # Änderungen
 
-## 2018-12-04
+## 2018-12-05
+
+### Json-Objekttyp "ForkJoin" heißt jetzt "Fork"
+
+Die Anweisung "fork" heißt in JSON jetzt einfach "Fork" statt bisher "ForkJoin".
+
+Zum Beispiel
+```
+{
+  "TYPE": "Fork",
+  "branches": [...]
+}
+```
 
 ### Neues Kommando CancelOrder
 

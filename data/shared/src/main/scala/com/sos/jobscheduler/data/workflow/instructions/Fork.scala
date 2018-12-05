@@ -14,10 +14,10 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class ForkJoin(branches: IndexedSeq[ForkJoin.Branch])
+final case class Fork(branches: IndexedSeq[Fork.Branch])
 extends Instruction
 {
-  for (idAndScript ← branches) ForkJoin.validateBranch(idAndScript).valueOr(throw _)
+  for (idAndScript ← branches) Fork.validateBranch(idAndScript).valueOr(throw _)
 
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o ⇒ o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
@@ -37,7 +37,7 @@ extends Instruction
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) =
-    branches.collectFirst({ case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow })
+    branches.collectFirst({ case fj: Fork.Branch if fj.id == branchId ⇒ fj.workflow })
       .fold(super.workflow(branchId))(Valid.apply)
 
   override def flattenedWorkflows(outer: Position) =
@@ -46,14 +46,14 @@ extends Instruction
   override def flattenedInstructions(outer: Position) =
     branches flatMap (b ⇒ b.workflow.flattenedInstructions(outer / b.id))
 
-  override def toString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
+  override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
 }
 
-object ForkJoin {
-  implicit lazy val jsonCodec: CirceObjectCodec[ForkJoin] = deriveCodec[ForkJoin]
+object Fork {
+  implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
 
   def of(idAndWorkflows: (String, Workflow)*) =
-    new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
+    new Fork(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
     if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfNonZeroReturnCodeGoto]))

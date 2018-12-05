@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap}
+import com.sos.jobscheduler.data.workflow.instructions.{Fork, Gap}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -16,17 +16,17 @@ final class WorkflowsTest extends FreeSpec {
     assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
       TestWorkflow.id,
       Vector(
-        /*0*/ ForkJoin.of(
+        /*0*/ Fork.of(
           "🥕" → Workflow.of(AExecute),
           "🍋" → Workflow.of(AExecute)),
-        /*1*/ ForkJoin.of(
+        /*1*/ Fork.of(
           "🥕" → Workflow.of(AExecute),
           "🍋" → Workflow.of(AExecute)),
         /*2*/ Gap,
-        /*3*/ ForkJoin.of(
+        /*3*/ Fork.of(
           "🥕" → Workflow.of(Gap),
           "🍋" → Workflow.of(AExecute, Gap)),
-        /*4*/ ForkJoin.of(
+        /*4*/ Fork.of(
           "🥕" → Workflow.of(AExecute),
           "🍋" → Workflow.of(Gap))),
       Map(
@@ -42,10 +42,10 @@ final class WorkflowsTest extends FreeSpec {
         /*0*/ Gap,
         /*1*/ Gap,
         /*2*/ BExecute,
-        /*3*/ ForkJoin.of(
+        /*3*/ Fork.of(
           "🥕" → Workflow.of(BExecute),
           "🍋" → Workflow.of(Gap, BExecute)),
-        /*4*/ ForkJoin.of(
+        /*4*/ Fork.of(
           "🥕" → Workflow.of(Gap),
           "🍋" → Workflow.of(BExecute))),
       Map(

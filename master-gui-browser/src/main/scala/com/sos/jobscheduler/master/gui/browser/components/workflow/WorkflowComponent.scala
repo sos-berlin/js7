@@ -77,7 +77,7 @@ object WorkflowComponent {
         case named: Execute.Named ⇒
           VdomArray("job ", named.name.string)
 
-        case _: ForkJoin ⇒
+        case _: Fork ⇒
           "fork"
 
         case _: End ⇒

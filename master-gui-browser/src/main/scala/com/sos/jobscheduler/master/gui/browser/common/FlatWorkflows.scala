@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.browser.common
 
 import com.sos.jobscheduler.data.workflow.Instruction.@:
-import com.sos.jobscheduler.data.workflow.instructions.ForkJoin
+import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.{BranchPath, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import scala.collection.immutable.Seq
@@ -17,7 +17,7 @@ object FlatWorkflows
   private def toFlats(workflow: Workflow, branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =
     positionAndInstructions(workflow, branchPath)
       .collect {
-        case pi @ (pos, _ @: ForkJoin(branches)) ⇒
+        case pi @ (pos, _ @: Fork(branches)) ⇒
           Vector(pi) ++
             (for {
               branch ← branches

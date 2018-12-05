@@ -14,7 +14,7 @@ object Instructions
     Subtype[Execute],
     Subtype.named(singletonCodec(ExplicitEnd), "End"),
     Subtype(singletonCodec(ImplicitEnd)),  // Serialized for easier external use of Workflow
-    Subtype(ForkJoin.jsonCodec),
+    Subtype(Fork.jsonCodec),
     Subtype[Offer],
     Subtype[If],
     Subtype[IfNonZeroReturnCodeGoto],

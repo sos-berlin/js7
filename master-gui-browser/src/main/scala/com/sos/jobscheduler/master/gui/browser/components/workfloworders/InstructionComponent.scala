@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.Instruction.@:
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin, If, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork, If, ImplicitEnd}
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
@@ -19,7 +19,7 @@ private[workfloworders] object InstructionComponent
       <.div(^.cls := "orders-Instruction-head",
         labels.map(_ + ": ").mkString,
         instruction match {
-          case _: ForkJoin ⇒
+          case _: Fork ⇒
             "fork"
 
           case instr: If ⇒

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.components.state
 
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{Fork, If, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import com.sos.jobscheduler.master.gui.browser.components.state.PreparedWorkflow._
@@ -33,7 +33,7 @@ object PreparedWorkflow {
           positionsWithXY += ((position, nestingPx(nesting), y))
           addVdom(<.div(^.cls := "orders-Instruction", moveElement(nestingPx(nesting), y), instructionToVdom(labeled)))
           labeled.instruction match {
-            case ForkJoin(branches) ⇒
+            case Fork(branches) ⇒
               for (branch ← branches) {
                 addVdom(<.div(^.cls := "orders-Branch", moveElement(nestingPx(nesting + 0.4), lastY - InstructionHeight + BranchIdY), branch.id.string))
                 renderNested(branch.workflow.labeledInstructions, position / branch.id, nesting + 1)

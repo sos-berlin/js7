@@ -8,18 +8,18 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderForked, OrderJoined, OrderStarted}
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.OrderContext
-import com.sos.jobscheduler.data.workflow.instructions.ForkJoin
+import com.sos.jobscheduler.data.workflow.instructions.Fork
 
 /**
   * @author Joacim Zschimmer
   */
-object ForkJoinExecutor extends EventInstructionExecutor
+object ForkExecutor extends EventInstructionExecutor
 {
-  type Instr = ForkJoin
+  type Instr = Fork
 
   private val logger = Logger(getClass)
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: ForkJoin): Option[KeyedEvent[OrderActorEvent]] =
+  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Fork): Option[KeyedEvent[OrderActorEvent]] =
     order.ifState[Order.Fresh].map(order ⇒
       order.id <-: OrderStarted)
     .orElse(
@@ -31,7 +31,7 @@ object ForkJoinExecutor extends EventInstructionExecutor
     .orElse(
       order.ifState[Order.Forked].flatMap(order ⇒
         //orderEntry.instruction match {
-        //  case forkJoin: Instruction.ForkJoin if forkJoin isJoinableOnAgent ourAgentPath ⇒
+        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentPath ⇒
         if (order.isAttached)
           Some(order.id <-: OrderDetachable)  //
         else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)

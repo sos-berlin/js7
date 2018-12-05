@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, NumericConstant, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -69,7 +69,7 @@ final class WorkflowTest extends FreeSpec {
                 ]
               }
             }, {
-              "TYPE": "ForkJoin",
+              "TYPE": "Fork",
               "branches": [
                 {
                   "id": "🥕",
@@ -155,7 +155,7 @@ final class WorkflowTest extends FreeSpec {
   "jobOption" in {
     assert(TestWorkflow.checkedExecute(Position(0)) == Valid(AExecute))
     assert(TestWorkflow.checkedExecute(Position(1)) == Invalid(Problem("Expected 'Execute' at workflow position #1 (not: If)")))
-    assert(TestWorkflow.checkedExecute(Position(2)) == Invalid(Problem("Expected 'Execute' at workflow position #2 (not: ForkJoin)")))
+    assert(TestWorkflow.checkedExecute(Position(2)) == Invalid(Problem("Expected 'Execute' at workflow position #2 (not: Fork)")))
     assert(TestWorkflow.checkedExecute(Position(3)) == Valid(BExecute))
     assert(TestWorkflow.checkedExecute(Position(4)) == Invalid(Problem("Expected 'Execute' at workflow position #4 (not: ImplicitEnd)")))
     assert(TestWorkflow.checkedExecute(Position(999)) == Invalid(Problem("Expected 'Execute' at workflow position #999 (not: Gap)")))
@@ -164,7 +164,7 @@ final class WorkflowTest extends FreeSpec {
   "workflowOption" in {
     assert(TestWorkflow.nestedWorkflow(Nil) == Valid(TestWorkflow))
     assert(TestWorkflow.nestedWorkflow(Position(2) / "🥕") == Valid(
-      TestWorkflow.instruction(2).asInstanceOf[ForkJoin].workflow(BranchId("🥕")).orThrow))
+      TestWorkflow.instruction(2).asInstanceOf[Fork].workflow(BranchId("🥕")).orThrow))
   }
 
   "reduce" in {
@@ -205,8 +205,8 @@ final class WorkflowTest extends FreeSpec {
       Nil → TestWorkflow,
       (Position(1) / 0) → TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
       (Position(1) / 1) → TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,
-      (Position(2) / "🥕") → TestWorkflow.instruction(Position(2)).asInstanceOf[ForkJoin].branches(0).workflow,
-      (Position(2) / "🍋") → TestWorkflow.instruction(Position(2)).asInstanceOf[ForkJoin].branches(1).workflow,
+      (Position(2) / "🥕") → TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
+      (Position(2) / "🍋") → TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
     ))
   }
 
@@ -220,11 +220,11 @@ final class WorkflowTest extends FreeSpec {
       (Position(1, 1, 0), TestWorkflow.instruction(1).asInstanceOf[If].elseWorkflow.get.instructions(0)),
       (Position(1, 1, 1), ImplicitEnd),
       (Position(2), TestWorkflow.instruction(2)),
-      (Position(2, "🥕", 0), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(0).workflow.instructions(0)),
-      (Position(2, "🥕", 1), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(0).workflow.instructions(1)),
+      (Position(2, "🥕", 0), TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(0)),
+      (Position(2, "🥕", 1), TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(1)),
       (Position(2, "🥕", 2), ImplicitEnd),
-      (Position(2, "🍋", 0), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(1).workflow.instructions(0)),
-      (Position(2, "🍋", 1), TestWorkflow.instruction(2).asInstanceOf[ForkJoin].branches(1).workflow.instructions(1)),
+      (Position(2, "🍋", 0), TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(0)),
+      (Position(2, "🍋", 1), TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(1)),
       (Position(2, "🍋", 2), ImplicitEnd),
       (Position(3), BExecute),
       (Position(4), ImplicitEnd)))
@@ -307,7 +307,7 @@ private object WorkflowTest
             BJobName → B1Job)),
         elseWorkflow = Some(Workflow.of(
           BExecute))),
-      ForkJoin.of(
+      Fork.of(
         "🥕" → Workflow.of(
           AExecute,
           Execute.Named(AJobName)),

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.test
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 
 /**
@@ -53,17 +53,17 @@ object ForkTestSetting {
   val TestWorkflow = Workflow(
     WorkflowPath("/WORKFLOW") % "(initial)" ,
     Vector(
-      /*0*/ ForkJoin.of(
+      /*0*/ Fork.of(
         "🥕" → Workflow.of(AExecute),
         "🍋" → Workflow.of(AExecute)),
-      /*1*/ ForkJoin.of(
+      /*1*/ Fork.of(
         "🥕" → Workflow.of(AExecute),
         "🍋" → Workflow.of(AExecute)),
       /*2*/ BExecute,
-      /*3*/ ForkJoin.of(
+      /*3*/ Fork.of(
         "🥕" → Workflow.of(BExecute),
         "🍋" → Workflow.of(AExecute, BExecute)),
-      /*4*/ ForkJoin.of(
+      /*4*/ Fork.of(
         "🥕" → Workflow.of(AExecute),
         "🍋" → Workflow.of(BExecute))),
     Map(

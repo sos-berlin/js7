@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.web.master.api.graphql.MasterGraphqlSchemaTest._
@@ -212,7 +212,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 },
                 "position": [ 1 ],
                 "instruction": {
-                  "TYPE": "ForkJoin"
+                  "TYPE": "Fork"
                 }
               },
               "state": {
@@ -505,8 +505,8 @@ object MasterGraphqlSchemaTest
             WorkflowPath.NoId,
             Vector(
               Execute(WorkflowJob.Name("JOB")),
-              ForkJoin(Vector(
-                ForkJoin.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))))
+              Fork(Vector(
+                Fork.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))))
               ))),
             Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ ⇒ Problem(s"No such ''$id'")

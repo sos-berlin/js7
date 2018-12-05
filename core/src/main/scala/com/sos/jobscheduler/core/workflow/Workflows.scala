@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto}
 
 /**
   * @author Joacim Zschimmer
@@ -22,8 +22,8 @@ object Workflows {
               thenWorkflow = instr.thenWorkflow.reduceForAgent(agentPath),
               elseWorkflow = instr.elseWorkflow map (_.reduceForAgent(agentPath)))
 
-          case labels @: (fj: ForkJoin) if fj isPartiallyExecutableOnAgent agentPath ⇒
-            labels @: ForkJoin(
+          case labels @: (fj: Fork) if fj isPartiallyExecutableOnAgent agentPath ⇒
+            labels @: Fork(
               for (b ← fj.branches) yield
                 b.copy(workflow = b.workflow.reduceForAgent(agentPath)))
 

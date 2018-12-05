@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer}
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
 import java.util.regex.Pattern
@@ -148,11 +148,11 @@ private[graphql] object MasterGraphqlSchema
       "Workflow instruction End",
       interfaces[QueryContext, End](InstructionType),
       fields[QueryContext, End]()),
-    ObjectType[QueryContext, ForkJoin](
-      "ForkJoin",
-      "Workflow instruction ForkJoin",
-      interfaces[QueryContext, ForkJoin](InstructionType),
-      fields[QueryContext, ForkJoin]()),
+    ObjectType[QueryContext, Fork](
+      "Fork",
+      "Workflow instruction Fork",
+      interfaces[QueryContext, Fork](InstructionType),
+      fields[QueryContext, Fork]()),
     ObjectType[QueryContext, Gap](
       "Gap",
       "Workflow instruction Gap",

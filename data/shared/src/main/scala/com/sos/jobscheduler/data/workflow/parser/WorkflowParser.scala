@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
@@ -111,13 +111,13 @@ object WorkflowParser {
             Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments.toMap)
       })
 
-    private val forkInstruction = P[ForkJoin]{
+    private val forkInstruction = P[Fork]{
       val orderSuffix = P(quotedString map (o ⇒ BranchId.Named(o)))
-      val forkBranch = P[ForkJoin.Branch](
+      val forkBranch = P[Fork.Branch](
         (orderSuffix ~~ curlyWorkflow)
-          map ForkJoin.Branch.fromPair)
+          map Fork.Branch.fromPair)
       P((keyword("fork") ~~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w))
-        map { case (branch, more) ⇒ ForkJoin(Vector(branch) ++ more) })
+        map { case (branch, more) ⇒ Fork(Vector(branch) ++ more) })
     }
 
     private val offerInstruction = P[Offer](

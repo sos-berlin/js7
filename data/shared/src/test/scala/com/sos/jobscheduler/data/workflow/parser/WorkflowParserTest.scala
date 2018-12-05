@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -179,9 +179,9 @@ final class WorkflowParserTest extends FreeSpec {
         |  );
         |}""".stripMargin,
       Workflow.of(
-        ForkJoin(Vector(
-          ForkJoin.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentPath("/agent-a"), ExecutablePath("/a"))))),
-          ForkJoin.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentPath("/agent-b"), ExecutablePath("/b")))))))))
+        Fork(Vector(
+          Fork.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentPath("/agent-a"), ExecutablePath("/a"))))),
+          Fork.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentPath("/agent-b"), ExecutablePath("/b")))))))))
   }
 
   "offer" in {

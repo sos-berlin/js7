@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished}
 import com.sos.jobscheduler.data.workflow.OrderContext
-import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Fork}
 import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
@@ -26,16 +26,16 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
 
       case Some(returnPosition) ⇒
         context.instruction(order.workflowId /: returnPosition) match {
-          case _: ForkJoin ⇒
-            //if (order.attached forall forkjoin.isJoinableOnAgent)
+          case _: Fork ⇒
+            //if (order.attached forall fork.isJoinableOnAgent)
             if (order.isAttached)
               Some(order.id <-: OrderDetachable)
             else
               for {
                 parentOrderId ← order.parent
                 parentOrder ← context.idToOrder.lift(parentOrderId)
-                forkJoin ← Some(context.instruction(parentOrder.workflowPosition)) collect { case o: ForkJoin ⇒ o }
-                event ← ForkJoinExecutor.toEvent(context, parentOrder, forkJoin)
+                fork ← Some(context.instruction(parentOrder.workflowPosition)) collect { case o: Fork ⇒ o }
+                event ← ForkExecutor.toEvent(context, parentOrder, fork)
               } yield event
           case _ ⇒ None
         }
@@ -45,7 +45,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
     for {
       returnPosition ← order.position.dropChild
       next ← instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
-        case ForkJoinExecutor ⇒ None
+        case ForkExecutor ⇒ None
         case _: EventInstructionExecutor ⇒ Some(returnPosition)
         case _: PositionInstructionExecutor ⇒ Some(returnPosition.increment)  // Skip IfErrorCode (don't execute again!)
         case _ ⇒ None

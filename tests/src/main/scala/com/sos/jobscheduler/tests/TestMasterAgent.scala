@@ -36,7 +36,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ForkJoin, If}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork, If}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -202,9 +202,9 @@ object TestMasterAgent {
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(
       Execute(testJob(conf, conf.agentPaths.head)),
-      ForkJoin(
+      Fork(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
-          ForkJoin.Branch(
+          Fork.Branch(
             pathName,
             Workflow(
               WorkflowPath("/TestMasterAgent") % "1",
