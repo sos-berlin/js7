@@ -23,16 +23,16 @@ final class InMemoryHistory {
   private def handleOrderFatEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
     val Stamped(_, timestamp, KeyedEvent(orderId, event)) = stampedEvent
     event match {
-      case OrderAddedFat(workflowPosition, scheduledAt, variables) ⇒
+      case OrderAddedFat(workflowPosition, scheduledFor, variables) ⇒
         idToOrderEntry.get(orderId) match {
           case None ⇒
-            idToOrderEntry(orderId) = OrderEntry(orderId, None, variables, OrderEntry.Cause.Added, Some(workflowPosition), scheduledAt = scheduledAt)
+            idToOrderEntry(orderId) = OrderEntry(orderId, None, variables, OrderEntry.Cause.Added, Some(workflowPosition), scheduledFor = scheduledFor)
 
           case Some(existing) ⇒
             idToOrderEntry(orderId) = existing.copy(
               parent = None,
               startWorkflowPosition = Some(workflowPosition),
-              scheduledAt = scheduledAt,
+              scheduledFor = scheduledFor,
               finishedAt = None,
               endWorkflowPosition = None)
         }
@@ -47,7 +47,7 @@ final class InMemoryHistory {
               idToOrderEntry(child.orderId) = existing.copy(
                 parent = Some(orderId),
                 startWorkflowPosition = Some(workflowPosition),
-                scheduledAt = None,
+                scheduledFor = None,
                 finishedAt = None,
                 endWorkflowPosition = None)
           }

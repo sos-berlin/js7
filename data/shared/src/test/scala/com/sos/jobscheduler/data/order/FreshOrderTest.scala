@@ -13,7 +13,7 @@ final class FreshOrderTest extends FreeSpec
 {
   "JSON" in {
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledAt = None, Payload.empty),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledFor = None, Payload.empty),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW"
@@ -24,7 +24,7 @@ final class FreshOrderTest extends FreeSpec
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW",
-        "scheduledAt": 1488888000000,
+        "scheduledFor": 1488888000000,
         "variables": {
           "KEY": "VALUE"
         }

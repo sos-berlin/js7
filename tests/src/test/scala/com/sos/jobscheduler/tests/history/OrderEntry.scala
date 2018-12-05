@@ -19,7 +19,7 @@ final case class OrderEntry(
   variables: Map[String, String],
   cause: Cause,
   startWorkflowPosition: Option[WorkflowPosition] = None,
-  scheduledAt: Option[Timestamp] = None,
+  scheduledFor: Option[Timestamp] = None,
   startedAt: Option[Timestamp] = None,
   finishedAt: Option[Timestamp] = None,
   endWorkflowPosition: Option[WorkflowPosition] = None,

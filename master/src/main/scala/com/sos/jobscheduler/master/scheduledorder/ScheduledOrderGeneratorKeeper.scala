@@ -25,7 +25,7 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
         orderGenerator.workflowPath,
         Some(instant.toTimestamp),
         Payload(orderGenerator.variables)))
-    .toVector.sortBy { _.scheduledAt }
+    .toVector.sortBy { _.scheduledFor }
 }
 
 object ScheduledOrderGeneratorKeeper {

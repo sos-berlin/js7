@@ -103,7 +103,7 @@ final class OrderTest extends FreeSpec
         check(Fresh(Some(Timestamp.parse("2017-11-15T12:33:44.789Z"))),
           json"""{
             "TYPE": "Fresh",
-            "scheduledAt": 1510749224789
+            "scheduledFor": 1510749224789
           }""")
       }
 

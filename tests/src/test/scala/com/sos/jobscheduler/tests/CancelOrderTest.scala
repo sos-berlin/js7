@@ -39,13 +39,13 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
   }
 
   "Cancel a fresh order" in {
-    val order = FreshOrder(OrderId("🔹"), SingleJobWorkflow.id.path, scheduledAt = Some(now + 99.seconds))
+    val order = FreshOrder(OrderId("🔹"), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderTransferredToAgent](_.key == order.id)
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds).orThrow
     master.eventWatch.await[OrderCanceled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(SingleJobWorkflow.id, order.scheduledAt),
+      OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderCancelationMarked(CancelMode.NotStarted),
@@ -61,7 +61,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.seconds).orThrow
     master.eventWatch.await[OrderFinished](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(SingleJobWorkflow.id, order.scheduledAt),
+      OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderStarted,
@@ -90,7 +90,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.seconds).orThrow
     master.eventWatch.await[OrderCanceled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(TwoJobsWorkflow.id, order.scheduledAt),
+      OrderAdded(TwoJobsWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderStarted,
@@ -109,7 +109,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i ← 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledAt = Some(now + 99.seconds))
+    val orders = for (i ← 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
     for (o ← orders) master.addOrderBlocking(o)
     for (o ← orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
     val response = master.executeCommandAsSystemUser(Batch(for (o ← orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow

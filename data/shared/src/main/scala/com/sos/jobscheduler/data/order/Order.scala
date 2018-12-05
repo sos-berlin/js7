@@ -221,7 +221,7 @@ final case class Order[+S <: Order.State](
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
-    Order(id, event.workflowId, Fresh(event.scheduledAt), payload = event.payload)
+    Order(id, event.workflowId, Fresh(event.scheduledFor), payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[FreshOrReady] =
     Order(id, event.workflowPosition, event.state, Some(Attached(event.agentId)), payload = event.payload)
@@ -255,7 +255,7 @@ object Order {
   sealed trait FreshOrReady extends State
 
   @JsonCodec
-  final case class Fresh(scheduledAt: Option[Timestamp] = None) extends FreshOrReady
+  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends FreshOrReady
   object Fresh {
     val StartImmediately = Fresh(None)
   }

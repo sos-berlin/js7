@@ -32,7 +32,7 @@ final class OrderFatEventTest extends FreeSpec {
           },
           "position": [ 0 ]
         },
-        "scheduledAt": 111,
+        "scheduledFor": 111,
         "variables": {
           "VARIABLE": "VALUE"
         }

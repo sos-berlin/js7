@@ -24,7 +24,7 @@ object OrderFatEvent
 {
   final case class OrderAddedFat(
     workflowPosition: WorkflowPosition,
-    scheduledAt: Option[Timestamp],
+    scheduledFor: Option[Timestamp],
     variables: Map[String, String])
   extends OrderFatEvent
 

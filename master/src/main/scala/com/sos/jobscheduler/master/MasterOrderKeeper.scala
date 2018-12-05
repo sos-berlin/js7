@@ -467,7 +467,7 @@ with MainJournalingActor[Event]
         repo.idTo[Workflow](order.workflowId) match {
           case Invalid(problem) ⇒ Future.successful(Invalid(problem))
           case Valid(workflow) ⇒
-            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledAt, order.payload)) { stamped ⇒
+            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.payload)) { stamped ⇒
               handleOrderEvent(stamped)
               Valid(true)
             }

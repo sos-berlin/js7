@@ -98,7 +98,7 @@ final class RecoveryTest extends FreeSpec {
                 val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
                 withClue(s"$orderId") {
                   try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
-                      case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledAt = Some(SomeTimestamp))
+                      case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledFor = Some(SomeTimestamp))
                       case o ⇒ o
                     }).toVector
                     == ExpectedOrderEvents)

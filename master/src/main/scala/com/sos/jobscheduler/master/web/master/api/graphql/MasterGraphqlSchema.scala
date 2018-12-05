@@ -312,7 +312,7 @@ private[graphql] object MasterGraphqlSchema
       Field("state", OrderStateType, resolve = _.value.state),
       Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
       Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
-        case o: Order.Fresh ⇒ o.scheduledAt map (_.toEpochMilli)
+        case o: Order.Fresh ⇒ o.scheduledFor map (_.toEpochMilli)
         case _ ⇒ None
       }),
       Field("outcome", OptionType(OutcomeType), resolve = _.value.state match {

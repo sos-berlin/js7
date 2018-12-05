@@ -2,6 +2,55 @@
 
 ## 2018-12-05
 
+### JSON-Feld "scheduledAt" heißt jetzt "scheduledFor"
+
+For better English. Betroffen sind die JSON-Klassen
+- ```FreshOrder```, beim Einspeisen eines Auftrags über den Webservice api/order
+- ```Order```, beim Lesen von Aufträgen über den Webservice api/order
+- ```OrderAddedFat```, beim Lesen der fetten Events über den Webservice api/fatEvent  
+
+Beispiel POST api/order
+```
+{
+  "id": "MY-ORDER",
+  "workflowPath": "/MY-WORKFLOW",
+  "scheduledFor": 1543993583000
+}
+```
+
+Beispiel GET api/order
+```
+{
+  "id": "MY-ORDER",
+  "workflowPosition": {
+    "workflowId": {
+      "path": "/MY-WORKFLOW",
+      "versionId": "(initial)"
+    },
+    "position": [ 0 ]
+  },
+  "state": {
+    "TYPE": "Fresh",
+    "scheduledFor": 1543993583000
+  }
+}
+```
+
+Beispiel GET api/fatEvents
+```
+{
+  "TYPE": "OrderAddedFat",
+  "workflowPosition": {
+    "workflowId": {
+      "path": "/MY-WORKFLOW",
+      "versionId": "(initial)"
+    },
+    "position": [ 0 ]
+  },
+  "scheduledFor": 1543993583000
+}
+```
+
 ### Json-Objekttyp "ForkJoin" heißt jetzt "Fork"
 
 Die Anweisung "fork" heißt in JSON jetzt einfach "Fork" statt bisher "ForkJoin".

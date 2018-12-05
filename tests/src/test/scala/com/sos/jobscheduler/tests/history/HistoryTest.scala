@@ -200,7 +200,7 @@ object HistoryTest
   private def normalizeTimestampsInEntry(entry: OrderEntry): OrderEntry =
     entry.copy(
       startedAt = entry.startedAt map (_ ⇒ TestTimestamp),
-      scheduledAt = entry.scheduledAt map (_ ⇒ TestTimestamp),
+      scheduledFor = entry.scheduledFor map (_ ⇒ TestTimestamp),
       finishedAt = entry.finishedAt map (_ ⇒ TestTimestamp),
       steps = entry.steps map normalizeTimestampsInStep)
 

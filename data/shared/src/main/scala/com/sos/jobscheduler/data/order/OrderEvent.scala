@@ -32,7 +32,7 @@ object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
 
-  final case class OrderAdded(workflowId: WorkflowId, scheduledAt: Option[Timestamp] = None, payload: Payload = Payload.empty)
+  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
     //type State = FreshOrReady
@@ -41,15 +41,15 @@ object OrderEvent {
     private[OrderEvent] implicit val jsonCodec: ObjectEncoder[OrderAdded] =
       o ⇒ JsonObject(
         "workflowId" → o.workflowId.asJson,
-        "scheduledAt" → o.scheduledAt.asJson,
+        "scheduledFor" → o.scheduledFor.asJson,
         "variables" → ((o.payload != Payload.empty) ? o.payload.variables).asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c ⇒ for {
         workflowId ← c.get[WorkflowId]("workflowId")
-        scheduledAt ← c.get[Option[Timestamp]]("scheduledAt")
+        scheduledFor ← c.get[Option[Timestamp]]("scheduledFor")
         payload ← c.get[Option[Map[String, String]]]("variables") map (_ map Payload.apply getOrElse Payload.empty)
-      } yield OrderAdded(workflowId, scheduledAt, payload)
+      } yield OrderAdded(workflowId, scheduledFor, payload)
   }
 
   final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, parent: Option[OrderId], agentId: AgentId, payload: Payload)

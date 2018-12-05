@@ -375,8 +375,8 @@ extends MainJournalingActor[Event] with Stash {
     val order = orderEntry.order
     if (order.isAttached) {
       order.state match {
-        case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
-          orderEntry.at(scheduledAt) {  // TODO Schedule only the next order ?
+        case Order.Fresh(Some(scheduledFor)) if now < scheduledFor ⇒
+          orderEntry.at(scheduledFor) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }
 

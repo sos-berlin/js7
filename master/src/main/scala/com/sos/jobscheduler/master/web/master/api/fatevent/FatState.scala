@@ -66,7 +66,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
   private def toOrderFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
     event match {
       case added: OrderAdded ⇒
-        Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledAt, order.variables))
+        Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledFor, order.variables))
 
       case _: OrderProcessingStarted ⇒
         val jobName = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedExecute(order.position)).orThrow match {
