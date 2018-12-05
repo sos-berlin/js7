@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -23,6 +22,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -45,6 +45,8 @@ import scala.concurrent.duration._
   * @author Joacim Zschimmer
   */
 final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
+
+  ProblemCodeMessages.initialize()
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
 
@@ -717,9 +719,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             {
               "TYPE": "Problem",
               "code": "UnknownOrder",
-              "insertions": [
-                "UNKNOWN"
-              ],
+              "arguments": {
+                "orderId": "UNKNOWN"
+              },
               "message": "Unknown OrderId 'UNKNOWN'"
             }, {
               "TYPE": "Accepted"

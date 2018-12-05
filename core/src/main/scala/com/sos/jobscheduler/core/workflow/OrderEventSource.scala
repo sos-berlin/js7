@@ -6,8 +6,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
-import com.sos.jobscheduler.core.message.ProblemCodes
+import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
@@ -67,9 +66,9 @@ final class OrderEventSource(
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
     idToOrder.checked(orderId) flatMap (order ⇒
       if (order.parent.isDefined)
-        Invalid(Problem(ProblemCodes.CancelChildOrder, orderId.string))
+        Invalid(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted)
-        Invalid(Problem(ProblemCodes.CancelStartedOrder, orderId.string))
+        Invalid(CancelStartedOrderProblem(orderId))
       else if (order.cancel.nonEmpty)
         Valid(None)  // Already marked as being canceled
       else if (isAgent)

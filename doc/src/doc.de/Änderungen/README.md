@@ -74,9 +74,9 @@ JSON auf das obige Batch-Kommando, wenn der Auftrag UNKNOWN-ORDER nicht bekannt 
     {
       "TYPE": "Problem",
       "code": "UnknownOrder",
-      "insertions": [
-        "UNKNOWN"
-      ],
+      "arguments": [
+        "orderId": "UNKNOWN"
+      },
       "message": "Unknown OrderId 'UNKNOWN-ORDER'"
     }, {
       "TYPE": "Accepted"

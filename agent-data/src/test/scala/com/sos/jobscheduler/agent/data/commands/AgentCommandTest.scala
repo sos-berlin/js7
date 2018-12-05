@@ -33,7 +33,8 @@ final class AgentCommandTest extends FreeSpec {
         "TYPE": "CancelOrder",
         "orderId": "ORDER",
         "mode": {
-          "TYPE": OOnlyFresh        }
+          "TYPE": "NotStarted"
+        }
       }""")
   }
 

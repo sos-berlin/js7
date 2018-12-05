@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.JavaMainSupport.{handleJavaShutdown, runMain}
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import monix.execution.Scheduler.Implicits.global
@@ -25,6 +26,7 @@ object MasterMain {
 
   def main(args: Array[String]): Unit = {
     logger.info(s"Master ${BuildInfo.buildVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
+    ProblemCodeMessages.initialize()
     runMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master ⇒

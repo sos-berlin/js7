@@ -30,8 +30,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
-import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
-import com.sos.jobscheduler.core.message.ProblemCodes
+import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
@@ -94,7 +93,7 @@ with MainJournalingActor[Event]
   private var repo = Repo.empty
   private val agentRegister = new AgentRegister
   private val orderRegister = new mutable.HashMap[OrderId, OrderEntry] {
-    def checked(orderId: OrderId) = get(orderId).toChecked(Problem(ProblemCodes.UnknownOrder, orderId.string))
+    def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
   }
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val idToOrder = orderRegister mapPartialFunction (_.order)

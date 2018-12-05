@@ -1,0 +1,22 @@
+package com.sos.jobscheduler.core
+
+import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.data.order.OrderId
+
+/**
+  * @author Joacim Zschimmer
+  */
+package object problems
+{
+  final case class CancelChildOrderProblem(orderId: OrderId) extends Problem.Coded {
+    def arguments = Map("orderId" → orderId.string)
+  }
+
+  final case class CancelStartedOrderProblem(orderId: OrderId) extends Problem.Coded {
+    def arguments = Map("orderId" → orderId.string)
+  }
+
+  final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded {
+    def arguments = Map("orderId" → orderId.string)
+  }
+}

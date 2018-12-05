@@ -2,13 +2,11 @@ package com.sos.jobscheduler.tests
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
-import com.sos.jobscheduler.core.message.ProblemCodes
+import com.sos.jobscheduler.core.problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -82,7 +80,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     // Master knows the order has started
     assert(master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds) ==
-      Invalid(Problem(ProblemCodes.CancelStartedOrder, "❌")))
+      Invalid(CancelStartedOrderProblem(OrderId("❌"))))
   }
 
   "Cancel a started order between two jobs" in {
@@ -107,7 +105,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
   "Cancel unknown order" in {
     assert(master.executeCommandAsSystemUser(CancelOrder(OrderId("UNKNOWN"), CancelMode.NotStarted)).await(99.seconds) ==
-      Invalid(Problem(ProblemCodes.UnknownOrder, "UNKNOWN")))
+      Invalid(UnknownOrderProblem(OrderId("UNKNOWN"))))
   }
 
   "Cancel multiple orders with Batch" in {

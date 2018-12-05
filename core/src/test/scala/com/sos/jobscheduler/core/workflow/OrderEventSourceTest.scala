@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.core.message.ProblemCodeMessages.problemCodeToString
-import com.sos.jobscheduler.core.message.ProblemCodes
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
+import com.sos.jobscheduler.core.problems.CancelStartedOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
@@ -30,6 +30,8 @@ import scala.collection.mutable
   */
 final class OrderEventSourceTest extends FreeSpec
 {
+  ProblemCodeMessages.initialize()
+
   "JobSchedulerRestarted" in {
     val eventSource = new OrderEventSource(
       Map(TestWorkflowId → ForkWorkflow).toChecked,
@@ -226,8 +228,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready)
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCanceled)))
       }
@@ -236,8 +238,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
@@ -246,8 +248,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
@@ -258,8 +260,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderCanceled)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
@@ -268,8 +270,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
@@ -278,8 +280,8 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(Problem(ProblemCodes.CancelStartedOrder, "ORDER")))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }

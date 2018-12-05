@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.problem
 
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.ProblemTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Decoder
@@ -14,56 +15,40 @@ final class ProblemTest extends FreeSpec
 {
   private implicit val codeToString: ProblemCode ⇒ Option[String] = _  match {
     case ProblemCode("PROBLEM-CODE") ⇒ Some("PROBLEM MESSAGE")
-    case ProblemCode("PROBLEM-CODE-1") ⇒ Some("PROBLEM MESSAGE-1 first=$1")
-    case ProblemCode("PROBLEM-CODE-1-3") ⇒ Some("PROBLEM MESSAGE-1-3 first=$1 third=$3")
+    case ProblemCode("PROBLEM-CODE-1") ⇒ Some("PROBLEM MESSAGE-1 first=$first")
+    case ProblemCode("PROBLEM-CODE-1-3") ⇒ Some("PROBLEM MESSAGE-1-3 first=$first third=$third")
     case _ ⇒ None
   }
 
   "JSON" - {
-    "standard" in {
-      testJson(Problem("A problem"),
-        json"""{
-          "message": "A problem"
-        }""")
-    }
+    "without ProblemCode" - {
+      "standard" in {
+        testJson(Problem("A problem"),
+          json"""{
+            "message": "A problem"
+          }""")
+      }
 
-    "with TYPE" in {
-      testJson(Problem("A problem"),
-        json"""{
-          "TYPE": "Problem",
-          "message": "A problem"
-        }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
+      "with TYPE" in {
+        testJson(Problem("A problem"),
+          json"""{
+            "TYPE": "Problem",
+            "message": "A problem"
+          }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
+      }
     }
 
     "with ProblemCode" in {
-      testJson(Problem(ProblemCode("PROBLEM-CODE")),
+      val problem = TestCodeProblem(Map("argument" → "ARGUMENT"))
+      val message = problem.messageWithCause  // While testing, ProblemCodeMessages.initialize() may be called or not, so exact message depends
+      testJson[Problem](TestCodeProblem(Map("argument" → "ARGUMENT")),
         json"""{
-          "TYPE": "Problem",
-          "code": "PROBLEM-CODE",
-          "message": "PROBLEM MESSAGE"
-        }""")(Problem.typedJsonEncoder, implicitly[Decoder[Problem]])
-    }
-  }
-
-  "ProblemCode" - {
-    "without insertions" in {
-      val problem = Problem(ProblemCode("PROBLEM-CODE"))
-      assert(problem.toString == "PROBLEM MESSAGE")
-    }
-
-    "with insertions" in {
-      assert(Problem(ProblemCode("PROBLEM-CODE-1"), "FIRST")
-        .toString  == "PROBLEM MESSAGE-1 first=FIRST")
-    }
-
-    "with to much insertions" in {
-      val problem = Problem(ProblemCode("PROBLEM-CODE-1-3"), "FIRST", "SECOND", "THIRD", "FORTH")
-      assert(problem.toString == "PROBLEM MESSAGE-1-3 first=FIRST third=THIRD [SECOND, FORTH]")
-    }
-
-    "with missing insertions" in {
-      assert(Problem(ProblemCode("PROBLEM-CODE-1-3"), "FIRST")
-        .toString  == "PROBLEM MESSAGE-1-3 first=FIRST third=[]")
+          "code": "TestCode",
+          "arguments": {
+            "argument": "ARGUMENT"
+          },
+          "message": "$message"
+        }""")
     }
   }
 
@@ -176,10 +161,10 @@ final class ProblemTest extends FreeSpec
   }
 
   "equals" in {
-    assert(Problem(ProblemCode("A")) == Problem(ProblemCode("A")))
-    assert(Problem(ProblemCode("A"), 1) == Problem(ProblemCode("A"), 1))
-    assert(Problem(ProblemCode("A"), 1) != Problem(ProblemCode("A"), 2))
-    assert(Problem(ProblemCode("B")) != Problem(ProblemCode("A")))
+    assert(TestCodeProblem(Map.empty) == TestCodeProblem(Map.empty))
+    assert((TestCodeProblem(Map.empty): Problem) != Test2Problem(Map.empty))
+    assert(TestCodeProblem(Map("a" → "A")) == TestCodeProblem(Map("a" → "A")))
+    assert(TestCodeProblem(Map("a" → "A")) != TestCodeProblem(Map("a" → "X")))
     assert(Problem("TEST") == Problem("TEST"))
     assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
@@ -191,4 +176,8 @@ final class ProblemTest extends FreeSpec
     intercept[ProblemException] {
       throw problem.throwable
     }.toStringWithCauses
+}
+
+object ProblemTest {
+  final case class Test2Problem(arguments: Map[String, String]) extends Problem.Coded
 }
