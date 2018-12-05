@@ -602,7 +602,7 @@ with MainJournalingActor[Event]
 }
 
 private[master] object MasterOrderKeeper {
-  private val MasterIsTerminatingProblem = Problem.eager("Master is terminating")
+  private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
   @deprecated("", "")
   private val InitialVersion = VersionId("(initial)")  // ???
 

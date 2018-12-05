@@ -158,7 +158,7 @@ extends KeyedJournalingActor[OrderEvent] {
       case Terminated(`jobActor`) ⇒
         // May occur when ActorSystem suddenly terminates (fatal Throwable or Java shutdown hook <-- ActorSystem registered itself)
         // JobActor has killed process. Job may be restarted after recovery.
-        val problem = Problem.eager(s"Job Actor for '$jobKey' terminated unexpectedly")
+        val problem = Problem.pure(s"Job Actor for '$jobKey' terminated unexpectedly")
         logger.error(problem.toString)
         val bad = Outcome.Disrupted(problem)
         finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)

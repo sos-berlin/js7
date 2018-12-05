@@ -219,7 +219,7 @@ extends MainJournalingActor[Event] with Stash {
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
-          Future.failed(Problem.eager(s"Unknown Position ${order.workflowPosition}").throwable)
+          Future.failed(Problem.pure(s"Unknown Position ${order.workflowPosition}").throwable)
         else if (orderRegister contains order.id) {
           // May occur after Master restart when Master is not sure about order has been attached previously.
           logger.debug(s"Ignoring duplicate $cmd")

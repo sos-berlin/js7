@@ -45,7 +45,7 @@ object ForkExecutor extends EventInstructionExecutor
     val duplicates = orderForked.event.children map (_.orderId) flatMap (o ⇒ context.idToOrder.lift(o))
     if (duplicates.nonEmpty) {
       // Internal error, maybe a lost event OrderDetached
-      val problem = Problem.eager(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
+      val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       logger.error(problem.toString)
       orderForked.key <-: OrderBroken(problem)
     } else

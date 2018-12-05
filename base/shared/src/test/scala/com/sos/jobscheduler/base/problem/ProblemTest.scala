@@ -155,9 +155,9 @@ final class ProblemTest extends FreeSpec
     assert(throwable.toString == "ProblemException: PREFIX: PROBLEM")
   }
 
-  "Problem.eager" in {
-    assert(Problem.eager(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
-    assert(Problem.eager(new RuntimeException("EXCEPTION")).withPrefix("PREFIX").toString == "PREFIX, caused by: EXCEPTION")
+  "Problem.pure" in {
+    assert(Problem.pure(new RuntimeException("EXCEPTION")).toString == "EXCEPTION")
+    assert(Problem.pure(new RuntimeException("EXCEPTION")).withPrefix("PREFIX").toString == "PREFIX, caused by: EXCEPTION")
   }
 
   "equals" in {

@@ -73,7 +73,7 @@ object Outcome
     }
 
     final case object JobSchedulerRestarted extends Reason {
-      val problem = Problem.eager("JobScheduler stopped while order was in-process")
+      val problem = Problem.pure("JobScheduler stopped while order was in-process")
     }
 
     final case class Other(problem: Problem) extends Reason

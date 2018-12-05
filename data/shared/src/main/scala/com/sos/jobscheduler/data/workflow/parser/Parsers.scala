@@ -14,8 +14,8 @@ object Parsers {
       def checkedParse(string: String): Checked[A] =
         (underlying ~ End).parse(string) match {
           case Parsed.Success(expr, _) ⇒ Valid(expr)
-          case o: Parsed.Failure ⇒ Invalid(Problem.eager(o.msg))
-          //case Parsed.Failure(lastParser, index, extra) ⇒ Invalid(Problem.eager(s"Error at position 0+$index: $lastParser - $extra"))
+          case o: Parsed.Failure ⇒ Invalid(Problem.pure(o.msg))
+          //case Parsed.Failure(lastParser, index, extra) ⇒ Invalid(Problem.pure(s"Error at position 0+$index: $lastParser - $extra"))
         }
     }
   }

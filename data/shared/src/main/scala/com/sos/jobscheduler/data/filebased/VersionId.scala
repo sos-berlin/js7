@@ -40,7 +40,7 @@ object VersionId extends GenericString.Checked_[VersionId]
     for {
       _ ← check(string)
       versionId ← super.checked(string) match {
-        case Valid(VersionId.Anonymous) ⇒ Invalid(Problem.eager("VersionId.Anonymous?"))
+        case Valid(VersionId.Anonymous) ⇒ Invalid(Problem.pure("VersionId.Anonymous?"))
         case o ⇒ o
       }
     } yield versionId

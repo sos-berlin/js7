@@ -56,7 +56,7 @@ trait GenericEventRoute extends RouteProvider
 
     private val exceptionHandler = ExceptionHandler {
       case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException ⇒
-        complete((StatusCodes.ServiceUnavailable, Problem.eager(t.getMessage)))
+        complete((StatusCodes.ServiceUnavailable, Problem.pure(t.getMessage)))
     }
 
     final lazy val route: Route =
@@ -108,7 +108,7 @@ trait GenericEventRoute extends RouteProvider
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
           eventWatch.when(request, predicate = isRelevantEvent) map {
             case TearableEventSeq.Torn(eventId) ⇒
-              Problem.eager(s"Requested EventId after=${request.after} is not available. Oldest available EventId is $eventId")
+              Problem.pure(s"Requested EventId after=${request.after} is not available. Oldest available EventId is $eventId")
                 : ToResponseMarshallable
 
             case EventSeq.Empty(_) ⇒
@@ -177,6 +177,6 @@ object GenericEventRoute
     try java.lang.Long.parseLong(header.id)
     catch {
       case e: NumberFormatException ⇒
-        throw new HttpStatusCodeException(BadRequest, Problem.eager(s"Invalid header Last-Event-Id: $e"))
+        throw new HttpStatusCodeException(BadRequest, Problem.pure(s"Invalid header Last-Event-Id: $e"))
     }
 }

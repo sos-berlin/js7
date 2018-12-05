@@ -11,7 +11,7 @@ final class JavaCheckedTester
     @SuppressWarnings("unchecked")
     private static final JavaChecked<String> valid = new JavaChecked<>(new Validated.Valid("VALID"));
     @SuppressWarnings("unchecked")
-    private static final JavaChecked<String> invalid = new JavaChecked<>(new Validated.Invalid(Problem$.MODULE$.eager("PROBLEM")));
+    private static final JavaChecked<String> invalid = new JavaChecked<>(new Validated.Invalid(Problem$.MODULE$.pure("PROBLEM")));
 
     private JavaCheckedTester() {}
 

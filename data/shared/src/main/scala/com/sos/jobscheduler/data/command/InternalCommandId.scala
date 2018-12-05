@@ -21,7 +21,7 @@ object InternalCommandId extends GenericString.Checked_[InternalCommandId]
 
   override def checked(o: String) =
     Try(o.toLong) match {
-      case Failure(t) ⇒ Invalid(Problem.eager(t))
+      case Failure(t) ⇒ Invalid(Problem.pure(t))
       case Success(n) ⇒ Valid(new InternalCommandId(n))
     }
 

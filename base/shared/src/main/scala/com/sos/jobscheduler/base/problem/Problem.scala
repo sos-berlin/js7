@@ -57,10 +57,10 @@ object Problem
   def apply(messageFunction: ⇒ String): Problem =
     new Lazy(messageFunction)
 
-  def eager(message: String): Problem =
+  def pure(message: String): Problem =
     apply(message)
 
-  def eager(throwable: Throwable): Problem =
+  def pure(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 
   def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
@@ -248,7 +248,7 @@ object Problem
       message ← c.get[String]("message")
     } yield
       maybeCode match {
-        case None ⇒ Problem.eager(message)
+        case None ⇒ Problem.pure(message)
         case Some(code) ⇒ StaticMessage(code, arguments, message)
       }
 }

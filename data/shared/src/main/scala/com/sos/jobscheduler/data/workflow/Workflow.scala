@@ -56,7 +56,7 @@ extends FileBased
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
       case jump: JumpInstruction if !labelToNumber.contains(jump.to) ⇒
-        Problem.eager(s"Unknown label '${jump.to}'")
+        Problem.pure(s"Unknown label '${jump.to}'")
     }
     if (problems.nonEmpty)
       Invalid(Problem.Multiple(problems))

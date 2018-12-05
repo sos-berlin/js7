@@ -7,5 +7,5 @@ import com.sos.jobscheduler.base.problem.Problem
   */
 package object problems
 {
-  val AgentIsShuttingDownProblem = Problem.eager("Agent is shutting down")
+  val AgentIsShuttingDownProblem = Problem.pure("Agent is shutting down")
 }

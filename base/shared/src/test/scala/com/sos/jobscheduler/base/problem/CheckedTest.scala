@@ -42,7 +42,7 @@ final class CheckedTest extends FreeSpec
 
   "===" in {
     assert(Checked(1) === Checked(1))
-    assert(Checked(Problem("X")) === Checked(Problem.eager(new IllegalArgumentException("X"))))
+    assert(Checked(Problem("X")) === Checked(Problem.pure(new IllegalArgumentException("X"))))
   }
 
   "fromOption" in {
