@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import io.circe.{Decoder, DecodingFailure, Json}
 import scala.collection.mutable
 
-/** Denotes globally a branch in a statement, for example fork or if-then-else, globally unique.
+/** Denotes globally a branch in a instruction, for example fork or if-then-else, globally unique.
   *
   * @author Joacim Zschimmer
   */

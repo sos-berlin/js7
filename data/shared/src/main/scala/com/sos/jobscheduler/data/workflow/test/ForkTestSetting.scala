@@ -26,7 +26,7 @@ object ForkTestSetting {
 
   val TestWorkflowSource = """
    |define workflow {
-   |  // First statement is a fork: Event OrderStarted here
+   |  // First instruction is a fork: Event OrderStarted here
    |  fork(
    |    "🥕" { job A },
    |    "🍋" { job A });

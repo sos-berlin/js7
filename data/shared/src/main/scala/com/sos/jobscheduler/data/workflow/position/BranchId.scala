@@ -5,7 +5,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import scala.language.implicitConversions
 
-/** Denotes a branch in a statement, for example fork or if-then-else..
+/** Denotes a branch in a instruction, for example fork or if-then-else..
   *
   * @author Joacim Zschimmer
   */
