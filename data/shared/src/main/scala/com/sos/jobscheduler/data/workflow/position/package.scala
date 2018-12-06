@@ -20,7 +20,7 @@ package object position
 
     def dropChild: BranchPath = {
       if (segments.isEmpty) throw new IllegalStateException("dropChild on empty BranchPath ?")
-      segments dropRight 1
+      segments.init
     }
 
     private[workflow] def asJsonArray: Vector[Json] =
