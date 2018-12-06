@@ -83,9 +83,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, Some(Order.Attached(agentPath)), parent, payload, cancelationMarked/*???*/)) ⇒
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, outcome, Some(Order.Attached(agentPath)), parent, payload, cancelationMarked/*???*/)) ⇒
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
+          persist(OrderAttached(workflowPosition, state, outcome, parent, agentPath, payload)) { event ⇒
             update(event)
             sender() ! Completed
           }

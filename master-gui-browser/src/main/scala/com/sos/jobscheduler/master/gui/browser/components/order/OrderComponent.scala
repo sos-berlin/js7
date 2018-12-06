@@ -54,7 +54,7 @@ object OrderComponent {
           orderEntry.order.parent.whenDefined(showField("Parent", _)),
           showField("State"  , orderEntry.order.state match {
             case o: Order.Forked ⇒ VdomArray(<.div("Forked"), o.childOrderIds.toVdomArray(orderId ⇒ <.div(orderId)))
-            case o ⇒ o
+            case o ⇒ orderStateToVdom(orderEntry.order)
           }),
           showField("Position", orderEntry.order.workflowPosition.toString),
           showField("Attached", orderEntry.order.attachedState.orMissing),

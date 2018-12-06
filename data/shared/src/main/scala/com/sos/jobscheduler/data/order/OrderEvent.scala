@@ -52,7 +52,8 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledFor, payload)
   }
 
-  final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, parent: Option[OrderId], agentId: AgentId, payload: Payload)
+  final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, outcome: Outcome,
+    parent: Option[OrderId], agentId: AgentId,  payload: Payload)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
     //type State = FreshOrReady

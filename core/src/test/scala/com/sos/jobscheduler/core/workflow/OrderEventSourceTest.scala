@@ -215,7 +215,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Fresh Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Outcome.succeeded, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
@@ -235,7 +235,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Ready Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -245,7 +245,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -267,7 +267,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Ready Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -277,7 +277,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -294,9 +294,9 @@ object OrderEventSourceTest {
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val TestAgentId = AgentPath("/AGENT") % "VERSION"
   private val succeededOrderId = OrderId("SUCCESS")
-  private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.Success)))
-  private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed(Outcome.Succeeded(ReturnCode.StandardFailure)))
-  private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId, Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)))
+  private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed, outcome = Outcome.Succeeded(ReturnCode.Success))
+  private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed, outcome = Outcome.Succeeded(ReturnCode.StandardFailure))
+  private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId, Order.Processed, outcome = Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))
 
   private val executeScript = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/executable")))
 

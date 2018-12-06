@@ -20,7 +20,7 @@ object IfExecutor extends PositionInstructionExecutor {
 
   def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: If): Option[Position] = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
-    order.state.outcome match {
+    order.outcome match {
       case Outcome.Succeeded(returnCode) ⇒
         Evaluator.evalBoolean(new Scope(returnCode, order.variables), instruction.predicate)
           .map {

@@ -65,7 +65,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
     master.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Some(Attached(Agent:/AGENT-A (initial))),None,Payload(),None)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE (initial)/#0,Processing,Succeeded(ReturnCode(0)),Some(Attached(Agent:/AGENT-A (initial))),None,Payload(),None)"))
     assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.s).orThrow

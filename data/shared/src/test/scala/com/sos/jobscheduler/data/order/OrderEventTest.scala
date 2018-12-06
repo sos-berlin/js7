@@ -48,8 +48,8 @@ final class OrderEventTest extends FreeSpec {
   "OrderAttached" in {
     check(
       OrderAttached(
-        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(2),
-        Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT") % "1", Payload(Map("VAR" → "VALUE"))),
+        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(2), Order.Ready,
+        Outcome.succeeded, Some(OrderId("PARENT")), AgentPath("/AGENT") % "1", Payload(Map("VAR" → "VALUE"))),
       json"""{
         "TYPE": "OrderAttached",
         "workflowPosition": {
@@ -58,6 +58,10 @@ final class OrderEventTest extends FreeSpec {
             "versionId": "VERSION"
           },
           "position": [ 2 ]
+        },
+        "outcome": {
+          "TYPE": "Succeeded",
+          "returnCode": 0
         },
         "state": {
           "TYPE": "Ready"

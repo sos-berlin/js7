@@ -44,7 +44,7 @@ object WorkflowComponent {
              order ← orders collectFirst { case order if order.position == posInstr._1 ⇒ order }
            } yield
              <.tr(
-               <.td(<.div(^.cls := "Instruction", orderStateToSymbol(order.state))),
+               <.td(<.div(^.cls := "Instruction", orderStateToSymbol(order))),
                <.td(<.div(^.cls := stateToClass(order.state), renderInstruction(posInstr)))): VdomNode
           ) getOrElse <.tr(<.td, renderInstructionTd(posInstr)))))
 
@@ -57,7 +57,6 @@ object WorkflowComponent {
     state match {
       case Order.Processing          ⇒ "Instruction Instruction-Processing"
       case Order.Ready              ⇒ "Instruction Instruction-Ready"
-      case _: Order.Transitionable  ⇒ "Instruction Instruction-Transitionable"
       case Order.Finished           ⇒ "Instruction Instruction-Finished"
       case _                        ⇒ "Instruction Instruction-Idle"
     }

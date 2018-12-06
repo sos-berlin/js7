@@ -199,7 +199,7 @@ private[graphql] object MasterGraphqlSchema
     fields[QueryContext, WorkflowPosition](
       Field("workflowId", WorkflowIdType, resolve = _.value.workflowId),
       Field("position", PositionType, resolve = _.value.position.asSeq,
-        description = "An array of a statement number (starting with 0) followed by nested positions"),
+        description = "An array of a instruction number (starting with 0) followed by nested positions"),
       Field("instruction", OptionType(InstructionType), resolve = ctx ⇒ {
         import ctx.ctx.executionContext
         ctx.ctx.idTo[Workflow](ctx.value.workflowId) map (_.toOption flatMap (_.instruction(ctx.value.position)))
@@ -309,15 +309,11 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowPath", WorkflowPathType, resolve = _.value.workflowId.path),
       Field("attachedState", OptionType(OrderAttachedStateType), resolve = _.value.attachedState,
         description = "Order is attaching to, attached to, or detaching from an Agent"),
+      Field("outcome", OutcomeType, resolve = _.value.outcome),
       Field("state", OrderStateType, resolve = _.value.state),
       Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
       Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
         case o: Order.Fresh ⇒ o.scheduledFor map (_.toEpochMilli)
-        case _ ⇒ None
-      }),
-      Field("outcome", OptionType(OutcomeType), resolve = _.value.state match {
-        case o: Order.Processed ⇒ Some(o.outcome)
-        case o: Order.Stopped ⇒ Some(o.outcome)
         case _ ⇒ None
       }),
       Field("childOrderIds", OptionType(ListType(OrderIdType)), resolve = _.value.state match {

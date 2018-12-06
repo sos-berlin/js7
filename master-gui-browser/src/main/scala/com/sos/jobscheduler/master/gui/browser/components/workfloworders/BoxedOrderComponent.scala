@@ -35,16 +35,16 @@ private[workfloworders] final class BoxedOrderComponent(
           order.state match {
             case _: Order.Fresh | _: Order.Forked ⇒
               <.div(^.cls := "Boxed-Order-compact",
-                order.state)
+                orderStateToVdom(order))
 
             case Order.Processing ⇒
               <.div(^.cls := "Boxed-Order-compact",
-                orderStateToSymbol(order.state), " ",
+                orderStateToSymbol(order), " ",
                 lastOutput getOrElse order.state.toString: String)
 
             case _ ⇒
               <.div(
-                <.span(^.cls := "Boxed-Order-State", order.state))
+                <.span(^.cls := "Boxed-Order-State", orderStateToVdom(order)))
           },
           <.div(^.cls := "Boxed-Order-cancel", "CANCELED") when order.cancel.isDefined)
     }

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.gui.browser.common
 
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.gui.browser.router.Router
@@ -39,53 +38,51 @@ object Renderers {
       }
   }
 
-  implicit def orderStateToVdom(state: Order.State): VdomNode =
+  def orderStateToVdom(order: Order[Order.State]): VdomNode =
     VdomArray(
-      orderStateToSymbolFixedWidth(state),
-      orderStateTextToVdom(state))
+      orderStateToSymbolFixedWidth(order),
+      orderStateTextToVdom(order))
 
   object forTable {
-    implicit def orderStateToVdom(state: Order.State): VdomNode =
+    def orderStateToVdom(order: Order[Order.State]): VdomNode =
       VdomArray(
-        orderStateToSymbolFixedWidth(state),
-        state match {
+        orderStateToSymbolFixedWidth(order),
+        order.state match {
            case Order.Fresh(Some(at)) ⇒ at.toReadableLocaleIsoString: VdomNode
-           case _ ⇒ orderStateTextToVdom(state)
+           case _ ⇒ orderStateTextToVdom(order)
         })
   }
 
-  private def orderStateTextToVdom(state: Order.State): VdomNode =
-    state match {
+  private def orderStateTextToVdom(order: Order[Order.State]): VdomNode =
+    order.state match {
       case Order.Fresh(Some(at))  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
-      case Order.Processed(Outcome.Succeeded(ReturnCode.Success)) ⇒ s"Processed"
-      case Order.Processed(o: Outcome.Undisrupted) ⇒ s"Processed rc=${o.returnCode.number}"
-      case Order.Processed(o: Outcome.Disrupted) ⇒ s"Processed $o"
+      case Order.Processed ⇒ outcomeToSymbol(order.outcome)
       case Order.Forked(children) ⇒ s"Forked ${children.size}×"
-      case _ ⇒ state.toString
+      case _ ⇒ order.state.toString
     }
 
-  def orderStateToSymbolFixedWidth(state: Order.State): VdomNode = {
-    val symbol = orderStateToSymbol(state)
-    //if (symbol.isInstanceOf[VdomElement])  // material-icons
-    //  VdomArray(symbol, " ")
-    //else
-      <.span(^.cls := "Order-State-symbol-width")(symbol)
-  }
+  def orderStateToSymbolFixedWidth(order: Order[Order.State]): VdomNode =
+    <.span(^.cls := "Order-State-symbol-width")(orderStateToSymbol(order))
 
-  def orderStateToSymbol(state: Order.State): VdomNode =
-    state match {
+  def orderStateToSymbol(order: Order[Order.State]): VdomNode =
+    order.state match {
       case Order.Fresh(Some(_)) ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
-      case Order.Fresh(None)  ⇒ "━"
-      case Order.Processing    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
-      case _: Order.Forked    ⇒ "⨁"
-      case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"
-      case Order.Processed(_: Outcome.Failed) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy") // "☁"
-      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥"  // Explosion
-      case Order.Ready        ⇒ "◯"  // Circle
-      case Order.Finished     ⇒ "☆"  // Star
-      case _: Order.Stopped   ⇒ "❗"  // Red exclamation mark
-      case _: Order.Broken    ⇒ "💥"  // Explosion
-      case _                  ⇒ "·"   // Dot
+      case Order.Fresh(None)    ⇒ "━"
+      case Order.Processing     ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
+      case _: Order.Forked      ⇒ "⨁"
+      case Order.Processed      ⇒ outcomeToSymbol(order.outcome)
+      case Order.Ready          ⇒ "◯"  // Circle
+      case Order.Finished       ⇒ "☆"  // Star
+      case _: Order.Stopped     ⇒ "❗"  // Red exclamation mark
+      case _: Order.Broken      ⇒ "💥"  // Explosion
+      case _                    ⇒ "·"   // Dot
+    }
+
+  def outcomeToSymbol(outcome: Outcome): VdomNode =
+    outcome match {
+      case _: Outcome.Succeeded ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"
+      case _: Outcome.Failed ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy") // "☁"
+      case _: Outcome.Disrupted ⇒ "💥"  // Explosion
     }
 
   implicit def orderAttachedStateToVdom(attachedState: Order.AttachedState): VdomNode =

@@ -121,17 +121,6 @@ final class OrderTest extends FreeSpec
           }""")
       }
 
-      "Stopped" in {
-        check(Stopped(Outcome.Failed(ReturnCode(1))),
-          json"""{
-            "TYPE": "Stopped",
-            "outcome": {
-              "TYPE": "Failed",
-              "returnCode": 1
-            }
-          }""")
-      }
-
       "Processing" in {
         check(Processing,
           json"""{
@@ -140,13 +129,16 @@ final class OrderTest extends FreeSpec
       }
 
       "Processed" in {
-        check(Processed(Outcome.Succeeded(ReturnCode(7))),
+        check(Processed,
           json"""{
-            "TYPE": "Processed",
-            "outcome": {
-              "TYPE": "Succeeded",
-              "returnCode": 7
-            }
+            "TYPE": "Processed"
+          }""")
+      }
+
+      "Stopped" in {
+        check(Stopped,
+          json"""{
+            "TYPE": "Stopped"
           }""")
       }
 
@@ -239,7 +231,7 @@ final class OrderTest extends FreeSpec
       OrderAdded(workflowId),
 
       OrderAttachable(agentId.path),
-      OrderAttached(workflowId /: Position(0), Fresh(), None, agentId, Payload.empty),
+      OrderAttached(workflowId /: Position(0), Fresh(), Outcome.succeeded, None, agentId, Payload.empty),
       OrderTransferredToAgent(agentId),
 
       OrderStarted,
@@ -305,7 +297,7 @@ final class OrderTest extends FreeSpec
     }
 
     "Processed" - {
-      checkAllEvents(Order(orderId, workflowId, Processed(Outcome.Succeeded(ReturnCode(0)))),
+      checkAllEvents(Order(orderId, workflowId, Processed, Outcome.Succeeded(ReturnCode(0))),
         cancelationMarkingAllowed[Processed] orElse {
           case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
           case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
@@ -314,7 +306,7 @@ final class OrderTest extends FreeSpec
     }
 
     "Stopped" - {
-      checkAllEvents(Order(orderId, workflowId, Stopped(Outcome.Failed(ReturnCode(1)))),
+      checkAllEvents(Order(orderId, workflowId, Stopped, outcome = Outcome.Failed(ReturnCode(1))),
         detachingAllowed[Stopped] orElse
         cancelationMarkingAllowed[Stopped] orElse {
           case (OrderCanceled , `detached`) ⇒ _.isInstanceOf[Order.Canceled]
@@ -434,7 +426,7 @@ final class OrderTest extends FreeSpec
 
     "isAttaching" in {
       val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Ready,
-        Some(Detaching(AgentPath("/AGENT") % "1")))
+        attachedState = Some(Detaching(AgentPath("/AGENT") % "1")))
       assert(order.detaching == Valid(AgentPath("/AGENT") % "1"))
 
       for (o ← Array(
@@ -453,7 +445,7 @@ final class OrderTest extends FreeSpec
 
   if (sys.props contains "test.speed") "Speed" in {
     val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Ready,
-      Some(Attached(AgentPath("/AGENT") % "1")))
+      attachedState = Some(Attached(AgentPath("/AGENT") % "1")))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {

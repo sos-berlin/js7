@@ -27,6 +27,7 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   workflowPosition: WorkflowPosition,
   state: S,
+  outcome: Outcome = Outcome.succeeded,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   payload: Payload = Payload.empty,
@@ -38,6 +39,7 @@ final case class Order[+S <: Order.State](
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First),
         Ready,
+        Outcome.succeeded,
         attachedState,
         parent = Some(id),
         Payload(child.variablesDiff.applyTo(payload.variables)))
@@ -75,12 +77,13 @@ final case class Order[+S <: Order.State](
       case OrderProcessed(diff, outcome_) ⇒
         check(isState[Processing] && isAttached,
           copy(
-            state = Processed(outcome_),
+            state = Processed,
+            outcome = outcome_,
             payload = Payload(diff.applyTo(payload.variables))))
 
-      case OrderStopped(message) ⇒
+      case OrderStopped(outcome_) ⇒
         check(isState[Processed] && isAttached,
-          copy(state = Stopped(message)))
+          copy(state = Stopped, outcome = outcome_))
 
       case OrderForked(children) ⇒
         check(isState[Ready] && (isDetached || isAttached),
@@ -89,12 +92,15 @@ final case class Order[+S <: Order.State](
       case OrderJoined(variablesDiff, outcome_) ⇒
         check((isState[Forked] || isState[Awaiting]) && isDetached,
           copy(
-            state = Processed(outcome_),
+            state = Processed,
+            outcome = outcome_,
             payload = Payload(variablesDiff applyTo variables)))
 
       case _: OrderOffered ⇒
         check(isState[Ready] && isDetached,
-          copy(state = Processed(Outcome.succeeded)))
+          copy(
+            state = Processed,
+            outcome = Outcome.succeeded))
 
       case OrderAwaiting(orderId) ⇒
         check(isState[Ready] && isDetached,
@@ -224,7 +230,7 @@ object Order {
     Order(id, event.workflowId, Fresh(event.scheduledFor), payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[FreshOrReady] =
-    Order(id, event.workflowPosition, event.state, Some(Attached(event.agentId)), payload = event.payload)
+    Order(id, event.workflowPosition, event.state, event.outcome, Some(Attached(event.agentId)), payload = event.payload)
 
   sealed trait AttachedState
   object AttachedState {
@@ -262,13 +268,11 @@ object Order {
 
   sealed trait Started extends State
 
-  sealed trait Transitionable extends Started
-
   sealed trait Ready extends Started with FreshOrReady
   case object Ready extends Ready
 
-  @JsonCodec
-  final case class Stopped(outcome: Outcome.NotSucceeded) extends Started
+  sealed trait Stopped extends Started
+  case object Stopped extends Stopped
 
   @JsonCodec
   final case class Broken(problem: Problem) extends Started/*!!!*/
@@ -276,11 +280,11 @@ object Order {
   sealed trait Processing extends Started
   case object Processing extends Processing
 
-  @JsonCodec
-  final case class Processed(outcome: Outcome) extends Transitionable
+  sealed trait Processed extends Started
+  case object Processed extends Processed
 
   @JsonCodec
-  final case class Forked(children: Seq[Forked.Child]) extends Transitionable {
+  final case class Forked(children: Seq[Forked.Child]) extends Started {
     def childOrderIds = children map (_.orderId)
   }
   object Forked {
@@ -293,7 +297,7 @@ object Order {
   extends Started
 
   @JsonCodec
-  final case class Awaiting(offeredOrderId: OrderId) extends Transitionable
+  final case class Awaiting(offeredOrderId: OrderId) extends Started
 
   sealed trait Finished extends Started
   case object Finished extends Finished
@@ -308,8 +312,8 @@ object Order {
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[FreshOrReady],
     Subtype(Processing),
-    Subtype[Processed],
-    Subtype[Stopped],
+    Subtype(Processed),
+    Subtype(Stopped),
     Subtype[Forked],
     Subtype[Offering],
     Subtype[Awaiting],
@@ -325,6 +329,7 @@ object Order {
       "attachedState" → order.attachedState.asJson,
       "parent" → order.parent.asJson,
       "payload" → order.payload.asJson,
+      "outcome" → ((order.outcome != Outcome.succeeded) ? order.outcome).asJson,
       "cancel" → order.cancel.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor ⇒
@@ -335,9 +340,10 @@ object Order {
       attachedState ← cursor.get[Option[AttachedState]]("attachedState")
       parent ← cursor.get[Option[OrderId]]("parent")
       payload ← cursor.get[Payload]("payload")
+      outcome ← cursor.get[Option[Outcome]]("outcome") map (_ getOrElse Outcome.succeeded)
       cancel ← cursor.get[Option[CancelMode]]("cancel")
     } yield
-      Order(id, workflowPosition, state, attachedState, parent, payload, cancel)
+      Order(id, workflowPosition, state, outcome, attachedState, parent, payload, cancel)
 
   implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o ⇒ jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor ⇒

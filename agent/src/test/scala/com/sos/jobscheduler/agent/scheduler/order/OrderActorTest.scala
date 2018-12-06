@@ -115,7 +115,7 @@ private object OrderActorTest {
   private val TestAgentPath = AgentPath("/TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT") % "(initial)", Payload.empty),
+    OrderAttached(TestOrder.workflowPosition, Order.Ready, Outcome.succeeded, None, AgentPath("/TEST-AGENT") % "(initial)", Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),

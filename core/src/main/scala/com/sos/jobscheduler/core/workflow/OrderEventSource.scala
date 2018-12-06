@@ -127,7 +127,7 @@ final class OrderEventSource(
           workflow.labelToPosition(order.position.branchPath, label)
 
         case IfNonZeroReturnCodeGoto(label) ⇒
-          if (order.state.outcome.isFailed)
+          if (order.outcome.isFailed)
             workflow.labelToPosition(order.position.branchPath, label)
           else
             Some(order.position.increment)
