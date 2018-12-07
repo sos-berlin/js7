@@ -43,7 +43,7 @@ final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration:
 extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash {
 
-  private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
+  private val logger = Logger.withPrefix[AgentDriver](agentId.toShortString + " " + uri)
   private val config = masterConfiguration.config
   private val batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size")
   private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
@@ -355,7 +355,7 @@ with ReceiveLoggingActor.WithStash {
     }
   }
 
-  override def toString = s"AgentDriver(${agentId.toSimpleString}: $uri)"
+  override def toString = s"AgentDriver(${agentId.toShortString}: $uri)"
 }
 
 private[master] object AgentDriver

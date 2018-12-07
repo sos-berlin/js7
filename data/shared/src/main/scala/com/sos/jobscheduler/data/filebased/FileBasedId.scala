@@ -9,8 +9,6 @@ import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
   */
 final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 {
-  def toSimpleString = path.string + VersionSeparator + versionId.string
-
   def requireNonAnonymous(): this.type = {
     path.requireNonAnonymous()
     versionId.requireNonAnonymous()
@@ -18,6 +16,8 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
   }
 
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
+
+  def toSimpleString = path.string + VersionSeparator + versionId.string
 
   def pretty = s"${path.pretty} ${versionId.string}"
 
@@ -27,7 +27,7 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 }
 
 object FileBasedId {
-  private val VersionSeparator = "%"
+  private val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   implicit def ordering[P <: TypedPath]: Ordering[FileBasedId[P]] =
     Ordering.by(o ⇒ (o.path, o.versionId))

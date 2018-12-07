@@ -11,7 +11,6 @@ import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
@@ -275,17 +274,16 @@ extends Actor with Stash {
     actorOf(
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
       uniqueActorName("SnapshotTaker"))
-    become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
+    become(takingSnapshot(commander = sender(), () ⇒ andThen))
   }
 
-  private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
+  private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit): Receive = {
     case SnapshotTaker.Output.Finished(Failure(t)) ⇒
       throw t.appendCurrentStackTrace
 
-    case SnapshotTaker.Output.Finished(Success(snapshotCount)) ⇒
+    case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) ⇒
       snapshotWriter.endSnapshotSection(sync = syncOnCommit)
       snapshotWriter.close()
-      if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "snapshots") + " written")
       val file = journalMeta.file(after = lastWrittenEventId)
       move(snapshotWriter.file, file, ATOMIC_MOVE)
       snapshotWriter = null

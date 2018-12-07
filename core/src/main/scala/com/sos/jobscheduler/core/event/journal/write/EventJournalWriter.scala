@@ -45,7 +45,6 @@ with AutoCloseable
 
   override def close(): Unit = {
     super.close()
-    logger.info(s"Journal closed, $fileSizeString written ($statistics)")
     for (o ← statistics.debugString) logger.debug(o)
   }
 
@@ -83,6 +82,7 @@ with AutoCloseable
     if (!eventsStarted) throw new IllegalStateException
     jsonWriter.write(ByteString(EventFooter.compactPrint))
     flush(sync = sync)
+    logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
   }
 
   override def flush(sync: Boolean): Unit = {

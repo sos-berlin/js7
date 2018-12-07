@@ -184,7 +184,7 @@ with MainJournalingActor[Event]
       if (hasRecovered) {
         orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
         afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
-        logger.info(s"${orderRegister.size} Orders recovered")
+        logger.info(s"${orderRegister.size} Orders, ${repo.currentTyped[Workflow].size} Workflows and ${repo.currentTyped[Agent].size} Agents references recovered")
       } else {
         readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }

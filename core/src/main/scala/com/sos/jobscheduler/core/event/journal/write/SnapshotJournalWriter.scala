@@ -47,7 +47,7 @@ extends JournalWriter[E](append = false)
   def endSnapshotSection(sync: Boolean): Unit = {
     jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
     flush(sync = sync)
-    logger.info(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
+    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
     for (o ← statistics.debugString) logger.debug(o)
   }
 

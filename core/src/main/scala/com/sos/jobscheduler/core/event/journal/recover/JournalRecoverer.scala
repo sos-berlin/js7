@@ -73,9 +73,8 @@ trait JournalRecoverer[E <: Event] {
       logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
-      val time = EventId.toDateTimeString(_lastEventId)
       val age = (now - EventId.toTimestamp(_lastEventId)).withNanos(0).pretty
-      logger.info(s"Recovered last EventId is ${_lastEventId} of $time $age ago " +
+      logger.info(s"Recovered last EventId is ${EventId.toString(_lastEventId)}, issued $age ago " +
         s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }
   }
