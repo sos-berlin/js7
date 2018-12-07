@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, If, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, If, Offer, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext}
 
@@ -19,7 +19,7 @@ trait EventInstructionExecutor extends InstructionExecutor {
 }
 
 trait PositionInstructionExecutor extends InstructionExecutor {
-  def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: Instr): Option[Position]
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instr): Option[Position]
 }
 
 object InstructionExecutor
@@ -32,10 +32,11 @@ object InstructionExecutor
       case _: Fork ⇒ ForkExecutor
       case _: Gap ⇒ GapExecutor
       case _: If ⇒ IfExecutor
+      case _: TryInstruction ⇒ TryExecutor
       case _: Offer ⇒ OfferExecutor
     }
 
-  def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: Instruction): Option[Position] =
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Option[Position] =
     instructionToExecutor(instruction) match {
       case exec: PositionInstructionExecutor ⇒ exec.nextPosition(context, order, instruction.asInstanceOf[exec.Instr])
       case _ ⇒ None

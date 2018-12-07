@@ -1,5 +1,25 @@
 # Änderungen
 
+## 2018-12-07
+### Fehlerbehandlung mit "try"
+Wenn ein Auftrag in einer mit ```try { ... }``` einen Jobschritt fehlerhaft beendet,
+dann setzt er mit den Anweisungen im folgenden Catch-Block fort.
+```
+define workflow {
+  try {  
+    execute executable="/SUCCEED", agent="AGENT";
+    execute executable="/FAIL", agent="AGENT";
+    execute executable="/NOT-EXECUTED", agent="AGENT";
+  } catch {
+    execute executable="/RECOVER", agent="AGENT";
+  };
+}
+```
+Einschränkungen
+- Der Catch-Block muss erstmal wenigstens eine Anweisung enthalten.
+- Fehler in einem Fork-Branch werden nicht abgefangen, 
+  denn Fork verwirft die Ergebnisse der Kindaufträge.
+
 ## 2018-12-05
 
 ### JSON-Feld "scheduledAt" heißt jetzt "scheduledFor"

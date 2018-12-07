@@ -41,13 +41,13 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
         }
     }
 
-  def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: End): Option[Position] =
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End): Option[Position] =
     for {
       returnPosition ← order.position.dropChild
       next ← instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
         case ForkExecutor ⇒ None
+        case _: PositionInstructionExecutor ⇒ Some(returnPosition.increment)  // Check this first for TryInstruction !!!
         case _: EventInstructionExecutor ⇒ Some(returnPosition)
-        case _: PositionInstructionExecutor ⇒ Some(returnPosition.increment)  // Skip IfErrorCode (don't execute again!)
         case _ ⇒ None
       }
     } yield next

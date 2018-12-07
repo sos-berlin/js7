@@ -18,7 +18,7 @@ object IfExecutor extends PositionInstructionExecutor {
 
   private val logger = Logger(getClass)
 
-  def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: If): Option[Position] = {
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If): Option[Position] = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
     order.outcome match {
       case Outcome.Succeeded(returnCode) ⇒

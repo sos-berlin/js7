@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -184,6 +184,7 @@ extends FileBased
       case Position(BranchPath.Segment(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
         instruction(nr) match {
           case instr: If ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
+          case instr: TryInstruction ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
     }
@@ -246,6 +247,20 @@ extends FileBased
       case o ⇒ Invalid(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
+  /** Find catch instruction and return position of the first instruction. */
+  @tailrec
+  def findCatchPosition(position: Position): Option[Position] =
+    position.splitBranchAndNr match {
+      case None ⇒ None
+      case Some((parent, branchId, _)) ⇒
+        instruction(parent) match {
+          case _: TryInstruction if branchId == TryInstruction.TryBranchId ⇒
+            Some(parent / TryInstruction.CatchBranchId / 0)
+          case _ ⇒
+            findCatchPosition(parent)
+        }
+    }
+
   def instruction(position: Position): Instruction =
     position match {
       case Position(Nil, nr) ⇒
@@ -254,6 +269,8 @@ extends FileBased
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) ⇒
         (instruction(nr), branchId) match {
           case (instr: If, BranchId.Indexed(index)) ⇒
+            instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+          case (instr: TryInstruction, BranchId.Indexed(index)) ⇒
             instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case (fj: Fork, branchId: BranchId.Named) ⇒
             fj.workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap

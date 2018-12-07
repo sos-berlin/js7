@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction, End ⇒ EndInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
@@ -136,8 +136,13 @@ object WorkflowParser {
         (w ~ "else" ~~/ curlyWorkflow).?
       ) map { case (expr, then_, else_) ⇒
         If(expr, then_, else_)
-      }
-    )
+      })
+
+    private val tryInstruction = P[TryInstruction](
+      (keyword("try") ~~/ curlyWorkflow ~~/ keyword("catch") ~~/ curlyWorkflow)
+        map { case (try_, catch_) ⇒
+          TryInstruction(try_, catch_)
+        })
 
     private val ifNonZeroReturnCodeGotoInstruction = P[IfNonZeroReturnCodeGoto](
       (keyword("ifNonZeroReturnCodeGoto") ~~ label)
@@ -156,6 +161,7 @@ object WorkflowParser {
         ifInstruction |
         ifNonZeroReturnCodeGotoInstruction |
         jobInstruction |
+        tryInstruction |
         offerInstruction)
 
     private val labeledInstruction = P[Labeled](

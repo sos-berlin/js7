@@ -17,9 +17,12 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
-  def dropChild: Option[Position] = {
+  def dropChild: Option[Position] =
+    splitBranchAndNr map (_._1)
+
+  def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] = {
     for (last ← branchPath.lastOption) yield
-      Position(branchPath.dropChild, last.nr)
+      (Position(branchPath.init, last.nr), branchPath.last.branchId, nr)
   }
 
   def increment: Position =
@@ -44,6 +47,9 @@ object Position
 
   def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int): Position =
     Position(Segment(parentInstructionNr, branchId) :: Nil, nr)
+
+  def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int, branchId2: BranchId, nr2: Int): Position =
+    Position(Segment(parentInstructionNr, branchId) :: Segment(nr, branchId2) :: Nil, nr2)
 
   implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
 

@@ -41,6 +41,18 @@ final class PositionTest extends FreeSpec {
     }
   }
 
+  "dropChild" in {
+    assert(Position(1).dropChild == None)
+    assert(Position(1, 2, 3).dropChild == Some(Position(1)))
+    assert(Position(1, 2, 3, 4, 5).dropChild == Some(Position(1, 2, 3)))
+  }
+
+  "splitBranchAndNr" in {
+    assert(Position(1).splitBranchAndNr == None)
+    assert(Position(1, 2, 3).splitBranchAndNr == Some((Position(1), BranchId(2), InstructionNr(3))))
+    assert(Position(1, 2, 3, 4, 5).splitBranchAndNr == Some((Position(1, 2, 3), BranchId(4), InstructionNr(5))))
+  }
+
   "BranchPath" in {
     assert((Nil / 7) == Position(7))
     //assert(BranchPath.NonEmpty(Position(1), BranchId(2)) / Position(3, 4, 5) ==

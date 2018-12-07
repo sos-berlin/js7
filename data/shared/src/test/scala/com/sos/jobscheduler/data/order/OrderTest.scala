@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -240,6 +240,7 @@ final class OrderTest extends FreeSpec
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
       OrderStopped(Outcome.Failed(ReturnCode(1))),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
       OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
@@ -266,6 +267,7 @@ final class OrderTest extends FreeSpec
       checkAllEvents(Order(orderId, workflowId, Fresh()),
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse {
+          case (_: OrderMoved            , `detached` | `attached`              ) ⇒ _.isInstanceOf[Fresh]
           case (_: OrderStarted          , `detached` | `attached`              ) ⇒ _.isInstanceOf[Ready]
           case (_: OrderCancelationMarked, `detached` | `attaching` | `attached`) ⇒ _.isInstanceOf[Fresh]
           case (OrderCanceled            , `detached`                           ) ⇒ _.isInstanceOf[Order.Canceled]
@@ -278,6 +280,7 @@ final class OrderTest extends FreeSpec
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
         cancelationMarkingAllowed[Ready] orElse {
+          case (_: OrderMoved            , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
           case (_: OrderProcessingStarted, `attached`             ) ⇒ _.isInstanceOf[Processing]
           case (_: OrderForked           , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) ⇒ _.isInstanceOf[Processed]
@@ -301,6 +304,7 @@ final class OrderTest extends FreeSpec
         cancelationMarkingAllowed[Processed] orElse {
           case (_: OrderMoved  , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
           case (_: OrderStopped, `attached`             ) ⇒ _.isInstanceOf[Stopped]
+          case (_: OrderCatched, `attached`             ) ⇒ _.isInstanceOf[Ready]
           case (_: OrderBroken , _                      ) ⇒ _.isInstanceOf[Broken]
         })
     }

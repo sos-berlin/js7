@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
 import java.util.regex.Pattern
@@ -163,6 +163,11 @@ private[graphql] object MasterGraphqlSchema
       "Workflow instruction If",
       interfaces[QueryContext, If](InstructionType),
       fields[QueryContext, If]()),
+    ObjectType[QueryContext, TryInstruction](
+      "Try",
+      "Workflow instruction Try",
+      interfaces[QueryContext, TryInstruction](InstructionType),
+      fields[QueryContext, TryInstruction]()),
     ObjectType[QueryContext, IfNonZeroReturnCodeGoto](
       "IfNonZeroReturnCodeGoto",
       "Workflow instruction IfNonZeroReturnCodeGoto",

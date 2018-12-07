@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderMoved}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -51,9 +51,22 @@ final class OrderEventSource(
             case Some(oId <-: (moved: OrderMoved)) ⇒
               applyMoveInstructions(oId, moved) map Some.apply
 
+            case o @ Some(oId <-: OrderStopped(outcome)) ⇒
+              catchPosition(orderId) match {
+                case None ⇒ Valid(o)
+                case Some(pos) ⇒ Valid(Some(oId <-: OrderCatched(outcome, pos)))
+              }
+
             case o ⇒ Valid(o)
           }
       })
+
+  private def catchPosition(orderId: OrderId): Option[Position] =
+    for {
+      order ← idToOrder.checked(orderId).toOption
+      workflow ← idToWorkflow(order.workflowId).toOption
+      position ← workflow.findCatchPosition(order.position)
+    } yield position
 
   /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
   private def canceledEvent(order: Order[Order.State]): Option[OrderActorEvent] =
@@ -96,19 +109,17 @@ final class OrderEventSource(
       !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
-    for {
-      o ← idToOrder(orderId).checkedState[Order.Processed]/*should be*/
-      pos ← applyMoveInstructions(o.withPosition(orderMoved.to))
-    } yield orderId <-: OrderMoved(pos)
+    for (pos ← applyMoveInstructions(idToOrder(orderId).withPosition(orderMoved.to)))
+      yield orderId <-: OrderMoved(pos)
 
-  private[workflow] def applyMoveInstructions(order: Order[Order.Processed]): Checked[Position] =
+  private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] =
     applyMoveInstructions(order, Nil) map {
       case Some(n) ⇒ n
       case None ⇒ order.position
     }
 
   @tailrec
-  private def applyMoveInstructions(order: Order[Order.Processed], visited: List[Position]): Checked[Option[Position]] =
+  private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
@@ -120,7 +131,7 @@ final class OrderEventSource(
       case None ⇒ Valid(Some(order.position))
     }
 
-  private def applySingleMoveInstruction(order: Order[Order.Processed]): Option[Position] =
+  private def applySingleMoveInstruction(order: Order[Order.State]): Option[Position] =
     idToWorkflow(order.workflowId).toOption flatMap { workflow ⇒
       workflow.instruction(order.position) match {
         case Goto(label) ⇒

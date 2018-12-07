@@ -14,11 +14,12 @@ import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -161,16 +162,20 @@ final class OrderEventSourceTest extends FreeSpec
                  Gap,            // 2
         "C" @:   executeScript,  // 3
         "END" @: ExplicitEnd,    // 4
-        "B" @:   IfNonZeroReturnCodeGoto("C")) // 5
+        "B" @:   IfNonZeroReturnCodeGoto("C"), // 5
+                 TryInstruction(               // 6
+                   Workflow.of(executeScript),  // 6/0/0
+                   Workflow.of(executeScript))) // 6/1/0
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))    // Job
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6)))    // success
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6, 0, 0))) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(2)))    // Gap
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Valid(Position(3)))    // Job
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Valid(Position(4)))    // ExplicitEnd
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6)))    // success
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6, 0, 0))) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Valid(Position(3)))    // failure
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6)))    // ImplicitEnd
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6, 0, 0)))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Valid(Position(7)))    // ImplicitEnd
       eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isInvalid
     }
 
@@ -285,6 +290,78 @@ final class OrderEventSourceTest extends FreeSpec
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
       }
+    }
+  }
+
+  "Try catch" - {
+    val workflow = WorkflowParser.parse(
+       """define workflow {
+         |  try {                                      // 0
+         |    try {                                    // 0/0/0
+         |      execute agent="/a", executable="/ex";  // 0/0/0/0/0
+         |    } catch {
+         |      execute agent="/a", executable="/ex";  // 0/0/0/1/0
+         |    }
+         |  } catch {
+         |    execute agent="/a", executable="/ex";    // 0/1/0
+         |    try {                                    // 0/1/1
+         |      execute agent="/a", executable="/ex";  // 0/1/1/0/0
+         |    } catch {
+         |      execute agent="/a", executable="/ex";  // 0/1/1/1/0
+         |    }
+         |  };
+         |  execute agent="/a", executable="/ex";      // 1
+         |}""".stripMargin).orThrow
+
+    def eventSource(order: Order[Order.State]) = new OrderEventSource(Map(workflow.id → workflow).toChecked, Map(order.id → order))
+    val failed = Outcome.Failed(ReturnCode(7))
+
+    "Fresh at try instruction -> OrderMoved" in {
+      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderMoved(Position(0, 0, 0, 0, 0)))))
+    }
+
+    "Ready at instruction -> OrderMoved" in {
+      val order = Order(OrderId("ORDER"), workflow.id, Order.Ready)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderMoved(Position(0, 0, 0, 0, 0)))))
+    }
+
+    "Processed failed in inner try-block -> OrderCatched" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 0, 0, 0, 0), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderCatched(failed, Position(0, 0, 0, 1, 0))) ))
+    }
+
+    "Processed failed in inner catch-block -> OrderCatched" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 0, 0, 1, 0), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderCatched(failed, Position(0, 1, 0)))))
+    }
+
+    "Processed failed in outer catch-block -> OrderStopped" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 0), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderStopped(failed)) ))
+    }
+
+    "Processed failed in try in catch -> OrderCatched" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 1, 0, 0), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderCatched(failed, Position(0, 1, 1, 1, 0))) ))
+    }
+
+    "Processed failed in catch in catch -> OrderStopped" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 0), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderStopped(failed))))
+    }
+
+    "Processed failed not in try/catch -> OrderStopped" in {
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(1), Order.Processed, failed)
+      assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
+        OrderStopped(failed)) ))
     }
   }
 }

@@ -66,6 +66,10 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE": "Ready"
         },
+        "outcome": {
+          "TYPE": "Succeeded",
+          "returnCode": 0
+        },
         "parent": "PARENT",
         "agentId": {
           "path": "/AGENT",

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -192,6 +192,21 @@ final class WorkflowParserTest extends FreeSpec {
   "await" in {
     check("""define workflow { await orderId = "OFFERED"; }""",
       Workflow(WorkflowPath.NoId, Vector(AwaitOrder(OrderId("OFFERED")))))
+  }
+
+  "try" in {
+    check("""
+      define workflow {
+        try {
+          execute executable="/TRY", agent="/AGENT";
+        } catch {
+          execute executable="/CATCH", agent="/AGENT";
+        }
+      }""".stripMargin,
+      Workflow(WorkflowPath.NoId, Vector(TryInstruction(
+        Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TRY")))),
+        Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/CATCH")))))))
+    )
   }
 
   "onError and goto" in {

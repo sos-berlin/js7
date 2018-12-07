@@ -85,6 +85,13 @@ final case class Order[+S <: Order.State](
         check(isState[Processed] && isAttached,
           copy(state = Stopped, outcome = outcome_))
 
+      case OrderCatched(outcome_, movedTo) ⇒
+        check(isState[Processed] && isAttached,
+          copy(
+            state = Ready,
+            workflowPosition = workflowPosition.copy(position = movedTo),
+            outcome = outcome_))
+
       case OrderForked(children) ⇒
         check(isState[Ready] && (isDetached || isAttached),
           copy(state = Forked(children)))
@@ -107,8 +114,9 @@ final case class Order[+S <: Order.State](
           copy(state = Awaiting(orderId)))
 
       case OrderMoved(to) ⇒
-        check(isState[Processed] && (isDetached || isAttached),
-          withPosition(to).copy(state = Ready))
+        check((isState[FreshOrReady]/*before TryInstruction*/ || isState[Processed]) && (isDetached || isAttached),
+          withPosition(to).copy(
+            state = if (isState[Fresh]) state else Ready))
 
       case OrderFinished ⇒
         check(isState[Ready] && isDetached,
