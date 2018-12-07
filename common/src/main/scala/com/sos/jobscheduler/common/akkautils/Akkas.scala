@@ -72,7 +72,7 @@ object Akkas {
       else a)
   }
 
-  private val ValidSymbols = "%" + """-_.*$+:@&=,!~';""" // See ActorRef.ValidSymbols (private)
+  private val ValidSymbols = "%" + """-_.*$+:@&=,!~';""" // See ActorPath.ValidSymbols (private)
   private val toHex = "0123456789ABCDEF"
 
   private def isValidChar(c: Char): Boolean =

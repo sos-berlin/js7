@@ -59,6 +59,8 @@ final class AkkasTest extends FreeSpec {
     assert(encodeAsActorName("a") == "a")
     assert(encodeAsActorName("$/$") == "%24%2F$")
     assert(encodeAsActorName("%%@") == "%25%25@")
+    assert(encodeAsActorName("åЮ") == "%C3%A5%D0%AE")
+    assert(decodeActorName("%C3%A5%D0%AE") == "åЮ")
     assert(decodeActorName("%24%2F$") == "$/$")
     assert(encodeAsActorName("folder/subfolder/jobname") == "folder%2Fsubfolder%2Fjobname")
     assert(encodeAsActorName("a?b=!&c=ö[]{}") == "a%3Fb=!&c=%C3%B6%5B%5D%7B%7D")
