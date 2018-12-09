@@ -36,6 +36,12 @@ object As {
   implicit val StringAsInt: As[String, Int] =
     As(Integer.parseInt)
 
+  val StringAsIntOrUnlimited: As[String, Option[Int]] =
+    As {
+      case "unlimited" ⇒ None
+      case o ⇒ Some(Integer.parseInt(o))
+    }
+
   implicit val StringAsLong: As[String, Long] =
     As(java.lang.Long.parseLong)
 

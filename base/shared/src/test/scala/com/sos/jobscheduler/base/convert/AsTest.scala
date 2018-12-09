@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.convert
 
+import com.sos.jobscheduler.base.convert.As.StringAsIntOrUnlimited
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
@@ -21,6 +22,14 @@ final class AsTest extends FreeSpec {
     intercept[NumberFormatException] { conv("2147483648") }
     assert(conv("-2147483648") == Int.MinValue)
     intercept[NumberFormatException] { conv("-2147483649") }
+  }
+
+  "StringAsIntOrUnlimited" in {
+    intercept[NumberFormatException] { StringAsIntOrUnlimited("x") }
+    assert(StringAsIntOrUnlimited("unlimited") == None)
+    assert(StringAsIntOrUnlimited("123") == Some(123))
+    assert(StringAsIntOrUnlimited("2147483647") == Some(Int.MaxValue))
+    intercept[NumberFormatException] { StringAsIntOrUnlimited("2147483648") }
   }
 
   "StringAsBigDecimal" in {
