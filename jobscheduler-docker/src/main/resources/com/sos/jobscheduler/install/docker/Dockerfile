@@ -8,6 +8,12 @@ EXPOSE 4444 4445
 CMD "/bin/bash"
 ENV LANG=en_US.UTF-8
 
+# Only tiny improvment:
+RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
+    --add-modules java.base,java.compiler,java.desktop,java.logging,java.management,java.security.jgss,java.sql,java.xml,jdk.management,jdk.unsupported \
+    --output /opt/jobscheduler-java
+ENV JAVA_HOME /opt/jobscheduler-java
+
 ADD files /
 ADD jobscheduler-install-[1-9]*.tgz /opt/
 
