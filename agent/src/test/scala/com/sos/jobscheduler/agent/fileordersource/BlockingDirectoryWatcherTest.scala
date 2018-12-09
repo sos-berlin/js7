@@ -4,7 +4,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
-import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files.{createTempDirectory, delete}
@@ -28,7 +28,7 @@ final class BlockingDirectoryWatcherTest extends FreeSpec {
       val beforeUntil = until - 3.s
 
       locally {
-        val nonMatchingFuture = blockingFuture { watcher.waitForNextChange(until) }
+        val nonMatchingFuture = blockingThreadFuture { watcher.waitForNextChange(until) }
         sleep(1.s)
         assert(!nonMatchingFuture.isCompleted)
         touchAndDeleteWithCloser(directory / "X")

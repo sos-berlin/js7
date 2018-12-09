@@ -38,8 +38,8 @@ object Futures {
     * A big number of blocking Futures may be started, each consuming a thread.
     * This differs from ExecutionContext.global, which limits the number of threads to (number of cores) + 256.
     */
-  def blockingFuture[A](body: ⇒ A): Future[A] =
-    namedThreadFuture("")(body)
+  def blockingThreadFuture[A](body: ⇒ A): Future[A] =
+    namedThreadFuture("Blocking")(body)
 
   def namedThreadFuture[A](name: String)(body: ⇒ A): Future[A] = {
     val promise = Promise[A]()

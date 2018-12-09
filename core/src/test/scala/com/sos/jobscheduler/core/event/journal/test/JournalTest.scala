@@ -4,7 +4,7 @@ import akka.pattern.ask
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -110,7 +110,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
           simpleExecute(actor, key, cmd)
         }) await 99.s
         // Start executing remaining commands ...
-        val executed = for (p ← prefixes) yield blockingFuture { for ((key, cmd) ← testCommands(p).tail) simpleExecute(actor, key, cmd) await 99.s }
+        val executed = for (p ← prefixes) yield blockingThreadFuture { for ((key, cmd) ← testCommands(p).tail) simpleExecute(actor, key, cmd) await 99.s }
         // ... while disturbing form a different Actor to test persistAsync()
         // DisturbAndRespond responds with String, not Done. See TestActor
         val disturbed = for (p ← prefixes) yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)

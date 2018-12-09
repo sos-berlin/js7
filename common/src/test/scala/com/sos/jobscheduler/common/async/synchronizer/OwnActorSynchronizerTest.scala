@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.async.synchronizer
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
-import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
@@ -28,7 +28,7 @@ final class OwnActorSynchronizerTest extends FreeSpec {
       val numbers = 1 to 100
       @volatile var critical = false
       val futureFutures: IndexedSeq[Future[Future[Int]]] =
-        for (i ← numbers) yield blockingFuture {
+        for (i ← numbers) yield blockingThreadFuture {
           synchronizedFuture {
             assert(!critical)
             critical = true

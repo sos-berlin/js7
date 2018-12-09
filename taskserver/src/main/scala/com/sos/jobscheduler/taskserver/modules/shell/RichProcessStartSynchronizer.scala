@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.modules.shell
 
 import com.google.inject.ImplementedBy
-import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.taskserver.task.process.RichProcess
 import scala.concurrent.Future
 
@@ -16,6 +16,6 @@ object RichProcessStartSynchronizer {
   val ForTest: RichProcessStartSynchronizer =
     new RichProcessStartSynchronizer {
       def close() = {}
-      def apply(o: ⇒ RichProcess) = blockingFuture { o }
+      def apply(o: ⇒ RichProcess) = blockingThreadFuture { o }
     }
 }
