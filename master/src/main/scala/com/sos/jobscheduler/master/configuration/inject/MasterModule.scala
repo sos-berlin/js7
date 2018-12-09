@@ -4,6 +4,7 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
@@ -11,7 +12,6 @@ import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.data.agent.Agent
@@ -78,11 +78,12 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def actorSystem(implicit closer: Closer): ActorSystem = {
-    val actorSystem = ActorSystem(configuration.name, configuration.config)
+    val actorSystem = ActorSystem(configuration.name, config = Some(configuration.config),
+      defaultExecutionContext = config.getBoolean("jobscheduler.akka.use-global-executor") ? ExecutionContext.global)
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {
-        actorSystem.terminate() await 3.s
+        actorSystem.terminate() await config.getDuration("jobscheduler.akka.shutdown-timeout")
         logger.debug("ActorSystem terminated")
       }
       catch {
