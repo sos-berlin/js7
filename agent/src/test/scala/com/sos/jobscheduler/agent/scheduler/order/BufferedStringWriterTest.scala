@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.agent.scheduler.order.BufferedStringWriterTest._
 import com.sos.jobscheduler.base.generic.Accepted
+import java.io.IOException
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.mutable
@@ -66,6 +67,14 @@ final class BufferedStringWriterTest extends FreeSpec {
   "flush releases the buffer" in {
     w.flush()
     assert(w.reservedSize == 0)
+  }
+
+  "close" in {
+    w.write('1')
+    w.close()
+    intercept[IOException] {
+      w.write('2')
+    }
   }
 }
 

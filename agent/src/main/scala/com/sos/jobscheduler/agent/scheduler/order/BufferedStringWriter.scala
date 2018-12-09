@@ -2,11 +2,10 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import java.io.Writer
-import java.lang.Thread.currentThread
+import java.io.{IOException, Writer}
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 
 /**
   * Combines several `write` calls to one `onFlush`.
@@ -29,24 +28,19 @@ private[order] trait BufferedStringWriter extends Writer {
 
   protected def onBufferingStarted(): Unit
 
+  private val closed = Promise[Unit]()
   private var whenReady = Future.successful[Accepted](Accepted)
   private var stringBuilder: StringBuilder = null
-  @volatile
-  private var blockingThread: Thread = null  // Only one thread is expected to write
 
   final def close() = {
-    blockingThread match {
-      case null ⇒
-      case t ⇒ t.interrupt()  // In case of an emergency close, free blocking thread.
-    }
+    closed.trySuccess(())
     flush()
   }
 
   final def write(chars: Array[Char], offset: Int, length: Int) =
     if (length > 0) {
-      blockingThread = currentThread
-      try whenReady.awaitInfinite  // We block in our stdout/stderr reader thread to avoid congestion  // TODO Waits forever if OrderActor crashes
-      finally blockingThread = null
+      Future.firstCompletedOf(whenReady :: closed.future :: Nil).awaitInfinite
+      if (closed.future.isCompleted) throw new IOException("stdout/stderr receiver has been closed")
       whenReady = writeSynchronized(chars, offset, length)
     }
 
