@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Shows the threads (one per line) of running JobScheduler
+set -e
+
+jstack $(jps -l | awk '/jobscheduler/ { print $1 }') | grep 'prio=' | sort
