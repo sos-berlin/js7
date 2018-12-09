@@ -17,7 +17,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister
@@ -40,7 +40,7 @@ private[agent] final class AgentActor @Inject private(
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
   keyedEventBus: StampedKeyedEventBus)
-  (implicit scheduler: Scheduler)
+  (implicit scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
@@ -212,8 +212,7 @@ extends MainJournalingActor[AgentEvent] {
           newTaskRunner,
           askTimeout = akkaAskTimeout,
           keyedEventBus,
-          agentConfiguration.config)(
-          scheduler)
+          agentConfiguration.config)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
     masterToOrderKeeper.insert(masterId → actor)

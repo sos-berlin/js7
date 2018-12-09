@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategie
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.{HasCloser, IOExecutor}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
@@ -53,8 +53,8 @@ import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
-
+final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll
+{
   private lazy val directoryProvider = new TestAgentDirectoryProvider {}
   private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config
     .withValue("jobscheduler.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
@@ -122,6 +122,7 @@ private object OrderActorTest {
     OrderDetachable,
     OrderDetached)
   private val Nl = System.lineSeparator
+  private implicit val iox = new IOExecutor(1.second)
 
   private val TestScript =
     if (isWindows) """
@@ -164,7 +165,9 @@ private object OrderActorTest {
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = watch(actorOf(
       JobActor.props(jobKey, workflowJob, taskRunnerFactory, executableDirectory = dir / "config" / "executables")))
-    private val orderActor = actorOf(OrderActor.props(TestOrder.id, journalActor = journalActor, config), s"Order-${TestOrder.id.string}")
+    private val orderActor = actorOf(
+      OrderActor.props(TestOrder.id, journalActor = journalActor, config),
+      s"Order-${TestOrder.id.string}")
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()

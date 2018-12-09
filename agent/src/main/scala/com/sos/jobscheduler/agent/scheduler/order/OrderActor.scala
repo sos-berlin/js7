@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.job.JobKey
@@ -30,7 +30,7 @@ import scala.concurrent.Future
   * @author Joacim Zschimmer
   */
 final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
-  (implicit scheduler: Scheduler)
+  (implicit scheduler: Scheduler, iox: IOExecutor)
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
@@ -310,7 +310,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit s: Scheduler) =
+  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit iox: IOExecutor, s: Scheduler) =
     Props { new OrderActor(orderId, journalActor = journalActor, config) }
 
   sealed trait Command

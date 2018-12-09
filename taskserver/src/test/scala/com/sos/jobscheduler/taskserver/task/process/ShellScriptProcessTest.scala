@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.IOExecutor
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedShebang, isSolaris, isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -17,11 +18,14 @@ import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShel
 import java.nio.file.Files._
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
-final class ShellScriptProcessTest extends FreeSpec {
+final class ShellScriptProcessTest extends FreeSpec
+{
+  private implicit val iox = new IOExecutor(1.second)
 
   "ShellScriptProcess" in {
     val envName = "ENVNAME"

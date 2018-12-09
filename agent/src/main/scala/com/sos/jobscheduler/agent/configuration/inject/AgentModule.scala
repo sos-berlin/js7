@@ -8,8 +8,8 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
+import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor}
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -35,6 +35,13 @@ extends AbstractModule {
   @Provides @Singleton
   def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config): ActorSystem =
     newActorSystem(conf.name, config)(closer)
+
+  @Provides @Singleton
+  def ioExecutor(closer: Closer, config: Config): IOExecutor = {
+    val threadPool = IOExecutor.newThreadPoolExecutor(config)
+    closer.onClose { threadPool.shutdown() }
+    new IOExecutor(threadPool)
+  }
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =

@@ -4,14 +4,12 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
-import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
+import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -23,19 +21,18 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
+import java.time.Instant
 import java.time.Instant.now
-import java.time.{Duration, Instant}
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
 class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process, argumentsForLogging: Seq[String])
-  (implicit executionContext: ExecutionContext)
+  (implicit iox: IOExecutor, ec: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
   val startedAt = Instant.now
@@ -46,20 +43,13 @@ extends HasCloser with ClosedFuture {
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
-  private lazy val _terminated: Future[ReturnCode] = {
-    val promise =
-      if (process.isAlive)
-        Promise[ReturnCode]() sideEffect { _ completeWith
-          namedThreadFuture("Process watch") {
-            val returnCode = waitForProcessTermination(process)
-            //logger.debug(s"Process ended with $returnCode")
-            returnCode
-          }
-        }
-      else
-        Promise.successful(ReturnCode(process.exitValue))
-    promise.future
-  }
+  private lazy val _terminated: Future[ReturnCode] =
+    if (process.isAlive)
+      ioFuture {
+        waitForProcessTermination(process)
+      }
+    else
+      Future.successful(ReturnCode(process.exitValue))
 
   //logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
 
@@ -97,7 +87,7 @@ extends HasCloser with ClosedFuture {
     } else {
       logger.info("Executing kill script: " + args.mkString("  "))
       val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
-      namedThreadFuture("Kill script") {
+      ioFuture {
         waitForProcessTermination(onKillProcess)
         val exitCode = onKillProcess.exitValue
         logger.log(if (exitCode == 0) LogLevel.Debug else LogLevel.Warn, s"Kill script '${args(0)}' has returned exit code $exitCode")
@@ -115,13 +105,6 @@ extends HasCloser with ClosedFuture {
   @TestOnly
   private[task] final def isAlive = process.isAlive
 
-  final def waitForTermination(duration: Duration): Option[ReturnCode] = {
-    val exited = blocking {
-      process.waitFor(duration.toMillis, MILLISECONDS)
-    }
-    exited option ReturnCode(process.exitValue)
-  }
-
   final def stdin: OutputStream = process.getOutputStream
 
   override def toString = Some(processToString(process, pidOption)) ++ processConfiguration.agentTaskIdOption mkString " "
@@ -131,7 +114,7 @@ object RichProcess {
   private val logger = Logger(getClass)
 
   def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-      (implicit exeuctionContext: ExecutionContext): RichProcess =
+    (implicit iox: IOExecutor, ec: ExecutionContext): RichProcess =
   {
     val process = startProcessBuilder(processConfiguration, file, arguments) { _.start() }
     new RichProcess(processConfiguration, process, argumentsForLogging = file.toString +: arguments)

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger, SetOnce}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
@@ -31,7 +31,7 @@ final class SimpleShellTaskRunner(conf: TaskConfiguration,
   agentTaskId: AgentTaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   agentConfiguration: AgentConfiguration)
-  (implicit ec: ExecutionContext)
+  (implicit iox: IOExecutor, ec: ExecutionContext)
 extends TaskRunner {
 
   val asBaseAgentTask = new BaseAgentTask {
@@ -57,7 +57,7 @@ extends TaskRunner {
   def terminate(): Future[Completed] =
     richProcessOnce.toOption match {
       case Some(richProcess) ⇒
-        richProcess.terminated.mapTo[Completed.type]
+        richProcess.terminated map (_ ⇒ Completed)
       case None ⇒
         Future.successful(Completed)
     }
@@ -138,7 +138,7 @@ object SimpleShellTaskRunner {
     agentTaskIdGenerator: AgentTaskId.Generator,
     synchronizedStartProcess: RichProcessStartSynchronizer,
     agentConfiguration: AgentConfiguration)
-    (implicit ec: ExecutionContext)
+    (implicit iox: IOExecutor, ec: ExecutionContext)
   extends TaskRunner.Factory
   {
     def apply(conf: TaskConfiguration) = {
