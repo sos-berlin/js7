@@ -13,6 +13,7 @@ import io.circe.Encoder
 import java.time.Instant
 import monix.execution.Scheduler
 import scala.collection.mutable
+import scala.concurrent.blocking
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -76,12 +77,14 @@ extends Actor {
     case JournalingActor.Output.GotSnapshot(snapshots) ⇒
       context.unwatch(sender())
       abortOnError {
-        for (snapshot ← snapshots) {
-          pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
-          logger.trace(s"Stored $snapshot")  // Without sync
-          snapshotCount += 1
+        blocking {  // blockingAdd blocks
+          for (snapshot ← snapshots) {
+            pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
+            logger.trace(s"Stored $snapshot")  // Without sync
+            snapshotCount += 1
+          }
+          onDone(sender())
         }
-        onDone(sender())
       }
   }
 

@@ -50,7 +50,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
+import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import shapeless.tag
@@ -180,8 +180,10 @@ object RunningMaster {
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
-      sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-        .runAsync await masterConfiguration.akkaAskTimeout.duration
+      blocking {
+        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+          .runAsync await masterConfiguration.akkaAskTimeout.duration
+      }
       closer onClose { sessionTokenFile.delete() }
     }
 
