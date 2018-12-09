@@ -28,7 +28,7 @@ final class SyncExclusiveTest extends FreeSpec {
       a await 1.s
       assert(a.isCompleted)
       assert(a.successValue)
-      b await 1.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
+      b await 10.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
     }
