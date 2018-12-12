@@ -2,17 +2,29 @@ FROM openjdk:12
 
 # UID of the 'jobscheduler'. The mounted volume /var/opt/jobscheduler must be rwx for this UID
 # Used as group ID, too.
+
+# Directory structure according to the Filesystem Hierarchy Standard, https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.pdf
+#   /opt/jobscheduler-VERSION/bin/
+#   /opt/jobscheduler-VERSION/lib/
+#   /opt/jobscheduler -> jobscheduler-VERSION
+#   /var/opt/jobscheduler/{master,agent}/config/  read-only
+#   /var/opt/jobscheduler/{master,agent}/data/{logs,state,tmp,...}  writable
+#   /home/jobscheduler/bin
+
 ARG UID
 
 EXPOSE 4444 4445
 CMD "/bin/bash"
 ENV LANG=en_US.UTF-8
 
-# Only tiny improvment:
-RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
-    --add-modules java.base,java.compiler,java.desktop,java.logging,java.management,java.security.jgss,java.sql,java.xml,jdk.management,jdk.unsupported \
-    --output /opt/jobscheduler-java
-ENV JAVA_HOME /opt/jobscheduler-java
+# A tiny improvement of the Java runtime:
+#RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
+#    --add-modules java.base,java.compiler,java.desktop,java.logging,java.management,java.security.jgss,java.sql,java.xml,jdk.management,jdk.unsupported \
+#    --output /opt/jobscheduler-java
+#ENV JAVA_HOME /opt/jobscheduler-java
+
+# To find libjdwp.so for -debug-port=
+ENV LD_LIBRARY_PATH "$JAVA_HOME/lib"
 
 ADD files /
 ADD jobscheduler-install-[1-9]*.tgz /opt/

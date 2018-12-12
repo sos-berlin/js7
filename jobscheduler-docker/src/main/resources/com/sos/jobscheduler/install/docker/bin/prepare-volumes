@@ -7,5 +7,4 @@ mkdir -p volumes/{agent-1,agent-2}/config/executables
 mkdir -p volumes/{master,agent-1,agent-2}/data
 
 cp -Rn "$home"/volumes . || true
-chmod +x -R volumes/{agent-1,agent-2}/config/executables/*
-#??? chcon -Rt svirt_sandbox_file_t "$home"/volumes
+chmod -R +x volumes/{agent-1,agent-2}/config/executables/*

@@ -15,7 +15,7 @@ services:
         - UID
     image: jobscheduler
     container_name: jobscheduler-master
-    command: ["master", "-J-Xmx100m"]
+    command: ["master", "-J-Xmx200m"]
     hostname: master
     networks:
     - default
@@ -25,29 +25,29 @@ services:
     volumes:
       - ./volumes/master/config:/var/opt/jobscheduler/master/config:ro
       - ./volumes/master/data:/var/opt/jobscheduler/master/data:delegated
-    stop_grace_period: 60s
+    stop_grace_period: 30s
     restart: unless-stopped
 
   agent-1:
     image: jobscheduler
     container_name: jobscheduler-agent-1
-    command: ["agent", "-J-Xmx100m"]
+    command: ["agent", "-J-Xmx200m"]
     hostname: agent-1
     working_dir: /var/opt/jobscheduler/agent/data
     volumes:
       - ./volumes/agent-1/config:/var/opt/jobscheduler/agent/config:ro
       - ./volumes/agent-1/data:/var/opt/jobscheduler/agent/data:delegated
-    stop_grace_period: 60s
+    stop_grace_period: 30s
     restart: unless-stopped
 
   agent-2:
     image: jobscheduler
     container_name: jobscheduler-agent-2
-    command: ["agent", "-J-Xmx100m"]
+    command: ["agent", "-J-Xmx200m"]
     hostname: agent-2
     working_dir: /var/opt/jobscheduler/agent/data
     volumes:
       - ./volumes/agent-2/config:/var/opt/jobscheduler/agent/config:ro
       - ./volumes/agent-2/data:/var/opt/jobscheduler/agent/data:delegated
-    stop_grace_period: 60s
+    stop_grace_period: 30s
     restart: unless-stopped
