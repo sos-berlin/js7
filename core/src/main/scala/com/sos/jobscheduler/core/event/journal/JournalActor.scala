@@ -194,23 +194,22 @@ extends Actor with Stash {
         })
   }
 
-  private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit =
-    if (delay < forwardingCommit) {
+  private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
+    def commit = Internal.Commit(writtenBuffer.length)
+    if (delay.isZero)
+      self.forward(commit)
+    else if (delay < forwardingCommit) {
       forwardingCommit = delay
-      val commit = Internal.Commit(writtenBuffer.length)
-      if (delay.isZero)
+      if (delayedCommit != null) delayedCommit.cancel()
+      delayedCommit = scheduler.scheduleOnce(delay) {
         self.forward(commit)
-      else {
-        if (delayedCommit != null) delayedCommit.cancel()
-        delayedCommit = scheduler.scheduleOnce(delay) {
-          self.forward(commit)
-        }
       }
     }
+  }
 
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(): Unit = {
-    if (delayedCommit != null) delayedCommit.cancel()
+    forwardingCommit = Duration.Inf
     try eventWriter.flush(sync = syncOnCommit)
     catch { case NonFatal(t) ⇒
       val tt = t.appendCurrentStackTrace
