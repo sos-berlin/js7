@@ -10,27 +10,23 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider._
-import java.nio.file.Files.{delete, exists, setPosixFilePermissions}
+import java.nio.file.Files.{delete, exists}
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermission.{OWNER_EXECUTE, OWNER_READ}
-import scala.collection.JavaConverters._
 
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessKillScriptProvider extends HasCloser {
-
+final class ProcessKillScriptProvider extends HasCloser
+{
   def provideTo(directory: Path): ProcessKillScript = {
     val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
     val file = directory / resource.simpleName
     val content = resource.contentBytes
-    if (!isOkay(file, content)) {
-      file.contentBytes = content
+    if (!isUnchanged(file, content)) {
+      file := content
+      file.makeExecutable()
       onClose {
         ignoreException(logger.asLazy.error) { delete(file) }
-      }
-      if (isUnix)  {
-        setPosixFilePermissions(file, Set(OWNER_READ, OWNER_EXECUTE).asJava)
       }
     }
 
@@ -39,9 +35,14 @@ final class ProcessKillScriptProvider extends HasCloser {
 
   /**
     * For parallel running integration tests.
+    * Under production, the function should return immediately with `true`.
     */
-  private def isOkay(file: Path, content: Array[Byte]): Boolean = {
-    waitForCondition(1.s, 100.ms) { !exists(file) || file.contentBytes.sameElements(content)}
+  private def isUnchanged(file: Path, content: Array[Byte]): Boolean = {
+    waitForCondition(1.s, 100.ms) {
+      val okay = !exists(file) || file.contentBytes.sameElements(content)
+      if (!okay) logger.debug("Kill script has been written concurrently")
+      okay
+    }
     exists(file) && file.contentBytes.sameElements(content)
   }
 }

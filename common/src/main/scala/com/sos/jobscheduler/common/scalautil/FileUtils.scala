@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
-import io.circe.{Encoder, Json}
+import io.circe.Encoder
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink, setPosixFilePermissions}
@@ -74,10 +74,13 @@ object FileUtils {
 
       def writeExecutable(string: String): Unit = {
         this := string
+        makeExecutable()
+      }
+
+      def makeExecutable(): Unit =
         if (isUnix) {
           setPosixFilePermissions(delegate, PosixFilePermissions.fromString("r-x------"))
         }
-      }
 
       def write(string: String, encoding: Charset = UTF_8): Unit =  file.write(string, encoding)
 
