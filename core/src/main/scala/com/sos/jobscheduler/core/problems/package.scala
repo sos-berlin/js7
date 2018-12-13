@@ -23,4 +23,6 @@ package object problems
   final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded {
     def arguments = Map("file" → file)
   }
+
+  final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
 }

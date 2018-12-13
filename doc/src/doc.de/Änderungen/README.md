@@ -2,6 +2,16 @@
 
 ## 2018-12-13
 
+### Webservice /master/api/fatEvent kann mit 429 "Too Many Requests" antworten
+
+Das macht er, solange eine andere Anfrage auf demselben Webservice läuft. 
+
+Die fetten Events arbeiten auf einem fetten Zustand (FatState), der erst aus dem Journal aufgebaut werden muss.
+Das kann dauern, vielleicht Minuten. 
+Wenn dem Client das zu lange dauert und die Anfrage wiederholt,
+dann lehnt der Webservice die Anfrage mit 429 solange ab, wie noch die vorherige Anfrage läuft.
+Damit schützt sich der JobScheduler vor Überlast.   
+
 ### Neue Anweisung "fail"
 
 ```

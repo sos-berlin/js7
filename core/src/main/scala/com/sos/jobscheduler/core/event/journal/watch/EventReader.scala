@@ -92,7 +92,7 @@ extends AutoCloseable
       !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
         iteratorAtomic.get match {
           case null ⇒
-            logger.debug(closedProblem.toString)
+            logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
             eof = true  // EOF to avoid exception logging (when closed (canceled) asynchronously before hasNext, but not before `next`).
             false
           case iterator ⇒
@@ -110,7 +110,7 @@ extends AutoCloseable
 
     def next() =
       iteratorAtomic.get match {
-        case null ⇒ throw closedProblem.throwable
+        case null ⇒ throw new ClosedException
         case iterator ⇒
           _lastUsed = Timestamp.currentTimeMillis
           val stamped = iterator.next()
@@ -122,7 +122,7 @@ extends AutoCloseable
           stamped
       }
 
-    private def closedProblem = JsonSeqFileClosedProblem(iterator_.toString)
+    private def iteratorName = iterator_.toString
   }
 
   final def snapshotObjects: CloseableIterator[Any] =
