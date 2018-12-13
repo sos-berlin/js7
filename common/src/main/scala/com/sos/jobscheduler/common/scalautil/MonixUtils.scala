@@ -62,14 +62,14 @@ object MonixUtils
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
     logger.trace(s"closeableIteratorToObservable($iterator)")
-    def close() = {
-      logger.trace(s"Close $iterator")
-      iterator.close()
-    }
     Observable.fromIterator(iterator.closeAtEnd)
-      .doAfterTerminate(_ ⇒
-        close())
-      .doOnSubscriptionCancel(() ⇒
-        close())
+      .doAfterTerminate { _ ⇒
+        logger.trace(s"Close $iterator")
+        iterator.close()
+      }
+      .doOnSubscriptionCancel { () ⇒
+        logger.debug(s"Observable canceled. Close $iterator")
+        iterator.close()
+      }
   }
 }
