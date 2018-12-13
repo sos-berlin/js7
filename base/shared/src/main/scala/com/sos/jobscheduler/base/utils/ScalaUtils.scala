@@ -97,7 +97,7 @@ object ScalaUtils {
     }
 
     def toSimplifiedString: String = {
-      lazy val msg = delegate.getMessage
+      val msg = delegate.getMessage
       if (msg != null && msg != "" && (
           delegate.getClass == classOf[IllegalArgumentException] ||
           delegate.getClass == classOf[RuntimeException] ||
