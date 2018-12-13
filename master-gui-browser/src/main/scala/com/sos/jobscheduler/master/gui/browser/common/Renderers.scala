@@ -56,9 +56,10 @@ object Renderers {
   private def orderStateTextToVdom(order: Order[Order.State]): VdomNode =
     order.state match {
       case Order.Fresh(Some(at))  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
-      case Order.Processed ⇒ outcomeToSymbol(order.outcome)
+      case Order.Processed        ⇒ VdomArray("Processed ", outcomeToVdom(order.outcome))
       case Order.Forked(children) ⇒ s"Forked ${children.size}×"
-      case _ ⇒ order.state.toString
+      case Order.Stopped          ⇒ VdomArray("Stopped ", outcomeToVdom(order.outcome))
+      case _                      ⇒ order.state.toString
     }
 
   def orderStateToSymbolFixedWidth(order: Order[Order.State]): VdomNode =
@@ -70,13 +71,24 @@ object Renderers {
       case Order.Fresh(None)    ⇒ "━"
       case Order.Processing     ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
       case _: Order.Forked      ⇒ "⨁"
-      case Order.Processed      ⇒ outcomeToSymbol(order.outcome)
+      case Order.Processed      ⇒ "✔️"
       case Order.Ready          ⇒ "◯"  // Circle
       case Order.Finished       ⇒ "☆"  // Star
       case _: Order.Stopped     ⇒ "❗"  // Red exclamation mark
       case _: Order.Broken      ⇒ "💥"  // Explosion
       case _                    ⇒ "·"   // Dot
     }
+
+  implicit def outcomeToVdom(outcome: Outcome): VdomNode =
+    VdomArray(
+      outcomeSymbol(outcome), " ",
+      outcome match {
+        case Outcome.Succeeded(rc) ⇒ VdomArray("rc=", rc.number.toString)
+        case Outcome.Failed(rc)    ⇒ VdomArray("rc=", rc.number.toString)
+        case Outcome.Disrupted(Outcome.Disrupted.Other(problem)) ⇒ problem.toString
+        case Outcome.Disrupted(reason) ⇒ reason.toString
+      }
+    )
 
   def outcomeToSymbol(outcome: Outcome): VdomNode =
     outcome match {
@@ -92,9 +104,6 @@ object Renderers {
       case Order.Detaching(agentId) ⇒ <.span(^.cls := "AttachedState-Detaching")('(', agentId.toShortString, ')')
       case _ ⇒ attachedState.toString
     }
-
-  implicit def outcomeToVdom(outcome: Outcome): VdomNode =
-    VdomArray(outcomeSymbol(outcome), " ", outcome.toString)
 
   def outcomeSymbol(outcome: Outcome): VdomNode =
     outcome match {

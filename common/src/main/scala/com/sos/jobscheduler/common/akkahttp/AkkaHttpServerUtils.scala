@@ -159,6 +159,7 @@ object AkkaHttpServerUtils {
         case _ ⇒ prefix.isEmpty
       }
 
+    @tailrec
     def drop(n: Int): Uri.Path =
       if (n == 0)
         delegate
@@ -177,12 +178,13 @@ object AkkaHttpServerUtils {
     new SegmentPathMatcher(segment)
 
   private class SegmentPathMatcher[Unit](segment: String) extends PathMatcher0 {
-    def apply(path: Uri.Path) =
-      if (path.head == segment)
-        Matched(path.tail, HNil)
-      else
+    def apply(path: Uri.Path) = path match {
+      case Uri.Path.Segment(`segment`, tail) ⇒
+        Matched(tail, HNil)
+      case _ ⇒
         Unmatched
     }
+  }
 
   /**
     * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
