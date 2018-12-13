@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
+import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
@@ -53,16 +54,7 @@ extends AutoCloseable
   final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
     val indexPositionAndEventId = journalIndex.positionAndEventIdAfter(after)
     import indexPositionAndEventId.position
-    val iteratorAtomic = AtomicAny(iteratorPool.borrowIterator())
-    def iterator = iteratorAtomic.get match {
-      case null ⇒ throw new IllegalStateException("FileEventIterator closed")
-      case o ⇒ o
-    }
-    def returnIterator(): Unit =
-      iteratorAtomic.getAndSet(null) match {
-        case null ⇒
-        case o ⇒ iteratorPool.returnIterator(o)
-      }
+    val iterator = iteratorPool.borrowIterator()
     closeOnError(iterator) {
       if (iterator.position != position &&
         (iterator.position < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
@@ -73,57 +65,64 @@ extends AutoCloseable
       }
       val exists = iterator.skipToEventAfter(journalIndex, after) // May run very long (minutes for gigabyte journals) !!!
       if (!exists) {
-        returnIterator()
+        iteratorPool.returnIterator(iterator)
         None
-      } else
-        Some(
-          new CloseableIterator[Stamped[KeyedEvent[E]]] {
-            @volatile private var eof = false
-            @volatile var closed = false
-
-            // May be called asynchronously (parallel to hasNext or next), as by Monix doOnSubscriptionCancel
-            def close() =
-              synchronized {
-                if (!closed) {
-                  closed = true
-                  returnIterator()
-                  if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
-                    logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
-                    EventReader.this.close()
-                  }
-                }
-              }
-
-            def hasNext =
-              synchronized {
-                !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
-                  requireNotClosed()
-                  val has = iterator.hasNext
-                  eof |= !has
-                  if (!has && isHistoric) {
-                    journalIndex.freeze(journalIndexFactor)
-                  }
-                  has
-                }
-              }
-
-            def next() =
-              synchronized {
-                requireNotClosed()
-                _lastUsed = Timestamp.currentTimeMillis
-                val stamped = iterator.next()
-                assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
-                if (isHistoric) {
-                  if (eof/*freezed*/) sys.error(s"FileEventIterator: !hasNext but next() returns a value, eventId=${stamped.eventId} position=${iterator.position}")
-                   journalIndex.tryAddAfter(stamped.eventId, iterator.position)
-                }
-                stamped
-              }
-
-            private def requireNotClosed() =
-              if (closed) throw new IllegalStateException("FileEventIterator has been closed")
-          }.closeAtEnd)
+      } else {
+        val autoclosingIterator = new MyIterator(iterator, after)
+        Some(autoclosingIterator)
+      }
     }
+  }
+
+  private final class MyIterator(iterator_ : FileEventIterator[E], after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
+    private val iteratorAtomic = AtomicAny(iterator_)
+    @volatile private var eof = false
+
+    // May be called asynchronously (parallel to hasNext or next), as by Monix doOnSubscriptionCancel
+    def close() =
+      for (it ← Option(iteratorAtomic.getAndSet(null))) {
+        iteratorPool.returnIterator(it)
+        if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
+          logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
+          EventReader.this.close()
+        }
+      }
+
+    def hasNext =
+      !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
+        iteratorAtomic.get match {
+          case null ⇒
+            logger.debug(closedProblem.toString)
+            eof = true  // EOF to avoid exception logging (when closed (canceled) asynchronously before hasNext, but not before `next`).
+            false
+          case iterator ⇒
+            val has = iterator.hasNext
+            eof |= !has
+            if (!has && isHistoric) {
+              journalIndex.freeze(journalIndexFactor)
+            }
+            if (!has) {
+              close()
+            }
+            has
+        }
+      }
+
+    def next() =
+      iteratorAtomic.get match {
+        case null ⇒ throw closedProblem.throwable
+        case iterator ⇒
+          _lastUsed = Timestamp.currentTimeMillis
+          val stamped = iterator.next()
+          assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
+          if (isHistoric) {
+            if (eof/*freezed*/) sys.error(s"FileEventIterator: !hasNext but next() returns a value, eventId=${stamped.eventId} position=${iterator.position}")
+             journalIndex.tryAddAfter(stamped.eventId, iterator.position)
+          }
+          stamped
+      }
+
+    private def closedProblem = JsonSeqFileClosedProblem(iterator_.toString)
   }
 
   final def snapshotObjects: CloseableIterator[Any] =

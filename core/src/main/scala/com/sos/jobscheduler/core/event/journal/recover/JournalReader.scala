@@ -14,6 +14,7 @@ import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -146,61 +147,70 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     result
   }
 
-  @tailrec
   private def nextEvent2(): Option[Stamped[KeyedEvent[E]]] =
     if (!eventHeaderRead)
       jsonReader.read() match {
         case Some(PositionAnd(_, EventHeader)) ⇒
           eventHeaderRead = true
-          nextEvent2()
+          nextEvent3()
         case Some(positionAndJson) ⇒
           throw new CorruptJournalException(s"Event header is missing", journalFile, positionAndJson)
         case None ⇒
           None
       }
     else
-      jsonReader.read() match {
-        case None ⇒ None
-        case Some(positionAndJson) ⇒
-          positionAndJson.value match {
-            case json if json.isObject ⇒
-              val stampedEvent = deserialize(positionAndJson.value)
-              if (stampedEvent.eventId <= _eventId)
-                throw new CorruptJournalException(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
-                  journalFile, positionAndJson)
-              if (_totalEventCount != -1) _totalEventCount += 1
-              Some(stampedEvent)
+      nextEvent3()
 
-            case Transaction ⇒
-              if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
-              transaction.begin()
-              @tailrec def loop(): Unit =
-                jsonReader.read() match {
-                  case None ⇒
-                    transaction.clear() // File ends before transaction is committed.
-                  case Some(PositionAnd(_, Commit)) ⇒
-                    transaction.commit()
-                  case Some(o) if o.value.isObject ⇒
-                    transaction.add(o.copy(value = deserialize(o.value)))
-                    loop()
-                }
-              loop()
-              if (transaction.isInTransaction) {
-                if (_totalEventCount != -1) _totalEventCount += transaction.length
-                Some(readNextCommitted())
-              } else
-                nextEvent2()
+  @tailrec
+  private def nextEvent3(): Option[Stamped[KeyedEvent[E]]] =
+    jsonReader.read() match {
+      case None ⇒ None
+      case Some(positionAndJson) ⇒
+        positionAndJson.value match {
+          case json if json.isObject ⇒
+            val stampedEvent = deserialize(positionAndJson.value)
+            if (stampedEvent.eventId <= _eventId)
+              throw new CorruptJournalException(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
+                journalFile, positionAndJson)
+            if (_totalEventCount != -1) _totalEventCount += 1
+            Some(stampedEvent)
 
-            case Commit ⇒  // Only after seek into a transaction
-              nextEvent2()
+          case Transaction ⇒
+            if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
+            transaction.begin()
+            def read() =
+              try jsonReader.read()
+              catch { case NonFatal(t) ⇒
+                transaction.clear()  // Free memory (in case jsonReader has been closed asynchronously)
+                throw t
+              }
+            @tailrec def loop(): Unit =
+              read() match {
+                case None ⇒
+                  transaction.clear() // File ends before transaction is committed.
+                case Some(PositionAnd(_, Commit)) ⇒
+                  transaction.commit()
+                case Some(o) if o.value.isObject ⇒
+                  transaction.add(o.copy(value = deserialize(o.value)))
+                  loop()
+              }
+            loop()
+            if (transaction.isInTransaction) {
+              if (_totalEventCount != -1) _totalEventCount += transaction.length
+              Some(readNextCommitted())
+            } else
+              nextEvent3()
 
-            case EventFooter ⇒
-              None
+          case Commit ⇒  // Only after seek into a transaction
+            nextEvent3()
 
-            case _ ⇒
-              throw new CorruptJournalException("Missing event footer", journalFile, positionAndJson)
-          }
-      }
+          case EventFooter ⇒
+            None
+
+          case _ ⇒
+            throw new CorruptJournalException("Missing event footer", journalFile, positionAndJson)
+        }
+    }
 
   private def readNextCommitted(): Stamped[KeyedEvent[E]] =
     transaction.readNext()

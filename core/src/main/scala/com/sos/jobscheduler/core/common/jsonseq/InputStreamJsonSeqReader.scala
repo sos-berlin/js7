@@ -2,14 +2,17 @@ package com.sos.jobscheduler.core.common.jsonseq
 
 import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
+import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
+import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
 import io.circe.Json
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
+import monix.execution.atomic.AtomicAny
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
@@ -22,9 +25,10 @@ import java.nio.file.Path
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-class InputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = BlockSize)
+final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize)
 extends AutoCloseable {
 
+  private val inAtomic = AtomicAny(inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
   private var blockLength = 0
@@ -32,24 +36,31 @@ extends AutoCloseable {
   private val byteStringBuilder = ByteString.newBuilder
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
-  private var closed = false
 
-  /** Closes underlying `SeekableInputStream`. */
-  def close() = {
-    closed = true
-    in.close()
+  private def in = inAtomic.get match {
+    case null ⇒ throw new ClosedException(name)
+    case o ⇒ o
   }
 
-  def isClosed = closed
+  /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
+  def close() =
+    synchronized {
+      for (in ← Option(inAtomic.getAndSet(null))) {
+        in.close()
+      }
+    }
 
-  final def read(): Option[PositionAnd[Json]] = {
-    val pos = position
-    readByteString() map (o ⇒
-      io.circe.parser.parse(o.decodeString(UTF_8)) match {
-        case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
-        case Right(json) ⇒ PositionAnd(pos, json)
-      })
-  }
+  private def isClosed = inAtomic.get == null
+
+  def read(): Option[PositionAnd[Json]] =
+    synchronized {
+      val pos = position
+      readByteString() map (o ⇒
+        io.circe.parser.parse(o.decodeString(UTF_8)) match {
+          case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
+          case Right(json) ⇒ PositionAnd(pos, json)
+        })
+    }
 
   private def readByteString(): Option[ByteString] = {
     val startPosition = position
@@ -75,7 +86,7 @@ extends AutoCloseable {
       }
     }
     if (rsReached && !lfReached) {
-      logger.warn(s"Discarding truncated last record in '$in': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
+      logger.warn(s"Discarding truncated last record in '$name': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
       byteStringBuilder.clear()
       seek(startPosition)  // Keep a proper file position at start of record
     }
@@ -100,24 +111,26 @@ extends AutoCloseable {
     }
   }
 
-  final def seek(pos: Long): Unit =
-    if (pos != position) {
-      if (pos >= blockPos && pos <= blockPos + blockLength) {
-        blockRead = (pos - blockPos).toInt  // May be == blockLength
-      } else {
-        check { in.seek(pos) }
-        blockPos = pos
-        blockLength = 0
-        blockRead = 0
+  def seek(pos: Long): Unit =
+    synchronized {
+      if (pos != position) {
+        if (pos >= blockPos && pos <= blockPos + blockLength) {
+          blockRead = (pos - blockPos).toInt  // May be == blockLength
+        } else {
+          check { in.seek(pos) }
+          blockPos = pos
+          blockLength = 0
+          blockRead = 0
+        }
+        lineNumber = -1
       }
-      lineNumber = -1
     }
 
-  final def position = blockPos + blockRead
+  def position = blockPos + blockRead
 
   private def check[A](body: ⇒ A): A =
     try body
-    catch { case _: IOException if closed ⇒ sys.error("JSON sequence file has been closed while reading") }
+    catch { case _: IOException if isClosed ⇒ throw new ClosedException(name) }
 
   private def throwCorrupt(extra: String) =
     throwCorrupt2(lineNumber, position, extra)
@@ -125,14 +138,17 @@ extends AutoCloseable {
 
 object InputStreamJsonSeqReader
 {
-  private val BlockSize = 4096
+  private[jsonseq] val BlockSize = 4096
   private val logger = Logger(getClass)
 
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
-    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), blockSize)
+    new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
 
   private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
     val where = if (lineNumber >= 0) s"line $lineNumber" else s"position $position"
     sys.error(s"JSON sequence is corrupt at $where: $extra")
   }
+
+  final class ClosedException private[InputStreamJsonSeqReader](file: String)
+    extends ProblemException(JsonSeqFileClosedProblem(file))
 }

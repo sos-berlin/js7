@@ -19,4 +19,8 @@ package object problems
   final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" → orderId.string)
   }
+
+  final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded {
+    def arguments = Map("file" → file)
+  }
 }

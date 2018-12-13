@@ -4,6 +4,7 @@ import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReaderTest._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -15,7 +16,9 @@ import scala.language.reflectiveCalls
 /**
   * @author Joacim Zschimmer
   */
-final class InputStreamJsonSeqReaderTest extends FreeSpec {
+final class InputStreamJsonSeqReaderTest extends FreeSpec
+{
+  ProblemCodeMessages.initialize()
 
   "read, seek" in {
     val in = new InputStream with SeekableInputStream {
@@ -33,7 +36,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
         this.pos = pos.toInt
       }
     }
-    val reader = new InputStreamJsonSeqReader(in, blockSize = 4)
+    val reader = newInputStreamJsonSeqReader(in, blockSize = 4)
     assert(reader.read() == Some(Chunk(0)._2))
     assert(reader.read() == Some(Chunk(1)._2))
     assert(reader.read() == Some(Chunk(2)._2))
@@ -76,7 +79,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
         var _seek = -1L
         def seek(pos: Long) = _seek = pos
       }
-      val reader = new InputStreamJsonSeqReader(in, blockSize = 1)
+      val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       assert(reader.read().isEmpty)
       assert(reader.position == 0)  // Position unchanged, before the truncated record
       assert(in._seek == 0)
@@ -107,11 +110,11 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
   "Reading closed" in {
     withTemporaryFile { file ⇒
       val in = SeekableInputStream.openFile(file)
-      val reader = new InputStreamJsonSeqReader(in, blockSize = 1)
+      val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       reader.close()
-      intercept[Exception] {
+      intercept[InputStreamJsonSeqReader.ClosedException] {
         reader.read()
-      }.toStringWithCauses shouldEqual "JSON sequence file has been closed while reading"
+      }.toStringWithCauses shouldEqual s"JsonSeqFileClosed: JSON sequence from file 'JSON-SEQ-TEST' has been closed"
     }
   }
 
@@ -121,7 +124,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec {
         withClue(s"blockSize=$blockSize n=$n:\n") {
           val expected = for (i ← 0 until n; (_, PositionAnd(pos, json)) ← Chunk) yield PositionAnd(i * ChunkBytes.size + pos, json)
           val bytes = Array.fill(n)(ChunkBytes).flatten
-          val posAndJsons = new InputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes), blockSize = blockSize)
+          val posAndJsons = newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes), blockSize = blockSize)
             .iterator.toVector
           assert(posAndJsons == expected)
         }
@@ -142,7 +145,10 @@ private object InputStreamJsonSeqReaderTest {
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1 sameElements FourByteUtf8)
 
-  private def read(bytes: Byte*) = new InputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.toArray)).read()
+  private def read(bytes: Byte*) = newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.toArray)).read()
+
+  private def newInputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = InputStreamJsonSeqReader.BlockSize) =
+    new InputStreamJsonSeqReader(in, name = "JSON-SEQ-TEST", blockSize = blockSize)
 
   private def expectException(bytes: Byte*): Exception =
     intercept[Exception] {
