@@ -68,7 +68,6 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
     def toFatEventSeq(
       request: EventRequest[FatEvent],
       eventSeq: TearableEventSeq[CloseableIterator, KeyedEvent[Event]])
-      (implicit scheduler: Scheduler)
     : TearableEventSeq[CloseableIterator, KeyedEvent[FatEvent]]
     =
       eventSeq match {

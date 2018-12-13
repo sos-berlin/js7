@@ -50,7 +50,7 @@ object MonixUtils
 
     implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
     {
-      def scheduleFor(timestamp: Timestamp)(action: ⇒ Unit) = {
+      def scheduleFor(timestamp: Timestamp)(action: ⇒ Unit): Cancelable = {
         val nw = Timestamp.now
         Try(if (timestamp <= nw) Duration.Zero else timestamp - nw) match {
           case Success(delay) ⇒ underlying.scheduleOnce(delay)(action)
