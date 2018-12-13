@@ -103,7 +103,11 @@ object Problem
 
   trait Coded extends HasCode {
     def cause = None
-    val code = ProblemCode(getClass.simpleScalaName stripSuffix "Problem")
+    final val code = ProblemCode(getClass.simpleScalaName stripSuffix "Problem")
+  }
+
+  trait ArgumentlessCoded extends Coded {
+    final def arguments = Map.empty
   }
 
   private case class StaticMessage private[Problem](
