@@ -133,6 +133,9 @@ object OrderEvent {
     //type State = Ready.type
   }
 
+  /** Only internal. Will be converted to `OrderStopped` or `OrderCatched`. */
+  final case class OrderFailed(outcome: Outcome.NotSucceeded) extends OrderActorEvent
+
   final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
 
   final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent

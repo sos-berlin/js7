@@ -285,6 +285,8 @@ final class OrderTest extends FreeSpec
           case (_: OrderForked           , `detached` | `attached`) ⇒ _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) ⇒ _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
+          case (_: OrderCatched          , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]     // Fail instruction
+          case (_: OrderStopped          , `detached` | `attached`) ⇒ _.isInstanceOf[Stopped]   // Fail instruction
           case (_: OrderFinished         , `detached`             ) ⇒ _.isInstanceOf[Finished]
           case (OrderCanceled            , `detached`             ) ⇒ _.isInstanceOf[Order.Canceled]
           case (_: OrderBroken           , _                      ) ⇒ _.isInstanceOf[Broken]

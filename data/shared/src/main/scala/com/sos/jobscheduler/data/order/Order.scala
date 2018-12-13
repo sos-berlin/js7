@@ -82,11 +82,11 @@ final case class Order[+S <: Order.State](
             payload = Payload(diff.applyTo(payload.variables))))
 
       case OrderStopped(outcome_) ⇒
-        check(isState[Processed] && isAttached,
+        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(state = Stopped, outcome = outcome_))
 
       case OrderCatched(outcome_, movedTo) ⇒
-        check(isState[Processed] && isAttached,
+        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),

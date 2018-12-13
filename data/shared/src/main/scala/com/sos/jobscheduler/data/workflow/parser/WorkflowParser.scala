@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction, End ⇒ EndInstr, Fail ⇒ FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
@@ -58,13 +58,15 @@ object WorkflowParser {
     private val labelDef = P[Label](
       label ~ h ~ ":" ~/ w)
 
+    private val returnCode = P[ReturnCode](int map ReturnCode.apply)
+
     private val successReturnCodes = P[ReturnCodeMeaning.Success](
-      bracketCommaSeq(int)
-        map(numbers ⇒ ReturnCodeMeaning.Success(numbers.map(ReturnCode.apply).toSet)))
+      bracketCommaSeq(returnCode)
+        map(returnCodes ⇒ ReturnCodeMeaning.Success(returnCodes.toSet)))
 
     private val failureReturnCodes = P[ReturnCodeMeaning.Failure](
-      bracketCommaSeq(int)
-        map(numbers ⇒ ReturnCodeMeaning.Failure(numbers.map(ReturnCode.apply).toSet)))
+      bracketCommaSeq(returnCode)
+        map(returnCodes ⇒ ReturnCodeMeaning.Failure(returnCodes.toSet)))
 
     private val endInstruction = P[EndInstr](
       keyword("end").!
@@ -111,6 +113,13 @@ object WorkflowParser {
             Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments.toMap)
       })
 
+    private val failInstruction = P[FailInstr](
+      (keyword("fail") ~~/ keyValueMap(Map("returnCode" → returnCode)))
+        .flatMap { keyToValue ⇒
+          for (returnCode ← keyToValue.get[ReturnCode]("returnCode")) yield
+            FailInstr(returnCode)
+        })
+
     private val forkInstruction = P[Fork]{
       val orderSuffix = P(quotedString map (o ⇒ BranchId.Named(o)))
       val forkBranch = P[Fork.Branch](
@@ -121,7 +130,7 @@ object WorkflowParser {
     }
 
     private val offerInstruction = P[Offer](
-      (keyword("offer") ~~ keyValue("orderId", quotedString) ~ comma ~ keyValue("timeout", int))
+      (keyword("offer") ~~ keyValue("orderId", quotedString) ~ comma ~/ keyValue("timeout", int))
         map { case (orderId_, duration_) ⇒
           Offer(OrderId(orderId_), Duration(duration_, SECONDS))
         })
@@ -156,6 +165,7 @@ object WorkflowParser {
       P(awaitInstruction |
         endInstruction |
         executeInstruction |
+        failInstruction |
         forkInstruction |
         gotoInstruction |
         ifInstruction |

@@ -124,7 +124,7 @@ private[parser] object BasicParsers
   }
 
   def keyValues[A](keyParsers: Map[String, P[A]]): P[Seq[(String, A)]] =
-    commaSeq(
+    comma0Seq(
       keyParsers
         .map { case (k, p) ⇒ keyValue(k, p) map k.→ }
         .reduce((a, b) ⇒ a | b))
@@ -145,6 +145,9 @@ private[parser] object BasicParsers
   def bracketCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P("[") ~~/
       (P("]").map(_ ⇒ Nil) | commaSeq(parser) ~~ "]")
+
+  def comma0Seq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+    commaSeq(parser).? map (_ getOrElse Nil)
 
   def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P(parser ~ (comma ~ parser).rep ~ w) map {

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.Show
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, ReturnCodeMeaning, TryInstruction}
 import io.circe.syntax.EncoderOps
 
 /**
@@ -104,6 +104,11 @@ object WorkflowPrinter {
 
         case Goto(label) ⇒
           sb ++= "goto "++= label.string ++= ";\n"
+
+        case Fail(maybeReturnCode) ⇒
+          sb ++= "fail"
+          for (o ← maybeReturnCode) sb ++= " returnCode=" ++= o.number.toString
+          sb ++= ";\n"
 
         case IfNonZeroReturnCodeGoto(label) ⇒
           sb ++= "ifNonZeroReturnCodeGoto " ++= label.string ++= ";\n"

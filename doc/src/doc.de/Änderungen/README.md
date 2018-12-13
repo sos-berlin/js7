@@ -1,5 +1,25 @@
 # Änderungen
 
+## 2018-12-13
+
+### Neue Anweisung "fail"
+
+```
+fail returnCode=7;
+```
+Verhält sich wie ein Job, der mit dem ReturnCode endet.
+
+```
+fail;
+```
+Wenn der Auftrag einen Fehler hat (der letzte Schritt fehlerhaft war),
+dann wirkt es wie ```fail``` mit dem letzten ReturnCode.
+
+Wenn der Auftrag keinen Fehler hat, wirkt es wie ```fail returnCode=x```. 
+Der Wert x ist erstmal -1.
+Entscheidend ist, dass der Auftrag einen Fehler hat: Outcome.Failed(ReturnCode(...)).
+
+
 ## 2018-12-07
 ### Fehlerbehandlung mit "try"
 Wenn ein Auftrag in einer mit ```try { ... }``` einen Jobschritt fehlerhaft beendet,

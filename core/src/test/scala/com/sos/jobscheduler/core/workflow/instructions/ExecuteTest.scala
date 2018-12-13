@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderProcessed, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderFailed, OrderMoved, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
@@ -38,8 +38,8 @@ final class ExecuteTest extends FreeSpec {
   "toEvent" in {
     assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
     assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
-    assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderStopped(Outcome.Failed(ReturnCode(1)))))
-    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderStopped(Outcome.Disrupted(Problem("DISRUPTION")))))
+    assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderFailed(Outcome.Failed(ReturnCode(1)))))
+    assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailed(Outcome.Disrupted(Problem("DISRUPTION")))))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {

@@ -4,12 +4,12 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -207,6 +207,17 @@ final class WorkflowParserTest extends FreeSpec {
         Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TRY")))),
         Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/CATCH")))))))
     )
+  }
+
+  "fail" in {
+    check("""
+      define workflow {
+        fail returnCode=7;
+        fail;
+      }""".stripMargin,
+      Workflow(WorkflowPath.NoId, Vector(
+        Fail(Some(ReturnCode(7))),
+        Fail(None))))
   }
 
   "onError and goto" in {
