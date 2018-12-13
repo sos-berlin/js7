@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.agent.AgentDriver.Input
+import com.sos.jobscheduler.master.agent.AgentDriver.{Input, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.agent.CommandQueueTest._
 import monix.eval.Task
@@ -32,7 +32,7 @@ final class CommandQueueTest extends FreeSpec {
     implicit def ec = SynchronousExecutionContext
     val commandQueue = new CommandQueue(logger, batchSize = 3) {
       val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
-      val failed = mutable.Buffer[(Vector[Input.QueueableInput], Throwable)]()
+      val failed = mutable.Buffer[(Vector[Queueable], Throwable)]()
 
       protected def executeCommand(command: AgentCommand.Batch) =
         Task.pure(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(AgentCommand.Response.Accepted))))
@@ -40,7 +40,7 @@ final class CommandQueueTest extends FreeSpec {
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses
 
-      protected def asyncOnBatchFailed(inputs: Vector[Input.QueueableInput], throwable: Throwable) =
+      protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable) =
         failed += ((inputs, throwable))
     }
 

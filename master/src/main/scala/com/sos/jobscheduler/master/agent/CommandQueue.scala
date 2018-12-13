@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.master.agent.AgentDriver.Input
+import com.sos.jobscheduler.master.agent.AgentDriver.{Input, KeepEventsQueueable, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import monix.eval.Task
@@ -18,37 +18,36 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   protected def executeCommand(command: AgentCommand.Batch): Task[command.Response]
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
-  protected def asyncOnBatchFailed(inputs: Vector[Input.QueueableInput], throwable: Throwable): Unit
+  protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable): Unit
 
-  private val executingInputs = mutable.Set[Input.QueueableInput]()
+  private val executingInputs = mutable.Set[Queueable]()
   private var freshReconnected = true  // After connect, send a single command first. Start queueing first after one successful response.
   private var openRequestCount = 0
 
   private object queue {
-    private val attachOrCancelQueue = mutable.Queue[Input.QueueableInput]()
-    private val detachQueue = mutable.Queue[Input.QueueableInput]()  // DetachOrder is sent to Agent prior any AttachOrder, to relieve the Agent
+    private val queue = mutable.Queue[Queueable]()
+    private val detachQueue = mutable.Queue[Queueable]()  // DetachOrder is sent to Agent prior any AttachOrder, to relieve the Agent
 
-    def enqueue(input: Input.QueueableInput): Unit =
+    def enqueue(input: Queueable): Unit =
       input match {
-        case o: Input.AttachOrder ⇒ attachOrCancelQueue += o
         case o: Input.DetachOrder ⇒ detachQueue += o
-        case o: Input.CancelOrder ⇒ attachOrCancelQueue += o
+        case o ⇒ queue += o
       }
 
-    def dequeueAll(what: Set[Input.QueueableInput]): Unit = {
-      attachOrCancelQueue.dequeueAll(what)
+    def dequeueAll(what: Set[Queueable]): Unit = {
+      queue.dequeueAll(what)
       detachQueue.dequeueAll(what)
     }
 
-    def size = attachOrCancelQueue.size + detachQueue.size
+    def size = queue.size + detachQueue.size
 
-    def iterator = detachQueue.iterator ++ attachOrCancelQueue.iterator
+    def iterator = detachQueue.iterator ++ queue.iterator
   }
 
   final def onRecoupled() =
     freshReconnected = true
 
-  final def enqueue(input: Input.QueueableInput): Unit = {
+  final def enqueue(input: Queueable): Unit = {
     queue.enqueue(input)
     if (queue.size == batchSize || freshReconnected) {
       maySend()
@@ -72,7 +71,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     }
   }
 
-  private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =
+  private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
       case Input.AttachOrder(order, agentId, workflow) ⇒
         AgentCommand.AttachOrder(order, agentId, workflow)
@@ -80,9 +79,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.DetachOrder(orderId)
       case Input.CancelOrder(orderId, mode) ⇒
         AgentCommand.CancelOrder(orderId, mode)
+      case KeepEventsQueueable(after) ⇒
+        AgentCommand.KeepEvents(after)
     }
 
-  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Input.QueueableInput] = {
+  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] = {
     freshReconnected = false
     val inputs = responses.map(_.input).toSet
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
@@ -101,12 +102,12 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     }
   }
 
-  final def handleBatchFailed(inputs: Seq[Input.QueueableInput]): Unit = {
+  final def handleBatchFailed(inputs: Seq[Queueable]): Unit = {
     // Don't remove from queue. Queued inputs will be processed again
     onQueuedInputsResponded(inputs.toSet)
   }
 
-  private def onQueuedInputsResponded(inputs: Set[Input.QueueableInput]): Unit = {
+  private def onQueuedInputsResponded(inputs: Set[Queueable]): Unit = {
     executingInputs --= inputs
     openRequestCount -= 1
     maySend()
@@ -116,5 +117,5 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 object CommandQueue {
   private val OpenRequestsMaximum = 2
 
-  private[agent] final case class QueuedInputResponse(input: Input.QueueableInput, response: Batch.SingleResponse)
+  private[agent] final case class QueuedInputResponse(input: Queueable, response: Batch.SingleResponse)
 }

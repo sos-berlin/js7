@@ -82,7 +82,7 @@ with ReceiveLoggingActor.WithStash {
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
       self ! Internal.BatchSucceeded(queuedInputResponses)
 
-    protected def asyncOnBatchFailed(inputs: Vector[Input.QueueableInput], throwable: Throwable) =
+    protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable) =
       self ! Internal.BatchFailed(inputs, throwable)
   }
 
@@ -179,13 +179,10 @@ with ReceiveLoggingActor.WithStash {
           }
         }
 
-    case Internal.KeepEvents(after) ⇒
+    case Internal.KeepEventsDelayed(agentEventId) ⇒
       if (!terminating && isCoupled) {
         // TODO Use CommandQueue to avoid a third TCP connection
-        client.commandExecute(AgentCommand.KeepEvents(after = after)).runOnComplete { tried ⇒
-          tried.failed.foreach(t ⇒ logger.warn("AgentCommand.KeepEvents failed: " + t.toStringWithCauses))
-          keepEventsCancelable = None  // Asynchronous!
-        }
+        commandQueue.enqueue(KeepEventsQueueable(agentEventId))
       }
 
     case Internal.CommandQueueReady ⇒
@@ -214,11 +211,11 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def handleOtherMessage: Receive = {
-    case input: Input.QueueableInput if sender() == context.parent ⇒
+    case input: Input with Queueable if sender() == context.parent ⇒
       if (!terminating) {
         commandQueue.enqueue(input)
         scheduler.scheduleOnce(batchDelay) {
-          self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that QueueableInput pending in actor's mailbox can be queued
+          self ! Internal.CommandQueueReady  // (Even with batchDelay == 0) delay maySend() such that Queueable pending in actor's mailbox can be queued
         }
       }
 
@@ -230,7 +227,7 @@ with ReceiveLoggingActor.WithStash {
           delayKeepEvents = true
           keepEventsCancelable = Some(
             scheduler.scheduleOnce(delay) {
-              self ! Internal.KeepEvents(after)
+              self ! Internal.KeepEventsDelayed(after)
             })
         }
         scheduler.scheduleOnce(eventFetchDelay) {
@@ -241,13 +238,21 @@ with ReceiveLoggingActor.WithStash {
     case Internal.BatchSucceeded(responses) ⇒
       lastError = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
+
       val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) ⇒ orderId }
       if (detachedOrderIds.nonEmpty) {
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
+
       val canceledOrderIds = succeededInputs collect { case o: Input.CancelOrder ⇒ o.orderId }
       if (canceledOrderIds.nonEmpty) {
         context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
+      }
+
+      val keepEvents = succeededInputs collect { case o: KeepEventsQueueable ⇒ o }
+      if (keepEvents.nonEmpty) {
+        keepEventsCancelable foreach (_.cancel())
+        keepEventsCancelable = None
       }
 
     case Internal.BatchFailed(inputs, throwable) ⇒
@@ -337,6 +342,8 @@ with ReceiveLoggingActor.WithStash {
 
   private def recouple() = {
     if (!terminating) {
+      keepEventsCancelable foreach (_.cancel())
+      keepEventsCancelable = None
       isCoupled = false
       client.logout().runAsync onComplete { _ ⇒
         self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
@@ -379,27 +386,24 @@ private[master] object AgentDriver
       Iterator.continually(10.seconds)
   }
 
+  sealed trait Queueable extends Input {
+    def toShortString = toString
+  }
+
+  private[agent] final case class KeepEventsQueueable(agentEventId: EventId) extends Queueable
+
   sealed trait Input
   object Input {
     final case class Start(lastAgentEventId: EventId)
 
-    sealed trait QueueableInput extends Input {
-      def orderId: OrderId
-      def toShortString: String
-    }
-
-    final case class AttachOrder(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) extends QueueableInput {
+    final case class AttachOrder(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) extends Input with Queueable {
       def orderId = order.id
-      def toShortString = s"AttachOrder($orderId)"
+      override def toShortString = s"AttachOrder($orderId)"
     }
 
-    final case class DetachOrder(orderId: OrderId) extends QueueableInput {
-      def toShortString = s"DetachOrder($orderId)"
-    }
+    final case class DetachOrder(orderId: OrderId) extends Input with Queueable
 
-    final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends QueueableInput {
-      def toShortString = s"CancelOrder($orderId)"
-    }
+    final case class CancelOrder(orderId: OrderId, mode: CancelMode) extends Input with Queueable
 
     final case class EventsAccepted(agentEventId: EventId)
 
@@ -419,9 +423,9 @@ private[master] object AgentDriver
     final case object Ready
     final case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
-    final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable) extends DeadLetterSuppression
+    final case class BatchFailed(inputs: Seq[Queueable], throwable: Throwable) extends DeadLetterSuppression
     final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedTry: Try[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
-    final case class KeepEvents(agentEventId: EventId) extends DeadLetterSuppression
+    final case class KeepEventsDelayed(agentEventId: EventId) extends DeadLetterSuppression
   }
 }

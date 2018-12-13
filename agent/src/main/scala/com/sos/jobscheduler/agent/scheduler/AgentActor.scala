@@ -240,7 +240,7 @@ object AgentActor {
   }
 
   private final class MasterRegister extends ActorRegister[MasterId, ActorRef](identity) {
-    override protected def noSuchKeyMessage(masterId: MasterId) = s"No master registered for master '$masterId'"
+    override protected def noSuchKeyMessage(masterId: MasterId) = s"Unknown Master '$masterId'"
 
     override def insert(kv: (MasterId, ActorRef)) = super.insert(kv)
 
