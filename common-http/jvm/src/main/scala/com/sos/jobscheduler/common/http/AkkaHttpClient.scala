@@ -82,7 +82,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { response ⇒
-      response.entity.discardBytes()
+      response.discardEntityBytes()
       response.status.intValue
     }
 
