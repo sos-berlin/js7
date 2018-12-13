@@ -43,10 +43,12 @@ object AutoClosing {
     try resource.close()
     catch {
       case suppressed: Throwable ⇒
-        t.addSuppressed(suppressed)
-        val suppresseds = t.getSuppressed
-        if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
-          logger.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
+        if (t ne suppressed) {
+          t.addSuppressed(suppressed)
+          val suppresseds = t.getSuppressed
+          if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
+            logger.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
+        }
     }
   }
 }
