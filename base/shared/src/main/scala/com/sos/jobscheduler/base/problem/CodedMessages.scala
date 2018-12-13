@@ -25,7 +25,7 @@ object CodedMessages
 
   def problemCodeToMessage(code: ProblemCode, arguments: Map[String, String]) =
     codeToPattern(code) match {
-      case None ⇒ code.string
+      case None ⇒ code.string + unusedArgumentsToString(arguments)
       case Some(pattern) ⇒ patternToMessage(pattern, arguments)
     }
 
@@ -53,8 +53,10 @@ object CodedMessages
     }
     val message = sb.toString
     val unused = arguments.keySet -- used
-    message + (
-      if (unused.isEmpty) ""
-      else unused.map(k ⇒ s"$k=${arguments(k)}").mkString(" (", ", ", ")"))
+    message + unusedArgumentsToString(arguments filterKeys unused)
   }
+
+  private def unusedArgumentsToString(arguments: Map[String, String]): String =
+    if (arguments.isEmpty) ""
+    else arguments.map { case (k, v) ⇒ s"$k=$v" } .mkString(" (", ", ", ")")
 }

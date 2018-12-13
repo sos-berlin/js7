@@ -53,6 +53,8 @@ final class ProblemTest extends FreeSpec
   }
 
   "String" in {
+    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).toString == "TestCode: TestCode (argument=ARGUMENT)")
+
     assert(Problem("").toString == "A problem occurred (no message)")
     assert(Problem(null: String).toString == "A problem occurred (null)")
 
@@ -162,7 +164,7 @@ final class ProblemTest extends FreeSpec
 
   "equals" in {
     assert(TestCodeProblem(Map.empty) == TestCodeProblem(Map.empty))
-    assert((TestCodeProblem(Map.empty): Problem) != Test2Problem(Map.empty))
+    assert((TestCodeProblem(Map.empty): Problem) != TestProblem(Map.empty))
     assert(TestCodeProblem(Map("a" → "A")) == TestCodeProblem(Map("a" → "A")))
     assert(TestCodeProblem(Map("a" → "A")) != TestCodeProblem(Map("a" → "X")))
     assert(Problem("TEST") == Problem("TEST"))
@@ -179,5 +181,5 @@ final class ProblemTest extends FreeSpec
 }
 
 object ProblemTest {
-  final case class Test2Problem(arguments: Map[String, String]) extends Problem.Coded
+  private final case class TestProblem(arguments: Map[String, String]) extends Problem.Coded
 }
