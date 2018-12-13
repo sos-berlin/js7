@@ -57,6 +57,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     def readNext(): Stamped[KeyedEvent[E]] = {
       require(isInTransaction)
       val stamped = buffer(next).value
+      if (next > 1) buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
       next += 1
       if (next == buffer.length) {
         buffer = null
