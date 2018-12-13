@@ -10,18 +10,23 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-final class TaskSynchronizer[A]()(implicit scheduler: Scheduler)
+private[monixutils]  // NOT USED
+final class TaskSynchronizer[A](limit: Int = Int.MaxValue)(implicit scheduler: Scheduler)
 {
   requireNonNull(scheduler)  // May occur on lazy val scheduler
 
-  private val queue = new java.util.concurrent.LinkedBlockingQueue[(Promise[A], Task[A])]
+  private val queue = new java.util.concurrent.LinkedBlockingQueue[(Promise[Option[A]], Task[A])](limit)
   private val isExecuting = AtomicBoolean(false)
 
-  def run(task: Task[A]): Future[A] = {
+  def run(task: Task[A]): Future[Option[A]] = {
     requireNonNull(task)
-    promiseFuture[A] { promise ⇒
-      queue.add(promise → task)
-      runNext()
+    promiseFuture[Option[A]] { promise ⇒
+      val ok = queue.offer(promise → task)
+      if (!ok) {
+        promise.success(None)
+      } else {
+        runNext()
+      }
     }
   }
 
@@ -35,7 +40,7 @@ final class TaskSynchronizer[A]()(implicit scheduler: Scheduler)
           task.runOnComplete { tried ⇒
             isExecuting := false
             runNext()
-            promise.complete(tried)
+            promise.complete(tried map Some.apply)
           }
       }
     }
