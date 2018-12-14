@@ -132,7 +132,7 @@ final class AgentCommandTest extends FreeSpec {
                     "JOB_A": "A-VALUE"
                   },
                   "executablePath": "/A.cmd",
-                  "taskLimit": 8
+                  "taskLimit": 3
                 }
               },
               {
@@ -143,7 +143,7 @@ final class AgentCommandTest extends FreeSpec {
                     "JOB_B": "B-VALUE"
                   },
                   "executablePath": "/B.cmd",
-                  "taskLimit": 8
+                  "taskLimit": 3
                 }
               }
             ]

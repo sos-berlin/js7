@@ -51,7 +51,7 @@ final class WorkflowTest extends FreeSpec {
             "versionId": "VERSION"
           },
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}},
+            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
             {
               "TYPE": "If",
               "predicate": "returnCode == 1",
@@ -61,11 +61,11 @@ final class WorkflowTest extends FreeSpec {
                   { "TYPE": "Execute.Named", "name": "B" }
                 ],
                 "jobs": {
-                  "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8 , "defaultArguments": { "JOB_B1": "B1-VALUE" }}}
+                  "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3 , "defaultArguments": { "JOB_B1": "B1-VALUE" }}}
               },
               "else": {
                 "instructions": [
-                  { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}}
+                  { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
                 ]
               }
             }, {
@@ -75,7 +75,7 @@ final class WorkflowTest extends FreeSpec {
                   "id": "🥕",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
                       { "TYPE": "Execute.Named", "name": "A" }
                     ]
                   }
@@ -83,18 +83,18 @@ final class WorkflowTest extends FreeSpec {
                   "id": "🍋",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}},
                       { "TYPE": "Execute.Named", "name": "B" }
                     ]
                   }
                 }
               ]
             },
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}}
+            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
           ],
           "jobs": {
-            "A": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 8, "defaultArguments": { "JOB_A": "A-VALUE" }},
-            "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 8, "defaultArguments": { "JOB_B": "B-VALUE" }}
+            "A": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }},
+            "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}
           }
         }""")
     }
@@ -108,7 +108,7 @@ final class WorkflowTest extends FreeSpec {
               "job": {
                 "agentPath": "/AGENT",
                 "executablePath": "/A.cmd",
-                "taskLimit": 8,
+                "taskLimit": 3,
                 "defaultArguments": {
                   "JOB_A": "A-VALUE"
                 }
