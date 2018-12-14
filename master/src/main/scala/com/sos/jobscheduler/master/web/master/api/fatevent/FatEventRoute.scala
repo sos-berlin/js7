@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestsLimiter
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.event.EventWatch
@@ -26,6 +27,7 @@ import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
@@ -48,36 +50,27 @@ trait FatEventRoute extends MasterRouteProvider
       case t: ClosedException ⇒ logger.debug(t.toString)  // Why throws thread?
       case throwable: Throwable ⇒ logger.error(throwable.toStringWithCauses, throwable)
     })
-  private val busy = AtomicBoolean(false)
-  private val resetBusy = Task { busy := false }
+
+  // Rebuilding FatState may take a long time, so we allow only one per time.
+  // The client may impatiently abort and retry, overloading the server with multiple useless requests.
+  private val concurrentRequestsLimiter = new ConcurrentRequestsLimiter(limit = 1, FatEventServiceBusyProblem)
+
   private lazy val fatStateCache = new FatStateCache(eventWatch)
+
+  @TestOnly
+  protected def isBusy = concurrentRequestsLimiter.isBusy
 
   final val fatEventRoute: Route =
     pathEnd {
       get {
         authorizedUser(ValidUserPermission) { _ ⇒
           eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest ⇒
-            // Rebuilding FatState may take a long time, so we allow only one per time.
-            // The client may impatiently abort and retry, overloading the server with multiple useless requests.
-            if (!busy.getAndSet(true))
-              complete(
-                Task {
-                  if (!busy.getAndSet(true))
-                    Task.pure(ToResponseMarshallable(StatusCodes.TooManyRequests → FatEventServiceBusyProblem))
-                  else
-                    executeRequest(fatRequest)
-                }.delayExecution(RetryIfTooManyRequests).flatten.runAsync)
-            else
-              complete(executeRequest(fatRequest).runAsync)
+            concurrentRequestsLimiter(
+              complete(requestFatEvents(fatRequest).runAsync))
           }
         }
       }
     }
-
-  private def executeRequest(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] =
-    requestFatEvents(fatRequest)
-      .doOnFinish(_ ⇒ resetBusy)
-      .doOnCancel(resetBusy)
 
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
     val timeoutAt = now + fatRequest.timeout
@@ -115,5 +108,4 @@ trait FatEventRoute extends MasterRouteProvider
 
 object FatEventRoute {
   private val logger = Logger(getClass)
-  private val RetryIfTooManyRequests = 10.milliseconds   // A long delay would delay test execution, too
 }
