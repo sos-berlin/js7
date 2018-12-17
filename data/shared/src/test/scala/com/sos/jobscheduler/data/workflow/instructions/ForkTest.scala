@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -43,6 +44,14 @@ final class ForkTest extends FreeSpec {
           }
         ]
       }""")
+  }
+
+  "Duplicate branch ids are rejected" in {  // TODO
+    intercept[ProblemException] {
+      Fork.of(
+        "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A")))),
+        "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))
+    }
   }
 
   "workflow" in {

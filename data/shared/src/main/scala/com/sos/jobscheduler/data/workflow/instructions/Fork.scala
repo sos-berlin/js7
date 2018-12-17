@@ -4,6 +4,8 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -17,6 +19,11 @@ import scala.language.implicitConversions
 final case class Fork(branches: IndexedSeq[Fork.Branch])
 extends Instruction
 {
+  locally {
+    val dups = branches.duplicateKeys(_.id)
+    if (dups.nonEmpty) throw Problem(s"Non-unique branch IDs in fork: ${dups.mkString(", ")}").throwable  // To Fork.checked(..): Checked[Fork]
+  }
+
   for (idAndScript ← branches) Fork.validateBranch(idAndScript).valueOr(throw _)
 
   override def adopt(outer: Workflow) = copy(
