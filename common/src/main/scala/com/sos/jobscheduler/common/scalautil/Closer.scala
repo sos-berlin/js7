@@ -55,8 +55,11 @@ final class Closer extends AutoCloseable
         catch {
           case NonFatal(t) ⇒
             if (!throwable.compareAndSet(null, t)) {
-              logger.debug(s"Throwable.addSuppressed($t)")
-              throwable.get.addSuppressed(t)
+              val tt = throwable.get
+              if (tt ne t) {
+                logger.debug(s"Throwable.addSuppressed($t)")
+                tt.addSuppressed(t)
+              }
             }
           case fatal: Throwable ⇒
             throw fatal

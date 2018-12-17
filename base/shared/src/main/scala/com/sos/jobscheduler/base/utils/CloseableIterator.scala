@@ -96,7 +96,7 @@ object CloseableIterator {
     try fromIterator(toIterator(closeable)) onClosed { closeable.close() }
     catch { case NonFatal(t) ⇒  // TODO Use AutoClosable.closeOnError
       try closeable.close()
-      catch { case NonFatal(tt) ⇒ t.addSuppressed(tt) }
+      catch { case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt) }
       throw t
     }
 

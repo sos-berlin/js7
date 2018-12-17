@@ -56,7 +56,7 @@ object Exceptions {
   def onExceptionAddSuppressed(t: Throwable)(body: ⇒ Unit): Unit =
     try body
     catch {
-      case suppressed: Throwable ⇒
+      case suppressed: Throwable if suppressed ne t ⇒
         t.addSuppressed(suppressed)
         val suppresseds = t.getSuppressed
         if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
