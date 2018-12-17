@@ -28,35 +28,38 @@ final class SyncExclusiveTest extends FreeSpec {
       a await 1.s
       assert(a.isCompleted)
       assert(a.successValue)
-      b await 10.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
+      b await 100.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
     }
   }
 
   "timeout" in {
+    val tick = 100.millisecond
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     for (eventId ← 1L to 3L) {
-      val a = sync.whenEventIsAvailable(eventId, until = now + 400.milliseconds, delay = 200.milliseconds).runAsync
-      val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour          , delay = 200.milliseconds).runAsync
-      assert(a ne b)
+      withClue(s"#$eventId") {
+        val a = sync.whenEventIsAvailable(eventId, until = now + 2*tick, delay = 2*tick).runAsync
+        val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour, delay = 2*tick).runAsync
+        assert(a ne b)
 
-      sleep(100.ms)
-      assert(!a.isCompleted)
+        sleep(tick)
+        assert(!a.isCompleted)
 
-      a await 500.ms
-      assert(!a.successValue)  // false: Timed out
-      assert(!b.isCompleted)
+        a await 2*tick            // `until` elapsed
+        assert(!a.successValue)   // false: Timed out
+        assert(!b.isCompleted)
 
-      sync.onEventAdded(eventId)
-      assert(!b.isCompleted)
+        sync.onEventAdded(eventId)
+        assert(!b.isCompleted)    // Still delayed
 
-      sleep(100.milliseconds)
-      assert(!b.isCompleted)
+        sleep(tick)
+        assert(!b.isCompleted)    // Still delayed
 
-      sleep(200.milliseconds)
-      assert(b.isCompleted)
-      assert(b.successValue)  // true: Event arrived
+        b await 99.seconds
+        assert(b.isCompleted)
+        assert(b.successValue)    // true: Event arrived
+      }
     }
   }
 

@@ -53,7 +53,7 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
     }
   }
 
-  "realTimeIterator (time-critical test)" in {
+  "realTimeIterator (time-sensitive test)" in {
     meterElapsedTime { realTimeIterator(Seq((now() + 10.s).toEpochMilli)) } should be < 300.ms // Bereitstellung soll nicht warten
     val t0 = now().toEpochMilli
     val (t1, t2, t3) = (t0 + 500, t0 + 1500, t0 + 2000)
@@ -63,17 +63,17 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
     meterElapsedTime { i.next() } .toMillis should be (t3 - t2 +- 400)
   }
 
-  "waitForCondition(TimeoutWithSteps) 0 steps (time-critical test)" in {
+  "waitForCondition(TimeoutWithSteps) 0 steps (time-sensitive test)" in {
     val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(2.s, 1.s)) { true } }
     elapsed should be < 500.ms
   }
 
-  "waitForCondition(TimeoutWithSteps) all steps (time-critical test)" in {
+  "waitForCondition(TimeoutWithSteps) all steps (time-sensitive test)" in {
     val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(300.ms, 1.ms)) { false } }
     elapsed should (be >= 300.ms and be <= 700.ms)
   }
 
-  "waitForCondition(TimeoutWithSteps) some steps (time-critical test)" in {
+  "waitForCondition(TimeoutWithSteps) some steps (time-sensitive test)" in {
     var cnt = 0
     val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(1.s, 10.ms)) { cnt += 1; cnt > 10 } }  // 100ms
     elapsed should (be >= 100.ms and be < 400.ms)

@@ -61,11 +61,11 @@ final class ProcessKillScriptTest extends FreeSpec {
     }
   }
 
-  private def startNestedProcess(agentTaskId: AgentTaskId, out: Path) = {
+  private def startNestedProcess(agentTaskId: AgentTaskId, out: Path): (Path, Process) = {
     val file = Processes.newTemporaryShellFile("test")
-    file.contentString = Script
+    file := Script
     val args = List(file.toString, s"-agent-task-id=${agentTaskId.string}")
-    val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).start()
+    val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).startRobustly()
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
   }
@@ -75,7 +75,7 @@ final class ProcessKillScriptTest extends FreeSpec {
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(agentTaskId, pidOption)
-      val killProcess = new ProcessBuilder(args.asJava).start()
+      val killProcess = new ProcessBuilder(args.asJava).startRobustly()
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
@@ -95,7 +95,7 @@ private object ProcessKillScriptTest {
 
   private def logProcessTree(): Unit = {
     if (isUnix && !isMac) {
-      val ps = new ProcessBuilder("ps", "fux").start()
+      val ps = new ProcessBuilder("ps", "fux").startRobustly()
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
     }

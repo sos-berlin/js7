@@ -18,10 +18,11 @@
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="INFO">
+    <root level="info">
       <appenderRef ref="stderr" level="OFF"/>
       <appenderRef ref="file"   level="DEBUG" />
     </root>
-    <logger level="DEBUG" name="jobscheduler"/>
+    <logger level="debug" name="jobscheduler"/>
+    <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
   </loggers>
 </configuration>

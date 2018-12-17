@@ -23,7 +23,7 @@ import scala.concurrent.{Future, blocking}
 /**
   * @author Joacim Zschimmer
   */
-final class ConcurrentRequestsLimiterTest extends FreeSpec with ScalatestRouteTest
+final class ConcurrentRequestsLimiterExclusiveTest extends FreeSpec with ScalatestRouteTest
 {
   private val concurrentProblem = Problem.pure("CONCURRENT")
   private val limiter = new ConcurrentRequestsLimiter(limit = 1, concurrentProblem)
@@ -65,7 +65,7 @@ final class ConcurrentRequestsLimiterTest extends FreeSpec with ScalatestRouteTe
     implicit val x = JsonSeqStreamSupport
     implicit val y = jsonSeqMarshaller[Json]
     val n = 10
-    val duration = 10.millis
+    val duration = 30.millis
     val source: Source[Json, NotUsed] = Source(1 to n) map { o ⇒ blocking(sleep(duration.toMillis)); Json.fromInt(o) }
     val route = complete(source)
 

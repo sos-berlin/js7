@@ -12,7 +12,6 @@ import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirecti
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -31,16 +30,16 @@ import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.{Args, FreeSpec}
+import scala.annotation.tailrec
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute {
-
+final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute
+{
   override protected def runTest(testName: String, args: Args) = {
     logger.debug("-" * 50)
     logger.debug(s"""Test "$testName"""")
@@ -198,9 +197,9 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
   }
 
   "TooManyRequests on concurrent request" in {
-    Future { getFatEventSeq("/fatEvent?timeout=9&after=203") }
-    assert(waitForCondition(1.s, 1.ms)(isBusy))
-    assert(intercept[ResponseException](getFatEventSeq("/fatEvent?after=203")).status == TooManyRequests)
+    Get("/fatEvent?timeout=9&after=203") ~> Accept(`application/json`) ~> route ~> check {
+      assert(status != TooManyRequests, status.toString)
+    }
   }
 
   private def getFatEvents(uri: String): Seq[Stamped[KeyedEvent[OrderFatEvent]]] =
@@ -212,11 +211,24 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       case x ⇒ fail(s"Unexpected response: $x")
     }
 
-  private def getFatEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]] =
+  @tailrec
+  private def getFatEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]] = {
+    var retryCount = 0
     Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-      if (status != OK) throw new ResponseException(status, responseEntity.toStrict(timeout).value.toString)
-      responseAs[TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]]]
+      status match {
+        case TooManyRequests if retryCount < 1000 ⇒
+          retryCount += 1
+          logger.debug("TooManyRequests #" + retryCount)
+          sleep(10.ms)
+          None
+        case OK ⇒ Some(responseAs[TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]]])
+        case _ ⇒ fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      }
+    } match {
+      case None ⇒ getFatEventSeq(uri)
+      case Some(result) ⇒ result
     }
+  }
 
   protected final class TestEventWatch extends EventCollector(EventCollector.Configuration.ForTest) {
     var lastEventsAfter = EventId(-1)
