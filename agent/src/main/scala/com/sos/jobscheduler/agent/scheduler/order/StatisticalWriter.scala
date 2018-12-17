@@ -31,7 +31,7 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer {
         val bocked = Duration.ofNanos(blockedNanos)
         val duration = (now - startTime).toNanos
         val percentage = if (duration == 0) 1 else 100 * bocked.toNanos / duration
-        s" (${toKBGB(size)}) blocked ${bocked.pretty} ($percentage%)"
+        s" (${toKBGB(size)}), blocked ${bocked.pretty} ($percentage%)"
       })  // This is the time an unbuffered stdout/stderr pipe is blocked
 
   def flush() = writer.flush()
