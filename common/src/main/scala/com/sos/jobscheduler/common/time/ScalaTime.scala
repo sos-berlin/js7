@@ -8,7 +8,7 @@ import java.time._
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{FiniteDuration, Duration ⇒ ScalaDuration}
 import scala.language.implicitConversions
 import scala.math.abs
 import scala.util.Random
@@ -285,9 +285,18 @@ object ScalaTime {
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit final class RichConcurrentDuration(private val underlying: FiniteDuration) extends AnyVal {
+  implicit final class RichFinitetDuration(private val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
-    def pretty = toJavaDuration.pretty
+  }
+
+  implicit final class RichConcurrentDuration(private val underlying: ScalaDuration) extends AnyVal {
+    def pretty: String =
+      underlying match {
+        case o: FiniteDuration ⇒ o.toJavaDuration.pretty
+        case ScalaDuration.Inf ⇒ "infinite"
+        case ScalaDuration.Undefined ⇒ "undefined"
+        case o ⇒ o.toString
+      }
   }
 
   implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
