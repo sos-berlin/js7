@@ -33,28 +33,33 @@ import scala.io
 final class ProcessKillScriptTest extends FreeSpec {
 
   "Kill script kills descendants" in {
-    val out = createTempFile("test-", ".log")
-    val (scriptFile, process) = startNestedProcess(TestAgentTaskId, out)
-    sleep(2.s)
-    logProcessTree()
-    runKillScript(TestAgentTaskId, processToPidOption(process))
-    process.waitFor(10, SECONDS)
-    assert(process.exitValue == SIGKILLexitValue)
-    sleep(1.s) // Time to let kill take effect
-    val beforeKill = out.contentString
-    logger.info(s"\n" + beforeKill)
-    if (isUnix) {
-      assert(beforeKill contains "TEST-1=")
-      assert(beforeKill contains "TEST-2=")
-      assert(beforeKill contains "TEST-3=")
+    if (isMac) {
+      info("Disabled on MacOS because it kills our builder process")
+      pending
+    } else {
+      val out = createTempFile("test-", ".log")
+      val (scriptFile, process) = startNestedProcess(TestAgentTaskId, out)
+      sleep(2.s)
+      logProcessTree()
+      runKillScript(TestAgentTaskId, processToPidOption(process))
+      process.waitFor(10, SECONDS)
+      assert(process.exitValue == SIGKILLexitValue)
+      sleep(1.s) // Time to let kill take effect
+      val beforeKill = out.contentString
+      logger.info(s"\n" + beforeKill)
+      if (isUnix) {
+        assert(beforeKill contains "TEST-1=")
+        assert(beforeKill contains "TEST-2=")
+        assert(beforeKill contains "TEST-3=")
+      }
+      sleep(2.s)
+      logger.info("All processes should be killed now")
+      logProcessTree()
+      val grown = out.contentString stripPrefix beforeKill
+      assert(grown == "", "Stdout file must not grow after kill script execution")
+      delete(scriptFile)
+      delete(out)
     }
-    sleep(2.s)
-    logger.info("All processes should be killed now")
-    logProcessTree()
-    val grown = out.contentString stripPrefix beforeKill
-    assert(grown == "", "Stdout file must not grow after kill script execution")
-    delete(scriptFile)
-    delete(out)
   }
 
   private def startNestedProcess(agentTaskId: AgentTaskId, out: Path) = {
