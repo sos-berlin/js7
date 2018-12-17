@@ -238,7 +238,10 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
   .enablePlugins(GitVersioning)
   .enablePlugins(BuildInfoPlugin)
   .settings(
+    buildInfoPackage := "com.sos.jobscheduler.common",
     buildInfoKeys := BuildInfoKey.ofN(
+      BuildInfoKey.action("buildTime")(System.currentTimeMillis),
+      BuildInfoKey.action("buildId")(newBuildId),
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
@@ -246,12 +249,9 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
-      BuildInfoKey.action("commitMessage")(git.gitHeadMessage.value),
-      BuildInfoKey.action("buildId")(newBuildId),
-      BuildInfoKey.action("buildTime")(System.currentTimeMillis),
-      BuildInfoKey.action("bootstrapVersion")(bootstrapVersion),
-      BuildInfoKey.action("toastrVersion")(toastrVersion)),
-    buildInfoPackage := "com.sos.jobscheduler.common")
+      "commitMessage" → git.gitHeadMessage.value,
+      "bootstrapVersion" → bootstrapVersion,
+      "toastrVersion" → toastrVersion))
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(base, tester % "test")
