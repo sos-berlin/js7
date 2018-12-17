@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.master.MasterOrderKeeper
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
@@ -29,7 +28,6 @@ final class OrderScheduleGenerator(
 extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
   private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, Nil)
-  private var versionId: VersionId = null
   private var generatedUntil: Timestamp = null
   private var recovered = false
   private var timer = none[Cancelable]

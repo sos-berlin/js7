@@ -117,7 +117,7 @@ object AgentConfiguration {
     .withCommandLineArguments(a)
   }
 
-  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
+  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): AgentConfiguration = {
     val config = resolvedConfig(configDirectory, extraDefaultConfig)
     var v = new AgentConfiguration(
       configDirectory = configDirectory,

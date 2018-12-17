@@ -96,8 +96,8 @@ object JournalRecoverer {
 
   private def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
-    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
-    observer: Option[JournalingObserver] = None,
+    recoveredActors: RecoveredJournalingActors,
+    observer: Option[JournalingObserver],
     lastEventId: EventId,
     totalEventCount: Long)
     (implicit actorRefFactory: ActorRefFactory)

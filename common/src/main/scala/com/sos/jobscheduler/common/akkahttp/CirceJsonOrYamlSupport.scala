@@ -13,7 +13,6 @@ import com.sos.jobscheduler.common.http.{CirceJsonSupport, CirceToYaml}
 import com.sos.jobscheduler.common.scalautil.Logger
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
-import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
 /**
@@ -22,7 +21,8 @@ import scala.util.control.NonFatal
  *
  * @author Joacim Zschimmer
  */
-object CirceJsonOrYamlSupport {
+object CirceJsonOrYamlSupport
+{
   private val logger = Logger(getClass)
 
   implicit def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =

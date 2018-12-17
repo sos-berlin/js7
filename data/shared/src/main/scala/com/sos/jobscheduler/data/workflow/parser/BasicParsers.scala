@@ -71,8 +71,8 @@ private[parser] object BasicParsers
 
   def keyword(name: String) = P[Unit](name ~ identifierEnd)
 
-  def path[P <: TypedPath: TypedPath.Companion] = P[P](
-    pathString map (p ⇒ FolderPath.Root.resolve[P](p)))
+  def path[A <: TypedPath: TypedPath.Companion] = P[A](
+    pathString map (p ⇒ FolderPath.Root.resolve[A](p)))
 
   def keyValueMap[A](keyParsers: Map[String, P[A]]): P[KeyToValue[A]] =
     keyValues(keyParsers)

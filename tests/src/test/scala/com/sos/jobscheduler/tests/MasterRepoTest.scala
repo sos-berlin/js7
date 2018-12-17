@@ -22,7 +22,6 @@ import com.sos.jobscheduler.master.data.MasterCommand.ReadConfigurationDirectory
 import java.nio.file.Files.delete
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 import scala.util.Try
 
 final class MasterRepoTest extends FreeSpec {
@@ -129,9 +128,4 @@ object MasterRepoTest {
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
     Execute(WorkflowJob(TestAgentPath, ExecutablePath(s"/EXECUTABLE-V${versionId.string}$sh"))))
-
-  private implicit class WithVersionWorkflow(private val underlying: Workflow) extends AnyVal {
-    def withVersion(versionId: VersionId): Workflow =
-      underlying.copy(id = underlying.id.copy(versionId = versionId))
-  }
 }

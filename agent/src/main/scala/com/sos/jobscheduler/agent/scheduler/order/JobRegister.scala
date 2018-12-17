@@ -35,8 +35,8 @@ object JobRegister {
   }
 
   final class OrderQueue private[order] {
-    private var queue = mutable.ListBuffer[OrderId]()
-    private var inProcess = mutable.Set[OrderId]()
+    private val queue = mutable.ListBuffer[OrderId]()
+    private val inProcess = mutable.Set[OrderId]()
 
     def dequeue(): Option[OrderId] =
       queue.nonEmpty option {

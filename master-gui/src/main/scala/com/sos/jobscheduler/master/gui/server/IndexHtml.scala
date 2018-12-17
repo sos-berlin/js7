@@ -13,7 +13,6 @@ import com.sos.jobscheduler.master.gui.server.common.HtmlPage
 import com.typesafe.config.Config
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import scala.language.implicitConversions
 import scalatags.Text.all._
 import scalatags.Text.{TypedTag, tags2}
 

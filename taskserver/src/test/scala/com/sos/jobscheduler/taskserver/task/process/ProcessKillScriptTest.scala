@@ -3,7 +3,7 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.common.process.Processes
-import com.sos.jobscheduler.common.process.Processes.{Pid, processToPidOption}
+import com.sos.jobscheduler.common.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -23,7 +23,6 @@ import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
-import scala.io
 
 /**
   * JS-1558 Agent includes kill scripts

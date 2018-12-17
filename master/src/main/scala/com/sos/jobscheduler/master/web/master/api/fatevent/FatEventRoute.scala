@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
@@ -26,7 +25,6 @@ import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
 import java.util.concurrent.Executors.newSingleThreadExecutor
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.atomic.AtomicBoolean
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._

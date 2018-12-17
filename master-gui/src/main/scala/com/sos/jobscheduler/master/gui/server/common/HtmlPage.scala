@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.MediaTypes.`text/html`
 import akka.http.scaladsl.model.{ContentType, HttpCharset, HttpEntity}
 import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.Logger
-import scala.language.implicitConversions
 import scalatags.Text.TypedTag
 import scalatags.Text.all._
 

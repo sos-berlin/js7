@@ -208,7 +208,7 @@ object AkkaHttpServerUtils
   private def matchSegment(segment: String): PathMatcher0 =
     new SegmentPathMatcher(segment)
 
-  private class SegmentPathMatcher[Unit](segment: String) extends PathMatcher0 {
+  private class SegmentPathMatcher(segment: String) extends PathMatcher0 {
     def apply(path: Uri.Path) = path match {
       case Uri.Path.Segment(`segment`, tail) ⇒
         Matched(tail, HNil)

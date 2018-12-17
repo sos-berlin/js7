@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -35,7 +34,7 @@ import org.scalatest.FreeSpec
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -44,109 +43,107 @@ final class HistoryTest extends FreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
-      withCloser { implicit closer ⇒
-        (provider.master.config / "private/private.conf").append("""
-          |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
-          |""".stripMargin )
-        provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
-        for (a ← provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
+      (provider.master.config / "private/private.conf").append("""
+        |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |""".stripMargin )
+      provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
+      for (a ← provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
-        def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
+      def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
 
-        provider.runAgents() { runningAgents ⇒
-          provider.runMaster() { master ⇒
-            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
-              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-              master.addOrderBlocking(TestOrder)
-              master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
-              assert(listJournalFiles == Vector("master--0.journal"))
-            }
+      provider.runAgents() { runningAgents ⇒
+        provider.runMaster() { master ⇒
+          autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+            masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+            master.addOrderBlocking(TestOrder)
+            master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
+            assert(listJournalFiles == Vector("master--0.journal"))
           }
-          var keepEventsEventId = EventId.BeforeFirst
-          val fatEvents = mutable.Buffer[KeyedEvent[FatEvent]]()
-          provider.runMaster() { master ⇒
-            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
-              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-              val history = new InMemoryHistory
-              var lastEventId = EventId.BeforeFirst
-              var finished = false
-              var finishedEventId = -1L
-              var rounds = 0
-              while (!finished) {
-                rounds += 1
-                val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
-                val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(request) await 99.s
-                val chunk = stampeds take 2
-                chunk foreach history.handleFatEvent
-                lastEventId = chunk.last.eventId
-                chunk collectFirst { case Stamped(eventId, _, KeyedEvent(_, _: OrderFinishedFat)) ⇒
-                  finished = true
-                  finishedEventId = eventId  // EventId of the first Master run (MasterReady of second Master run follows)
-                }
-                fatEvents ++= chunk map (_.value)
+        }
+        var keepEventsEventId = EventId.BeforeFirst
+        val fatEvents = mutable.Buffer[KeyedEvent[FatEvent]]()
+        provider.runMaster() { master ⇒
+          autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+            masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+            val history = new InMemoryHistory
+            var lastEventId = EventId.BeforeFirst
+            var finished = false
+            var finishedEventId = -1L
+            var rounds = 0
+            while (!finished) {
+              rounds += 1
+              val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
+              val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(request) await 99.s
+              val chunk = stampeds take 2
+              chunk foreach history.handleFatEvent
+              lastEventId = chunk.last.eventId
+              chunk collectFirst { case Stamped(eventId, _, KeyedEvent(_, _: OrderFinishedFat)) ⇒
+                finished = true
+                finishedEventId = eventId  // EventId of the first Master run (MasterReady of second Master run follows)
               }
-              assert(rounds > 2)
-              assert(history.orderEntries.map(normalizeTimestampsInEntry) ==
-                expectedOrderEntries(runningAgents map (_.localUri.toString)))
-
-              assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))
-
-              masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId - 1)) await 99.s
-              assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))  // Nothing deleted
-
-              masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId)) await 99.s
-              assert(listJournalFiles.length == 1 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
-              keepEventsEventId = finishedEventId
+              fatEvents ++= chunk map (_.value)
             }
+            assert(rounds > 2)
+            assert(history.orderEntries.map(normalizeTimestampsInEntry) ==
+              expectedOrderEntries(runningAgents map (_.localUri.toString)))
+
+            assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))
+
+            masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId - 1)) await 99.s
+            assert(listJournalFiles.length == 2 && listJournalFiles.contains("master--0.journal"))  // Nothing deleted
+
+            masterApi.executeCommand(MasterCommand.KeepEvents(finishedEventId)) await 99.s
+            assert(listJournalFiles.length == 1 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
+            keepEventsEventId = finishedEventId
           }
-          val aAgentUri = runningAgents(0).localUri.toString
-          val bAgentUri = runningAgents(1).localUri.toString
-          assert(fatEvents.toSet == Set(
-            NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault),
-            OrderId("🔺") <-: OrderAddedFat(TestWorkflowId,None,Map("VARIABLE" → "VALUE")),
-            AAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
-            BAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
-            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺") <-: OrderForkedFat(
-              TestWorkflowId /: Position(1),Vector(
-                OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("VARIABLE" → "VALUE")),
-                OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("VARIABLE" → "VALUE")))),
-            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 1), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 1), BAgentPath, bAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Map("VARIABLE" → "VALUE"), Succeeded(ReturnCode(0))),
-            OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-            OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
-            OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-            OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
-            NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))
+        }
+        val aAgentUri = runningAgents(0).localUri.toString
+        val bAgentUri = runningAgents(1).localUri.toString
+        assert(fatEvents.toSet == Set(
+          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault),
+          OrderId("🔺") <-: OrderAddedFat(TestWorkflowId,None,Map("VARIABLE" → "VALUE")),
+          AAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
+          BAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
+          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderForkedFat(
+            TestWorkflowId /: Position(1),Vector(
+              OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("VARIABLE" → "VALUE")),
+              OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("VARIABLE" → "VALUE")))),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 1), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 1), BAgentPath, bAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Map("VARIABLE" → "VALUE"), Succeeded(ReturnCode(0))),
+          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
+          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
+          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))
 
-          provider.runMaster() { master ⇒
-            // Test recovering FatState from snapshot stored in journal file
-            assert(listJournalFiles.size == 2 &&  !listJournalFiles.contains("master--0.journal"))  // First file deleted
-            autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
-              masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
+        provider.runMaster() { master ⇒
+          // Test recovering FatState from snapshot stored in journal file
+          assert(listJournalFiles.size == 2 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
+          autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+            masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
 
-              // after=0 is torn
-              val torn = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = 99.seconds)) await 99.s
-              assert(torn.isInstanceOf[TearableEventSeq.Torn])
+            // after=0 is torn
+            val torn = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = 99.seconds)) await 99.s
+            assert(torn.isInstanceOf[TearableEventSeq.Torn])
 
-              val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = 99.seconds)) await 99.s
-              assert(stampeds.head.eventId > keepEventsEventId)
-              assert(stampeds.map(_.value.event) ==
-                Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))  // Only MasterReady, nothing else happened
-            }
+            val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = 99.seconds)) await 99.s
+            assert(stampeds.head.eventId > keepEventsEventId)
+            assert(stampeds.map(_.value.event) ==
+              Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))  // Only MasterReady, nothing else happened
           }
         }
       }

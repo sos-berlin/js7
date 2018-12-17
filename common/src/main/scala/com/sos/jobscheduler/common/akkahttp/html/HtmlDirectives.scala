@@ -9,13 +9,12 @@ import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-object HtmlDirectives {
-
+object HtmlDirectives
+{
   def dontCache: Directive0 =
     mapInnerRoute { inner ⇒
       extractRequest { request ⇒

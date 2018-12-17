@@ -24,7 +24,6 @@ import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
-import scala.language.higherKinds
 
 final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
 {

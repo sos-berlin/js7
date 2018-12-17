@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
 import io.circe.syntax.EncoderOps
 import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
 import scala.collection.immutable.IndexedSeq
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

@@ -18,7 +18,6 @@ package com.sos.jobscheduler.common.guice
 
 import com.google.inject.TypeLiteral
 import java.lang.reflect.Type
-import scala.language.higherKinds
 
 private[guice] object Lings {
   /**

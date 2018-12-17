@@ -34,8 +34,8 @@ trait SessionRoute extends RouteProvider {
                   // Let a browser show authentication dialog!
                   reject(gateKeeper.credentialsMissing)
 
-                case Invalid(p @ InvalidLoginProblem) ⇒
-                  completeUnauthenticatedLogin(p)
+                case Invalid(InvalidLoginProblem) ⇒
+                  completeUnauthenticatedLogin(InvalidLoginProblem)
 
                 case checked ⇒
                   complete(checked)

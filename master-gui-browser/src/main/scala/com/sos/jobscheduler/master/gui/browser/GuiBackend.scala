@@ -58,7 +58,6 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
   }
 
   private val eventHandler = new ClassicEventHandler(scope)
-  private var unmounted = false
 
   def componentDidMount() = start()
 
@@ -78,7 +77,6 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       } map (_ ⇒ ())
 
   def componentWillUnmount() = Callback {
-    unmounted = true
     window.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
     window.document.removeEventListener("keydown", onKeyDown, false)
   }

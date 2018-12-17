@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.expression
 
+import cats.data.Validated.Invalid
 import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.traverse._
@@ -38,6 +39,7 @@ final class Evaluator(scope: Scope)
       case Not            (a)    ⇒ evalBoolean(a) map (o ⇒ !o.bool) map BooleanValue.apply
       case And            (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (!o.bool) o.valid else evalBoolean(b))
       case Or             (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (o.bool) o.valid else evalBoolean(b))
+      case _ ⇒ Invalid(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
   private def evalListExpression(expr: ListExpression): Checked[List[Value]] =

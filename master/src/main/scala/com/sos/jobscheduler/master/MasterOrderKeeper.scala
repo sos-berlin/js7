@@ -92,7 +92,7 @@ with MainJournalingActor[Event]
   private val repoReader = new MasterRepoReader(masterConfiguration.fileBasedDirectory)
   private var repo = Repo.empty
   private val agentRegister = new AgentRegister
-  private val orderRegister = new mutable.HashMap[OrderId, OrderEntry] {
+  private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
   }
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
@@ -603,7 +603,6 @@ with MainJournalingActor[Event]
 
 private[master] object MasterOrderKeeper {
   private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
-  @deprecated("", "")
   private val InitialVersion = VersionId("(initial)")  // ???
 
   private val logger = Logger(getClass)

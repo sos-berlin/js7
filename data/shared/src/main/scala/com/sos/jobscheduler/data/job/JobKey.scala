@@ -7,7 +7,6 @@ import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition, 
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

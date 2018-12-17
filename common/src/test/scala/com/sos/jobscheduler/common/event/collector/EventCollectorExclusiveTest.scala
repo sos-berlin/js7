@@ -8,7 +8,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -82,9 +81,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
 private object EventCollectorExclusiveTest {
 
   private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
-    (implicit
-      protected val eventIdGenerator: EventIdGenerator,
-      executionContext: ExecutionContext)
+    (implicit protected val eventIdGenerator: EventIdGenerator)
   extends EventCollector(configuration)
   with EventIdGenerating
   {

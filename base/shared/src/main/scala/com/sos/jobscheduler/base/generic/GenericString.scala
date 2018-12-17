@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.standards.NameValidator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
-import scala.language.implicitConversions
 
 trait GenericString
 {

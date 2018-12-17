@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent
 
 import com.sos.jobscheduler.agent.AgentTest._
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.AgentTester
@@ -10,7 +9,6 @@ import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDi
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -57,18 +55,15 @@ final class AgentTest extends FreeSpec with AgentTester
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
-            withCloser { implicit closer ⇒
-              implicit val actorSystem = newActorSystem(getClass.getSimpleName)
-              val agentApi = agent.api(CommandMeta(TestUser))
-              agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Response.Accepted
+            val agentApi = agent.api(CommandMeta(TestUser))
+            agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Response.Accepted
 
-              val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-              agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual AgentCommand.Response.Accepted
-              val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
-              val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
-              assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))
-              agent.terminate() await 99.s
-            }
+            val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
+            agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual AgentCommand.Response.Accepted
+            val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
+            val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
+            assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))
+            agent.terminate() await 99.s
           }
         }
       }

@@ -23,8 +23,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -62,9 +62,7 @@ final class AgentOrderKeeper(
   implicit private val askTimeout: Timeout,
   keyedEventBus: StampedKeyedEventBus,
   config: Config)(
-  implicit
-    scheduler: Scheduler,
-    iox: IOExecutor)
+  implicit scheduler: Scheduler)
 extends MainJournalingActor[Event] with Stash {
 
   import context.{actorOf, watch}
@@ -139,7 +137,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalMeta)(askTimeout)
+    val recoverer = new OrderJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     val state = recoverer.state
     for (workflow ← state.idToWorkflow.values)

@@ -22,7 +22,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq, Seq}
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

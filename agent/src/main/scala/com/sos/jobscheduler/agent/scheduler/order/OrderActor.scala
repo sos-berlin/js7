@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.job.JobKey
@@ -30,7 +30,7 @@ import scala.concurrent.Future
   * @author Joacim Zschimmer
   */
 final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
@@ -231,13 +231,14 @@ extends KeyedJournalingActor[OrderEvent] {
     else
     if (force || anOrder.state.getClass != order.state.getClass) {
       anOrder.state match {
-        case _: Order.Fresh     ⇒ become("fresh")(fresh)
-        case _: Order.Ready     ⇒ become("ready")(ready)
-        case _: Order.Processed ⇒ become("processed")(processed)
-        case _: Order.Offering  ⇒ become("offering")(offering)
-        case _: Order.Forked    ⇒ become("forked")(forked)
-        case _: Order.Stopped   ⇒ become("stopped")(stoppedOrBroken)
-        case _: Order.Broken    ⇒ become("broken")(stoppedOrBroken)
+        case _: Order.Fresh      ⇒ become("fresh")(fresh)
+        case _: Order.Ready      ⇒ become("ready")(ready)
+        case _: Order.Processing ⇒ sys.error("Unexpected Order.state 'Processing'")  // Not handled here
+        case _: Order.Processed  ⇒ become("processed")(processed)
+        case _: Order.Offering   ⇒ become("offering")(offering)
+        case _: Order.Forked     ⇒ become("forked")(forked)
+        case _: Order.Stopped    ⇒ become("stopped")(stoppedOrBroken)
+        case _: Order.Broken     ⇒ become("broken")(stoppedOrBroken)
         case _: Order.Awaiting | _: Order.Stopped | _: Order.Offering | Order.Finished | Order.Canceled ⇒
           sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
       }
@@ -310,7 +311,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit iox: IOExecutor, s: Scheduler) =
+  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit s: Scheduler) =
     Props { new OrderActor(orderId, journalActor = journalActor, config) }
 
   sealed trait Command

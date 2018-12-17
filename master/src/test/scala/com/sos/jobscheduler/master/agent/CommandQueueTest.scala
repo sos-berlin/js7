@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -29,7 +28,6 @@ import scala.language.reflectiveCalls
 final class CommandQueueTest extends FreeSpec {
 
   "test" in {
-    implicit def ec = SynchronousExecutionContext
     val commandQueue = new CommandQueue(logger, batchSize = 3) {
       val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
       val failed = mutable.Buffer[(Vector[Queueable], Throwable)]()

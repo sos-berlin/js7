@@ -21,7 +21,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import io.circe.Json
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
@@ -340,7 +339,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
   }
 
-  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false)(implicit ec: ExecutionContext) = {
+  private def newGateKeeper[U <: User](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false) = {
     implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
     implicit val s = Scheduler.global
     new GateKeeper(conf, isLoopback = isLoopback)

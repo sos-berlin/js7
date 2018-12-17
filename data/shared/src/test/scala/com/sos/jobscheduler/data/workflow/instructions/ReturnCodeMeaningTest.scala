@@ -4,15 +4,12 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-final class ReturnCodeMeaningTest extends FreeSpec {
-
-  private implicit def toReturnCode(n: Int) = ReturnCode(n)
-
+final class ReturnCodeMeaningTest extends FreeSpec
+{
   "Success" in {
     val success0 = ReturnCodeMeaning.Success(Set(ReturnCode(0)))
     assert(success0.isSuccess(ReturnCode(0)))

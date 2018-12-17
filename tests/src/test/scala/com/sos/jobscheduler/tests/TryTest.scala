@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.TryTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 
 final class TryTest extends FreeSpec
 {

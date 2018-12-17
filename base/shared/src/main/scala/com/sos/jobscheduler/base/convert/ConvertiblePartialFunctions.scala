@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.convert
 
-import scala.language.higherKinds
 import scala.util.control.NonFatal
 
 /**

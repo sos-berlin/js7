@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, 
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateCache._
-import monix.execution.Scheduler
 import scala.concurrent.duration._
 
 /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.

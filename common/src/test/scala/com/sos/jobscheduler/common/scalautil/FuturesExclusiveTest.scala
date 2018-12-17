@@ -54,7 +54,7 @@ final class FuturesExclusiveTest extends FreeSpec {
   }
 
   "namedThreadFuture" in {
-    val (n, warmUp) = sys.props.get("test.speed") map (o ⇒ (o.toInt, 1000)) getOrElse (100, 100)
+    val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o ⇒ (o.toInt, 1000))
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
       val future = namedThreadFuture("FuturesExclusiveTest") { "x" }
       assert(Await.result(future, 2.seconds) == "x")

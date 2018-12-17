@@ -88,12 +88,10 @@ object KeyedEventTypedJsonCodec {
 
     def of[E <: Event: ClassTag](name: String)(implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E]): KeyedSubtype[E] = {
       new KeyedSubtype[E](
-        classToEncoder = codec.classToEncoder.mapValuesStrict { encoder ⇒
-          implicit val x = encoder.asInstanceOf[ObjectEncoder[E]]
+        classToEncoder = codec.classToEncoder.mapValuesStrict { _ ⇒
           KeyedEvent.jsonEncoder[E]
         },
-        nameToDecoder = codec.nameToDecoder.mapValuesStrict { decoder ⇒
-          implicit val x = decoder.asInstanceOf[Decoder[E]]
+        nameToDecoder = codec.nameToDecoder.mapValuesStrict { _ ⇒
           KeyedEvent.jsonDecoder[E]
         },
         nameToClass = codec.nameToClass + (name → implicitClass[E])

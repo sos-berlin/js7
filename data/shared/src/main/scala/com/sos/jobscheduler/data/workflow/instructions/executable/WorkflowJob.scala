@@ -14,7 +14,6 @@ import com.sos.jobscheduler.data.order.Outcome
 import com.sos.jobscheduler.data.workflow.instructions.ReturnCodeMeaning
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

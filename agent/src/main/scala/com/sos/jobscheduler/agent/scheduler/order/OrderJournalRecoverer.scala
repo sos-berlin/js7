@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.util.Timeout
 import com.sos.jobscheduler.agent.AgentState
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -20,7 +19,6 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 private[order] final class OrderJournalRecoverer(protected val journalMeta: JournalMeta[Event])
-(implicit askTimeout: Timeout)
 extends JournalRecoverer[Event] {
 
   private val workflowRegister = new WorkflowRegister

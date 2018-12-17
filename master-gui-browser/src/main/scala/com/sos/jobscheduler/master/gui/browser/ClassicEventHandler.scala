@@ -20,9 +20,6 @@ import scala.util.{Failure, Success, Try}
   */
 final class ClassicEventHandler(protected val scope: BackendScope[GuiComponent.Props, GuiState]) extends EventHandler
 {
-  private var tornDelay = Duration.Zero
-  private var tornTimer: Option[Int] = None
-
   protected def fetchAndHandleEvents(
     after: EventId,
     forStep: Int,

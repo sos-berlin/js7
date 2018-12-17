@@ -49,7 +49,6 @@ final class RunningAgent private(
   val sessionToken: SessionToken,
   closer: Closer,
   @TestOnly val injector: Injector)
-  (implicit ec: ExecutionContext)
 extends AutoCloseable {
 
   webServer.setRunningAgent(this)
@@ -91,7 +90,7 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A)(implicit ec: ExecutionContext): A =
+  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
     autoClosing(apply(configuration) await timeout) { agent ⇒
       val a = body(agent)
       agent.terminated await 99.s
@@ -107,10 +106,10 @@ object RunningAgent {
     whenAgent
   }
 
-  def apply(configuration: AgentConfiguration)(implicit ec: ExecutionContext): Future[RunningAgent] =
+  def apply(configuration: AgentConfiguration): Future[RunningAgent] =
     apply(new AgentModule(configuration))
 
-  def apply(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
+  def apply(module: Module): Future[RunningAgent] = {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]

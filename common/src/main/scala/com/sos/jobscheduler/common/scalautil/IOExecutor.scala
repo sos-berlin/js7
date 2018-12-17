@@ -10,7 +10,6 @@ import com.typesafe.config.Config
 import java.util.concurrent.{Executor, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, blocking}
-import scala.language.implicitConversions
 import scala.util.Try
 import scala.util.control.NonFatal
 

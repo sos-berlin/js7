@@ -45,7 +45,7 @@ object MasterClientMain {
       else {
         operations foreach {
           case StringCommand(command) ⇒ textApi.executeCommand(command)
-          case StdinCommand ⇒ textApi.executeCommand(scala.io.Source.stdin.mkString)
+          case StdinCommand ⇒ textApi.executeCommand(io.Source.stdin.mkString)
           case Get(uri) ⇒ textApi.getApi(uri)
         }
         0

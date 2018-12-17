@@ -81,6 +81,9 @@ final case class Order[+S <: Order.State](
             outcome = outcome_,
             payload = Payload(diff.applyTo(payload.variables))))
 
+      case OrderFailed(_) ⇒
+        inapplicable
+
       case OrderStopped(outcome_) ⇒
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(state = Stopped, outcome = outcome_))

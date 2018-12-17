@@ -19,7 +19,7 @@ final class CirceUtilsTest extends FreeSpec {
   private implicit val ACodec = deriveCodec[A]
 
   "PrettyPrinter" in {
-    assert(ACodec(A(1, B("STRING", 1 :: 2 :: Nil, Nil))).asJson.toPrettyString ==
+    assert(A(1, B("STRING", 1 :: 2 :: Nil, Nil)).asJson.toPrettyString ==
       """{
       |  "a": 1,
       |  "b": {

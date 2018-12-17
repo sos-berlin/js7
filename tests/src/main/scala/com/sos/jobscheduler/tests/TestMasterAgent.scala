@@ -52,12 +52,12 @@ import java.time.{Duration, Instant}
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.DurationInt
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-object TestMasterAgent {
+object TestMasterAgent
+{
   private val TestWorkflowPath = WorkflowPath("/test")
   private val TestExecutablePath = ExecutablePath("/test")
   private val StdoutRowSize = 1000

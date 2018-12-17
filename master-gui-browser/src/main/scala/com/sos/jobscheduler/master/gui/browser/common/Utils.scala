@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import japgolly.scalajs.react.vdom.TagMod
 import org.scalajs.dom.window
 import scala.collection.mutable
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.higherKinds
 import scala.scalajs.js.URIUtils.encodeURIComponent
 
 /**

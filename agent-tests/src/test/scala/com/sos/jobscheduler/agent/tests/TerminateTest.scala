@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
-import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.actor.ActorSystem
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
@@ -83,7 +83,6 @@ object TerminateTest {
           |""".stripMargin
       AExecute.job.executablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
       val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = agentDirectory)) map (_.closeWithCloser) await 10.s
-      implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString)
         //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))

@@ -8,7 +8,6 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
-import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -57,55 +56,53 @@ final class RecoveryTest extends FreeSpec {
       autoClosing(new DirectoryProvider(AgentIds map (_.path), testName = Some("RecoveryTest"))) { directoryProvider ⇒
         for (agent ← directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
-        withCloser { implicit closer ⇒
-          for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
-          (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
+        for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
+        (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
-          runMaster(directoryProvider) { master ⇒
-            if (lastEventId == EventId.BeforeFirst) {
-              lastEventId = master.eventWatch.tornEventId
-            }
-            master.eventWatch.await[MasterEvent.MasterReady](after = lastEventId)
-            assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
-              Vector(
-                NoKey <-: VersionAdded(VersionId("(initial)")),
-                NoKey <-: FileBasedAdded(TestWorkflow),
-                NoKey <-: FileBasedAdded(QuickWorkflow),
-                NoKey <-: FileBasedAdded(Agent(AgentIds(0), directoryProvider.agents(0).localUri.toString)),
-                NoKey <-: FileBasedAdded(Agent(AgentIds(1), directoryProvider.agents(1).localUri.toString)))
-              .sortBy(_.toString))
-            runAgents(directoryProvider) { _ ⇒
-              master.addOrderBlocking(QuickOrder)
-              lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
-              lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
-              lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
-            }
-            assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
-              Vector(KeyedEvent(AgentEvent.MasterAdded(MasterId("Master")/*see default master.conf*/))))
-            logger.info("\n\n*** RESTARTING AGENTS ***\n")
-            runAgents(directoryProvider) { _ ⇒
-              lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
-            }
+        runMaster(directoryProvider) { master ⇒
+          if (lastEventId == EventId.BeforeFirst) {
+            lastEventId = master.eventWatch.tornEventId
           }
+          master.eventWatch.await[MasterEvent.MasterReady](after = lastEventId)
+          assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
+            Vector(
+              NoKey <-: VersionAdded(VersionId("(initial)")),
+              NoKey <-: FileBasedAdded(TestWorkflow),
+              NoKey <-: FileBasedAdded(QuickWorkflow),
+              NoKey <-: FileBasedAdded(Agent(AgentIds(0), directoryProvider.agents(0).localUri.toString)),
+              NoKey <-: FileBasedAdded(Agent(AgentIds(1), directoryProvider.agents(1).localUri.toString)))
+            .sortBy(_.toString))
+          runAgents(directoryProvider) { _ ⇒
+            master.addOrderBlocking(QuickOrder)
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+          }
+          assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
+            Vector(KeyedEvent(AgentEvent.MasterAdded(MasterId("Master")/*see default master.conf*/))))
+          logger.info("\n\n*** RESTARTING AGENTS ***\n")
+          runAgents(directoryProvider) { _ ⇒
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+          }
+        }
 
-          for (i ← 1 to 2) withClue(s"Run #$i:") {
-            val myLastEventId = lastEventId
-            sys.runtime.gc()  // For a clean memory view
-            logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
-            runAgents(directoryProvider) { _ ⇒
-              runMaster(directoryProvider) { master ⇒
-                val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
-                val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
-                withClue(s"$orderId") {
-                  try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
-                      case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledFor = Some(SomeTimestamp))
-                      case o ⇒ o
-                    }).toVector
-                    == ExpectedOrderEvents)
-                  catch { case NonFatal(t) ⇒
-                    logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
-                    throw t
-                  }
+        for (i ← 1 to 2) withClue(s"Run #$i:") {
+          val myLastEventId = lastEventId
+          sys.runtime.gc()  // For a clean memory view
+          logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
+          runAgents(directoryProvider) { _ ⇒
+            runMaster(directoryProvider) { master ⇒
+              val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
+              val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
+              withClue(s"$orderId") {
+                try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
+                    case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledFor = Some(SomeTimestamp))
+                    case o ⇒ o
+                  }).toVector
+                  == ExpectedOrderEvents)
+                catch { case NonFatal(t) ⇒
+                  logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
+                  throw t
                 }
               }
             }

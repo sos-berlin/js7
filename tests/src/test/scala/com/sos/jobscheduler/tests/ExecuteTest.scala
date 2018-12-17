@@ -15,10 +15,9 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.ExecuteTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 
-final class ExecuteTest extends FreeSpec {
-
+final class ExecuteTest extends FreeSpec
+{
   "Execute" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       directoryProvider.master.writeJson(TestWorkflow.withoutVersion)

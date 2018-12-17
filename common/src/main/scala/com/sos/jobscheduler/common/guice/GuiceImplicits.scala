@@ -3,7 +3,6 @@ package com.sos.jobscheduler.common.guice
 import com.google.inject.{Injector, Key}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.guice.Lings.typeLiteral
-import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 object GuiceImplicits {

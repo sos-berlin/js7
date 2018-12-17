@@ -81,7 +81,7 @@ object MasterConfiguration
   private def fromDirectories(
     configDirectory: Path,
     dataDirectory: Path,
-    extraDefaultConfig: Config = ConfigFactory.empty,
+    extraDefaultConfig: Config,
     name: String
   ): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath

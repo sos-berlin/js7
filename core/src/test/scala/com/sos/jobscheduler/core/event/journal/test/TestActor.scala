@@ -94,10 +94,10 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
       keyToAggregate += key → actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
-    case Input.Forward(key: String, command @ TestAggregateActor.Command.Remove) ⇒
+    case Input.Forward(key: String, TestAggregateActor.Command.Remove) ⇒
       val aggregateActor = keyToAggregate(key)
       val respondTo = this.sender()
-      (aggregateActor ? command).mapTo[TestAggregateActor.Response.Completed] foreach { response ⇒
+      (aggregateActor ? TestAggregateActor.Command.Remove).mapTo[TestAggregateActor.Response.Completed] foreach { response ⇒
         // Respond first when actor TestAggregateActor has been terminated
         context.actorOf(Props {
           new Actor {

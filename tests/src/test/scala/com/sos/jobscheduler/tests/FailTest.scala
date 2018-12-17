@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tests.FailTest._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 import scala.reflect.ClassTag
 
 final class FailTest extends FreeSpec

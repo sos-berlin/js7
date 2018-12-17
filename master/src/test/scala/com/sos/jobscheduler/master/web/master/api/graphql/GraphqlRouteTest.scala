@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.OrderApi
@@ -39,7 +39,6 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
   private val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi {
-    def addOrder(order: FreshOrder) = throw new NotImplementedError
     def order(orderId: OrderId) = Task.now(TestOrders.get(orderId))
     def orders = Task.now(eventIdGenerator.stamp(TestOrders.values.toVector))
     def orderCount = Task.now(TestOrders.values.size)

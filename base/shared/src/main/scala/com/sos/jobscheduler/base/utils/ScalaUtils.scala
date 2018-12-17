@@ -55,8 +55,6 @@ object ScalaUtils {
     }
 
   object implicits {
-    import scala.language.implicitConversions
-
     implicit final class ToStringFunction1[A, R](private val delegate: A ⇒ R) {
       def withToString(string: String): A ⇒ R =
         new (A ⇒ R) {

@@ -14,7 +14,6 @@ import com.sos.jobscheduler.master.MasterRepoReaderTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 
 final class MasterRepoReaderTest extends FreeSpec {
 

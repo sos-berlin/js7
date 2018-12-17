@@ -4,7 +4,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.file.Path
 import javax.xml.transform.stream.StreamSource
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

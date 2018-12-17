@@ -30,7 +30,6 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

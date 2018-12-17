@@ -72,7 +72,7 @@ final class CloseableIteratorTest extends FreeSpec
   "closeAtEnd on empty iterator closes immediately" in {
     val a = new TestIterator(Iterator.empty)
     assert(!a.closed)
-    val b = a.closeAtEnd
+    a.closeAtEnd  // Value discarded, but iterator is nevertheless closed immediately
     assert(a.closed)
   }
 

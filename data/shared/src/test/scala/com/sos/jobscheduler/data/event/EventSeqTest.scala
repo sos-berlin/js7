@@ -6,7 +6,6 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, ObjectEncoder}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
-import scala.language.higherKinds
 
 /**
   * @author Joacim Zschimmer

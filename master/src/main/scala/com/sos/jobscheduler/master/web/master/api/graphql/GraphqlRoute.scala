@@ -123,7 +123,7 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   private val EmptyObject = Json.obj()
 
-  private def executeGraphql(query: Document, operationName: Option[String], variables: Json = EmptyObject): Future[Json] =
+  private def executeGraphql(query: Document, operationName: Option[String], variables: Json): Future[Json] =
     Executor.execute(MasterGraphqlSchema.schema, query, context,
       operationName = operationName,
       variables = variables)

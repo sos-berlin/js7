@@ -6,7 +6,6 @@ import com.sos.jobscheduler.master.javaapi.MasterRepoReaderTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec
-import scala.language.higherKinds
 
 /**
   * @author Joacim Zschimmer

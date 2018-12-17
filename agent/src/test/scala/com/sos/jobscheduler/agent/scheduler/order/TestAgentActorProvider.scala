@@ -7,7 +7,6 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.auth.UserId
@@ -16,7 +15,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{Closer, HasCloser}
-import com.sos.jobscheduler.core.event.{ActorEventCollector, StampedKeyedEventBus}
+import com.sos.jobscheduler.core.event.ActorEventCollector
 import java.nio.file.Path
 import javax.inject.Singleton
 import scala.concurrent.{Future, Promise}
@@ -49,8 +48,6 @@ object TestAgentActorProvider {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
-    implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
-    implicit val keyedEventBus = injector.instance[StampedKeyedEventBus]
 
     val eventCollector = injector.createChildInjector(new AbstractModule {
       override def configure() = bind(classOf[EventCollector.Configuration]) toInstance

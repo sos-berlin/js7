@@ -13,13 +13,6 @@ import org.scalatest.FreeSpec
   */
 final class ProblemTest extends FreeSpec
 {
-  private implicit val codeToString: ProblemCode ⇒ Option[String] = _  match {
-    case ProblemCode("PROBLEM-CODE") ⇒ Some("PROBLEM MESSAGE")
-    case ProblemCode("PROBLEM-CODE-1") ⇒ Some("PROBLEM MESSAGE-1 first=$first")
-    case ProblemCode("PROBLEM-CODE-1-3") ⇒ Some("PROBLEM MESSAGE-1-3 first=$first third=$third")
-    case _ ⇒ None
-  }
-
   "JSON" - {
     "without ProblemCode" - {
       "standard" in {
