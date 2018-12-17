@@ -63,10 +63,6 @@ trait EventHandler {
     } yield callback
 
   private def requestOrdersAndEvents2: Callback =
-    scope.modState(o ⇒ o.copy(
-      ordersState = o.ordersState.copy(
-        content = OrdersState.FetchingContent))
-    ) >>
     Callback.future {
       MasterApi.orders.runAsync transform {
         case Failure(err) ⇒
@@ -138,5 +134,5 @@ object EventHandler {
   val TornDelay         = 1.second
   private val InitialFetchedContext = OrdersState.FetchedContent(Map(), Map(), eventId = EventId.BeforeFirst, eventCount = 0)
 
-  def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10)) map (_.seconds)
+  def newAfterErrorDelayIterator = (Iterator.fill(10)(1) ++ Iterator.fill(10)(2) ++ Iterator.continually(5)) map (_.seconds)
 }

@@ -9,35 +9,32 @@ import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{AExecute, BExecu
 /**
   * @author Joacim Zschimmer
   */
-final class FlatWorkflowTest extends org.scalatest.FreeSpec {
-
+final class FlatWorkflowTest extends org.scalatest.FreeSpec
+{
   "flattenWorkflow" in {
     assert(FlatWorkflows.flattenWorkflow(ForkTestSetting.TestWorkflow) == Vector[(Position, Instruction.Labeled)](
-      (Position(0         ), AExecute),
-      (Position(1         ), ForkTestSetting.TestWorkflow.instruction(1)),
+      (Position(0         ), ForkTestSetting.TestWorkflow.instruction(1)),
+      (Position(0, "🥕", 0), AExecute),
+      (Position(0, "🥕", 1), ImplicitEnd),
+      (Position(0, "🍋", 0), AExecute),
+      (Position(0, "🍋", 1), ImplicitEnd),
+      (Position(1         ), ForkTestSetting.TestWorkflow.instruction(1)),  // Fork
       (Position(1, "🥕", 0), AExecute),
-      (Position(1, "🥕", 1), AExecute),
-      (Position(1, "🥕", 2), ImplicitEnd),
+      (Position(1, "🥕", 1), ImplicitEnd),
       (Position(1, "🍋", 0), AExecute),
-      (Position(1, "🍋", 1), BExecute),
-      (Position(1, "🍋", 2), ImplicitEnd),
-      (Position(2         ), AExecute),
-      (Position(3         ), ForkTestSetting.TestWorkflow.instruction(3)),
-      (Position(3, "🥕", 0), AExecute),
-      (Position(3, "🥕", 1), AExecute),
-      (Position(3, "🥕", 2), ImplicitEnd),
+      (Position(1, "🍋", 1), ImplicitEnd),
+      (Position(2         ), BExecute),
+      (Position(3         ), ForkTestSetting.TestWorkflow.instruction(3)),  // Fork
+      (Position(3, "🥕", 0), BExecute),
+      (Position(3, "🥕", 1), ImplicitEnd),
       (Position(3, "🍋", 0), AExecute),
-      (Position(3, "🍋", 1), AExecute),
+      (Position(3, "🍋", 1), BExecute),
       (Position(3, "🍋", 2), ImplicitEnd),
-      (Position(4         ), AExecute),
-      (Position(5         ), ForkTestSetting.TestWorkflow.instruction(5)),
-      (Position(5, "🥕", 0), AExecute),
-      (Position(5, "🥕", 1), AExecute),
-      (Position(5, "🥕", 2), ImplicitEnd),
-      (Position(5, "🍋", 0), BExecute),
-      (Position(5, "🍋", 1), BExecute),
-      (Position(5, "🍋", 2), ImplicitEnd),
-      (Position(6         ), AExecute),
-      (Position(7         ), ImplicitEnd)))
+      (Position(4         ), ForkTestSetting.TestWorkflow.instruction(4)),  // Fork
+      (Position(4, "🥕", 0), AExecute),
+      (Position(4, "🥕", 1), ImplicitEnd),
+      (Position(4, "🍋", 0), BExecute),
+      (Position(4, "🍋", 1), ImplicitEnd),
+      (Position(5         ), ImplicitEnd)))
   }
 }

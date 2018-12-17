@@ -48,5 +48,5 @@ object Utils {
 
   /** For text content, not for attributes. */
   def stringToHtml(string: String) =
-    string.replace("<", "&lt;").replace(">", "&gt;").replace("&", "&amp;")
+    string.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 }
