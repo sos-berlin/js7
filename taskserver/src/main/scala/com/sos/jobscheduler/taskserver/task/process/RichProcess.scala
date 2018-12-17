@@ -116,7 +116,7 @@ object RichProcess {
   def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
     (implicit iox: IOExecutor, ec: ExecutionContext): RichProcess =
   {
-    val process = startProcessBuilder(processConfiguration, file, arguments) { _.start() }
+    val process = startProcessBuilder(processConfiguration, file, arguments) { _.startRobustly() }
     new RichProcess(processConfiguration, process, argumentsForLogging = file.toString +: arguments)
   }
 
