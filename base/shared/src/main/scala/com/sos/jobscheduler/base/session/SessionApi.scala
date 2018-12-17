@@ -30,24 +30,23 @@ trait SessionApi extends HasSessionToken
     tokenOption match {
       case None ⇒ Task.pure(Completed)
       case Some(sessionToken) ⇒
-        if (!sessionTokenRef.compareAndSet(tokenOption, None))  // Changes nothing in case of a concurrent successful Logout or Login
-          Task.pure(Completed)
-        else
-          executeSessionCommand(Logout(sessionToken)) map {
-            case SessionCommand.Response.Accepted ⇒ Completed
-          }
+        executeSessionCommand(Logout(sessionToken), suppressSessionToken = true) map {
+          case SessionCommand.Response.Accepted ⇒
+            sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Logout or Login
+            Completed
+        }
     }
   }
 
-  private def executeSessionCommand(command: SessionCommand): Task[command.Response] =
-    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
+  private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] =
+    httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command, suppressSessionToken = suppressSessionToken)
       .map(_.asInstanceOf[command.Response])
 
   final def clearSession(): Unit =
-    sessionTokenRef.set(None)
+    sessionTokenRef := None
 
   final def setSessionToken(sessionToken: SessionToken): Unit =
-    sessionTokenRef.set(Some(sessionToken))
+    sessionTokenRef := Some(sessionToken)
 
   // Used by AkkaHttpClient and JsHttpClient
   final def sessionToken: Option[SessionToken] =

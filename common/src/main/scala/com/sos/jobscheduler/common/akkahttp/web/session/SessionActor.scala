@@ -14,6 +14,7 @@ import com.typesafe.config.Config
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 
+// TODO https://www.owasp.org/index.php/Session_Management_Cheat_Sheet
 /**
  * Executes public Agent commands.
  *

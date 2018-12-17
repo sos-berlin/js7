@@ -271,7 +271,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }"""
         val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
         val exception = intercept[HttpException] {
-          httpClient.post[Json, Json](s"$uri/master/api/order", order, headers) await 99.s
+          httpClient.postWithHeaders[Json, Json](s"$uri/master/api/order", order, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "No such key 'Workflow:/MISSING'")  // Or similar
@@ -671,7 +671,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
     def postGraphql(graphql: Json): Json = {
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
-      httpClient.post[Json, Json](s"$uri/master/api/graphql", graphql, headers).await(99.s)
+      httpClient.postWithHeaders[Json, Json](s"$uri/master/api/graphql", graphql, headers).await(99.s)
     }
   }
 
@@ -712,7 +712,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }"""
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       testJson(
-        httpClient.post[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
+        httpClient.postWithHeaders[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
         json"""{
           "TYPE": "BatchResponse",
           "responses": [
@@ -734,7 +734,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       val cmd = json"""{ "TYPE": "Terminate" }"""
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       testJson(
-        httpClient.post[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
+        httpClient.postWithHeaders[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,
         json"""{
           "TYPE": "Accepted"
         }""")

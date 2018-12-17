@@ -11,7 +11,7 @@ trait HttpClient
 {
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A]
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B]
+  def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean = false): Task[B]
 
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: String, data: A): Task[/*StatusCode*/Int]

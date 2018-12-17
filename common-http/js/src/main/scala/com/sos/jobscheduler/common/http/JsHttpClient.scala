@@ -32,18 +32,18 @@ trait JsHttpClient extends HttpClient with HasSessionToken {
           headers = (("Accept" → "application/json") :: sessionHeaders).toMap,
           timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt)))
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
-    decodeResponse(post_(uri, data, headers = ("Accept" → "application/json") :: Nil))
+  def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
+    decodeResponse(post_(uri, data, headers = ("Accept" → "application/json") :: Nil, suppressSessionToken = suppressSessionToken))
 
   def postDiscardResponse[A: Encoder](uri: String, data: A) =
     post_(uri, data).map(_.status)
 
-  private def post_[A: Encoder](uri: String, data: A, headers: List[(String, String)] = Nil): Task[XMLHttpRequest] =
+  private def post_[A: Encoder](uri: String, data: A, headers: List[(String, String)] = Nil, suppressSessionToken: Boolean = false): Task[XMLHttpRequest] =
     Task.deferFuture(
       Ajax.post(
         uri,
         implicitly[Encoder[A]].apply(data).compactPrint,
-        headers = (headers ::: ("Content-Type" → "application/json") :: sessionHeaders).toMap))
+        headers = (headers ::: ("Content-Type" → "application/json") :: (if (suppressSessionToken) Nil else sessionHeaders)).toMap))
 
   private def sessionHeaders = sessionToken.map(SessionToken.HeaderName → _.secret.string).toList
 

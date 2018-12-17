@@ -73,11 +73,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     sendReceive(HttpRequest(GET, uri, headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
       .flatMap(unmarshal[A](uri))
 
-  def post[A: Encoder, B: Decoder](uri: String, data: A): Task[B] =
-    post[A, B](Uri(uri), data)
+  def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
+    post2[A, B](Uri(uri), data, Nil, suppressSessionToken = suppressSessionToken)
 
-  def post[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader] = Nil): Task[B] =
-    post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil)
+  def postWithHeaders[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[B] =
+    post2[A, B](uri, data, headers, suppressSessionToken = false)
+
+  private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean): Task[B] =
+    post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
       .flatMap(unmarshal[B](uri))
 
   def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
@@ -86,20 +89,21 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       response.status.intValue
     }
 
-  def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader]): Task[HttpResponse] =
+  def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
     for {
       entity ← Task.deferFutureAction(implicit scheduler ⇒ Marshal(data).to[RequestEntity])
       response ← sendReceive(
         HttpRequest(POST, uri, headers, entity),
+        suppressSessionToken = suppressSessionToken,
         logData = Some(data.getClass.scalaName stripPrefix "com.sos.jobscheduler."))
     } yield response
 
   def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
     sendReceive(HttpRequest(POST, uri, headers, entity))
 
-  final def sendReceive(request: HttpRequest, logData: ⇒ Option[String] = None): Task[HttpResponse] =
+  final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: ⇒ Option[String] = None): Task[HttpResponse] =
     withCheckedAgentUri(request) { request ⇒
-      val headers = sessionToken map (token ⇒ RawHeader(SessionToken.HeaderName, token.secret.string))
+      val headers = if (suppressSessionToken) None else sessionToken map (token ⇒ RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       Task.deferFuture {
         logRequest(req, logData)

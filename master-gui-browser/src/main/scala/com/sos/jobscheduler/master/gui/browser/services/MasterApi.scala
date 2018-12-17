@@ -28,22 +28,12 @@ object MasterApi extends HttpMasterApi with JsHttpClient
   protected def credentialsHeaders = Nil  // Browser handles authentication with a user dialog
 
   def loginUntilReachable(afterErrorDelay: Iterator[FiniteDuration]): Task[SessionToken] =
-    loginUntilReachable(afterErrorDelay, afterUnauthorized = false)
-
-  private def loginUntilReachable(afterErrorDelay: Iterator[FiniteDuration], afterUnauthorized: Boolean): Task[SessionToken] =
     logout().flatMap(_ ⇒ login(None)).attempt flatMap {
       case Left(e: HttpClientException) ⇒
         if (e.reason.isUnreachable)
-          loginUntilReachable(afterErrorDelay, afterUnauthorized = false).delayExecution(afterErrorDelay.next())
+          loginUntilReachable(afterErrorDelay).delayExecution(afterErrorDelay.next())
         else
-          e.reason match {
-            case reason: HttpClientException.HttpFailure if reason.status == 401/*Unauthorized*/ && !afterUnauthorized ⇒
-              clearSession()
-              loginUntilReachable(afterErrorDelay, afterUnauthorized = true).delayExecution(afterErrorDelay.next())
-
-            case _ ⇒ throw e
-          }
-
+          throw e
       case Left(t) ⇒ throw t
       case Right(o) ⇒ Task.pure(o)  // Success
     }

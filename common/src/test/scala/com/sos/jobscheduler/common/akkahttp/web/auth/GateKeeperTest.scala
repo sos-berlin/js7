@@ -330,10 +330,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
       }
     }
 
-    "GET /ValidUserPermission with invalid credentials is rejected" in {
-      implicit def routeTestTimeout(implicit system: ActorSystem) =
-        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).dilated)
-
+    "GET /ValidUserPermission with invalid credentials is delayed and rejected" in {
+      implicit val routeTestTimeout = RouteTestTimeout(9.seconds.dilated)
       val t = now
       Get(validUserUri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
         assert(status == Unauthorized)

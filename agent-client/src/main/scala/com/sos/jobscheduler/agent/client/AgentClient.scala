@@ -39,7 +39,7 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
   protected lazy val uriPrefixPath = "/agent"
 
   final def commandExecute(command: AgentCommand): Task[command.Response] =
-    post[AgentCommand, AgentCommand.Response](agentUris.command, command)
+    post[AgentCommand, AgentCommand.Response](uri = agentUris.command.toString, command)
       .map(_.asInstanceOf[command.Response])
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)

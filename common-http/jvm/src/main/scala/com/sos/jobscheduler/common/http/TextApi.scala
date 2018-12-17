@@ -23,7 +23,7 @@ trait TextApi {
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      httpClient.post[Json, Json](commandUri, yamlToJson(command).orThrow).runAsync)
+      httpClient.post[Json, Json](uri = commandUri.toString, yamlToJson(command).orThrow).runAsync)
     printer.doPrint(response.toYamlString)
   }
 
