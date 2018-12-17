@@ -60,8 +60,8 @@ object Futures {
     promise.future
   }
 
-  object implicits {
-
+  object implicits
+  {
     implicit final class SuccessFuture[A](private val delegate: Future[A]) extends AnyVal {
       /**
        * Like .value.get.get - in case of exception own stack trace is added.
@@ -91,14 +91,23 @@ object Futures {
           case None ⇒ awaitInfinite
         }
 
+      // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
+      def awaitInfinite: A =
+        Await.ready(delegate, Duration.Inf).value match {
+          case Some(Success(o)) ⇒ o
+          case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
+          case None ⇒ throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
+        }
+
       def await(duration: java.time.Duration): A =
-        Await.ready(delegate, duration.toFiniteDuration).successValue
+        await(duration.toFiniteDuration)
 
       def await(duration: Duration): A =
-        Await.ready(delegate, duration).successValue
-
-      def awaitInfinite: A =
-        Await.ready(delegate, Duration.Inf).successValue
+        Await.ready(delegate, duration).value match {
+          case Some(Success(o)) ⇒ o
+          case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
+          case None ⇒ throw new TimeoutException(s"await(${duration.pretty}): Future as not been completed in time")
+        }
     }
 
     implicit final class RichFutures[A, M[X] <: TraversableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
@@ -115,10 +124,10 @@ object Futures {
         await(duration.toFiniteDuration)
 
       def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        Await.result(Future.sequence(delegate)(cbf, ec), duration)
+        Future.sequence(delegate)(cbf, ec) await duration
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        Await.ready(Future.sequence(delegate)(cbf, ec), Duration.Inf).successValue
+        Future.sequence(delegate)(cbf, ec).awaitInfinite
     }
 
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal {
@@ -126,7 +135,7 @@ object Futures {
     }
   }
 
-  class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
+  final class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
 
   object SynchronousExecutionContext extends ExecutionContext {
     def execute(runnable: Runnable) = runnable.run()
