@@ -1,0 +1,6 @@
+{
+  "description": "Used for experimental subproject master-gui-browser",
+  "dependencies": {
+    "jsdom": "12.2.0"
+  }
+}

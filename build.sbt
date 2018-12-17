@@ -127,7 +127,7 @@ lazy val jobscheduler = (project in file("."))
     `master-client`.jvm,
     `master-data`.jvm,
     `master-gui`,
-    //Requires node.js for testing: `master-gui-browser`,
+    `master-gui-browser`,
     `agent-client`,
     `agent-data`,
     `agent-tests`,
@@ -271,9 +271,6 @@ lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
       log4j % "test"
   }
   .jsSettings(
-    //scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
-    //jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
-    //scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core, common, `agent-client`, tester.jvm % "test")
@@ -320,11 +317,6 @@ lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
       akkaHttp ++
       log4j % "test"
     })
-  .jsSettings(
-    scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
-    jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
-    scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/browser/gui"
 lazy val masterGuiJsFilename = Def.task {
@@ -419,6 +411,8 @@ lazy val `master-gui-browser` = project
         commonJSName "ReactDOMServer"
         dependsOn "react-dom.development.js",
       "org.webjars.npm" % "toastr" % toastrVersion / s"$toastrVersion/toastr.js" minified "build/toastr.min.js"))
+  .settings(inConfig(StandardTest)(ScalaJSPlugin.testConfigSettings): _*)  // https://www.scala-js.org/doc/project/testing.html
+  .settings(inConfig(ExclusiveTest)(ScalaJSPlugin.testConfigSettings): _*)
 
 def provideWebjarEntryAsResource(jarName: String, entries: Seq[String]) =
   provideJarEntryAsResource(jarName, entries map (e ⇒ s"META-INF/resources/webjars/$e" → s"$masterGuiPath/webjars/$e"))

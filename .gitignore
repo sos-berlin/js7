@@ -13,6 +13,10 @@ idea-shared-test
 # MacOS
 .DS_Store
 
+# Eclipse
 .classpath
 .project
 .settings
+
+# npm
+node_modules

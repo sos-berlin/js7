@@ -15,7 +15,7 @@ final class UtilsTest extends FreeSpec {
   }
 
   "stringToHtml" in {
-    assert(stringToHtml("<script>hallo&amp;</script>") == "&lt;script&gt;hallo&amp;amp;&lt;/script")
+    assert(stringToHtml("<script>hallo&amp;</script>") == "&lt;script&gt;hallo&amp;amp;&lt;/script&gt;")
     assert(stringToHtml("<![CDATA[ bla ]]>") == "&lt;![CDATA[ bla ]]&gt;")
   }
 }
