@@ -24,10 +24,9 @@
   * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
-import Dependencies.{bootstrapVersion, toastrVersion}
 import java.nio.file.Paths
 import sbt.Keys.testOptions
-import sbt.{CrossVersion, Def}
+import sbt.CrossVersion
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -50,7 +49,7 @@ val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
 addCommandAlias("clean-all"      , "; clean; clean-js; testerJVM/clean")
-addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/clean; master-clientJS/clean; master-dataJS/clean; master-gui-browser/clean; testerJS/clean")
+addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/clean; master-clientJS/clean; master-dataJS/clean; testerJS/clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
@@ -126,8 +125,6 @@ lazy val jobscheduler = (project in file("."))
     master,
     `master-client`.jvm,
     `master-data`.jvm,
-    `master-gui`,
-    `master-gui-browser`,
     `agent-client`,
     `agent-data`,
     `agent-tests`,
@@ -136,7 +133,7 @@ lazy val jobscheduler = (project in file("."))
   .settings(skip in publish := true)
 
 lazy val `jobscheduler-install` = project
-  .dependsOn(master, `master-gui`, agent)
+  .dependsOn(master, agent)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -249,9 +246,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
-      "commitMessage" → git.gitHeadMessage.value,
-      "bootstrapVersion" → bootstrapVersion,
-      "toastrVersion" → toastrVersion))
+      "commitMessage" → git.gitHeadMessage.value))
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(base, tester % "test")
@@ -317,111 +312,6 @@ lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
       akkaHttp ++
       log4j % "test"
     })
-
-val masterGuiPath = s"com/sos/jobscheduler/master/gui/browser/gui"
-lazy val masterGuiJsFilename = Def.task {
-  // Scala.js uses different filenames for the generated application.js.
-  // - master-gui-browser-opt.js for optimized production
-  // - master-gui-browser-fastopt.js for development
-  Paths.get((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path).toFile.getName
-}
-
-lazy val `master-gui` = project
-  .dependsOn(master)
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTags ++
-      webjars.materialIcons ++
-      scalaTest % "test" ++
-      akkaHttpTestkit % "test" ++
-      log4j % "test"
-  }
-  .settings(
-    // Provide master-gui-browser JavaScript code as resources placed in master-gui package
-    resourceGenerators in Compile += Def.task {
-      val file = (resourceManaged in Compile).value / "com/sos/jobscheduler/master/gui/server/gui-js.conf"
-      IO.write(file, "jsName=" + masterGuiJsFilename.value)
-      Seq(file)
-    }.taskValue,
-    resources in Compile ++= Seq(
-      new File((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path),            // master-gui-browser-fastopt.js or master-gui-browser-opt.js
-      new File((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path + ".map"),   // master-gui-browser-...opt.js.map
-      (packageMinifiedJSDependencies in Compile in `master-gui-browser`).value),              // master-gui-browser-...opt-jsdeps.min.js
-    mappings in (Compile, packageBin) :=
-      (mappings in (Compile, packageBin)).value map { case (file, path) ⇒
-        val generatedJsName = masterGuiJsFilename.value
-        val sourcemapName = s"$generatedJsName.map"
-        val dependenciesJsName = (packageMinifiedJSDependencies in Compile in `master-gui-browser`).value.getName
-        path match {
-          case `generatedJsName` | `sourcemapName` | `dependenciesJsName`  ⇒
-            //println(s"$o -> $masterGuiPath/$path")
-            (file, s"$masterGuiPath/$path")  // Move into right Java package
-          case _ ⇒
-            (file, path)
-        }
-      },
-    mappings in (Compile, packageBin) := {  // All assets from master-gui-browser/$masterGuiPath: index.html, .css, .ico etc.
-      val m = recursiveFileMapping((classDirectory in Compile in `master-gui-browser`).value / masterGuiPath, to = masterGuiPath).toMap
-      ((mappings in (Compile, packageBin)).value filterNot { case (file, _) ⇒ m contains file }) ++ m
-    })
-
-lazy val `master-gui-browser` = project
-  .enablePlugins(ScalaJSPlugin)
-  .dependsOn(data.js, `master-data`.js, `master-client`.js)
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(
-    commonSettings,
-    scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
-    jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
-    scalaJSUseMainModuleInitializer := true,
-    scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
-    resourceGenerators in Compile += provideWebjarEntryAsResource(s"bootstrap-$bootstrapVersion.jar", Seq(
-      s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css",
-      s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css.map")),
-    resourceGenerators in Compile += provideWebjarEntryAsResource(s"toastr-$toastrVersion.jar", Seq(
-      s"toastr/$toastrVersion/build/toastr.min.css")),
-    libraryDependencies ++= {
-      import Dependencies._
-      Seq(
-        "com.github.mpilquist" %% "simulacrum" % simulacrumVersion,
-        "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion,
-        "be.doeraene" %%% "scalajs-jquery" % scajaJsJQueryVersion,
-        "com.github.japgolly.scalajs-react" %%% "core" % "1.3.1",
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.3.1",
-      //"com.github.japgolly.scalajs-react" %%% "ext-cats" % "1.2.1",
-      //"com.github.japgolly.scalajs-react" %%% "ext-monocle-cats" % "1.2.1",
-      //"com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion,
-      //"com.github.julien-truffaut" %%% "monocle-macro" % monocleVersion,
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
-    },
-    jsDependencies ++= Seq(
-      "org.webjars.npm" % "jquery" % "3.3.1" / "dist/jquery.js" minified "dist/jquery.min.js"
-        commonJSName "jQuery",
-      "org.webjars.npm" % "bootstrap" % bootstrapVersion / "dist/js/bootstrap.bundle.js" minified "dist/js/bootstrap.bundle.min.js"
-        commonJSName "Bootstrap"
-        dependsOn "dist/jquery.js",
-      "org.webjars.bower" % "react" % "16.1.0" / "react.development.js" minified "react.production.min.js"
-        commonJSName "React",
-      "org.webjars.bower" % "react" % "16.1.0" / "react-dom.development.js" minified "react-dom.production.min.js"
-        commonJSName "ReactDOM"
-        dependsOn "react.development.js",
-      "org.webjars.bower" % "react" % "16.1.0" / "react-dom-server.browser.development.js" minified "react-dom-server.browser.production.min.js"
-        commonJSName "ReactDOMServer"
-        dependsOn "react-dom.development.js",
-      "org.webjars.npm" % "toastr" % toastrVersion / s"$toastrVersion/toastr.js" minified "build/toastr.min.js"))
-  .settings(inConfig(StandardTest)(ScalaJSPlugin.testConfigSettings): _*)  // https://www.scala-js.org/doc/project/testing.html
-  .settings(inConfig(ExclusiveTest)(ScalaJSPlugin.testConfigSettings): _*)
-
-def provideWebjarEntryAsResource(jarName: String, entries: Seq[String]) =
-  provideJarEntryAsResource(jarName, entries map (e ⇒ s"META-INF/resources/webjars/$e" → s"$masterGuiPath/webjars/$e"))
-
-def provideJarEntryAsResource(jarName: String, entryToResource: Seq[(String, String)]) = Def.task[Seq[File]] {
-  val jar = (Compile / dependencyClasspathAsJars).value collectFirst { case Attributed(path) if path.name == jarName ⇒ path } getOrElse
-    sys.error(s"Missing $jarName in classpath")
-  copyJarEntries(jar, entryToResource map (o ⇒ o._1 → ((Compile / resourceManaged).value / o._2)))
-}
 
 lazy val core = project.dependsOn(common, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -520,7 +410,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`, tester.jvm % "test", `jobscheduler-docker` % "test")
+lazy val tests = project.dependsOn(master, agent, `agent-client`, tester.jvm % "test", `jobscheduler-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

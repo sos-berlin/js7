@@ -3,7 +3,8 @@ import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
-object Dependencies {
+object Dependencies
+{
   val scalaVersion = "2.12.8"
 
   val akkaVersion = "2.5.18"
@@ -21,9 +22,6 @@ object Dependencies {
   val monixVersion = "2.3.3"
   val monocleVersion = "1.5.0"
   val scalaJsDomVersion = "0.9.6"
-  val scajaJsJQueryVersion = "0.9.3"
-  val bootstrapVersion = "4.1.3"
-  val toastrVersion = "2.1.4"
   val sangriaVersion = "1.4.2"
   val sangriaCirceVersion = "1.2.1"
 
@@ -72,12 +70,6 @@ object Dependencies {
   val apacheCommonsBeanutils = "commons-beanutils" % "commons-beanutils" % "1.9.2"
   val reflections         = "org.reflections" % "reflections" % "0.9.11"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
-
-  object webjars {
-    val bootstrap     = "org.webjars.npm" % "bootstrap" % bootstrapVersion
-    val materialIcons = "org.webjars" % "material-design-icons" % "3.0.1"
-    val toastr        = "org.webjars.npm" % "toastr" % toastrVersion
-  }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 

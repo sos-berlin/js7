@@ -24,17 +24,6 @@ object BuildUtils {
     def %(configurations: String) = delegate map { _ % configurations }
   }
 
-  def copyJarEntries(jar: File, entryToFile: Seq[(String, File)]): Seq[File] = {
-    val jarFile = new JarFile(jar)
-    try for ((entryPath, file) ← entryToFile) yield {
-      val entry = jarFile.getEntry(entryPath)
-      if (entry == null) sys.error(s"Missing entry in $jar: $entryPath")
-      Files.createDirectories(file.toPath.getParent)
-      Files.copy(jarFile.getInputStream(entry), file.toPath, REPLACE_EXISTING)
-      file
-    } finally jarFile.close()
-  }
-
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {
     val to_ = (to stripSuffix "/") + "/"
     for (file ← listFilesRecursively(directory)) yield
