@@ -135,13 +135,6 @@ object Collections {
         delegate += kv
       }
     }
-
-    implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator.asScala
-
-    implicit final class RichJavaStream[A](private val delegate: java.util.stream.Stream[A]) extends AnyVal {
-      def toImmutableSeq: Seq[A] =
-        Vector() ++ delegate.iterator.asScala
-    }
   }
 
   implicit final class RichGenericCompanion[+CC[X] <: GenTraversable[X]](private val delegate: GenericCompanion[CC]) extends AnyVal {
