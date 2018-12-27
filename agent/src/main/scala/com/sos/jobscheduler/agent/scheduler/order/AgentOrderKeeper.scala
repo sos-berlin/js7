@@ -172,7 +172,7 @@ extends MainJournalingActor[Event] with Stash {
 
     case JournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault)) { _ ⇒
+      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault.getId)) { _ ⇒
         become("ready")(ready)
         unstashAll()
         logger.info("Ready")

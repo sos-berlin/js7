@@ -13,7 +13,7 @@ import org.scalatest.FreeSpec
 final class MasterEventTest extends FreeSpec
 {
   "MasterReady" in {
-    testJson[MasterEvent](MasterReady(MasterId("MASTER"), ZoneId.of("Europe/Berlin")),
+    testJson[MasterEvent](MasterReady(MasterId("MASTER"), ZoneId.of("Europe/Berlin").getId),
       json"""{
         "TYPE": "MasterReady",
         "masterId": "MASTER",

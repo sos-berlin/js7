@@ -189,7 +189,7 @@ with MainJournalingActor[Event]
         readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
-      persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault))(_ ⇒
+      persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ ⇒
         self ! Internal.Ready
       )
 

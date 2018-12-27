@@ -12,7 +12,7 @@ import org.scalatest.FreeSpec
 final class AgentMasterEventTest extends FreeSpec
 {
   "MasterReadyFat" in {
-    testJson[KeyedEvent[AgentMasterEvent]](AgentMasterEvent.AgentReadyForMaster(ZoneId.of("Europe/Berlin")),
+    testJson[KeyedEvent[AgentMasterEvent]](AgentMasterEvent.AgentReadyForMaster(ZoneId.of("Europe/Berlin").getId),
       json"""{
         "TYPE": "AgentReadyForMaster",
         "timezone": "Europe/Berlin"

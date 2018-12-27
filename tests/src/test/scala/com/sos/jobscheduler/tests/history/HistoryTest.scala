@@ -100,10 +100,10 @@ final class HistoryTest extends FreeSpec
         val aAgentUri = runningAgents(0).localUri.toString
         val bAgentUri = runningAgents(1).localUri.toString
         assert(fatEvents.toSet == Set(
-          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault),
+          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId),
           OrderId("🔺") <-: OrderAddedFat(TestWorkflowId,None,Map("VARIABLE" → "VALUE")),
-          AAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
-          BAgentPath <-: AgentReadyFat(ZoneId.systemDefault),
+          AAgentPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
+          BAgentPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
           OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
           OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
@@ -128,7 +128,7 @@ final class HistoryTest extends FreeSpec
           OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
           OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
-          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))
+          NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))
 
         provider.runMaster() { master ⇒
           // Test recovering FatState from snapshot stored in journal file
@@ -143,7 +143,7 @@ final class HistoryTest extends FreeSpec
             val EventSeq.NonEmpty(stampeds) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = 99.seconds)) await 99.s
             assert(stampeds.head.eventId > keepEventsEventId)
             assert(stampeds.map(_.value.event) ==
-              Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault)))  // Only MasterReady, nothing else happened
+              Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))  // Only MasterReady, nothing else happened
           }
         }
       }

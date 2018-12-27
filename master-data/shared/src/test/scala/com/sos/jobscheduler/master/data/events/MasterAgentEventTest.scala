@@ -23,7 +23,7 @@ final class MasterAgentEventTest extends FreeSpec
   }
 
   "AgentReady" in {
-    testJson[KeyedEvent[MasterAgentEvent]](AgentPath("/AGENT") <-: AgentReady(ZoneId.of("Europe/Berlin")),
+    testJson[KeyedEvent[MasterAgentEvent]](AgentPath("/AGENT") <-: AgentReady(ZoneId.of("Europe/Berlin").getId),
       json"""{
         "TYPE": "AgentReady",
         "key": "/AGENT",

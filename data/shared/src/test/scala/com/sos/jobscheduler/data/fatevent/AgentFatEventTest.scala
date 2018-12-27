@@ -13,7 +13,7 @@ import org.scalatest.FreeSpec
 final class AgentFatEventTest extends FreeSpec
 {
   "MasterReadyFat" in {
-    testJson[KeyedEvent[AgentFatEvent]](AgentPath("/AGENT") <-: AgentFatEvent.AgentReadyFat(ZoneId.of("Europe/Berlin")),
+    testJson[KeyedEvent[AgentFatEvent]](AgentPath("/AGENT") <-: AgentFatEvent.AgentReadyFat(ZoneId.of("Europe/Berlin").getId),
       json"""{
         "TYPE": "AgentReadyFat",
         "key": "/AGENT",
