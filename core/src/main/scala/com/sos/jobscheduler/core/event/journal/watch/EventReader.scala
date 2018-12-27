@@ -110,7 +110,7 @@ extends AutoCloseable
 
     def next() =
       iteratorAtomic.get match {
-        case null ⇒ throw new ClosedException
+        case null ⇒ throw new ClosedException(iterator_.journalFile)
         case iterator ⇒
           _lastUsed = Timestamp.currentTimeMillis
           val stamped = iterator.next()

@@ -46,7 +46,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
   }
 
   def borrowIterator(): FileEventIterator[E] = {
-    if (closed()) throw new ClosedException
+    if (closed()) throw new ClosedException(journalFile)
     tryBorrowIterator() getOrElse newIterator()
   }
 
@@ -62,7 +62,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
 
   private def newIterator(): FileEventIterator[E] =
     synchronized {
-      if (closed()) throw new ClosedException
+      if (closed()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
       val result = new FileEventIterator[E](journalMeta, journalFile, tornEventId = tornEventId, flushedLength) {
         private val number = lentIterators.size + 1
