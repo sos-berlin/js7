@@ -20,7 +20,7 @@ import scala.concurrent.duration._
   */
 private[watch] class FileEventIterator[E <: Event](
   journalMeta: JournalMeta[E],
-  journalFile: Path,
+  val journalFile: Path,
   tornEventId: EventId,
   flushedLength: () ⇒ Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
@@ -47,15 +47,14 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
     nextEvent = null
   }
 
-  /** Make take minutes for a gigabygte journal..
+  /** May take minutes for a gigabygte journal..
     * @return false iff `after` is unknown
     */
   final def skipToEventAfter(journalIndex: JournalIndex, after: EventId): Boolean =
     eventId <= after &&
       (eventId == after ||
-        blocking {
-          journalIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls
-            // May take a long time !!!
+        journalIndex.synchronizeBuilding {  // After timeout a client may try again. We synchronize these probably idempotent calls (multiple FileEventIterators share the JournalIndex)
+          blocking {  // May take a long time !!!
             val watch = new TimeWatch(after)
             while (eventId < after) {
               if (!hasNext) return false
