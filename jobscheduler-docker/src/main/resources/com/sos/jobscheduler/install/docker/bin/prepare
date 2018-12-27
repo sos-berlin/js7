@@ -1,61 +1,26 @@
 #!/usr/bin/env bash
 set -e
 
-# $JOBSCHEDULER_DEV or -dev= points to jobscheduler development directory or its parent directory
-dev="$JOBSCHEDULER_DEV"
-installTgz=
-dockerTgz=
-
 for arg in "$@"; do :
   case "$arg" in
-    -dev=*)
-      dev="${arg#*=}"
-      shift
-      ;;
-    -install.tgz=*)
-      installTgz="${arg#*=}"
-      shift
-      ;;
-    -docker.tgz=*)
-      dockerTgz="${arg#*=}"
-      shift
-      ;;
     *)
-      echo Invalid option: $arg
+      echo "Invalid option: $arg"
       exit 1
       ;;
   esac
 done
 
-if [ -f "$dev/jobscheduler/project/../build.sbt" ]; then
-  dev="$dev/jobscheduler"
-fi
-echo Using development directory $dev
-if [ -z "$installTgz" ]; then
-  if [ -n "$dev" ]; then
-    installTgz="$(echo "$dev"/jobscheduler-install/target/universal/jobscheduler-install-[1-9]*.tgz)"
-  else
-    echo "Missing argument -install.tgz= or -dev= (with jobscheduler development directory)"
-    exit 1
-  fi
-fi
-if [ -z "$dockerTgz" ]; then
-  if [ -n "$dev" ]; then
-    dockerTgz="$(echo "$dev"/jobscheduler-docker/target/universal/jobscheduler-docker-[1-9]*.tgz)"
-  else
-    echo "Missing argument -installDocker.tgz= or -dev= (with jobscheduler development directory)"
-    exit 1
-   fi
-fi
 if [ -d build ] && [ ! -f build/bin/prepare ]; then :
-  echo Subdirectory build seems not to be created by jobscheduler-docker. Missing file build/bin/prepare. Exiting
+  echo "Subdirectory build seems not to be created by jobscheduler-docker. Missing file build/bin/prepare. Exiting"
   exit 1
 fi
 
 rm -rf build
-tar xzf "$dockerTgz"
-ln -nf "$installTgz" build/ >/dev/null || cp "$installTgz" build/
-
+tar xzf jobscheduler-docker-[0-9]*.tgz
+cp jobscheduler-*install-[0-9]*.tgz build/ || {
+  echo "Missing installation file jobscheduler-install-x.y.tgz"
+  exit 1
+}
 build/bin/prepare-volumes
 
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .
