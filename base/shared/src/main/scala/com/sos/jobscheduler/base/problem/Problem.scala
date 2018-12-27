@@ -229,16 +229,17 @@ object Problem
       prefix + "\n & "
 
   implicit val jsonEncoder: ObjectEncoder[Problem] = problem ⇒
-      JsonObject.fromIterable(
-        ("message" → Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
-          problem match {
-            case problem: HasCode ⇒
-              ("code" → problem.code.asJson) ::
-              ("arguments" → (problem.arguments.nonEmpty ? problem.arguments.mapValues(_.toString)).asJson) :: Nil
+    JsonObject.fromIterable(
+      ("message" → Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
+        problem match {
+          case problem: HasCode ⇒
+            ("code" → problem.code.asJson) ::
+            ("arguments" → (problem.arguments.nonEmpty ? problem.arguments).asJson) ::
+            Nil
 
-            case _: Problem ⇒
-              Nil
-          }))
+          case _: Problem ⇒
+            Nil
+        }))
 
   val typedJsonEncoder: ObjectEncoder[Problem] = {
     val typeField = "TYPE" → Json.fromString("Problem")

@@ -62,9 +62,40 @@ final class CheckedTest extends FreeSpec
     assert(Checked.catchNonFatal(throw t).swap.getOrElse(null).throwable eq t)
   }
 
+  private val valid1: Checked[Int] = Valid(1)
+  private val valid2: Checked[Int] = Valid(2)
+  private val invalidX: Checked[Int] = Invalid(Problem("X"))
+  private val invalidY: Checked[Int] = Invalid(Problem("Y"))
+
   "flatMap" in {
     assert((Invalid(Problem("A")): Checked[String]).flatMap((_: String) ⇒ throw new NotImplementedError) == Invalid(Problem("A")))
     assert((Valid("A"): Checked[String]).flatMap(_ ⇒ Valid(2)) == Valid(2))
+  }
+
+  "for-comprehension (flatMap)" in {
+    val valid = for {
+      a ← valid1
+      b ← valid2
+    } yield a → b
+    assert(valid == Valid(1 → 2))
+  }
+
+  "for-comprehension (flatMap), fail-fast" in {
+    val invalid = for {
+      a ← valid1
+      b ← invalidX
+      c ← valid2
+      d ← invalidY
+    } yield (a, b, c, d)
+    assert(invalid == Invalid(Problem("X")))
+  }
+
+  "mapN" in {
+    assert((valid1, valid2).mapN((a, b) ⇒ (a, b)) == Valid(1 → 2))
+  }
+
+  "mapN combines Problems" in {
+    assert((valid1, invalidX, valid2, invalidY).mapN((_, _, _, _) ⇒ ()) == Invalid(Problem("X\n & Y")))
   }
 
   "withProblemKey" in {
