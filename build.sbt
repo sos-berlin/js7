@@ -1,7 +1,8 @@
 /**
   * Install sbt from http://www.scala-sbt.org/.
-  * Install Node.js from https://nodejs.org/.
-  *   Run "npm install jsdom" in a parent directory.
+  * Not needed for standard (JVM-only) production build:
+  *   Install Node.js from https://nodejs.org/.
+  *   If you don't start sbt with "./sbt-batch": Run "npm install jsdom" in this or a parent directory.
   *   This command creates a directory "node_modules" and a file "package-lock.json".
   *
   * Recommended usage for CI server:
@@ -9,9 +10,6 @@
   *
   * To build only, without publishing:
   *   sbt clean-build
-  *
-  * To build quickly, without running tests again:
-  *   sbt "; clean-all; build-quickly"
   *
   * To build and publish to a repository use
   *   sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
@@ -21,12 +19,12 @@
   *   set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
   *   sbt clean-publish
   *
-  * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
+  * sbt allows to preset these command line options in the environment variable SBT_OPTS.
   */
 import BuildUtils._
 import java.nio.file.Paths
-import sbt.Keys.testOptions
 import sbt.CrossVersion
+import sbt.Keys.testOptions
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -48,8 +46,7 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
-addCommandAlias("clean-all"      , "; clean; clean-js; testerJVM/clean")
-addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/clean; master-clientJS/clean; master-dataJS/clean; testerJS/clean")
+addCommandAlias("clean-all"      , "; clean; jobschedulerJS/clean; testerJVM/clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
@@ -131,6 +128,18 @@ lazy val jobscheduler = (project in file("."))
     taskserver,
     tests)
   .settings(skip in publish := true)
+
+lazy val jobschedulerJS = (project in file("target/jobschedulerJS-dummy"))
+  .aggregate(
+    base.js,
+    `common-http`.js,
+    data.js,
+    `master-client`.js,
+    `master-data`.js)
+  .settings(skip in publish := true)
+
+lazy val all = (project in file("target/all-dummy"))  // Not the default project
+  .aggregate(jobscheduler, jobschedulerJS)
 
 lazy val `jobscheduler-install` = project
   .dependsOn(master, agent)

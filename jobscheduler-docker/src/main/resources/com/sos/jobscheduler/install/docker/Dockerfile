@@ -27,7 +27,7 @@ ENV LANG=en_US.UTF-8
 ENV LD_LIBRARY_PATH "$JAVA_HOME/lib"
 
 ADD files /
-ADD jobscheduler-*install-[1-9]*.tgz /opt/
+ADD jobscheduler-*install-[0-9]*.tgz /opt/
 
 RUN chown root:root -R /opt/jobscheduler-[1-9]* && \
     chmod o-w -R /opt/jobscheduler-[1-9]* && \

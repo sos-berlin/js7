@@ -25,7 +25,7 @@ trait HttpMasterApi extends MasterApi with SessionApi
 
   protected final def sessionUri = uris.session
 
-  private lazy val uris = MasterUris(masterUri = if (baseUriString.isEmpty) baseUriString else baseUriString.stripSuffix("/") + "/master")
+  lazy val uris = MasterUris(masterUri = if (baseUriString.isEmpty) baseUriString else baseUriString.stripSuffix("/") + "/master")
 
   final def executeCommand(command: MasterCommand): Task[command.Response] =
     httpClient.post[MasterCommand, MasterCommand.Response](uris.command, command)
