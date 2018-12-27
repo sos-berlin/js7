@@ -218,7 +218,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
         finally events.close()
 
       case _: EventSeq.Empty ⇒
-        sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after, timeout=$timeout) timed out")
+        throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after, timeout=$timeout) timed out")
 
       case o ⇒
         sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")

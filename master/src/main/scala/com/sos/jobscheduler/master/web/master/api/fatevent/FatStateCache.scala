@@ -114,7 +114,7 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
         logger.info(s"Still rebuilding requested FatState, $eventCount events processed since ${duration.pretty}")
       }
       if (eventId == after && eventCount > 0) {
-        lazy val msg = s"Rebuilding FatState from $eventCount events ${EventId.toString(initialEventId)}...${EventId.toString(after)} completed after ${duration.pretty}"
+        lazy val msg = s"FatState rebuilt from $eventCount events ${EventId.toString(initialEventId)}...${EventId.toString(after)} in ${duration.pretty}"
         if (!longDurationLogged && duration >= 30.seconds) {
           longDurationLogged = true
           logger.info(msg)
