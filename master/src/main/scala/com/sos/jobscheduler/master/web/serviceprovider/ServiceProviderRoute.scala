@@ -1,16 +1,14 @@
 package com.sos.jobscheduler.master.web.serviceprovider
 
-import akka.http.scaladsl.server.Directives.{reject, _}
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.StandardDirectives.lazyRoute
+import com.sos.jobscheduler.common.akkahttp.StandardDirectives.combineRoutes
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.web.serviceprovider.ServiceProviderRoute._
 import java.util.ServiceLoader
-import monix.eval.Coeval
 import monix.execution.Scheduler
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -21,39 +19,35 @@ import scala.collection.immutable.Seq
 private[web] trait ServiceProviderRoute
 {
   protected def scheduler: Scheduler
-  protected implicit def injector: Injector
+  protected def injector: Injector
 
-  private lazy val _route: Coeval[Route] = routeServices(injector).map(
-    _.map {
-      case NamedRouteService(NamedRoute("", route), _) ⇒ route
-      case NamedRouteService(NamedRoute(name, route), _) ⇒ pathSegments(name)(route)
-    }.foldFast(reject)(_ ~ _))
+  private lazy val services: Seq[RouteService] = {
+    val services = ServiceLoader.load(classOf[RouteService]).iterator.asScala.toVector
+    if (services.isEmpty) logger.debug("No services providers")
+    else for (s ← services) {
+      logger.debug(s"Found service provider ${s.getClass.scalaName}")
+      injector.injectMembers(s)
+    }
+    services
+  }
 
-  final def serviceProviderRoute: Route = lazyRoute(_route.value)
+  final lazy val serviceProviderRoute: Route = {
+    val namedRouteToService = for (s ← services; r ← s.namedRoutes) yield r → s
+    logAndCheck(namedRouteToService)
+    combineRoutes(
+      namedRouteToService map (_._1) map (r ⇒ pathSegments(r.suburi)(r.route)))
+  }
 }
 
-private[web] object ServiceProviderRoute {
+private[web] object ServiceProviderRoute
+{
   private val logger = Logger(getClass)
-  private val InterfaceName = classOf[RouteService].scalaName
 
-  private def routeServices(injector: Injector): Coeval[Seq[NamedRouteService]] =
-    Coeval.evalOnce {
-      val routes: Seq[NamedRouteService] = ServiceLoader.load(classOf[RouteService]).iterator.asScala
-        .flatMap { svc ⇒
-          injector.injectMembers(svc)
-          svc.namedRoutes map (r ⇒ NamedRouteService(r, svc))
-        }.toVector
-      routes.duplicateKeys(_.namedRoute.suburi) match {
-        case Some(duplicates) ⇒ sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(_.toString).mkString(", "))
-        case _ ⇒
-      }
-      if (routes.isEmpty) logger.trace(s"No service provider for $InterfaceName")
-      else for (r ← routes) logger.debug(s"Service provider for $InterfaceName: $r")
-      routes
+  private def logAndCheck(namedRouteToService: Seq[(NamedRoute, RouteService)]): Unit = {
+    for ((r, s) ← namedRouteToService) logger.debug(s"${s.getClass.scalaName} provides route '${r.suburi}'")
+    if (namedRouteToService.isEmpty) logger.trace(s"No routes")
+    for (duplicates ← namedRouteToService.duplicateKeys(_._1.suburi)) {
+      sys.error("Duplicate RouteService: " + duplicates.values.flatten.map(o ⇒ s"'${o._1.suburi}'->${o._2.getClass.scalaName}" ).mkString(", "))
     }
-
-  private case class NamedRouteService(namedRoute: NamedRoute, service: RouteService) {
-    override def toString = '"' + (if (namedRoute.suburi.isEmpty) "" else "/" + namedRoute.suburi) +
-      "\"->" + service.getClass.scalaName
   }
 }

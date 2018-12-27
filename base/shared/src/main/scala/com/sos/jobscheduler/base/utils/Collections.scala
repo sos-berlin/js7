@@ -34,7 +34,7 @@ object Collections {
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
-    implicit final class RichSeq[A](private val delegate: collection.Seq[A]) extends AnyVal {
+    implicit final class RichSeq[A](private val delegate: collection.Iterable[A]) extends AnyVal {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
         *

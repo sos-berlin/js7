@@ -4,11 +4,12 @@ import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, immutableDirective}
 import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
-import akka.http.scaladsl.server.Directives.{mapResponse, respondWithHeader}
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString}
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.BuildInfo
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -40,6 +41,9 @@ object StandardDirectives
       case _ ⇒
         P.checked("/" + uriPath.toString.stripPrefix("/"))   // Slashes not encoded, first slash optional (to avoid /api/xxx//path)
     }
+
+  def combineRoutes(routes: Iterable[Route]): Route =
+    routes.foldFast(reject)(_ ~ _)
 
   def lazyRoute(lazyRoute: ⇒ Route): Route =
     ctx ⇒ Future.successful(lazyRoute(ctx)).flatten
