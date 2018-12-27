@@ -94,7 +94,7 @@ with JournalingObserver
   /** Files containing non-kept events may be deleted. */
   @tailrec
   def keepEvents(after: EventId): Checked[Completed] = {
-    val old = keepEventsAfter()
+    val old = keepEventsAfter.get
     if (after < old)
       Invalid(Problem(s"keepEvents with already accepted EventId $after < $old ?"))
     else if (after == old)
@@ -108,7 +108,7 @@ with JournalingObserver
   }
 
   protected[journal] def deleteObsoleteJournalFiles(): Unit = {
-    val after = keepEventsAfter()
+    val after = keepEventsAfter.get
     val keepAfter = currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after ⇒
         current.tornEventId
