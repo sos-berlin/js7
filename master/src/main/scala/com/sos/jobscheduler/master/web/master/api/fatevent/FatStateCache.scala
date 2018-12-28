@@ -64,6 +64,12 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
 
     def eventId = fatState.eventId
 
+    def skipIgnoredEventIds(eventId: EventId): Unit = {
+      assert(fatState.eventId <= eventId)
+      fatState = fatState.copy(eventId = eventId)
+      lastDelivered = Some(fatState)
+    }
+
     def toFatEventSeq(
       request: EventRequest[FatEvent],
       eventSeq: TearableEventSeq[CloseableIterator, KeyedEvent[Event]])

@@ -110,16 +110,16 @@ with JournalingObserver
 
   protected[journal] def deleteObsoleteJournalFiles(): Unit = {
     val after = keepEventsAfter.get
-    val keepAfter = currentEventReaderOption match {
+    val keepFileAfter = currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after ⇒
         current.tornEventId
       case _ ⇒
         historicJournalFileAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
     }
-    for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepAfter) {
+    for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepFileAfter) {
+      logger.info(s"Deleting obsolete journal file '$historic'")
+      historic.close()
       try {
-        logger.info(s"Deleting obsolete journal file '$historic'")
-        historic.close()
         delete(historic.file)
         afterEventIdToHistoric -= historic.afterEventId
       } catch {

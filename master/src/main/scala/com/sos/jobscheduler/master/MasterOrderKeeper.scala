@@ -393,6 +393,12 @@ with MainJournalingActor[Event]
         terminating = true
         terminateRespondedAt = Some(now)
         Task.now(Valid(MasterCommand.Response.Accepted))
+
+      case MasterCommand.IssueTestEvent ⇒
+        Task.deferFuture {
+          persist(MasterTestEvent, async = true)(_ ⇒
+            Valid(MasterCommand.Response.Accepted))
+        }
     }
 
   private def readConfiguration(versionId: Option[VersionId]): Checked[IO[Unit]] = {

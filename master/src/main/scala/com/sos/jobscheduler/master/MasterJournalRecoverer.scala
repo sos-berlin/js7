@@ -17,6 +17,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, Or
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleEvent}
 import scala.collection.mutable
@@ -81,6 +82,7 @@ extends JournalRecoverer[Event]
           agentToEventId(a % v) = agentEventId
 
         case KeyedEvent(_, _: MasterAgentEvent) ⇒
+        case KeyedEvent(_, MasterTestEvent) ⇒
 
         case _ ⇒ sys.error(s"Unknown event recovered from journal: $keyedEvent")
       }

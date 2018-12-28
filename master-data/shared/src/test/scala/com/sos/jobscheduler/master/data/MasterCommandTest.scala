@@ -96,6 +96,13 @@ final class MasterCommandTest extends FreeSpec {
       }""")
   }
 
+  "IssueTestEvent" in {  // For tests only
+    testJson[MasterCommand](IssueTestEvent,
+      json"""{
+        "TYPE": "IssueTestEvent"
+      }""")
+  }
+
   "ReadConfigurationDirectory" - {
     "with versionId" in {
       testJson[MasterCommand](ReadConfigurationDirectory(Some(VersionId("VERSION"))),

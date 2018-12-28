@@ -20,4 +20,11 @@ final class MasterEventTest extends FreeSpec
         "timezone": "Europe/Berlin"
       }""")
   }
+
+  "MasterTestEvent" in {
+    testJson[MasterEvent](MasterTestEvent,
+      json"""{
+        "TYPE": "MasterTestEvent"
+      }""")
+  }
 }

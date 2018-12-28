@@ -61,6 +61,12 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  sealed trait IssueTestEvent extends MasterCommand
+  /** For tests only. */
+  case object IssueTestEvent extends IssueTestEvent {
+    type Response = Response.Accepted
+  }
+
   /** Master stops immediately with exit(). */
   case object EmergencyStop extends MasterCommand {
     type Response = Response.Accepted
@@ -105,6 +111,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
     Subtype(NoOperation),
+    Subtype(IssueTestEvent),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ScheduleOrdersEvery]),

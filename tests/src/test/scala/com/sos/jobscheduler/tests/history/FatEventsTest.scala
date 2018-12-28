@@ -27,7 +27,7 @@ import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.DirectoryProvider.StdoutOutput
-import com.sos.jobscheduler.tests.history.HistoryTest._
+import com.sos.jobscheduler.tests.history.FatEventsTest._
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -39,7 +39,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final class HistoryTest extends FreeSpec
+final class FatEventsTest extends FreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
@@ -131,9 +131,9 @@ final class HistoryTest extends FreeSpec
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))
 
         provider.runMaster() { master ⇒
-          // Test recovering FatState from snapshot stored in journal file
-          assert(listJournalFiles.size == 2 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
           autoClosing(new AkkaHttpMasterApi(master.localUri)) { masterApi ⇒
+            // Test recovering FatState from snapshot stored in journal file
+            assert(listJournalFiles.size == 2 && !listJournalFiles.contains("master--0.journal"))  // First file deleted
             masterApi.login(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
 
             // after=0 is torn
@@ -144,6 +144,35 @@ final class HistoryTest extends FreeSpec
             assert(stampeds.head.eventId > keepEventsEventId)
             assert(stampeds.map(_.value.event) ==
               Vector.fill(listJournalFiles.size)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))  // Only MasterReady, nothing else happened
+
+            locally { // Test a bug: Start a new journal file, then KeepEvent, then fetch fat events, while lean events invisible for fat events are issued
+              assert(listJournalFiles.length == 2)
+              val EventSeq.Empty(eventId1) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = stampeds.last.eventId, timeout = 0.seconds)) await 99.s
+
+              // Issue an event ignored by FatState
+              masterApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+
+              // FatState should advance to the EventId returned as EventSeq.Empty (skipIgnoredEventIds)
+              val EventSeq.Empty(eventId2) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId1, timeout = 0.seconds)) await 99.s
+              assert(eventId2 > eventId1)
+
+              // KeepEvents deletes last file
+              masterApi.executeCommand(MasterCommand.KeepEvents(eventId2)) await 99.s
+              assert(listJournalFiles.length == 1)  // One file deleted
+
+              // Should not return Torn:
+              val EventSeq.Empty(`eventId2`) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+
+              // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the second time
+              masterApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+              val EventSeq.Empty(eventId3) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+              assert(eventId3 > eventId2)
+
+              // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the third time
+              masterApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
+              val EventSeq.Empty(eventId4) = masterApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+              assert(eventId4 > eventId2)
+            }
           }
         }
       }
@@ -151,7 +180,7 @@ final class HistoryTest extends FreeSpec
   }
 }
 
-object HistoryTest
+object FatEventsTest
 {
   private val AAgentPath = AgentPath("/AGENT-A")
   private val BAgentPath = AgentPath("/AGENT-B")

@@ -77,12 +77,13 @@ trait FatEventRoute extends MasterRouteProvider
 
       def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
         eventWatch.when[Event](underlyingRequest.copy[Event](timeout = timeoutAt - now))
-          .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time
+          .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
           .map {
             case o: TearableEventSeq.Torn ⇒
               ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
             case empty: EventSeq.Empty ⇒
+              stateAccessor.skipIgnoredEventIds(empty.lastEventId)
               val nextTimeout = timeoutAt - now
               if (nextTimeout > Duration.Zero)
                 requestFat(underlyingRequest.copy[Event](after = empty.lastEventId))
