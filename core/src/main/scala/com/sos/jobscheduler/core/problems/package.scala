@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core
 
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.OrderId
 
 /**
@@ -25,4 +26,10 @@ package object problems
   }
 
   final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
+
+  final case class ReverseKeepEventsProblem(requestedAfter: EventId, currentAfter: EventId) extends Problem.Coded {
+    def arguments = Map(
+      "requestedAfter" → requestedAfter.toString,
+      "currentAfter" → currentAfter.toString)
+  }
 }

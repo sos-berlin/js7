@@ -14,6 +14,7 @@ import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
+import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
@@ -96,7 +97,7 @@ with JournalingObserver
   def keepEvents(after: EventId): Checked[Completed] = {
     val old = keepEventsAfter.get
     if (after < old)
-      Invalid(Problem(s"keepEvents with already accepted EventId $after < $old ?"))
+      Invalid(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = old))
     else if (after == old)
       Checked.completed
     else if (!keepEventsAfter.compareAndSet(old, after))

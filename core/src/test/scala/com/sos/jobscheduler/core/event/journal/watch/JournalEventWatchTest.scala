@@ -19,6 +19,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatchTest._
 import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
+import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
@@ -65,7 +66,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 0) shouldEqual Invalid(Problem("keepEvents with already accepted EventId 0 < 220 ?"))
+        eventWatch.keepEvents(after = 0) shouldEqual Invalid(ReverseKeepEventsProblem(0, 220))
       }
     }
   }
