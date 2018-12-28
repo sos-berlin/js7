@@ -81,6 +81,10 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  case object TakeSnapshot extends MasterCommand {
+    type Response = Response.Accepted
+  }
+
   /** Read the configured objects (workflows, agents) from the directory config/live. */
   final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
     type Response = Response.Accepted
@@ -105,5 +109,6 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ScheduleOrdersEvery]),
     Subtype(deriveCodec[ReadConfigurationDirectory]),
+    Subtype(TakeSnapshot),
     Subtype(Terminate))
 }

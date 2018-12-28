@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master
 
 import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
-import akka.pattern.pipe
+import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
 import cats.instances.vector._
@@ -51,6 +51,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
@@ -378,6 +379,13 @@ with MainJournalingActor[Event]
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
         Task.now(Invalid(Problem("NOT IMPLEMENTED")))  // Never called
+
+      case MasterCommand.TakeSnapshot ⇒
+        import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes
+        Task.deferFuture(
+          (journalActor ? JournalActor.Input.TakeSnapshot)
+            .mapTo[JournalActor.Output.SnapshotTaken.type]
+            .map(_ ⇒ Valid(MasterCommand.Response.Accepted)))
 
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")

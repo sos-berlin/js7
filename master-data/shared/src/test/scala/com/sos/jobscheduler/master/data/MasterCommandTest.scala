@@ -122,6 +122,13 @@ final class MasterCommandTest extends FreeSpec {
        }""")
   }
 
+  "TakeSnapshot" in {
+    testJson[MasterCommand](TakeSnapshot,
+      json"""{
+        "TYPE": "TakeSnapshot"
+      }""")
+  }
+
   "Terminate" in {
     testJson[MasterCommand](Terminate,
       json"""{
