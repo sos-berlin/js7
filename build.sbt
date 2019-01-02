@@ -23,6 +23,7 @@
   */
 import BuildUtils._
 import java.nio.file.Paths
+import java.time.Instant
 import sbt.CrossVersion
 import sbt.Keys.testOptions
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
@@ -251,7 +252,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
-        commitDate = git.gitHeadCommitDate.value,
+        commitDate = if (git.gitUncommittedChanges.value) Some(Instant.now.toString) else git.gitHeadCommitDate.value,
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
