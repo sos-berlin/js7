@@ -67,10 +67,8 @@ extends AutoCloseable
       if (!exists) {
         iteratorPool.returnIterator(iterator)
         None
-      } else {
-        val autoclosingIterator = new MyIterator(iterator, after)
-        Some(autoclosingIterator)
-      }
+      } else
+        Some(new MyIterator(iterator, after))
     }
   }
 

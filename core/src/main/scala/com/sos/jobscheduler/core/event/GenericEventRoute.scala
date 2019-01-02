@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.event
 
+import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
 import akka.http.scaladsl.model.MediaTypes.`text/event-stream`
@@ -14,28 +15,31 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
+import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
+import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
-import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.{`application/json-seq`, jsonSeqMarshaller}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.GenericEventRoute._
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -69,8 +73,11 @@ trait GenericEventRoute extends RouteProvider
                   htmlPreferred {
                     oneShot(eventWatch)
                   } ~
+                  accept(`application/x-ndjson`) {
+                    jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
+                  } ~
                   accept(`application/json-seq`) {
-                    jsonSeqEvents(eventWatch)
+                    jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
                   } ~
                   accept(`text/event-stream`) {
                     serverSentEvents(eventWatch)
@@ -99,17 +106,16 @@ trait GenericEventRoute extends RouteProvider
         complete(marshallable)
       }
 
-    private def jsonSeqEvents(eventWatch: EventWatch[Event]): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch[Event], streamingSupport: JsonEntityStreamingSupport): Route =
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request ⇒
-        implicit val x = JsonSeqStreamSupport
+        implicit val x = streamingSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
         val t = now
         complete(
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
           eventWatch.when(request, predicate = isRelevantEvent) map {
             case TearableEventSeq.Torn(eventId) ⇒
-              Problem.pure(s"Requested EventId after=${request.after} is not available. Oldest available EventId is $eventId")
-                : ToResponseMarshallable
+              EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId): ToResponseMarshallable
 
             case EventSeq.Empty(_) ⇒
               monixObservableToMarshallable(
@@ -175,6 +181,7 @@ trait GenericEventRoute extends RouteProvider
 
 object GenericEventRoute
 {
+  private val logger = Logger(getClass)
   private val DefaultJsonSeqChunkTimeout = 24.hours  // Renewed for each chunk
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =

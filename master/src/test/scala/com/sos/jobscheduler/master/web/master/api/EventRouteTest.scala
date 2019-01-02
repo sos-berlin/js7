@@ -12,9 +12,9 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/json-seq`
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
-import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -66,7 +66,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
         s"""$RS{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""" +
         s"""$RS{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""")
 
-      //implicit val x = JsonSeqStreamSupport
+      //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport
       //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
       //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s

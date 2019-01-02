@@ -10,8 +10,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport.JsonSeqStreamSupport
-import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.jsonSeqMarshaller
+import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -51,7 +50,7 @@ final class ConcurrentRequestsLimiterExclusiveTest extends FreeSpec with Scalate
     }
   }
 
-  "Two concurrent request" in {
+  "Two concurrent requests" in {
     val a = Future { blocking { executeRequest(100.millis, OK) } }
     waitForCondition(1.s, 1.ms)(limiter.isBusy)
     assert(limiter.isBusy)
@@ -62,7 +61,7 @@ final class ConcurrentRequestsLimiterExclusiveTest extends FreeSpec with Scalate
   }
 
   "Stream" in {
-    implicit val x = JsonSeqStreamSupport
+    implicit val x = JsonSeqStreamingSupport
     implicit val y = jsonSeqMarshaller[Json]
     val n = 10
     val duration = 30.millis

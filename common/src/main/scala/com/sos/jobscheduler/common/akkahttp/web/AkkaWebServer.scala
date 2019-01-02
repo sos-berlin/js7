@@ -7,10 +7,10 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.{ActorMaterializer, TLSClientAuth}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/json-seq`
 import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.http.CirceJsonSeqSupport.`application/json-seq`
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
