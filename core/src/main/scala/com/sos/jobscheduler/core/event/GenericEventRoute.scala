@@ -116,16 +116,20 @@ trait GenericEventRoute extends RouteProvider
                 Observable.empty[Stamped[KeyedEvent[Event]]])
 
             case EventSeq.NonEmpty(closeableIterator) ⇒
-              val head = autoClosing(closeableIterator) (_.next())
-              // Continue with an Observable, skipping the already read event
-              val tail = eventWatch.observe(
-                request = request.copy[Event](
-                  after = head.eventId,
-                  limit = request.limit - 1,
-                  delay = (request.delay - (now - t)) min Duration.Zero),
-                predicate = isRelevantEvent)
+              val head = autoClosing(closeableIterator)(_.next())
+              val tail = eventWatch  // Continue with an Observable, skipping the already read event
+                .observe(
+                  request = request.copy[Event](
+                    after = head.eventId,
+                    limit = request.limit - 1,
+                    delay = (request.delay - (now - t)) min Duration.Zero),
+                  predicate = isRelevantEvent)
+                .onErrorRecoverWith { case NonFatal(e) ⇒
+                  logger.warn(e.toStringWithCauses)
+                  Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
+                }
               monixObservableToMarshallable(
-                Observable(head) ++ tail)
+                Observable.pure(head) ++ tail)
             })
     }
 
