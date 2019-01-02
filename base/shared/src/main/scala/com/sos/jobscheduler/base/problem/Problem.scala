@@ -91,6 +91,8 @@ object Problem
     def code: ProblemCode
     def arguments: Map[String, String]
 
+    final def cause = None
+
     def rawMessage = CodedMessages.problemCodeToMessage(code, arguments)
 
     override def equals(o: Any) = o match {
@@ -100,9 +102,11 @@ object Problem
 
     override def toString = code.string + ": " + messageWithCause
   }
+  object HasCode {
+    def unapply(coded: HasCode) = Some((coded.code, coded.arguments))
+  }
 
   trait Coded extends HasCode {
-    def cause = None
     final val code = ProblemCode(getClass.simpleScalaName stripSuffix "Problem")
   }
 
@@ -113,8 +117,7 @@ object Problem
   private case class StaticMessage private[Problem](
     code: ProblemCode,
     arguments: Map[String, String],
-    override val rawMessage: String,
-    cause: Option[Problem] = None)
+    override val rawMessage: String)
   extends HasCode
 
   class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None) extends Simple {

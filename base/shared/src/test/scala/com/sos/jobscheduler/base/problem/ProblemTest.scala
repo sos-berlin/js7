@@ -167,6 +167,19 @@ final class ProblemTest extends FreeSpec
     assert(Problem("X") != Problem("Y"))
   }
 
+  "Problem.HasCode.unapply" in {
+    val problem = new Problem.HasCode {
+      val code = ProblemCode("PROBLEM")
+      val arguments = Map("ARG" → "VALUE")
+    }
+    val NoArguments = Map.empty[String, String]
+    problem match {
+      case Problem.HasCode(ProblemCode("OTHER"), problem.arguments) ⇒ fail()
+      case Problem.HasCode(ProblemCode("PROBLEM"), NoArguments) ⇒ fail()
+      case Problem.HasCode(ProblemCode("PROBLEM"), problem.arguments) ⇒  // okay
+    }
+  }
+
   private def catch_(problem: Problem): String =
     intercept[ProblemException] {
       throw problem.throwable

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.generic.GenericString
 /**
   * @author Joacim Zschimmer
   */
-final case class ProblemCode private(string: String) extends GenericString
+final case class ProblemCode(string: String) extends GenericString
 
 object ProblemCode extends GenericString.NonEmpty[ProblemCode]
 {
