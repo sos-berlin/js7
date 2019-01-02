@@ -50,8 +50,8 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
         NoMoreObservable
       else
         when[E1](request, predicate) map {
-          case _: TearableEventSeq.Torn ⇒
-            throw new TornException(after = request.after, tornEventId = tornEventId)
+          case TearableEventSeq.Torn(tornAfter) ⇒
+            throw new TornException(after = request.after, tornEventId = tornAfter)
 
           case EventSeq.Empty(lastEventId) ⇒
             val remaining = until - now
