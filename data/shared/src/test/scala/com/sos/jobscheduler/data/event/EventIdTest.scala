@@ -18,13 +18,13 @@ final class EventIdTest extends FreeSpec {
   }
 
   "toString" in {
-    assert(EventId.toString(EventId(      0)) ==       "0 (BeforeFirst)")
-    assert(EventId.toString(EventId(      1)) ==       "1 (1970-01-01T00:00:00.000001Z)")
-    assert(EventId.toString(EventId( 123000)) ==  "123000 (1970-01-01T00:00:00.123Z)")
-    assert(EventId.toString(EventId( 123400)) ==  "123400 (1970-01-01T00:00:00.123400Z)")
-    assert(EventId.toString(EventId( 123450)) ==  "123450 (1970-01-01T00:00:00.123450Z)")
-    assert(EventId.toString(EventId( 123456)) ==  "123456 (1970-01-01T00:00:00.123456Z)")
-    assert(EventId.toString(EventId(1000000)) == "1000000 (1970-01-01T00:00:01Z)")
-    assert(EventId.toString(EventId.JavascriptMaxValue) == "9007199254740992 (2255-06-05T23:47:34.740992Z)")
+    assert(EventId.toString(EventId(      0)) ==       "0/BeforeFirst")
+    assert(EventId.toString(EventId(      1)) ==       "1/1970-01-01T00:00:00.000001Z")
+    assert(EventId.toString(EventId( 123000)) ==  "123000/1970-01-01T00:00:00.123Z")
+    assert(EventId.toString(EventId( 123400)) ==  "123400/1970-01-01T00:00:00.123400Z")
+    assert(EventId.toString(EventId( 123450)) ==  "123450/1970-01-01T00:00:00.123450Z")
+    assert(EventId.toString(EventId( 123456)) ==  "123456/1970-01-01T00:00:00.123456Z")
+    assert(EventId.toString(EventId(1000000)) == "1000000/1970-01-01T00:00:01Z")
+    assert(EventId.toString(EventId.JavascriptMaxValue) == "9007199254740992/2255-06-05T23:47:34.740992Z")
   }
 }

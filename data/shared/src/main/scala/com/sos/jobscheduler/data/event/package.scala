@@ -46,7 +46,7 @@ package object event {
     def toEpochMilli(eventId: EventId) = eventId / IdsPerMillisecond
 
     def toString(eventId: EventId): String =
-      s"$eventId (${toDateTimeString(eventId)})"
+      s"$eventId/${toDateTimeString(eventId)}"
 
     def toDateTimeString(eventId: EventId): String =
       eventId match {
