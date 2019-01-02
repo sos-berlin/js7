@@ -14,8 +14,9 @@ import org.jetbrains.annotations.TestOnly
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class OutputStreamJsonSeqWriter(out: OutputStream) extends AutoCloseable {
-
+final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false) extends AutoCloseable
+{
+  private val extraLength = if (withRS) 2 else 1
   private var _written = 0L
 
   private val buffered = out match {
@@ -35,10 +36,11 @@ final class OutputStreamJsonSeqWriter(out: OutputStream) extends AutoCloseable {
       array = new Array[Byte](byteString.length + Reserve)
     }
     byteString.copyToArray(array)
-    buffered.write(Ascii.RS)
+    if (withRS) buffered.write(Ascii.RS)
+    assert(!array.contains('\n'), "OutputStreamJsonSeqWriter: JSON contains a forbidden LF")
     buffered.write(array, 0, byteString.length)
     buffered.write('\n')
-    _written += 2 + byteString.length
+    _written += byteString.length + extraLength
     if (array.length > MaxBufferSize) {
       array = null
     }

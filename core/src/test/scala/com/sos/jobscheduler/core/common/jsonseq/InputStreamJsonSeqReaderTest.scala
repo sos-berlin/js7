@@ -7,7 +7,7 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReaderTest._
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
@@ -67,11 +67,12 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
 
   "Last truncate record of truncated file is ignored" - {
     "Last record is not truncated" in {
-      assert(read().isEmpty)
+      assert(read("").isEmpty)
     }
 
     "Truncated file" in {
-      assert(read(RS, '{').isEmpty)
+      assert(read(s"$rs{", withRS = true).isEmpty)
+      assert(read("{").isEmpty)
     }
 
     "Truncated file before LF" in {
@@ -86,23 +87,35 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
     }
 
     "Truncated file after RS" in {
-      assert(read(RS).isEmpty)
+      assert(read(s"$rs").isEmpty)
     }
   }
 
-  "Corrupt data" - {
+  "Corrupt data, with RS" - {
     "Missing RS" in {
-      assert(expectException('{', '}', LF).toStringWithCauses ==
+      assert(expectException("{}\n", withRS = true).toStringWithCauses ==
         "JSON sequence is corrupt at line 1: Missing ASCII RS at start of JSON sequence record (instead read: 7b)")
     }
 
     "Missing separators" in {
-      assert(expectException(RS, '{', '}', '{', '}', LF).toStringWithCauses ==
+      assert(expectException(s"$rs{}{}\n", withRS = true).toStringWithCauses ==
         "JSON sequence is corrupt at line 1: expected whitespace or eof got { (column 3)")
     }
 
     "Invalid JSON" in {
-      assert(expectException(RS, '{', LF).toStringWithCauses ==
+      assert(expectException(s"$rs{\n", withRS = true).toStringWithCauses ==
+        "JSON sequence is corrupt at line 1: exhausted input")
+    }
+  }
+
+  "Corrupt data, without RS" - {
+    "Missing separators" in {
+      assert(expectException("{}{}\n").toStringWithCauses ==
+        "JSON sequence is corrupt at line 1: expected whitespace or eof got { (column 3)")
+    }
+
+    "Invalid JSON" in {
+      assert(expectException("{\n").toStringWithCauses ==
         "JSON sequence is corrupt at line 1: exhausted input")
     }
   }
@@ -133,7 +146,9 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
   }
 }
 
-private object InputStreamJsonSeqReaderTest {
+private object InputStreamJsonSeqReaderTest
+{
+  private val rs = RS.toChar
   private val Chunk: Seq[(Array[Byte], PositionAnd[Json])] = Vector(
       "1"       → PositionAnd(0    , Json.fromInt(1)),
       "23"      → PositionAnd(3    , Json.fromInt(23)),
@@ -145,14 +160,15 @@ private object InputStreamJsonSeqReaderTest {
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1 sameElements FourByteUtf8)
 
-  private def read(bytes: Byte*) = newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.toArray)).read()
+  private def read(bytes: String, withRS: Boolean = false) =
+    newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.getBytes(US_ASCII)), withRS = withRS).read()
 
-  private def newInputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = InputStreamJsonSeqReader.BlockSize) =
-    new InputStreamJsonSeqReader(in, name = "JSON-SEQ-TEST", blockSize = blockSize)
+  private def newInputStreamJsonSeqReader(in: SeekableInputStream, blockSize: Int = InputStreamJsonSeqReader.BlockSize, withRS: Boolean = true) =
+    new InputStreamJsonSeqReader(in, name = "JSON-SEQ-TEST", blockSize = blockSize, withRS = withRS)
 
-  private def expectException(bytes: Byte*): Exception =
+  private def expectException(bytes: String, withRS: Boolean = false): Exception =
     intercept[Exception] {
-      read(bytes: _*)
+      read(bytes, withRS = withRS)
     }
 
   private def simplifiedSeekableInputStream(bytes: Array[Byte]): SeekableInputStream =

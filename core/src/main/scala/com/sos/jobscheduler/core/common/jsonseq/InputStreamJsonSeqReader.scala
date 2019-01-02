@@ -25,7 +25,7 @@ import monix.execution.atomic.AtomicAny
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize)
+final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize, withRS: Boolean = false)
 extends AutoCloseable {
 
   private val inAtomic = AtomicAny(inputStream_)
@@ -73,10 +73,12 @@ extends AutoCloseable {
       }
       if (!rsReached && blockRead < blockLength) {
         val byte = block(blockRead)
-        if (byte != RS)
-          throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
-        blockRead += 1
-        rsReached = true
+        if (withRS) {
+          if (byte != RS)
+            throwCorrupt(f"Missing ASCII RS at start of JSON sequence record (instead read: $byte%02x)")
+          blockRead += 1
+          rsReached = true
+        }
       }
       val start = blockRead
       while (blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false })) { blockRead += 1 }
@@ -85,7 +87,7 @@ extends AutoCloseable {
         blockRead += 1
       }
     }
-    if (rsReached && !lfReached) {
+    if ((!withRS || rsReached) && !lfReached) {
       logger.warn(s"Discarding truncated last record in '$name': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
       byteStringBuilder.clear()
       seek(startPosition)  // Keep a proper file position at start of record

@@ -125,7 +125,7 @@ final class FileEventIteratorTest extends FreeSpec
       iterator.seek(c)
       assert(iterator.positionAndEventId == c)
       assert(iterator.next() == TestEvents(2))
-      val commitOffset = 2 + JournalSeparators.Commit.asJson.compactPrint.length  // Positions before and after Commit are equivalent (Commit is ignored)
+      val commitOffset = 1 + JournalSeparators.Commit.asJson.compactPrint.length  // Positions before and after Commit are equivalent (Commit is ignored)
       assert(iterator.positionAndEventId.copy(position = iterator.positionAndEventId.position + commitOffset) == d)
       assert(iterator.next() == TestEvents(3))
 

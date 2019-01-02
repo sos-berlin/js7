@@ -54,7 +54,7 @@ final class FileEventIteratorPoolTest extends FreeSpec
 
       val it1a = pool.borrowIterator()
       assert(it1a eq it1)
-      assert(it1a.position - it1a.firstEventPosition == 45)
+      assert(it1a.position - it1a.firstEventPosition == 44)
       assert(it1a.eventId == After + 1)
       assert(it1a.next() == TestEvents(1))
       assert(!it1a.hasNext)

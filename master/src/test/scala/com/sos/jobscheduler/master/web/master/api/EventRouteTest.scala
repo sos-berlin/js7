@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/json-seq`
+import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -64,10 +64,9 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/json-seq`))
       val RS = Ascii.RS.toChar
-      val LF = Ascii.LF.toChar
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""$RS{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""" +
-        s"""$RS{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}$LF""")
+        s"""$RS{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}""" + '\n' +
+        s"""$RS{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}""" + '\n')
 
       //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport
@@ -77,8 +76,24 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
     }
   }
 
-  "/event application/json-seq with after=unknown fails" in {
-    Get(s"/event?after=5") ~> Accept(`application/json-seq`) ~> route ~> check {
+  "/event application/x-ndjson" in {
+    Get(s"/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check {
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+      assert(response.entity.contentType == ContentType(`application/x-ndjson`))
+      assert(response.utf8StringFuture.await(99.s) ==
+        s"""{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}""" + '\n' +
+        s"""{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"/test","versionId":"VERSION"}}""" + '\n')
+
+      //implicit val x = JsonSeqStreamingSupport
+      //implicit val y = CirceJsonSeqSupport
+      //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
+      //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
+      //assert(stamped == TestEvents)
+    }
+  }
+
+  "/event application/x-ndjson with after=unknown fails" in {
+    Get(s"/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       assert(status == BadRequest)
       assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5 is not available. Oldest available EventId is 0\n")
     }

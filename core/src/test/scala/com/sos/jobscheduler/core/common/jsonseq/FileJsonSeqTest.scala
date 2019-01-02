@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.common.jsonseq
 
-import com.google.common.base.Ascii
 import com.google.common.io.Files.touch
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.time.Timestamp
@@ -50,7 +49,7 @@ final class FileJsonSeqTest extends FreeSpec {
         w.writeJson(A(3, "c").asJson)
         w.flush()
       }
-      assert(file.contentString startsWith Ascii.RS.toChar.toString)
+      //assert(file.contentString startsWith Ascii.RS.toChar.toString)
       assert(file.contentString endsWith "\n")
       autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
         assert((reader.iterator map { _.value.as[A].orThrow }).toList == List(
