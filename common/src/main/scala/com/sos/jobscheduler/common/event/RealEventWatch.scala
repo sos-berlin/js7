@@ -71,7 +71,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = originalTimeout))
         }
     }
-    Observable.fromAsyncStateAction(next)(() ⇒ request/*.copy[E1](timeout = EventRequest.LongTimeout)*/)
+    Observable.fromAsyncStateAction(next)(() ⇒ request)
       .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
       .map(_.get).flatten
   }
@@ -143,9 +143,10 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                 // If the first event is not fresh, we have a read congestion.
                 // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
                 val head = iterator.next()
-                if (head.timestamp + tornOlder < now)
+                if (head.timestamp + tornOlder < now) {
+                  iterator.close()
                   Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
-                else
+                } else
                   Task.pure(EventSeq.NonEmpty(head +: iterator))
               } else
                 Task.pure(eventSeq)
