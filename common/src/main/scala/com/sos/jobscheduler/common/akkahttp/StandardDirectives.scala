@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.akkahttp
 
 import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
-import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, immutableDirective}
+import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
 import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
@@ -69,6 +69,6 @@ object StandardDirectives
   }
 
   val immutableResource: Directive0 =
-    respondWithHeader(`Cache-Control`(`max-age`(365*24*3600), `immutableDirective`)) &
+    respondWithHeader(`Cache-Control`(`public`, `max-age`(365*24*3600), `immutableDirective`)) &
       removeEtag  // Assure client about immutability
 }
