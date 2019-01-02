@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
@@ -32,7 +33,9 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
+final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
+{
+  ProblemCodeMessages.initialize()
 
   private implicit val timeout = 9.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
@@ -77,7 +80,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute {
   "/event application/json-seq with after=unknown fails" in {
     Get(s"/event?after=5") ~> Accept(`application/json-seq`) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == s"Requested EventId after=5 is not available. Oldest available EventId is 0\n")
+      assert(response.utf8StringFuture.await(99.s) == s"EventSeqTorn: Requested EventId after=5 is not available. Oldest available EventId is 0\n")
     }
   }
 
