@@ -3,13 +3,12 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{ActorContext, ActorRef, DeadLetterSuppression}
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
 import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.typesafe.config.Config
 import java.io.Writer
+import java.time.Instant
 import java.time.Instant.now
-import java.time.{Duration, Instant}
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.{Future, Promise}
 
@@ -24,9 +23,9 @@ private[order] class StdouterrToEvent(
 {
   import orderActorContext.self
 
-  private val chunkSize = config.getInt         ("jobscheduler.order.stdout-stderr.chunk-size")
-  private val delay = config.as[Duration]       ("jobscheduler.order.stdout-stderr.delay")
-  private val noDelayAfter = config.as[Duration]("jobscheduler.order.stdout-stderr.no-delay-after")
+  private val chunkSize    = config.getInt     ("jobscheduler.order.stdout-stderr.chunk-size")
+  private val delay        = config.getDuration("jobscheduler.order.stdout-stderr.delay")
+  private val noDelayAfter = config.getDuration("jobscheduler.order.stdout-stderr.no-delay-after")
 
   private var lastEventAt = Instant.ofEpochMilli(0)
   private var timer: Cancelable = null
