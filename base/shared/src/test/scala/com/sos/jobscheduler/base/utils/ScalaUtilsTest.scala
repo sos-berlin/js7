@@ -233,6 +233,16 @@ final class ScalaUtilsTest extends FreeSpec {
       }
     }
   }
+
+  "shortStringToInputStream" in {
+    val in = shortStringToInputStream("heiß")
+    assert(in.read() == 'h'.toByte)
+    assert(in.read() == 'e'.toByte)
+    assert(in.read() == 'i'.toByte)
+    assert(in.read() == 0xC3)
+    assert(in.read() == 0x9F)
+    assert(in.read() == -1)
+  }
 }
 
 object ScalaUtilsTest

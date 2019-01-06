@@ -5,7 +5,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.exceptions.PublicException
 import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import java.io.{PrintWriter, StringWriter}
+import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -236,4 +237,9 @@ object ScalaUtils {
   implicit final class RichValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal {
     def orThrow: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
   }
+
+  /** Simple implementation (for tests), converts the string to an Array[Byte],
+    * risking `OutOfMemoryError` for long Strings. */
+  def shortStringToInputStream(string: String): InputStream =
+    new ByteArrayInputStream(string.getBytes(UTF_8))  // OutOfMemoryError
 }
