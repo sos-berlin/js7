@@ -79,7 +79,7 @@ final class MasterRepoTest extends FreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(master.addOrder(order).runAsync.await(99.s) == Invalid(Problem(s"No such key 'Workflow:${path.string}'")))
+        assert(master.addOrder(order).runToFuture.await(99.s) == Invalid(Problem(s"No such key 'Workflow:${path.string}'")))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 

@@ -32,7 +32,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
     for ((uri, None) ← Setting) s"$uri" in {
       assert(agentClient.checkAgentUri(uri).isInvalid)
       assert(agentClient.toCheckedAgentUri(uri).isInvalid)
-      assert(Await.result(agentClient.get_[HttpResponse](uri).runAsync.failed, 99.seconds).getMessage
+      assert(Await.result(agentClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
         contains "does not match")
     }
   }

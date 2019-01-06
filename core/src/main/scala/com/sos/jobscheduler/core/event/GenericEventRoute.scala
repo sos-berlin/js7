@@ -17,14 +17,14 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.accept
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
 import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
+import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider
 import com.sos.jobscheduler.common.event.EventWatch
@@ -92,18 +92,18 @@ trait GenericEventRoute extends RouteProvider
     private def oneShot(eventWatch: EventWatch[Event]): Route =
       eventDirective(eventWatch.lastAddedEventId) { request ⇒
         intelliJuseImport(jsonOrYamlMarshaller)
-        val marshallable = eventWatch.when[Event](request, predicate = isRelevantEvent) map {
-          case o: TearableEventSeq.Torn ⇒
-            ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
+        completeTask(
+          eventWatch.when[Event](request, predicate = isRelevantEvent).map {
+            case o: TearableEventSeq.Torn ⇒
+              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
 
-          case o: EventSeq.Empty ⇒
-            ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
+            case o: EventSeq.Empty ⇒
+              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
 
-          case EventSeq.NonEmpty(events) ⇒
-            implicit val x = NonEmptyEventSeqJsonStreamingSupport
-            closeableIteratorToMarshallable(events)
-        }
-        complete(marshallable)
+            case EventSeq.NonEmpty(events) ⇒
+              implicit val x = NonEmptyEventSeqJsonStreamingSupport
+              closeableIteratorToMarshallable(events)
+          })
       }
 
     private def jsonSeqEvents(eventWatch: EventWatch[Event], streamingSupport: JsonEntityStreamingSupport): Route =
@@ -111,9 +111,9 @@ trait GenericEventRoute extends RouteProvider
         implicit val x = streamingSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
         val t = now
-        complete(
+        completeTask(
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-          eventWatch.when(request, predicate = isRelevantEvent) map {
+          eventWatch.when(request, predicate = isRelevantEvent).map {
             case TearableEventSeq.Torn(eventId) ⇒
               EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId): ToResponseMarshallable
 

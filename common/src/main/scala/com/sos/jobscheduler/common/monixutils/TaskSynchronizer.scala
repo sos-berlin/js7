@@ -37,10 +37,10 @@ final class TaskSynchronizer[A](limit: Int = Int.MaxValue)(implicit scheduler: S
           isExecuting := false
 
         case (promise, task) ⇒
-          task.runOnComplete { tried ⇒
+          task.runAsync { outcome ⇒
             isExecuting := false
             runNext()
-            promise.complete(tried map Some.apply)
+            promise.complete(outcome.toTry map Some.apply)
           }
       }
     }

@@ -60,8 +60,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       executingInputs ++= inputs
       openRequestCount += 1
       executeCommand(Batch(inputs map inputToAgentCommand))
-        .runAsync
-        .andThen {
+        .materialize foreach {
           case Success(Batch.Response(responses)) ⇒
             asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
 

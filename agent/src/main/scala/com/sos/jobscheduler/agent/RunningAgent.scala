@@ -132,7 +132,7 @@ object RunningAgent {
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
     val sessionToken = blocking {
       sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-        .runAsync await agentConfiguration.akkaAskTimeout.duration
+        .runToFuture await agentConfiguration.akkaAskTimeout.duration
     }
     closer onClose { sessionTokenFile.delete() }
 

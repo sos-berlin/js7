@@ -15,7 +15,7 @@ object CodedMessages
   implicit val problemCodeToPattern: ProblemCode ⇒ Option[String] = codeToPattern
 
   def codeToPattern: ProblemCode ⇒ Option[String] =
-    _codeToPattern.get
+    _codeToPattern.get()
 
   def codeToPattern_=(f: ProblemCode ⇒ Option[String]): Unit =
     _codeToPattern := f

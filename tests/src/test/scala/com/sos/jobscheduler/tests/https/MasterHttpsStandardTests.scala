@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand
-import monix.execution.Scheduler.Implicits._
+import monix.execution.Scheduler.Implicits.global
 
 /**
   * @author Joacim Zschimmer

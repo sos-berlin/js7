@@ -20,17 +20,17 @@ final class SyncExclusiveTest extends FreeSpec {
   "test" in {
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     for ((aEventId, bEventId) ← List((1L, 2L), (3L, 4L), (5L, 6L))) {
-      val a = sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync
+      val a = sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture
       assert(!a.isCompleted)
-      val b = sync.whenEventIsAvailable(bEventId, until = now + 1.hour).runAsync
+      val b = sync.whenEventIsAvailable(bEventId, until = now + 1.hour).runToFuture
       assert(!b.isCompleted)
       sync.onEventAdded(aEventId)
       a await 1.s
       assert(a.isCompleted)
       assert(a.successValue)
       b await 100.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
-      assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
-      assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runAsync.isCompleted)
+      assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture.isCompleted)
+      assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture.isCompleted)
     }
   }
 
@@ -39,8 +39,8 @@ final class SyncExclusiveTest extends FreeSpec {
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     for (eventId ← 1L to 3L) {
       withClue(s"#$eventId") {
-        val a = sync.whenEventIsAvailable(eventId, until = now + 2*tick, delay = 2*tick).runAsync
-        val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour, delay = 2*tick).runAsync
+        val a = sync.whenEventIsAvailable(eventId, until = now + 2*tick, delay = 2*tick).runToFuture
+        val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour, delay = 2*tick).runToFuture
         assert(a ne b)
 
         sleep(tick)
@@ -70,7 +70,7 @@ final class SyncExclusiveTest extends FreeSpec {
     for (_ ← 1 to 10) {
       val stopwatch = new Stopwatch
       val eventIds = for (_ ← 1 to n) yield eventIdGenerator.next()
-      val futures: Seq[Future[Boolean]] = (for (eventId ← eventIds) yield Future { sync.whenEventIsAvailable(after = eventId - 1, now + 99.seconds).runAsync }) map { _.flatten }
+      val futures: Seq[Future[Boolean]] = (for (eventId ← eventIds) yield Future { sync.whenEventIsAvailable(after = eventId - 1, now + 99.seconds).runToFuture }) map { _.flatten }
       eventIds foreach sync.onEventAdded
       val result = futures await 99.s
       assert(result forall identity)

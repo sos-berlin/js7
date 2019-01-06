@@ -72,9 +72,6 @@ with ReceiveLoggingActor.WithStash {
   private var lastError: Option[(Long, String)] = None
   private var terminating = false
 
-  become("decoupled")(decoupled)
-  self ! Internal.Couple
-
   private val commandQueue = new CommandQueue(logger, batchSize = batchSize) {
     protected def executeCommand(command: AgentCommand.Batch) =
       client.commandExecute(command)
@@ -91,10 +88,16 @@ with ReceiveLoggingActor.WithStash {
   protected def recoverFromEvent(event: MasterAgentEvent) = {}
   protected def snapshot = None
 
+  override def preStart() = {
+    super.preStart()
+    become("decoupled")(decoupled)
+    self ! Internal.Couple
+  }
+
   override def postStop() = {
-    client.logout().runAsync onComplete {
-      _ ⇒ client.close()  // Don't await response
-    }
+    client.logout()
+      .guarantee(Task(client.close()))
+      .runAsyncAndForget
     keepEventsCancelable foreach (_.cancel())
     super.postStop()
   }
@@ -118,7 +121,7 @@ with ReceiveLoggingActor.WithStash {
                   else
                     Task.pure(Completed)
             } yield Completed
-          ).runAsync.onComplete { tried ⇒
+          ).materialize foreach { tried ⇒
             self ! Internal.AfterCoupling(tried)
           }
           unstashAll()
@@ -172,8 +175,7 @@ with ReceiveLoggingActor.WithStash {
         lastEventId = after
         val fetchCouplingNumber = couplingNumber
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout, limit = EventLimit))
-          .runAsync
-          .onComplete { tried ⇒
+          .materialize foreach { tried ⇒
             // *** Asynchronous ***
             self ! Internal.Fetched(tried, after, fetchCouplingNumber)
           }
@@ -203,7 +205,7 @@ with ReceiveLoggingActor.WithStash {
         isCoupled = false
         // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um folgende Akka-Warnungen zu vermeiden
         // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] LoggedIn entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
-        client.logout().timeout(terminationLogoutTimeout).runAsync onComplete { tried ⇒
+        client.logout().timeout(terminationLogoutTimeout).materialize foreach { tried ⇒
           for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
           self ! PoisonPill
         }
@@ -345,7 +347,7 @@ with ReceiveLoggingActor.WithStash {
       keepEventsCancelable foreach (_.cancel())
       keepEventsCancelable = None
       isCoupled = false
-      client.logout().runAsync onComplete { _ ⇒
+      client.logout().materialize foreach { _ ⇒
         self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
       }
       become("LoggedOut") {

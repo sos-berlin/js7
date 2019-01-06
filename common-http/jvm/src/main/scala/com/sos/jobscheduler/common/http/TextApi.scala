@@ -23,20 +23,20 @@ trait TextApi {
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      httpClient.post[Json, Json](uri = commandUri.toString, yamlToJson(command).orThrow).runAsync)
+      httpClient.post[Json, Json](uri = commandUri.toString, yamlToJson(command).orThrow).runToFuture)
     printer.doPrint(response.toYamlString)
   }
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = httpClient.get[Json](apiUri(u), 60.seconds).runAsync
+    val whenResponded = httpClient.get[Json](apiUri(u), 60.seconds).runToFuture
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit =
     try {
-      val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runAsync
+      val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runToFuture
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {

@@ -30,16 +30,16 @@ object FileBasedApi {
   def forTest(pathToFileBased: Map[_ <: TypedPath, FileBased]) =
     new FileBasedApi {
       def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-        Task.now(Stamped(1, O.fileBasedsToOverview(pathTo.values.toImmutableSeq)))
+        Task(Stamped(1, O.fileBasedsToOverview(pathTo.values.toImmutableSeq)))
 
       def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
         throw new NotImplementedError
 
       def fileBaseds[A <: FileBased: FileBased.Companion] =
-        Task.now(Stamped(2, pathTo[A].values.toImmutableSeq))
+        Task(Stamped(2, pathTo[A].values.toImmutableSeq))
 
       def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
-        Task.now(
+        Task(
           for (a ← pathTo[A].checked(path))
             yield Stamped(3, a))
 

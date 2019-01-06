@@ -93,7 +93,7 @@ object TestDockerExample
       } .closeWithCloser
 
       val master = RunningMaster(injector) await 99.s
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runAsync.await(99.s).orThrow
+      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
       for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())

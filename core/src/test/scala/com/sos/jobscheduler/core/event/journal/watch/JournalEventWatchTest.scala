@@ -100,7 +100,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
         assert(eventWatch.when(EventRequest.singleClass[MyEvent](timeout = 30.seconds)).await(99.s).strict ==
           TearableEventSeq.Torn(after = 1000))
 
-        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runToFuture
         writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
         writer.flush(sync = false)
         val EventSeq.NonEmpty(anyEvents) = anyFuture.await(99.s).strict
@@ -110,8 +110,8 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
     "eventWatch.when for selected event subclasses" in {
       withJournalEventWatch(lastEventId = EventId(1000)) { (writer, eventWatch) ⇒
-        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runAsync
-        val bFuture = eventWatch.when(EventRequest.singleClass[BEvent](after = 1000, timeout = 30.seconds)).runAsync
+        val anyFuture = eventWatch.when(EventRequest.singleClass[MyEvent](after = 1000, timeout = 30.seconds)).runToFuture
+        val bFuture = eventWatch.when(EventRequest.singleClass[BEvent](after = 1000, timeout = 30.seconds)).runToFuture
 
         writer.writeEvents(Stamped(1001, "1" <-: A1) :: Nil)
         writer.flush(sync = false)

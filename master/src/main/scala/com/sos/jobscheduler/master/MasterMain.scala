@@ -13,7 +13,6 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
 
 /**
   * JobScheduler Master.
@@ -31,10 +30,10 @@ object MasterMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master ⇒
         master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
-          .runOnComplete {  // On recovery, executeCommand will delay execution until Agents are started
-            case Success(Valid(_)) ⇒
-            case Success(Invalid(problem)) ⇒ logger.error(problem.toString)
-            case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
+          .runAsync {  // On recovery, executeCommand will delay execution until Agents are started
+            case Left(t) ⇒ logger.error(t.toStringWithCauses, t)
+            case Right(Invalid(problem)) ⇒ logger.error(problem.toString)
+            case Right(Valid(_)) ⇒
           }
         handleJavaShutdown(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
           master.terminated.awaitInfinite
@@ -48,7 +47,7 @@ object MasterMain {
 
   private def onJavaShutdown(master: RunningMaster)(timeout: Duration): Unit = {
     logger.warn("Trying to terminate Master due to Java shutdown")
-    master.terminate().runAsync await timeout
+    master.terminate().runToFuture await timeout
     master.close()
   }
 }

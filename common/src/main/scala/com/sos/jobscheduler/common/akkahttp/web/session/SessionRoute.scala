@@ -28,7 +28,7 @@ trait SessionRoute extends RouteProvider {
           sessionOption(httpUser.id) { sessionOption ⇒
             entity(as[SessionCommand]) { command ⇒
               val token = sessionOption map (_.sessionToken)
-              onSuccess(execute(command, httpUser, token).runAsync) {
+              onSuccess(execute(command, httpUser, token).runToFuture) {
                 case Invalid(AnonymousLoginProblem) ⇒
                   // No credentials via Authorization header or Login(Some(...))
                   // Let a browser show authentication dialog!

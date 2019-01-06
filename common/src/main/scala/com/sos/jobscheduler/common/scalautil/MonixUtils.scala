@@ -22,13 +22,13 @@ object MonixUtils
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal {
 
       def await(duration: java.time.Duration)(implicit s: Scheduler): A =
-        underlying.runAsync await duration
+        underlying.runToFuture await duration
 
       def await(duration: Option[java.time.Duration])(implicit s: Scheduler): A =
-        underlying.runAsync await duration
+        underlying.runToFuture await duration
 
       def await(duration: Duration)(implicit s: Scheduler): A =
-        underlying.runAsync await duration
+        underlying.runToFuture await duration
     }
 
     implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal {
@@ -42,10 +42,10 @@ object MonixUtils
         }
 
       def await(duration: java.time.Duration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
-        Task.sequence(underlying)(cbf).runAsync await duration
+        Task.sequence(underlying)(cbf).runToFuture await duration
 
       def awaitInfinite(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
-        Task.sequence(underlying)(cbf).runAsync.awaitInfinite
+        Task.sequence(underlying)(cbf).runToFuture.awaitInfinite
     }
 
     implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
@@ -65,14 +65,12 @@ object MonixUtils
 
   private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
     logger.trace(s"closeableIteratorToObservable($iterator)")
-    Observable.fromIterator(iterator)
-      .doOnTerminate { maybeThrowable ⇒
-        logger.trace(s"Close $iterator ${maybeThrowable getOrElse ""}")
-        iterator.close()
-      }
-      .doOnSubscriptionCancel { () ⇒
-        logger.debug(s"Observable canceled. Close $iterator")
-        iterator.close()
+    Observable.fromIterator(Task(iterator))
+      .guaranteeCase { exitCase ⇒
+        Task {
+          logger.trace(s"Close $iterator $exitCase")
+          iterator.close()
+        }
       }
   }
 }

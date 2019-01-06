@@ -6,8 +6,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import monix.eval.Task
 
 /**
@@ -23,7 +23,7 @@ trait RootWebService extends AgentRouteProvider {
     pathEnd {
       get {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {
-          complete {
+          completeTask {
             agentOverview
           }
         }

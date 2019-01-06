@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web.master.api.workflow
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -23,22 +24,26 @@ trait WorkflowRoute extends MasterRouteProvider {
     get {
       authorizedUser(ValidUserPermission) { _ ⇒
         pathEnd {
-          complete(fileBasedApi.overview[Workflow])
+          completeTask(
+            fileBasedApi.overview[Workflow])
         } ~
         pathSingleSlash {
           parameter("return".?) {
             case None ⇒
-              complete(fileBasedApi.paths[Workflow])
+              completeTask(
+                fileBasedApi.paths[Workflow])
 
             case Some("Workflow") ⇒
-              complete(fileBasedApi.fileBaseds[Workflow])
+              completeTask(
+                fileBasedApi.fileBaseds[Workflow])
 
             case _ ⇒
               reject
           }
         } ~
         path(remainingSegmentOrPath[WorkflowPath]) { workflowPath ⇒
-          complete(fileBasedApi.pathToCurrentFileBased[Workflow](workflowPath))
+          completeTask(
+            fileBasedApi.pathToCurrentFileBased[Workflow](workflowPath))
         }
       }
     }

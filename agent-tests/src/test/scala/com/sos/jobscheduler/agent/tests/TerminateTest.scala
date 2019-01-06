@@ -60,7 +60,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
           Future.sequence(
             for (orderId ← orderIds) yield
               eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = 90.seconds), orderId)
-                .runAsync: Future[OrderEvent.OrderProcessed])
+                .runToFuture: Future[OrderEvent.OrderProcessed])
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 

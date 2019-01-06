@@ -100,7 +100,7 @@ extends AutoCloseable
     orderApi.addOrder(order)
 
   def addOrderBlocking(order: FreshOrder)(implicit s: Scheduler): Boolean =
-    orderApi.addOrder(order).runAsync.await(99.s).orThrow
+    orderApi.addOrder(order).runToFuture.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri
   val eventWatch: StrictEventWatch[Event] = injector.instance[EventWatch[Event]].strict
@@ -181,7 +181,7 @@ object RunningMaster {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
       blocking {
         sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-          .runAsync await masterConfiguration.akkaAskTimeout.duration
+          .runToFuture await masterConfiguration.akkaAskTimeout.duration
       }
       closer onClose { sessionTokenFile.delete() }
     }

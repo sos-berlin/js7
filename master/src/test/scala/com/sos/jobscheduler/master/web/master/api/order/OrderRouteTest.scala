@@ -30,10 +30,10 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   protected implicit def scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {
-    def addOrder(order: FreshOrder) = Task.now(Valid(order.id != DuplicateOrderId))
-    def order(orderId: OrderId) = Task.now(TestOrders.get(orderId))
-    def orders = Task.now(eventIdGenerator.stamp(TestOrders.values.toVector))
-    def orderCount = Task.now(TestOrders.values.size)
+    def addOrder(order: FreshOrder) = Task(Valid(order.id != DuplicateOrderId))
+    def order(orderId: OrderId) = Task(TestOrders.get(orderId))
+    def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
+    def orderCount = Task(TestOrders.values.size)
   }
 
   private def route: Route =

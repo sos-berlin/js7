@@ -76,7 +76,7 @@ extends AutoCloseable
     private val iteratorAtomic = AtomicAny(iterator_)
     @volatile private var eof = false
 
-    // May be called asynchronously (parallel to hasNext or next), as by Monix doOnSubscriptionCancel
+    // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee
     def close() =
       for (it ← Option(iteratorAtomic.getAndSet(null))) {
         iteratorPool.returnIterator(it)

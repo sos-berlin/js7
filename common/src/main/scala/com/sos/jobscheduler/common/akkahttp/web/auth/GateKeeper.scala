@@ -39,7 +39,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
         logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           complete(
-            Task.pure(Unauthorized).delayExecution(invalidAuthenticationDelay).runAsync)
+            Task.pure(Unauthorized).delayExecution(invalidAuthenticationDelay).runToFuture)
         }
 
       case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) ⇒

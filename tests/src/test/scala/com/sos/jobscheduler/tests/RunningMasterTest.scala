@@ -86,7 +86,7 @@ final class RunningMasterTest extends FreeSpec {
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
         val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished].toVector
         for (line ← (for (orderId ← orderIds.sorted) yield
-                       for (o ← orderApi.order(orderId).runAsync: Future[Option[Order[Order.State]]])
+                       for (o ← orderApi.order(orderId).runToFuture: Future[Option[Order[Order.State]]])
                           yield s"$orderId -> $o") await 99.s)
           logger.info(line)
         assert(orderIds.size >= expectedOrderCount)

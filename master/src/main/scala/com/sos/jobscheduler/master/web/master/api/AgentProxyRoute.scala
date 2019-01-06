@@ -9,6 +9,7 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.monix.MonixForCats._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
@@ -36,7 +37,7 @@ trait AgentProxyRoute extends MasterRouteProvider
       authorizedUser(ValidUserPermission) { _ ⇒
         path(Segment) { pathString ⇒
           extractRequest { request ⇒
-            complete(
+            completeTask(
               for {
                 checkedAgent ← fileBasedApi.pathToCurrentFileBased[Agent](AgentPath(s"/$pathString"))
                 checkedResponse ← checkedAgent.map(stampedAgent ⇒ forward(stampedAgent, request)).evert
@@ -60,12 +61,10 @@ trait AgentProxyRoute extends MasterRouteProvider
       agentUri,
       masterConfiguration.keyStoreRefOption,
       masterConfiguration.trustStoreRefOption)
-    agentClient.sendReceive(
-      HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
-        .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))
-      .doOnFinish(_ ⇒ Task {
-        agentClient.close()
-      })
+    agentClient
+      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
+      .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))
+      .guarantee(Task(agentClient.close()))
   }
 }
 

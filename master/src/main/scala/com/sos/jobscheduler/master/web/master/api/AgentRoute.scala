@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -24,22 +25,26 @@ trait AgentRoute extends MasterRouteProvider
     get {
       authorizedUser(ValidUserPermission) { _ ⇒
         pathEnd {
-          complete(fileBasedApi.overview[Agent])
+          completeTask(
+            fileBasedApi.overview[Agent])
         } ~
           pathSingleSlash {
             parameter("return".?) {
               case None ⇒
-                complete(fileBasedApi.paths[Agent])
+                completeTask(
+                  fileBasedApi.paths[Agent])
 
               case Some("Agent") ⇒
-                complete(fileBasedApi.fileBaseds[Agent])
+                completeTask(
+                  fileBasedApi.fileBaseds[Agent])
 
               case _ ⇒
                 reject
             }
           } ~
           path(remainingSegmentOrPath[AgentPath]) { agentPath ⇒
-            complete(fileBasedApi.pathToCurrentFileBased[Agent](agentPath))
+            completeTask(
+              fileBasedApi.pathToCurrentFileBased[Agent](agentPath))
           }
       }
     }

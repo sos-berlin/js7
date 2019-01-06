@@ -39,9 +39,9 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
   private val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi {
-    def order(orderId: OrderId) = Task.now(TestOrders.get(orderId))
-    def orders = Task.now(eventIdGenerator.stamp(TestOrders.values.toVector))
-    def orderCount = Task.now(TestOrders.values.size)
+    def order(orderId: OrderId) = Task(TestOrders.get(orderId))
+    def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
+    def orderCount = Task(TestOrders.values.size)
   }
 
   private def route = Route.seal {

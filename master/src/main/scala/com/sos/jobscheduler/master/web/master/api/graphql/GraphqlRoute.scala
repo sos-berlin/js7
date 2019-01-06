@@ -40,7 +40,7 @@ trait GraphqlRoute extends MasterRouteProvider {
     def executionContext = scheduler
 
     def order(orderId: OrderId) =
-      orderApi.order(orderId).runAsync
+      orderApi.order(orderId).runToFuture
 
     def orders(selector: QueryContext.OrderFilter) = {
       val idMatches: Order[Order.State] ⇒ Boolean =
@@ -56,11 +56,11 @@ trait GraphqlRoute extends MasterRouteProvider {
 
       def matches(order: Order[Order.State]) = workflowMatches(order) && idMatches(order)
 
-      orderApi.orders.runAsync map (_.value filter matches take selector.limit)
+      orderApi.orders.map(_.value filter matches take selector.limit).runToFuture
     }
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      fileBasedApi.idTo[A](id).map(_.value).runAsync
+      fileBasedApi.idTo[A](id).map(_.value).runToFuture
   }
 
   final val graphqlRoute: Route =

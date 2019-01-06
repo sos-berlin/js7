@@ -15,7 +15,6 @@ import com.sos.jobscheduler.common.akkahttp.StreamingSupport.AkkaObservable
 import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
-import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.language.implicitConversions
@@ -33,9 +32,6 @@ object StandardMarshallers
     Marshaller.withOpenCharset(`text/plain`) { (string, charset) ⇒
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
-
-  implicit def monixTaskToResponseMarshallable[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
-    task.runAsync
 
   def closeableIteratorToMarshallable[A: ToEntityMarshaller](closeableIterator: CloseableIterator[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] ⇒ ToResponseMarshallable)

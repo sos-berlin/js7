@@ -33,7 +33,7 @@ final class CommandQueueTest extends FreeSpec {
       val failed = mutable.Buffer[(Vector[Queueable], Throwable)]()
 
       protected def executeCommand(command: AgentCommand.Batch) =
-        Task.pure(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(AgentCommand.Response.Accepted))))
+        Task(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(AgentCommand.Response.Accepted))))
 
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses

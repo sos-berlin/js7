@@ -211,9 +211,9 @@ with MainJournalingActor[Event]
       if (terminating)
         sender ! Invalid(MasterIsTerminatingProblem)
       else
-        executeMasterCommand(command, meta).runOnComplete {
-          case Success(response) ⇒ sender ! response
-          case Failure(t) ⇒ sender ! Status.Failure(t)
+        executeMasterCommand(command, meta).runAsync {
+          case Left(t) ⇒ sender ! Status.Failure(t)
+          case Right(response) ⇒ sender ! response
         }
 
     case Command.AddOrderSchedule(orders) if !terminating ⇒
@@ -367,7 +367,7 @@ with MainJournalingActor[Event]
           a ← readConfiguration(versionId)  // Persists events
           b ← readScheduledOrderGeneratorConfiguration()
         } yield a >> b
-        Task.now(
+        Task.pure(
           for (sideEffect ← checkedSideEffect) yield {
             sideEffect.unsafeRunSync()
             MasterCommand.Response.Accepted
@@ -375,10 +375,10 @@ with MainJournalingActor[Event]
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
-        Task.now(Valid(MasterCommand.Response.Accepted))
+        Task.pure(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
-        Task.now(Invalid(Problem("NOT IMPLEMENTED")))  // Never called
+        Task.pure(Invalid(Problem("NOT IMPLEMENTED")))  // Never called
 
       case MasterCommand.TakeSnapshot ⇒
         import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes
@@ -392,7 +392,7 @@ with MainJournalingActor[Event]
         journalActor ! JournalActor.Input.TakeSnapshot
         terminating = true
         terminateRespondedAt = Some(now)
-        Task.now(Valid(MasterCommand.Response.Accepted))
+        Task.pure(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent ⇒
         Task.deferFuture {

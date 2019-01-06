@@ -64,7 +64,7 @@ trait FatEventRoute extends MasterRouteProvider
         authorizedUser(ValidUserPermission) { _ ⇒
           eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest ⇒
             concurrentRequestsLimiter(
-              complete(requestFatEvents(fatRequest).runAsync))
+              complete(requestFatEvents(fatRequest).runToFuture))
           }
         }
       }
@@ -86,7 +86,7 @@ trait FatEventRoute extends MasterRouteProvider
               stateAccessor.skipIgnoredEventIds(empty.lastEventId)
               val nextTimeout = timeoutAt - now
               if (nextTimeout > Duration.Zero)
-                requestFat(underlyingRequest.copy[Event](after = empty.lastEventId))
+                requestFat(underlyingRequest.copy[Event](after = empty.lastEventId)).runToFuture
               else
                 ToResponseMarshallable(empty: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
@@ -96,11 +96,12 @@ trait FatEventRoute extends MasterRouteProvider
           }
 
       requestFat(EventRequest[Event](
-        Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
-        after = stateAccessor.eventId,
-        timeout = fatRequest.timeout,
-        delay = fatRequest.delay,
-        limit = Int.MaxValue))
+          Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
+          after = stateAccessor.eventId,
+          timeout = fatRequest.timeout,
+          delay = fatRequest.delay,
+          limit = Int.MaxValue))
+        .runToFuture
     }
   }
 }

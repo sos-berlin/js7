@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp
 
+import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
@@ -10,6 +11,8 @@ import akka.shapeless.HNil
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import akka.{Done, NotUsed}
+import monix.eval.Task
+import monix.execution.Scheduler
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.util.{Success, Try}
@@ -248,4 +251,7 @@ object AkkaHttpServerUtils
             Unmatched
         }
   }
+
+  def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
+    complete(task.runToFuture)
 }

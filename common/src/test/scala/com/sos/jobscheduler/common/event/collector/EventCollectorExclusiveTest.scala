@@ -32,8 +32,8 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
 
   "eventCollector.when with torn event stream" in {
     val eventCollector = new MyEventCollector(EventCollector.Configuration.ForTest.copy(queueSize = 2))
-    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](timeout = 30.seconds)).runAsync
-    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](timeout = 30.seconds)).runAsync
+    val anyFuture = eventCollector.when(EventRequest.singleClass[Event](timeout = 30.seconds)).runToFuture
+    val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](timeout = 30.seconds)).runToFuture
     assert(!anyFuture.isCompleted)
     eventCollector.putEvent_("1" <-: A1)
     val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms

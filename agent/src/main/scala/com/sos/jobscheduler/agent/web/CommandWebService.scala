@@ -12,6 +12,7 @@ import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.ProblemException
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -36,7 +37,7 @@ trait CommandWebService extends AgentRouteProvider {
         pathEnd {
           optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption ⇒
             entity(as[AgentCommand]) { command ⇒
-              complete {
+              completeTask {
                 val meta = CommandMeta(user, sessionTokenOption map { o ⇒ SessionToken(SecretString(o)) })
                 commandExecute(meta, command).materialize.map {
                   case Failure(e: ProblemException) if e.problem == AgentIsShuttingDownProblem ⇒
@@ -52,10 +53,12 @@ trait CommandWebService extends AgentRouteProvider {
       get {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {
           pathEnd {
-            complete { commandOverview }
+            completeTask(
+              commandOverview)
           } ~
           pathSingleSlash {
-            complete { commandDetailed map { _.commandRuns } }
+            completeTask(
+              commandDetailed map (_.commandRuns))
           }
         }
       }

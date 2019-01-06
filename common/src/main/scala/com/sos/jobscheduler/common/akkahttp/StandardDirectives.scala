@@ -49,7 +49,7 @@ object StandardDirectives
     ctx ⇒ Future.successful(lazyRoute(ctx)).flatten
 
   def routeTask(routeTask: Task[Route])(implicit s: Scheduler): Route =
-    routeFuture(routeTask.runAsync)
+    routeFuture(routeTask.runToFuture)
 
   def routeFuture(routeFuture: Future[Route])(implicit ec: ExecutionContext): Route =
     ctx ⇒ routeFuture flatMap (_(ctx))

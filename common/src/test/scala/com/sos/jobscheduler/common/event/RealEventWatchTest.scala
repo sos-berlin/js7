@@ -24,16 +24,16 @@ final class RealEventWatchTest extends FreeSpec {
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       onEventsAdded(events.last.eventId)
     }
-    val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runAsync await 99.seconds
+    val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runToFuture await 99.seconds
     assert(a == events)
 
     // Event from 1970-01-01 is older than 1s
-    val observable = eventWatch.observe(EventRequest.singleClass[TestEvent](tornOlder = 1.second)).toListL.runAsync
+    val observable = eventWatch.observe(EventRequest.singleClass[TestEvent](tornOlder = 1.second)).toListL.runToFuture
     intercept[TornException] { observable await 99.seconds }
     observable.cancel()
 
     assert(eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 7, after = 1, tornOlder = 1.second))
-      .toListL.runAsync.await(99.seconds).isEmpty)
+      .toListL.runToFuture.await(99.seconds).isEmpty)
   }
 
   "observe without stack overflow" in {

@@ -10,6 +10,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
@@ -34,11 +35,12 @@ trait OrderRoute extends MasterRouteProvider
           entity(as[FreshOrder]) { order ⇒
             extractUri { uri ⇒
               respondWithHeader(Location(uri + "/" + order.id.string)) {
-                complete(orderApi.addOrder(order).map[ToResponseMarshallable] {
-                  case Invalid(problem) ⇒ problem
-                  case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added")
-                  case Valid(true) ⇒ Created
-                })
+                completeTask(
+                    orderApi.addOrder(order).map[ToResponseMarshallable] {
+                    case Invalid(problem) ⇒ problem
+                    case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added")
+                    case Valid(true) ⇒ Created
+                  })
               }
             }
           }
@@ -48,7 +50,7 @@ trait OrderRoute extends MasterRouteProvider
         pathEnd {
           parameter("return".?) {
             case None ⇒
-              complete(orderApi.ordersOverview)
+              complete(orderApi.ordersOverview.runToFuture)
             case _ ⇒
               complete(Problem("Parameter return is not supported here"))
           }
@@ -56,9 +58,9 @@ trait OrderRoute extends MasterRouteProvider
         pathSingleSlash {
           parameter("return".?) {
             case None ⇒
-              complete(orderApi.orderIds)
+              complete(orderApi.orderIds.runToFuture)
             case Some("Order") ⇒
-              complete(orderApi.orders)
+              complete(orderApi.orders.runToFuture)
             case Some(unrecognized) ⇒
               complete(Problem(s"Unrecognized return=$unrecognized"))
           }
@@ -70,14 +72,13 @@ trait OrderRoute extends MasterRouteProvider
     }
 
   private def singleOrder(orderId: OrderId): Route =
-    complete {
-      orderApi.order(orderId) map {
+    completeTask(
+      orderApi.order(orderId).map {
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
           Problem(s"Does not exist: $orderId"): ToResponseMarshallable
-      }
-    }
+      })
 
 }
 
