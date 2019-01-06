@@ -4,7 +4,7 @@ import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
-import cats.effect.IO
+import cats.effect.SyncIO
 import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.option._
@@ -401,13 +401,13 @@ with MainJournalingActor[Event]
         }
     }
 
-  private def readConfiguration(versionId: Option[VersionId]): Checked[IO[Unit]] = {
-    def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[IO[Unit]]] =
+  private def readConfiguration(versionId: Option[VersionId]): Checked[SyncIO[Unit]] = {
+    def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
       updateAgents(diff.select[AgentPath, Agent])
 
-    def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[IO[Unit]]] =
+    def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[SyncIO[Unit]]] =
       onlyAdditionPossible(diff) :+
-        Valid(IO {
+        Valid(SyncIO {
           for (agent ← diff.added) registerAgent(agent).start()
         })
 
@@ -419,8 +419,8 @@ with MainJournalingActor[Event]
       eventsAndRepo ← repoReader.readConfiguration(repo, versionId)
       (events, changedRepo) = eventsAndRepo
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
-      foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(IO.unit)(_ >> _))  // One problem invalidates all side effects
-    } yield IO {
+      foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
+    } yield SyncIO {
       persistTransaction(events map (e ⇒ KeyedEvent(e))) { _ ⇒ }
       defer {
         changeRepo(changedRepo)
@@ -444,14 +444,14 @@ with MainJournalingActor[Event]
   }
 
   /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */
-  private def readScheduledOrderGeneratorConfiguration(): Checked[IO[Unit]] = {
+  private def readScheduledOrderGeneratorConfiguration(): Checked[SyncIO[Unit]] = {
     val dir = masterConfiguration.orderGeneratorsDirectory
     if (!Files.exists(dir))
-      Valid(IO.unit)
+      Valid(SyncIO.unit)
     else {
       val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
       for (events ← FileBaseds.readDirectory(reader :: Nil, dir, scheduledOrderGenerators, repo.versionId)) yield
-        IO {
+        SyncIO {
           scheduledOrderGenerators ++= events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o }
           orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
         }

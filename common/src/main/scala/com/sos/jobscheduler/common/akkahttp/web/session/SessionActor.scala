@@ -47,7 +47,7 @@ extends Actor {
       tokenToSession.insert(session.sessionToken → session)
       logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
       sender() ! token
-      planNextCleanup()
+      scheduleNextCleanup()
 
     case Command.Logout(token) ⇒
       delete(token, reason = "logout")
@@ -83,10 +83,10 @@ extends Actor {
       logger.trace("CleanUp")
       tokenToSession.values.toVector foreach handleTimeout
       nextCleanup = null
-      planNextCleanup()
+      scheduleNextCleanup()
   }
 
-  private def planNextCleanup(): Unit =
+  private def scheduleNextCleanup(): Unit =
     if (nextCleanup == null && tokenToSession.values.exists(o ⇒ !o.isEternal)) {
       nextCleanup = scheduler.scheduleOnce(cleanupInterval) {
         self ! CleanUp
