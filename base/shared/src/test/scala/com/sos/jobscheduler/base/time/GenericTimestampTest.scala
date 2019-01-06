@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class TimestampTest extends FreeSpec {
+final class GenericTimestampTest extends FreeSpec {
 
   private val isoString = "2017-12-04T11:22:33.456Z"
   private val millis = 1512386553456L
