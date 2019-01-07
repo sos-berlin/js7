@@ -415,8 +415,7 @@ with MainJournalingActor[Event]
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield SyncIO {
-      persistTransaction(events map (e ⇒ KeyedEvent(e))) { _ ⇒ }
-      defer {
+      persistTransaction(events map (e ⇒ KeyedEvent(e))) { _ ⇒
         changeRepo(changedRepo)
         foldedSideEffects.unsafeRunSync()
       }
