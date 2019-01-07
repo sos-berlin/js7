@@ -17,13 +17,12 @@ import monix.execution.atomic.AtomicAny
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
   * <p>
-  *   This implementation depends on BufferedReader.readLine, which separates the input not only
-  *   by LF but also by CR, CR/LF and EOF.
-  * <p>
-  *    Also, this class does not collapse consecutive RS.
+  *    This implementation class expects no LF in a JSON record
+  *    and does not collapse consecutive RS.
   *
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
+  * @see http://ndjson.org/
   */
 final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize, withRS: Boolean = false)
 extends AutoCloseable {
@@ -87,7 +86,7 @@ extends AutoCloseable {
         blockRead += 1
       }
     }
-    if ((!withRS || rsReached) && !lfReached) {
+    if ((!withRS && byteStringBuilder.nonEmpty || rsReached) && !lfReached) {
       logger.warn(s"Discarding truncated last record in '$name': ${byteStringBuilder.result().utf8String} (terminating LF is missing)")
       byteStringBuilder.clear()
       seek(startPosition)  // Keep a proper file position at start of record

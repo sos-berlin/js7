@@ -20,6 +20,15 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
 {
   ProblemCodeMessages.initialize()
 
+  "Empty file" in {
+    val in = new InputStream with SeekableInputStream {
+      def read() = -1
+      def seek(pos: Long) = throw new NotImplementedError
+    }
+    val reader = newInputStreamJsonSeqReader(in)
+    assert(reader.read() == None)
+  }
+
   "read, seek" in {
     val in = new InputStream with SeekableInputStream {
       var pos = 0
