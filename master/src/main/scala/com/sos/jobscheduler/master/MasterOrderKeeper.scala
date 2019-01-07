@@ -19,7 +19,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThro
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
+import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -81,13 +81,8 @@ with MainJournalingActor[Event]
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   protected val journalActor = watch(actorOf(
-    JournalActor.props(
-      journalMeta,
-      masterConfiguration.config,
-      keyedEventBus, scheduler,
-      eventIdGenerator = eventIdGenerator),
+    JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal"))
   private var hasRecovered = false
   private val repoReader = new MasterRepoReader(masterConfiguration.fileBasedDirectory)
@@ -146,7 +141,7 @@ with MainJournalingActor[Event]
 
   protected def snapshots = Future.successful(
     MasterState(
-      eventIdGenerator.lastUsedEventId,
+      persistedEventId,
       repo,
       orderRegister.mapValues(_.order).toMap,
       agentRegister.values.map(entry ⇒ entry.agentId → entry.lastAgentEventId).toMap,
@@ -171,6 +166,7 @@ with MainJournalingActor[Event]
       for (at ← masterState.orderScheduleEndedAt) {
         orderScheduleGenerator ! OrderScheduleGenerator.Input.Recover(at)
       }
+      persistedEventId = masterState.eventId
     }
     recoverer.startJournalAndFinishRecovery(
       journalActor = journalActor,
@@ -230,7 +226,7 @@ with MainJournalingActor[Event]
       }
 
     case Command.GetRepo ⇒
-      sender() ! eventIdGenerator.stampWithLast(repo)
+      sender() ! Stamped(persistedEventId, repo)
 
     case Command.AddOrder(order) ⇒
       if (terminating)
@@ -242,9 +238,7 @@ with MainJournalingActor[Event]
       sender() ! (orderRegister.get(orderId) map { _.order })
 
     case Command.GetOrders ⇒
-      // TODO eventIdGenerator kann bereits weitergezählt haben, ohne dass der Auftrag mit dem letzten (asynchronem empfangenen) Event aktualisiert worden wäre.
-      //      Lösung: JournalActor verwaltet Zustand (snapshot). MasterOrderKeeper hält dann eine (verzögerte) Kopie?
-      sender() ! eventIdGenerator.stampWithLast((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
+      sender() ! Stamped[Vector[Order[Order.State]]](persistedEventId, orderRegister.values.map(_.order).toVector)
 
     case Command.GetOrderCount ⇒
       sender() ! (orderRegister.size: Int)

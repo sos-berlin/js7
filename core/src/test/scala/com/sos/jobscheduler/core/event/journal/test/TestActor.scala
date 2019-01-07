@@ -6,7 +6,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
+import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -34,8 +34,9 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, config withFallback TestConfig, new StampedKeyedEventBus, Scheduler.global, journalStopped,
-      new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/))),
+    JournalActor.props(journalMeta, config withFallback TestConfig, new StampedKeyedEventBus, Scheduler.global,
+      new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
+      journalStopped),
     "Journal"))
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs._
-import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
@@ -39,14 +39,15 @@ final class JournalActor[E <: Event] private(
   config: Config,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
-  stopped: Promise[Stopped],
-  eventIdGenerator: EventIdGenerator)
+  eventIdClock: EventIdClock,
+  stopped: Promise[Stopped])
 extends Actor with Stash {
 
   import context.{actorOf, become, stop, watch}
   import journalMeta.snapshotJsonCodec
 
   private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
+  private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
   private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
@@ -354,10 +355,10 @@ object JournalActor
     config: Config,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
-    stopped: Promise[Stopped] = Promise(),
-    eventIdGenerator: EventIdGenerator = new EventIdGenerator)
+    eventIdClock: EventIdClock = EventIdClock.Default,
+    stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, stopped, eventIdGenerator) }
+    Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, eventIdClock, stopped) }
       .withDispatcher("jobscheduler.journal.dispatcher")  // Used in thread names
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix

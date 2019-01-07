@@ -3,7 +3,8 @@ package com.sos.jobscheduler.core.event.journal.test
 import akka.Done
 import akka.actor.{ActorRef, Status}
 import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, cast}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.core.event.journal.test.TestAggregateActor._
 import scala.util.{Failure, Success}
@@ -41,13 +42,17 @@ extends KeyedJournalingActor[TestEvent] {
           }
 
         case Command.Add(string) ⇒
+          val before = persistedEventId
           persist(TestEvent.Added(string)) { e ⇒
+            assert(before < persistedEventId)
             update(e)
             sender() ! Done
           }
 
         case Command.Remove ⇒
+          val before = persistedEventId
           persist(TestEvent.Removed) { e ⇒
+            assert(before < persistedEventId)
             update(e)
             sender() ! Response.Completed(disturbance)
           }
@@ -62,13 +67,20 @@ extends KeyedJournalingActor[TestEvent] {
           val sender = this.sender()
           val event = TestEvent.NothingDone
           persistAcceptEarly(event) onComplete {
+            // persistAcceptEarly does not update persistedEventId
             case Success(_: Accepted) ⇒ sender ! Response.Completed(disturbance)
-            case Failure(t) ⇒ sender ! Status.Failure(t)
+            case Failure(t) ⇒
+              logger.error(t.toStringWithCauses, t)
+              sender ! Status.Failure(t)
           }
 
         case Command.AppendAsync(string) ⇒
           for (c ← string) {
-            persist(TestEvent.Appended(c), async = true)(update)
+            val before = persistedEventId
+            persist(TestEvent.Appended(c), async = true) { event ⇒
+              assert(before < persistedEventId)
+              update(event)
+            }
           }
           deferAsync {
             sender() ! Response.Completed(disturbance)
@@ -123,7 +135,9 @@ extends KeyedJournalingActor[TestEvent] {
     }
 }
 
-private[journal] object TestAggregateActor {
+private[journal] object TestAggregateActor
+{
+  private val logger = Logger(getClass)
 
   object Input {
     final case object Get

@@ -27,12 +27,17 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
 
   private var stashingCount = 0
   private var _actorStateName: String = ""
+  private var _persistedEventId = EventId.BeforeFirst
 
   import context.dispatcher
 
   become("receive")(receive)
 
   final def actorStateName = _actorStateName
+
+  final def persistedEventId = _persistedEventId
+
+  final def persistedEventId_=(eventId: EventId) = _persistedEventId = eventId  // TODO Used for recovery, should not be mutable
 
   protected def become(stateName: String)(recv: Receive) = {
     _actorStateName = stateName
@@ -119,12 +124,15 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   }
 
   protected[journal] def journaling: Receive = {
-    case JournalActor.Output.Stored(stampedOptions, item: Item) ⇒
+    case JournalActor.Output.Stored(stampedSeq, item: Item) ⇒
       // sender() is from persistKeyedEvent or deferAsync
-      if (!item.async) {
-        endStashing(stampedOptions)
+      stampedSeq.lastOption foreach { last ⇒
+        _persistedEventId = last.eventId
       }
-      (stampedOptions, item) match {
+      if (!item.async) {
+        endStashing(stampedSeq)
+      }
+      (stampedSeq, item) match {
         case (stamped, EventsCallback(_, callback)) ⇒
           if (logger.underlying.isTraceEnabled) for (st ← stamped)
             logger.trace(s"“$toString” Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
@@ -134,7 +142,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
           logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
           callback()
 
-        case _ ⇒ sys.error(s"JournalActor.Output.Stored(${stampedOptions.length}×) message does not match item '$item'")
+        case _ ⇒ sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
       }
 
     case JournalActor.Output.Accepted(item: Item) ⇒
