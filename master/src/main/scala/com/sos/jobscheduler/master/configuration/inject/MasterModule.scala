@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.system.ThreadPools
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -65,21 +66,16 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def monixScheduler(): Scheduler =
-    //if (sys.runtime.availableProcessors > 1 &&
-    //    !sys.props.contains("scala.concurrent.context.minThreads") &&
-    //    !sys.props.contains("scala.concurrent.context.numThreads"))
-      Scheduler.global
-    //else
-    //  Scheduler(Executors.newScheduledThreadPool(2))
+    ThreadPools.newStandardScheduler(configuration.name, config)
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =
     actorSystem
 
   @Provides @Singleton
-  def actorSystem(implicit closer: Closer): ActorSystem = {
+  def actorSystem(implicit closer: Closer, executionContext: ExecutionContext): ActorSystem = {
     val actorSystem = ActorSystem(configuration.name, config = Some(configuration.config),
-      defaultExecutionContext = config.getBoolean("jobscheduler.akka.use-global-executor") ? ExecutionContext.global)
+      defaultExecutionContext = config.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? executionContext)
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {

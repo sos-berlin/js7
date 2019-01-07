@@ -53,6 +53,7 @@ extends AutoCloseable {
 
   webServer.setRunningAgent(this)
 
+  implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val localUri: Uri = webServer.localUri
   //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)

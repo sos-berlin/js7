@@ -15,9 +15,11 @@ import scala.concurrent.ExecutionContext
 object Akkas {
   private val logger = Logger(getClass)
 
-  def newActorSystem(name: String, config: Config = ConfigFactory.empty)(implicit closer: Closer): ActorSystem = {
+  def newActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global)
+    (implicit closer: Closer)
+  : ActorSystem = {
     val myConfig = config withFallback AgentConfiguration.DefaultsConfig
-    val ec = myConfig.getBoolean("jobscheduler.akka.use-global-executor") ? ExecutionContext.global
+    val ec = myConfig.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? defaultExecutionContext
     ActorSystem(name, config = Some(myConfig), defaultExecutionContext = ec) sideEffect { o ⇒
       DeadLetterActor.subscribe(o)
       closer.onClose {

@@ -35,9 +35,9 @@ object IOExecutor
 
   def newThreadPoolExecutor(config: Config): ThreadPoolExecutor =
     newThreadPoolExecutor(
-      keepAlive = config.getDuration("jobscheduler.io-thread-pool.keep-alive").toFiniteDuration,
-      minimum   = config.getInt     ("jobscheduler.io-thread-pool.minimum"),
-      maximum   = config.as         ("jobscheduler.io-thread-pool.maximum")(StringAsIntOrUnlimited))
+      keepAlive = config.getDuration("jobscheduler.thread-pools.io.keep-alive").toFiniteDuration,
+      minimum   = config.getInt     ("jobscheduler.thread-pools.io.minimum"),
+      maximum   = config.as         ("jobscheduler.thread-pools.io.maximum")(StringAsIntOrUnlimited))
 
   def newThreadPoolExecutor(keepAlive: FiniteDuration = 60.seconds, minimum: Int = 0, maximum: Option[Int] = None): ThreadPoolExecutor =
     new ThreadPoolExecutor(minimum, maximum getOrElse Int.MaxValue, keepAlive.toMillis, MILLISECONDS,

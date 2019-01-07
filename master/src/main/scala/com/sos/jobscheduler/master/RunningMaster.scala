@@ -70,9 +70,10 @@ final class RunningMaster private(
   val orderKeeper: ActorRef,
   val terminated: Future[Completed],
   closer: Closer,
-  @TestOnly val injector: Injector)
+  val injector: Injector)
 extends AutoCloseable
 {
+  implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
 
   def terminate(): Task[Completed] =
@@ -98,7 +99,8 @@ extends AutoCloseable
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
     orderApi.addOrder(order)
 
-  def addOrderBlocking(order: FreshOrder)(implicit s: Scheduler): Boolean =
+  @TestOnly
+  def addOrderBlocking(order: FreshOrder): Boolean =
     orderApi.addOrder(order).runToFuture.await(99.s).orThrow
 
   val localUri: Uri = webServer.localUri

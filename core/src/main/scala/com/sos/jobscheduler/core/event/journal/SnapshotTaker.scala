@@ -30,7 +30,7 @@ extends Actor
 {
   private val remaining = mutable.Set() ++ journalingActors
   private var snapshotCount = 0
-  private val pipeline = new ParallelExecutingPipeline[ByteString](write)
+  private val pipeline = new ParallelExecutingPipeline[ByteString](write)(scheduler)
   private val logProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration
   private val logProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit")
   private var logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }

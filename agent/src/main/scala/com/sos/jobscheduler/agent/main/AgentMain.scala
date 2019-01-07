@@ -10,7 +10,6 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.JavaMainSupport.{handleJavaShutdown, runMain}
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Duration
 
 /**
@@ -39,6 +38,7 @@ object AgentMain {
 
   private def onJavaShutdown(agent: RunningAgent)(timeout: Duration): Unit = {
     logger.warn("Trying to terminate Agent due to Java shutdown")
+    import agent.scheduler
     val sigkillAfter = agent.config.getDuration("jobscheduler.termination.sigkill-after").toFiniteDuration
     agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter))).runAsyncAndForget
     agent.terminated await timeout

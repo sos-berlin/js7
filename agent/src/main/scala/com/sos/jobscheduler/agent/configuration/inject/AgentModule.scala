@@ -10,6 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor}
+import com.sos.jobscheduler.core.system.ThreadPools
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -33,8 +34,8 @@ extends AbstractModule {
   def actorRefFactory(o: ActorSystem): ActorRefFactory = o
 
   @Provides @Singleton
-  def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config): ActorSystem =
-    newActorSystem(conf.name, config)(closer)
+  def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config, executionContext: ExecutionContext): ActorSystem =
+    newActorSystem(conf.name, config, executionContext)(closer)
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, config: Config): IOExecutor = {
@@ -48,8 +49,8 @@ extends AbstractModule {
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(): Scheduler =
-    Scheduler.global
+  def monixScheduler(configuration: AgentConfiguration): Scheduler =
+    ThreadPools.newStandardScheduler(configuration.name, configuration.config)
 
   @Provides @Singleton
   def agentConfiguration(): AgentConfiguration = originalAgentConfiguration.finishAndProvideFiles

@@ -2,13 +2,12 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import java.util.concurrent.ArrayBlockingQueue
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
-final class ParallelExecutingPipeline[A](output: A ⇒ Unit) {
+final class ParallelExecutingPipeline[A](output: A ⇒ Unit)(implicit ec: ExecutionContext) {
 
   private val queue = new ArrayBlockingQueue[Future[A]](sys.runtime.availableProcessors)
 

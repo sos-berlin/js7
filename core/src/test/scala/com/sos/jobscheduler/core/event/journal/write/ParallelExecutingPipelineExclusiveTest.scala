@@ -6,6 +6,7 @@ import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipelineEx
 import java.time.Instant.now
 import org.scalatest.FreeSpec
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -18,7 +19,7 @@ final class ParallelExecutingPipelineExclusiveTest extends FreeSpec {
     val n = 500 * sys.runtime.availableProcessors
     val result = mutable.ArrayBuffer[Int]()
     result.sizeHint(n)
-    val pipeline = new ParallelExecutingPipeline[Int](result.+=)
+    val pipeline = new ParallelExecutingPipeline[Int](result.+=)(ExecutionContext.global)
     val count = new ParallelismCounter
     def f(i: Int) = count {
       nanoLoop(sleepDuration.toNanos)
