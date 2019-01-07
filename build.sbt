@@ -47,7 +47,7 @@ val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
-addCommandAlias("clean-all"      , "; clean; jobschedulerJS/clean; testerJVM/clean")
+addCommandAlias("clean-all"      , "; clean; jobschedulerJS/clean; tester/clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
@@ -174,6 +174,7 @@ lazy val `jobscheduler-docker` = project
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
 lazy val tester = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
@@ -186,6 +187,7 @@ lazy val tester = crossProject(JSPlatform, JVMPlatform)
   }
 
 lazy val base = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .dependsOn(tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -204,6 +206,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
   }
 
 lazy val data = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .dependsOn(base, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -256,9 +259,11 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
         branch = git.gitCurrentBranch.value,
         isUncommitted = git.gitUncommittedChanges.value),
       "version" → version.value,
+      "commitId" → git.gitHeadCommit.value,
       "commitMessage" → git.gitHeadMessage.value))
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .dependsOn(base, tester % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
@@ -295,6 +300,7 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
   }
 
 lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .dependsOn(data, tester % "test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -306,6 +312,7 @@ lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
     })
 
 lazy val `master-client` = crossProject(JSPlatform, JVMPlatform)
+  .withoutSuffixFor(JVMPlatform)
   .dependsOn(`master-data`, `common-http`, tester % "test")
   .jvmConfigure(_.dependsOn(common))
   .settings(commonSettings)
