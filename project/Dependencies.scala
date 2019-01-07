@@ -40,7 +40,7 @@ object Dependencies
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.14.0"
-  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0" :: slf4j :: Nil
+  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
