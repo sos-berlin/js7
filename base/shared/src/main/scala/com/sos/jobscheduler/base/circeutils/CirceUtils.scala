@@ -114,7 +114,7 @@ object CirceUtils {
   }
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
-    def parseJson: Json =
+    def parseJsonOrThrow: Json =
       io.circe.parser.parse(underlying).orThrow
   }
 
@@ -182,7 +182,7 @@ object CirceUtils {
         builder.append(toJson(arg))
         builder.append(p.next())
       }
-      builder.toString.parseJson
+      builder.toString.parseJsonOrThrow
     }
 
     private def toJson(arg: Any): String =

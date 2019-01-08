@@ -516,7 +516,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.post_[Json](s"$uri/master/api/graphql", queryJson, headers) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
-      assert(response.utf8StringFuture.await(99.s).parseJson ==
+      assert(response.utf8StringFuture.await(99.s).parseJsonOrThrow ==
         json"""{
           "errors": [
             {
@@ -538,7 +538,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.post_[Json](s"$uri/master/api/graphql", queryJson, headers) await 99.s
       assert(response.status.intValue == 400/*BadRequest*/)
-      assert(response.utf8StringFuture.await(99.s).parseJson ==
+      assert(response.utf8StringFuture.await(99.s).parseJsonOrThrow ==
         json"""{
           "errors": [
             {

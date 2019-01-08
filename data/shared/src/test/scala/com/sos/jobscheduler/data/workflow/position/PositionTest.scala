@@ -19,7 +19,7 @@ final class PositionTest extends FreeSpec {
     testJson(Position(1) / 2 / 3       , json"""[ 1, 2, 3 ]""")
     testJson(Position(1) / 2 / 3 / 4   , json"""[ 1, 2, 3, 4 ]""")
 
-    assert("""[ 1, 2 ]""".parseJson.as[Position].isLeft/*failed*/)
+    assert("""[ 1, 2 ]""".parseJsonOrThrow.as[Position].isLeft/*failed*/)
   }
 
   "Represented as array of simple types" in {

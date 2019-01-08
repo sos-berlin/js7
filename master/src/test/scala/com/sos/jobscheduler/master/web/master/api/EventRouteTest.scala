@@ -239,7 +239,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
           """data:{"TYPE":"Problem","message":"BUILD-CHANGED"}
             |
             |""".stripMargin)
-        assert(string.drop(5).parseJson.as[Problem].orThrow.toString == "BUILD-CHANGED")
+        assert(string.drop(5).parseJsonOrThrow.as[Problem].orThrow.toString == "BUILD-CHANGED")
       }
     }
   }

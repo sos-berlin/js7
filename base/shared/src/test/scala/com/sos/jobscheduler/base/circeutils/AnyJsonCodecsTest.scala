@@ -34,7 +34,7 @@ final class AnyJsonCodecsTest extends FreeSpec {
         "int": 333,
         "boolean": true,
         "array": [1, "two"]
-      }""".parseJson
+      }""".parseJsonOrThrow
     assert(mapToJson(map) == json)
     assert(jsonToAny(json) == map)
 

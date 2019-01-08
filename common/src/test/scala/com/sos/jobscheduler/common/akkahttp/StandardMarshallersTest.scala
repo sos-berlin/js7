@@ -45,7 +45,7 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
     val response = Marshal(Problem("PROBLEM")).toResponseFor(HttpRequest(headers = List(Accept(`application/json`)))) await 99.s
     assert(response.status == BadRequest)
     assert(response.entity.contentType == ContentTypes.`application/json`)
-    assert(response.entity.asInstanceOf[HttpEntity.Strict].data.utf8String.parseJson ==  // Should be Strict to allow WebLogDirectives direct access
+    assert(response.entity.asInstanceOf[HttpEntity.Strict].data.utf8String.parseJsonOrThrow ==  // Should be Strict to allow WebLogDirectives direct access
       json"""{ "TYPE": "Problem", "message": "PROBLEM" }""")
   }
 
@@ -63,7 +63,7 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
       val response = Marshal(Valid(A(7)): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == OK)
       assert(response.entity.contentType == ContentTypes.`application/json`)
-      assert(response.entity.toStrict(9.seconds).await(99.s).data.utf8String.parseJson == json""" { "number": 7 } """)
+      assert(response.entity.toStrict(9.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json""" { "number": 7 } """)
     }
 
     "Invalid" in {

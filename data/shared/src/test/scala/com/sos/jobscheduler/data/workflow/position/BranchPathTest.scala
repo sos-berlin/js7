@@ -16,8 +16,8 @@ final class BranchPathTest extends FreeSpec
     testJson(Segment(1, 2) :: Nil                , json"""[ 1, 2 ]""")
     testJson(Segment(1, 2) :: Segment(3, 4) :: Nil, json"""[ 1, 2, 3, 4 ]""")
 
-    assert("""[ 1 ]""".parseJson.as[BranchPath].isLeft/*failed*/)
-    assert("""[ 1, 2, 3 ]""".parseJson.as[BranchPath].isLeft/*failed*/)
+    assert("""[ 1 ]""".parseJsonOrThrow.as[BranchPath].isLeft/*failed*/)
+    assert("""[ 1, 2, 3 ]""".parseJsonOrThrow.as[BranchPath].isLeft/*failed*/)
   }
 
   "BranchPath and Position" in {

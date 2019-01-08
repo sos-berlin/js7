@@ -23,7 +23,7 @@ final class AnyJavaJsonCodecsTest extends FreeSpec {
         "int": 333,
         "boolean": true,
         "array": [1, "two"]
-      }""".parseJson
+      }""".parseJsonOrThrow
     assert(jsonToJava(json) == map)
 
     assert(jsonToJava(Json.fromInt(Int.MinValue)) == Int.MinValue)
