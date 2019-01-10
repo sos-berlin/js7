@@ -386,6 +386,7 @@ object Workflow extends FileBased.Companion[Workflow] {
         "jobs" → emptyToNone(namedJobs).asJson,
         "source" → source.asJson)
   }
+
   implicit val jsonDecoder: Decoder[Workflow] =
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
     cursor ⇒ for {
@@ -395,4 +396,8 @@ object Workflow extends FileBased.Companion[Workflow] {
       source ← cursor.get[Option[String]]("source")
       workflow ← Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult
     } yield workflow
+
+  // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
+  val topJsonDecoder: Decoder[Workflow] =
+    cursor ⇒ jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult)
 }

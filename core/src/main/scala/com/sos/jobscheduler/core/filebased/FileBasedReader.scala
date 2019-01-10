@@ -3,16 +3,15 @@ package com.sos.jobscheduler.core.filebased
 import akka.util.ByteString
 import cats.instances.vector._
 import cats.syntax.traverse._
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath, VersionId}
-import io.circe.Decoder
-import io.circe.parser.{parse ⇒ parseJson}
+import io.circe.Json
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
 
@@ -27,24 +26,28 @@ trait FileBasedReader
 
   protected def read(id: FileBasedId[ThisTypedPath], byteString: ByteString): PartialFunction[SourceType, Checked[ThisFileBased]]
 
+  def convertFromJson(json: Json): Checked[ThisFileBased]
+
   private def readUntyped(id: FileBasedId_, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
     assert(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
     val result: Checked[ThisFileBased] = read(id.asInstanceOf[FileBasedId[ThisTypedPath]], byteString).applyOrElse(sourceType,
-      (_: SourceType) ⇒ Problem(s"Unrecognized SourceType $sourceType for path '$id'"))
+      (_: SourceType) ⇒ Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))
     result.mapProblem(p ⇒ SourceProblem(id.path, sourceType, p))
   }
 
-  final def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = companion.typedPathCompanion
+  final def readJsonString(source: String): Checked[ThisFileBased] =
+    source.parseJsonChecked flatMap convertFromJson
 
-  protected final def readAnonymousJsonLike[A <: FileBased { type Self = A }: Decoder]
-  (sourceType: SourceType.JsonLike, source: ByteString): Checked[A]
-  = sourceType match {
+  final def readAnonymousJsonLike(sourceType: SourceType.JsonLike, source: ByteString): Checked[ThisFileBased] =
+    sourceType match {
       case SourceType.Json ⇒
-        parseJson(source.utf8String).toSimpleChecked flatMap (_.as[A].toSimpleChecked)
+        readJsonString(source.utf8String)
 
       case SourceType.Yaml ⇒
-        yamlToJson(source.utf8String) flatMap (_.as[A].toSimpleChecked)
+        yamlToJson(source.utf8String) flatMap convertFromJson
     }
+
+  private def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = companion.typedPathCompanion
 }
 
 object FileBasedReader
