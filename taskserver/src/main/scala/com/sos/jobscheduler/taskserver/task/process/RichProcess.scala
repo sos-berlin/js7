@@ -130,19 +130,19 @@ object RichProcess {
     start(processBuilder)
   }
 
-  private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
+  private def toRedirect(pathOption: Option[Path]) = pathOption.fold(INHERIT)(o ⇒ Redirect.to(o))
 
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Process): ReturnCode = {
-    logger.trace(s"waitFor ${processToString(process)} ...")
-    val returnCode = blocking {
-      process.waitFor()
-    }
-    logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-    ReturnCode(returnCode)
-  }
+  private def waitForProcessTermination(process: Process) =
+    ReturnCode(
+      blocking {
+        logger.trace(s"waitFor ${processToString(process)} ...")
+        val rc = process.waitFor()
+        logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+        rc
+      })
 
   def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
 
