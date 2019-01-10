@@ -7,6 +7,7 @@ import java.io.{BufferedOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -17,7 +18,7 @@ final class FileJsonWriter(
   simulateSync: Option[FiniteDuration] = None)
 extends AutoCloseable {
 
-  private val out = new FileOutputStream(file, append)
+  private val out = wrapException { new FileOutputStream(file, append) }
   private val bufferedOut = new BufferedOutputStream(out)
   private val writer = new OutputStreamJsonSeqWriter(bufferedOut)
   private val closed = new AtomicBoolean
@@ -26,35 +27,42 @@ extends AutoCloseable {
   private val initialPosition = Files.size(file)
 
   def close() =
-    if (!closed.getAndSet(true)) {
-      flush()
-      writer.close()
-      bufferedOut.close()
-      out.close()
+    wrapException {
+      if (!closed.getAndSet(true)) {
+        flush()
+        writer.close()
+        bufferedOut.close()
+        out.close()
+      }
     }
 
-  def write(byteString: ByteString): Unit = {
-    flushed = false
-    synced = false
-    writer.writeJson(byteString)
-  }
+  def write(byteString: ByteString): Unit =
+    wrapException {
+      flushed = false
+      synced = false
+      writer.writeJson(byteString)
+    }
 
   def sync(): Unit =
-    if (!synced) {
-      flush()
-      simulateSync match {
-        case Some(duration) ⇒ Thread.sleep(duration.toMillis)
-        case None ⇒ out.getFD.sync()
+    wrapException {
+      if (!synced) {
+        flush()
+        simulateSync match {
+          case Some(duration) ⇒ Thread.sleep(duration.toMillis)
+          case None ⇒ out.getFD.sync()
+        }
+        synced = true
       }
-      synced = true
     }
 
   def flush(): Unit =
-    if (!flushed) {
-      writer.flush()
-      bufferedOut.flush()
-      flushed = true
-      synced = false
+    wrapException {
+      if (!flushed) {
+        writer.flush()
+        bufferedOut.flush()
+        flushed = true
+        synced = false
+      }
     }
 
   def isFlushed = flushed
@@ -64,4 +72,10 @@ extends AutoCloseable {
   def fileLength = initialPosition + bytesWritten
 
   def bytesWritten  = writer.bytesWritten
+
+  protected def wrapException[A](body: ⇒ A): A =
+    try body
+    catch { case NonFatal(t) if !t.getMessage.contains(file.toAbsolutePath.toString) ⇒
+      throw new RuntimeException(s"Error while writing file '$file': $t", t)
+    }
 }
