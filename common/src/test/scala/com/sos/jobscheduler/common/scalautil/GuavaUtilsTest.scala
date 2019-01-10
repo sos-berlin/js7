@@ -1,0 +1,20 @@
+package com.sos.jobscheduler.common.scalautil
+
+import com.sos.jobscheduler.common.scalautil.GuavaUtils._
+import org.scalatest.FreeSpec
+
+/**
+  * @author Joacim Zschimmer
+  */
+final class GuavaUtilsTest extends FreeSpec
+{
+  "stringToInputStream" in {
+    val in = stringToInputStream("heiß")
+    assert(in.read() == 'h'.toByte)
+    assert(in.read() == 'e'.toByte)
+    assert(in.read() == 'i'.toByte)
+    assert(in.read() == 0xC3)
+    assert(in.read() == 0x9F)
+    assert(in.read() == -1)
+  }
+}
