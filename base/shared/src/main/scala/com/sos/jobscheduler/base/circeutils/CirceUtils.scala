@@ -114,6 +114,9 @@ object CirceUtils {
   }
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
+    def parseJsonChecked: Checked[Json] =
+      io.circe.parser.parse(underlying).toSimpleChecked
+
     def parseJsonOrThrow: Json =
       io.circe.parser.parse(underlying).orThrow
   }

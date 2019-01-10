@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.base.circeutils
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -73,5 +75,17 @@ final class CirceUtilsTest extends FreeSpec {
 
   "jsonString string interpolator" in {
     assert(jsonString"""{ "A": 7 }""" == """{ "A": 7 }""")  // Only to let IDE highlight JSON error
+  }
+
+  "parseJsonChecked" in {
+    assert("7".parseJsonChecked == Valid(Json.fromInt(7)))
+    assert("x".parseJsonChecked == Invalid(Problem("expected json value got x (line 1, column 1)")))
+  }
+
+  "parseJsonOrThrow" in {
+    assert("7".parseJsonOrThrow == Json.fromInt(7))
+    intercept[io.circe.ParsingFailure] {
+      "x".parseJsonOrThrow
+    }
   }
 }
