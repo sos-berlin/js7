@@ -46,7 +46,7 @@ final class ProblemTest extends FreeSpec
   }
 
   "String" in {
-    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).toString == "TestCode: TestCode (argument=ARGUMENT)")
+    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).toString == "TestCode (argument=ARGUMENT)")
 
     assert(Problem("").toString == "A problem occurred (no message)")
     assert(Problem(null: String).toString == "A problem occurred (null)")

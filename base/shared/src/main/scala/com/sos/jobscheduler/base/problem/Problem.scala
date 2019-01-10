@@ -100,7 +100,11 @@ object Problem
       case _ ⇒ false
     }
 
-    override def toString = code.string + ": " + messageWithCause
+    override def toString = {
+      val msg = messageWithCause
+      if (msg + " " startsWith code.string + " ") msg
+      else code.string + ": " + msg
+    }
   }
   object HasCode {
     def unapply(coded: HasCode) = Some((coded.code, coded.arguments))
