@@ -56,6 +56,10 @@ object FileUtils {
       def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
         contentString = jsonEncoder(a).pretty(CompactPrinter)
 
+      /** Appends `string` encoded with UTF-8 to file. */
+      def ++=(string: CharSequence): Unit =
+        append(string)
+
       /** Must be a relative path without backslashes or single or double dot directories. */
       def /(relative: String): Path =
         delegate resolve checkRelativePath(relative).orThrow
@@ -84,7 +88,7 @@ object FileUtils {
 
       def write(string: String, encoding: Charset = UTF_8): Unit =  file.write(string, encoding)
 
-      def append(o: String, encoding: Charset = UTF_8): Unit = file.append(o, encoding)
+      def append(o: CharSequence, encoding: Charset = UTF_8): Unit = file.append(o, encoding)
 
       private def file = delegate.toFile
 

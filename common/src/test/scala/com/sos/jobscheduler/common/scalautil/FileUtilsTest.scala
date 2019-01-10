@@ -91,6 +91,12 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString
     }
 
+    "++= String" in {
+      path ++= "-APPENDED"
+      path.contentString shouldEqual TestString + "-APPENDED"
+      new String(Files.readAllBytes(path), UTF_8) shouldEqual TestString + "-APPENDED"
+    }
+
     ":= Array[Byte]" in {
       path := Array[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
