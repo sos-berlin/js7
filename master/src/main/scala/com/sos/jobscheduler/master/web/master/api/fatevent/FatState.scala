@@ -57,7 +57,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
       case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
       case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
-      case _ ⇒ this
+      case _                  ⇒ copy(eventId = stamped.eventId)
     }
     val fatEvents = toOrderFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, order.id <-: e))
     (updatedFatState, fatEvents)
