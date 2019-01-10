@@ -1,9 +1,11 @@
 package com.sos.jobscheduler.common.utils
 
 import com.google.common.io.Resources.getResource
+import com.google.common.io.{ByteStreams, Resources}
 import com.sos.jobscheduler.base.problem.ProblemException
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -40,7 +42,7 @@ final class JavaResourceTest extends FreeSpec {
   }
 
   "contentBytes" in {
-    assert(JavaResource(path).contentBytes sameElements expectedString.getBytes(StandardCharsets.UTF_8.name))
+    assert(JavaResource(path).contentBytes sameElements expectedString.getBytes(UTF_8.name))
   }
 
   "copyToFile" in {
@@ -63,6 +65,12 @@ final class JavaResourceTest extends FreeSpec {
 
   "url" in {
     JavaResource(path).url shouldEqual getResource(path)
+  }
+
+  "openStream" in {
+    autoClosing(JavaResource(path).openStream()) { in ⇒
+      assert(ByteStreams.toByteArray(in).toSeq == Resources.toByteArray(JavaResource(path).url).toSeq)
+    }
   }
 
   "/" in {

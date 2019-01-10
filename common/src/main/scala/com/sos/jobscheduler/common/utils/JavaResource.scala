@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import java.io.File
+import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import scala.collection.immutable
@@ -57,19 +57,21 @@ final case class JavaResource(path: String)
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
   def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
-    autoClosing(url.openStream()) { in ⇒
+    autoClosing(openStream()) { in ⇒
       Files.copy(in, file, copyOptions: _*)
     }
     file
   }
 
-  def contentBytes: Array[Byte] = autoClosing(url.openStream())(toByteArray)
+  def contentBytes: Array[Byte] = autoClosing(openStream())(toByteArray)
 
   def asUTF8String = Resources.toString(url, UTF_8)
 
   def simpleName = new File(path).getName
 
   def isValid = checkedUrl.isValid
+
+  def openStream(): InputStream = url.openStream()
 
   /**
    * @throws RuntimeException, if the resource does not exists.
