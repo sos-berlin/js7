@@ -39,7 +39,7 @@ trait JournalRecoverer[E <: Event] {
   final def recoverAll(): Unit =
     for (file ← journalFileOption) {
       logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
-      blocking {  // May take a long time
+      //blocking {  // May take a long time
         // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
         autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
           recoverSnapshots(journalReader)
@@ -49,7 +49,7 @@ trait JournalRecoverer[E <: Event] {
           _totalEventCount = journalReader.totalEventCount
           logStatistics()
         }
-      }
+      //}
     }
 
   private def recoverSnapshots(journalReader: JournalReader[E]): Unit =
