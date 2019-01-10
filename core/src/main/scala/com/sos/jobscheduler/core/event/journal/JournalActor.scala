@@ -272,7 +272,8 @@ extends Actor with Stash {
     snapshotWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
     snapshotWriter.beginSnapshotSection()
     actorOf(
-      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) },
+      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
+        .withDispatcher(DispatcherName),
       uniqueActorName("SnapshotTaker"))
     become(takingSnapshot(commander = sender(), () ⇒ andThen))
   }
@@ -349,6 +350,7 @@ extends Actor with Stash {
 object JournalActor
 {
   private val TmpSuffix = ".tmp"
+  private val DispatcherName = "jobscheduler.journal.dispatcher"  // Config setting; name is used for thread names
 
   def props[E <: Event](
     journalMeta: JournalMeta[E],
@@ -359,7 +361,7 @@ object JournalActor
     stopped: Promise[Stopped] = Promise())
   =
     Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, eventIdClock, stopped) }
-      .withDispatcher("jobscheduler.journal.dispatcher")  // Used in thread names
+      .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix
 
