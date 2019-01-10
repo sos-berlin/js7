@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, HCursor, ObjectEncoder}
+import scala.collection.immutable.VectorBuilder
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.reflect.ClassTag
@@ -122,6 +123,25 @@ object Checked
         case Some(a) ⇒ Valid(a)
         case None ⇒ Invalid(problem)
       }
+  }
+
+  implicit final class FailFastMap[A](private val underlying: TraversableOnce[A]) {
+    /** Like map(f).sequence, but fails fast. Problems does not accumulate. */
+    def failFastMap[B](f: A ⇒ Checked[B]): Checked[Vector[B]] = {
+      val builder = new VectorBuilder[B]
+      var failed: Invalid[Problem] = null
+      val it = underlying.toIterator
+      while (failed == null && it.hasNext) {
+        f(it.next()) match {
+          case Valid(b) ⇒ builder += b
+          case o @ Invalid(_) ⇒ failed = o
+        }
+      }
+      failed match {
+        case null ⇒ Valid(builder.result())
+        case o ⇒ o
+      }
+    }
   }
 
   object implicits {

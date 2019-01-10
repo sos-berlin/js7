@@ -139,6 +139,23 @@ final class CheckedTest extends FreeSpec
     assert(throwable.getMessage == "PROBLEM")
   }
 
+  "failFastMap" - {
+    "Invalid" in {
+      var lastI = 0
+      def f(i: Int) = {
+        lastI = i
+        if (i % 2 == 0) Valid(i) else Invalid(Problem("ODD"))
+      }
+      assert(List(2, 3, 4).failFastMap(f) == Invalid(Problem("ODD")))
+      assert(lastI == 3)
+    }
+
+    "Valid" in {
+      def g(i: Int): Checked[Int] = Valid(i * 11)
+      assert(List(1, 2, 3).failFastMap(g) == Valid(List(11, 22, 33)))
+    }
+  }
+
   "Some Cats examples" - {
     val valid1: Checked[Int] = Valid(1)
     val valid2: Checked[Int] = Valid(2)
