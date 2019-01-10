@@ -36,7 +36,7 @@
       <appenderRef ref="stderr" level="INFO"/>
       <appenderRef ref="file"   level="TRACE"/>
     </root>
-    <logger level="DEBUG" name="web" additivity="false">
+    <logger level="DEBUG" name="jobscheduler.web">
       <appenderRef ref="weblog"/>
     </logger>
     <logger level="WARN" name="akka.event.slf4j.Slf4jLogger"/>

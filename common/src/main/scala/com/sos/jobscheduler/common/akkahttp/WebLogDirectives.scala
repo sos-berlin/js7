@@ -95,7 +95,7 @@ trait WebLogDirectives extends ExceptionHandling {
 }
 
 object WebLogDirectives {
-  private val webLogger = Logger("web.log")
+  private val webLogger = Logger("jobscheduler.web.log")
 
   val TestConfig = ConfigFactory.parseMap(Map(
     "jobscheduler.webserver.log.level" → "debug",
