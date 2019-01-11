@@ -15,6 +15,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
+import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -130,11 +131,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     }
 
   private def unmarshal[A: FromResponseUnmarshaller](uri: Uri)(httpResponse: HttpResponse): Task[A] =
-    if (httpResponse.status.isSuccess)
-      Task.fromFuture/*consume only once*/(Unmarshal(httpResponse).to[A])
-    else
-      for (entity ← Task.fromFuture/*consume only once*/(httpResponse.entity.toStrict(FailureTimeout))) yield
-        throw new HttpException(httpResponse, uri, entity.data.utf8String.truncateWithEllipsis(ErrorMessageLengthMaximum))
+    Task.deferFuture(
+      executeOn(materializer.executionContext) { implicit ec ⇒
+        if (httpResponse.status.isSuccess)
+          Unmarshal(httpResponse).to[A]
+        else
+          httpResponse.entity.toStrict(FailureTimeout)
+            .map(entity ⇒ throw new HttpException(httpResponse, uri, entity.data.utf8String.truncateWithEllipsis(ErrorMessageLengthMaximum)))
+      })
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest ⇒ Task[A]): Task[A] =
     toCheckedAgentUri(request.uri) match {
