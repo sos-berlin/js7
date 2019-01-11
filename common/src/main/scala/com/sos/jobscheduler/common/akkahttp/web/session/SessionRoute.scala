@@ -11,7 +11,6 @@ import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute._
-import com.sos.jobscheduler.common.monix.MonixForCats.taskApplicative
 import monix.eval.Task
 
 /**
