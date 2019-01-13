@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.util.Failure
 
 /**
@@ -29,7 +30,7 @@ trait CommandWebService extends AgentRouteProvider {
   protected def commandOverview: Task[CommandHandlerOverview]
   protected def commandDetailed: Task[CommandHandlerDetailed[AgentCommand]]
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   final lazy val commandRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒

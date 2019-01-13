@@ -19,7 +19,7 @@ import org.scalatest.FreeSpec
 final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute {
 
   protected val masterId = MasterId("TEST-MASTER")
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.global
 
   protected def orderCount = Task.pure(7)
 

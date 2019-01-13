@@ -35,7 +35,7 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 
-  protected implicit def scheduler = Scheduler.Implicits.global
+  protected implicit def scheduler: Scheduler = Scheduler.Implicits.global
   protected val fileBasedApi = FileBasedApi.forTest(Map.empty)
   private val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi {

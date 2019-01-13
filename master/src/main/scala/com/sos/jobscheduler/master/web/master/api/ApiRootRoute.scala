@@ -12,6 +12,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
@@ -21,7 +22,7 @@ trait ApiRootRoute extends MasterRouteProvider {
   protected def masterId: MasterId
   protected def orderCount: Task[Int]
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   final val apiRootRoute: Route =
     pathEnd {

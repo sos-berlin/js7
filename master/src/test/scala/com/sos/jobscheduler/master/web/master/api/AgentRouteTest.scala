@@ -21,7 +21,7 @@ import scala.collection.immutable.Seq
   */
 final class AgentRouteTest extends FreeSpec with RouteTester with AgentRoute {
 
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToAgent)
 
   private def route: Route =

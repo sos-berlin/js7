@@ -27,7 +27,7 @@ import scala.collection.immutable.Seq
   */
 final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
 
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {
     def addOrder(order: FreshOrder) = Task(Valid(order.id != DuplicateOrderId))

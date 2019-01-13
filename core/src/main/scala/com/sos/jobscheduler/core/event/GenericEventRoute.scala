@@ -36,6 +36,7 @@ import com.sos.jobscheduler.core.event.GenericEventRoute._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -46,7 +47,7 @@ import scala.util.control.NonFatal
   */
 trait GenericEventRoute extends RouteProvider
 {
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected trait GenericEventRouteProvider
   {

@@ -45,7 +45,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
     new CompleteRoute {
       private lazy val anonymousApi = runningAgent.api(CommandMeta.Anonymous)
 
-      protected implicit def scheduler = AgentWebServer.this.scheduler
+      protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
 
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,

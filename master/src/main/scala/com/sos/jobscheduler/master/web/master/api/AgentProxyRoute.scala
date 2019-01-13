@@ -18,6 +18,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 
 /**
@@ -29,7 +30,7 @@ trait AgentProxyRoute extends MasterRouteProvider
   protected def fileBasedApi: FileBasedApi
   protected def masterConfiguration: MasterConfiguration
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   final val agentProxyRoute: Route =
     get {

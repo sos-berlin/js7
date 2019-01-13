@@ -19,6 +19,7 @@ import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute._
 import io.circe.parser.{parse ⇒ parseJson}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
+import monix.execution.Scheduler
 import sangria.ast.Document
 import sangria.execution.Executor
 import sangria.marshalling.circe._
@@ -34,7 +35,7 @@ trait GraphqlRoute extends MasterRouteProvider {
   protected def orderApi: OrderApi
   protected def fileBasedApi: FileBasedApi
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   private val context = new QueryContext {
     def executionContext = scheduler

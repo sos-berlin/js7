@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import monix.eval.Task
+import monix.execution.Scheduler
 
 /**
  * @author Joacim Zschimmer
@@ -17,7 +18,7 @@ trait RootWebService extends AgentRouteProvider {
 
   protected def agentOverview: Task[AgentOverview]
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val apiRootRoute: Route =
     pathEnd {

@@ -14,5 +14,6 @@ final case class WorkflowBranchPath(workflowId: WorkflowId, branchPath: BranchPa
 
 object WorkflowBranchPath
 {
-  implicit def apply(workflowId: WorkflowId) = new WorkflowBranchPath(workflowId, Nil)
+  implicit def apply(workflowId: WorkflowId): WorkflowBranchPath =
+    new WorkflowBranchPath(workflowId, Nil)
 }

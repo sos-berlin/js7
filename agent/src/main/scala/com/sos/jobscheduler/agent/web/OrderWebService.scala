@@ -9,6 +9,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 
 /**
@@ -18,7 +19,7 @@ trait OrderWebService extends AgentRouteProvider {
 
   protected def agentApi(meta: CommandMeta): DirectAgentApi
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { user ⇒

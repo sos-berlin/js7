@@ -32,7 +32,7 @@ trait RouteProvider extends ExceptionHandling
 
   protected def scheduler: Scheduler
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final def authorizedUser(requiredPermissions: PermissionBundle = PermissionBundle.empty): Directive1[Session#User] =
     new Directive[Tuple1[Session#User]] {

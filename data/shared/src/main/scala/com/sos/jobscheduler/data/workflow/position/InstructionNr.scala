@@ -22,5 +22,5 @@ object InstructionNr extends GenericInt.Companion[InstructionNr]
   private val FirstInt = 0
   val First = InstructionNr(FirstInt)
 
-  implicit def fromInt(nr: Int) = new InstructionNr(nr)
+  implicit def fromInt(nr: Int): InstructionNr = new InstructionNr(nr)
 }

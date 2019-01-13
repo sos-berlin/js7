@@ -22,7 +22,7 @@ import scala.collection.immutable.Seq
   */
 final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRoute {
 
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.global
   protected val fileBasedApi = FileBasedApi.forTest(pathToWorkflow)
 
   private def route: Route =

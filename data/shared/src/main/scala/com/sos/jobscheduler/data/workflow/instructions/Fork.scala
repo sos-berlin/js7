@@ -71,6 +71,7 @@ object Fork {
   @JsonCodec
   final case class Branch(id: BranchId.Named, workflow: Workflow)
   object Branch {
-    implicit def fromPair(pair: (BranchId.Named, Workflow)) = new Branch(pair._1, pair._2)
+    implicit def fromPair(pair: (BranchId.Named, Workflow)): Branch =
+      new Branch(pair._1, pair._2)
   }
 }

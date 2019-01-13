@@ -55,7 +55,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected val eventWatch = new TestEventWatch
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.global
 
   InitialEvents foreach eventWatch.addStamped
   OrderEvents.flatten foreach eventWatch.addStamped

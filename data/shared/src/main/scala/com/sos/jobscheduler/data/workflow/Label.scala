@@ -14,5 +14,5 @@ object Label extends GenericString.Checked_[Label]
 {
   def unchecked(string: String) = new Label(string)
 
-  implicit def fromString(label: String) = super.apply(label)
+  implicit def fromString(label: String): Label = super.apply(label)
 }

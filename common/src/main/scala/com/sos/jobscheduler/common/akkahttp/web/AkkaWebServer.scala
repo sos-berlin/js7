@@ -26,7 +26,7 @@ trait AkkaWebServer extends AutoCloseable {
 
   protected implicit def actorSystem: ActorSystem
   protected def scheduler: Scheduler
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
   protected def newRoute(binding: WebServerBinding): Route
   protected def bindings: Seq[WebServerBinding]
   private val akkaHttp = Http(actorSystem)

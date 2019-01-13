@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.{ByteString, ByteStringBuilder}
-import java.nio.ByteBuffer
 import java.nio.ByteOrder._
+import java.nio.{ByteBuffer, ByteOrder}
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -64,7 +64,7 @@ final class LengthHeaderMessageCollector {
 }
 
 object LengthHeaderMessageCollector {
-  private implicit def byteOrder = BIG_ENDIAN
+  private implicit val byteOrder: ByteOrder = BIG_ENDIAN
 
   /**
    * @return The Int argument as 4 bytes, big endian.
