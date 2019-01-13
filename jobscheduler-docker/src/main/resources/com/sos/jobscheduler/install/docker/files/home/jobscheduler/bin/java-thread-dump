@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Shows the thread dump of the running JobScheduler
+set -e
+
+jstack $(jps -l | awk '/jobscheduler/ { print $1 }')
