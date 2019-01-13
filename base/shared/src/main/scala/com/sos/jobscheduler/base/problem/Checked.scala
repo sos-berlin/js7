@@ -43,6 +43,12 @@ object Checked
       case NonFatal(t) ⇒ Invalid(Problem.pure(t))
     }
 
+  def catchProblem[A](f: ⇒ A): Checked[A] =
+    try Valid(f)
+    catch {
+      case e: ProblemException ⇒ Invalid(e.problem)
+    }
+
   //implicit def checkedEq[A: Eq]: Eq[Checked[A]] = (x, y) ⇒
   //  (x, y) match {
   //    case (Valid(xx), Valid(yy)) ⇒ xx === yy

@@ -62,6 +62,16 @@ final class CheckedTest extends FreeSpec
     assert(Checked.catchNonFatal(throw t).swap.getOrElse(null).throwable eq t)
   }
 
+  "catchProblem" in {
+    assert(Checked.catchProblem(7) == Valid(7))
+
+    val t = new IllegalArgumentException("TEST")
+    intercept[IllegalArgumentException] { Checked.catchProblem(throw t) }
+
+    val problem = Problem("TEST")
+    assert(Checked.catchProblem(throw problem.throwable).swap.getOrElse(null) eq problem)
+  }
+
   private val valid1: Checked[Int] = Valid(1)
   private val valid2: Checked[Int] = Valid(2)
   private val invalidX: Checked[Int] = Invalid(Problem("X"))
