@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -62,13 +64,22 @@ object Collections {
         Vector() ++ delegate.asScala
     }
 
-    implicit final class RichTraversable[A](private val delegate: Traversable[A]) extends AnyVal {
+    implicit final class RichTraversable[F[x] <: Traversable[x], A](private val delegate: F[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
 
       def toKeyedMap[K](toKey: A ⇒ K, ifNot: Iterable[K] ⇒ Nothing): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap(ifNot)
 
       def uniqueToSet: Set[A] =
         delegate.requireUniqueness.toSet
+
+      def checkUniqueness: Checked[F[A]] =
+        checkUniqueness(identity[A])
+
+      def checkUniqueness[K](key: A ⇒ K): Checked[F[A]] =
+        duplicateKeys(key) match {
+          case Some(duplicates) ⇒ Invalid(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
+          case None ⇒ Valid(delegate)
+        }
 
       def requireUniqueness: Traversable[A] =
         requireUniqueness(identity[A])

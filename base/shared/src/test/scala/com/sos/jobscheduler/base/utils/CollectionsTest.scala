@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.CollectionsTest._
@@ -148,6 +150,17 @@ final class CollectionsTest extends FreeSpec {
 
     Nil.requireUniqueness
     intercept[DuplicateKeyException] { List(1, 1).requireUniqueness }
+  }
+
+  "checkUniqueness" in {
+    def r(o: Seq[A]) = o checkUniqueness { _.i }
+
+    assert(r(Seq[A]()) == Valid(Nil))
+    assert(r(Seq(a1, a2)) == Invalid(Problem("Unexpected duplicates: 1")))
+
+    assert(Nil.checkUniqueness == Valid(Nil))
+    assert(List(1, 1).checkUniqueness == Invalid(Problem("Unexpected duplicates: 1")))
+    assert(List(1, 2).checkUniqueness == Valid(List(1, 2)))
   }
 
   "toSeqMultiMap" in {
