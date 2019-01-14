@@ -65,8 +65,8 @@ final class MemoizerTest extends FreeSpec {
       sleep(10.ms)
       s"/$a/"
     }
-    val m = memoizer(f _)
-    val result = (for (i ← 1 to ParallelCount) yield Future { for (a ← Arguments) yield m(a) }) await 60.s
+    val m = memoizer(f)
+    val result = (for (_ ← 1 to ParallelCount) yield Future { for (a ← Arguments) yield m(a) }) await 60.s
     for (r ← result) assert(r == (Arguments map { o ⇒ s"/$o/" }))
     calls.get
   }
