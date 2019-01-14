@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.data.commands
 
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Terminate}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
@@ -173,6 +174,17 @@ final class AgentCommandTest extends FreeSpec {
           "TYPE": "GetOrderIds"
         }""")
     }
+  }
+
+  "Batch toString" in {
+    assert(Batch(Nil).toString == "Batch()")
+    assert(Batch(DetachOrder(OrderId("A")) :: Nil).toString == "Batch(DetachOrder)")
+    assert(
+      Batch(
+        DetachOrder(OrderId("A")) :: DetachOrder(OrderId("A")) ::
+        Terminate() ::
+        NoOperation :: NoOperation :: NoOperation :: Nil
+      ).toString == "Batch(2×DetachOrder, Terminate, 3×NoOperation)")
   }
 
   private def check(command: AgentCommand, json: Json): Unit =

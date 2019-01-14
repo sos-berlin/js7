@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.command
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.problem.Checked
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
@@ -34,8 +35,24 @@ object CommonCommand
       def commands: Seq[Command]
 
       override def toString = {
-        val n = 3
-        s"${jsonCodec.classToName(getClass)}(${commands.size} commands: ${commands take n map jsonCodec.typeName mkString ", "}${if (commands.lengthCompare(n) > 0) ", ..." else ""})"
+        val b = mutable.Buffer[String]()
+        var last = ""
+        var n = 0
+        def flush() = if (!last.isEmpty) {
+          b += (if (n == 1) last else s"$n×$last")
+          last = ""
+          n = 0
+        }
+        for (command ← commands) {
+          val name = jsonCodec.typeName(command)
+          if (last != name) {
+            flush()
+            last = name
+          }
+          n += 1
+        }
+        flush()
+        s"${jsonCodec.classToName(getClass)}(${b.mkString(", ")})"
       }
     }
     object CommonBatch {

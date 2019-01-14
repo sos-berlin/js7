@@ -26,8 +26,8 @@ final class MasterCommandTest extends FreeSpec {
     }
 
     "Batch.toString" in {
-      assert(Batch(List(NoOperation, EmergencyStop, NoOperation)).toString == "Batch(3 commands: NoOperation, EmergencyStop, NoOperation)")
-      assert(Batch(List(NoOperation, EmergencyStop, NoOperation, NoOperation)).toString == "Batch(4 commands: NoOperation, EmergencyStop, NoOperation, ...)")
+      assert(Batch(List(NoOperation, EmergencyStop, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
+      assert(Batch(List(NoOperation, EmergencyStop, NoOperation, NoOperation)).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
     }
 
     "BatchResponse" in {
