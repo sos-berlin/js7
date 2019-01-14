@@ -54,7 +54,7 @@ trait RouteProvider extends ExceptionHandling
           // user == Anonymous iff no credentials are given
           sessionOption(user.id) { sessionOption ⇒
             val u = sessionOption.fold(user)(_.user)
-            gateKeeper.authorize(u, requiredPermissions) {
+            gateKeeper.authorize(u, requiredPermissions) { u ⇒
               inner(Tuple1((u, sessionOption)))
             }
           }

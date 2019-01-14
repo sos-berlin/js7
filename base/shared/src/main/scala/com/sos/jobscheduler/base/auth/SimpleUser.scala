@@ -13,10 +13,14 @@ extends User
     throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
 }
 
-object SimpleUser {
+object SimpleUser extends User.Companion[SimpleUser] {
   /** The unauthenticated, anonymous user without permissions.. */
   val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, grantedPermissions = PermissionBundle.empty)
-  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing)
+  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, PermissionBundle(Set(ChangeRepoPermission)))
+  implicit val companion = this
+
+  def addPermissions(user: SimpleUser, permissionBundle: PermissionBundle): SimpleUser =
+    user.copy(grantedPermissions = user.grantedPermissions ++ permissionBundle)
 
   def apply(
     id: UserId,

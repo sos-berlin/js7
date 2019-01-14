@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.common.akkahttp.web.auth
 
-import akka.http.scaladsl.model.HttpMethod
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD}
+import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, ExceptionHandler, RejectionHandler, Route}
-import com.sos.jobscheduler.base.auth.{HashedPassword, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
+import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
+import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
@@ -24,7 +24,8 @@ import scala.concurrent.duration._
   */
 final class GateKeeper[U <: User](configuraton: Configuration[U],
   isLoopback: Boolean = false, mutual: Boolean = false)
-  (implicit scheduler: Scheduler,
+  (implicit U: User.Companion[U],
+    scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
 {
@@ -78,29 +79,54 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     }
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
-  def authorize(user: U, requiredPermissions: PermissionBundle): Directive0 =
-    mapInnerRoute(inner ⇒
-      seal {
-        extractMethod { method ⇒
-          if (isAllowed(user, method, requiredPermissions))
-            inner
-          else if (user.id == UserId.Anonymous)
-            reject(credentialsMissing)  // Let a browser show its authentication dialog
-          else
-            complete(Forbidden)
+  def authorize(user: U, requiredPermissions: PermissionBundle): Directive1[U] =
+    new Directive1[U] {
+      def tapply(inner: Tuple1[U] ⇒ Route) =
+        seal {
+          extractRequest { request ⇒
+            allowedUser(user, request, requiredPermissions) match {
+              case Some(authorizedUser) ⇒
+                inner(Tuple1(authorizedUser))
+              case None ⇒
+                if (user.id == UserId.Anonymous)
+                  reject(credentialsMissing)  // Let a browser show its authentication dialog
+                else
+                  complete(Forbidden)
+            }
+          }
         }
-      })
+    }
 
   /** If ValidUserPermission is not required (meaning Anonymous is allowed)
     * then loopbackIsPublic and getIsPublic determine the allowance.
+    * In case of loopbackIsPublic or getIsPublic,
+    * the returned user gets the `configuration.publicPermissioons`.
     */
-  private[auth] def isAllowed(user: U, method: HttpMethod, requiredPermissions: PermissionBundle) = {
+  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: PermissionBundle): Option[U] = {
     import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
-    user.hasPermissions(ValidUserPermission) ||  // Only Anonymous does not have ValidUserPermission
-      isPublic ||                        // Any access, even POST, is allowed !
-      loopbackIsPublic && isLoopback ||  // Any access, even POST, is allowed !
-      (method == GET || method == HEAD) &&
-        (getIsPublic || !requiredPermissions.contains(ValidUserPermission))
+    def isGet = request.method == GET || request.method == HEAD
+
+    if (isPublic ||                      // Any access, even POST, is allowed !
+        isLoopback && loopbackIsPublic)  // Any access, even POST, is allowed !
+    {
+      val u = U.addPermissions(user, configuraton.publicPermissions)  // Adding ALL (public) permissions to authorized user !!!
+      if (u.grantedPermissions != user.grantedPermissions) {
+        def reason = if (isPublic) "is-public = true" else "loopback-is-public = true"
+        logger.debug(s"Granting user '${u.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
+      }
+      Some(u)
+    }
+    else
+    if (getIsPublic && isGet)
+      Some(user)
+    else
+    if (user.hasPermissions(requiredPermissions) && (
+          requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
+          user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only Anonymous does not have ValidUserPermission)
+          isGet))                                               // ... only to read
+      Some(user)
+    else
+      None
   }
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
@@ -131,6 +157,7 @@ object GateKeeper {
     realm: String,
     /** To hamper an attack */
     invalidAuthenticationDelay: FiniteDuration,
+    publicPermissions: PermissionBundle = PermissionBundle.empty,
     /* Anything is allowed for Anonymous */
     isPublic: Boolean = false,
     /** HTTP bound to a loopback interface is allowed for Anonymous */
@@ -140,13 +167,17 @@ object GateKeeper {
     idToUser: UserId ⇒ Option[U])
 
   object Configuration {
-    def fromConfig[U <: User](config: Config, toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U) =
+    def fromConfig[U <: User](
+      config: Config,
+      toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U,
+      toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
+    =
       Configuration[U](
         realm                       = config.getString  ("jobscheduler.webserver.auth.realm"),
         invalidAuthenticationDelay  = config.getDuration("jobscheduler.webserver.auth.invalid-authentication-delay").toFiniteDuration,
         isPublic                    = config.getBoolean ("jobscheduler.webserver.auth.public"),
         loopbackIsPublic            = config.getBoolean ("jobscheduler.webserver.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("jobscheduler.webserver.auth.get-is-public"),
-        idToUser = IdToUser.fromConfig(config, toUser))
+        idToUser = IdToUser.fromConfig(config, toUser, toPermission))
   }
 }

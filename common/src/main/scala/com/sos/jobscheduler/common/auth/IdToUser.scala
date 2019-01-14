@@ -60,7 +60,7 @@ object IdToUser {
   : IdToUser[U] = {
     val cfg = config.getConfig(UsersConfigPath)
 
-    def userIdToRaw(userId: UserId) =
+    def userIdToRaw(userId: UserId): Option[RawUserAccount] =
       if (cfg.hasPath(userId.string))
         existentUserIdToRaw(userId)
       else {

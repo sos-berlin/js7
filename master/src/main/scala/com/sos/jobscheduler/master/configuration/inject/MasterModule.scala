@@ -2,8 +2,9 @@ package com.sos.jobscheduler.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.auth.{ChangeRepoPermission, SimpleUser}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -58,7 +59,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =
-    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply)
+    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, stringToPermission)
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =
@@ -113,4 +114,7 @@ object MasterModule {
       Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
       Subtype[OrderScheduleEndedAt],
       Subtype[Order[Order.State]])
+
+  private val simplePermssions = List(ChangeRepoPermission)
+  private val stringToPermission = simplePermssions toKeyedMap (_.name)
 }

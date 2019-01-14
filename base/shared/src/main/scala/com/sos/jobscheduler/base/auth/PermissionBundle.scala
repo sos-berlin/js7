@@ -9,6 +9,10 @@ final case class PermissionBundle(permissions: Set[Permission])
 {
   def isEmpty = permissions.isEmpty
 
+  def ++(o: PermissionBundle) = PermissionBundle(permissions ++ o.permissions)
+
+  def -(o: Permission) = PermissionBundle(permissions - o)
+
   def contains(requiredPermissions: PermissionBundle): Boolean =
     requiredPermissions.permissions forall contains
 

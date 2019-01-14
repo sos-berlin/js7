@@ -1,9 +1,13 @@
 package com.sos.jobscheduler.base.auth
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+
 /**
   * @author Joacim Zschimmer
   */
-trait Permission
+trait Permission {
+  def name: String = getClass.simpleScalaName stripSuffix "Permission"
+}
 
 /**
   * Anonymous does not have this permission, while all other users have this permission.
@@ -13,10 +17,12 @@ trait Permission
   * <li> the user has this permission (user is not Anonymous)
   * <li> or the user is Anonymous and
   *   <ul>
-  *   <li> loopbackAllowsAnonymous is set and access via a TCP port bound to a loopback interface (like localhost)
-  *   <li> getAllowsAnonymous is set and access is via GET
+  *   <li> loopbackIsPublic is set and access via a TCP port bound to a loopback interface (like localhost)
+  *   <li> getIsPublic is set and access is via GET
   *   </ul>
   * </ul>
   * For implementation, see GateKeeper.isAllowed
   */
 case object ValidUserPermission extends Permission
+
+case object ChangeRepoPermission extends Permission
