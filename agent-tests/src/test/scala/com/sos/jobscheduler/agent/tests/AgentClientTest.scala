@@ -25,7 +25,7 @@ final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTester 
   "get /" in {
     val overview = client.overview await 99.s
     assert(!overview.isTerminating)
-    assert(overview.version == AgentStartInformation.VersionString)
+    assert(overview.version == AgentStartInformation.PrettyVersion)
   }
 
   //"get /task" in {

@@ -59,7 +59,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "overview" in {
-    assert(api.overview.await(99.s).version == BuildInfo.buildVersion)
+    assert(api.overview.await(99.s).version == BuildInfo.prettyVersion)
   }
 
   "ordersOverview" in {

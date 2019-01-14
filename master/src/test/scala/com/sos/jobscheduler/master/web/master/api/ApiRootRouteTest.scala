@@ -32,7 +32,7 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
     Get("/api") ~> Accept(`application/json`) ~> route ~> check {
       val overview = responseAs[MasterOverview]
       assert(overview.id == masterId)
-      assert(overview.version == BuildInfo.buildVersion)
+      assert(overview.version == BuildInfo.prettyVersion)
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
       assert(overview.orderCount == 7)

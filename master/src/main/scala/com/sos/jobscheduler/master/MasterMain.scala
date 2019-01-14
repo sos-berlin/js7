@@ -24,7 +24,7 @@ object MasterMain {
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    logger.info(s"Master ${BuildInfo.buildVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
+    logger.info(s"Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
     ProblemCodeMessages.initialize()
     runMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)

@@ -36,7 +36,7 @@ trait ApiRootRoute extends MasterRouteProvider {
     for (orderCount ← orderCount) yield
       MasterOverview(
         id = masterId,
-        version = BuildInfo.buildVersion,
+        version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,
         startedAt = RunningMaster.StartedAt,
         orderCount = orderCount,

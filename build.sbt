@@ -23,7 +23,6 @@
   */
 import BuildUtils._
 import java.nio.file.Paths
-import java.time.Instant
 import sbt.CrossVersion
 import sbt.Keys.testOptions
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
@@ -104,6 +103,9 @@ val commonSettings = Seq(
   credentials += publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
   publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
 
+useJGit
+git.uncommittedSignifier := Some("UNCOMMITTED")
+
 val universalPluginSettings = Seq(
   universalArchiveOptions in (Universal, packageZipTarball) :=
     (universalArchiveOptions in (Universal, packageZipTarball)).value)
@@ -155,9 +157,9 @@ lazy val `jobscheduler-install` = project
     topLevelDirectory in Universal := Some(s"jobscheduler-${version.value}"),
     mappings in Universal :=
       ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
-        recursiveFileMapping(baseDirectory.value / "../master/src/main/resources/com/sos/jobscheduler/master/installation") ++
-        recursiveFileMapping(baseDirectory.value / "../agent/src/main/resources/com/sos/jobscheduler/agent/installation") ++
-        recursiveFileMapping(baseDirectory.value / "../core/src/main/resources/com/sos/jobscheduler/core/installation"))
+        NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "com/sos/jobscheduler/master/installation") ++
+        NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "com/sos/jobscheduler/agent/installation") ++
+        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "com/sos/jobscheduler/core/installation"))
 
 lazy val `jobscheduler-docker` = project
   .settings(commonSettings)
@@ -171,7 +173,8 @@ lazy val `jobscheduler-docker` = project
     universalPluginSettings,
     topLevelDirectory in Universal := None,
     mappings in Universal :=
-      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
+      NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker/")
+        .map { case (file, dest) ⇒ file → ("build/" + dest) })
 
 lazy val tester = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -250,15 +253,11 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
   .settings(
     buildInfoPackage := "com.sos.jobscheduler.common",
     buildInfoKeys := BuildInfoKey.ofN(
-      BuildInfoKey.action("buildTime")(System.currentTimeMillis),
-      BuildInfoKey.action("buildId")(newBuildId),
-      "buildVersion" → VersionFormatter.buildVersion(
-        version = version.value,
-        versionCommitHash = git.gitHeadCommit.value,
-        commitDate = if (git.gitUncommittedChanges.value) Some(Instant.now.toString) else git.gitHeadCommitDate.value,
-        branch = git.gitCurrentBranch.value,
-        isUncommitted = git.gitUncommittedChanges.value),
+      "buildTime" → System.currentTimeMillis,
+      "buildId" → buildId,
       "version" → version.value,
+      "longVersion" → BuildUtils.longVersion.value,
+      "prettyVersion" → BuildUtils.prettyVersion.value,
       "commitId" → git.gitHeadCommit.value,
       "commitMessage" → git.gitHeadMessage.value))
 
@@ -340,6 +339,12 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
       scalaCheck % "test" ++
       log4j % "test"
   }
+  .settings(
+    resourceGenerators in Compile += Def.task {
+      val versionFile = (resourceManaged in Compile).value / "com/sos/jobscheduler/core/installation/VERSION"
+      IO.write(versionFile, BuildUtils.longVersion.value + "\n")
+      Seq(versionFile)
+    }.taskValue)
 
 lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

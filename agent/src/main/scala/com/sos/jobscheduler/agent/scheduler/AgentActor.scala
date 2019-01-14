@@ -138,7 +138,7 @@ extends MainJournalingActor[AgentEvent] {
 
     case Command.GetOverview ⇒
       sender() ! AgentOverview(
-        version = AgentStartInformation.VersionString,
+        version = AgentStartInformation.PrettyVersion,
         buildId = AgentStartInformation.BuildId,
         startedAt = AgentStartInformation.StartedAt,
         isTerminating = terminating,

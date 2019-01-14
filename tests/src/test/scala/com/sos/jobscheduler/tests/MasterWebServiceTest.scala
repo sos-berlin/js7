@@ -94,7 +94,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "/master/api" in {
     val overview = httpClient.get[Json](s"$uri/master/api") await 99.s
-    assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.buildVersion)
+    assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
     assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt)
     assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
@@ -235,7 +235,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       // Pass-through Agent. Slashes but the first in AgentPath must be coded as %2F.
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       val overview = httpClient.get[AgentOverview](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A", Duration.Inf, headers) await 99.s
-      assert(overview.version == BuildInfo.buildVersion)
+      assert(overview.version == BuildInfo.prettyVersion)
     }
 
     "/master/api/agent-proxy/UNKNOWN returns 400" in {

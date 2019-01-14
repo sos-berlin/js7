@@ -21,7 +21,7 @@ object AgentMain {
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
+    logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
     ProblemCodeMessages.initialize()
     runMain {
       val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
