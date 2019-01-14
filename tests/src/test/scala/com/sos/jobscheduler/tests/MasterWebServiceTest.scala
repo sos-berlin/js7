@@ -9,6 +9,7 @@ import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
@@ -239,10 +240,11 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
     "/master/api/agent-proxy/UNKNOWN returns 400" in {
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
-      assert(
-        intercept[HttpException] {
-          httpClient.get[Json](s"$uri/master/api/agent-proxy/UNKNOWN", headers) await 99.s
-        }.status.intValue == 400/*BadRequest*/)
+      val e = intercept[HttpException] {
+        httpClient.get[Json](s"$uri/master/api/agent-proxy/UNKNOWN", headers) await 99.s
+      }
+      assert(e.status.intValue == 400/*BadRequest*/)
+      assert(e.problem == Some(Problem("No such key 'Agent:/UNKNOWN'")))
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
@@ -275,6 +277,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
         assert(exception.dataAsString contains "No such key 'Workflow:/MISSING'")  // Or similar
+        assert(exception.problem == Some(Problem("No such key 'Workflow:/MISSING'")))
       }
 
       val order = json"""{

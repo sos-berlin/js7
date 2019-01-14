@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
+import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
@@ -15,9 +15,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
-import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.Lazy
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
@@ -96,7 +95,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       response ← sendReceive(
         HttpRequest(POST, uri, headers, entity),
         suppressSessionToken = suppressSessionToken,
-        logData = Some(data.getClass.scalaName stripPrefix "com.sos.jobscheduler."))
+        logData = Some(data.toString))
     } yield response
 
   def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
@@ -120,11 +119,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       b.append(' ')
       b.append(request.uri)
       if (!request.entity.isKnownEmpty) {
-        b.append(": ")
-        b.append(request.entity.contentType)
         for (o ← logData) {
           b.append(' ')
-          b.append(o)  // Do not show JSON because it may contain visible credentials
+          b.append(o)
         }
       }
       logger.debug(b.toString)
@@ -137,7 +134,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
           Unmarshal(httpResponse).to[A]
         else
           httpResponse.entity.toStrict(FailureTimeout)
-            .map(entity ⇒ throw new HttpException(httpResponse, uri, entity.data.utf8String.truncateWithEllipsis(ErrorMessageLengthMaximum)))
+            .map(entity ⇒ throw new HttpException(httpResponse, uri, entity.data.utf8String))
       })
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest ⇒ Task[A]): Task[A] =
@@ -181,10 +178,22 @@ object AkkaHttpClient {
     }
 
   final class HttpException private[AkkaHttpClient](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
-  extends RuntimeException(s"${httpResponse.status}: $uri: $dataAsString".trim) {
+  extends RuntimeException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim) {
     // Don't publish httpResponse because its entity stream has already been consumed for dataAsString
     def status: StatusCode = httpResponse.status
 
     def header[A >: Null <: HttpHeader: ClassTag]: Option[A] = httpResponse.header[A]
+
+    lazy val problem: Option[Problem] = {
+      if (httpResponse.entity.contentType == ContentTypes.`application/json`)
+        io.circe.parser.decode[Problem](dataAsString) match {
+          case Left(error) ⇒
+            logger.debug(s"Problem cannot be parsed: $error")
+            None
+          case Right(o) ⇒ Some(o)
+        }
+      else
+        None
+    }
   }
 }
