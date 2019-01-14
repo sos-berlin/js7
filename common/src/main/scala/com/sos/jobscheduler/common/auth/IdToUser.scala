@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.auth
 
 import com.google.common.base.Splitter
 import com.google.common.hash.Hashing.sha512
-import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, PermissionBundle, User, UserId}
+import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import com.sos.jobscheduler.common.auth.IdToUser._
@@ -30,11 +30,11 @@ import scala.util.{Failure, Success, Try}
   */
 final class IdToUser[U <: User](
   userIdToRaw: UserId ⇒ Option[RawUserAccount],
-  toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U,
+  toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
   toPermission: PartialFunction[String, Permission])
 extends (UserId ⇒ Option[U]) {
 
-  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, PermissionBundle.empty))
+  private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty))
 
   def apply(userId: UserId) =
     if (userId == UserId.Anonymous)
@@ -44,7 +44,7 @@ extends (UserId ⇒ Option[U]) {
 
   private def rawToUser(userId: UserId, raw: RawUserAccount): Option[U] =
     for (hashedPassword ← toHashedPassword(userId, raw.encodedPassword))
-      yield toUser(userId, hashedPassword.hashAgainRandom, PermissionBundle((raw.permissions map toPermission.lift).flatten))
+      yield toUser(userId, hashedPassword.hashAgainRandom, raw.permissions.map(toPermission.lift).flatten)
 }
 
 object IdToUser {
@@ -55,7 +55,7 @@ object IdToUser {
 
   def fromConfig[U <: User](
     config: Config,
-    toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U,
+    toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
   : IdToUser[U] = {
     val cfg = config.getConfig(UsersConfigPath)

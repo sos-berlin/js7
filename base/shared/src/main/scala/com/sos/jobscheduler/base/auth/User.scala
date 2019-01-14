@@ -11,7 +11,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 trait User {
   def id: UserId
   def hashedPassword: HashedPassword
-  def grantedPermissions: PermissionBundle
+  def grantedPermissions: Set[Permission]
 
   final def checkPermission(requiredPermission: Permission): Checked[Unit] =
     if (!hasPermission(requiredPermission))
@@ -19,8 +19,8 @@ trait User {
     else
       Checked.unit
 
-  final def hasPermissions(requiredPermissions: PermissionBundle): Boolean =
-    grantedPermissions contains requiredPermissions
+  final def hasPermissions(requiredPermissions: Set[Permission]): Boolean =
+    requiredPermissions forall grantedPermissions.contains
 
   final def hasPermission(requiredPermission: Permission): Boolean =
     grantedPermissions contains requiredPermission
@@ -29,6 +29,6 @@ trait User {
 object User
 {
   trait Companion[U <: User] {
-    def addPermissions(user: U, permissionBundle: PermissionBundle): U
+    def addPermissions(user: U, permissionBundle: Set[Permission]): U
   }
 }

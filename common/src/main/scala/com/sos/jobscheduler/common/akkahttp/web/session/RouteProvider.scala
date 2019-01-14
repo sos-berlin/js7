@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.auth.{PermissionBundle, SessionToken, UserId}
+import com.sos.jobscheduler.base.auth.{Permission, SessionToken, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -34,7 +34,10 @@ trait RouteProvider extends ExceptionHandling
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
-  protected final def authorizedUser(requiredPermissions: PermissionBundle = PermissionBundle.empty): Directive1[Session#User] =
+  protected final def authorizedUser(requiredPermission: Permission): Directive1[Session#User] =
+    authorizedUser(Set(requiredPermission))
+
+  protected final def authorizedUser(requiredPermissions: Set[Permission] = Set.empty): Directive1[Session#User] =
     new Directive[Tuple1[Session#User]] {
       def tapply(inner: Tuple1[Session#User] ⇒ Route) =
         maybeSession(requiredPermissions) {
@@ -46,7 +49,7 @@ trait RouteProvider extends ExceptionHandling
         }
     }
 
-  private def maybeSession(requiredPermissions: PermissionBundle): Directive1[(Session#User, Option[Session])] =
+  private def maybeSession(requiredPermissions: Set[Permission]): Directive1[(Session#User, Option[Session])] =
     new Directive[Tuple1[(Session#User, Option[Session])]]
     {
       def tapply(inner: Tuple1[(Session#User, Option[Session])] ⇒ Route) =

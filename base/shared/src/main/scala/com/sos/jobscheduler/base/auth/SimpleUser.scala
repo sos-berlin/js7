@@ -6,7 +6,7 @@ package com.sos.jobscheduler.base.auth
 final case class SimpleUser private(
   id: UserId,
   hashedPassword: HashedPassword,
-  grantedPermissions: PermissionBundle)
+  grantedPermissions: Set[Permission])
 extends User
 {
   if (id == UserId.Anonymous && grantedPermissions.contains(ValidUserPermission))
@@ -15,20 +15,20 @@ extends User
 
 object SimpleUser extends User.Companion[SimpleUser] {
   /** The unauthenticated, anonymous user without permissions.. */
-  val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, grantedPermissions = PermissionBundle.empty)
-  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, PermissionBundle(Set(ChangeRepoPermission)))
+  val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, grantedPermissions = Set.empty)
+  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(ChangeRepoPermission))
   implicit val companion = this
 
-  def addPermissions(user: SimpleUser, permissionBundle: PermissionBundle): SimpleUser =
+  def addPermissions(user: SimpleUser, permissionBundle: Set[Permission]): SimpleUser =
     user.copy(grantedPermissions = user.grantedPermissions ++ permissionBundle)
 
   def apply(
     id: UserId,
     hashedPassword: HashedPassword = HashedPassword.MatchesNothing,
-    grantedPermissions: PermissionBundle = PermissionBundle.empty)
+    grantedPermissions: Set[Permission] = Set.empty)
   = new SimpleUser(
       id,
       hashedPassword,
-      PermissionBundle(grantedPermissions.permissions ++
-        (if (id != UserId.Anonymous) Set(ValidUserPermission) else Set.empty)))
+      grantedPermissions ++
+        (if (id != UserId.Anonymous) Set(ValidUserPermission) else Set.empty))
 }

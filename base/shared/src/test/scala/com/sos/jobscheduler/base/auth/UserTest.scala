@@ -10,18 +10,18 @@ final class UserTest extends FreeSpec
   "hasPermissions" in {
     case object A extends Permission
     case object B extends Permission
-    case class TestUser(id: UserId, hashedPassword: HashedPassword, grantedPermissions: PermissionBundle) extends User
+    case class TestUser(id: UserId, hashedPassword: HashedPassword, grantedPermissions: Set[Permission]) extends User
 
-    def testUser(grantedPermissions: PermissionBundle) =
+    def testUser(grantedPermissions: Set[Permission]) =
       TestUser(UserId("someone"), HashedPassword.newEmpty, grantedPermissions)
 
-    assert(testUser(PermissionBundle.empty) hasPermissions PermissionBundle(Set.empty))
-    assert(testUser(PermissionBundle(Set(A))) hasPermissions PermissionBundle(Set.empty))
-    assert(testUser(PermissionBundle(Set(A))) hasPermissions PermissionBundle(Set(A)))
-    assert(testUser(PermissionBundle(Set(A, B))) hasPermissions PermissionBundle(Set(A)))
+    assert(testUser(Set.empty) hasPermissions Set.empty)
+    assert(testUser(Set(A)) hasPermissions Set.empty)
+    assert(testUser(Set(A)) hasPermissions Set(A))
+    assert(testUser(Set(A, B)) hasPermissions Set(A))
 
-    assert(!testUser(PermissionBundle.empty).hasPermissions(PermissionBundle(Set(A))))
-    assert(!testUser(PermissionBundle(Set(B))).hasPermissions(PermissionBundle(Set(A))))
-    assert(!testUser(PermissionBundle(Set(B))).hasPermissions(PermissionBundle(Set(A, B))))
+    assert(!testUser(Set.empty).hasPermissions(Set(A)))
+    assert(!testUser(Set(B)).hasPermissions(Set(A)))
+    assert(!testUser(Set(B)).hasPermissions(Set(A, B)))
   }
 }

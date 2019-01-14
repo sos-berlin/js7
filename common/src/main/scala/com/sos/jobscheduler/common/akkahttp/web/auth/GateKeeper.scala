@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissin
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
-import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, PermissionBundle, User, UserAndPassword, UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserAndPassword, UserId, ValidUserPermission}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
@@ -79,7 +79,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     }
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
-  def authorize(user: U, requiredPermissions: PermissionBundle): Directive1[U] =
+  def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
     new Directive1[U] {
       def tapply(inner: Tuple1[U] ⇒ Route) =
         seal {
@@ -102,7 +102,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     * In case of loopbackIsPublic or getIsPublic,
     * the returned user gets the `configuration.publicPermissioons`.
     */
-  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: PermissionBundle): Option[U] = {
+  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] = {
     import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
     def isGet = request.method == GET || request.method == HEAD
 
@@ -157,7 +157,7 @@ object GateKeeper {
     realm: String,
     /** To hamper an attack */
     invalidAuthenticationDelay: FiniteDuration,
-    publicPermissions: PermissionBundle = PermissionBundle.empty,
+    publicPermissions: Set[Permission] = Set.empty,
     /* Anything is allowed for Anonymous */
     isPublic: Boolean = false,
     /** HTTP bound to a loopback interface is allowed for Anonymous */
@@ -169,7 +169,7 @@ object GateKeeper {
   object Configuration {
     def fromConfig[U <: User](
       config: Config,
-      toUser: (UserId, HashedPassword, PermissionBundle) ⇒ U,
+      toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
       toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
     =
       Configuration[U](
