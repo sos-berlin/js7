@@ -4,8 +4,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import io.circe.Json
 import io.circe.syntax.EncoderOps
+import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
 import scala.collection.immutable._
 
@@ -87,5 +87,9 @@ final class CirceUtilsTest extends FreeSpec {
     intercept[io.circe.ParsingFailure] {
       "x".parseJsonOrThrow
     }
+  }
+
+  "JsonObject ++ JsonObject" in {
+    assert(JsonObject("a" → 1.asJson) ++ JsonObject("b" → 2.asJson) == JsonObject("a" → 1.asJson, "b" → 2.asJson))
   }
 }

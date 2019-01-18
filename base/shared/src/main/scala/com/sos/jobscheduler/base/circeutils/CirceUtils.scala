@@ -49,6 +49,9 @@ object CirceUtils {
 
   implicit final class RichJsonObject(private val underlying: JsonObject) extends AnyVal
   {
+    def ++(o: JsonObject): JsonObject =
+      JsonObject.fromIterable(underlying.toIterable ++ o.toIterable)
+
     def toPrettyString: String =
       PrettyPrinter.pretty(Json.fromJsonObject(underlying))
 
