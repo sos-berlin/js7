@@ -3,7 +3,10 @@ package com.sos.jobscheduler.data.filebased
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.RepoEventTest._
+import com.sos.jobscheduler.data.workflow.instructions.Fail
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -24,32 +27,34 @@ final class RepoEventTest extends FreeSpec {
 
     "FileBasedAdded" in {
       testJson[RepoEvent](
-        RepoEvent.FileBasedAdded(AFileBased(APath("/TEST") % "VERSION", "CONTENT")),
+        FileBasedAdded(Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))),
         json"""{
           "TYPE": "FileBasedAdded",
           "fileBased": {
-            "TYPE": "AFileBased",
-            "id": {
-              "path": "/TEST",
-              "versionId": "VERSION"
-            },
-            "content": "CONTENT"
+            "TYPE": "Workflow",
+            "path": "/WORKFLOW",
+            "instructions": [
+              {
+                "TYPE": "Fail"
+              }
+            ]
           }
         }""")
     }
 
     "FileBasedChanged" in {
       testJson[RepoEvent](
-        RepoEvent.FileBasedChanged(AFileBased(APath("/TEST")  % "VERSION", "CONTENT")),
+        FileBasedChanged(Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))),
         json"""{
           "TYPE": "FileBasedChanged",
           "fileBased": {
-            "TYPE": "AFileBased",
-            "id": {
-              "path": "/TEST",
-              "versionId": "VERSION"
-            },
-            "content": "CONTENT"
+            "TYPE": "Workflow",
+            "path": "/WORKFLOW",
+            "instructions": [
+              {
+                "TYPE": "Fail"
+              }
+            ]
           }
         }""")
     }
@@ -67,7 +72,7 @@ final class RepoEventTest extends FreeSpec {
 
 object RepoEventTest {
   private implicit val fileBasedJsonCodec: TypedJsonCodec[FileBased] = TypedJsonCodec(
-    Subtype[AFileBased])
+    Subtype[Workflow])
 
   private implicit val typedPathCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(List(APath))
   implicit val fileBasedEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec

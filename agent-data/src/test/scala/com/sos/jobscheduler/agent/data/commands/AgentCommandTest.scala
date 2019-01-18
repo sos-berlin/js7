@@ -120,10 +120,8 @@ final class AgentCommandTest extends FreeSpec {
             }
           },
           "workflow": {
-            "id": {
-              "path": "/WORKFLOW",
-              "versionId": "VERSION"
-            },
+            "path": "/WORKFLOW",
+            "versionId": "VERSION",
             "instructions": [
               {
                 "TYPE": "Execute.Anonymous",

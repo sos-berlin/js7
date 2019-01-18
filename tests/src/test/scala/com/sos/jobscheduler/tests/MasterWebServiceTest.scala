@@ -143,10 +143,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
-        "id": {
-          "path": "/FOLDER/WORKFLOW-2",
-          "versionId": "(initial)"
-        },
+        "path": "/FOLDER/WORKFLOW-2",
+        "versionId": "VERSION-1",
         "instructions": [
           {
             "TYPE": "Execute.Anonymous",
@@ -192,16 +190,12 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "eventId": ${master.eventWatch.lastAddedEventId},
         "array": [
           {
-            "id": {
-              "path": "/AGENT",
-              "versionId": "(initial)"
-            },
+            "path": "/AGENT",
+            "versionId": "INITIAL",
             "uri": "$agent1Uri"
           }, {
-            "id": {
-              "path": "/FOLDER/AGENT-A",
-              "versionId": "(initial)"
-            },
+            "path": "/FOLDER/AGENT-A",
+            "versionId": "INITIAL",
             "uri": "$agent2Uri"
           }
         ]
@@ -211,10 +205,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
-        "id": {
-          "path": "/FOLDER/AGENT-A",
-          "versionId": "(initial)"
-        },
+        "path": "/FOLDER/AGENT-A",
+        "versionId": "INITIAL",
         "uri": "$agent2Uri"
       }""")
 
@@ -222,10 +214,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
-        "id": {
-          "path": "/FOLDER/AGENT-A",
-          "versionId": "(initial)"
-        },
+        "path": "/FOLDER/AGENT-A",
+        "versionId": "INITIAL",
         "uri": "$agent2Uri"
       }""")
   }
@@ -352,10 +342,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "fileBased": {
             "TYPE": "Agent",
-            "id": {
-              "path": "/AGENT",
-              "versionId": "(initial)"
-            },
+            "path": "/AGENT",
             "uri": "$agent1Uri"
           }
         }, {
@@ -363,10 +350,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "fileBased": {
             "TYPE": "Agent",
-            "id": {
-              "path": "/FOLDER/AGENT-A",
-              "versionId": "(initial)"
-            },
+            "path": "/FOLDER/AGENT-A",
             "uri": "$agent2Uri"
           }
         }, {

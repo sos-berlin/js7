@@ -34,14 +34,14 @@ object FileBasedId {
 
   implicit def jsonEncoder[P <: TypedPath: Encoder]: ObjectEncoder[FileBasedId[P]] =
     o ⇒ JsonObject(
-      "path" → o.path.asJson,
-      "versionId" → o.versionId.asJson)
+      "path" → (!o.path.isAnonymous ? o.path).asJson,
+      "versionId" → (!o.versionId.isAnonymous ? o.versionId).asJson)
 
-  implicit def jsonDecoder[P <: TypedPath: Decoder]: Decoder[FileBasedId[P]] =
+  implicit def jsonDecoder[P <: TypedPath: TypedPath.Companion: Decoder]: Decoder[FileBasedId[P]] =
     cursor ⇒
       for {
-        path ← cursor.get[P]("path")
-        version ← cursor.get[VersionId]("versionId")
+        path ← cursor.get[Option[P]]("path") map (_ getOrElse implicitly[TypedPath.Companion[P]].Anonymous)
+        version ← cursor.get[Option[VersionId]]("versionId") map (_ getOrElse VersionId.Anonymous)
       } yield FileBasedId(path, version)
 
   trait Companion[P <: TypedPath] {

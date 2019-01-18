@@ -46,10 +46,8 @@ final class WorkflowTest extends FreeSpec {
     "Workflow with WorkflowId" in {
       testJson[Workflow](TestWorkflow,
         json"""{
-          "id": {
-            "path": "/TEST",
-            "versionId": "VERSION"
-          },
+          "path": "/TEST",
+          "versionId": "VERSION",
           "instructions": [
             { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
             {

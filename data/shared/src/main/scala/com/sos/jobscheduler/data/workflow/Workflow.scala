@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{CirceUtilsChecked, _}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.emptyToNone
@@ -380,17 +380,17 @@ object Workflow extends FileBased.Companion[Workflow] {
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {
     case Workflow(id, instructions, namedJobs, source, _) ⇒
-      JsonObject(
-        "id" → (!id.isAnonymous ? id).asJson,
-        "instructions" → instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
-        "jobs" → emptyToNone(namedJobs).asJson,
-        "source" → source.asJson)
+      id.asJsonObject ++
+        JsonObject(
+          "instructions" → instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
+          "jobs" → emptyToNone(namedJobs).asJson,
+          "source" → source.asJson)
   }
 
   implicit val jsonDecoder: Decoder[Workflow] =
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
     cursor ⇒ for {
-      id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.NoId)
+      id ← cursor.value.as[WorkflowId]
       instructions ← cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
       namedJobs ← cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
       source ← cursor.get[Option[String]]("source")

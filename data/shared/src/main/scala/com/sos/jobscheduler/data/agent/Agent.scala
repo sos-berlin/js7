@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.agent
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
@@ -23,13 +23,13 @@ object Agent extends FileBased.Companion[Agent]
   type Path = AgentPath
 
   implicit val jsonEncoder: ObjectEncoder[Agent] = agent ⇒
-    JsonObject(
-      "id" → (!agent.id.isAnonymous ? agent.id).asJson,
-      "uri" → Json.fromString(agent.uri))
+    agent.id.asJsonObject ++
+      JsonObject(
+        "uri" → Json.fromString(agent.uri))
 
   implicit val jsonDecoder: Decoder[Agent] =
     cursor ⇒ for {
-      id ← cursor.get[Option[AgentId]]("id") map (_ getOrElse AgentPath.NoId)
+      id ← cursor.as[Option[AgentId]] map (_ getOrElse AgentPath.NoId)
       uri ← cursor.get[String]("uri")
     } yield Agent(id, uri)
 

@@ -19,10 +19,8 @@ final class AgentTest extends FreeSpec
   "JSON, with ID" in {
     testJson(Agent(AgentPath("/AGENT") % "VERSION", "http://127.0.0.1"),
       json"""{
-        "id": {
-          "path": "/AGENT",
-          "versionId": "VERSION"
-        },
+        "path": "/AGENT",
+        "versionId": "VERSION",
         "uri": "http://127.0.0.1"
       }""")
   }
