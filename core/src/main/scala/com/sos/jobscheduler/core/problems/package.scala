@@ -32,4 +32,8 @@ package object problems
       "requestedAfter" → requestedAfter.toString,
       "currentAfter" → currentAfter.toString)
   }
+
+  case object PGPTamperedWithMessageProblem extends Problem.ArgumentlessCoded
+
+  case object PGPMessageSignedByUnknownProblem extends Problem.ArgumentlessCoded
 }
