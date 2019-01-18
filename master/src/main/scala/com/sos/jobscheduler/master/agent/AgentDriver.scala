@@ -162,18 +162,18 @@ with ReceiveLoggingActor.WithStash {
       commandQueue.maySend()
       unstashAll()
       become("ready")(ready)
-      self ! Internal.FetchEvents(lastEventId)
+      self ! Internal.FetchEvents
 
     case _ ⇒
       stash()
   }
 
   private def ready: Receive = {
-    case Internal.FetchEvents(after) if isCoupled && !isAwaitingFetchedEvents ⇒
+    case Internal.FetchEvents if isCoupled && !isAwaitingFetchedEvents ⇒
       if (!terminating) {
         isAwaitingFetchedEvents = true
-        lastEventId = after
         val fetchCouplingNumber = couplingNumber
+        val after = lastEventId
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout, limit = EventLimit))
           .materialize foreach { tried ⇒
             // *** Asynchronous ***
@@ -233,7 +233,7 @@ with ReceiveLoggingActor.WithStash {
             })
         }
         scheduler.scheduleOnce(eventFetchDelay) {
-          self ! Internal.FetchEvents(lastEventId)
+          self ! Internal.FetchEvents
         }
       }
 
@@ -311,7 +311,9 @@ with ReceiveLoggingActor.WithStash {
 
           case EventSeq.Empty(lastEventId_) ⇒  // No events after timeout
             if (isCoupled) scheduler.scheduleOnce(1.second) {
-              self ! Internal.FetchEvents(lastEventId_)
+              assert(lastEventId <= lastEventId_)
+              lastEventId = lastEventId_
+              self ! Internal.FetchEvents
             }
 
           case torn: TearableEventSeq.Torn ⇒
@@ -319,7 +321,7 @@ with ReceiveLoggingActor.WithStash {
             logger.error(problem.toString)
             persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
               if (isCoupled) scheduler.scheduleOnce(15.second) {
-                self ! Internal.FetchEvents(after)
+                self ! Internal.FetchEvents
               }
             }
         }
@@ -426,7 +428,7 @@ private[master] object AgentDriver
     final case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
     final case class BatchFailed(inputs: Seq[Queueable], throwable: Throwable) extends DeadLetterSuppression
-    final case class FetchEvents(after: EventId) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen ubd mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
+    final case object FetchEvents extends DeadLetterSuppression/*TODO Besser: Antwort empfangen und mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedTry: Try[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
     final case class KeepEventsDelayed(agentEventId: EventId) extends DeadLetterSuppression
   }

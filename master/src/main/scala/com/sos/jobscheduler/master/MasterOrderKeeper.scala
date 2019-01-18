@@ -290,6 +290,7 @@ with MainJournalingActor[Event]
             handleOrderEvent(orderId, event)
 
           case KeyedEvent(_, AgentEventIdEvent(agentEventId)) ⇒
+            assert(agentEntry.lastAgentEventId < agentEventId)
             agentEntry.lastAgentEventId = agentEventId
             agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
 
