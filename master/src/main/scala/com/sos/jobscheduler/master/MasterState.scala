@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.agent.AgentEventId
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterTypedPathCompanions
+import com.sos.jobscheduler.master.data.MasterFileBaseds._
 import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEndedAt
 import scala.collection.immutable.Seq
 import scala.collection.mutable

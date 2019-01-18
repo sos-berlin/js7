@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.data.filebased
 
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.filebased.FileBasedId._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -17,17 +19,20 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
 
-  def toSimpleString = path.string + VersionSeparator + versionId.string
+  def toSimpleString = if (versionId.isAnonymous) path.string else path.string + VersionSeparator + versionId.string
 
-  def pretty = s"${path.pretty} ${versionId.string}"
+  def pretty = if (versionId.isAnonymous) path.pretty else s"${path.pretty} ${versionId.string}"
 
-  def toShortString = s"${path.string} ${versionId.string}"
+  def toShortString = if (versionId.isAnonymous) path.string else s"${path.string} ${versionId.string}"
 
-  override def toString = s"$path ${versionId.string}"
+  override def toString = if (versionId.isAnonymous) path.toString else s"$path ${versionId.string}"
 }
 
 object FileBasedId {
   private val VersionSeparator = "~"  // Can be used in an Akka actor name
+
+  implicit def pathToFileBasedId[P <: TypedPath](path: P): FileBasedId[P] =
+    FileBasedId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: TypedPath]: Ordering[FileBasedId[P]] =
     Ordering.by(o ⇒ (o.path, o.versionId))

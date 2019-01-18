@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.base.auth.{ChangeRepoPermission, SimpleUser}
+import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -24,6 +24,7 @@ import com.sos.jobscheduler.master.agent.AgentEventId
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
+import com.sos.jobscheduler.master.data.MasterFileBaseds._
 import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEndedAt
 import com.typesafe.config.Config
 import javax.inject.Singleton
@@ -115,6 +116,6 @@ object MasterModule {
       Subtype[OrderScheduleEndedAt],
       Subtype[Order[Order.State]])
 
-  private val simplePermssions = List(ChangeRepoPermission)
+  private val simplePermssions = List(UpdateRepoPermission)
   private val stringToPermission = simplePermssions toKeyedMap (_.name)
 }

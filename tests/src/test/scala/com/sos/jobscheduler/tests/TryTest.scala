@@ -20,8 +20,7 @@ import org.scalatest.FreeSpec
 final class TryTest extends FreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(FinishingWorkflow.withoutVersion)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
@@ -35,8 +34,7 @@ final class TryTest extends FreeSpec
   }
 
   "Nested try catch with failing catch, OrderStopped" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(StoppedWorkflow.withoutVersion)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, StoppedWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       directoryProvider.run { (master, _) ⇒
@@ -76,13 +74,13 @@ object TryTest {
      |  };
      |  execute executable="/OKAY$sh", agent="AGENT";         // #1
      |}""".stripMargin
-  private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", finishingScript).orThrow
+  private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", finishingScript).orThrow
 
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0, 0, 0, 0, 0)),
     OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "(initial)"),
+    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,
@@ -113,13 +111,13 @@ object TryTest {
      |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1/0  OrderStopped
      |  };
      |}""".stripMargin
-  private val StoppedWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", stoppingScript).orThrow
+  private val StoppedWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", stoppingScript).orThrow
 
   private val ExpectedStoppedEvent = Vector(
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0, 0, 0)),
     OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "(initial)"),
+    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,

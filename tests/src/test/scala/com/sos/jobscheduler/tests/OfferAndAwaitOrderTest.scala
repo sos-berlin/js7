@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
@@ -10,6 +11,7 @@ import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
@@ -23,21 +25,20 @@ import scala.collection.immutable.Seq
 final class OfferAndAwaitOrderTest extends FreeSpec
 {
   "Offer and Await after a job" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      val workflows = List(
-        JoiningWorkflowId → s"""
-          define workflow {
-            execute executable="/executable$sh", agent="AGENT";
-            await orderId = "OFFERED-ORDER-ID";
-            execute executable="/executable$sh", agent="AGENT";
-          }""",
-        PublishingWorkflowId → s"""
-          define workflow {
-            execute executable="/executable$sh", agent="AGENT";
-            offer orderId = "OFFERED-ORDER-ID", timeout = 60;
-            execute executable="/executable$sh", agent="AGENT";
-          }""")
-      for ((id, workflow) ← workflows) directoryProvider.master.writeTxt(id.path, workflow)
+    val workflows = List(
+      WorkflowParser.parse(JoiningWorkflowId, s"""
+        define workflow {
+          execute executable="/executable$sh", agent="AGENT";
+          await orderId = "OFFERED-ORDER-ID";
+          execute executable="/executable$sh", agent="AGENT";
+        }""").orThrow,
+      WorkflowParser.parse(PublishingWorkflowId, s"""
+        define workflow {
+          execute executable="/executable$sh", agent="AGENT";
+          offer orderId = "OFFERED-ORDER-ID", timeout = 60;
+          execute executable="/executable$sh", agent="AGENT";
+        }""").orThrow)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflows)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) ⇒
@@ -47,7 +48,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
           expectedOffering = Vector(
               OrderAdded(PublishingWorkflowId),
               OrderAttachable(TestAgentPath),
-              OrderTransferredToAgent(TestAgentPath % "(initial)"),
+              OrderTransferredToAgent(TestAgentPath % "INITIAL"),
               OrderStarted,
               OrderProcessingStarted,
               OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -57,7 +58,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
               OrderMoved(Position(2)),
               OrderAttachable(TestAgentPath),
-              OrderTransferredToAgent(TestAgentPath % "(initial)"),
+              OrderTransferredToAgent(TestAgentPath % "INITIAL"),
               OrderProcessingStarted,
               OrderProcessed(MapDiff.empty, Outcome.succeeded),
               OrderMoved(Position(3)),
@@ -67,7 +68,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
             OrderAttachable(TestAgentPath),
-            OrderTransferredToAgent(TestAgentPath % "(initial)"),
+            OrderTransferredToAgent(TestAgentPath % "INITIAL"),
             OrderStarted,
             OrderProcessingStarted,
             OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -78,7 +79,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
             OrderJoined(MapDiff.empty, Outcome.succeeded),
             OrderMoved(Position(2)),
             OrderAttachable(TestAgentPath),
-            OrderTransferredToAgent(TestAgentPath % "(initial)"),
+            OrderTransferredToAgent(TestAgentPath % "INITIAL"),
             OrderProcessingStarted,
             OrderProcessed(MapDiff.empty, Outcome.succeeded),
             OrderMoved(Position(3)),
@@ -90,17 +91,16 @@ final class OfferAndAwaitOrderTest extends FreeSpec
   }
 
   "Offer and Await as first statements in a Workflow" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      val workflows = List(
-        JoiningWorkflowId → s"""
-          define workflow {
-            await orderId = "OFFERED-ORDER-ID";
-          }""",
-        PublishingWorkflowId → s"""
-          define workflow {
-            offer orderId = "OFFERED-ORDER-ID", timeout = 60;
-          }""")
-      for ((id, workflow) ← workflows) directoryProvider.master.writeTxt(id.path, workflow)
+    val workflows = List(
+      WorkflowParser.parse(JoiningWorkflowId, s"""
+        define workflow {
+          await orderId = "OFFERED-ORDER-ID";
+        }""").orThrow,
+      WorkflowParser.parse(PublishingWorkflowId, s"""
+        define workflow {
+          offer orderId = "OFFERED-ORDER-ID", timeout = 60;
+        }""").orThrow)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflows)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) ⇒
@@ -156,8 +156,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 
 object OfferAndAwaitOrderTest {
   private val TestAgentPath = AgentPath("/AGENT")
-  private val JoiningWorkflowId = WorkflowPath("/A") % "(initial)"
-  private val PublishingWorkflowId = WorkflowPath("/B") % "(initial)"
+  private val JoiningWorkflowId = WorkflowPath("/A") % "INITIAL"
+  private val PublishingWorkflowId = WorkflowPath("/B") % "INITIAL"
 
   private val OfferedOrderId = OrderId("🔵")
   private val JoinBefore1Order = FreshOrder(OrderId("🥕"), JoiningWorkflowId.path)

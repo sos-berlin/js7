@@ -18,7 +18,7 @@ final class RepoEventTest extends FreeSpec {
   "JSON" - {
     "VersionAdded" in {
       testJson[RepoEvent](
-        RepoEvent.VersionAdded(VersionId("VERSION")),
+        VersionAdded(VersionId("VERSION")),
         json"""{
           "TYPE": "VersionAdded",
           "versionId": "VERSION"
@@ -61,12 +61,26 @@ final class RepoEventTest extends FreeSpec {
 
     "FileBasedDeleted" in {
       testJson[RepoEvent](
-        RepoEvent.FileBasedDeleted(APath("/TEST")),
+        FileBasedDeleted(APath("/TEST")),
         json"""{
           "TYPE": "FileBasedDeleted",
           "path": "A:/TEST"
         }""")
     }
+  }
+
+  "FileBasedAdded must have a non-anonymous path but not a versionId" in {
+    intercept[RuntimeException] { FileBasedAdded(Workflow.of(Fail(None))) }
+    intercept[RuntimeException] { FileBasedAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  }
+
+  "FileBasedChanged must have a non-anonymous path but not a versionId" in {
+    intercept[RuntimeException] { FileBasedChanged(Workflow.of(Fail(None))) }
+    intercept[RuntimeException] { FileBasedChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  }
+
+  "FileBasedDeleted must have a non-anonymous path" in {
+    intercept[RuntimeException] { FileBasedDeleted(WorkflowPath.Anonymous) }
   }
 }
 

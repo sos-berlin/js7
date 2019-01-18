@@ -13,8 +13,8 @@ object ForkTestSetting {
 
   val AAgentPath = AgentPath("/AGENT-A")
   val BAgentPath = AgentPath("/AGENT-B")
-  val AAgentId = AAgentPath % "(initial)"
-  val BAgentId = BAgentPath % "(initial)"
+  val AAgentId = AAgentPath % "INITIAL"
+  val BAgentId = BAgentPath % "INITIAL"
   val AgentPaths = List(AAgentPath, BAgentPath)
   val TestExecutablePath = ExecutablePath("/executable.cmd")
   val AJobName = WorkflowJob.Name("A")
@@ -51,7 +51,7 @@ object ForkTestSetting {
    """.stripMargin.trim
 
   val TestWorkflow = Workflow(
-    WorkflowPath("/WORKFLOW") % "(initial)" ,
+    WorkflowPath("/WORKFLOW") % "INITIAL" ,
     Vector(
       /*0*/ Fork.of(
         "🥕" → Workflow.of(AExecute),

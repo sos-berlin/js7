@@ -25,4 +25,4 @@ trait Permission {
   */
 case object ValidUserPermission extends Permission
 
-case object ChangeRepoPermission extends Permission
+case object UpdateRepoPermission extends Permission

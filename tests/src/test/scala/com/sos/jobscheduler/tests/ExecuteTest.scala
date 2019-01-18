@@ -19,8 +19,7 @@ import org.scalatest.FreeSpec
 final class ExecuteTest extends FreeSpec
 {
   "Execute" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) {
         for (o ← Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
         for (o ← Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd", "/SCRIPT-4.cmd", "/SCRIPT-5.cmd"))
@@ -78,12 +77,12 @@ object ExecuteTest {
         execute executable="/SCRIPT-5.cmd", agent="AGENT", arguments={"return_code": "99"}, successReturnCodes=[5];
       }
     }"""
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),
     OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "(initial)"),
+    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),

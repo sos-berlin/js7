@@ -44,8 +44,7 @@ final class FailTest extends FreeSpec
       expectedEvents)
 
   private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(workflow.withoutVersion)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
       directoryProvider.run { (master, _) ⇒
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -67,5 +66,5 @@ final class FailTest extends FreeSpec
 
 object FailTest {
   private val TestAgentPath = AgentPath("/AGENT")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "INITIAL"
 }

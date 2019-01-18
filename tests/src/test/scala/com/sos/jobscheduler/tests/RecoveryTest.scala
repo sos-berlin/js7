@@ -53,10 +53,10 @@ final class RecoveryTest extends FreeSpec {
   "test" in {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
-      autoClosing(new DirectoryProvider(AgentIds map (_.path), testName = Some("RecoveryTest"))) { directoryProvider ⇒
+      autoClosing(new DirectoryProvider(AgentIds map (_.path), TestWorkflow :: QuickWorkflow :: Nil, testName = Some("RecoveryTest"))) {
+        directoryProvider ⇒
         for (agent ← directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
-        for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
         (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider) { master ⇒
@@ -66,11 +66,11 @@ final class RecoveryTest extends FreeSpec {
           master.eventWatch.await[MasterEvent.MasterReady](after = lastEventId)
           assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
-              NoKey <-: VersionAdded(VersionId("(initial)")),
-              NoKey <-: FileBasedAdded(TestWorkflow),
-              NoKey <-: FileBasedAdded(QuickWorkflow),
-              NoKey <-: FileBasedAdded(Agent(AgentIds(0), directoryProvider.agents(0).localUri.toString)),
-              NoKey <-: FileBasedAdded(Agent(AgentIds(1), directoryProvider.agents(1).localUri.toString)))
+              NoKey <-: VersionAdded(VersionId("INITIAL")),
+              NoKey <-: FileBasedAdded(Agent(AgentIds(0).path, directoryProvider.agents(0).localUri.toString)),
+              NoKey <-: FileBasedAdded(Agent(AgentIds(1).path, directoryProvider.agents(1).localUri.toString)),
+              NoKey <-: FileBasedAdded(TestWorkflow.withoutVersion),
+              NoKey <-: FileBasedAdded(QuickWorkflow.withoutVersion))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ ⇒
             master.addOrderBlocking(QuickOrder)
@@ -141,12 +141,12 @@ final class RecoveryTest extends FreeSpec {
 private object RecoveryTest {
   private val logger = Logger(getClass)
 
-  private val AgentIds = List(AgentPath("/agent-111"), AgentPath("/agent-222")) map (_ % "(initial)")
+  private val AgentIds = List(AgentPath("/agent-111"), AgentPath("/agent-222")) map (_ % "INITIAL")
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
-  private val TestWorkflow = Workflow(WorkflowPath("/test") % "(initial)",
+  private val TestWorkflow = Workflow(WorkflowPath("/test") % "INITIAL",
     Vector(
       Execute(WorkflowJob.Name("TEST-0")),
       Execute(WorkflowJob.Name("TEST-0")),
@@ -161,7 +161,7 @@ private object RecoveryTest {
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "(initial)", Execute(WorkflowJob(AgentIds(0).path, TestExecutablePath)))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "INITIAL", Execute(WorkflowJob(AgentIds(0).path, TestExecutablePath)))
   private val QuickOrder = FreshOrder(OrderId("FAST-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(

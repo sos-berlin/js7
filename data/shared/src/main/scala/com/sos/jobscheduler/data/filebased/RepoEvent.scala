@@ -27,11 +27,19 @@ object RepoEvent {
     def unapply(o: FileBasedAddedOrChanged) = Some(o.fileBased)
   }
 
-  final case class FileBasedAdded(fileBased: FileBased) extends FileBasedAddedOrChanged
+  final case class FileBasedAdded(fileBased: FileBased) extends FileBasedAddedOrChanged {
+    require(!fileBased.id.path.isAnonymous, "FileBasedAdded event requires a path")
+    require(fileBased.id.versionId.isAnonymous, s"VersionId must be anonymous in $toString")
+  }
 
-  final case class FileBasedChanged(fileBased: FileBased) extends FileBasedAddedOrChanged
+  final case class FileBasedChanged(fileBased: FileBased) extends FileBasedAddedOrChanged {
+    require(!fileBased.id.path.isAnonymous, "FileChangedChanged event requires a path")
+    require(fileBased.id.versionId.isAnonymous, s"VersionId must be anonymous in $toString")
+  }
 
-  final case class FileBasedDeleted(path: TypedPath) extends FileBasedEvent
+  final case class FileBasedDeleted(path: TypedPath) extends FileBasedEvent {
+    require(!path.isAnonymous, "FileChangedChanged event requires a path")
+  }
 
   implicit def jsonCodec(implicit w: ObjectEncoder[FileBased], x: Decoder[FileBased], y: Encoder[TypedPath], z: Decoder[TypedPath])
   : TypedJsonCodec[RepoEvent] = TypedJsonCodec(

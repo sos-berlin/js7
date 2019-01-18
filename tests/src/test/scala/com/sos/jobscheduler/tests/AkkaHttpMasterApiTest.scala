@@ -2,13 +2,9 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -16,37 +12,26 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
+final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProvider.ForScalaTest {
 
-  private lazy val env = new TestEnvironment(agentPaths = Nil, temporaryDirectory / "AkkaHttpMasterApiTest")
-  private var master: RunningMaster = _
-  private var api: AkkaHttpMasterApi = _
+  protected val agentPaths = Nil
+  override protected val fileBased = TestWorkflow :: Nil
+
+  private lazy val api = new AkkaHttpMasterApi(master.localUri)
 
   override def beforeAll() = {
+    directoryProvider.master.config / "private" / "private.conf" ++= """
+        |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |""".stripMargin
     super.beforeAll()
-    env.writeJson(TestWorkflowId.path, TestWorkflow)
-    env.masterPrivateConf.contentString = """jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD" """
-    master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
-    for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    api = new AkkaHttpMasterApi(master.localUri)
-  }
-
-  override def afterAll() = {
-    if (master != null) master.close()
-    if (api != null) api.close()
-    env.close()
-    super.afterAll()
   }
 
   "login" in {
@@ -54,8 +39,8 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "POST order" in {
-    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflowId.path)).await(99.s) == true)
-    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflowId.path)).await(99.s) == false)  // Duplicate
+    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflow.path)).await(99.s) == true)
+    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflow.path)).await(99.s) == false)  // Duplicate
   }
 
   "overview" in {
@@ -75,11 +60,9 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
   }
 }
 
-private object AkkaHttpMasterApiTest {
-  private val logger = Logger(getClass)
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
-  private val TestWorkflow = Workflow.of(
-    WorkflowPath("/WORKFLOW") % "(initial)",
-      Execute(WorkflowJob(AgentPath("/MISSING"), ExecutablePath("/MISSING"))))
-  private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflowId, Order.Fresh.StartImmediately)
+private object AkkaHttpMasterApiTest
+{
+  private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") % "INITIAL",
+    Execute(WorkflowJob(AgentPath("/MISSING"), ExecutablePath("/MISSING"))))
+  private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

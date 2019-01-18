@@ -51,7 +51,6 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import shapeless.tag
 import shapeless.tag.@@
@@ -80,13 +79,19 @@ extends AutoCloseable
   def terminate(): Task[Completed] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
       Task.fromFuture(terminated)
-    else {
-      logger.debug("terminate")
-      for {
-        _ ← executeCommandAsSystemUser(MasterCommand.Terminate) map (_.orThrow)
-        t ← Task.fromFuture(terminated)
-      } yield t
-    }
+    else
+      injector.instance[ActorSystem].whenTerminated.value match {
+        case Some(Failure(t)) ⇒ Task.raiseError(t)
+        case Some(Success(_)) ⇒
+          logger.warn("Master terminate: Akka has already been terminated")
+          Task.pure(Completed)
+        case None ⇒
+          logger.debug("terminate")
+          for {
+            _ ← executeCommandAsSystemUser(MasterCommand.Terminate) map (_.orThrow)
+            t ← Task.fromFuture(terminated)
+          } yield t
+      }
 
   def executeCommandForTest(command: MasterCommand): Checked[command.Response] =
     executeCommandAsSystemUser(command) await 99.seconds
@@ -122,26 +127,6 @@ object RunningMaster {
       for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(master)
       master.terminated await timeout
-    }
-
-  def runForTest(directory: Path, name: String = MasterConfiguration.DefaultName)
-    (body: RunningMaster ⇒ Unit)(implicit s: Scheduler)
-  : Unit = {
-    val injector = newInjectorForTest(directory, name = name)
-    runForTest(injector)(body)
-  }
-
-  def runForTest(injector: Injector)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
-    autoClosing(RunningMaster(injector) await 99.s) { master ⇒
-      try {
-        body(master)
-        if (!master.terminated.isCompleted && !injector.instance[ActorSystem].whenTerminated.isCompleted) {
-          master.terminate() await 99.s
-        }
-      } catch { case NonFatal(t) if master.terminated.isCompleted && master.terminated.value.get.isFailure && t != master.terminated.failed.successValue ⇒
-        t.addSuppressed(master.terminated.failed.successValue)
-        throw t
-      }
     }
 
   def newInjectorForTest(directory: Path, module: Module = EMPTY_MODULE,

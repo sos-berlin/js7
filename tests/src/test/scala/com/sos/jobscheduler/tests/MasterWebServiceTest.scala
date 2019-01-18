@@ -32,6 +32,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
 import io.circe.syntax.EncoderOps
@@ -85,6 +86,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   // - Accept-Encoding: gzip
   // --------------------------------------------------------
 
+  "Await MasterReady" in {
+    master.eventWatch.await[MasterReady]()
+  }
+
   "Await AgentReady" in {
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
     for (agentPath ← agentPaths) {
@@ -117,6 +122,72 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       */
     assert(response("TYPE").get == "LoggedIn".asJson)
     sessionToken = response("sessionToken").get.asString.get
+  }
+
+  "Add workflows" in {
+    val workflowJson = json"""
+      {
+        "TYPE": "Workflow",
+        "path": "/WORKFLOW",
+        "instructions": [
+          {
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "/AGENT",
+              "executablePath": "/A$sh",
+              "taskLimit": 1
+            }
+          }
+        ]
+      }""".compactPrint
+
+    val workflow2Json = json"""
+      {
+        "TYPE": "Workflow",
+        "path": "/FOLDER/WORKFLOW-2",
+        "instructions": [
+          {
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "/AGENT",
+              "executablePath": "/B$sh",
+              "taskLimit": 1
+            }
+          }, {
+            "TYPE": "Execute.Anonymous",
+            "job": {
+              "agentPath": "/AGENT",
+              "executablePath": "/MISSING$sh",
+              "taskLimit": 1
+            }
+          }
+        ]
+      }""".compactPrint
+
+    val cmd = json"""
+      {
+        "TYPE": "UpdateRepo",
+        "versionId": "VERSION-1",
+        "change": [
+          {
+            "message": "$workflowJson",
+            "signatureType": "PGP",
+            "signature":  "${signStringToBase64(workflowJson)}"
+          }, {
+            "message": "$workflow2Json",
+            "signatureType": "PGP",
+            "signature":  "${signStringToBase64(workflow2Json)}"
+          }
+        ],
+        "delete": []
+      }"""
+
+    val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+    val response = httpClient.postWithHeaders[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s
+    assert(response == json"""
+      {
+        "TYPE": "Accepted"
+      }""")
   }
 
   "/master/api/workflow" - {
@@ -161,8 +232,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
               "taskLimit": 1
             }
           }
-        ],
-        "source": "\ndefine workflow {\n  execute executable=\"/B$sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING$sh\", agent=\"/AGENT\";\n}"
+        ]
       }""")
   }
 
@@ -335,10 +405,15 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       "stamped": [
         {
           "eventId": 1001,
-          "TYPE": "VersionAdded",
-          "versionId": "(initial)"
+          "TYPE": "MasterReady",
+          "masterId": "Master",
+          "timezone": "${ZoneId.systemDefault.getId}"
         }, {
           "eventId": 1002,
+          "TYPE": "VersionAdded",
+          "versionId": "INITIAL"
+        }, {
+          "eventId": 1003,
           "TYPE": "FileBasedAdded",
           "fileBased": {
             "TYPE": "Agent",
@@ -346,7 +421,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "uri": "$agent1Uri"
           }
         }, {
-          "eventId": 1003,
+          "eventId": 1004,
           "TYPE": "FileBasedAdded",
           "fileBased": {
             "TYPE": "Agent",
@@ -354,14 +429,37 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "uri": "$agent2Uri"
           }
         }, {
-          "eventId": 1004,
+          "eventId": 1005,
+          "TYPE": "AgentReady",
+          "key": "/AGENT",
+          "timezone": "${ZoneId.systemDefault.getId}"
+        }, {
+          "eventId": 1006,
+          "TYPE": "VersionAdded",
+          "versionId": "VERSION-1"
+        }, {
+          "eventId": 1007,
           "TYPE": "FileBasedAdded",
           "fileBased": {
             "TYPE": "Workflow",
-            "id": {
-              "path": "/FOLDER/WORKFLOW-2",
-              "versionId": "(initial)"
-            },
+            "path": "/WORKFLOW",
+            "instructions": [
+              {
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentPath": "/AGENT",
+                  "executablePath": "/A$sh",
+                  "taskLimit": 1
+                }
+              }
+            ]
+          }
+        }, {
+          "eventId": 1008,
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "Workflow",
+            "path": "/FOLDER/WORKFLOW-2",
             "instructions": [
               {
                 "TYPE": "Execute.Anonymous",
@@ -378,71 +476,39 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   "taskLimit": 1
                 }
               }
-            ],
-            "source": "\ndefine workflow {\n  execute executable=\"/B$sh\", agent=\"/AGENT\";\n  execute executable=\"/MISSING$sh\", agent=\"/AGENT\";\n}"
+            ]
           }
         }, {
-          "eventId": 1005,
-          "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "id": {
-              "path": "/WORKFLOW",
-              "versionId": "(initial)"
-            },
-            "instructions": [
-              {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "executablePath": "/A$sh",
-                  "taskLimit": 1
-                }
-              }
-            ],
-            "source": "\ndefine workflow {\n  execute executable=\"/A$sh\", agent=\"/AGENT\";\n}"
-          }
-        }, {
-          "eventId": 1006,
-          "TYPE": "MasterReady",
-          "masterId": "Master",
-          "timezone": "${ZoneId.systemDefault.getId}"
-        }, {
-          "eventId": 1007,
-          "TYPE": "AgentReady",
-          "key": "/AGENT",
-          "timezone": "${ZoneId.systemDefault.getId}"
-        }, {
-          "eventId": 1008,
+          "eventId": 1009,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
             "path": "/WORKFLOW",
-            "versionId": "(initial)"
+            "versionId": "VERSION-1"
           }
         }, {
-          "eventId": 1009,
+          "eventId": 1010,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
           "agentPath":"/AGENT"
         }, {
-          "eventId": 1010,
+          "eventId": 1011,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
           "agentId": {
             "path": "/AGENT",
-            "versionId": "(initial)"
+            "versionId": "INITIAL"
           }
         }, {
-          "eventId": 1011,
+          "eventId": 1012,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "variablesDiff": {
@@ -454,20 +520,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "returnCode": 0
           }
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1016,
+          "eventId": 1017,
           "TYPE": "OrderTransferredToMaster",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1017,
+          "eventId": 1018,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }
@@ -569,14 +635,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 "workflowPosition": {
                   "workflowId": {
                     "path": "/FOLDER/WORKFLOW-2",
-                    "versionId": "(initial)"
+                    "versionId": "VERSION-1"
                   },
                   "position": [ 1 ]
                 },
                 "attachedState": {
                   "agentId": {
                     "path": "/AGENT",
-                    "versionId": "(initial)"
+                    "versionId": "INITIAL"
                   }
                 }
               }
@@ -756,18 +822,12 @@ object MasterWebServiceTest
       |""".stripMargin
     (master.config / "private" / "private.conf").append("""
       |jobscheduler.auth.users {
-      |  TEST-USER: "plain:TEST-PASSWORD"
+      |  TEST-USER {
+      |    password = "plain:TEST-PASSWORD",
+      |    permissions = "UpdateRepo"
+      |  }
       |}
       |""".stripMargin)
-    master.writeTxt(WorkflowPath("/WORKFLOW"), s"""
-       |define workflow {
-       |  execute executable="/A$sh", agent="/AGENT";
-       |}""".stripMargin)
-    master.writeTxt(WorkflowPath("/FOLDER/WORKFLOW-2"), s"""
-       |define workflow {
-       |  execute executable="/B$sh", agent="/AGENT";
-       |  execute executable="/MISSING$sh", agent="/AGENT";
-       |}""".stripMargin)
   }
 
   private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {

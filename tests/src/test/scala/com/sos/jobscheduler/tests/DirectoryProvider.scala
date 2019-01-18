@@ -5,48 +5,58 @@ import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
+import com.sos.jobscheduler.base.utils.SyncResource.ops._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.filebased.FileBasedSigner
+import com.sos.jobscheduler.core.signature.{PGPCommons, PGPKeyGenerator, PGPUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
+import com.sos.jobscheduler.master.data.MasterFileBaseds
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
-import io.circe.syntax.EncoderOps
-import io.circe.{Json, ObjectEncoder}
+import java.io.FileOutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.{createDirectory, createTempDirectory, setPosixFilePermissions}
+import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.{Files, Path}
 import java.time.Duration
+import java.util.Base64
 import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.AtomicBoolean
+import org.bouncycastle.openpgp.PGPSecretKey
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.Future
 import scala.util.Random
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
+  fileBased: Seq[FileBased] = Nil,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
@@ -69,6 +79,7 @@ extends HasCloser {
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
+  private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
     master.createDirectoriesAndFiles()
@@ -93,31 +104,60 @@ extends HasCloser {
          |  key-password = "jobscheduler"
          |}
          |""".stripMargin)
-    for (a ← agents) {
-      val file = master.fileBasedDirectory / s"${a.agentPath.withoutStartingSlash}.agent.json"
-      Files.createDirectories(file.getParent)
-      file.contentString = Agent(AgentPath.NoId, uri = a.conf.localUri.toString).asJson.toPrettyString
-    }
   }
+
+  val fileBasedSigner: FileBasedSigner = {
+    val secretKeyPassword = SecretString(Random.nextString(10))
+    val secretKey: PGPSecretKey = PGPKeyGenerator.generateSecretKey(PGPUserId("TEST"), secretKeyPassword, keySize = 1024/*fast for test*/)
+    val signer = new FileBasedSigner(MasterFileBaseds.jsonCodec, secretKey.getEncoded.asResource, secretKeyPassword)
+    autoClosing(new FileOutputStream(master.config / "private" / "trusted-pgp-keys.asc")) { out ⇒
+      PGPCommons.writePublicKeyAscii(secretKey.getPublicKey, out)
+    }
+    signer
+  }
+
+  def signStringToBase64(string: String): String =
+    Base64.getMimeEncoder.encodeToString(
+      fileBasedSigner.pgpSigner.sign(
+        stringToInputStreamResource(string)))
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit): Unit =
     runAgents()(agents ⇒
       runMaster()(master ⇒
         body(master, agents)))
 
-  def runMaster()(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(master.directory, name = masterName)(body)
+  def runMaster()(body: RunningMaster ⇒ Unit): Unit = {
+    val runningMaster = startMaster(name = masterName, fileBased = fileBased) await 99.s
+    try {
+      body(runningMaster)
+      runningMaster.terminate() await 99.s
+    }
+    catch { case NonFatal(t) ⇒
+      try runningMaster.terminate() await 99.s
+      catch { case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt) }
+      throw t
+    }
+  }
 
-  def startMaster(
+  private def startMaster(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false)
+    mutualHttps: Boolean = false,
+    fileBased: Seq[FileBased] = Nil,
+    name: String = masterName)
   : Task[RunningMaster] =
     Task.deferFuture(
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
-        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = masterName)))
+        httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
+    .map { runningMaster ⇒
+      if (!filebasedHasBeenAdded.getAndSet(true)) {
+        val myFileBased = for (a ← agents) yield Agent(a.agentPath % VersionId.Anonymous, uri = a.conf.localUri.toString)
+        updateRepo(runningMaster, Some(VersionId("INITIAL")), myFileBased ++ fileBased)
+      }
+      runningMaster
+    }
 
   def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -130,6 +170,19 @@ extends HasCloser {
 
   def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentPath).conf)
+
+  def updateRepo(
+    master: RunningMaster,
+    versionId: Option[VersionId] = None,
+    change: Seq[FileBased] = Nil,
+    delete: Set[TypedPath] = Set.empty)
+  : Unit =
+    master.executeCommandAsSystemUser(
+      UpdateRepo(
+        versionId,
+        change = change map fileBasedSigner.sign,
+        delete = delete)
+    ).await(99.s).orThrow
 
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 }
@@ -161,14 +214,19 @@ object DirectoryProvider
     protected def provideAgentClientCertificate = false
     protected def masterClientCertificate: Option[JavaResource] = None
     protected def masterConfig: Config = ConfigFactory.empty
+    protected def fileBased: Seq[FileBased] = Nil
 
     protected final lazy val master: RunningMaster = directoryProvider.startMaster(
       masterModule,
       masterConfig,
       httpPort = masterHttpPort,
       httpsPort = masterHttpsPort,
-      mutualHttps = masterHttpsMutual
+      mutualHttps = masterHttpsMutual,
+      fileBased = fileBased
     ) await 99.s
+
+    protected final lazy val fileBasedSigner = directoryProvider.fileBasedSigner
+    protected final val signStringToBase64 = directoryProvider.signStringToBase64 _
 
     override def beforeAll() = {
       super.beforeAll()
@@ -206,8 +264,6 @@ object DirectoryProvider
   }
 
   final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
-    lazy val fileBasedDirectory = config / "live"
-
     def provideHttpsCertificate(): Unit = {
       // Keystore
       (config / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
@@ -222,24 +278,6 @@ object DirectoryProvider
       for (o ← clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
     }
-
-    override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
-      super.createDirectoriesAndFiles()
-      createDirectory(fileBasedDirectory)
-    }
-
-    def writeJson[A <: FileBased { type Self = A }: ObjectEncoder](fileBased: A): Unit = {
-      require(!fileBased.id.path.isAnonymous, "writeJson: Missing path")
-      require(fileBased.id.versionId.isAnonymous, "writeJson accepts only VersionId.Anonymous")
-      file(fileBased.path, SourceType.Json).contentString =
-        Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(fileBased.withoutId)).toPrettyString
-    }
-
-    def writeTxt(path: TypedPath, content: String): Unit =
-      file(path, SourceType.Txt).contentString = content
-
-    def file(path: TypedPath, t: SourceType): Path =
-      fileBasedDirectory resolve path.toFile(t)
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, name: String, https: Boolean, mutualHttps: Boolean,

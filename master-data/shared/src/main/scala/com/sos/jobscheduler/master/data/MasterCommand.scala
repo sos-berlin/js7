@@ -92,16 +92,18 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  /** Read the configured objects (workflows, agents) from the directory config/live. */
-  final case class ChangeRepo(
+  final case class UpdateRepo(
     versionId: Option[VersionId] = None,
     change: Seq[SignedRepoObject] = Nil,
     delete: Set[TypedPath] = Set.empty)
   extends MasterCommand {
     type Response = Response.Accepted
+
+    override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size} objects, delete=${delete.size} objects)"
   }
 
   /** Read the configured objects (workflows, agents) from the directory config/live. */
+  @deprecated
   final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
     type Response = Response.Accepted
   }
@@ -120,7 +122,7 @@ object MasterCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
-    Subtype(deriveCodec[ChangeRepo]),
+    Subtype(deriveCodec[UpdateRepo]),
     Subtype(NoOperation),
     Subtype(IssueTestEvent),
     Subtype(EmergencyStop),

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests.https
 
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
@@ -11,6 +12,7 @@ import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.https.HttpsTestBase._
@@ -42,6 +44,7 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
 
   protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
   override protected def agentHttps = true
+  override protected val fileBased = TestWorkflow :: Nil
 
   override def beforeAll() = {
     // Reference to agents implicitly starts them (before master)
@@ -71,6 +74,11 @@ private[https] object HttpsTestBase
   private val ClientKeyStoreResource = JavaResource("com/sos/jobscheduler/tests/client/private/https-keystore.p12")
   private val ClientTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/client/export/https-truststore.p12")
 
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/TEST-WORKFLOW"), s"""
+    define workflow {
+      execute executable="/TEST$sh", agent="/TEST-AGENT";
+    }""").orThrow
+
   private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
     (agent.config / "private/private.conf").append(
       s"""jobscheduler.auth.users {
@@ -86,9 +94,5 @@ private[https] object HttpsTestBase
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}
       |""".stripMargin)
-    master.writeTxt(WorkflowPath("/TEST-WORKFLOW"), s"""
-      define workflow {
-        execute executable="/TEST$sh", agent="/TEST-AGENT";
-      }""")
   }
 }

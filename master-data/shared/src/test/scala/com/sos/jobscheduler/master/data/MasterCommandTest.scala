@@ -75,18 +75,18 @@ final class MasterCommandTest extends FreeSpec {
     }
   }
 
-  "ChangeRepo" - {
+  "UpdateRepo" - {
     "defaults" in {
-      testJson[MasterCommand](ChangeRepo(),
+      testJson[MasterCommand](UpdateRepo(),
         json"""{
-          "TYPE": "ChangeRepo",
+          "TYPE": "UpdateRepo",
           "change": [],
           "delete": []
         }""")
     }
 
     "complete" in {
-      testJson[MasterCommand](ChangeRepo(
+      testJson[MasterCommand](UpdateRepo(
         Some(VersionId("1")),
         change = SignedRepoObject(
           message = """{"TYPE": "Workflow", ...}""",
@@ -98,7 +98,7 @@ final class MasterCommandTest extends FreeSpec {
             |""".stripMargin) :: Nil,
         delete = Set(WorkflowPath("/WORKFLOW-A"), AgentPath("/AGENT-A"))),
         json"""{
-          "TYPE": "ChangeRepo",
+          "TYPE": "UpdateRepo",
           "versionId": "1",
           "change": [
             {

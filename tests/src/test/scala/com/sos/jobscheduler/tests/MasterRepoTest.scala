@@ -2,7 +2,6 @@ package com.sos.jobscheduler.tests
 
 import cats.data.Validated.Invalid
 import cats.syntax.option._
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -10,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
@@ -18,8 +17,7 @@ import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.MasterCommand.ReadConfigurationDirectory
-import java.nio.file.Files.delete
+import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.util.Try
@@ -28,17 +26,17 @@ final class MasterRepoTest extends FreeSpec {
   import MasterRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(List(TestAgentPath))) { provider ⇒
       for (v ← 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        directoryProvider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
+        provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 
-      directoryProvider.runAgents() { _ ⇒
-        directoryProvider.runMaster() { master ⇒
+      provider.runAgents() { _ ⇒
+        provider.runMaster() { master ⇒
           // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(ReadConfigurationDirectory(V1.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(V1.some)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V1.string}'")))
 
           // Add Workflow
@@ -48,7 +46,7 @@ final class MasterRepoTest extends FreeSpec {
           changeWorkflowAndRunOrder(master, V3, AWorkflowPath, OrderId("A-3"))
         }
         // Recovery
-        directoryProvider.runMaster() { master ⇒
+        provider.runMaster() { master ⇒
           // V2
           // Previously defined workflow is still known
           runOrder(master, BWorkflowPath % V2, OrderId("B-AGAIN"))
@@ -57,17 +55,15 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V4, CWorkflowPath, OrderId("C"))
 
           // Change workflow
-          directoryProvider.master.writeJson(testWorkflow(V5) withId CWorkflowPath % VersionId.Anonymous)
-          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V5.some)).await(99.s).orThrow
+          provider.updateRepo(master, V5.some, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
 
           // Delete workflow
-          delete(directoryProvider.master.file(CWorkflowPath, SourceType.Json))
-          master.executeCommandAsSystemUser(ReadConfigurationDirectory(V6.some)).await(99.s).orThrow
+          provider.updateRepo(master, V6.some, delete = Set(CWorkflowPath))
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(ReadConfigurationDirectory(V2.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(V2.some)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3
@@ -91,8 +87,7 @@ final class MasterRepoTest extends FreeSpec {
         assert(workflow.isAnonymous)
         val order = FreshOrder(orderId, path)
         // Add Workflow
-        directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
-        master.executeCommandAsSystemUser(ReadConfigurationDirectory(versionId.some)).await(99.s).orThrow
+        provider.updateRepo(master, versionId.some, workflow.withId(path) :: Nil)
         master.addOrderBlocking(order)
         awaitOrder(master, order.id, path % versionId)
       }

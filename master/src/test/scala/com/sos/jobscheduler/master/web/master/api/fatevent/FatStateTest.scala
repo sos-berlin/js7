@@ -31,12 +31,12 @@ final class FatStateTest extends FreeSpec
   }
 
   "RepoAdded Agent" in {
-    check(RepoEvent.FileBasedAdded(agent),
+    check(RepoEvent.FileBasedAdded(agent.withoutVersion),
       None)
   }
 
   "RepoAdded Workflow" in {
-    check(RepoEvent.FileBasedAdded(workflow),
+    check(RepoEvent.FileBasedAdded(workflow.withoutVersion),
       None)
   }
 

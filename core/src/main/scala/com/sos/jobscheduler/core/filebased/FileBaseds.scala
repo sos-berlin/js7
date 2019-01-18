@@ -21,10 +21,10 @@ object FileBaseds
     ignoreAliens: Boolean = false)
   : Checked[Seq[RepoEvent]] =
     for (fileBaseds ← readDirectoryTree(readers, directory, versionId, ignoreAliens = ignoreAliens)) yield
-      diffFileBaseds(versionId, fileBaseds, previousFileBaseds)
+      VersionAdded(versionId) +: diffFileBaseds(versionId, fileBaseds, previousFileBaseds)
 
-  def diffFileBaseds(versionId: VersionId, changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent] =
-    VersionAdded(versionId) +: diffFileBaseds(changed, base).sortBy(_.path)
+  def diffFileBaseds(versionId: VersionId, changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
+    diffFileBaseds(changed map (_.withoutVersion), base map (_.withoutVersion)).sortBy(_.path)
 
   private def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] = {
     val pathToFileBased = base toKeyedMap (_.path: TypedPath)
@@ -47,6 +47,7 @@ object FileBaseds
     }
 
   final case class Diff[P <: TypedPath, A <: FileBased](added: Seq[A], changed: Seq[A], deleted: Seq[P]) {
+    /** Returns a subset of a certain `TypedPath` and `FileBased`. */
     def select[P1 <: P, A1 <: A](implicit A1Path: TypedPath.Companion[P1], A1: FileBased.Companion[A1]): Diff[P1, A1] =
       Diff(
         added   collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
@@ -54,10 +55,10 @@ object FileBaseds
         deleted collect { case o if o.companion eq A1.typedPathCompanion ⇒ o.asInstanceOf[P1] })
   }
   object Diff {
-    def fromEvents(events: Seq[RepoEvent]) =
+    def fromEvents(versionId: VersionId, events: Seq[RepoEvent]) =
       Diff[TypedPath, FileBased](
-        events collect { case o: FileBasedAdded ⇒ o.fileBased },
-        events collect { case o: FileBasedChanged ⇒ o.fileBased },
+        events collect { case o: FileBasedAdded ⇒ o.fileBased withVersion versionId },
+        events collect { case o: FileBasedChanged ⇒ o.fileBased withVersion versionId },
         events collect { case o: FileBasedDeleted ⇒ o.path })
   }
 }

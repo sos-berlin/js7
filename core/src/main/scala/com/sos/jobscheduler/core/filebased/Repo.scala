@@ -26,6 +26,8 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
 
   import Repo._
 
+  lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
+
   lazy val pathToVersionToFileBased: Map[TypedPath, Map[VersionId, Option[FileBased]]] =
     idToFileBased.map { case (id, fileBased) ⇒ (id.path, id.versionId, fileBased) }
       .groupBy(_._1)
@@ -74,10 +76,10 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
         None
 
       case Some(_) ⇒
-        Some(FileBasedChanged(fileBased))
+        Some(FileBasedChanged(fileBased.withoutVersion))
 
       case None ⇒
-        Some(FileBasedAdded(fileBased))
+        Some(FileBasedAdded(fileBased.withoutVersion))
     }
 
   def onlyCurrentVersion: Repo =
@@ -87,8 +89,6 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
 
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).asInstanceOf[Map[A#Path, A]]
-
-  def versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
 
   def currentFileBaseds: immutable.Iterable[FileBased] =
     currentVersion.values.toImmutableIterable
@@ -118,8 +118,8 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
             case event @ FileBasedAddedOrChanged(fileBased) ⇒
               if (fileBased.path.isAnonymous)
                 Problem(s"Adding an anonymous ${fileBased.companion.name}?")
-              else if (!fileBased.id.versionId.isAnonymous && fileBased.id.versionId != versionId)
-                Problem(s"Version in ${event.toShortString} does not match current version '${versionId.string}'")
+              else if (!fileBased.id.versionId.isAnonymous)
+                Problem(s"Version in ${event.toShortString} must not be set")
               else
                 Valid(addEntry(fileBased.path, Some(fileBased withVersion versionId)))
 
@@ -177,9 +177,9 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
               case Left(fileBased) ⇒
                 val vToF = pathToVersionToFileBased(fileBased.path)
                 if (vToF.fileBasedOption(history).flatten.isDefined)
-                  FileBasedChanged(fileBased)
+                  FileBasedChanged(fileBased.withoutVersion)
                 else
-                  FileBasedAdded(fileBased)
+                  FileBasedAdded(fileBased.withoutVersion)
               case Right(path) ⇒
                 FileBasedDeleted(path)
             }
@@ -222,7 +222,7 @@ object Repo {
   }
 
   /** Computes `a` - `b`, ignoring VersionId, and returning `Seq[RepoEvent.FileBasedEvent]`.
-    * Iterables must contain only one version per path..
+    * Iterables must contain only one version per path.
     */
   private[filebased] def diff(a: Iterable[FileBased], b: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
     diff(a toKeyedMap (_.path): Map[TypedPath, FileBased],
@@ -235,8 +235,8 @@ object Repo {
     val deletedPaths = b.keySet -- a.keySet
     val changedPaths = (a.keySet intersect b.keySet) filter (path ⇒ a(path) != b(path))
     deletedPaths.toImmutableSeq.map(FileBasedDeleted.apply) ++
-      addedPaths.toImmutableSeq.map(a).map(FileBasedAdded.apply) ++
-      changedPaths.toImmutableSeq.map(a).map(FileBasedChanged.apply)
+      addedPaths.toImmutableSeq.map(a).map(o ⇒ FileBasedAdded(o.withoutVersion)) ++
+      changedPaths.toImmutableSeq.map(a).map(o ⇒ FileBasedChanged(o.withoutVersion))
   }
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[FileBased]])

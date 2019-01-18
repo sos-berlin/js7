@@ -26,7 +26,6 @@ extends AutoCloseable {
     deleteDirectoryContentRecursively(temporaryDirectory)
   }
 
-  createDirectories(masterDir / "config/live")
   createDirectories(masterDir / "config/order-generators")
   createDirectories(masterDir / "config/private")
   createDirectories(masterDir / "data")

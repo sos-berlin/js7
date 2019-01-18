@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.data
 
+import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -13,6 +14,12 @@ import io.circe.Decoder
   */
 object MasterFileBaseds
 {
+  val MasterTypedPathCompanions = Set[TypedPath.AnyCompanion](
+    AgentPath,
+    WorkflowPath)
+
+  implicit val MasterTypedPathJsonCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(MasterTypedPathCompanions)
+
   implicit val jsonCodec = TypedJsonCodec[FileBased](
     Subtype[Agent],
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))

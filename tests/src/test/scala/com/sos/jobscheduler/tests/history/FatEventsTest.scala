@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests.history
 
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -22,6 +23,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.Outcome.Succeeded
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -43,11 +45,10 @@ import scala.language.implicitConversions
 final class FatEventsTest extends FreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { provider ⇒
+    autoClosing(new DirectoryProvider(AAgentPath :: BAgentPath :: Nil, TestWorkflow :: Nil)) { provider ⇒
       (provider.master.config / "private/private.conf").append("""
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin )
-      provider.master.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
       for (a ← provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
       def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
@@ -191,8 +192,8 @@ object FatEventsTest
   private val AAgentPath = AgentPath("/AGENT-A")
   private val BAgentPath = AgentPath("/AGENT-B")
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
-  private val TestWorkflowNotation = s"""
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "INITIAL"
+  private val TestWorkflow = WorkflowParser.parse(TestWorkflowId, s"""
      |define workflow {
      |  execute executable="/TEST$sh", agent="AGENT-A";
      |  fork(
@@ -206,7 +207,7 @@ object FatEventsTest
      |    });
      |  execute executable="/TEST$sh", agent="AGENT-A";
      |}
-     """.stripMargin.trim
+     """.stripMargin.trim).orThrow
 
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val TestTimestamp = Timestamp.Epoch

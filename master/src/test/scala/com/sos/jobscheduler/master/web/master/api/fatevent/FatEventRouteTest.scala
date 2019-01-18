@@ -249,8 +249,8 @@ object FatEventRouteTest
     Execute(WorkflowJob(TestAgentId.path, ExecutablePath("/executable"))))
   private val InitialEvents =
     Stamped(EventId(1), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(2), NoKey <-: FileBasedAdded(Agent(TestAgentId, "http://127.0.0.1:0"))) ::
-    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow)) :: Nil
+    Stamped(EventId(2), NoKey <-: FileBasedAdded(Agent(TestAgentId.path, "http://127.0.0.1:0"))) ::
+    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow.withoutVersion)) :: Nil
 
   private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
     (1 to 18).map(i ⇒

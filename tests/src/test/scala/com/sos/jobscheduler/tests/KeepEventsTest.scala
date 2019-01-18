@@ -10,14 +10,12 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.tests.DirectoryProvider.script
@@ -33,14 +31,13 @@ import scala.concurrent.duration.Duration
 final class KeepEventsTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentId.path :: Nil)) { directoryProvider ⇒
-      for ((_, tree) ← directoryProvider.agentToTree) {
+    autoClosing(new DirectoryProvider(TestAgentId.path :: Nil, TestWorkflow :: Nil)) { provider ⇒
+      for ((_, tree) ← provider.agentToTree) {
         tree.writeExecutable(TestExecutablePath, script(0.s))
       }
-      directoryProvider.master.writeJson(TestWorkflow)
 
-      RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
-        RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
+      RunningAgent.run(provider.agents.head.conf) { agent ⇒
+        provider.runMaster() { master ⇒
           master.eventWatch.await[MasterEvent.MasterReady]()
           master.addOrderBlocking(TestOrder)
           master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
@@ -48,13 +45,13 @@ final class KeepEventsTest extends FreeSpec {
         agent.terminate() await 99.s
       }
 
-      def masterJournalCount = JournalFiles.listJournalFiles(directoryProvider.master.data / "state" / "master").length
-      def agentJournalCount = JournalFiles.listJournalFiles(directoryProvider.agents(0).data / "state" / "master-Master").length
+      def masterJournalCount = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").length
+      def agentJournalCount = JournalFiles.listJournalFiles(provider.agents(0).data / "state" / "master-Master").length
       assert(masterJournalCount == 2)
       assert(agentJournalCount == 2)
 
-      RunningAgent.run(directoryProvider.agents.head.conf) { agent ⇒
-        RunningMaster.runForTest(directoryProvider.master.directory) { master ⇒
+      provider.runAgents() { _ ⇒
+        provider.runMaster() { master ⇒
           val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(finished.size == 1)
           assert(masterJournalCount == 2)
@@ -79,16 +76,15 @@ final class KeepEventsTest extends FreeSpec {
             master.eventWatch.await[OrderEvent](after = finished2.head.eventId, timeout = Duration.Zero)
           }
         }
-        agent.terminate() await 99.s
       }
     }
   }
 }
 
 private object KeepEventsTest {
-  private val TestAgentId = AgentPath("/agent-111") % "(initial)"
+  private val TestAgentId = AgentPath("/agent-111") % "INITIAL"
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
-  private val TestWorkflow = Workflow.of(WorkflowPath("/test") % VersionId.Anonymous,
+  private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
     Execute(WorkflowJob(TestAgentId.path, TestExecutablePath)))
   private val TestOrder = FreshOrder(OrderId("TEST"), TestWorkflow.id.path)
 }

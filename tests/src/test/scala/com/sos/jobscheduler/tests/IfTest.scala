@@ -20,8 +20,7 @@ import org.scalatest.FreeSpec
 final class IfTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"),
         if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%"
@@ -64,13 +63,13 @@ object IfTest {
      |  };
      |  execute executable="/TEST$sh", agent="AGENT";    // #2
      |}""".stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow
 
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
       OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -87,7 +86,7 @@ object IfTest {
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
       OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
@@ -104,7 +103,7 @@ object IfTest {
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
       OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "(initial)"),
+      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),

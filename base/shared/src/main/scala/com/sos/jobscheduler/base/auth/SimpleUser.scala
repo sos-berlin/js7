@@ -16,7 +16,7 @@ extends User
 object SimpleUser extends User.Companion[SimpleUser] {
   /** The unauthenticated, anonymous user without permissions.. */
   val Anonymous = SimpleUser(UserId.Anonymous, HashedPassword.newEmpty, grantedPermissions = Set.empty)
-  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(ChangeRepoPermission))
+  val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(UpdateRepoPermission))
   implicit val companion = this
 
   def addPermissions(user: SimpleUser, permissionBundle: Set[Permission]): SimpleUser =

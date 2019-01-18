@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedC
 import com.sos.jobscheduler.data.filebased.{AFileBased, APath, BFileBased, BPath, VersionId}
 import org.scalatest.FreeSpec
 
-
 /**
   * @author Joacim Zschimmer
   */
@@ -24,7 +23,7 @@ final class RepoTest extends FreeSpec
     assert(Repo.empty.idTo[AFileBased](APath("/UNKNOWN-PATH") % "UNKNOWN-VERSION") ==
       Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
-    assert(Repo.empty.applyEvent(FileBasedAdded(a1)) ==
+    assert(Repo.empty.applyEvent(FileBasedAdded(a1.withoutVersion)) ==
       Invalid(Problem("Missing first event VersionAdded for Repo")))
   }
 
@@ -62,9 +61,9 @@ final class RepoTest extends FreeSpec
   "eventsFor" in {
     assert(testRepo.eventsFor(Set(APath, BPath)) == TestEvents)
     assert(testRepo.eventsFor(Set(APath)) == List(
-      VersionAdded(V1), FileBasedAdded(a1),
-      VersionAdded(V2), FileBasedChanged(a2),
-      VersionAdded(V3), FileBasedChanged(a3)))
+      VersionAdded(V1), FileBasedAdded(a1.withoutVersion),
+      VersionAdded(V2), FileBasedChanged(a2.withoutVersion),
+      VersionAdded(V3), FileBasedChanged(a3.withoutVersion)))
     assert(testRepo.eventsFor(Set(AgentPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
@@ -112,33 +111,37 @@ final class RepoTest extends FreeSpec
     }
 
     "FileBased without version" in {
-      assert(Repo.empty.fileBasedToEvents(V1, a1.withoutVersion  :: Nil) == Valid(VersionAdded(V1) :: FileBasedAdded(a1) :: Nil))
+      assert(Repo.empty.fileBasedToEvents(V1, a1.withoutVersion  :: Nil)
+        == Valid(VersionAdded(V1) :: FileBasedAdded(a1.withoutVersion) :: Nil))
     }
 
     "FileBased with matching version" in {
-      assert(Repo.empty.fileBasedToEvents(V1, a1                 :: Nil) == Valid(VersionAdded(V1) :: FileBasedAdded(a1) :: Nil))
+      assert(Repo.empty.fileBasedToEvents(V1, a1 :: Nil)
+        == Valid(VersionAdded(V1) :: FileBasedAdded(a1.withoutVersion) :: Nil))
     }
 
     "Deleting unknown" in {
-      assert(Repo.empty.fileBasedToEvents(V1, Nil, deleted = bx2.path :: Nil) == Valid(VersionAdded(V1) :: Nil))
+      assert(Repo.empty.fileBasedToEvents(V1, Nil, deleted = bx2.path :: Nil)
+        == Valid(VersionAdded(V1) :: Nil))
     }
 
     "Duplicate" in {
-      assert(Repo.empty.fileBasedToEvents(V1, a1 :: a1 :: Nil) == Invalid(Problem("Unexpected duplicates: A:/A")))
+      assert(Repo.empty.fileBasedToEvents(V1, a1 :: a1 :: Nil)
+        == Invalid(Problem("Unexpected duplicates: A:/A")))
     }
 
     "Other" in {
-      assert(Repo.empty.fileBasedToEvents(V1, a1 :: b1 :: Nil, deleted = bx2.path :: Nil) ==
-        Valid(VersionAdded(V1) :: FileBasedAdded(a1) :: FileBasedAdded(b1) :: Nil))
+      assert(Repo.empty.fileBasedToEvents(V1, a1 :: b1 :: Nil, deleted = bx2.path :: Nil)
+        == Valid(VersionAdded(V1) :: FileBasedAdded(a1.withoutVersion) :: FileBasedAdded(b1.withoutVersion) :: Nil))
     }
 
-    "" in {
+    "More" in {
       var repo = Repo.empty
       repo = repo.fileBasedToEvents(V1, a1 :: b1 :: Nil).flatMap(repo.applyEvents).orThrow
       assert(repo == Repo(V1 :: Nil, Changed(a1) :: Changed(b1) :: Nil))
 
       val events = repo.fileBasedToEvents(V2, a2 :: bx2 :: Nil, deleted = b1.path :: Nil).orThrow
-      assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(a2) :: FileBasedAdded(bx2) :: Nil)
+      assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(a2.withoutVersion) :: FileBasedAdded(bx2.withoutVersion) :: Nil)
 
       repo = repo.applyEvents(events).orThrow
       assert(repo == Repo(V2 :: V1 :: Nil, Changed(a1) :: Changed(a2) :: Changed(b1) :: Deleted(b1.path % V2) :: Changed(bx2) :: Nil))
@@ -150,11 +153,11 @@ final class RepoTest extends FreeSpec
   "diff" in {
     // NOT USED ?
     assert(Repo.diff(a1 :: b1  :: Nil, a1 :: b1  :: Nil) == Nil)
-    assert(Repo.diff(a1 :: b1  :: Nil,              Nil) == FileBasedAdded(a1) :: FileBasedAdded(b1) :: Nil)
-    assert(Repo.diff(a1 :: b1  :: Nil, a1 ::        Nil) == FileBasedAdded(b1) :: Nil)
+    assert(Repo.diff(a1 :: b1  :: Nil,              Nil) == FileBasedAdded(a1.withoutVersion) :: FileBasedAdded(b1.withoutVersion) :: Nil)
+    assert(Repo.diff(a1 :: b1  :: Nil, a1 ::        Nil) == FileBasedAdded(b1.withoutVersion) :: Nil)
     assert(Repo.diff(             Nil, a1 :: b1  :: Nil) == FileBasedDeleted(a1.path) :: FileBasedDeleted(b1.path) :: Nil)
     assert(Repo.diff(a1 ::        Nil, a1 :: b1  :: Nil) == FileBasedDeleted(b1.path) :: Nil)
-    assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == FileBasedDeleted(bx2.path) :: FileBasedAdded(by2) :: Nil)
+    assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == FileBasedDeleted(bx2.path) :: FileBasedAdded(by2.withoutVersion) :: Nil)
   }
 }
 
@@ -169,10 +172,10 @@ object RepoTest {
   private val by2 = BFileBased(BPath("/By") % V2, "Bb-2")
   private val a3 = AFileBased(APath("/A") % V3, "A-3")
 
-  private val TestEvents = List(
-    VersionAdded(V1), FileBasedAdded(a1),
-    VersionAdded(V2), FileBasedChanged(a2), FileBasedAdded(bx2), FileBasedAdded(by2),
-    VersionAdded(V3), FileBasedChanged(a3), FileBasedDeleted(bx2.path))
+  private val TestEvents =
+    VersionAdded(V1) :: FileBasedAdded(a1.withoutVersion) ::
+    VersionAdded(V2) :: FileBasedChanged(a2.withoutVersion) :: FileBasedAdded(bx2.withoutVersion) :: FileBasedAdded(by2.withoutVersion) ::
+    VersionAdded(V3) :: FileBasedChanged(a3.withoutVersion) :: FileBasedDeleted(bx2.path) :: Nil
 
   private def v(version: String) = VersionId(version)
 }
