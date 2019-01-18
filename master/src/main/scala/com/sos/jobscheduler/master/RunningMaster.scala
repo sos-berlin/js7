@@ -49,6 +49,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -86,6 +87,9 @@ extends AutoCloseable
         t ← Task.fromFuture(terminated)
       } yield t
     }
+
+  def executeCommandForTest(command: MasterCommand): Checked[command.Response] =
+    executeCommandAsSystemUser(command) await 99.seconds
 
   def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.Response]] =
     for {

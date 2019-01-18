@@ -38,7 +38,7 @@ import com.sos.jobscheduler.data.agent.{Agent, AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -52,6 +52,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
+import com.sos.jobscheduler.master.repo.ChangeRepoCommandExecutor
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
@@ -87,6 +88,7 @@ with MainJournalingActor[Event]
   private var hasRecovered = false
   private val repoReader = new MasterRepoReader(masterConfiguration.fileBasedDirectory)
   private var repo = Repo.empty
+  private val changeRepoCommandExecutor = new ChangeRepoCommandExecutor(masterConfiguration)  // TODO throws
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -183,7 +185,7 @@ with MainJournalingActor[Event]
         afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
         logger.info(s"${orderRegister.size} Orders, ${repo.currentTyped[Workflow].size} Workflows and ${repo.currentTyped[Agent].size} Agent declarations recovered")
       } else {
-        readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
+        readConfigurationDirectory(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ ⇒
@@ -328,7 +330,7 @@ with MainJournalingActor[Event]
       context.stop(self)
   }
 
-  private def executeMasterCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[MasterCommand.Response]] =
+  private def executeMasterCommand(command: MasterCommand, commandMeta: CommandMeta): Task[Checked[MasterCommand.Response]] =
     command match {
       case MasterCommand.CancelOrder(orderId, mode) ⇒
         orderRegister.checked(orderId) map (_.order) match {
@@ -356,12 +358,23 @@ with MainJournalingActor[Event]
             .map (_ ⇒ MasterCommand.Response.Accepted)
         }
 
+      case cmd: MasterCommand.ChangeRepo ⇒
+        Task {
+          for {
+            events ← changeRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
+            io ← readConfiguration(events)
+          } yield {
+            io.unsafeRunSync()
+            MasterCommand.Response.Accepted
+          }
+        }
+
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
         val checkedSideEffect = for {
-          a ← readConfiguration(versionId)  // Persists events
+          a ← readConfigurationDirectory(versionId)  // Persists events
           b ← readScheduledOrderGeneratorConfiguration()
         } yield a >> b
-        Task.pure(
+        Task(
           for (sideEffect ← checkedSideEffect) yield {
             sideEffect.unsafeRunSync()
             MasterCommand.Response.Accepted
@@ -395,7 +408,14 @@ with MainJournalingActor[Event]
         }
     }
 
-  private def readConfiguration(versionId: Option[VersionId]): Checked[SyncIO[Unit]] = {
+  private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[SyncIO[Unit]] = {
+    val versionId = versionIdOption getOrElse repo.newVersionId()
+    repoReader.readDirectoryTree(versionId)
+      .map(FileBaseds.diffFileBaseds(versionId, _, repo.currentFileBaseds))
+      .flatMap(readConfiguration)
+  }
+
+  private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Unit]] = {
     def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
       updateAgents(diff.select[AgentPath, Agent])
 
@@ -410,8 +430,7 @@ with MainJournalingActor[Event]
         diff.changed.map(o ⇒ Invalid(Problem(s"Change of configuration files is not supported: ${o.path}")))
 
     for {
-      eventsAndRepo ← repoReader.readConfiguration(repo, versionId)
-      (events, changedRepo) = eventsAndRepo
+      changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
       checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events))
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield SyncIO {

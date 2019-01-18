@@ -18,9 +18,12 @@ trait RepoReader
     for (o ← readConfiguration(repo, versionId)) yield
       o._2
 
-  def readConfiguration(repo: Repo, versionId: Option[VersionId]): Checked[(Seq[RepoEvent], Repo)] =
+  private def readConfiguration(repo: Repo, versionId: Option[VersionId]): Checked[(Seq[RepoEvent], Repo)] =
     for {
       events ← FileBaseds.readDirectory(readers, fileBasedDirectory, repo.currentFileBaseds, versionId getOrElse repo.newVersionId())
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
     } yield (events, changedRepo)
+
+  def readDirectoryTree(versionId: VersionId, ignoreAliens: Boolean = false) =
+    FileBasedReader.readDirectoryTree(readers, fileBasedDirectory, versionId, ignoreAliens = ignoreAliens)
 }

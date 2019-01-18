@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.filebased.TypedPath._
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject, ObjectEncoder}
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
@@ -191,4 +191,16 @@ object TypedPath {
 
   def isAbsolute(path: String): Boolean =
     path startsWith "/"
+
+  implicit val jsonEncoder: ObjectEncoder[TypedPath] = o ⇒ JsonObject(
+    "TYPE" → Json.fromString(o.companion.name),
+    "path" → Json.fromString(o.string))
+
+  def jsonDecoder(toTypedPathCompanion: String ⇒ Checked[TypedPath.AnyCompanion]): Decoder[TypedPath] =
+    c ⇒ for {
+      typ ← c.get[String]("TYPE")
+      path ← c.get[String]("path")
+      t ← toTypedPathCompanion(typ).toDecoderResult
+      typedPath ← t.checked(path).map(_.asInstanceOf[TypedPath]).toDecoderResult
+    } yield typedPath
 }

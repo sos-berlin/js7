@@ -21,14 +21,16 @@ object FileBaseds
     ignoreAliens: Boolean = false)
   : Checked[Seq[RepoEvent]] =
     for (fileBaseds ← readDirectoryTree(readers, directory, versionId, ignoreAliens = ignoreAliens)) yield
-      VersionAdded(versionId) +: toEvents(fileBaseds, previousFileBaseds).sortBy(_.path)
+      diffFileBaseds(versionId, fileBaseds, previousFileBaseds)
 
-  private def toEvents(readFileBaseds: Iterable[FileBased], previousFileBaseds: Iterable[FileBased])
-  : Seq[RepoEvent.FileBasedEvent] = {
-    val pathToFileBased = previousFileBaseds toKeyedMap (_.path: TypedPath)
-    val addedOrChangedEvents = readFileBaseds.toVector flatMap toAddedOrChanged(pathToFileBased)
-    val readPaths = readFileBaseds.map(_.path).toSet
-    val deletedEvents = previousFileBaseds map (_.path) filterNot readPaths map FileBasedDeleted.apply
+  def diffFileBaseds(versionId: VersionId, changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent] =
+    VersionAdded(versionId) +: diffFileBaseds(changed, base).sortBy(_.path)
+
+  private def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] = {
+    val pathToFileBased = base toKeyedMap (_.path: TypedPath)
+    val addedOrChangedEvents = changed.toVector flatMap toAddedOrChanged(pathToFileBased)
+    val readPaths = changed.map(_.path).toSet
+    val deletedEvents = base map (_.path) filterNot readPaths map FileBasedDeleted.apply
     deletedEvents.toVector ++ addedOrChangedEvents
   }
 

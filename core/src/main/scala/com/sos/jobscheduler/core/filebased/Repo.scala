@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.Valid
+import cats.data.Validated.{Invalid, Valid}
+import cats.instances.vector._
+import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
@@ -10,8 +12,9 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Memoizer
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, RepoEvent, TypedPath, VersionId}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * Representation of versioned FileBased (configuration objects).
@@ -25,8 +28,8 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
 
   lazy val pathToVersionToFileBased: Map[TypedPath, Map[VersionId, Option[FileBased]]] =
     idToFileBased.map { case (id, fileBased) ⇒ (id.path, id.versionId, fileBased) }
-      .groupBy (_._1)
-      .mapValuesStrict (_ toKeyedMap (_._2) mapValuesStrict (_._3))
+      .groupBy(_._1)
+      .mapValuesStrict(_ toKeyedMap (_._2) mapValuesStrict (_._3))
 
   lazy val currentVersion: Map[TypedPath, FileBased] =
     for {
@@ -35,16 +38,50 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       fileBased ← fileBasedOption
     } yield path → fileBased
 
+  private lazy val currentPathToFileBased = currentFileBaseds toKeyedMap (_.path: TypedPath)
+
   private val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, FileBased] =
-    Memoizer.nonStrict { companion ⇒
+    Memoizer.nonStrict { companion: FileBased.Companion_ ⇒
       currentVersion collect {
         case (path, fileBased) if fileBased.companion == companion ⇒
           path → fileBased
       }
     }
 
+  def fileBasedToEvents(versionId: VersionId, changed: Iterable[FileBased], deleted: Iterable[TypedPath] = Nil)
+  : Checked[Seq[RepoEvent]] =
+    normalizeVersion(versionId, changed) flatMap { changed ⇒
+      val addedOrChanged = changed flatMap toAddedOrChanged
+      addedOrChanged.checkUniqueness(_.path) map { _ ⇒
+        val deletedEvents = deleted
+          .filterNot(addedOrChanged.map(_.path).toSet)  // delete and change?
+          .filter(currentPathToFileBased.keySet)  // delete unknown?
+          .map(FileBasedDeleted.apply)
+        Vector(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged
+      }
+    }
+
+  private def normalizeVersion(versionId: VersionId, fileBased: Iterable[FileBased]): Checked[Vector[FileBased]] =
+    fileBased.toVector.traverse(o ⇒ o.id.versionId match {
+      case `versionId` ⇒ Valid(o)
+      case VersionId.Anonymous ⇒ Valid(o withVersion versionId)
+      case _ ⇒ Invalid(Problem(s"Expected version '${versionId.string}' in '${o.id}'"))
+    })
+
+  private def toAddedOrChanged(fileBased: FileBased): Option[RepoEvent.FileBasedEvent] =
+    currentPathToFileBased.get(fileBased.path) match {
+      case Some(existing) if existing.withVersion(fileBased.id.versionId) == fileBased ⇒
+        None
+
+      case Some(_) ⇒
+        Some(FileBasedChanged(fileBased))
+
+      case None ⇒
+        Some(FileBasedAdded(fileBased))
+    }
+
   def onlyCurrentVersion: Repo =
-    Repo(
+    new Repo(
       versions.head :: Nil,
       currentVersion.values.map(fileBased ⇒ fileBased.id → Some(fileBased)).toMap)
 
@@ -79,10 +116,12 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
         else
           event match {
             case event @ FileBasedAddedOrChanged(fileBased) ⇒
-              if (fileBased.id.versionId != versionId)
+              if (fileBased.path.isAnonymous)
+                Problem(s"Adding an anonymous ${fileBased.companion.name}?")
+              else if (!fileBased.id.versionId.isAnonymous && fileBased.id.versionId != versionId)
                 Problem(s"Version in ${event.toShortString} does not match current version '${versionId.string}'")
               else
-                Valid(addEntry(fileBased.path, Some(fileBased)))
+                Valid(addEntry(fileBased.path, Some(fileBased withVersion versionId)))
 
             case FileBasedDeleted(path) ⇒
               Valid(addEntry(path, None))
@@ -161,10 +200,44 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
     else
       Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !versions.contains(w) ⇒ w } .get
   }
+
+  override def toString = s"Repo($versions,${idToFileBased.keys.toVector.sortBy(_.toString).map(id ⇒ idToFileBased(id).fold(s"$id deleted")(_.id.toString))})"
 }
 
 object Repo {
   val empty = new Repo(Nil, Map.empty)
+
+  @TestOnly
+  private[filebased] def apply(versionIds: Seq[VersionId], fileBased: Iterable[Entry]) =
+    new Repo(versionIds.toList, fileBased.map(_.fold(o ⇒ o.id → Some(o), _ → None)).uniqueToMap)
+
+  private[filebased] sealed trait Entry {
+    def fold[A](whenChanged: FileBased ⇒ A, whenDeleted: FileBasedId_ ⇒ A): A
+  }
+  private[filebased] final case class Changed(fileBased: FileBased) extends Entry {
+    def fold[A](whenChanged: FileBased ⇒ A, whenDeleted: FileBasedId_ ⇒ A) = whenChanged(fileBased)
+  }
+  private[filebased] final case class Deleted(id: FileBasedId_) extends Entry {
+    def fold[A](whenChanged: FileBased ⇒ A, whenDeleted: FileBasedId_ ⇒ A) = whenDeleted(id)
+  }
+
+  /** Computes `a` - `b`, ignoring VersionId, and returning `Seq[RepoEvent.FileBasedEvent]`.
+    * Iterables must contain only one version per path..
+    */
+  private[filebased] def diff(a: Iterable[FileBased], b: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
+    diff(a toKeyedMap (_.path): Map[TypedPath, FileBased],
+         b toKeyedMap (_.path): Map[TypedPath, FileBased])
+
+  /** Computes `a` - `b`, ignoring VersionId, and returning `Seq[RepoEvent.FileBasedEvent]`.
+    */
+  private def diff(a: Map[TypedPath, FileBased], b: Map[TypedPath, FileBased]): Seq[RepoEvent.FileBasedEvent] = {
+    val addedPaths = a.keySet -- b.keySet
+    val deletedPaths = b.keySet -- a.keySet
+    val changedPaths = (a.keySet intersect b.keySet) filter (path ⇒ a(path) != b(path))
+    deletedPaths.toImmutableSeq.map(FileBasedDeleted.apply) ++
+      addedPaths.toImmutableSeq.map(a).map(FileBasedAdded.apply) ++
+      changedPaths.toImmutableSeq.map(a).map(FileBasedChanged.apply)
+  }
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[FileBased]])
   extends AnyVal {

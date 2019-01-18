@@ -9,8 +9,9 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.filebased.{SignedRepoObject, TypedPath, VersionId}
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.data.MasterFileBaseds.typedPathJsonDecoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
@@ -26,7 +27,7 @@ sealed trait MasterCommand extends CommonCommand
 
 object MasterCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonCodec, Problem))
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonCodec, Problem, typedPathJsonDecoder))
 
   protected type Command = MasterCommand
 
@@ -92,6 +93,15 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Read the configured objects (workflows, agents) from the directory config/live. */
+  final case class ChangeRepo(
+    versionId: Option[VersionId] = None,
+    change: Seq[SignedRepoObject] = Nil,
+    delete: Set[TypedPath] = Set.empty)
+  extends MasterCommand {
+    type Response = Response.Accepted
+  }
+
+  /** Read the configured objects (workflows, agents) from the directory config/live. */
   final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
     type Response = Response.Accepted
   }
@@ -110,6 +120,7 @@ object MasterCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
+    Subtype(deriveCodec[ChangeRepo]),
     Subtype(NoOperation),
     Subtype(IssueTestEvent),
     Subtype(EmergencyStop),

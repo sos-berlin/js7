@@ -3,9 +3,11 @@ package com.sos.jobscheduler.master.data
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.filebased.{SignedRepoObject, VersionId}
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -69,6 +71,51 @@ final class MasterCommandTest extends FreeSpec {
           "mode": {
             "TYPE": "FreshOrStarted"
           }
+        }""")
+    }
+  }
+
+  "ChangeRepo" - {
+    "defaults" in {
+      testJson[MasterCommand](ChangeRepo(),
+        json"""{
+          "TYPE": "ChangeRepo",
+          "change": [],
+          "delete": []
+        }""")
+    }
+
+    "complete" in {
+      testJson[MasterCommand](ChangeRepo(
+        Some(VersionId("1")),
+        change = SignedRepoObject(
+          message = """{"TYPE": "Workflow", ...}""",
+          signatureType = "PGP",
+          signature = """-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin) :: Nil,
+        delete = Set(WorkflowPath("/WORKFLOW-A"), AgentPath("/AGENT-A"))),
+        json"""{
+          "TYPE": "ChangeRepo",
+          "versionId": "1",
+          "change": [
+            {
+              "message": "{\"TYPE\": \"Workflow\", ...}",
+              "signatureType": "PGP",
+              "signature": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+            }
+          ],
+          "delete": [
+            {
+              "TYPE": "WorkflowPath",
+              "path": "/WORKFLOW-A"
+            }, {
+              "TYPE": "AgentPath",
+              "path": "/AGENT-A"
+            }
+          ]
         }""")
     }
   }
