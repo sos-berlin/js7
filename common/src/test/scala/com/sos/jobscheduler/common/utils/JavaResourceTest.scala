@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.common.utils
 
+import cats.effect.SyncIO
 import com.google.common.io.Resources.getResource
 import com.google.common.io.{ByteStreams, Resources}
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.utils.JavaResourceTest._
+import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
@@ -15,40 +18,35 @@ import org.scalatest.Matchers._
 /**
  * @author Joacim Zschimmer
  */
-final class JavaResourceTest extends FreeSpec {
-
-  private val dirPath = "com/sos/jobscheduler/common/utils"
-  private val path = "com/sos/jobscheduler/common/utils/test.txt"
-  private val expectedString = "TEST CONTENT IN → UTF-8\n"
-  private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
-
+final class JavaResourceTest extends FreeSpec
+{
   "simpleName" in {
-    JavaResource(path).simpleName shouldEqual "test.txt"
-    JavaResource(nonExistentPath).simpleName shouldEqual "non-existent"
+    javaResource.simpleName shouldEqual "test.txt"
+    nonExistentJavaResource.simpleName shouldEqual "non-existent"
   }
 
   "path" in {
-    JavaResource(path).path shouldEqual path
-    JavaResource(nonExistentPath).path shouldEqual nonExistentPath
+    javaResource.path shouldEqual path
+    nonExistentJavaResource.path shouldEqual nonExistentPath
   }
 
   "toString" in {
-    JavaResource(path).toString shouldEqual path
-    JavaResource(nonExistentPath).toString shouldEqual nonExistentPath
+    javaResource.toString shouldEqual path
+    nonExistentJavaResource.toString shouldEqual nonExistentPath
   }
 
   "asUtf8String" in {
-    assert(JavaResource(path).asUTF8String == expectedString)
+    assert(javaResource.asUTF8String == expectedString)
   }
 
   "contentBytes" in {
-    assert(JavaResource(path).contentBytes sameElements expectedString.getBytes(UTF_8.name))
+    assert(javaResource.contentBytes sameElements expectedString.getBytes(UTF_8.name))
   }
 
   "copyToFile" in {
     val tmp = createTempFile("test", ".tmp")
-    intercept[FileAlreadyExistsException] { JavaResource(path).copyToFile(tmp) }
-    JavaResource(path).copyToFile(tmp, REPLACE_EXISTING) should be theSameInstanceAs tmp
+    intercept[FileAlreadyExistsException] { javaResource.copyToFile(tmp) }
+    javaResource.copyToFile(tmp, REPLACE_EXISTING) should be theSameInstanceAs tmp
     assert(tmp.contentString == expectedString)
     delete(tmp)
   }
@@ -64,12 +62,12 @@ final class JavaResourceTest extends FreeSpec {
   }
 
   "url" in {
-    JavaResource(path).url shouldEqual getResource(path)
+    javaResource.url shouldEqual getResource(path)
   }
 
   "openStream" in {
-    autoClosing(JavaResource(path).openStream()) { in ⇒
-      assert(ByteStreams.toByteArray(in).toSeq == Resources.toByteArray(JavaResource(path).url).toSeq)
+    autoClosing(javaResource.openStream()) { in ⇒
+      assert(ByteStreams.toByteArray(in).toSeq == Resources.toByteArray(javaResource.url).toSeq)
     }
   }
 
@@ -79,9 +77,35 @@ final class JavaResourceTest extends FreeSpec {
   }
 
   "requireExists" in {
-    JavaResource(path).requireExistence()
+    javaResource.requireExistence()
     intercept[ProblemException] {
-      JavaResource(nonExistentPath).requireExistence()
+      nonExistentJavaResource.requireExistence()
     }
   }
+
+  "asResource (Cats Effect)" in {
+    val io = javaResource.asResource.use(in ⇒
+      SyncIO {
+        new BufferedReader(new InputStreamReader(in)).readLine()
+      })
+    assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
+  }
+
+  "Implicit cats.effect.Resource" in {
+    val io = javaResource.use(in ⇒
+      SyncIO {
+        new BufferedReader(new InputStreamReader(in)).readLine()
+      })
+    assert(io.unsafeRunSync() == expectedString.stripSuffix("\n"))
+  }
+}
+
+object JavaResourceTest
+{
+  private val dirPath = "com/sos/jobscheduler/common/utils"
+  private val path = "com/sos/jobscheduler/common/utils/test.txt"
+  private val expectedString = "TEST CONTENT IN → UTF-8\n"
+  private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
+  private val javaResource = JavaResource(path)
+  private val nonExistentJavaResource = JavaResource(nonExistentPath)
 }

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.utils
 
 import cats.data.Validated.{Invalid, Valid}
+import cats.effect.{Resource, SyncIO}
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.Resources
@@ -12,6 +13,7 @@ import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import scala.collection.immutable
+import scala.language.implicitConversions
 
 /**
  * @author Joacim Zschimmer
@@ -71,6 +73,8 @@ final case class JavaResource(path: String)
 
   def isValid = checkedUrl.isValid
 
+  val asResource: Resource[SyncIO, InputStream] = Resource.fromAutoCloseable(SyncIO { openStream() })
+
   def openStream(): InputStream = url.openStream()
 
   /**
@@ -92,6 +96,9 @@ object JavaResource {
   private val logger = Logger(getClass)
 
   def apply(o: Package) = new JavaResource(o.getName.replace('.', '/'))
+
+  implicit def asResource(o: JavaResource): Resource[SyncIO, InputStream] =
+    o.asResource
 
   private def url(resourceName: String): Checked[URL] = {
     val classLoader = Option(Thread.currentThread.getContextClassLoader) getOrElse classOf[JavaResource].getClassLoader
