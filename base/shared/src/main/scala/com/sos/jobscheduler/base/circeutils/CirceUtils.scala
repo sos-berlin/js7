@@ -169,10 +169,10 @@ object CirceUtils {
   //def delegateCodec[A, B: Encoder: Decoder](toB: A ⇒ B, fromB: B ⇒ A): CirceCodec[A] =
   //  new Encoder[A] with Decoder[A] {
   //    def apply(a: A) = toB(a).asJson
-  //    def apply(c: HCursor) = c.as[B] flatMap catched(fromB)
+  //    def apply(c: HCursor) = c.as[B] flatMap caught(fromB)
   //  }
   //
-  //private def catched[A, B](convert: A ⇒ B)(a: A): Decoder.Result[B] =
+  //private def caught[A, B](convert: A ⇒ B)(a: A): Decoder.Result[B] =
   //  try Right(convert(a))
   //  catch { case NonFatal(t) ⇒
   //    Left(DecodingFailure(t.toStringWithCauses, Nil))
