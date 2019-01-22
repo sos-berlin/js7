@@ -37,11 +37,11 @@ trait OrderRoute extends MasterRouteProvider
             extractUri { uri ⇒
               respondWithHeader(Location(uri + "/" + order.id.string)) {
                 completeTask(
-                    orderApi.addOrder(order).map[ToResponseMarshallable] {
-                    case Invalid(problem) ⇒ problem
-                    case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added")
-                    case Valid(true) ⇒ Created
-                  })
+                  orderApi.addOrder(order).map[ToResponseMarshallable] {
+                  case Invalid(problem) ⇒ problem
+                  case Valid(false) ⇒ Conflict → Problem.pure(s"Order '${order.id.string}' has already been added")
+                  case Valid(true) ⇒ Created
+                })
               }
             }
           }
@@ -51,19 +51,19 @@ trait OrderRoute extends MasterRouteProvider
         pathEnd {
           parameter("return".?) {
             case None ⇒
-              complete(orderApi.ordersOverview.runToFuture)
+              complete(orderApi.ordersOverview.runToFuture)  // TODO Should be streamed
             case _ ⇒
-              complete(Problem("Parameter return is not supported here"))
+              complete(Problem.pure("Parameter return is not supported here"))
           }
         } ~
         pathSingleSlash {
           parameter("return".?) {
             case None ⇒
-              complete(orderApi.orderIds.runToFuture)
+              complete(orderApi.orderIds.runToFuture)  // TODO Should be streamed
             case Some("Order") ⇒
-              complete(orderApi.orders.runToFuture)
+              complete(orderApi.orders.runToFuture)   // TODO Should be streamed
             case Some(unrecognized) ⇒
-              complete(Problem(s"Unrecognized return=$unrecognized"))
+              complete(Problem.pure(s"Unrecognized return=$unrecognized"))
           }
         } ~
         matchOrderId { orderId ⇒
@@ -78,9 +78,8 @@ trait OrderRoute extends MasterRouteProvider
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
-          Problem(s"Does not exist: $orderId"): ToResponseMarshallable
+          Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
       })
-
 }
 
 object OrderRoute {
