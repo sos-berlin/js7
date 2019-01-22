@@ -623,7 +623,7 @@ with MainJournalingActor[Event]
           handleOrderEvent(stamped)
         }
       else if (order.isAttaching) {
-        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, workflow.reduceForAgent(job.agentPath))
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, workflow.reduceForAgent(job.agentPath))  // OutOfMemoryError when Agent is unreachable !!!
       }
     }
 
