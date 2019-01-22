@@ -12,7 +12,19 @@ import org.scalatest.Matchers._
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
-final class ScalaUtilsTest extends FreeSpec {
+final class ScalaUtilsTest extends FreeSpec
+{
+  "reuseIfEqual" in {
+    case class A(number: Int)
+    val a = A(1)
+    val b = A(1)
+    val c = A(2)
+    assert(a == b && a.ne(b))
+    assert(reuseIfEqual(a, b) eq a)
+    assert(reuseIfEqual(b, c) eq c)
+    assert(reuseIfEqual(a)(_.copy(number = 7)) ne a)
+    assert(reuseIfEqual(a)(_.copy(number = 1)) eq a)
+  }
 
   "implicitClass" in {
     def f[A : ClassTag] = implicitClass[A]

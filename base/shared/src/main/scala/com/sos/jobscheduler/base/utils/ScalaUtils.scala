@@ -14,10 +14,17 @@ import scala.concurrent.Future
 import scala.math.max
 import scala.reflect.ClassTag
 
-object ScalaUtils {
+object ScalaUtils
+{
+  @inline
+  def reuseIfEqual[A <: AnyRef](a: A)(f: A ⇒ A): A =
+    reuseIfEqual(a, f(a))
+
+  @inline
+  def reuseIfEqual[A <: AnyRef](a: A, b: A): A =
+    if (a == b) a else b
 
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
-
 
   implicit final class RichJavaClass[A](private val underlying: Class[A]) {
     def scalaName: String = underlying.getName stripSuffix "$"
