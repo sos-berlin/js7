@@ -157,7 +157,7 @@ with MainJournalingActor[Event]
     recoverer.recoverAll()
     for (masterState ← recoverer.masterState) {
       hasRecovered = true
-      updateRepo(masterState.repo)
+      setRepo(masterState.repo)
       for (agent ← repo.currentFileBaseds collect { case o: Agent ⇒ o }) {
         registerAgent(agent)
       }
@@ -447,7 +447,7 @@ with MainJournalingActor[Event]
     } yield
       SyncIO {
         persistTransaction(events map (e ⇒ KeyedEvent(e))) { _ ⇒
-          updateRepo(changedRepo)
+          setRepo(changedRepo)
           events foreach logRepoEvent
           foldedSideEffects.unsafeRunSync()
         }
@@ -462,7 +462,7 @@ with MainJournalingActor[Event]
       case FileBasedDeleted(path)      ⇒ logger.info(s"Version ${repo.versionId.string}: deleted $path")
     }
 
-  private def updateRepo(o: Repo): Unit = {
+  private def setRepo(o: Repo): Unit = {
     repo = o
     orderProcessor = new OrderProcessor(repo.idTo[Workflow], idToOrder)
   }

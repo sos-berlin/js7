@@ -17,7 +17,7 @@ trait HasTimeout
     scheduler.clockRealTime(MILLISECONDS) < timeoutAt
 
   private[session] final def touch(timeout: FiniteDuration)(implicit scheduler: Scheduler): Unit =
-    timeoutAt = scheduler.currentTimeMillis() + timeout.toMillis
+    timeoutAt = scheduler.clockRealTime(MILLISECONDS) + timeout.toMillis
 
   private[session] final def isEternal =
     timeoutAt == Long.MaxValue
