@@ -90,22 +90,22 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
   }
 
   "login when unreachable" in {
-    withClient() { client ⇒
+    withSessionApi() { api ⇒
       val exception = intercept[akka.stream.StreamTcpException] {
-        client.login(None) await 99.s
+        api.login(None) await 99.s
       }
       assert(exception.getMessage contains "java.net.ConnectException")
     }
   }
 
   "loginUntilReachable, unauthorized" in {
-    withClient() { client ⇒
+    withSessionApi() { api ⇒
       var count = 0
       def onError(t: Throwable) = {
         logger.debug(t.toStringWithCauses)
         count += 1
       }
-      val whenLoggedIn = client.loginUntilReachable(None, Iterator.continually(10.milliseconds), onError).runToFuture
+      val whenLoggedIn = api.loginUntilReachable(None, Iterator.continually(10.milliseconds), onError).runToFuture
       sleep(100.ms)
       server.start() await 99.s
       val exception = intercept[AkkaHttpClient.HttpException] {
@@ -113,178 +113,178 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
       }
       assert(exception.status == Unauthorized)
       assert(count >= 3)
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "loginUntilReachable, authorized" in {
-    withClient() { client ⇒
-      client.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ ⇒ ()) await 99.s
-      requireAccess(client)
-      client.logout() await 99.s
-      requireAccessIsUnauthorized(client)
+    withSessionApi() { api ⇒
+      api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ ⇒ ()) await 99.s
+      requireAccess(api)
+      api.logout() await 99.s
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login without credentials is rejected with 401 Unauthorized" in {
-    withClient() { client ⇒
+    withSessionApi() { api ⇒
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(None) await 99.s
+        api.login(None) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized" in {
-    withClient(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { client ⇒
+    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api ⇒
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(None) await 99.s
+        api.login(None) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
       assert(now - t >= invalidAuthenticationDelay)
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login without credentials and with Anonymous Authorization header is rejected" in {
-    withClient(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { client ⇒
+    withSessionApi(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api ⇒
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(None) await 99.s
+        api.login(None) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
       assert(now - t >= invalidAuthenticationDelay)
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login with credentials and with Authorization header is rejected" in {
-    withClient(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { client ⇒
-      requireAccess(client)
+    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api ⇒
+      requireAccess(api)
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(Some(AUserAndPassword)) await 99.s
+        api.login(Some(AUserAndPassword)) await 99.s
       }
       assert(exception.status == BadRequest)
       assert(exception.dataAsString.parseJsonOrThrow.as[Problem] == Right(Problem("Both command Login and HTTP header Authentication?")))
-      requireAccess(client)
+      requireAccess(api)
     }
   }
 
   "Login without credentials but with Authorization header is accepted" in {
-    withClient(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { client ⇒
-      client.login(None) await 99.s
-      assert(client.hasSession)
-      requireAccess(client)
+    withSessionApi(Authorization(BasicHttpCredentials("A-USER", "A-PASSWORD")) :: Nil) { api ⇒
+      api.login(None) await 99.s
+      assert(api.hasSession)
+      requireAccess(api)
     }
   }
 
   "Login as Anonymous is rejected" in {
-    withClient() { client ⇒
+    withSessionApi() { api ⇒
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(Some(UserId.Anonymous → SecretString(""))) await 99.s
+        api.login(Some(UserId.Anonymous → SecretString(""))) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenge("X-JobScheduler-Login", realm = None)))))
       assert(now - t >= invalidAuthenticationDelay)
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login with invalid credentials is rejected with 403 Unauthorized" in {
-    withClient() { client ⇒
+    withSessionApi() { api ⇒
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
-        client.login(Some(UserId("A-USER") → SecretString(""))) await 99.s
+        api.login(Some(UserId("A-USER") → SecretString(""))) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenge("X-JobScheduler-Login", realm = None)))))
       assert(exception.dataAsString contains "Login: unknown user or invalid password")
       assert(now - t >= invalidAuthenticationDelay)
-      requireAccessIsUnauthorized(client)
+      requireAccessIsUnauthorized(api)
     }
   }
 
   "Login and Logout" in {
-    withClient() { client ⇒
-      assert(!client.hasSession)
+    withSessionApi() { api ⇒
+      assert(!api.hasSession)
 
       // Access without Login (Session) is rejected
       intercept[HttpException] {
-        client.get_[String](s"$localUri/test") await 99.s
+        api.get_[String](s"$localUri/test") await 99.s
       }.status shouldEqual Unauthorized
-      assert(!client.hasSession)
+      assert(!api.hasSession)
 
       // Login and Logout
-      client.login(Some(AUserAndPassword)) await 99.s
-      val Some(sessionToken) = client.sessionToken
-      assert(client.hasSession)
-      requireAccess(client)
-      assert(client.hasSession)
-      client.logout() await 99.s shouldEqual Completed
-      assert(!client.hasSession)
+      api.login(Some(AUserAndPassword)) await 99.s
+      val Some(sessionToken) = api.sessionToken
+      assert(api.hasSession)
+      requireAccess(api)
+      assert(api.hasSession)
+      api.logout() await 99.s shouldEqual Completed
+      assert(!api.hasSession)
 
       // Using old SessionToken is Unauthorized
-      client.setSessionToken(sessionToken)
-      val exception = requireAccessIsUnauthorized(client)
+      api.setSessionToken(sessionToken)
+      val exception = requireAccessIsUnauthorized(api)
       assert(exception.header[`WWW-Authenticate`] == Some(LoginWWWAuthenticate))
       assert(AkkaHttpClient.sessionMayBeLost(exception))
     }
   }
 
   "Logout without SessionToken is short-circuited" in {
-    withClient() { client ⇒
-      assert(!client.hasSession)
-      client.logout() await 99.s shouldEqual Completed
-      assert(!client.hasSession)
+    withSessionApi() { api ⇒
+      assert(!api.hasSession)
+      api.logout() await 99.s shouldEqual Completed
+      assert(!api.hasSession)
     }
   }
 
   "Use of discarded SessionToken is unauthorized, clearSession" in {
     // This applies to all commands, also Login and Logout.
-    // With Unauthorized or Forbidden, the client learns about the invalid session.
-    withClient() { client ⇒
-      client.setSessionToken(SessionToken(SecretString("DISCARDED")))
-      val exception = requireAccessIsUnauthorized(client)
+    // With Unauthorized or Forbidden, stateful SessionApi learns about the invalid session.
+    withSessionApi() { api ⇒
+      api.setSessionToken(SessionToken(SecretString("DISCARDED")))
+      val exception = requireAccessIsUnauthorized(api)
       assert(exception.header[`WWW-Authenticate`] == Some(LoginWWWAuthenticate))
       assert(AkkaHttpClient.sessionMayBeLost(exception))
-      assert(client.hasSession)
+      assert(api.hasSession)
 
-      client.clearSession()
-      client.login(Some(AUserAndPassword)) await 99.s
-      assert(client.hasSession)
-      client.logout() await 99.s
+      api.clearSession()
+      api.login(Some(AUserAndPassword)) await 99.s
+      assert(api.hasSession)
+      api.logout() await 99.s
     }
   }
 
   "logout clears SessionToken even if invalid" in {
-    withClient() { client ⇒
-      client.setSessionToken(SessionToken(SecretString("DISCARDED")))
-      assert(client.hasSession)
-      client.logout() await 99.s
-      assert(!client.hasSession)
+    withSessionApi() { api ⇒
+      api.setSessionToken(SessionToken(SecretString("DISCARDED")))
+      assert(api.hasSession)
+      api.logout() await 99.s
+      assert(!api.hasSession)
     }
   }
 
   "Second Login invalidates first Login" in {
-    withClient() { client ⇒
-      client.login(Some(AUserAndPassword)) await 99.s
-      val Some(firstSessionToken) = client.sessionToken
-      assert(client.hasSession)
-      client.login(Some(BUserAndPassword)) await 99.s
-      assert(client.hasSession)
+    withSessionApi() { api ⇒
+      api.login(Some(AUserAndPassword)) await 99.s
+      val Some(firstSessionToken) = api.sessionToken
+      assert(api.hasSession)
+      api.login(Some(BUserAndPassword)) await 99.s
+      assert(api.hasSession)
 
-      withClient() { otherClient ⇒
+      withSessionApi() { otherClient ⇒
         // Using old SessionToken is Unauthorized
         otherClient.setSessionToken(firstSessionToken)
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -295,15 +295,15 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
         assert(AkkaHttpClient.sessionMayBeLost(exception))
       }
 
-      client.logout() await 99.s shouldEqual Completed
-      assert(!client.hasSession)
+      api.logout() await 99.s shouldEqual Completed
+      assert(!api.hasSession)
     }
   }
 
-  private def requireAccess(client: SessionApi with AkkaHttpClient): Unit =
+  private def requireAccess(client: AkkaHttpClient): Unit =
     client.get_[String](s"$localUri/test") await 99.s shouldEqual "A-USER"
 
-  private def requireAccessIsUnauthorized(client: SessionApi with AkkaHttpClient): HttpException = {
+  private def requireAccessIsUnauthorized(client: AkkaHttpClient): HttpException = {
     val exception = intercept[AkkaHttpClient.HttpException] {
       client.get_[String](s"$localUri/test") await 99.s
     }
@@ -311,8 +311,8 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     exception
   }
 
-  private def withClient(headers: List[HttpHeader] = Nil)(body: SessionApi with AkkaHttpClient ⇒ Unit): Unit = {
-    val client = new SessionApi with AkkaHttpClient {
+  private def withSessionApi(headers: List[HttpHeader] = Nil)(body: SessionApi with AkkaHttpClient ⇒ Unit): Unit = {
+    val api = new SessionApi with AkkaHttpClient {
       def httpClient = this: AkkaHttpClient
       def sessionUri = s"$baseUri/session"
       def actorSystem = SessionRouteTest.this.actorSystem
@@ -320,7 +320,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
       def uriPrefixPath = ""
       override val standardHeaders = headers ::: super.standardHeaders
     }
-    autoClosing(client) {
+    autoClosing(api) {
       body
     }
   }
