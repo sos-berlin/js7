@@ -57,7 +57,6 @@ import com.sos.jobscheduler.master.repo.UpdateRepoCommandExecutor
 import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
 import java.nio.file.Files
 import java.time.ZoneId
-import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -215,9 +214,9 @@ with MainJournalingActor[Event]
       if (terminating)
         sender ! Invalid(MasterIsTerminatingProblem)
       else
-        executeMasterCommand(command, meta).runAsync {
-          case Left(t) ⇒ sender ! Status.Failure(t)
-          case Right(response) ⇒ sender ! response
+        executeMasterCommand(command, meta) onComplete {
+          case Failure(t) ⇒ sender ! Status.Failure(t)
+          case Success(response) ⇒ sender ! response
         }
 
     case Command.AddOrderSchedule(orders) if !terminating ⇒
@@ -337,82 +336,78 @@ with MainJournalingActor[Event]
       context.stop(self)
   }
 
-  private def executeMasterCommand(command: MasterCommand, commandMeta: CommandMeta): Task[Checked[MasterCommand.Response]] =
+  private def executeMasterCommand(command: MasterCommand, commandMeta: CommandMeta): Future[Checked[MasterCommand.Response]] =
     command match {
       case MasterCommand.CancelOrder(orderId, mode) ⇒
         orderRegister.checked(orderId) map (_.order) match {
           case Invalid(problem) ⇒
-            Task.pure(Invalid(problem))
+            Future.successful(Invalid(problem))
 
           case Valid(order) ⇒
             orderProcessor.cancel(order.id, mode, isAgent = false) match {
               case invalid @ Invalid(_) ⇒
-                Task.pure(invalid)
+                Future.successful(invalid)
               case Valid(None) ⇒
-                Task.pure(Valid(MasterCommand.Response.Accepted))
+                Future.successful(Valid(MasterCommand.Response.Accepted))
               case Valid(Some(event)) ⇒
-                Task.deferFuture(
-                  persist(orderId <-: event) { stamped ⇒  // Event may be inserted between events coming from Agent
-                    handleOrderEvent(stamped)
-                    Valid(MasterCommand.Response.Accepted)
-                })
+                persist(orderId <-: event) { stamped ⇒  // Event may be inserted between events coming from Agent
+                  handleOrderEvent(stamped)
+                  Valid(MasterCommand.Response.Accepted)
+                }
             }
         }
 
       case MasterCommand.KeepEvents(eventId) ⇒
-        Task {
+        Future {  // asynchronous
           eventWatch.keepEvents(eventId)
             .map (_ ⇒ MasterCommand.Response.Accepted)
         }
 
       case cmd: MasterCommand.UpdateRepo ⇒
-        Task {
+        Future.successful(
           for {
             events ← updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
             io ← readConfiguration(events)
           } yield {
             io.unsafeRunSync()
             MasterCommand.Response.Accepted
-          }
-        }
+          })
 
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
-        val checkedSideEffect = for {
-          a ← readConfigurationDirectory(versionId) map (_._2)  // Persists events
-          b ← readScheduledOrderGeneratorConfiguration()
-        } yield a >> b
-        Task(
+        Future.successful {
+          val checkedSideEffect = for {
+            a ← readConfigurationDirectory(versionId) map (_._2)  // Persists events
+            b ← readScheduledOrderGeneratorConfiguration()
+          } yield a >> b
           for (sideEffect ← checkedSideEffect) yield {
             sideEffect.unsafeRunSync()
             MasterCommand.Response.Accepted
-          })
+          }
+        }
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
-        Task.pure(Valid(MasterCommand.Response.Accepted))
+        Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
-        Task.pure(Invalid(Problem("NOT IMPLEMENTED")))  // Never called
+        Future.successful(Invalid(Problem.pure("NOT IMPLEMENTED")))  // Never called
 
       case MasterCommand.TakeSnapshot ⇒
         import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes
-        Task.deferFuture(
           (journalActor ? JournalActor.Input.TakeSnapshot)
             .mapTo[JournalActor.Output.SnapshotTaken.type]
-            .map(_ ⇒ Valid(MasterCommand.Response.Accepted)))
+            .map(_ ⇒ Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
         terminating = true
         terminateRespondedAt = Some(now)
-        Task.pure(Valid(MasterCommand.Response.Accepted))
+        Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent ⇒
-        Task.deferFuture {
-          persist(MasterTestEvent, async = true)(_ ⇒
-            Valid(MasterCommand.Response.Accepted))
-        }
+        persist(MasterTestEvent, async = true)(_ ⇒
+          Valid(MasterCommand.Response.Accepted))
     }
 
   private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[(Boolean, SyncIO[Unit])] = {
