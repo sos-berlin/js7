@@ -13,6 +13,7 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -24,6 +25,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -79,7 +81,6 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 
   override def beforeAll() = {
     super.beforeAll()
-    server.start() await 99.s
   }
 
   override def afterAll() = {
@@ -88,16 +89,51 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     super.afterAll()
   }
 
+  "login when unreachable" in {
+    withClient() { client ⇒
+      val exception = intercept[akka.stream.StreamTcpException] {
+        client.login(None) await 99.s
+      }
+      assert(exception.getMessage contains "java.net.ConnectException")
+    }
+  }
+
+  "loginUntilReachable, unauthorized" in {
+    withClient() { client ⇒
+      var count = 0
+      def onError(t: Throwable) = {
+        logger.debug(t.toStringWithCauses)
+        count += 1
+      }
+      val whenLoggedIn = client.loginUntilReachable(None, Iterator.continually(10.milliseconds), onError).runToFuture
+      sleep(100.ms)
+      server.start() await 99.s
+      val exception = intercept[AkkaHttpClient.HttpException] {
+        whenLoggedIn await 99.s
+      }
+      assert(exception.status == Unauthorized)
+      assert(count >= 3)
+      requireAccessIsUnauthorized(client)
+    }
+  }
+
+  "loginUntilReachable, authorized" in {
+    withClient() { client ⇒
+      client.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ ⇒ ()) await 99.s
+      requireAccess(client)
+      client.logout() await 99.s
+      requireAccessIsUnauthorized(client)
+    }
+  }
+
   "Login without credentials is rejected with 401 Unauthorized" in {
     withClient() { client ⇒
-      val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
         client.login(None) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
-      assert(now - t >= invalidAuthenticationDelay)
       requireAccessIsUnauthorized(client)
     }
   }
@@ -190,7 +226,8 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
       assert(!client.hasSession)
 
       // Login and Logout
-      val sessionToken = client.login(Some(AUserAndPassword)) await 99.s
+      client.login(Some(AUserAndPassword)) await 99.s
+      val Some(sessionToken) = client.sessionToken
       assert(client.hasSession)
       requireAccess(client)
       assert(client.hasSession)
@@ -241,7 +278,8 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 
   "Second Login invalidates first Login" in {
     withClient() { client ⇒
-      val firstSessionToken = client.login(Some(AUserAndPassword)) await 99.s
+      client.login(Some(AUserAndPassword)) await 99.s
+      val Some(firstSessionToken) = client.sessionToken
       assert(client.hasSession)
       client.login(Some(BUserAndPassword)) await 99.s
       assert(client.hasSession)
@@ -289,6 +327,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
 }
 
 object SessionRouteTest {
+  private val logger = Logger(getClass)
   private val AUserAndPassword = UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD"))
   private val BUserAndPassword = UserAndPassword(UserId("B-USER"), SecretString("B-PASSWORD"))
 

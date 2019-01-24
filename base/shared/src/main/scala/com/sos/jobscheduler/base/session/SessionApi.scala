@@ -2,10 +2,12 @@ package com.sos.jobscheduler.base.session
 
 import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.session.SessionApi._
 import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
 import com.sos.jobscheduler.base.web.HttpClient
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
+import scala.concurrent.duration.FiniteDuration
 
 // Test in SessionRouteTest
 
@@ -19,11 +21,20 @@ trait SessionApi extends HasSessionToken
 
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
-  final def login(userAndPassword: Option[UserAndPassword]): Task[SessionToken] =
-    for (response ← executeSessionCommand(Login(userAndPassword))) yield {
+  final def login(userAndPassword: Option[UserAndPassword]): Task[Unit] =
+    for (response ← executeSessionCommand(Login(userAndPassword))) yield
       setSessionToken(response.sessionToken)
-      response.sessionToken
-    }
+
+  final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration], onError: Throwable ⇒ Unit)
+  : Task[Unit] =
+    login(userAndPassword)
+      .onErrorRestartLoop(()) { (throwable, _, retry) ⇒
+        onError(throwable)
+        if (isTemporary(throwable) && delays.hasNext)
+          retry(false) delayExecution delays.next()
+        else
+          Task.raiseError(throwable)
+      }
 
   final def logout(): Task[Completed] = {
     val tokenOption = sessionTokenRef.get
@@ -53,4 +64,13 @@ trait SessionApi extends HasSessionToken
     sessionTokenRef.get
 
   def hasSession = sessionTokenRef.get.nonEmpty
+}
+
+object SessionApi
+{
+  private def isTemporary(throwable: Throwable) =
+    throwable match {
+      case e: HttpClient.HttpException ⇒ e.isUnreachable
+      case _ ⇒ true  // May be a TCP exception
+    }
 }

@@ -178,7 +178,10 @@ object AkkaHttpClient {
     }
 
   final class HttpException private[AkkaHttpClient](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
-  extends RuntimeException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim) {
+  extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)
+  {
+    def statusInt = status.intValue
+
     // Don't publish httpResponse because its entity stream has already been consumed for dataAsString
     def status: StatusCode = httpResponse.status
 
