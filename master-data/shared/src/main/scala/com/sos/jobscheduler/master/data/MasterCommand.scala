@@ -99,7 +99,7 @@ object MasterCommand extends CommonCommand.Companion
   extends MasterCommand {
     type Response = Response.Accepted
 
-    override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size} objects, delete=${delete.size} objects)"
+    override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size}×, delete=${delete.size}×)"
   }
 
   /** Read the configured objects (workflows, agents) from the directory config/live. */

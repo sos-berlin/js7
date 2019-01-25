@@ -292,7 +292,7 @@ extends FileBased
   def withoutSource = copy(source = None)
 
   override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") +
-    s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) ⇒ s"define job $k { $v }" }.mkString(" ")}"
+    s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) ⇒ s"define job $k { $v }" }.mkString(" ")} }"
 }
 
 object Workflow extends FileBased.Companion[Workflow] {
