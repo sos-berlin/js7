@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.scheduledorder
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.oldruntime.OldSchedule
@@ -19,7 +20,7 @@ extends FileBased
 
   val companion = ScheduledOrderGenerator
 
-  def withId(id: FileBasedId[ScheduledOrderGeneratorPath]) = copy(id = id)
+  def withId(id: FileBasedId[ScheduledOrderGeneratorPath]) = reuseIfEqual(this, copy(id = id))
 }
 
 object ScheduledOrderGenerator extends FileBased.Companion[ScheduledOrderGenerator] {

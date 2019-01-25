@@ -20,13 +20,13 @@ object FileBaseds
     versionId: VersionId,
     ignoreAliens: Boolean = false)
   : Checked[Seq[RepoEvent]] =
-    for (fileBaseds ← readDirectoryTree(readers, directory, versionId, ignoreAliens = ignoreAliens)) yield
-      VersionAdded(versionId) +: diffFileBaseds(versionId, fileBaseds, previousFileBaseds)
+    for (fileBaseds ← readDirectoryTree(readers, directory, ignoreAliens = ignoreAliens)) yield
+      VersionAdded(versionId) +: diffFileBaseds(fileBaseds, previousFileBaseds)
 
-  def diffFileBaseds(versionId: VersionId, changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
-    diffFileBaseds(changed map (_.withoutVersion), base map (_.withoutVersion)).sortBy(_.path)
+  def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
+    diffFileBaseds2(changed map (_.withoutVersion), base map (_.withoutVersion)).sortBy(_.path)
 
-  private def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] = {
+  private def diffFileBaseds2(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] = {
     val pathToFileBased = base toKeyedMap (_.path: TypedPath)
     val addedOrChangedEvents = changed.toVector flatMap toAddedOrChanged(pathToFileBased)
     val readPaths = changed.map(_.path).toSet
@@ -53,12 +53,16 @@ object FileBaseds
         added   collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
         changed collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
         deleted collect { case o if o.companion eq A1.typedPathCompanion ⇒ o.asInstanceOf[P1] })
+
+    def withVersionId(versionId: VersionId): Diff[P, A] = copy(
+      added = added map (_.withVersion(versionId).asInstanceOf[A]),
+      changed = changed map (_.withVersion(versionId).asInstanceOf[A]))
   }
   object Diff {
-    def fromEvents(versionId: VersionId, events: Seq[RepoEvent]) =
+    def fromEvents(events: Seq[RepoEvent]) =
       Diff[TypedPath, FileBased](
-        events collect { case o: FileBasedAdded ⇒ o.fileBased withVersion versionId },
-        events collect { case o: FileBasedChanged ⇒ o.fileBased withVersion versionId },
+        events collect { case o: FileBasedAdded ⇒ o.fileBased },
+        events collect { case o: FileBasedChanged ⇒ o.fileBased },
         events collect { case o: FileBasedDeleted ⇒ o.path })
   }
 }

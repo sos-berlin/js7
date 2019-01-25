@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.agent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
@@ -14,7 +15,7 @@ final case class Agent(id: AgentId, uri: String) extends FileBased
 
   val companion = Agent
 
-  def withId(id: FileBasedId[AgentPath]) = copy(id = id)
+  def withId(id: FileBasedId[AgentPath]) = reuseIfEqual(this, copy(id = id))
 }
 
 object Agent extends FileBased.Companion[Agent]

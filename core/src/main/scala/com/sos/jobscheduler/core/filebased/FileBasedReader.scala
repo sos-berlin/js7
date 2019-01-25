@@ -52,16 +52,16 @@ trait FileBasedReader
 
 object FileBasedReader
 {
-  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false)
+  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, ignoreAliens: Boolean = false)
   : Checked[Seq[FileBased]] =
     for {
-      checkedFileBasedIterator ← readDirectoryTreeWithProblems(readers, directory, versionId, ignoreAliens = ignoreAliens)
+      checkedFileBasedIterator ← readDirectoryTreeWithProblems(readers, directory, ignoreAliens = ignoreAliens)
       fileBaseds ← checkedFileBasedIterator.toVector.sequence
     } yield fileBaseds
 
-  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false)
+  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, ignoreAliens: Boolean = false)
   : Checked[Iterator[Checked[FileBased]]] = {
-    val typedSourceReader = new TypedSourceReader(readers, versionId)
+    val typedSourceReader = new TypedSourceReader(readers)
     val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
     for (_ ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
       for (checkedTypedFile ← typedFiles.iterator) yield
@@ -71,12 +71,12 @@ object FileBasedReader
         } yield fileBased
   }
 
-  private class TypedSourceReader(readers: Iterable[FileBasedReader], versionId: VersionId) {
+  private class TypedSourceReader(readers: Iterable[FileBasedReader]) {
     val companionToReader: Map[TypedPath.AnyCompanion, FileBasedReader] = readers toKeyedMap (_.typedPathCompanion)
 
     def apply(o: TypedSource): Checked[FileBased] =
       companionToReader(o.path.companion)
-        .readUntyped(o.path % versionId, o.byteString, o.sourceType)
+        .readUntyped(o.path, o.byteString, o.sourceType)
   }
 
   private case class TypedSource(byteString: ByteString, path: TypedPath, sourceType: SourceType)

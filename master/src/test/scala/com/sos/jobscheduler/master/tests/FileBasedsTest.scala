@@ -54,7 +54,7 @@ final class FileBasedsTest extends FreeSpec {
   }
 
   "Diff" in {
-    val diff = FileBaseds.Diff.fromEvents(u,
+    val diff = FileBaseds.Diff.fromEvents(
       List(
         FileBasedDeleted(BWorkflow.path),
         FileBasedAdded(BAgent.withoutVersion),
@@ -85,16 +85,15 @@ object FileBasedsTest {
 
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")
-  private val u = VersionId("UNKNOWN")
 
-  private[tests] val AWorkflow = Workflow.of(WorkflowPath("/A") % u)
-  private[tests] val BWorkflow = Workflow(WorkflowPath("/B") % u, Vector("B-END" @: ExplicitEnd))
-  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "define workflow { /*EMPTY*/ }").orThrow
-  private[tests] val DWorkflow = Workflow(WorkflowPath("/D") % u, Vector("D-END" @: ExplicitEnd))
-  private[tests] val EWorkflow = Workflow(WorkflowPath("/E") % u, Vector(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
-  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "define workflow { CHANGED-D-END: end; }").orThrow
-  private[tests] val AAgent = Agent(AgentPath("/A") % u, "http://A")
-  private[tests] val BAgent = Agent(AgentPath("/folder/B") % u, "http://B")
+  private[tests] val AWorkflow = Workflow.of(WorkflowPath("/A"))
+  private[tests] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd))
+  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "define workflow { /*EMPTY*/ }").orThrow
+  private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd))
+  private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
+  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D"), "define workflow { CHANGED-D-END: end; }").orThrow
+  private[tests] val AAgent = Agent(AgentPath("/A"), "http://A")
+  private[tests] val BAgent = Agent(AgentPath("/folder/B"), "http://B")
 
   private[tests] def provideDirectory[A](body: Path ⇒ A): A = {
     val dir = createTempDirectory("test-")

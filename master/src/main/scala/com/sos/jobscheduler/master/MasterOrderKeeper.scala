@@ -413,8 +413,8 @@ with MainJournalingActor[Event]
   private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[(Boolean, SyncIO[Unit])] = {
     val versionId = versionIdOption getOrElse repo.newVersionId()
     repoReader
-      .flatMap(_.readDirectoryTree(versionId))
-      .map(FileBaseds.diffFileBaseds(versionId, _, repo.currentFileBaseds))
+      .flatMap(_.readDirectoryTree())
+      .map(FileBaseds.diffFileBaseds(_, repo.currentFileBaseds))
       .flatMap { events ⇒
         readConfiguration(VersionAdded(versionId) +: events)
           .map(o ⇒ events.nonEmpty → o)
@@ -437,7 +437,7 @@ with MainJournalingActor[Event]
 
     for {
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
-      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(changedRepo.versionId, events))
+      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events) withVersionId changedRepo.versionId)
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {

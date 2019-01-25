@@ -24,6 +24,6 @@ trait RepoReader
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
     } yield (events, changedRepo)
 
-  def readDirectoryTree(versionId: VersionId, ignoreAliens: Boolean = false) =
-    FileBasedReader.readDirectoryTree(readers, fileBasedDirectory, versionId, ignoreAliens = ignoreAliens)
+  def readDirectoryTree(ignoreAliens: Boolean = false) =
+    FileBasedReader.readDirectoryTree(readers, fileBasedDirectory, ignoreAliens = ignoreAliens)
 }

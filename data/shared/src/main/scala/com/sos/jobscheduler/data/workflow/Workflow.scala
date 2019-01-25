@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
@@ -50,7 +50,7 @@ extends FileBased
     numberedInstructions.flatMap { case (nr, Instruction.Labeled(labels, _)) ⇒ labels map (_ → nr) }
       .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  def withId(id: FileBasedId[WorkflowPath]) = copy(id = id)
+  def withId(id: FileBasedId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
