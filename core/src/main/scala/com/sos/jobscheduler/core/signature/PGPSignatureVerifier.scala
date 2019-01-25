@@ -14,7 +14,7 @@ import com.sos.jobscheduler.core.signature.PGPCommons.{readMessage, _}
 import com.sos.jobscheduler.core.signature.PGPSignatureVerifier._
 import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
-import org.bouncycastle.openpgp.operator.jcajce.{JcaKeyFingerprintCalculator, JcaPGPContentVerifierBuilderProvider}
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -22,8 +22,10 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class PGPSignatureVerifier private(publicKeyRingCollection: PGPPublicKeyRingCollection)
+final class PGPSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection)
 {
+  registerBouncyCastle()
+
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
 
   //logger.debug(rawToString)
@@ -85,15 +87,6 @@ final class PGPSignatureVerifier private(publicKeyRingCollection: PGPPublicKeyRi
 object PGPSignatureVerifier
 {
   val logger = Logger(getClass)
-
-  PGPCommons.registerBountyCastle()
-
-  def apply(publicKeyRings: Resource[SyncIO, InputStream]): PGPSignatureVerifier =
-    publicKeyRings.useSync(in ⇒
-      new PGPSignatureVerifier(
-        new PGPPublicKeyRingCollection(
-          PGPUtil.getDecoderStream(in),
-          new JcaKeyFingerprintCalculator/*or BcKeyFingerprintCalculator???*/)))
 
   intelliJuseImport(PGPPublicKeyShow)
 }

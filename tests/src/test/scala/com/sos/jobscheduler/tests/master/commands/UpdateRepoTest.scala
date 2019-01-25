@@ -49,7 +49,7 @@ final class UpdateRepoTest extends FreeSpec
          """jobscheduler.auth.users {
            |  UpdateRepoTest {
            |    password = "plain:TEST-PASSWORD"
-           |    permissions = "UpdateRepo"
+           |    permissions = [ UpdateRepo ]
            |  }
            |  without-permission {
            |    password = "plain:TEST-PASSWORD"

@@ -4,9 +4,9 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.SyncResource.ops.ByteArrayAsResource
 import com.sos.jobscheduler.common.scalautil.GuavaUtils._
 import com.sos.jobscheduler.core.problems.PGPTamperedWithMessageProblem
+import com.sos.jobscheduler.core.signature.PGPCommons.toPublicKeyRingCollection
 import com.sos.jobscheduler.core.signature.{PGPKeyGenerator, PGPSignatureVerifier, PGPSigner, PGPUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SignedRepoObject, VersionId}
@@ -50,9 +50,9 @@ object SignedRepoObjectVerifierTest
 
   private val password = SecretString("TEST-PASSWORD")
   lazy val secretKey = PGPKeyGenerator.generateSecretKey(pgpUserIds.head, password, keySize = 1024/*fast*/)
-  private val signatureVerifier = PGPSignatureVerifier(secretKey.getPublicKey.getEncoded.asResource)
+  private val signatureVerifier = new PGPSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey))
 
-  private val signer = PGPSigner(secretKey.getEncoded.asResource, password)
+  private val signer = new PGPSigner(secretKey, password)
 
   private def sign(string: String): SignedRepoObject =
     SignedRepoObject(string, "PGP",

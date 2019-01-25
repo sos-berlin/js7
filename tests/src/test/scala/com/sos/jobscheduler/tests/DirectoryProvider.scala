@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.SyncResource.ops._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -22,7 +21,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.core.signature.{PGPCommons, PGPKeyGenerator, PGPUserId}
+import com.sos.jobscheduler.core.signature.PGPCommons.writePublicKeyAsAscii
+import com.sos.jobscheduler.core.signature.{PGPKeyGenerator, PGPUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -44,7 +44,6 @@ import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
-import org.bouncycastle.openpgp.PGPSecretKey
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.Future
@@ -106,14 +105,13 @@ extends HasCloser {
          |""".stripMargin)
   }
 
+  val pgpPassword = SecretString(Random.nextString(10))
+  val pgpSecretKey = PGPKeyGenerator.generateSecretKey(PGPUserId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
   val fileBasedSigner: FileBasedSigner = {
-    val secretKeyPassword = SecretString(Random.nextString(10))
-    val secretKey: PGPSecretKey = PGPKeyGenerator.generateSecretKey(PGPUserId("TEST"), secretKeyPassword, keySize = 1024/*fast for test*/)
-    val signer = new FileBasedSigner(MasterFileBaseds.jsonCodec, secretKey.getEncoded.asResource, secretKeyPassword)
     autoClosing(new FileOutputStream(master.config / "private" / "trusted-pgp-keys.asc")) { out ⇒
-      PGPCommons.writePublicKeyAscii(secretKey.getPublicKey, out)
+      writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)
     }
-    signer
+    new FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpPassword)
   }
 
   def signStringToBase64(string: String): String =

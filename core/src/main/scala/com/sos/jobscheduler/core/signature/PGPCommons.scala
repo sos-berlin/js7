@@ -13,6 +13,8 @@ import java.security.Security
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.examples.PubringDump
+import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
+import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPUtil}
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
@@ -72,7 +74,7 @@ object PGPCommons
       case bytes ⇒ bytes.map(b ⇒ f"$b%02X").mkString
     }
 
-  private[signature] def registerBountyCastle() = ()  // Dummy to initialize this object
+  private[signature] def registerBouncyCastle() = ()  // Dummy to initialize this object
 
   private[signature] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) ⇒ Unit): Unit =
     message.useSync { in ⇒
@@ -86,10 +88,22 @@ object PGPCommons
       }
     }
 
-  def writePublicKeyAscii(publicKey: PGPPublicKey, out: OutputStream): Unit = {
+  def writePublicKeyAsAscii(publicKey: PGPPublicKey, out: OutputStream): Unit = {
     val armored = new ArmoredOutputStream(out)
     publicKey.encode(armored)
     armored.close()
+  }
+
+  def readPublicKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPPublicKeyRingCollection =
+    resource.useSync(in ⇒
+      new PGPPublicKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
+
+  def newFingerPrintCalculator: KeyFingerPrintCalculator =
+    new JcaKeyFingerprintCalculator  // or BcKeyFingerprintCalculator
+
+  def toPublicKeyRingCollection(publicKey: PGPPublicKey): PGPPublicKeyRingCollection = {
+    val ring = new PGPPublicKeyRing((publicKey :: Nil).asJava)
+    new PGPPublicKeyRingCollection((ring :: Nil).asJava)
   }
 
   intelliJuseImport(JavaUtilDateShow)

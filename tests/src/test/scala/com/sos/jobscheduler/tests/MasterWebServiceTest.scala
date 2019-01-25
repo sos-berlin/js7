@@ -824,7 +824,7 @@ object MasterWebServiceTest
       |jobscheduler.auth.users {
       |  TEST-USER {
       |    password = "plain:TEST-PASSWORD",
-      |    permissions = "UpdateRepo"
+      |    permissions = [ UpdateRepo ]
       |  }
       |}
       |""".stripMargin)

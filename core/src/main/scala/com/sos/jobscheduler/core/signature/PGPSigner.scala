@@ -8,10 +8,10 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.SyncResource.ops.RichResource
 import com.sos.jobscheduler.core.signature.PGPCommons._
 import com.sos.jobscheduler.core.signature.PGPSigner.newSignatureGenerator
-import java.io.{ByteArrayOutputStream, InputStream}
-import org.bouncycastle.bcpg.{BCPGOutputStream, HashAlgorithmTags}
-import org.bouncycastle.openpgp.operator.jcajce.{JcaKeyFingerprintCalculator, JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
-import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
+import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
+import org.bouncycastle.bcpg.{ArmoredOutputStream, BCPGOutputStream, HashAlgorithmTags}
+import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
+import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
 import scala.collection.JavaConverters._
 
 /**
@@ -19,6 +19,7 @@ import scala.collection.JavaConverters._
   */
 final class PGPSigner(pgpSecretKey: PGPSecretKey, password: SecretString)
 {
+  registerBouncyCastle()
   //logger.debug(pgpSecretKey.show)
 
   def sign(message: Resource[SyncIO, InputStream]): Array[Byte] = {
@@ -42,13 +43,18 @@ object PGPSigner
 {
   private val OurHashAlgorithm = HashAlgorithmTags.SHA512
 
-  registerBountyCastle()
-
-  def apply(secretKey: Resource[SyncIO, InputStream], password: SecretString): PGPSigner = {
-    val keyRings = readKeyRingCollection(secretKey)
-    //logger.debug(keyRings.show)
-    new PGPSigner(selectSecretKey(keyRings), password)
+  def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit = {
+    val armored = new ArmoredOutputStream(out)
+    new PGPSecretKeyRing(List(secretKey).asJava).encode(armored)
+    armored.close()
   }
+
+  def readSecretKey(resource: Resource[SyncIO, InputStream]): PGPSecretKey =
+    selectSecretKey(readSecretKeyRingCollection(resource))
+
+  private def readSecretKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPSecretKeyRingCollection =
+    resource.useSync(in ⇒
+      new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
 
   private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
     val keys = keyRings
@@ -59,12 +65,6 @@ object PGPSigner
     if (keys.size > 1) throw new IllegalArgumentException(s"More than one master key in secret key ring: " + keys.mkString_("", ", ", ""))
     keys.head
   }
-
-  private def readKeyRingCollection(secretKey: Resource[SyncIO, InputStream]): PGPSecretKeyRingCollection =
-    secretKey.useSync(in ⇒
-      new PGPSecretKeyRingCollection(
-        PGPUtil.getDecoderStream(in),
-        new JcaKeyFingerprintCalculator/*or BcKeyFingerprintCalculator?*/))
 
   private def newSignatureGenerator(secretKey: PGPSecretKey, password: SecretString): PGPSignatureGenerator = {
     val privateKey = secretKey.extractPrivateKey(

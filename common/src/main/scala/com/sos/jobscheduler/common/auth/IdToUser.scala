@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.common.auth
 
-import com.google.common.base.Splitter
 import com.google.common.hash.Hashing.sha512
 import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.auth.IdToUser._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -50,7 +50,6 @@ extends (UserId ⇒ Option[U]) {
 object IdToUser {
   private val logger = Logger(getClass)
   private val EntryRegex = "([^:]+):(.*)".r
-  private val PermissionSplitter = Splitter.on("""[ \t]+""".r.pattern)
   private val UsersConfigPath = "jobscheduler.auth.users"
 
   def fromConfig[U <: User](
@@ -80,7 +79,7 @@ object IdToUser {
         case Success(c) ⇒
           for {
             encodedPassword ← c.optionAs[SecretString]("password")
-            permissions = c.optionAs[String]("permissions") map PermissionSplitter.split map (_.asScala.toSet) getOrElse Set.empty
+            permissions = c.hasPath("permissions").thenList(c.getStringList("permissions").asScala).flatten.toSet
           } yield RawUserAccount(encodedPassword = encodedPassword, permissions = permissions)
       }
 
