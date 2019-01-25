@@ -13,21 +13,32 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient
 final class AkkaHttpMasterApi(
   protected val baseUri: Uri,
   /** To provide a client certificate to server. */
-  keyStoreRef: Option[KeyStoreRef] = None,
+  override protected val keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
-  trustStoreRef: Option[TrustStoreRef] = None)
-extends HttpMasterApi
-with AkkaHttpClient
+  override protected val trustStoreRef: Option[TrustStoreRef] = None)
+extends AkkaHttpMasterApi.CommonAkka
 with ProvideActorSystem
 {
-  protected val baseUriString = baseUri.toString
+  private type CommonAkka = AkkaHttpMasterApi.CommonAkka
 
-  override protected lazy val httpsConnectionContextOption =
-    (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
-
-  protected def httpClient = this
-
-  closer.onClose { super[AkkaHttpClient].close() }
+  closer.onClose { super[CommonAkka].close() }
 
   override def close() = super[ProvideActorSystem].closer.close()
+}
+
+object AkkaHttpMasterApi
+{
+  trait CommonAkka extends HttpMasterApi with AkkaHttpClient
+  {
+    /** To provide a client certificate to server. */
+    protected def keyStoreRef: Option[KeyStoreRef] = None
+    /** To trust the server's certificate. */
+    protected def trustStoreRef: Option[TrustStoreRef] = None
+    protected final val baseUriString = baseUri.toString
+
+    override protected final lazy val httpsConnectionContextOption =
+      (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
+
+    protected final def httpClient = this
+  }
 }

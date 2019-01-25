@@ -23,7 +23,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.tests.DirectoryProvider
@@ -60,20 +59,18 @@ final class UpdateRepoTest extends FreeSpec
       directoryProvider.agentToTree(TestAgentPath).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * tick))
       directoryProvider.agentToTree(TestAgentPath).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
       directoryProvider.run { (master, _) ⇒
-        val api = new AkkaHttpMasterApi(master.localUri)
-
         def executeCommand(cmd: MasterCommand): Checked[cmd.Response] =
-          api.executeCommand(cmd).map(Valid.apply)
+          master.httpApi.executeCommand(cmd).map(Valid.apply)
             .onErrorRecover { case e: HttpException if e.problem.isDefined ⇒ Invalid(e.problem.get) }
             .await(99.seconds)
 
         withClue("Permission is required: ") {
-          api.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
+          master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
           assert(executeCommand(UpdateRepo(Some(versionId1), sign(workflow1) :: Nil)) ==
             Invalid(Problem("User does not have the required permission 'UpdateRepo'")))
         }
 
-        api.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
+        master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
 
         val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
         executeCommand(UpdateRepo(Some(versionId1), sign(workflow1) :: Nil)).orThrow
