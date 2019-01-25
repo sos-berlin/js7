@@ -27,7 +27,7 @@ import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.Failure
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -177,7 +177,20 @@ object AkkaHttpClient {
       case _ ⇒ false
     }
 
-  final class HttpException private[AkkaHttpClient](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
+  /** Lifts a Failure(HttpException#problem) to Success(Invalid(problem)). */
+  def liftProblem[A](task: Task[A]): Task[Checked[A]] =
+    task.materialize.map {
+      case Failure(t: HttpException) ⇒
+        t.problem match {
+          case None ⇒ Failure(t)
+          case Some(problem) ⇒ Success(Invalid(problem))
+        }
+      case Failure(t) ⇒ Failure(t)
+      case Success(a) ⇒ Success(Valid(a))
+    }
+    .dematerialize
+
+  final class HttpException private[http](httpResponse: HttpResponse, val uri: Uri, val dataAsString: String)
   extends HttpClient.HttpException(s"${httpResponse.status}: $uri: ${dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)}".trim)
   {
     def statusInt = status.intValue
@@ -187,7 +200,7 @@ object AkkaHttpClient {
 
     def header[A >: Null <: HttpHeader: ClassTag]: Option[A] = httpResponse.header[A]
 
-    lazy val problem: Option[Problem] = {
+    lazy val problem: Option[Problem] =
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) ⇒
@@ -197,6 +210,5 @@ object AkkaHttpClient {
         }
       else
         None
-    }
   }
 }
