@@ -63,7 +63,7 @@ trait SessionRoute extends RouteProvider {
     userAndPasswordOption match {
       case Some(userAndPassword) ⇒
         if (httpUser.id != UserId.Anonymous)
-          Invalid(Problem("Both command Login and HTTP header Authentication?"))
+          Invalid(Problem("Both command Login and HTTP header authentication?"))
         else if (userAndPassword.userId == UserId.Anonymous)
           Invalid(InvalidLoginProblem)  // Anonymous is used only if there is no authentication at all
         else

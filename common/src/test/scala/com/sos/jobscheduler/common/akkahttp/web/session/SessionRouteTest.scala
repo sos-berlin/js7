@@ -173,7 +173,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
         api.login(Some(AUserAndPassword)) await 99.s
       }
       assert(exception.status == BadRequest)
-      assert(exception.dataAsString.parseJsonOrThrow.as[Problem] == Right(Problem("Both command Login and HTTP header Authentication?")))
+      assert(exception.dataAsString.parseJsonOrThrow.as[Problem] == Right(Problem("Both command Login and HTTP header authentication?")))
       requireAccess(api)
     }
   }

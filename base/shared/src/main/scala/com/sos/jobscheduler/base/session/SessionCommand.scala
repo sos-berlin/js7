@@ -17,7 +17,7 @@ sealed trait SessionCommand {
 object SessionCommand
 {
   /** Authenticate a user and establish a session.
-    * @param userAndPassword if None, the HTTP header Authentication is used to allow browser authentication dialog.
+    * @param userAndPassword if None, the HTTP header authentication is used to allow browser authentication dialog.
     */
   final case class Login(userAndPassword: Option[UserAndPassword]) extends SessionCommand {
     type Response = Login.LoggedIn

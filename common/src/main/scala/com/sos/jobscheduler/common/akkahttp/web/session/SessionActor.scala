@@ -37,7 +37,7 @@ extends Actor {
 
   def receive = {
     case Command.Login(user: S#User, tokenOption, isEternalSession) ⇒
-      for (t ← tokenOption) delete(t, reason = "login")
+      for (t ← tokenOption) delete(t, reason = "secondlogin")
       val token = SessionToken(SecretStringGenerator.newSecretString())
       assert(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(token, numberIterator.next(), user))
