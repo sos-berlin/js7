@@ -23,6 +23,7 @@ with ProvideActorSystem
 {
   private type CommonAkka = AkkaHttpMasterApi.CommonAkka
 
+  actorSystem  // Initialize eagerly to avoid "ClassCastException: interface akka.event.LoggingFilter is not assignable from class akka.event.slf4j.Slf4jLoggingFilter"
   closer.onClose { super[CommonAkka].close() }
 
   override def close() = super[ProvideActorSystem].closer.close()
