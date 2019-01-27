@@ -22,17 +22,19 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
 {
   private val timeout = 2.seconds
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
-  private lazy val observable = DirectoryWatcher.observe(dir, timeout = timeout)
-  private lazy val observabaleFuture = observable map (_ ⇒ bar()) foreach { _ ⇒ }
+  private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
+  private lazy val observable = directoryWatcher.singleUseObservable
+  private lazy val observableFuture = observable map (_ ⇒ bar()) foreach { _ ⇒ }
   private val barrier = new CyclicBarrier(2)
 
   private def bar() = barrier.await(99, SECONDS)
 
   override def beforeAll() = {
-    observabaleFuture
+    observableFuture
     super.beforeAll()
   }
   override def afterAll() = {
+    directoryWatcher.close()
     deleteDirectoryRecursively(dir)
     super.afterAll()
   }
@@ -68,14 +70,14 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
       }
     }
     bar()
-    println(now - t)
     assert(now - t >= delay && (now - t <= timeout / 2 || isMac))
     future await 99.seconds
   }
 
   "cancel" in {
-    assert(!observabaleFuture.isCompleted)
-    observabaleFuture.cancel()
-    observabaleFuture await 99.seconds
+    assert(!directoryWatcher.isClosed && !observableFuture.isCompleted)
+    observableFuture.cancel()
+    observableFuture await 99.seconds
+    assert(directoryWatcher.isClosed)
   }
 }

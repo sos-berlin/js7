@@ -104,6 +104,13 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size}×, delete=${delete.size}×)"
   }
 
+  final case class ReplaceRepo(objects: Seq[SignedRepoObject], versionId: Option[VersionId] = None)
+  extends MasterCommand {
+    type Response = Response.Accepted
+
+    override def toString = s"ReplaceRepo(${versionId getOrElse ""}, ${objects.size}× objects)"
+  }
+
   /** Read the configured objects (workflows, agents) from the directory config/live. */
   @deprecated
   final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
@@ -124,6 +131,7 @@ object MasterCommand extends CommonCommand.Companion
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
+    Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(NoOperation),
     Subtype(IssueTestEvent),

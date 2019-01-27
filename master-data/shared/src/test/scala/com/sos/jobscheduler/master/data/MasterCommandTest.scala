@@ -120,6 +120,40 @@ final class MasterCommandTest extends FreeSpec {
     }
   }
 
+  "ReplaceRepo" - {
+    "defaults" in {
+      testJson[MasterCommand](ReplaceRepo(Nil),
+        json"""{
+          "TYPE": "ReplaceRepo",
+          "objects": []
+        }""")
+    }
+
+    "complete" in {
+      testJson[MasterCommand](ReplaceRepo(
+        objects = SignedRepoObject(
+          message = """{"TYPE": "Workflow", ...}""",
+          signatureType = "PGP",
+          signature = """-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin) :: Nil,
+        Some(VersionId("1"))),
+        json"""{
+          "TYPE": "ReplaceRepo",
+          "versionId": "1",
+          "objects": [
+            {
+              "message": "{\"TYPE\": \"Workflow\", ...}",
+              "signatureType": "PGP",
+              "signature": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+            }
+          ]
+        }""")
+    }
+  }
+
   "EmergencyStop" in {
     testJson[MasterCommand](EmergencyStop,
       json"""{

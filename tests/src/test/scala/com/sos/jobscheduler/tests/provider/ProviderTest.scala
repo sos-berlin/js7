@@ -20,7 +20,7 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedC
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import com.sos.jobscheduler.provider.{DirectoryToJobscheduler, Provider}
+import com.sos.jobscheduler.provider.{Observing, Provider}
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.provider.ProviderTest._
 import com.typesafe.config.ConfigFactory
@@ -42,7 +42,9 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
   private lazy val live = directory / "live"
   private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(
     "-config-directory=" + directory ::
-    "-master-uri=" + master.localUri :: Nil)
+    "-master-uri=" + master.localUri :: Nil,
+    testConfig)
+  private lazy val provider = new Provider(providerConfiguration)
 
   override def beforeAll() = {
     directoryProvider.master.config / "private" / "private.conf" ++=
@@ -61,15 +63,15 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
   }
 
   override def afterAll() = {
+    provider.close()
     deleteDirectoryRecursively(directory)
     super.afterAll()
   }
 
-  "updateMaster" - {
+  "updateMasterConfiguration" - {
     // We reuse the DirectoryProvider's PGPSecretKey, whose public key is already known to the Master
     import directoryProvider.{pgpPassword, pgpSecretKey}
 
-    lazy val provider = new Provider(providerConfiguration)
 
     "(start)" in {
       writeToFile(directory / "private" / "private-pgp-key.asc")(writeSecretKeyAsAscii(pgpSecretKey, _))
@@ -88,14 +90,14 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     "Write two workflows" in {
       writeFile(AWorkflowPath)
       writeFile(BWorkflowPath)
-      provider.updateMaster(V1.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
         (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1))))
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateMaster(V1.some).await(99.seconds) == Invalid(Problem("Duplicate VersionId '1'")))
+      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Invalid(Problem("Duplicate VersionId '1'")))
     }
 
     "An unknown and some invalid files" in {
@@ -105,14 +107,14 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
       (live / "ERROR-1.workflow.json") := """{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := """{ "instructions": 0 }"""
-      assert(provider.updateMaster(V2.some).await(99.seconds) ==
+      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"))))))  // Only the unknown file is noticed
     }
 
     "Some invalid files" in {
       delete(live / "UNKNOWN.tmp")
-      assert(provider.updateMaster(V2.some).await(99.seconds) ==
+      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got I (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("Attempt to decode value on failed cursor: DownField(instructions)")),
@@ -123,7 +125,7 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
-      provider.updateMaster(V2.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
         (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1)),
@@ -132,7 +134,7 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
-      provider.updateMaster(V3.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(repo.versions == V3 :: V2 :: V1 :: VersionId("INITIAL") :: Nil)
       assert(repo.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
@@ -141,25 +143,21 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
         (CWorkflowPath % V2) → Some(TestWorkflow.withId(CWorkflowPath % V2))))
     }
 
-    "updateMaster without VersionId" in {
+    "updateMasterConfiguration without VersionId" in {
       writeFile(DWorkflowPath)
-      provider.updateMaster(None).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(None).await(99.seconds).orThrow
       assert(repo.currentTyped[Workflow].apply(DWorkflowPath).id.versionId.string startsWith "#")  // Master has generated a VersionId
     }
   }
 
-  "DirectoryToJobscheduler.observe" - {
-    lazy val config = ConfigFactory.parseString(
-      s"""jobscheduler.provider.file-watch.minimum-silence = 50ms
-         |jobscheduler.provider.file-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
-         |""".stripMargin)
-    lazy val myConf = providerConfiguration.copy(config = config withFallback providerConfiguration.config)
-    lazy val watcher = new DirectoryToJobscheduler(myConf)
-    lazy val whenTerminated = watcher.observe().onCancelTriggerError foreach { _ ⇒ }
+  "observe" - {
+    lazy val whenObserved = provider.observe()
+      .onCancelTriggerError
+      .foreach { _ ⇒ }
     var lastEventId = EventId.BeforeFirst
 
     "Delete file" in {
-      whenTerminated
+      whenObserved
       lastEventId = master.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
       assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
@@ -181,10 +179,10 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     }
 
     "cancel" in {
-      assert(!whenTerminated.isCompleted)
-      whenTerminated.cancel()
+      assert(!whenObserved.isCompleted)
+      whenObserved.cancel()
       intercept[CancellationException] {  // Due to onCancelTriggerError
-        whenTerminated await 9.seconds
+        whenObserved await 9.seconds
       }
     }
   }
@@ -199,6 +197,10 @@ object ProviderTest
 {
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
+  private val testConfig = ConfigFactory.parseString(
+    s"""jobscheduler.provider.file-watch.minimum-silence = 50ms
+       |jobscheduler.provider.file-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
+       |""".stripMargin)
 
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")

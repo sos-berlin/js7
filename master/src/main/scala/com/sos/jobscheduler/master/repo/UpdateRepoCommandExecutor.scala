@@ -39,6 +39,20 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration)
     }
   }
 
+  def replaceRepoCommandToEvents(repo: Repo, replaceRepo: MasterCommand.ReplaceRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
+    meta.user.checkPermission(UpdateRepoPermission)
+      .flatMap(_ ⇒ checkedSignedRepoObjectVerifier)
+      .flatMap { verifier ⇒
+        val MasterCommand.ReplaceRepo(objects, versionIdOption) = replaceRepo
+        val versionId = versionIdOption getOrElse repo.newVersionId()
+        for {
+          fileBaseds ← verifier.verifyAndDecodeSeq(objects).map(_.map(_._1)/*ignore senders ???*/)
+          deleted = repo.currentFileBaseds.map(_.path).toSet -- fileBaseds.map(_.path).toSet
+          events ← repo.fileBasedToEvents(versionId, fileBaseds, deleted)
+        } yield
+          events
+      }
+
   def commandToEvents(repo: Repo, updateRepo: MasterCommand.UpdateRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap(_ ⇒ checkedSignedRepoObjectVerifier)

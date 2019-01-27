@@ -14,62 +14,81 @@ import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqD
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.utils.CatsUtils.autoCloseableToResource
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
-import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBaseds, TypedPathDirectoryWalker}
+import com.sos.jobscheduler.core.filebased.{FileBasedSigner, TypedPathDirectoryWalker}
 import com.sos.jobscheduler.core.signature.PGPSigner.readSecretKey
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAddedOrChanged, FileBasedDeleted, FileBasedEvent}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.MasterRepoReader
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
+import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterFileBaseds}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.provider.Provider._
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
+import java.nio.file.Path
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.{Iterable, Seq}
+import monix.execution.atomic.AtomicAny
+import monix.reactive.Observable
+import scala.collection.immutable.Seq
+import scala.compat.Platform.ConcurrentModificationException
 import scala.concurrent.duration._
 
 // Test in com.sos.jobscheduler.tests.provider.ProviderTest
 /**
   * @author Joacim Zschimmer
   */
-final class Provider(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
-extends AutoCloseable
+final class Provider(val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
+extends AutoCloseable with Observing
 {
   private val api = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
   private val userAndPassword = for {
       userName ← conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password ← conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
-  private val repoReader = new MasterRepoReader(conf.liveDirectory)
   private val signer = new FileBasedSigner(
     MasterFileBaseds.jsonCodec,
     readSecretKey(fileAsResource(conf.configDirectory / "private" / "private-pgp-key.asc")),
     password = SecretString(conf.config.getString("jobscheduler.provider.pgp.password")))
 
-  private var lastEntries = readDirectory
+  private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
   def close() = api.logout().guarantee(Task(api.close())).runAsyncAndForget
 
-  def updateMaster(versionId: Option[VersionId] = None): Task[Checked[MasterCommand.Response.Accepted]] =
+  def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[MasterCommand.Response.Accepted]] =
     for {
       _ ← loginUntilReachable
       currentEntries = readDirectory
-      checkedCommand = toUpdateRepoCommand(versionId, PathSeqDiffer.diff(currentEntries, lastEntries))
-      //checkedCommand ← api.workflows.map(_.value).map(directoryToCommand(versionId, _))
+      checkedCommand = toReplaceRepoCommand(versionId, currentEntries map (_.path))
       response ← checkedCommand.traverse(o ⇒ AkkaHttpClient.liftProblem(api.executeCommand(o))) map (_.flatten)
     } yield {
       if (response.isValid) {
-        lastEntries = currentEntries
+        lastEntries := currentEntries
       }
       response
     }
+
+  def updateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Unit]] =
+    for {
+      _ ← loginUntilReachable
+      currentEntries = readDirectory
+      last = lastEntries.get
+      checkedCommand = toUpdateRepoCommand(versionId, PathSeqDiffer.diff(currentEntries, last))
+      response ← checkedCommand.traverse(executeUpdateRepo) map (_.flatten)
+    } yield {
+      if (response.isValid) {
+        if (!lastEntries.compareAndSet(last, currentEntries)) throw new ConcurrentModificationException("Provider has been concurrently used")
+      }
+      response
+    }
+
+  private def executeUpdateRepo(updateRepo: UpdateRepo) =
+    if (updateRepo.isEmpty ) Task.pure(Checked.unit)
+    else AkkaHttpClient.liftProblem(api.executeCommand(updateRepo) map (_ ⇒ ()))
 
   private lazy val loginUntilReachable: Task[Unit] =
     Task {
@@ -95,10 +114,15 @@ extends AutoCloseable
     (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(chg map signer.sign, del, versionId))
   }
 
-  private def directoryToCommand(versionId: Option[VersionId], current: Seq[FileBased]): Checked[UpdateRepo] =
-    repoReader.readDirectoryTree()
-      .map(FileBaseds.diffFileBaseds(_, current))
-      .map(events ⇒ eventsToCommand(signer, versionId, events))
+  private def toReplaceRepoCommand(versionId: Option[VersionId], files: Seq[Path]): Checked[ReplaceRepo] = {
+    val checkedFileBased: Checked[Vector[FileBased]] =
+      files
+        .map(file⇒ TypedPathDirectoryWalker.fileToTypedFile(conf.liveDirectory, file, typedPathCompanions))
+        .toVector.sequence
+        .flatMap(readObjects(readers, conf.liveDirectory, _))
+        .map(_.toVector)
+    checkedFileBased map (o ⇒ ReplaceRepo(o map signer.sign, versionId))
+  }
 }
 
 object Provider
@@ -108,14 +132,12 @@ object Provider
   private val logger = Logger(getClass)
   private val readers = AgentReader :: WorkflowReader :: Nil
 
+  def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Observable[Unit] =
+    autoCloseableToResource(new Provider(conf)).flatMap(provider ⇒
+      provider.observe())
+
   private[provider] def logThrowable(throwable: Throwable): Unit = {
     logger.error(throwable.toStringWithCauses)
     logger.debug(throwable.toString, throwable)
   }
-
-  private def eventsToCommand(signer: FileBasedSigner, versionId: Option[VersionId], events: Iterable[FileBasedEvent]): UpdateRepo =
-    UpdateRepo(
-      events.collect { case e: FileBasedAddedOrChanged ⇒ signer.sign(e.fileBased) } .toVector,
-      events.collect { case e: FileBasedDeleted ⇒ e.path } .toVector,
-      versionId)
 }

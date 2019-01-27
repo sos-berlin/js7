@@ -21,6 +21,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
+import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.core.signature.PGPCommons.writePublicKeyAsAscii
 import com.sos.jobscheduler.core.signature.{PGPKeyGenerator, PGPUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
@@ -78,6 +79,7 @@ extends HasCloser {
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
+  lazy val agentFileBased: Vector[Agent] = for (a ← agents) yield Agent(a.agentPath, uri = a.conf.localUri.toString)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
@@ -151,8 +153,7 @@ extends HasCloser {
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster ⇒
       if (!filebasedHasBeenAdded.getAndSet(true)) {
-        val myFileBased = for (a ← agents) yield Agent(a.agentPath % VersionId.Anonymous, uri = a.conf.localUri.toString)
-        updateRepo(runningMaster, Some(VersionId("INITIAL")), myFileBased ++ fileBased)
+        updateRepo(runningMaster, Some(Vinitial), agentFileBased ++ fileBased)
       }
       runningMaster
     }
@@ -183,8 +184,12 @@ extends HasCloser {
 
 object DirectoryProvider
 {
+  val Vinitial = VersionId("INITIAL")
+
   trait ForScalaTest extends BeforeAndAfterAll with HasCloser {
     this: org.scalatest.Suite ⇒
+
+    ProblemCodeMessages.initialize()
 
     protected def agentPaths: Seq[AgentPath]
     protected def agentHttps = false

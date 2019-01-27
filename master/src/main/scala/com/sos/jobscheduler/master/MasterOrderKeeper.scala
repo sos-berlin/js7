@@ -366,6 +366,14 @@ with MainJournalingActor[Event]
             .map (_ ⇒ MasterCommand.Response.Accepted)
         }
 
+      case cmd: MasterCommand.ReplaceRepo ⇒
+        intelliJuseImport(catsStdInstancesForFuture)  // For traverse
+        updateRepoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
+          .flatMap(readConfiguration)
+          .traverse((_: SyncIO[Future[Completed]])
+            .unsafeRunSync()  // Persist events!
+            .map(_ ⇒ MasterCommand.Response.Accepted))
+
       case cmd: MasterCommand.UpdateRepo ⇒
         if (cmd.isEmpty)
           Future.successful(Valid(MasterCommand.Response.Accepted))

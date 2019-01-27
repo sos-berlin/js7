@@ -14,6 +14,6 @@ object ProviderMain
   def main(args: Array[String]): Unit = {
     ProblemCodeMessages.initialize()
     val conf = ProviderConfiguration.fromCommandLine(args.toVector)
-    new DirectoryToJobscheduler(conf).observe().foreach { _ ⇒ }.awaitInfinite
+    Provider.observe(conf).foreach { _ ⇒ }.awaitInfinite
   }
 }
