@@ -5,16 +5,19 @@ import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.SyncIO
+import cats.instances.future._
 import cats.instances.vector._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -364,26 +367,25 @@ with MainJournalingActor[Event]
         }
 
       case cmd: MasterCommand.UpdateRepo ⇒
-        Future.successful(
-          for {
-            events ← updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
-            io ← readConfiguration(events)
-          } yield {
-            io.unsafeRunSync()
-            MasterCommand.Response.Accepted
-          })
+        if (cmd.isEmpty)
+          Future.successful(Valid(MasterCommand.Response.Accepted))
+        else
+          updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
+            .flatMap(readConfiguration)
+            .traverse((_: SyncIO[Future[Completed]])
+              .unsafeRunSync()  // Persist events!
+              .map(_ ⇒ MasterCommand.Response.Accepted))
 
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
-        Future.successful {
-          val checkedSideEffect = for {
-            a ← readConfigurationDirectory(versionId) map (_._2)  // Persists events
-            b ← readScheduledOrderGeneratorConfiguration()
-          } yield a >> b
-          for (sideEffect ← checkedSideEffect) yield {
-            sideEffect.unsafeRunSync()
-            MasterCommand.Response.Accepted
-          }
-        }
+        // TODO Test is missing
+        val checkedSideEffect =
+          for {
+            readOrderGen ← readScheduledOrderGeneratorConfiguration()
+            readLive ← readConfigurationDirectory(versionId) map (_._2)
+          } yield readOrderGen >> readLive
+        checkedSideEffect.traverse((_: SyncIO[Future[Completed]])
+          .unsafeRunSync()  // Persist events!
+          .map(_ ⇒ MasterCommand.Response.Accepted))
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
@@ -410,7 +412,7 @@ with MainJournalingActor[Event]
           Valid(MasterCommand.Response.Accepted))
     }
 
-  private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[(Boolean, SyncIO[Unit])] = {
+  private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[(Boolean, SyncIO[Future[Completed]])] = {
     val versionId = versionIdOption getOrElse repo.newVersionId()
     repoReader
       .flatMap(_.readDirectoryTree())
@@ -421,7 +423,7 @@ with MainJournalingActor[Event]
       }
   }
 
-  private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Unit]] = {
+  private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
     def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
       updateAgents(diff.select[AgentPath, Agent])
 
@@ -445,6 +447,7 @@ with MainJournalingActor[Event]
           setRepo(changedRepo)
           events foreach logRepoEvent
           foldedSideEffects.unsafeRunSync()
+          Completed
         }
       }
   }
