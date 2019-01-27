@@ -106,7 +106,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
         count += 1
       }
       val whenLoggedIn = api.loginUntilReachable(None, Iterator.continually(10.milliseconds), onError).runToFuture
-      sleep(100.ms)
+      sleep(200.ms)
       server.start() await 99.s
       val exception = intercept[AkkaHttpClient.HttpException] {
         whenLoggedIn await 99.s
@@ -315,7 +315,7 @@ final class SessionRouteTest extends FreeSpec with BeforeAndAfterAll with Scalat
     val api = new SessionApi with AkkaHttpClient {
       def httpClient = this: AkkaHttpClient
       def sessionUri = s"$baseUri/session"
-      def actorSystem = SessionRouteTest.this.actorSystem
+      val actorSystem = SessionRouteTest.this.actorSystem
       def baseUri = server.localUri
       def uriPrefixPath = ""
       override val standardHeaders = headers ::: super.standardHeaders
