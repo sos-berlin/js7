@@ -21,6 +21,8 @@ private[master] final class AkkaHttpMasterTextApi(
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
 
+  protected val config = ConfigFactory.empty
+
   protected def uriPrefixPath = "/master"
 
   private val masterUris = MasterUris(s"$baseUri/master")

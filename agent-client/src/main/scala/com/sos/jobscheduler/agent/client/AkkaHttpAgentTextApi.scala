@@ -26,6 +26,8 @@ private[agent] final class AkkaHttpAgentTextApi(
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
 
+  protected val config = ConfigFactory.empty
+
   private val agentUris = AgentUris(agentUri)
 
   protected override lazy val httpsConnectionContextOption = {

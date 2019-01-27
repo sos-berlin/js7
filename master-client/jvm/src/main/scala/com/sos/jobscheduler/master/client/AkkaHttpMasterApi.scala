@@ -6,16 +6,18 @@ import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionC
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.typesafe.config.{Config, ConfigFactory}
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApi(
+class AkkaHttpMasterApi(
   protected val baseUri: Uri,
   /** To provide a client certificate to server. */
   override protected val keyStoreRef: Option[KeyStoreRef] = None,
   /** To trust the server's certificate. */
-  override protected val trustStoreRef: Option[TrustStoreRef] = None)
+  override protected val trustStoreRef: Option[TrustStoreRef] = None,
+  protected val config: Config = ConfigFactory.empty)
 extends AkkaHttpMasterApi.CommonAkka
 with ProvideActorSystem
 {
