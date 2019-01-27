@@ -107,6 +107,12 @@ object Checked
         case Valid(o) ⇒ Right(o)
       }
 
+    def toTry: Try[A] =
+      underlying match {
+        case Invalid(problem) ⇒ Failure(problem.throwable)
+        case Valid(o) ⇒ Success(o)
+      }
+
     def toFuture: Future[A] =
       underlying match {
         case Valid(o) ⇒ Future.successful(o)

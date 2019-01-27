@@ -149,6 +149,12 @@ final class CheckedTest extends FreeSpec
     assert(throwable.getMessage == "PROBLEM")
   }
 
+  "toTry" in {
+    assert(Checked(1).toTry == Success(1))
+    val Failure(throwable: Throwable) = Invalid(Problem("PROBLEM")).toTry
+    assert(throwable.getMessage == "PROBLEM")
+  }
+
   "failFastMap" - {
     "Invalid" in {
       var lastI = 0
