@@ -115,9 +115,9 @@ extends AutoCloseable
 
   val localUri: Uri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
-    protected def baseUri = localUri
-    protected def actorSystem = injector.instance[ActorSystem]
-  }
+      protected def baseUri = localUri
+      protected def actorSystem = injector.instance[ActorSystem]
+    } closeWithCloser closer
   val eventWatch: StrictEventWatch[Event] = injector.instance[EventWatch[Event]].strict
 
   def close() = closer.close()

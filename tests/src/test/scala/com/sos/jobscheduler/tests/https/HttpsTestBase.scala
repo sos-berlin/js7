@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -39,8 +40,9 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
   private lazy val trustStore = createTempFile(getClass.getSimpleName + "-truststore-", ".p12")
 
   protected lazy val masterApi = new AkkaHttpMasterApi(master.localUri,
-    keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
-    trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))))
+      keyStoreRef = Some(KeyStoreRef(keyStore.toUri.toURL, storePassword = SecretString("jobscheduler"), keyPassword = SecretString("jobscheduler"))),
+      trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))))
+    .closeWithCloser
 
   protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
   override protected def agentHttps = true

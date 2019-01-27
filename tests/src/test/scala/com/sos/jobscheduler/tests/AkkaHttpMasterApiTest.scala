@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -26,6 +27,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProvider.ForSca
   override protected val fileBased = TestWorkflow :: Nil
 
   private lazy val api = new AkkaHttpMasterApi(master.localUri)
+    .closeWithCloser
 
   override def beforeAll() = {
     directoryProvider.master.config / "private" / "private.conf" ++= """

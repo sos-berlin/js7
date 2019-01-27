@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -58,6 +59,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   private lazy val agent1Uri = directoryProvider.agents(0).localUri.toString
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest", uri, "/master")
+    .closeWithCloser
 
   private var sessionToken: String = "INVALID"
 
