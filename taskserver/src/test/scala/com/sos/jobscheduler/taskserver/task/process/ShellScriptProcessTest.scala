@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.IOExecutor
+import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedShebang, isMac, isSolaris, isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._

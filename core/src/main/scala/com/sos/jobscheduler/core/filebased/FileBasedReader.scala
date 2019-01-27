@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.filebased
 
 import akka.util.ByteString
+import cats.data.Validated.Valid
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
@@ -10,7 +11,8 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader._
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath, VersionId}
+import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.TypedFile
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, SourceType, TypedPath}
 import io.circe.Json
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
@@ -52,23 +54,31 @@ trait FileBasedReader
 
 object FileBasedReader
 {
-  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, ignoreAliens: Boolean = false)
+  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path)
   : Checked[Seq[FileBased]] =
     for {
-      checkedFileBasedIterator ← readDirectoryTreeWithProblems(readers, directory, ignoreAliens = ignoreAliens)
+      checkedFileBasedIterator ← readDirectoryTreeWithProblems(readers, directory)
       fileBaseds ← checkedFileBasedIterator.toVector.sequence
     } yield fileBaseds
 
-  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, ignoreAliens: Boolean = false)
+  @deprecated("read directory then use readObjects")
+  def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path)
   : Checked[Iterator[Checked[FileBased]]] = {
     val typedSourceReader = new TypedSourceReader(readers)
-    val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
-    for (_ ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
+    val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion))
+    for (_ ← TypedPathDirectoryWalker.checkUniqueness(typedFiles collect { case Valid(o) ⇒ o })) yield
       for (checkedTypedFile ← typedFiles.iterator) yield
         for {
           typedFile ← checkedTypedFile
           fileBased ← typedSourceReader.apply(TypedSource(typedFile.file.byteString, typedFile.path, typedFile.sourceType))
         } yield fileBased
+  }
+
+  def readObjects(readers: Iterable[FileBasedReader], directory: Path, typedFiles: Seq[TypedFile]): Checked[Seq[FileBased]] = {
+    val typedSourceReader = new TypedSourceReader(readers)
+    TypedPathDirectoryWalker.checkUniqueness(typedFiles).flatMap(_ ⇒
+      typedFiles.toVector.traverse(typedFile ⇒
+        typedSourceReader.apply(TypedSource(typedFile.file.byteString, typedFile.path, typedFile.sourceType))))
   }
 
   private class TypedSourceReader(readers: Iterable[FileBasedReader]) {

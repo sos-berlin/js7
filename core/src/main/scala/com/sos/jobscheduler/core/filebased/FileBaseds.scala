@@ -17,10 +17,9 @@ object FileBaseds
     readers: Iterable[FileBasedReader],
     directory: Path,
     previousFileBaseds: Iterable[FileBased],
-    versionId: VersionId,
-    ignoreAliens: Boolean = false)
+    versionId: VersionId)
   : Checked[Seq[RepoEvent]] =
-    for (fileBaseds ← readDirectoryTree(readers, directory, ignoreAliens = ignoreAliens)) yield
+    for (fileBaseds ← readDirectoryTree(readers, directory)) yield
       VersionAdded(versionId) +: diffFileBaseds(fileBaseds, previousFileBaseds)
 
   def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =

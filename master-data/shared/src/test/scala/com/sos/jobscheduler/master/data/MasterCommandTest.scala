@@ -87,7 +87,6 @@ final class MasterCommandTest extends FreeSpec {
 
     "complete" in {
       testJson[MasterCommand](UpdateRepo(
-        Some(VersionId("1")),
         change = SignedRepoObject(
           message = """{"TYPE": "Workflow", ...}""",
           signatureType = "PGP",
@@ -96,7 +95,8 @@ final class MasterCommandTest extends FreeSpec {
             |...
             |-----END PGP SIGNATURE-----
             |""".stripMargin) :: Nil,
-        delete = Set(WorkflowPath("/WORKFLOW-A"), AgentPath("/AGENT-A"))),
+        delete = WorkflowPath("/WORKFLOW-A") :: AgentPath("/AGENT-A") :: Nil,
+        Some(VersionId("1"))),
         json"""{
           "TYPE": "UpdateRepo",
           "versionId": "1",

@@ -173,14 +173,10 @@ extends HasCloser {
     master: RunningMaster,
     versionId: Option[VersionId] = None,
     change: Seq[FileBased] = Nil,
-    delete: Set[TypedPath] = Set.empty)
+    delete: Seq[TypedPath] = Nil)
   : Unit =
-    master.executeCommandAsSystemUser(
-      UpdateRepo(
-        versionId,
-        change = change map fileBasedSigner.sign,
-        delete = delete)
-    ).await(99.s).orThrow
+    master.executeCommandAsSystemUser(UpdateRepo(change map fileBasedSigner.sign, delete, versionId))
+      .await(99.s).orThrow
 
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 }

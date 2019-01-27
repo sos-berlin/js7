@@ -129,6 +129,7 @@ lazy val jobscheduler = (project in file("."))
     `agent-data`,
     `agent-tests`,
     taskserver,
+    provider,
     tests)
   .settings(skip in publish := true)
 
@@ -298,6 +299,18 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
       log4j % "test"
   }
 
+lazy val provider = project.dependsOn(`master-data`.jvm, master, `master-client`.jvm, core, common, tester.jvm % "test")
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
+  .settings(commonSettings)
+  .settings(
+    mappings in (Compile, packageDoc) := Seq())
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      log4j % "test"
+  }
+
 lazy val `master-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(data, tester % "test")
@@ -433,7 +446,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val tests = project.dependsOn(master, agent, `agent-client`, tester.jvm % "test", `jobscheduler-docker` % "test")
+lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, tester.jvm % "test", `jobscheduler-docker` % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

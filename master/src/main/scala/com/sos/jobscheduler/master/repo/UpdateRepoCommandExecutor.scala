@@ -43,7 +43,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration)
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap(_ ⇒ checkedSignedRepoObjectVerifier)
       .flatMap { verifier ⇒
-        val MasterCommand.UpdateRepo(versionIdOption, changedObjects, deletedPaths) = updateRepo
+        val MasterCommand.UpdateRepo(changedObjects, deletedPaths, versionIdOption) = updateRepo
         val versionId = versionIdOption getOrElse repo.newVersionId()
         for {
           fileBaseds ← verifier.verifyAndDecodeSeq(changedObjects).map(_.map(_._1)/*ignore senders ???*/)

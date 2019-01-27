@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests.master.commands
 
 import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.option._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -66,17 +67,17 @@ final class UpdateRepoTest extends FreeSpec
 
         withClue("Permission is required: ") {
           master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
-          assert(executeCommand(UpdateRepo(Some(versionId1), sign(workflow1) :: Nil)) ==
+          assert(executeCommand(UpdateRepo(sign(workflow1) :: Nil, versionId = versionId1.some)) ==
             Invalid(Problem("User does not have the required permission 'UpdateRepo'")))
         }
 
         master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
 
         val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
-        executeCommand(UpdateRepo(Some(versionId1), sign(workflow1) :: Nil)).orThrow
+        executeCommand(UpdateRepo(sign(workflow1) :: Nil, versionId = versionId1.some)).orThrow
         master.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
 
-        executeCommand(UpdateRepo(Some(versionId2), sign(workflow2) :: Nil)).orThrow
+        executeCommand(UpdateRepo(sign(workflow2) :: Nil, versionId = versionId2.some)).orThrow
         master.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
         val promises = Vector.fill(2)(Promise[Timestamp]())
@@ -90,14 +91,14 @@ final class UpdateRepoTest extends FreeSpec
         // The two order running on separate workflow versions run in parallel
         assert(finishedAt(0) > finishedAt(1) + tick)  // The second added order running on workflow version 2 finished before the first added order
 
-        executeCommand(UpdateRepo(Some(VersionId("3")), delete = Set(TestWorkflowPath))).orThrow
+        executeCommand(UpdateRepo(delete = TestWorkflowPath :: Nil, versionId = VersionId("3").some)).orThrow
         assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.seconds) ==
           Invalid(Problem("Has been deleted: Workflow:/WORKFLOW 3")))
 
         withClue("Tampered with configuration: ") {
           val updateRepo = UpdateRepo(
-            Some(VersionId("4")),
-            sign(workflow2).copy(message = "TAMPERED") :: Nil)
+            sign(workflow2).copy(message = "TAMPERED") :: Nil,
+            versionId = VersionId("4").some)
           assert(executeCommand(updateRepo) == Invalid(PGPTamperedWithMessageProblem))
         }
       }

@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.core.filebased.TypedPaths.{UnrecognizedFileProblem, fileToTypedPath}
+import com.sos.jobscheduler.core.filebased.TypedPaths.fileToTypedPath
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
@@ -19,29 +19,30 @@ object TypedPathDirectoryWalker {
 
   private val NestingLimit = 100
 
-  def typedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion], ignoreAliens: Boolean = false): Seq[Checked[TypedFile]] =
-    unorderedTypedFiles(directory, companions, ignoreAliens) sortBy (_._1) map (_._2)  // Sorted for deterministic test results
+  @deprecated
+  def typedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion]): Seq[Checked[TypedFile]] =
+    unorderedTypedFiles(directory, companions) sortBy (_._1) map (_._2)  // Sorted for deterministic test results
 
-  private def unorderedTypedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion], ignoreAliens: Boolean) =
+  @deprecated
+  private def unorderedTypedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion]) =
     Vector.build[(Path, Checked[TypedFile])] { builder ⇒
       deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (file, attr) ⇒
         if (!attr.isDirectory) {
           if (!file.startsWith(directory)) {
             builder += file → Problem(s"Path '$file' does not start with '$directory'")
           } else {
-            val relFile = file.subpath(directory.getNameCount, file.getNameCount)
-            fileToTypedPath(companions, relFile) match {
-              case Invalid(_: UnrecognizedFileProblem) if ignoreAliens ⇒
-              case checkedPathAndType ⇒ builder += file → checkedPathAndType.map(o ⇒ TypedFile(file, o._1, o._2))
-            }
+            builder += file → fileToTypedFile(directory, file, companions)
           }
         }
       }
     }
 
-  def checkUniqueness(typedFiles: Seq[Checked[TypedFile]]): Checked[Seq[Checked[TypedFile]]] = {
+  def fileToTypedFile(baseDirectory: Path, path: Path, companions: Iterable[TypedPath.AnyCompanion]): Checked[TypedFile] =
+    fileToTypedPath(companions, baseDirectory, path) .map(o ⇒ TypedFile(path, o._1, o._2))
+
+  def checkUniqueness(typedFiles: Seq[TypedFile]): Checked[typedFiles.type] = {
     val duplicateFiles: Iterable[Path] =
-      typedFiles collect { case Valid(o) ⇒ o } groupBy (_.path) filter (_._2.lengthCompare(2) >= 0) flatMap (_._2 map (_.file))
+      typedFiles groupBy (_.path) filter (_._2.lengthCompare(2) >= 0) flatMap (_._2 map (_.file))
     if (duplicateFiles.isEmpty)
       Valid(typedFiles)
     else

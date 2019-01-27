@@ -40,7 +40,7 @@ final class MasterRepoReaderTest extends FreeSpec {
       (directory / "ERROR-2.workflow.json").contentString = """{ "instructions": 0 }"""
       assert(repoReader.applyConfigurationDirectory(repo, Some(V2)) ==
         Invalid(Problem.Multiple(Set(
-          TypedPaths.UnrecognizedFileProblem(Paths.get("UNKNOWN.tmp")),
+          TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got I (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("Attempt to decode value on failed cursor: DownField(instructions)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("C[A]: DownField(instructions)"))))))

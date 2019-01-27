@@ -50,6 +50,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       }
     }
 
+  /** Returns the difference to the repo as events. */
   def fileBasedToEvents(versionId: VersionId, changed: Iterable[FileBased], deleted: Iterable[TypedPath] = Nil)
   : Checked[Seq[RepoEvent]] =
     normalizeVersion(versionId, changed) flatMap { changed ⇒
@@ -194,11 +195,17 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
     }
 
   def newVersionId(): VersionId = {
-    val v = VersionId("#" + Timestamp.now.toIsoString)
-    if (!versions.contains(v))
-      v
-    else
-      Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !versions.contains(w) ⇒ w } .get
+    val ts = Timestamp.now.toIsoString
+    val short = VersionId("#" + ts.take(19) + ts.drop(19+4)/*tz*/)  // Without milliseconds ".123"
+    if (!versions.contains(short))
+      short
+    else {
+      val v = VersionId("#" + ts)  // With milliseconds
+      if (!versions.contains(v))
+        v
+      else
+        Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !versions.contains(w) ⇒ w } .get
+      }
   }
 
   override def toString = s"Repo($versions,${idToFileBased.keys.toVector.sortBy(_.toString).map(id ⇒ idToFileBased(id).fold(s"$id deleted")(_.id.toString))})"

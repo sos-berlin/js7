@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import io.circe.Encoder
-import java.io.File
+import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}
 import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
@@ -119,6 +119,9 @@ object FileUtils {
   }
 
   import implicits._
+
+  def writeToFile[A](file: Path, append: Boolean = false)(body: OutputStream ⇒ A): A =
+    autoClosing(new BufferedOutputStream(new FileOutputStream(file, append)))(body)
 
   @tailrec
   def createShortNamedDirectory(directory: Path, prefix: String): Path = {

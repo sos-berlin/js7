@@ -20,6 +20,7 @@ import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -67,6 +68,7 @@ final class RunningMaster private(
   val sessionRegister: SessionRegister[SimpleSession],
   val commandExecutor: MasterCommandExecutor,
   val webServer: MasterWebServer,
+  val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
   val terminated: Future[Completed],
@@ -224,33 +226,33 @@ object RunningMaster {
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
       (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/master")
       for (_ ← webServer.start()) yield
-        new RunningMaster(sessionRegister, commandExecutor, webServer, orderApi, orderKeeper, terminated, closer, injector)
+        new RunningMaster(sessionRegister, commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
     }
   }
 
-  private class MainFileBasedApi(masterConfiguration: MasterConfiguration, orderKeeper: ActorRef) extends FileBasedApi
+  final class MainFileBasedApi(masterConfiguration: MasterConfiguration, orderKeeper: ActorRef) extends FileBasedApi
   {
     def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-      for (stamped ← getRepo) yield
+      for (stamped ← stampedRepo) yield
         for (repo ← stamped) yield
           O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      for (stamped ← getRepo) yield
+      for (stamped ← stampedRepo) yield
         for (repo ← stamped) yield
           repo.idTo[A](id)
 
     def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
-      for (stamped ← getRepo) yield
+      for (stamped ← stampedRepo) yield
         for (repo ← stamped) yield
           repo.currentTyped[A].values.toImmutableSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
 
     def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
-      for (stamped ← getRepo; repo = stamped.value) yield
+      for (stamped ← stampedRepo; repo = stamped.value) yield
         for (a ← repo.currentTyped[A].checked(path)) yield
           stamped.copy(value = a)
 
-    private def getRepo: Task[Stamped[Repo]] = {
+    def stampedRepo: Task[Stamped[Repo]] = {
       import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
       Task.deferFuture(
         (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])

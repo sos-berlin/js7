@@ -19,8 +19,8 @@
   </appenders>
   <loggers>
     <root level="info">
-      <appenderRef ref="stderr" level="OFF"/>
-      <appenderRef ref="file"   level="DEBUG" />
+      <appenderRef ref="stderr" level="off"/>
+      <appenderRef ref="file"   level="trace" />
     </root>
     <logger level="debug" name="jobscheduler"/>
     <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>

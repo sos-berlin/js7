@@ -36,7 +36,7 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(UpdateRepo(V1.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(versionId = V1.some)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V1.string}'")))
 
           // Add Workflow
@@ -58,12 +58,12 @@ final class MasterRepoTest extends FreeSpec {
           provider.updateRepo(master, V5.some, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
 
           // Delete workflow
-          provider.updateRepo(master, V6.some, delete = Set(CWorkflowPath))
+          provider.updateRepo(master, V6.some, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(UpdateRepo(V2.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(versionId = V2.some)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3

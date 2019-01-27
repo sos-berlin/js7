@@ -26,9 +26,9 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
         Valid(TypedFile(dir / "test.agent.json", AAgentPath, SourceType.Json)),
         Valid(TypedFile(dir / "test.workflow.json", AWorkflowPath, SourceType.Json)),
         Valid(TypedFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
-        Valid(TypedFile(dir / "folder" / "test.agent.json", BAgentPath, SourceType.Json)),
+        Valid(TypedFile(dir / "folder/test.agent.json", BAgentPath, SourceType.Json)),
         Invalid(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file"))))
-      assert(checkUniqueness(checkedTypedFiles) == Invalid(Problem(
+      assert(checkUniqueness(checkedTypedFiles collect { case Valid(o) ⇒ o }) == Invalid(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
   }

@@ -17,7 +17,7 @@ import scala.util.control.NonFatal
   * For `ioFuture` which starts a blocking (I/O) `Future` in a (normally unlimited) thread pool.
   * @author Joacim Zschimmer
   */
-final class IOExecutor(executionContext: ExecutionContext) extends Executor
+final class IOExecutor(_executionContext: ExecutionContext) extends Executor
 {
   def this(threadPool: ThreadPoolExecutor) = this(
     ExecutionContext.fromExecutor(
@@ -26,7 +26,9 @@ final class IOExecutor(executionContext: ExecutionContext) extends Executor
 
   def this(keepAlive: FiniteDuration) = this(newThreadPoolExecutor(keepAlive))
 
-  def execute(runnable: Runnable) = executionContext.execute(runnable)
+  def execute(runnable: Runnable) = _executionContext.execute(runnable)
+
+  implicit def executionContext: ExecutionContext = _executionContext
 }
 
 object IOExecutor

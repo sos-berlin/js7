@@ -93,11 +93,13 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   final case class UpdateRepo(
-    versionId: Option[VersionId] = None,
     change: Seq[SignedRepoObject] = Nil,
-    delete: Set[TypedPath] = Set.empty)
+    delete: Seq[TypedPath] = Nil,
+    versionId: Option[VersionId] = None)
   extends MasterCommand {
     type Response = Response.Accepted
+
+    def isEmpty = versionId.isEmpty && change.isEmpty && delete.isEmpty
 
     override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size}×, delete=${delete.size}×)"
   }

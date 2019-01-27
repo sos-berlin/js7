@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, VersionId}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
 
@@ -24,6 +24,6 @@ trait RepoReader
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
     } yield (events, changedRepo)
 
-  def readDirectoryTree(ignoreAliens: Boolean = false) =
-    FileBasedReader.readDirectoryTree(readers, fileBasedDirectory, ignoreAliens = ignoreAliens)
+  def readDirectoryTree(): Checked[Seq[FileBased]] =
+    FileBasedReader.readDirectoryTree(readers, fileBasedDirectory)
 }
