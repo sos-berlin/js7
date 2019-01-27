@@ -19,7 +19,8 @@ import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategie
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.{HasCloser, IOExecutor}
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
@@ -122,7 +123,6 @@ private object OrderActorTest {
     OrderDetachable,
     OrderDetached)
   private val Nl = System.lineSeparator
-  private implicit val iox = new IOExecutor(1.second)
 
   private val TestScript =
     if (isWindows) """

@@ -33,6 +33,10 @@ object IOExecutor
 {
   private val logger = Logger(getClass)
 
+  object Implicits {
+    implicit val globalIOX = new IOExecutor(60.seconds)
+  }
+
   def newThreadPoolExecutor(config: Config): ThreadPoolExecutor =
     newThreadPoolExecutor(
       keepAlive = config.getDuration("jobscheduler.thread-pools.io.keep-alive").toFiniteDuration,

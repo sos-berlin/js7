@@ -18,15 +18,12 @@ import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShel
 import java.nio.file.Files._
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
 final class ShellScriptProcessTest extends FreeSpec
 {
-  private implicit val iox = new IOExecutor(1.second)
-
   "ShellScriptProcess" in {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"

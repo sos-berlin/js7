@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.IOExecutor
+import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -9,7 +9,6 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.util.concurrent.ForkJoinPool
 import org.scalatest.FreeSpec
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -25,7 +24,6 @@ final class ShellScriptProcessForkedTest extends FreeSpec {
     // Handling "Text file busy" when starting many processes.
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
-    implicit val iox = new IOExecutor(1.second)
     val processFutures = for (i ← 0 until n) yield Future {
       startShellScript(ProcessConfiguration.forTest, name = s"#$i", scriptString = script)
     }
