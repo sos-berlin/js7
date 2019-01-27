@@ -9,6 +9,7 @@ import scala.collection.generic.{GenMapFactory, GenericCompanion}
 import scala.collection.immutable.{Seq, Vector}
 import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
 import scala.language.{higherKinds, implicitConversions}
+import scala.reflect.ClassTag
 
 object Collections {
   object implicits {
@@ -153,6 +154,14 @@ object Collections {
       val b = delegate.newBuilder[A]
       body(b)
       b.result
+    }
+  }
+
+  implicit final class RichArrayCompanion(private val underlying: Array.type) extends AnyVal {
+    def build[A: ClassTag](body: mutable.ArrayBuilder[A] ⇒ Unit): Array[A] = {
+      val b = mutable.ArrayBuilder.make[A]()
+      body(b)
+      b.result()
     }
   }
 

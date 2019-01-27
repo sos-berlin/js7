@@ -224,6 +224,10 @@ final class CollectionsTest extends FreeSpec {
   "Map.build" in {
     assert(Map.build[Int, String] { builder ⇒ builder += 7 → "seven"} == Map(7 → "seven"))
   }
+
+  "Array.build" in {
+    assert(Array.build[Int] { builder ⇒ builder += 7 } sameElements Array(7))
+  }
 }
 
 private object CollectionsTest {
