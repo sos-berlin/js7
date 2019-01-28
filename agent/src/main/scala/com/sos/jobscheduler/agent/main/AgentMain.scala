@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.JavaMainSupport.{handleJavaShutdown, runMain}
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import scala.concurrent.duration.Duration
 
 /**
@@ -22,7 +21,6 @@ object AgentMain {
 
   def main(args: Array[String]): Unit = {
     logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
-    ProblemCodeMessages.initialize()
     runMain {
       val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent ⇒

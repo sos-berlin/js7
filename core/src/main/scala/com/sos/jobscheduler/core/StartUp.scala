@@ -16,7 +16,7 @@ object StartUp {
   private val classPathLogged = AtomicBoolean(false)
 
   /** Log Java version, config and data directory, and classpath. */
-  def logStartUp(configDir: Path, dataDir: Path): Unit = {
+  def logStartUp(configDir: Path, dataDir: Option[Path]): Unit = {
     logger.info(
       s"Java " + JavaInformations.implementationVersion + " " +
       "(" + toMB(sys.runtime.maxMemory) + ") · " +
@@ -24,14 +24,14 @@ object StartUp {
       cpuModel.fold("")(o ⇒ s"$o ") + "(" + sys.runtime.availableProcessors + " threads) · " +
       (if (hostname.nonEmpty) s"host=$hostname " else "") +
       s"config=$configDir " +
-      s"data=$dataDir")
+        dataDir.fold("")("data=".+))
 
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running master and agents in same JVM)
       for (o ← sys.props("java.class.path") split File.pathSeparator) {
         logger.debug(Logger.Java, s"Classpath $o")
       }
     }
-    if (logger.underlying.isTraceEnabled) {
+    logger.whenTraceEnabled {
       logger.debug("Logger TRACE enabled")
     }
   }

@@ -2,9 +2,15 @@
 set -e
 
 home="$(cd "$(dirname -- "$0")"/../bin/.. && pwd || kill $$)"
-mkdir -p volumes/master/config/live
-mkdir -p volumes/{agent-1,agent-2}/config/executables
-mkdir -p volumes/{master,agent-1,agent-2}/data
+
+mkdir -p volumes/{master,provider,agent-1,agent-2}/config/private
+mkdir -p volumes/{master,provider,agent-1,agent-2}/data/{logs,state}
+mkdir -p volumes/provider/config/live
+mkdir -p volumes/agent*/config/executables
 
 cp -Rn "$home"/volumes . || true
-chmod -R +x volumes/{agent-1,agent-2}/config/executables/*
+
+chmod go-wrx volumes/*/config/private
+chmod -R +x volumes/agent-*/config/executables/*
+
+$home/bin/prepare-pgp-keys

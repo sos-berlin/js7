@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="WARN" shutdownHook="disable" monitorInterval="10">
+  <appenders>
+    <console name="stderr" target="SYSTEM_ERR">
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
+    </console>
+    <rollingRandomAccessFile name="file"
+                             fileName="${env:SCHEDULER_LOGS}/provider.log"
+                             filePattern="${env:SCHEDULER_LOGS}/provider-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax"/>
+    </rollingRandomAccessFile>
+    <rollingRandomAccessFile name="weblog"
+                             fileName="${env:SCHEDULER_LOGS}/web.log"
+                             filePattern="${env:SCHEDULER_LOGS}/web-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax"/>
+    </rollingRandomAccessFile>
+  </appenders>
+  <loggers>
+    <root level="INFO">
+      <appenderRef ref="stderr" level="INFO"/>
+      <appenderRef ref="file"   level="TRACE"/>
+    </root>
+    <logger level="DEBUG" name="jobscheduler.web">
+      <appenderRef ref="weblog"/>
+    </logger>
+    <logger level="WARN" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="DEBUG" name="jobscheduler"/>
+  </loggers>
+</configuration>

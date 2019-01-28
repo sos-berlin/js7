@@ -101,7 +101,7 @@ object MasterCommand extends CommonCommand.Companion
 
     def isEmpty = versionId.isEmpty && change.isEmpty && delete.isEmpty
 
-    override def toString = s"UpdateRepo(${versionId getOrElse ""}, change=${change.size}×, delete=${delete.size}×)"
+    override def toString = s"UpdateRepo(${versionId.fold("")(_ + " ")}change=${change.size}× delete=${delete.size}×)"
   }
 
   final case class ReplaceRepo(objects: Seq[SignedRepoObject], versionId: Option[VersionId] = None)

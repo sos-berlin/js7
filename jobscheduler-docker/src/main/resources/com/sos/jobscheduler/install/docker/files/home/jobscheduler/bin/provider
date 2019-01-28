@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -e
+
+data=/var/opt/jobscheduler/provider/data
+hprof=$data/logs/OutOfMemoryError.hprof
+
+exec /opt/jobscheduler/bin/jobscheduler-provider \
+  -log4j-async \
+  -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
+  "$@"

@@ -202,7 +202,7 @@ object RunningMaster {
     }
 
     private[RunningMaster] def start(): Future[RunningMaster] = {
-      StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
+      StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
       createDirectories()
 
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]

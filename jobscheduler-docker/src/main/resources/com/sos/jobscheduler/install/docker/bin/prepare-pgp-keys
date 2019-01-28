@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -e
+
+homedir="$(pwd)/gnupg"
+privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
+publicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
+
+if [ -f "$privateKeyFile" -a -f "$publicKeyFile" ]; then
+  echo "PGP files exists already. Nothing to do"
+else
+  which gpg >/dev/null || {
+    echo "Missing gpg (GnuPG)"
+    exit 1
+  }
+  if [ -d "$homedir" ]; then
+    gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$publicKeyFile"
+  fi
+  if [ -f "$privateKeyFile" -a -f "$publicKeyFile" ]; then
+    :
+  else
+    mkdir -p gnupg
+    chmod go-rwx gnupg
+    gpg-agent --homedir="$homedir" --quiet || gpg-agent --homedir="$homedir" --daemon  # How to terminate???
+    gpg --homedir="$homedir" --gen-key --batch <<EOF
+      Key-Type: DSA
+      Key-Length: 1024
+      Subkey-Type: ELG-E
+      Subkey-Length: 1024
+      Name-Real: JobScheduler Demo
+      Name-Comment: demonstration only
+      Name-Email: jobscheduler@example.com
+      Expire-Date: 0
+      Passphrase: PGP-PASSWORD
+EOF
+    gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$publicKeyFile"
+  fi
+fi
+
+ls -ld "$privateKeyFile" "$publicKeyFile"

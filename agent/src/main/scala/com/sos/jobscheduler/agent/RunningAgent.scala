@@ -114,7 +114,7 @@ object RunningAgent {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]
-    StartUp.logStartUp(agentConfiguration.configDirectory, agentConfiguration.dataDirectory)
+    StartUp.logStartUp(agentConfiguration.configDirectory, Some(agentConfiguration.dataDirectory))
 
     val actorSystem = injector.instance[ActorSystem]
     val closer = injector.instance[Closer]

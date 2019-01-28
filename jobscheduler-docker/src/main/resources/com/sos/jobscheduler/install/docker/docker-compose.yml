@@ -28,6 +28,17 @@ services:
     stop_grace_period: 30s
     restart: unless-stopped
 
+  provider:
+    image: jobscheduler
+    container_name: jobscheduler-provider
+    command: ["provider", "-J-Xmx100m", "-master-uri=http://master:4444"]
+    hostname: provider
+    working_dir: /var/opt/jobscheduler/provider/data
+    volumes:
+      - ./volumes/provider/config:/var/opt/jobscheduler/provider/config:ro
+      - ./volumes/provider/data:/var/opt/jobscheduler/provider/data:delegated
+    restart: unless-stopped
+
   agent-1:
     image: jobscheduler
     container_name: jobscheduler-agent-1
