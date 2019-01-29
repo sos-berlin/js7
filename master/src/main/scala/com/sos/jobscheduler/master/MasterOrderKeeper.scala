@@ -385,7 +385,6 @@ with MainJournalingActor[Event]
               .map(_ ⇒ MasterCommand.Response.Accepted))
 
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
-        // TODO Test is missing
         val checkedSideEffect =
           for {
             readOrderGen ← readScheduledOrderGeneratorConfiguration()
