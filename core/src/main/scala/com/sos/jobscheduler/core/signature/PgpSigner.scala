@@ -6,8 +6,8 @@ import cats.syntax.foldable.catsSyntaxFoldOps
 import cats.syntax.show._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.SyncResource.ops.RichResource
-import com.sos.jobscheduler.core.signature.PGPCommons._
-import com.sos.jobscheduler.core.signature.PGPSigner.newSignatureGenerator
+import com.sos.jobscheduler.core.signature.PgpCommons._
+import com.sos.jobscheduler.core.signature.PgpSigner.newSignatureGenerator
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import org.bouncycastle.bcpg.{ArmoredOutputStream, BCPGOutputStream, HashAlgorithmTags}
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
@@ -17,7 +17,7 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-final class PGPSigner(pgpSecretKey: PGPSecretKey, password: SecretString)
+final class PgpSigner(pgpSecretKey: PGPSecretKey, password: SecretString)
 {
   registerBouncyCastle()
   //logger.debug(pgpSecretKey.show)
@@ -36,10 +36,10 @@ final class PGPSigner(pgpSecretKey: PGPSecretKey, password: SecretString)
     byteOut.toByteArray
   }
 
-  override def toString = show"PGPSigner($pgpSecretKey)"
+  override def toString = show"PgpSigner($pgpSecretKey)"
 }
 
-object PGPSigner
+object PgpSigner
 {
   private val OurHashAlgorithm = HashAlgorithmTags.SHA512
 

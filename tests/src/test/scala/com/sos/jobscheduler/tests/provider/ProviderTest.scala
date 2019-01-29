@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.core.filebased.{FileBasedReader, Repo, TypedPaths}
-import com.sos.jobscheduler.core.signature.PGPSigner.writeSecretKeyAsAscii
+import com.sos.jobscheduler.core.signature.PgpSigner.writeSecretKeyAsAscii
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent}

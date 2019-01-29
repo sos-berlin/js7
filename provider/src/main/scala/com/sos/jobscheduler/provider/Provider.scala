@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.CatsUtils.autoCloseableToResource
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, TypedPathDirectoryWalker}
-import com.sos.jobscheduler.core.signature.PGPSigner.readSecretKey
+import com.sos.jobscheduler.core.signature.PgpSigner.readSecretKey
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath

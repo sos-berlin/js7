@@ -22,8 +22,8 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.core.signature.PGPCommons.writePublicKeyAsAscii
-import com.sos.jobscheduler.core.signature.{PGPKeyGenerator, PGPUserId}
+import com.sos.jobscheduler.core.signature.PgpCommons.writePublicKeyAsAscii
+import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -108,7 +108,7 @@ extends HasCloser {
   }
 
   val pgpPassword = SecretString(Random.nextString(10))
-  val pgpSecretKey = PGPKeyGenerator.generateSecretKey(PGPUserId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
+  val pgpSecretKey = PgpKeyGenerator.generateSecretKey(PgpUserId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
   val fileBasedSigner: FileBasedSigner = {
     autoClosing(new FileOutputStream(master.config / "private" / "trusted-pgp-keys.asc")) { out ⇒
       writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)

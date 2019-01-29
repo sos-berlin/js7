@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.GuavaUtils._
 import com.sos.jobscheduler.core.problems.PGPTamperedWithMessageProblem
-import com.sos.jobscheduler.core.signature.PGPCommons.toPublicKeyRingCollection
-import com.sos.jobscheduler.core.signature.{PGPKeyGenerator, PGPSignatureVerifier, PGPSigner, PGPUserId}
+import com.sos.jobscheduler.core.signature.PgpCommons.toPublicKeyRingCollection
+import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, SignedRepoObject, VersionId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -46,13 +46,13 @@ object SignedRepoObjectVerifierTest
   private val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % versionId, workflowScript).orThrow
   private val agent = Agent(AgentPath("/AGENT") % versionId, "https://localhost")
 
-  private val pgpUserIds = PGPUserId("SignedRepoObjectVerifierTest") :: Nil
+  private val pgpUserIds = PgpUserId("SignedRepoObjectVerifierTest") :: Nil
 
   private val password = SecretString("TEST-PASSWORD")
-  lazy val secretKey = PGPKeyGenerator.generateSecretKey(pgpUserIds.head, password, keySize = 1024/*fast*/)
-  private val signatureVerifier = new PGPSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey))
+  lazy val secretKey = PgpKeyGenerator.generateSecretKey(pgpUserIds.head, password, keySize = 1024/*fast*/)
+  private val signatureVerifier = new PgpSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey))
 
-  private val signer = new PGPSigner(secretKey, password)
+  private val signer = new PgpSigner(secretKey, password)
 
   private def sign(string: String): SignedRepoObject =
     SignedRepoObject(string, "PGP",

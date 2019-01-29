@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object PGPCommons
+object PgpCommons
 {
   Security.addProvider(new BouncyCastleProvider)
 

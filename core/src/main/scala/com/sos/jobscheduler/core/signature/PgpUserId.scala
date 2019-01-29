@@ -5,4 +5,4 @@ import com.sos.jobscheduler.base.generic.GenericString
 /**
   * @author Joacim Zschimmer
   */
-final case class PGPUserId(string: String) extends GenericString
+final case class PgpUserId(string: String) extends GenericString

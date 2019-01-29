@@ -7,9 +7,9 @@ import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResou
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.problems.{PGPMessageSignedByUnknownProblem, PGPTamperedWithMessageProblem}
-import com.sos.jobscheduler.core.signature.PGPCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii}
-import com.sos.jobscheduler.core.signature.PGPSignatureTest._
-import com.sos.jobscheduler.core.signature.PGPSigner.readSecretKey
+import com.sos.jobscheduler.core.signature.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii}
+import com.sos.jobscheduler.core.signature.PgpSignatureTest._
+import com.sos.jobscheduler.core.signature.PgpSigner.readSecretKey
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
@@ -17,13 +17,13 @@ import org.bouncycastle.openpgp.PGPException
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
-final class PGPSignatureTest extends FreeSpec
+final class PgpSignatureTest extends FreeSpec
 {
-  private lazy val verifier = new PGPSignatureVerifier(readPublicKeyRingCollection(publicKeyResource))
+  private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource))
 
   "Invalid password for secret key" in {
     for (invalidPassword ← Array("", "INVALID")) {
-      val signer = new PGPSigner(readSecretKey(secretKeyResource), SecretString(invalidPassword))
+      val signer = new PgpSigner(readSecretKey(secretKeyResource), SecretString(invalidPassword))
       intercept[PGPException] {
         signer.sign(stringToInputStreamResource(""))
       }.getMessage shouldEqual "checksum mismatch at 0 of 20"  // TODO Weird Problem message for an invalid password
@@ -31,7 +31,7 @@ final class PGPSignatureTest extends FreeSpec
   }
 
   "Use predefine private key" - {
-    "PGPSignatureVerifier" - {
+    "PgpSignatureVerifier" - {
       "toString" in {
         logger.info(verifier.toString)
       }
@@ -52,8 +52,8 @@ final class PGPSignatureTest extends FreeSpec
       }
     }
 
-    "PGPSigner" - {
-      lazy val signer = new PGPSigner(readSecretKey(secretKeyResource), secretKeyPassword)
+    "PgpSigner" - {
+      lazy val signer = new PgpSigner(readSecretKey(secretKeyResource), secretKeyPassword)
 
       "toString" in {
         logger.info(signer.toString)
@@ -69,8 +69,8 @@ final class PGPSignatureTest extends FreeSpec
 
   "Define own private key, sign and verfiy" - {
     val password = SecretString("TESTERS PASSWORD")
-    lazy val secretKey = PGPKeyGenerator.generateSecretKey(PGPUserId("TESTER"), password, keySize = 1024/*fast*/)
-    lazy val signer = new PGPSigner(secretKey, password)
+    lazy val secretKey = PgpKeyGenerator.generateSecretKey(PgpUserId("TESTER"), password, keySize = 1024/*fast*/)
+    lazy val signer = new PgpSigner(secretKey, password)
     lazy val signature = signer.sign(stringToInputStreamResource(TestMessage))
 
     "generate" in {
@@ -82,7 +82,7 @@ final class PGPSignatureTest extends FreeSpec
     }
 
     "verify" in {
-      val verifier = new PGPSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey))
+      val verifier = new PgpSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey))
       assert(verifier.verify(stringToInputStreamResource(TestMessage + "X"), signature.asResource).isInvalid)
       assert(verifier.verify(stringToInputStreamResource(TestMessage), signature.asResource).isValid)
     }
@@ -98,18 +98,18 @@ final class PGPSignatureTest extends FreeSpec
       assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----\n")
       assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----\n")
 
-      val verifier = new PGPSignatureVerifier(readPublicKeyRingCollection(publicKeyAscii.asResource))
+      val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyAscii.asResource))
       assert(verifier.verify(stringToInputStreamResource(TestMessage + "X"), signature.asResource).isInvalid)
       assert(verifier.verify(stringToInputStreamResource(TestMessage), signature.asResource).isValid)
     }
   }
 }
 
-object PGPSignatureTest
+object PgpSignatureTest
 {
   private val logger = Logger(getClass)
   private val TestMessage = "The data to be signed\n"
-  private val pgpUserIds = PGPUserId("TEST (COMMENT) <test@example.com>") :: Nil
+  private val pgpUserIds = PgpUserId("TEST (COMMENT) <test@example.com>") :: Nil
 
   // Keys and signatur generated gpg (GnuPG/MacGPG2) 2.2.10, libgcrypt 1.8.3
   // gpg --export --armor

@@ -7,26 +7,26 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
-import com.sos.jobscheduler.core.signature.{PGPSignatureVerifier, PGPUserId}
+import com.sos.jobscheduler.core.signature.{PgpSignatureVerifier, PgpUserId}
 import com.sos.jobscheduler.data.filebased.{FileBased, SignedRepoObject}
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import scala.collection.immutable.Seq
 
-final class SignedRepoObjectVerifier[A <: FileBased](verifier: PGPSignatureVerifier)
+final class SignedRepoObjectVerifier[A <: FileBased](verifier: PgpSignatureVerifier)
   (implicit jsonCodec: CirceObjectCodec[FileBased])
 {
-  def verifyAndDecodeSeq(signedRepoObjects: Seq[SignedRepoObject]): Checked[Vector[(FileBased, Seq[PGPUserId])]] =
+  def verifyAndDecodeSeq(signedRepoObjects: Seq[SignedRepoObject]): Checked[Vector[(FileBased, Seq[PgpUserId])]] =
     signedRepoObjects.failFastMap(verifyAndDecode)
 
-  private def verifyAndDecode(signedRepoObject: SignedRepoObject): Checked[(FileBased, Seq[PGPUserId])] =
+  private def verifyAndDecode(signedRepoObject: SignedRepoObject): Checked[(FileBased, Seq[PgpUserId])] =
     verify(signedRepoObject).flatMap { case (message, userIds) ⇒
       message.parseJsonChecked
         .flatMap(json ⇒ jsonCodec.decodeJson(json).toChecked)
         .map(_ → userIds)
     }
 
-  private def verify(signedRepoObject: SignedRepoObject): Checked[(String, Seq[PGPUserId])] =
+  private def verify(signedRepoObject: SignedRepoObject): Checked[(String, Seq[PgpUserId])] =
     signedRepoObject match {
       case SignedRepoObject(string, "PGP", signature) ⇒
         verifier.verifyString(string, base64ToInputStream(signature))

@@ -12,8 +12,8 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.problems.PGPMessageSignedByUnknownProblem
-import com.sos.jobscheduler.core.signature.PGPCommons.readPublicKeyRingCollection
-import com.sos.jobscheduler.core.signature.PGPSignatureVerifier
+import com.sos.jobscheduler.core.signature.PgpCommons.readPublicKeyRingCollection
+import com.sos.jobscheduler.core.signature.PgpSignatureVerifier
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterFileBaseds}
@@ -34,7 +34,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration)
       logger.warn(s"Command UpdateRepo will be rejected due to missing file '$trustedKeysFile'")
       Invalid(PGPMessageSignedByUnknownProblem)  // Same message when signer is unknown
     } else {
-      val signatureVerifier = new PGPSignatureVerifier(readPublicKeyRingCollection(fileAsResource(trustedKeysFile)))
+      val signatureVerifier = new PgpSignatureVerifier(readPublicKeyRingCollection(fileAsResource(trustedKeysFile)))
       Valid(new SignedRepoObjectVerifier[FileBased](signatureVerifier)(MasterFileBaseds.jsonCodec))
     }
   }

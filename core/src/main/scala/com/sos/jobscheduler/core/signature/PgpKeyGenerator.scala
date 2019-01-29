@@ -15,11 +15,11 @@ import org.bouncycastle.openpgp.{PGPKeyRingGenerator, PGPSecretKey, PGPSignature
 /**
   * @author Joacim Zschimmer
   */
-object PGPKeyGenerator
+object PgpKeyGenerator
 {
   private val logger = Logger(getClass)
 
-  def generateSecretKey(id: PGPUserId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
+  def generateSecretKey(id: PgpUserId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
     // See https://stackoverflow.com/questions/3087049/bouncy-castle-rsa-keypair-generation-using-lightweight-api
     val publicExponent = 0x10001  // Should be a Fermat number
     val certainty = 80
