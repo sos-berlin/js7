@@ -399,8 +399,8 @@ with MainJournalingActor[Event]
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
         Future.successful(Valid(MasterCommand.Response.Accepted))
 
-      case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
-        Future.successful(Invalid(Problem.pure("NOT IMPLEMENTED")))  // Never called
+      case MasterCommand.EmergencyStop | MasterCommand.NoOperation | _: MasterCommand.Batch ⇒       // For completeness. RunningMaster has handled the command already
+        Future.successful(Invalid(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case MasterCommand.TakeSnapshot ⇒
         import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes

@@ -31,7 +31,7 @@ trait SessionApi extends HasSessionToken
       .onErrorRestartLoop(()) { (throwable, _, retry) ⇒
         onError(throwable)
         if (isTemporary(throwable) && delays.hasNext)
-          retry(false) delayExecution delays.next()
+          retry(()) delayExecution delays.next()
         else
           Task.raiseError(throwable)
       }
