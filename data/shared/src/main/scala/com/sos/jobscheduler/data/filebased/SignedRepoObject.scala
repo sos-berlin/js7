@@ -1,15 +1,14 @@
 package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.data.crypt.PgpSignature
 import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class SignedRepoObject(message: String, signatureType: String, signature: String)
+final case class SignedRepoObject(message: String, signature: PgpSignature)
 {
-  override def toString = s"SignedRepoObject(${message.truncateWithEllipsis(100, showLength = true)}, " +
-    s"$signatureType, " +
-    s"${signature.truncateWithEllipsis(29, showLength = true)})"
+  override def toString = s"SignedRepoObject(${message.truncateWithEllipsis(100, showLength = true)}, $signature)"
 }

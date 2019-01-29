@@ -8,8 +8,8 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.problems.{PGPMessageSignedByUnknownProblem, PGPTamperedWithMessageProblem}
 import com.sos.jobscheduler.core.signature.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii}
-import com.sos.jobscheduler.core.signature.PgpSignatureTest._
 import com.sos.jobscheduler.core.signature.PgpSigner.readSecretKey
+import com.sos.jobscheduler.core.signature.PgpTest._
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
@@ -17,7 +17,7 @@ import org.bouncycastle.openpgp.PGPException
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
-final class PgpSignatureTest extends FreeSpec
+final class PgpTest extends FreeSpec
 {
   private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource))
 
@@ -105,7 +105,7 @@ final class PgpSignatureTest extends FreeSpec
   }
 }
 
-object PgpSignatureTest
+object PgpTest
 {
   private val logger = Logger(getClass)
   private val TestMessage = "The data to be signed\n"

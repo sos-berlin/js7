@@ -174,12 +174,16 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "change": [
           {
             "message": "$workflowJson",
-            "signatureType": "PGP",
-            "signature":  "${signStringToBase64(workflowJson)}"
+            "signature": {
+              "TYPE": "PGP",
+              "string": "${signStringToBase64(workflowJson)}"
+            }
           }, {
             "message": "$workflow2Json",
-            "signatureType": "PGP",
-            "signature":  "${signStringToBase64(workflow2Json)}"
+            "signature": {
+              "TYPE": "PGP",
+              "string": "${signStringToBase64(workflow2Json)}"
+            }
           }
         ],
         "delete": []

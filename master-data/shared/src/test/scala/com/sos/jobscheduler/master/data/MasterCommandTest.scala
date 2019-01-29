@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
+import com.sos.jobscheduler.data.crypt.PgpSignature
 import com.sos.jobscheduler.data.filebased.{SignedRepoObject, VersionId}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -89,12 +90,12 @@ final class MasterCommandTest extends FreeSpec {
       testJson[MasterCommand](UpdateRepo(
         change = SignedRepoObject(
           message = """{"TYPE": "Workflow", ...}""",
-          signatureType = "PGP",
-          signature = """-----BEGIN PGP SIGNATURE-----
-            |
-            |...
-            |-----END PGP SIGNATURE-----
-            |""".stripMargin) :: Nil,
+          signature = PgpSignature(
+             """-----BEGIN PGP SIGNATURE-----
+              |
+              |...
+              |-----END PGP SIGNATURE-----
+              |""".stripMargin)) :: Nil,
         delete = WorkflowPath("/WORKFLOW-A") :: AgentPath("/AGENT-A") :: Nil,
         Some(VersionId("1"))),
         json"""{
@@ -103,8 +104,10 @@ final class MasterCommandTest extends FreeSpec {
           "change": [
             {
               "message": "{\"TYPE\": \"Workflow\", ...}",
-              "signatureType": "PGP",
-              "signature": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+              "signature": {
+                "TYPE": "PGP",
+                "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+              }
             }
           ],
           "delete": [
@@ -133,12 +136,12 @@ final class MasterCommandTest extends FreeSpec {
       testJson[MasterCommand](ReplaceRepo(
         objects = SignedRepoObject(
           message = """{"TYPE": "Workflow", ...}""",
-          signatureType = "PGP",
-          signature = """-----BEGIN PGP SIGNATURE-----
-            |
-            |...
-            |-----END PGP SIGNATURE-----
-            |""".stripMargin) :: Nil,
+          signature = PgpSignature(
+            """|-----BEGIN PGP SIGNATURE-----
+              |
+              |...
+              |-----END PGP SIGNATURE-----
+              |""".stripMargin)) :: Nil,
         Some(VersionId("1"))),
         json"""{
           "TYPE": "ReplaceRepo",
@@ -146,8 +149,10 @@ final class MasterCommandTest extends FreeSpec {
           "objects": [
             {
               "message": "{\"TYPE\": \"Workflow\", ...}",
-              "signatureType": "PGP",
-              "signature": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+              "signature": {
+                "TYPE": "PGP",
+                "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+              }
             }
           ]
         }""")

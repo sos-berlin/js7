@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.master.repo
 
-import cats.data.Validated.Invalid
 import cats.effect.{Resource, SyncIO}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.core.signature.{PgpSignatureVerifier, PgpUserId}
+import com.sos.jobscheduler.data.crypt.PgpSignature
 import com.sos.jobscheduler.data.filebased.{FileBased, SignedRepoObject}
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -28,11 +28,8 @@ final class SignedRepoObjectVerifier[A <: FileBased](verifier: PgpSignatureVerif
 
   private def verify(signedRepoObject: SignedRepoObject): Checked[(String, Seq[PgpUserId])] =
     signedRepoObject match {
-      case SignedRepoObject(string, "PGP", signature) ⇒
+      case SignedRepoObject(string, PgpSignature(signature)) ⇒
         verifier.verifyString(string, base64ToInputStream(signature))
-
-      case SignedRepoObject(_, typ, _) ⇒
-        Invalid(Problem(s"Unknown signature type '$typ'. Try 'PGP'"))
     }
 
   private def base64ToInputStream(base64: String) =

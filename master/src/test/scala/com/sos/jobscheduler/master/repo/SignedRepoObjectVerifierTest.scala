@@ -9,6 +9,7 @@ import com.sos.jobscheduler.core.problems.PGPTamperedWithMessageProblem
 import com.sos.jobscheduler.core.signature.PgpCommons.toPublicKeyRingCollection
 import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.crypt.PgpSignature
 import com.sos.jobscheduler.data.filebased.{FileBased, SignedRepoObject, VersionId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -55,6 +56,7 @@ object SignedRepoObjectVerifierTest
   private val signer = new PgpSigner(secretKey, password)
 
   private def sign(string: String): SignedRepoObject =
-    SignedRepoObject(string, "PGP",
-      Base64.getMimeEncoder.encodeToString(signer.sign(stringToInputStreamResource(string))))
+    SignedRepoObject(
+      string,
+      PgpSignature(Base64.getMimeEncoder.encodeToString(signer.sign(stringToInputStreamResource(string)))))
 }
