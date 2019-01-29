@@ -43,8 +43,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration)
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap(_ ⇒ checkedSignedRepoObjectVerifier)
       .flatMap { verifier ⇒
-        val MasterCommand.ReplaceRepo(objects, versionIdOption) = replaceRepo
-        val versionId = versionIdOption getOrElse repo.newVersionId()
+        val MasterCommand.ReplaceRepo(versionId, objects) = replaceRepo
         for {
           fileBaseds ← verifier.verifyAndDecodeSeq(objects).map(_.map(_._1)/*ignore senders ???*/)
           deleted = repo.currentFileBaseds.map(_.path).toSet -- fileBaseds.map(_.path).toSet
@@ -57,8 +56,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration)
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap(_ ⇒ checkedSignedRepoObjectVerifier)
       .flatMap { verifier ⇒
-        val MasterCommand.UpdateRepo(changedObjects, deletedPaths, versionIdOption) = updateRepo
-        val versionId = versionIdOption getOrElse repo.newVersionId()
+        val MasterCommand.UpdateRepo(versionId, changedObjects, deletedPaths) = updateRepo
         for {
           fileBaseds ← verifier.verifyAndDecodeSeq(changedObjects).map(_.map(_._1)/*ignore senders ???*/)
           events ← repo.fileBasedToEvents(versionId, fileBaseds, deletedPaths)

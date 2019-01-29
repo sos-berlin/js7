@@ -110,9 +110,9 @@ final class RepoTest extends FreeSpec
       assert(Repo.empty.fileBasedToEvents(V1, a1.withVersion(V2) :: Nil) == Invalid(Problem("Expected version '1' in 'A:/A 2'")))
     }
 
-    "FileBased without version" in {
-      assert(Repo.empty.fileBasedToEvents(V1, a1.withoutVersion  :: Nil)
-        == Valid(VersionAdded(V1) :: FileBasedAdded(a1.withoutVersion) :: Nil))
+    "FileBased without version is rejected" in {
+      // The signer signs the VersionId, too. It must not be diverge from the commands VersionId
+      assert(Repo.empty.fileBasedToEvents(V1, a1.withoutVersion  :: Nil) == Invalid(Problem("Expected version '1' in 'A:/A'")))
     }
 
     "FileBased with matching version" in {

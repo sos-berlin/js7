@@ -5,7 +5,6 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -53,7 +52,7 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
   /** Returns the difference to the repo as events. */
   def fileBasedToEvents(versionId: VersionId, changed: Iterable[FileBased], deleted: Iterable[TypedPath] = Nil)
   : Checked[Seq[RepoEvent]] =
-    normalizeVersion(versionId, changed) flatMap { changed ⇒
+    checkVersion(versionId, changed) flatMap { changed ⇒
       val addedOrChanged = changed flatMap toAddedOrChanged
       addedOrChanged.checkUniqueness(_.path) map { _ ⇒
         val deletedEvents = deleted
@@ -64,10 +63,9 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       }
     }
 
-  private def normalizeVersion(versionId: VersionId, fileBased: Iterable[FileBased]): Checked[Vector[FileBased]] =
+  private def checkVersion(versionId: VersionId, fileBased: Iterable[FileBased]): Checked[Vector[FileBased]] =
     fileBased.toVector.traverse(o ⇒ o.id.versionId match {
       case `versionId` ⇒ Valid(o)
-      case VersionId.Anonymous ⇒ Valid(o withVersion versionId)
       case _ ⇒ Invalid(Problem(s"Expected version '${versionId.string}' in '${o.id}'"))
     })
 
@@ -194,19 +192,8 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       case _ :: tail ⇒ Valid(tail)
     }
 
-  def newVersionId(): VersionId = {
-    val ts = Timestamp.now.toIsoString
-    val short = VersionId("#" + ts.take(19) + ts.drop(19+4)/*tz*/)  // Without milliseconds ".123"
-    if (!versions.contains(short))
-      short
-    else {
-      val v = VersionId("#" + ts)  // With milliseconds
-      if (!versions.contains(v))
-        v
-      else
-        Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !versions.contains(w) ⇒ w } .get
-      }
-  }
+  def newVersionId(): VersionId =
+    VersionId.generate(isKnown = versions.contains)
 
   override def toString = s"Repo($versions,${idToFileBased.keys.toVector.sortBy(_.toString).map(id ⇒ idToFileBased(id).fold(s"$id deleted")(_.id.toString))})"
 }

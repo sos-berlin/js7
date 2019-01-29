@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests.provider
 
 import cats.data.Validated.Invalid
-import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
@@ -19,8 +18,8 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent}
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.provider.Provider
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import com.sos.jobscheduler.provider.{Observing, Provider}
 import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.provider.ProviderTest._
 import com.typesafe.config.ConfigFactory
@@ -91,14 +90,14 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
     "Write two workflows" in {
       writeFile(AWorkflowPath)
       writeFile(BWorkflowPath)
-      provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V1).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
         (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1))))
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Invalid(Problem("Duplicate VersionId '1'")))
+      assert(provider.updateMasterConfiguration(V1).await(99.seconds) == Invalid(Problem("Duplicate VersionId '1'")))
     }
 
     "An unknown and some invalid files" in {
@@ -108,14 +107,14 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
       (live / "ERROR-1.workflow.json") := """{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := """{ "instructions": 0 }"""
-      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
+      assert(provider.updateMasterConfiguration(V2).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"))))))  // Only the unknown file is noticed
     }
 
     "Some invalid files" in {
       delete(live / "UNKNOWN.tmp")
-      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
+      assert(provider.updateMasterConfiguration(V2).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got I (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("Attempt to decode value on failed cursor: DownField(instructions)")),
@@ -126,7 +125,7 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
-      provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V2).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
         (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1)),
@@ -135,19 +134,13 @@ final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
-      provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
+      provider.updateMasterConfiguration(V3).await(99.seconds).orThrow
       assert(repo.versions == V3 :: V2 :: V1 :: VersionId("INITIAL") :: Nil)
       assert(repo.idToFileBased == Map(
         (AWorkflowPath % V1) → Some(TestWorkflow.withId(AWorkflowPath % V1)),
         (BWorkflowPath % V1) → Some(TestWorkflow.withId(BWorkflowPath % V1)),
         (BWorkflowPath % V3) → None,
         (CWorkflowPath % V2) → Some(TestWorkflow.withId(CWorkflowPath % V2))))
-    }
-
-    "updateMasterConfiguration without VersionId" in {
-      writeFile(DWorkflowPath)
-      provider.updateMasterConfiguration(None).await(99.seconds).orThrow
-      assert(repo.currentTyped[Workflow].apply(DWorkflowPath).id.versionId.string startsWith "#")  // Master has generated a VersionId
     }
   }
 
@@ -206,7 +199,6 @@ object ProviderTest
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")
-  private val DWorkflowPath = WorkflowPath("/D")
 
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")

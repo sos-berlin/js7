@@ -63,7 +63,7 @@ extends AutoCloseable with Observing
 
   def close() = api.logout().guarantee(Task(api.close())).runAsyncAndForget
 
-  def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[MasterCommand.Response.Accepted]] =
+  def replaceMasterConfiguration(versionId: VersionId): Task[Checked[MasterCommand.Response.Accepted]] =
     for {
       _ ← loginUntilReachable
       currentEntries = readDirectory
@@ -76,7 +76,7 @@ extends AutoCloseable with Observing
       response
     }
 
-  def updateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Unit]] =
+  def updateMasterConfiguration(versionId: VersionId): Task[Checked[Unit]] =
     for {
       _ ← loginUntilReachable
       currentEntries = readDirectory
@@ -104,7 +104,7 @@ extends AutoCloseable with Observing
 
   private def readDirectory = DirectoryReader.entries(conf.liveDirectory)
 
-  private def toUpdateRepoCommand(versionId: Option[VersionId], diff: PathSeqDiff): Checked[UpdateRepo] = {
+  private def toUpdateRepoCommand(versionId: VersionId, diff: PathSeqDiff): Checked[UpdateRepo] = {
     val checkedChanged: Checked[Vector[FileBased]] =
       (diff.added ++ diff.changed)
         .map(path ⇒ TypedPathDirectoryWalker.fileToTypedFile(conf.liveDirectory, path, typedPathCompanions))
@@ -115,17 +115,17 @@ extends AutoCloseable with Observing
       diff.deleted.map(path ⇒ TypedPathDirectoryWalker.fileToTypedFile(conf.liveDirectory, path, typedPathCompanions))
         .toVector.sequence
         .map(_ map (_.path))
-    (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(chg map signer.sign, del, versionId))
+    (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(versionId, chg map (o ⇒ signer.sign(o withVersion versionId)), del))
   }
 
-  private def toReplaceRepoCommand(versionId: Option[VersionId], files: Seq[Path]): Checked[ReplaceRepo] = {
+  private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] = {
     val checkedFileBased: Checked[Vector[FileBased]] =
       files
         .map(file⇒ TypedPathDirectoryWalker.fileToTypedFile(conf.liveDirectory, file, typedPathCompanions))
         .toVector.sequence
         .flatMap(readObjects(readers, conf.liveDirectory, _))
         .map(_.toVector)
-    checkedFileBased map (o ⇒ ReplaceRepo(o map signer.sign, versionId))
+    checkedFileBased map (o ⇒ ReplaceRepo(versionId, o map (x ⇒ signer.sign(x withVersion versionId))))
   }
 
   private def retryLoginDurations: Iterator[FiniteDuration] =

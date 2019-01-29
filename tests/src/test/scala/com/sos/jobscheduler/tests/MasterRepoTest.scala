@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import cats.data.Validated.Invalid
-import cats.syntax.option._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -36,7 +35,7 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(UpdateRepo(versionId = V1.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(V1)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V1.string}'")))
 
           // Add Workflow
@@ -55,15 +54,15 @@ final class MasterRepoTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V4, CWorkflowPath, OrderId("C"))
 
           // Change workflow
-          provider.updateRepo(master, V5.some, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
+          provider.updateRepo(master, V5, testWorkflow(V5).withId(CWorkflowPath) :: Nil)
 
           // Delete workflow
-          provider.updateRepo(master, V6.some, delete = CWorkflowPath :: Nil)
+          provider.updateRepo(master, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(master.executeCommandAsSystemUser(UpdateRepo(versionId = V2.some)).await(99.s) ==
+          assert(master.executeCommandAsSystemUser(UpdateRepo(V2)).await(99.s) ==
             Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3
@@ -87,7 +86,7 @@ final class MasterRepoTest extends FreeSpec {
         assert(workflow.isAnonymous)
         val order = FreshOrder(orderId, path)
         // Add Workflow
-        provider.updateRepo(master, versionId.some, workflow.withId(path) :: Nil)
+        provider.updateRepo(master, versionId, workflow.withId(path) :: Nil)
         master.addOrderBlocking(order)
         awaitOrder(master, order.id, path % versionId)
       }

@@ -132,6 +132,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       {
         "TYPE": "Workflow",
         "path": "/WORKFLOW",
+        "versionId": "VERSION-1",
         "instructions": [
           {
             "TYPE": "Execute.Anonymous",
@@ -148,6 +149,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       {
         "TYPE": "Workflow",
         "path": "/FOLDER/WORKFLOW-2",
+        "versionId": "VERSION-1",
         "instructions": [
           {
             "TYPE": "Execute.Anonymous",

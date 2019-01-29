@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests.master.commands
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.option._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -62,7 +61,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
   "User requires permission 'UpdateRepo'" in {
     master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
-    assert(executeCommand(UpdateRepo(sign(workflow1) :: Nil, versionId = V1.some)) ==
+    assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
       Invalid(Problem("User does not have the required permission 'UpdateRepo'")))
 
     master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
@@ -70,10 +69,10 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
   "MasterCommand.UpdateRepo" in {
     val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
-    executeCommand(UpdateRepo(sign(workflow1) :: Nil, versionId = V1.some)).orThrow
+    executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)).orThrow
     master.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
 
-    executeCommand(UpdateRepo(sign(workflow2) :: Nil, versionId = V2.some)).orThrow
+    executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow
     master.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
     val promises = Vector.fill(2)(Promise[Timestamp]())
@@ -87,12 +86,12 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
 
-    executeCommand(UpdateRepo(delete = TestWorkflowPath :: Nil, versionId = V3.some)).orThrow
+    executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.seconds) ==
       Invalid(Problem("Has been deleted: Workflow:/WORKFLOW 3")))
 
     withClue("Tampered with configuration: ") {
-      val updateRepo = UpdateRepo(sign(workflow2).copy(message = "TAMPERED") :: Nil)
+      val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(message = "TAMPERED") :: Nil)
       assert(executeCommand(updateRepo) == Invalid(PGPTamperedWithMessageProblem))
     }
   }
@@ -101,7 +100,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
     val originalAgents = directoryProvider.agentFileBased.map(_ withVersion Vinitial)
 
     // First, add two workflows
-    executeCommand(UpdateRepo(sign(workflow4) :: sign(otherWorkflow4) :: Nil, versionId = V4.some)).orThrow
+    executeCommand(UpdateRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
     locally {
       val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
       assert(repo.versions == V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
@@ -109,7 +108,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
     }
 
     // Now replace: delete one workflow and change the other
-    executeCommand(ReplaceRepo(otherWorkflow5 +: directoryProvider.agentFileBased map sign, versionId = V5.some)).orThrow
+    executeCommand(ReplaceRepo(V5, otherWorkflow5 +: (directoryProvider.agentFileBased map (_ withVersion V5)) map sign)).orThrow
     val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
     assert(repo.versions == V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
     assert(repo.currentFileBaseds.toSet == Set(otherWorkflow5 withVersion V5) ++ originalAgents)
@@ -122,6 +121,18 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
       case EventSeq.NonEmpty(_) ⇒
         promise.success(now)
     }
+  }
+
+  "MasterCommand.UpdateRepo with divergent VersionId is rejected" in {
+    // The signer signs the VersionId, too
+    assert(executeCommand(UpdateRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
+      == Invalid(Problem("Expected version 'DIVERGE' in 'Workflow:/OTHER-WORKFLOW 5'")))
+  }
+
+  "MasterCommand.ReplaceRepo with divergent VersionId is rejected" in {
+    // The signer signs the VersionId, too
+    assert(executeCommand(ReplaceRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
+      == Invalid(Problem("Expected version 'DIVERGE' in 'Workflow:/OTHER-WORKFLOW 5'")))
   }
 
   private def executeCommand(cmd: MasterCommand): Checked[cmd.Response] =
@@ -141,25 +152,25 @@ object UpdateRepoTest
     }"""
 
   private val V1 = VersionId("1")
-  private val workflow1 = WorkflowParser.parse(TestWorkflowPath, script1).orThrow
+  private val workflow1 = WorkflowParser.parse(TestWorkflowPath % V1, script1).orThrow
 
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
       execute executable="/SCRIPT2.cmd", agent="/AGENT";
     }"""
-  private val workflow2 = WorkflowParser.parse(TestWorkflowPath, script2).orThrow
+  private val workflow2 = WorkflowParser.parse(TestWorkflowPath % V2, script2).orThrow
 
   private val V3 = VersionId("3")
 
   private val V4 = VersionId("4")
-  private val workflow4 = WorkflowParser.parse(TestWorkflowPath, script2).orThrow
-  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW"), script2).orThrow
+  private val workflow4 = WorkflowParser.parse(TestWorkflowPath % V4, script2).orThrow
+  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") % V4, script2).orThrow
 
   private val V5 = VersionId("5")
   private val script5 = """
     define workflow {
       execute executable="/SCRIPT4.cmd", agent="/AGENT";
     }"""
-  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW"), script5).orThrow
+  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") % V5, script5).orThrow
 }

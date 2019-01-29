@@ -93,22 +93,22 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   final case class UpdateRepo(
+    versionId: VersionId,
     change: Seq[SignedRepoObject] = Nil,
-    delete: Seq[TypedPath] = Nil,
-    versionId: Option[VersionId] = None)
+    delete: Seq[TypedPath] = Nil)
   extends MasterCommand {
     type Response = Response.Accepted
 
     def isEmpty = versionId.isEmpty && change.isEmpty && delete.isEmpty
 
-    override def toString = s"UpdateRepo(${versionId.fold("")(_ + " ")}change=${change.size}× delete=${delete.size}×)"
+    override def toString = s"UpdateRepo($versionId change=${change.size}× delete=${delete.size}×)"
   }
 
-  final case class ReplaceRepo(objects: Seq[SignedRepoObject], versionId: Option[VersionId] = None)
+  final case class ReplaceRepo(versionId: VersionId, objects: Seq[SignedRepoObject])
   extends MasterCommand {
     type Response = Response.Accepted
 
-    override def toString = s"ReplaceRepo(${versionId getOrElse ""}, ${objects.size}× objects)"
+    override def toString = s"ReplaceRepo($versionId ${objects.size}× objects)"
   }
 
   /** Read the configured objects (workflows, agents) from the directory config/live. */

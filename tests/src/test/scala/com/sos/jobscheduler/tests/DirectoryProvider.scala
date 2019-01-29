@@ -153,7 +153,7 @@ extends HasCloser {
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster ⇒
       if (!filebasedHasBeenAdded.getAndSet(true)) {
-        updateRepo(runningMaster, Some(Vinitial), agentFileBased ++ fileBased)
+        updateRepo(runningMaster, Vinitial, agentFileBased ++ fileBased)
       }
       runningMaster
     }
@@ -172,12 +172,15 @@ extends HasCloser {
 
   def updateRepo(
     master: RunningMaster,
-    versionId: Option[VersionId] = None,
+    versionId: VersionId,
     change: Seq[FileBased] = Nil,
     delete: Seq[TypedPath] = Nil)
   : Unit =
-    master.executeCommandAsSystemUser(UpdateRepo(change map fileBasedSigner.sign, delete, versionId))
-      .await(99.s).orThrow
+    master.executeCommandAsSystemUser(UpdateRepo(
+      versionId,
+      change map (_ withVersion versionId) map fileBasedSigner.sign,
+      delete)
+    ).await(99.s).orThrow
 
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
 }

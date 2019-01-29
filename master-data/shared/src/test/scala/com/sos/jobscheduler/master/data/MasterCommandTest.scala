@@ -76,87 +76,66 @@ final class MasterCommandTest extends FreeSpec {
     }
   }
 
-  "UpdateRepo" - {
-    "defaults" in {
-      testJson[MasterCommand](UpdateRepo(),
-        json"""{
-          "TYPE": "UpdateRepo",
-          "change": [],
-          "delete": []
-        }""")
-    }
-
-    "complete" in {
-      testJson[MasterCommand](UpdateRepo(
-        change = SignedRepoObject(
-          message = """{"TYPE": "Workflow", ...}""",
-          signature = PgpSignature(
-             """-----BEGIN PGP SIGNATURE-----
-              |
-              |...
-              |-----END PGP SIGNATURE-----
-              |""".stripMargin)) :: Nil,
-        delete = WorkflowPath("/WORKFLOW-A") :: AgentPath("/AGENT-A") :: Nil,
-        Some(VersionId("1"))),
-        json"""{
-          "TYPE": "UpdateRepo",
-          "versionId": "1",
-          "change": [
-            {
-              "message": "{\"TYPE\": \"Workflow\", ...}",
-              "signature": {
-                "TYPE": "PGP",
-                "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
-              }
+  "UpdateRepo" in {
+    testJson[MasterCommand](UpdateRepo(
+      VersionId("1"),
+      change = SignedRepoObject(
+        message = """{"TYPE": "Workflow", ...}""",
+        signature = PgpSignature(
+           """-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin)) :: Nil,
+      delete = WorkflowPath("/WORKFLOW-A") :: AgentPath("/AGENT-A") :: Nil),
+      json"""{
+        "TYPE": "UpdateRepo",
+        "versionId": "1",
+        "change": [
+          {
+            "message": "{\"TYPE\": \"Workflow\", ...}",
+            "signature": {
+              "TYPE": "PGP",
+              "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
             }
-          ],
-          "delete": [
-            {
-              "TYPE": "WorkflowPath",
-              "path": "/WORKFLOW-A"
-            }, {
-              "TYPE": "AgentPath",
-              "path": "/AGENT-A"
-            }
-          ]
-        }""")
-    }
+          }
+        ],
+        "delete": [
+          {
+            "TYPE": "WorkflowPath",
+            "path": "/WORKFLOW-A"
+          }, {
+            "TYPE": "AgentPath",
+            "path": "/AGENT-A"
+          }
+        ]
+      }""")
   }
 
-  "ReplaceRepo" - {
-    "defaults" in {
-      testJson[MasterCommand](ReplaceRepo(Nil),
-        json"""{
-          "TYPE": "ReplaceRepo",
-          "objects": []
-        }""")
-    }
-
-    "complete" in {
-      testJson[MasterCommand](ReplaceRepo(
-        objects = SignedRepoObject(
-          message = """{"TYPE": "Workflow", ...}""",
-          signature = PgpSignature(
-            """|-----BEGIN PGP SIGNATURE-----
-              |
-              |...
-              |-----END PGP SIGNATURE-----
-              |""".stripMargin)) :: Nil,
-        Some(VersionId("1"))),
-        json"""{
-          "TYPE": "ReplaceRepo",
-          "versionId": "1",
-          "objects": [
-            {
-              "message": "{\"TYPE\": \"Workflow\", ...}",
-              "signature": {
-                "TYPE": "PGP",
-                "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
-              }
+  "ReplaceRepo" in {
+    testJson[MasterCommand](ReplaceRepo(
+      VersionId("1"),
+      objects = SignedRepoObject(
+        message = """{"TYPE": "Workflow", ...}""",
+        signature = PgpSignature(
+          """|-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin)) :: Nil),
+      json"""{
+        "TYPE": "ReplaceRepo",
+        "versionId": "1",
+        "objects": [
+          {
+            "message": "{\"TYPE\": \"Workflow\", ...}",
+            "signature": {
+              "TYPE": "PGP",
+              "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
             }
-          ]
-        }""")
-    }
+          }
+        ]
+      }""")
   }
 
   "EmergencyStop" in {

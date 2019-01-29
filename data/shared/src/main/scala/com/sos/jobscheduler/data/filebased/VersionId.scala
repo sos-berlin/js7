@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.Timestamp
 import io.circe.{Decoder, Encoder, Json}
 
 /**
@@ -25,6 +26,20 @@ final case class VersionId(string: String) extends GenericString
 object VersionId extends GenericString.Checked_[VersionId]
 {
   val Anonymous = VersionId.unchecked("⊥")
+
+  def generate(isKnown: VersionId ⇒ Boolean = _ ⇒ false): VersionId = {
+    val ts = Timestamp.now.toIsoString
+    val short = VersionId("#" + ts.take(19) + ts.drop(19+4)/*tz*/)  // Without milliseconds ".123"
+    if (!isKnown(short))
+      short
+    else {
+      val v = VersionId("#" + ts)  // With milliseconds
+      if (!isKnown(v))
+        v
+      else
+        Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !isKnown(w) ⇒ w } .get
+      }
+  }
 
   override implicit val jsonEncoder: Encoder[VersionId] = o ⇒ {
     if (o.isAnonymous) throw new IllegalArgumentException("JSON-serialize VersionId.Anonymous?")
