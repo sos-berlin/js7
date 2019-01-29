@@ -39,6 +39,7 @@ final class Evaluator(scope: Scope)
       case Not            (a)    ⇒ evalBoolean(a) map (o ⇒ !o.bool) map BooleanValue.apply
       case And            (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (!o.bool) o.valid else evalBoolean(b))
       case Or             (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (o.bool) o.valid else evalBoolean(b))
+      case ToBoolean      (a: StringExpression)    ⇒ evalString(a) flatMap toBoolean
       case _ ⇒ Invalid(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
@@ -99,6 +100,14 @@ final class Evaluator(scope: Scope)
           // getMessage returns null
           Problem(s"Not a valid number: ${o.truncateWithEllipsis(10)}")
         }
+    }
+
+  private def toBoolean(v: Value): Checked[BooleanValue] =
+    v match {
+      case v: BooleanValue ⇒ v.valid
+      case StringValue("false") ⇒ BooleanValue(false).valid
+      case StringValue("true") ⇒ BooleanValue(true).valid
+      case StringValue(o) ⇒ Problem(s"Not a valid Boolean value: ${o.truncateWithEllipsis(10)}")
     }
 
   //private def castValue[A: ClassTag](v: Value): Checked[A] =

@@ -123,6 +123,20 @@ final class ExpressionParserTest extends FreeSpec {
       Variable(StringConstant("result")),
       StringConstant("A.*")))
 
+  "Unknown numeric function" in {
+    import fastparse.all._
+    val parser = numericExpression ~ End
+    assert(parser.checkedParse(""""123".toNumber""") == Valid(ToNumber(StringConstant("123"))))
+    assert(parser.checkedParse(""""123".UNKNOWN""") == Invalid(Problem("""Unknown function: .UNKNOWN:1:14 ...""""")))
+  }
+
+  "Unknown boolean function" in {
+    import fastparse.all._
+    val parser = booleanExpression ~ End
+    assert(parser.checkedParse(""""true".toBoolean""") == Valid(ToBoolean(StringConstant("true"))))
+    assert(parser.checkedParse(""""true".UNKNOWN""") == Invalid(Problem("""Unknown function: .UNKNOWN:1:15 ...""""")))
+  }
+
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
       import fastparse.all._

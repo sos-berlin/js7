@@ -67,9 +67,11 @@ object ExpressionParser
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | dollarVariable | functionCall)
 
   private val factor = P(
-    factorOnly ~ (w ~ "." ~~/ keyword).? map {
-      case (o, None) ⇒ o
-      case (o, Some("toNumber")) ⇒ ToNumber(o)
+    factorOnly ~ (w ~ "." ~~/ keyword).? flatMap {
+      case (o, None) ⇒ valid(o)
+      case (o, Some("toNumber")) ⇒ valid(ToNumber(o))
+      case (o, Some("toBoolean")) ⇒ valid(ToBoolean(o))
+      case (_, Some(f)) ⇒ invalid(s"Unknown function: .$f")
     })
 
   private lazy val not: P[Expression] = P(

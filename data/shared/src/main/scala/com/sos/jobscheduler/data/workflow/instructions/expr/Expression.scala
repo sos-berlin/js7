@@ -87,6 +87,11 @@ object Expression
     override def toString = Precedence.inParentheses(expression, precedence) + ".toNumber"
   }
 
+  final case class ToBoolean(expression: Expression) extends BooleanExpression {
+    def precedence = Precedence.Factor
+    override def toString = Precedence.inParentheses(expression, precedence) + ".toBoolean"
+  }
+
   final case class BooleanConstant(bool: Boolean) extends BooleanExpression {
     def precedence = Precedence.Factor
     override def toString = bool.toString

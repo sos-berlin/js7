@@ -87,6 +87,14 @@ final class EvaluatorTest extends FreeSpec
     result = 7,
     Valid(ToNumber(Variable(StringConstant("ANUMBER")))))
 
+  testEval(""""true".toBoolean""",
+    result = true,
+    Valid(ToBoolean(StringConstant("true"))))
+
+  testEval(""""false".toBoolean""",
+    result = false,
+    Valid(ToBoolean(StringConstant("false"))))
+
   testEval("""returnCode""",
     result = 1,
     Valid(OrderReturnCode))
