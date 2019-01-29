@@ -55,11 +55,17 @@ object IfTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = s"""
      |define workflow {
-     |  execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1]; // #0
-     |  if (returnCode == 0) {   // #1
-     |    execute executable="/TEST$sh", agent="AGENT";  // #1/0/0
-     |  } else {
-     |    execute executable="/TEST$sh", agent="AGENT";  // #1/1/0
+     |  if (true) {
+     |    if (true) {
+     |      execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1]; // #0/0/0
+     |    };
+     |  };
+     |  if (true) {
+     |    if (returnCode == 0) {   // #2
+     |      execute executable="/TEST$sh", agent="AGENT";  // #2/0/0
+     |    } else {
+     |      execute executable="/TEST$sh", agent="AGENT";  // #2/1/0
+     |    };
      |  };
      |  execute executable="/TEST$sh", agent="AGENT";    // #2
      |}""".stripMargin
@@ -68,12 +74,13 @@ object IfTest {
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
+      OrderMoved(Position(0, 0/*then*/, 0, 0/*then*/, 0)),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      OrderMoved(Position(1, 0/*then*/, 0)),
+      OrderMoved(Position(1, 0/*then*/, 0, 0/*then*/, 0)),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(2)),
@@ -85,12 +92,13 @@ object IfTest {
       OrderFinished),
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
+      OrderMoved(Position(0, 0/*then*/, 0, 0/*then*/, 0)),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
-      OrderMoved(Position(1, 1/*else*/, 0)),
+      OrderMoved(Position(1, 0/*else*/, 0, 1/*else*/, 0)),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(2)),
@@ -102,6 +110,7 @@ object IfTest {
       OrderFinished),
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
+      OrderMoved(Position(0, 0/*then*/, 0, 0/*then*/, 0)),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
