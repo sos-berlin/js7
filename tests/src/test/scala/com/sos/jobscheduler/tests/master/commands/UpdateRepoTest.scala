@@ -132,7 +132,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
 
 object UpdateRepoTest
 {
-  private val Tick = 1.5.second
+  private val Tick = 2.second
   private val TestAgentPath = AgentPath("/AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """
