@@ -5,8 +5,8 @@ homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
 publicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
 
-if [ -f "$privateKeyFile" -a -f "$publicKeyFile" ]; then
-  echo "PGP files exists already. Nothing to do"
+if [ -s "$privateKeyFile" -a -s "$publicKeyFile" ]; then
+  echo "PGP files exist already. Nothing to do"
 else
   which gpg >/dev/null || {
     echo "Missing gpg (GnuPG)"
@@ -16,7 +16,7 @@ else
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
     gpg --homedir "$homedir" --export --armor --output="$publicKeyFile"
   fi
-  if [ -f "$privateKeyFile" -a -f "$publicKeyFile" ]; then
+  if [ -s "$privateKeyFile" -a -s "$publicKeyFile" ]; then
     :
   else
     mkdir -p gnupg
