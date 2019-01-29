@@ -15,6 +15,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.CatsUtils.autoCloseableToResource
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, TypedPathDirectoryWalker}
@@ -34,6 +35,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.compat.Platform.ConcurrentModificationException
 import scala.concurrent.duration._
@@ -50,6 +52,8 @@ extends AutoCloseable with Observing
       userName ← conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password ← conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
+  private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
+    .asScala.map(_.toFiniteDuration)
   private val signer = new FileBasedSigner(
     MasterFileBaseds.jsonCodec,
     readSecretKey(fileAsResource(conf.configDirectory / "private" / "private-pgp-key.asc")),
@@ -123,11 +127,13 @@ extends AutoCloseable with Observing
         .map(_.toVector)
     checkedFileBased map (o ⇒ ReplaceRepo(o map signer.sign, versionId))
   }
+
+  private def retryLoginDurations: Iterator[FiniteDuration] =
+    firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.seconds)
 }
 
 object Provider
 {
-  private def retryLoginDurations = Iterator.continually(10.seconds)
   private val typedPathCompanions = Set(AgentPath, WorkflowPath)
   private val logger = Logger(getClass)
   private val readers = AgentReader :: WorkflowReader :: Nil
