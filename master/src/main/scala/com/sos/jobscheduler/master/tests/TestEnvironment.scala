@@ -52,8 +52,6 @@ extends AutoCloseable {
     masterDir / "config" / dir resolve path.toFile(t)
   }
 
-  def masterPrivateConf = masterDir / "config/private/private.conf"
-
   def masterDir: Path =
     temporaryDirectory / "master"
 
