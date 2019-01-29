@@ -13,6 +13,7 @@ import scala.collection.mutable
 final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   protected val agentPaths = Nil
+  protected val fileBased = Nil
   private def configDirectory = directoryProvider.master.config
   private def dataDirectory = directoryProvider.master.data
   private val httpsPort = findRandomFreeTcpPort()

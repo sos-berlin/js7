@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 final class CancelOrderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 {
   protected val agentPaths = TestAgentPath :: Nil
-  override protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
+  protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
 
   override def beforeAll() = {
     for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(1.s))

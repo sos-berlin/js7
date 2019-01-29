@@ -37,6 +37,7 @@ import scala.concurrent.duration._
 final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
 {
   protected val agentPaths = Nil
+  protected val fileBased = Nil
 
   private lazy val directory = createTempDirectory("test-")
   private lazy val live = directory / "live"

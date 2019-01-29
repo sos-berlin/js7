@@ -213,7 +213,7 @@ object DirectoryProvider
     protected def provideAgentClientCertificate = false
     protected def masterClientCertificate: Option[JavaResource] = None
     protected def masterConfig: Config = ConfigFactory.empty
-    protected def fileBased: Seq[FileBased] = Nil
+    protected def fileBased: Seq[FileBased]
 
     protected final lazy val master: RunningMaster = directoryProvider.startMaster(
       masterModule,

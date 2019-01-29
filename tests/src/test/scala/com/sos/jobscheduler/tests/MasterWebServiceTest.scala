@@ -56,6 +56,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   private lazy val uri = master.localUri
 
   protected val agentPaths = TestAgentPath :: AgentPath("/FOLDER/AGENT-A") :: Nil
+  protected val fileBased = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri.toString
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest", uri, "/master")

@@ -24,7 +24,7 @@ import org.scalatest.FreeSpec
 final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProvider.ForScalaTest {
 
   protected val agentPaths = Nil
-  override protected val fileBased = TestWorkflow :: Nil
+  protected val fileBased = TestWorkflow :: Nil
 
   private lazy val api = new AkkaHttpMasterApi(master.localUri)
     .closeWithCloser

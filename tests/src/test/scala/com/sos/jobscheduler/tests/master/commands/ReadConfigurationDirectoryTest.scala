@@ -30,6 +30,7 @@ import scala.concurrent.duration._
 final class ReadConfigurationDirectoryTest extends FreeSpec with DirectoryProvider.ForScalaTest
 {
   protected val agentPaths = Nil
+  protected val fileBased = Nil
 
   private lazy val live = directoryProvider.master.config / "live"
 

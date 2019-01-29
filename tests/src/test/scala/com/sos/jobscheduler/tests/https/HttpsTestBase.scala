@@ -44,9 +44,9 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
       trustStoreRef = Some(TrustStoreRef(trustStore.toUri.toURL, storePassword = SecretString("jobscheduler"))))
     .closeWithCloser
 
-  protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
   override protected def agentHttps = true
-  override protected val fileBased = TestWorkflow :: Nil
+  protected val agentPaths = AgentPath("/TEST-AGENT") :: Nil
+  protected val fileBased = TestWorkflow :: Nil
 
   override def beforeAll() = {
     // Reference to agents implicitly starts them (before master)

@@ -40,6 +40,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
   import directoryProvider.fileBasedSigner.sign
 
   protected val agentPaths = TestAgentPath :: Nil
+  protected val fileBased = Nil
 
   override def beforeAll() = {
     (directoryProvider.master.config / "private" / "private.conf") ++=

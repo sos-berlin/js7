@@ -30,7 +30,7 @@ final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
   protected val agentPaths = AAgentPath :: BAgentPath :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
     s"""jobscheduler.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE/🥕" """)
-  override protected val fileBased = TestWorkflow :: DuplicateWorkflow :: Nil
+  protected val fileBased = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {
     directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW.cmd"), script(60.s))
