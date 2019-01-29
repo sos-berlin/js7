@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.instructionToExecutor
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished, OrderMoved}
 import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.{End, Fork}
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -37,7 +37,8 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
                 fork ← Some(context.instruction(parentOrder.workflowPosition)) collect { case o: Fork ⇒ o }
                 event ← ForkExecutor.toEvent(context, parentOrder, fork)
               } yield event
-          case _ ⇒ None
+          case _ ⇒
+            Some(order.id <-: OrderMoved(returnPosition.increment))
         }
     }
 

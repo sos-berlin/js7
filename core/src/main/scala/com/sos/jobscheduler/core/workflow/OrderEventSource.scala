@@ -52,6 +52,7 @@ final class OrderEventSource(
               applyMoveInstructions(oId, moved) map Some.apply
 
             case Some(oId <-: OrderFailed(outcome)) ⇒  // OrderFailed is used internally only
+              assert(oId == orderId)
               catchPosition(orderId) match {
                 case None      ⇒ Valid(Some(oId <-: OrderStopped(outcome)))
                 case Some(pos) ⇒ Valid(Some(oId <-: OrderCatched(outcome, pos)))

@@ -112,9 +112,7 @@ object TryTest {
      |      execute executable="/FAIL-2$sh", agent="AGENT";   // #0/0/0/1/0   OrderCatched
      |    };
      |    execute executable="/OKAY$sh", agent="AGENT";       // #0/0/1
-     |  } catch {
-     |    execute executable="/OKAY$sh", agent="AGENT";       // #0/1/0
-     |  };
+     |  } catch {};
      |  execute executable="/OKAY$sh", agent="AGENT";         // #1
      |}""".stripMargin
   private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/FINISHING") % "INITIAL", finishingScript).orThrow
@@ -133,10 +131,7 @@ object TryTest {
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
     OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0, 1, 0)),
-
-    OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.succeeded),
-    OrderMoved(Position(1)),
+    OrderMoved(Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
