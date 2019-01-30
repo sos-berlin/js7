@@ -193,7 +193,7 @@ object FileUtils {
     if (path.isEmpty)
       Invalid(Problem("File path must not be empty"))
     else if (RelativePathRegex.pattern.matcher(path).find())
-      Invalid(Problem(s"Not a valid file path: $path"))
+      Invalid(Problem(s"Not a valid relative file path: $path"))
     else
       Valid(path)
 }
