@@ -1,19 +1,16 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.google.inject.Guice
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.auth.SecretStringGenerator.newSecretString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
@@ -28,9 +25,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
@@ -38,12 +34,8 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork, If}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
-import com.sos.jobscheduler.master.tests.TestEnvironment
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
@@ -80,116 +72,103 @@ object TestMasterAgent
   }
 
   private def run(conf: Conf): Unit = {
-    val env = new TestEnvironment(conf.agentPaths, conf.directory)
-    env.masterDir / "config" / "master.conf" := "jobscheduler.webserver.auth.loopback-is-public = on"
-    val agentToPassword = conf.agentPaths.map(_ → newSecretString()).toMap
-    withCloser { implicit closer ⇒
-      env.masterDir / "config" / "private" / "private.conf" :=
-        s"""jobscheduler.webserver.auth.loopback-is-public = on
-            |jobscheduler.auth.agents {
-            |  # Passwords for each Agent path (user name is the configured Master ID or "Master")
-            |""".stripMargin +
-         agentToPassword.map(o ⇒ s"""  "${o._1.string}" = "${o._2.string}"\n""").mkString +
-         "}\n"
-      val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
-      val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
-        config = masterConfiguration.config)))
-      injector.instance[Closer].closeWithCloser
-      val agents = for (agentPath ← conf.agentPaths) yield {
-        TestExecutablePath.toFile(env.agentDir(agentPath) / "config" / "executables").writeExecutable(
-            if (isWindows) s"""
-               |@echo off
-               |echo Hello
-               |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
-               |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-               |""".stripMargin
-            else s"""
-               |/usr/bin/env bash
-               |set -e
-               |echo Hello ☘️
-               |for a in {1..${conf.stdoutSize / StdoutRowSize}}; do
-               |  echo "»${"x" * (StdoutRowSize - 2)}«"
-               |done
-               |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
-               |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
-               |""".stripMargin)
-        val agent = RunningAgent.startForTest(
-          AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
-        ) map { _.closeWithCloser } await 99.s
-        env.file(agentPath, SourceType.Json) := Agent(AgentPath.NoId, uri = agent.localUri.toString)
-        agent
-      }
-      JavaShutdownHook.add("TestMasterAgent") {
-        print('\n')
-        (for (agent ← agents) yield {
-          agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
-          val r = agent.terminated
-          agent.close()
-          r
-        }) await 10.s
-        injector.instance[Closer].close()
-        Log4j.shutdown()
-      } .closeWithCloser
+    autoClosing(new DirectoryProvider(conf.agentPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env ⇒
+      env.master.config / "master.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n"
+      env.agents foreach { _.config / "agent.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n" }
+      withCloser { implicit closer ⇒
+        for (agentPath ← conf.agentPaths) {
+          TestExecutablePath.toFile(env.agentToTree(agentPath).config / "executables").writeExecutable(
+              if (isWindows) s"""
+                 |@echo off
+                 |echo Hello
+                 |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
+                 |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+                 |""".stripMargin
+              else s"""
+                 |/usr/bin/env bash
+                 |set -e
+                 |echo Hello ☘️
+                 |for a in {1..${conf.stdoutSize / StdoutRowSize}}; do
+                 |  echo "»${"x" * (StdoutRowSize - 2)}«"
+                 |done
+                 |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
+                 |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
+                 |""".stripMargin)
+        }
 
-      env.writeJson(TestWorkflowPath, makeWorkflow(conf))
-      for (i ← 1 to conf.orderGeneratorCount) {
-        env.file(ScheduledOrderGeneratorPath(s"/test-$i"), SourceType.Xml).xml =
-          <order job_chain={TestWorkflowPath.string}>
-            <params>
-              <param name="VARIABLE" value={i.toString}/>
-            </params>
-            <run_time>
-              <period absolute_repeat={(conf.period plusNanos 999999999).getSeconds.toString}/>
-            </run_time>
-          </order>
-      }
+        for (i ← 1 to conf.orderGeneratorCount) {
+          createDirectory(env.master.config / "order-generators")
+          (env.master.config / "order-generators" / s"test-$i.order.xml").xml =
+            <order job_chain={TestWorkflowPath.string}>
+              <params>
+                <param name="VARIABLE" value={i.toString}/>
+              </params>
+              <run_time>
+                <period absolute_repeat={(conf.period plusNanos 999999999).getSeconds.toString}/>
+              </run_time>
+            </order>
+        }
 
-      val master = RunningMaster(injector) await 99.s
-      val startTime = now
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)).await(99.s).orThrow
-      injector.instance[ActorSystem].actorOf(Props {
-        new Actor {
-          injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
-          injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
-          context.system.scheduler.schedule(0.seconds, 1.second, self, "PRINT")
-          val stopwatch = new Stopwatch
-          var added, finished, printedFinished = 0
-          var lastDuration: Option[Duration] = None
-          var lastLineLength = 0
+        env.runAgents() { agents ⇒
+          env.runMaster() { master ⇒
+            JavaShutdownHook.add("TestMasterAgent") {
+              print('\n')
+              (for (agent ← agents) yield {
+                agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+                val r = agent.terminated
+                agent.close()
+                r
+              }) await 10.s
+              master.injector.instance[Closer].close()
+              Log4j.shutdown()
+            } .closeWithCloser
 
-          def receive = {
-            case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) ⇒
-              added += 1
-            case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) ⇒
-              lastDuration = Some(now - Instant.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
-              finished += 1
-            case "PRINT" ⇒
-              if (finished > printedFinished) {
-                val duration = lastDuration.fold("-")(_.pretty)
-                val delta = finished - printedFinished
-                val diff = s"(diff ${finished - (now - startTime).getSeconds * conf.orderGeneratorCount})"
-                val notFinished = added - finished
-                val throughput = stopwatch.itemsPerSecondString(finished, "orders")
-                val cpu = getOperatingSystemMXBean match {
-                  case mx: com.sun.management.OperatingSystemMXBean ⇒ f"  ${(mx.getSystemCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
-                  case _ ⇒ ""
+            val startTime = now
+            master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)).await(99.s).orThrow
+            master.injector.instance[ActorSystem].actorOf(Props {
+              new Actor {
+                master.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
+                master.injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
+                context.system.scheduler.schedule(0.seconds, 1.second, self, "PRINT")
+                val stopwatch = new Stopwatch
+                var added, finished, printedFinished = 0
+                var lastDuration: Option[Duration] = None
+                var lastLineLength = 0
+
+                def receive = {
+                  case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) ⇒
+                    added += 1
+                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) ⇒
+                    lastDuration = Some(now - Instant.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
+                    finished += 1
+                  case "PRINT" ⇒
+                    if (finished > printedFinished) {
+                      val duration = lastDuration.fold("-")(_.pretty)
+                      val delta = finished - printedFinished
+                      val diff = s"(diff ${finished - (now - startTime).getSeconds * conf.orderGeneratorCount})"
+                      val notFinished = added - finished
+                      val throughput = stopwatch.itemsPerSecondString(finished, "orders")
+                      val cpu = getOperatingSystemMXBean match {
+                        case mx: com.sun.management.OperatingSystemMXBean ⇒ f"  ${(mx.getSystemCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
+                        case _ ⇒ ""
+                      }
+                      val line = f"$duration%-7s Δ$delta%-3d $diff%-12s  [$notFinished]  $throughput$cpu"
+                      print("\r" + " " * lastLineLength + "\r" + line)
+                      lastLineLength = line.length
+                      printedFinished = finished
+                    } else {
+                      print('.')
+                      lastLineLength += 1
+                    }
                 }
-                val line = f"$duration%-7s Δ$delta%-3d $diff%-12s  [$notFinished]  $throughput$cpu"
-                print("\r" + " " * lastLineLength + "\r" + line)
-                lastLineLength = line.length
-                printedFinished = finished
-              } else {
-                print('.')
-                lastLineLength += 1
               }
+            })
+            master.terminated await 365 * 24.h
+            master.close()
+            for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())
           }
         }
-      })
-      master.terminated await 365 * 24.h
-      master.close()
-      for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())
-      agents map (_.terminated) await 60.s
-      agents foreach (_.close())
+      }
     }
   }
 
@@ -200,7 +179,7 @@ object TestMasterAgent
       taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
-    Workflow.of(
+    Workflow.of(TestWorkflowPath,
       Execute(testJob(conf, conf.agentPaths.head)),
       Fork(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
