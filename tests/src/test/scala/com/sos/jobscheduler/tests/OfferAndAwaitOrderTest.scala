@@ -15,6 +15,7 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq

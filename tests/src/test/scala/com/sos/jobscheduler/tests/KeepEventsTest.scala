@@ -18,8 +18,9 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.script
 import com.sos.jobscheduler.tests.KeepEventsTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.TimeoutException

@@ -23,9 +23,9 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
-import com.sos.jobscheduler.tests.DirectoryProvider
-import com.sos.jobscheduler.tests.DirectoryProvider.Vinitial
 import com.sos.jobscheduler.tests.master.commands.UpdateRepoTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.Vinitial
+import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.Promise
@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoTest extends FreeSpec with DirectoryProvider.ForScalaTest
+final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   import directoryProvider.fileBasedSigner.sign
 

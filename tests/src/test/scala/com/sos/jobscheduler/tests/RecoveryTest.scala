@@ -32,8 +32,9 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, script}
 import com.sos.jobscheduler.tests.RecoveryTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import java.nio.file.Path
 import java.time.Instant
 import monix.execution.Scheduler.Implicits.global

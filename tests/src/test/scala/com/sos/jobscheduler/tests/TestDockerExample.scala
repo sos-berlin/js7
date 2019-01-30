@@ -61,7 +61,7 @@ object TestDockerExample
       if (path contains "/executables/") setPosixFilePermissions(dir / path, PosixFilePermissions.fromString("rwx------"))
     }
     provide("master/config/private/private.conf")
-    provide("master/config/live/მაგალითად.workflow.txt")
+    provide("provider/config/live/მაგალითად.workflow.txt")
     provide("master/config/order-generators/test.order.xml")
     provide("agent-1/config/private/private.conf")
     provide("agent-1/config/executables/test")

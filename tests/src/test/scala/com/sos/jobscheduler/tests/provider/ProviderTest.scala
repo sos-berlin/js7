@@ -20,8 +20,8 @@ import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.provider.Provider
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.provider.ProviderTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.nio.file.Paths
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends FreeSpec with DirectoryProvider.ForScalaTest
+final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Nil
   protected val fileBased = Nil

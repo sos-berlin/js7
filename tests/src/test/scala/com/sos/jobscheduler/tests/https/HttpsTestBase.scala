@@ -15,8 +15,8 @@ import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
-import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.https.HttpsTestBase._
+import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import com.typesafe.config.ConfigUtil.quoteString
 import java.nio.file.Files.{createTempFile, delete}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -27,7 +27,7 @@ import scala.concurrent.duration._
   *
   * @author Joacim Zschimmer
   */
-private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
+private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
 
   override protected final def provideAgentHttpsCertificate = true
   protected def provideMasterClientCertificate = false

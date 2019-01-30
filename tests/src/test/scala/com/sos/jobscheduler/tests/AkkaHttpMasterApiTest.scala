@@ -15,13 +15,14 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProvider.ForScalaTest {
+final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProviderForScalaTest {
 
   protected val agentPaths = Nil
   protected val fileBased = TestWorkflow :: Nil

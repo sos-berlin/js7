@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.tests
+package com.sos.jobscheduler.tests.testenv
 
 import akka.http.scaladsl.model.Uri
 import com.google.inject.Module
@@ -21,7 +21,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.core.signature.PgpCommons.writePublicKeyAsAscii
 import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
@@ -31,7 +30,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
 import com.sos.jobscheduler.master.data.MasterFileBaseds
-import com.sos.jobscheduler.tests.DirectoryProvider._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.FileOutputStream
@@ -45,7 +44,6 @@ import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
-import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.Future
 import scala.util.Random
@@ -63,10 +61,11 @@ final class DirectoryProvider(
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
   masterClientCertificate: Option[JavaResource] = None,
-  testName: Option[String] = None)
+  testName: Option[String] = None,
+  useDirectory: Option[Path] = None)
 extends HasCloser {
 
-  val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+  val directory = useDirectory getOrElse (createTempDirectory("test-") withCloser deleteDirectoryRecursively)
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentPath, AgentTree] =
@@ -139,7 +138,7 @@ extends HasCloser {
     }
   }
 
-  private def startMaster(
+  private[testenv] def startMaster(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
@@ -188,64 +187,6 @@ extends HasCloser {
 object DirectoryProvider
 {
   val Vinitial = VersionId("INITIAL")
-
-  trait ForScalaTest extends BeforeAndAfterAll with HasCloser {
-    this: org.scalatest.Suite ⇒
-
-    ProblemCodeMessages.initialize()
-
-    protected def agentPaths: Seq[AgentPath]
-    protected def agentHttps = false
-
-    protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
-      agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
-      provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
-      masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
-      testName = Some(getClass.getSimpleName))
-
-    protected def agentConfig: Config = ConfigFactory.empty
-    protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
-    protected final lazy val agent: RunningAgent = agents.head
-
-    protected val masterModule: Module = EMPTY_MODULE
-    protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
-    protected lazy val masterHttpsPort: Option[Int] = None
-    protected def agentHttpsMutual = false
-    protected def masterHttpsMutual = false
-    protected def provideAgentHttpsCertificate = false
-    protected def provideAgentClientCertificate = false
-    protected def masterClientCertificate: Option[JavaResource] = None
-    protected def masterConfig: Config = ConfigFactory.empty
-    protected def fileBased: Seq[FileBased]
-
-    protected final lazy val master: RunningMaster = directoryProvider.startMaster(
-      masterModule,
-      masterConfig,
-      httpPort = masterHttpPort,
-      httpsPort = masterHttpsPort,
-      mutualHttps = masterHttpsMutual,
-      fileBased = fileBased
-    ) await 99.s
-
-    protected final lazy val fileBasedSigner = directoryProvider.fileBasedSigner
-    protected final val signStringToBase64 = directoryProvider.signStringToBase64 _
-
-    override def beforeAll() = {
-      super.beforeAll()
-      agents
-      master
-    }
-
-    override def afterAll() = {
-      master.terminate() await 15.s
-      master.close()
-      agents.map(_.terminate()) await 15.s
-      closer.close()
-      for (a ← agents) a.close()
-      super.afterAll()
-      directoryProvider.close()
-    }
-  }
 
   sealed trait Tree {
     val directory: Path

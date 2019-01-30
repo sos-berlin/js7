@@ -36,6 +36,7 @@ import com.sos.jobscheduler.master.data.events.MasterAgentEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
+import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import java.time.ZoneId
@@ -47,7 +48,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
+final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
 
   ProblemCodeMessages.initialize()
 

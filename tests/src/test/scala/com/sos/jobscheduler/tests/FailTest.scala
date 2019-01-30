@@ -10,6 +10,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tests.FailTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.reflect.ClassTag

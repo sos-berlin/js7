@@ -16,8 +16,8 @@ import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{ReadConfigurationDirectory, Response}
-import com.sos.jobscheduler.tests.DirectoryProvider
 import com.sos.jobscheduler.tests.master.commands.ReadConfigurationDirectoryTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import java.nio.file.Files.{createDirectory, delete}
 import java.nio.file.Paths
 import monix.execution.Scheduler.Implicits.global
@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class ReadConfigurationDirectoryTest extends FreeSpec with DirectoryProvider.ForScalaTest
+final class ReadConfigurationDirectoryTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Nil
   protected val fileBased = Nil

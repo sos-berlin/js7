@@ -27,9 +27,9 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
-import com.sos.jobscheduler.tests.DirectoryProvider
-import com.sos.jobscheduler.tests.DirectoryProvider.StdoutOutput
 import com.sos.jobscheduler.tests.history.FatEventsTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.StdoutOutput
 import java.time.ZoneId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec

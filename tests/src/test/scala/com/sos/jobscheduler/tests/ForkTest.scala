@@ -18,14 +18,15 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
-import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, script}
 import com.sos.jobscheduler.tests.ForkTest._
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
-final class ForkTest extends FreeSpec with DirectoryProvider.ForScalaTest
+final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = AAgentPath :: BAgentPath :: Nil
   override protected val masterConfig = ConfigFactory.parseString(
