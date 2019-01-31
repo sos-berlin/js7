@@ -17,7 +17,7 @@
       </policies>
       <defaultRolloverStrategy fileIndex="nomax"/>
     </rollingRandomAccessFile>
-    <rollingRandomAccessFile name="weblog"
+    <rollingRandomAccessFile name="jobscheduler.web.log"
                              fileName="${env:SCHEDULER_LOGS}/web.log"
                              filePattern="${env:SCHEDULER_LOGS}/web-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
@@ -37,7 +37,7 @@
       <appenderRef ref="file"   level="TRACE"/>
     </root>
     <logger level="DEBUG" name="jobscheduler.web">
-      <appenderRef ref="weblog"/>
+      <appenderRef ref="jobscheduler.web.log"/>
     </logger>
     <logger level="WARN" name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="DEBUG" name="jobscheduler"/>
