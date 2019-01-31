@@ -29,11 +29,6 @@ trait SessionRoute extends RouteProvider {
             entity(as[SessionCommand]) { command ⇒
               val token = sessionOption map (_.sessionToken)
               onSuccess(execute(command, httpUser, token).runToFuture) {
-                case Invalid(AnonymousLoginProblem) ⇒
-                  // No credentials via Authorization header or Login(Some(...))
-                  // Let a browser show authentication dialog!
-                  reject(gateKeeper.credentialsMissing)
-
                 case Invalid(InvalidLoginProblem) ⇒
                   completeUnauthenticatedLogin(InvalidLoginProblem)
 
@@ -70,14 +65,10 @@ trait SessionRoute extends RouteProvider {
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
       case None ⇒
-        if (httpUser.id == UserId.Anonymous)  // No HTTP credentials (header `Authorization`)
-          Invalid(AnonymousLoginProblem)      // and Login without credentials? Login requires credentials.
-        else
-          Valid(httpUser)  // Take authenticated user from HTTP header `Authorization`
+        Valid(httpUser)  // Take authenticated user from HTTP header `Authorization` or Anonymous
     }
 }
 
 object SessionRoute {
-  private object AnonymousLoginProblem extends Problem.Eager("Anonymous Login?")  // Internal only
   private object InvalidLoginProblem extends Problem.Eager("Login: unknown user or invalid password")
 }

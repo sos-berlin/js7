@@ -32,7 +32,9 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
   import configuraton.{idToUser, realm}
 
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
-  val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, HttpChallenges.basic(realm))
+  private val basicChallenge = HttpChallenges.basic(realm)
+  val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
+  val wwwAuthenticateHeader = `WWW-Authenticate`(basicChallenge)  // Let's a browser show a authentication dialog
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
     .handle {
@@ -111,7 +113,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     {
       val u = U.addPermissions(user, configuraton.publicPermissions)  // Adding ALL (public) permissions to authorized user !!!
       if (u.grantedPermissions != user.grantedPermissions) {
-        def reason = if (isPublic) "is-public = true" else "loopback-is-public = true"
+        def reason = if (isPublic) "public = true" else "loopback-is-public = true"
         logger.debug(s"Granting user '${u.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
       }
       Some(u)
@@ -138,7 +140,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
 
   private def secureStateString: String =
     if (configuraton.isPublic)
-      " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (is-public = true)"
+      " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
     else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
     else if (configuraton.loopbackIsPublic)

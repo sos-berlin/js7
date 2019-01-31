@@ -2,14 +2,12 @@ package com.sos.jobscheduler.master.agent
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, PoisonPill, Props}
 import akka.http.scaladsl.model.Uri
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Checked.CheckedOption
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
@@ -55,10 +53,9 @@ with ReceiveLoggingActor.WithStash {
   private val recouplePause = new RecouplingPause
   private val client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
-  private val agentUserAndPassword: Checked[UserAndPassword] =
+  private val agentUserAndPassword: Option[UserAndPassword] =
     config.optionAs[SecretString](authConfigPath)
       .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
-      .toChecked(Problem(s"Missing password for '${agentId.path}', no configuration entry for $authConfigPath"))
 
   private var startInputReceived = false
   private var isCoupled = false
@@ -108,25 +105,18 @@ with ReceiveLoggingActor.WithStash {
     case Internal.Couple ⇒
       delayKeepEvents = false
       recouplePause.onCouple()
-      agentUserAndPassword match {
-        case Invalid(problem) ⇒
-          logger.error(problem.toString)
-          // Actor freezes here. TODO 1) reflect state in web service /api/agent; 2) publish an event to notify about this error
-
-        case Valid(userAndPassword) ⇒
-          ( for {
-              _ ← client.login(Some(userAndPassword))  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
-              _ ← if (lastEventId == EventId.BeforeFirst)
-                    client.commandExecute(AgentCommand.RegisterAsMaster)
-                  else
-                    Task.pure(Completed)
-            } yield Completed
-          ).materialize foreach { tried ⇒
-            self ! Internal.AfterCoupling(tried)
-          }
-          unstashAll()
-          become("coupling")(coupling)
+      ( for {
+          _ ← client.login(agentUserAndPassword)  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
+          _ ← if (lastEventId == EventId.BeforeFirst)
+                client.commandExecute(AgentCommand.RegisterAsMaster)
+              else
+                Task.pure(Completed)
+        } yield Completed
+      ).materialize foreach { tried ⇒
+        self ! Internal.AfterCoupling(tried)
       }
+      unstashAll()
+      become("coupling")(coupling)
 
     case _ ⇒
       stash()

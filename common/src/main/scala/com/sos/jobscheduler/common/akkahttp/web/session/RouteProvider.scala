@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import cats.data.Validated.{Invalid, Valid}
@@ -90,7 +89,7 @@ trait RouteProvider extends ExceptionHandling
   }
 
   protected def completeUnauthenticatedLogin(problem: Problem): Route =
-    respondWithHeader(LoginWWWAuthenticate) {
+    respondWithHeader(gateKeeper.wwwAuthenticateHeader) {
       logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
       complete {
         Task.pure(Unauthorized → problem)
@@ -102,5 +101,4 @@ trait RouteProvider extends ExceptionHandling
 
 object RouteProvider {
   private val logger = Logger(getClass)
-  val LoginWWWAuthenticate = `WWW-Authenticate`(HttpChallenge("X-JobScheduler-Login", realm = None))
 }
