@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
-import com.sos.jobscheduler.base.auth.{SessionToken, User, UserId}
+import com.sos.jobscheduler.base.auth.{SessionToken, User}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
@@ -94,7 +94,7 @@ extends Actor {
     * This may happen only once and the original user must be Anonymous.
     */
   private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Option[Session] = {
-    if (session.sessionInit.originalUser.id == UserId.Anonymous &&
+    if (session.sessionInit.originalUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
       logger.info(s"Session #${session.sessionNumber} for user '${session.sessionInit.originalUser.id}' changed to user '${newUser.id}'")

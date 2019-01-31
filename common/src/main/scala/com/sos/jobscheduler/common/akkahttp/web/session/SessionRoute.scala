@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.server.Directives._
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword, UserId}
+import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -57,9 +57,9 @@ trait SessionRoute extends RouteProvider {
   private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =
     userAndPasswordOption match {
       case Some(userAndPassword) ⇒
-        if (httpUser.id != UserId.Anonymous)
+        if (!httpUser.id.isAnonymous)
           Invalid(Problem("Both command Login and HTTP header authentication?"))
-        else if (userAndPassword.userId == UserId.Anonymous)
+        else if (userAndPassword.userId.isAnonymous)
           Invalid(InvalidLoginProblem)  // Anonymous is used only if there is no authentication at all
         else
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem

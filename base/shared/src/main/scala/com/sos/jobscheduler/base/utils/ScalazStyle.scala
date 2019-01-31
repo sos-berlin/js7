@@ -41,7 +41,7 @@ object ScalazStyle {
       * <br>`(false option a) == Vector()`
       */
     def thenVector[A](a: ⇒ A): Vector[A] =
-      if (delegate) Vector(a) else Vector()
+      if (delegate) Vector(a) else Vector.empty
 
     /**
       * Conditional `Set`.
@@ -49,6 +49,6 @@ object ScalazStyle {
       * <br>`(false option a) == Set()`
       */
     def thenSet[A](a: ⇒ A): Set[A] =
-      if (delegate) Set(a) else Set()
+      if (delegate) Set(a) else Set.empty
   }
 }

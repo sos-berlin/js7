@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.auth.{Permission, SessionToken, UserId}
+import com.sos.jobscheduler.base.auth.{Permission, SessionToken}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -76,8 +76,7 @@ trait RouteProvider extends ExceptionHandling
             inner(Tuple1(None))
 
           case Some(string) ⇒
-            val userOption = (httpUser.id != UserId.Anonymous) ? httpUser
-            onSuccess(sessionRegister.sessionFuture(userOption, SessionToken(SecretString(string)))) {
+            onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, SessionToken(SecretString(string)))) {
               case Invalid(problem) ⇒
                 completeUnauthenticatedLogin(problem)
 

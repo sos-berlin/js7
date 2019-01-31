@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.base.auth
 
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+
 /**
   * @author Joacim Zschimmer
   */
@@ -9,7 +11,7 @@ final case class SimpleUser private(
   grantedPermissions: Set[Permission])
 extends User
 {
-  if (id == UserId.Anonymous && grantedPermissions.contains(ValidUserPermission))
+  if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
     throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
 }
 
@@ -29,6 +31,5 @@ object SimpleUser extends User.Companion[SimpleUser] {
   = new SimpleUser(
       id,
       hashedPassword,
-      grantedPermissions ++
-        (if (id != UserId.Anonymous) Set(ValidUserPermission) else Set.empty))
+      grantedPermissions ++ (!id.isAnonymous thenSet ValidUserPermission))
 }

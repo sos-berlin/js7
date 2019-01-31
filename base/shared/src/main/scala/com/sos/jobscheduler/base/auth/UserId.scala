@@ -8,6 +8,9 @@ import com.sos.jobscheduler.base.problem.Problem
   * @author Joacim Zschimmer
   */
 final case class UserId private(string: String) extends GenericString
+{
+  def isAnonymous = this == UserId.Anonymous
+}
 
 object UserId extends GenericString.Checked_[UserId]
 {

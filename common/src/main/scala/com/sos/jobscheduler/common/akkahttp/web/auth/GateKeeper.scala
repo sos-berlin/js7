@@ -90,7 +90,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
               case Some(authorizedUser) ⇒
                 inner(Tuple1(authorizedUser))
               case None ⇒
-                if (user.id == UserId.Anonymous)
+                if (user.isAnonymous)
                   reject(credentialsMissing)  // Let a browser show its authentication dialog
                 else
                   complete(Forbidden)

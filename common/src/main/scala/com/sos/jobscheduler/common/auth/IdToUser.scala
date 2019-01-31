@@ -37,7 +37,7 @@ extends (UserId ⇒ Option[U]) {
   private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty))
 
   def apply(userId: UserId) =
-    if (userId == UserId.Anonymous)
+    if (userId.isAnonymous)
       someAnonymous
     else
       userIdToRaw(userId).flatMap(o ⇒ rawToUser(userId, o))

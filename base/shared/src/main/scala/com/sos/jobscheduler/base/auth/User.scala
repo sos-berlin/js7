@@ -8,7 +8,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
   *
   * @author Joacim Zschimmer
   */
-trait User {
+trait User
+{
   def id: UserId
   def hashedPassword: HashedPassword
   def grantedPermissions: Set[Permission]
@@ -24,6 +25,8 @@ trait User {
 
   final def hasPermission(requiredPermission: Permission): Boolean =
     grantedPermissions contains requiredPermission
+
+  final def isAnonymous = id.isAnonymous
 }
 
 object User
