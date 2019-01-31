@@ -45,7 +45,7 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken → session)
-      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
+      logger.info(s"Session #${session.sessionNumber} for user '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
       sender() ! token
       scheduleNextCleanup()
 
@@ -53,15 +53,14 @@ extends Actor {
       delete(token, reason = "logout")
       sender() ! Completed
 
-    case Command.Get(token, userIdOption) ⇒
-      val sessionOption = (tokenToSession.get(token), userIdOption) match {
+    case Command.Get(token, userOption: Option[S#User]) ⇒
+      val sessionOption = (tokenToSession.get(token), userOption) match {
         case (None, _) ⇒
-          logger.debug("Rejecting unknown session token" + userIdOption.fold("")(o ⇒ s" (user '$o')"))
+          logger.debug("Rejecting unknown session token" + userOption.fold("")(o ⇒ s" (user '${o.id.string}')"))
           None
 
-        case (Some(session), Some(userId)) if userId != session.user.id ⇒
-          logger.debug(s"Rejecting session token #${session.sessionNumber} belonging to user '${session.user.id}' but sent by user '$userId'")
-          None
+        case (Some(session), Some(user)) if user.id != session.currentUser.id ⇒
+          tryUpdateLatelyAuthenticatedUser(user, session)
 
         case (Some(session), _) ⇒
           if (handleTimeout(session))
@@ -86,6 +85,26 @@ extends Actor {
       scheduleNextCleanup()
   }
 
+  /** Handles late authentication for Browser usage.
+    * login(None) was accepted without authentication, establishing a Session for Anonymous.
+    * A web service calling authorize() may require more rights than Anonymous,
+    * leading to 401 and browser authentication dialog.
+    * The resent (current) request has a HTTP authentication header, which was authentiated (see caller)
+    * The session is updated with the authenticated user.
+    * This may happen only once and the original user must be Anonymous.
+    */
+  private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Option[Session] = {
+    if (session.sessionInit.originalUser.id == UserId.Anonymous &&
+        session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
+    {
+      logger.info(s"Session #${session.sessionNumber} for user '${session.sessionInit.originalUser.id}' changed to user '${newUser.id}'")
+      Some(session)
+    } else {
+      logger.debug(s"Rejecting session token #${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")
+      None
+    }
+  }
+
   private def scheduleNextCleanup(): Unit =
     if (nextCleanup == null && tokenToSession.values.exists(o ⇒ !o.isEternal)) {
       nextCleanup = scheduler.scheduleOnce(cleanupInterval) {
@@ -102,7 +121,7 @@ extends Actor {
 
   private def delete(token: SessionToken, reason: String): Unit =
     tokenToSession.remove(token) foreach { session ⇒
-      logger.info(s"Session #${session.sessionNumber} for User '${session.user.id}' deleted due to $reason")
+      logger.info(s"Session #${session.sessionNumber} for User '${session.currentUser.id}' deleted due to $reason")
     }
 }
 
@@ -117,7 +136,7 @@ object SessionActor
   private[session] object Command {
     final case class Login[U <: User](user: U, oldSessionTokenOption: Option[SessionToken], isEternalSession: Boolean) extends Command
     final case class Logout(token: SessionToken) extends Command
-    final case class Get(token: SessionToken, userId: Option[UserId]) extends Command
+    final case class Get[U <: User](token: SessionToken, userId: Option[U]) extends Command
     final case object GetCount extends Command
   }
 

@@ -210,5 +210,7 @@ object AkkaHttpClient {
         }
       else
         None
+
+    override def toString = s"HTTP $getMessage"
   }
 }

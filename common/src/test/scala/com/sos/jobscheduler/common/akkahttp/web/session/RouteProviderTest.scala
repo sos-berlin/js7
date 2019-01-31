@@ -47,9 +47,11 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
       }
     } ~
     path("sessionOption") {
-      sessionOption() {
-        case None ⇒ complete("NO SESSION")
-        case Some(session) ⇒ complete("userId=" + session.user.id.string)
+      gateKeeper.authenticate { user ⇒
+        sessionOption(user) {
+          case None ⇒ complete("NO SESSION")
+          case Some(session) ⇒ complete("userId=" + session.currentUser.id.string)
+        }
       }
     })
 

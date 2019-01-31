@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.base.auth.{SessionToken, UserId}
+import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister._
@@ -31,7 +31,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
       file.contentString = sessionToken.secret.string
       logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
-      systemSessionPromise.completeWith(sessionFuture(Some(user.id), sessionToken))
+      systemSessionPromise.completeWith(sessionFuture(Some(user), sessionToken))
       sessionToken
     }
 
@@ -43,12 +43,12 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
     Task.deferFuture(
       (actor ? SessionActor.Command.Logout(sessionToken)).mapTo[Completed])
 
-  private[session] def session(sessionToken: SessionToken, userId: Option[UserId]): Task[Checked[S]] =
+  private[session] def session(sessionToken: SessionToken, user: Option[S#User]): Task[Checked[S]] =
     Task.deferFuture(
-      sessionFuture(userId, sessionToken))
+      sessionFuture(user, sessionToken))
 
-  private[session] def sessionFuture(userId: Option[UserId], sessionToken: SessionToken): Future[Checked[S]] =
-    (actor ? SessionActor.Command.Get(sessionToken, userId)).mapTo[Checked[S]]
+  private[session] def sessionFuture(user: Option[Session#User], sessionToken: SessionToken): Future[Checked[S]] =
+    (actor ? SessionActor.Command.Get(sessionToken, user)).mapTo[Checked[S]]
 
   private[session] def count: Task[Int] =
     Task.deferFuture(

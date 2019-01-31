@@ -24,6 +24,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.ReplaceRepo
 import com.sos.jobscheduler.master.data.MasterFileBaseds
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
 import java.io.FileOutputStream
 import java.nio.file.Files.createDirectories
@@ -39,17 +40,30 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
   protected def agentPaths = agentPath :: Nil
   protected def fileBased = workflow :: Nil
 
-  "test" in {
+  "jobscheduler.webserver.auth.public = true" in {
+    runMyTest(isPublic = true) { (master, _) ⇒
+      master.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
+      master.eventWatch.await[OrderFinished](_.key == orderId)
+    }
+  }
+
+  "jobscheduler.webserver.auth.public = false" in {
+    runMyTest(isPublic = false) { (master, agentPort) ⇒
+      assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.message
+        == s"HTTP 401 Unauthorized: http://127.0.0.1:$agentPort/agent/api/command: The resource requires authentication, which was not supplied with the request")
+    }
+  }
+
+  private def runMyTest(isPublic: Boolean)(body: (RunningMaster, Int) ⇒ Unit): Unit = {
     withTemporaryDirectory("MasterAgentWithoutAuthenticationTest-") { dir ⇒
       createDirectories(dir / "master/config/private")
       createDirectories(dir / "master/data/state")
       createDirectories(dir / "agent/config/executables")
       createDirectories(dir / "agent/data/state")
 
-      dir / "agent/config/agent.conf" :=
-        """jobscheduler.webserver.auth.public = true
-          |""".stripMargin
-
+      if (isPublic) {
+        dir / "agent/config/agent.conf" := "jobscheduler.webserver.auth.public = true\n"
+      }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
 
       val masterPort :: agentPort :: Nil = FreeTcpPortFinder.findRandomFreeTcpPorts(2)
@@ -81,8 +95,8 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 
       val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map fileBasedSigner.sign)
       master.executeCommandAsSystemUser(replaceRepo).runSyncUnsafe(99.seconds).orThrow
-      master.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
-      master.eventWatch.await[OrderFinished](_.key == orderId)
+
+      body(master, agentPort)
 
       master.terminate().runSyncUnsafe(99.seconds)
       agent.terminate().runSyncUnsafe(99.seconds)

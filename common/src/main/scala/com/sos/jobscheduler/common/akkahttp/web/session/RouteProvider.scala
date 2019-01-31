@@ -40,8 +40,8 @@ trait RouteProvider extends ExceptionHandling
     new Directive[Tuple1[Session#User]] {
       def tapply(inner: Tuple1[Session#User] ⇒ Route) =
         maybeSession(requiredPermissions) {
-          case (_, Some(session)) ⇒
-            inner(Tuple1(session.user))
+          case (user, Some(session)) ⇒
+            inner(Tuple1(user))
 
           case (user, None) ⇒
             inner(Tuple1(user))
@@ -54,8 +54,8 @@ trait RouteProvider extends ExceptionHandling
       def tapply(inner: Tuple1[(Session#User, Option[Session])] ⇒ Route) =
         gateKeeper.authenticate { user ⇒
           // user == Anonymous iff no credentials are given
-          sessionOption(user.id) { sessionOption ⇒
-            val u = sessionOption.fold(user)(_.user)
+          sessionOption(user) { sessionOption ⇒
+            val u = sessionOption.fold(user)(_.currentUser)
             gateKeeper.authorize(u, requiredPermissions) { u ⇒
               inner(Tuple1((u, sessionOption)))
             }
@@ -67,7 +67,7 @@ trait RouteProvider extends ExceptionHandling
     * The request is `Forbidden` if
     * the SessionToken is invalid or
     * the given `userId` is not Anonymous and does not match the sessions UserId.*/
-  protected def sessionOption(userId: UserId = UserId.Anonymous): Directive[Tuple1[Option[Session]]] = {
+  protected def sessionOption(httpUser: Session#User): Directive[Tuple1[Option[Session]]] = {
     // user == Anonymous iff no credentials are given
     new Directive[Tuple1[Option[Session]]] {
       def tapply(inner: Tuple1[Option[Session]] ⇒ Route) =
@@ -76,15 +76,15 @@ trait RouteProvider extends ExceptionHandling
             inner(Tuple1(None))
 
           case Some(string) ⇒
-            val userIdOption = (userId != UserId.Anonymous) ? userId
-            onSuccess(sessionRegister.sessionFuture(userIdOption, SessionToken(SecretString(string)))) {
+            val userOption = (httpUser.id != UserId.Anonymous) ? httpUser
+            onSuccess(sessionRegister.sessionFuture(userOption, SessionToken(SecretString(string)))) {
               case Invalid(problem) ⇒
                 completeUnauthenticatedLogin(problem)
 
               case Valid(session) ⇒
                 inner(Tuple1(Some(session)))
             }
-        }
+          }
     }
   }
 

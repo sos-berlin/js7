@@ -25,7 +25,7 @@ trait SessionRoute extends RouteProvider {
     pathEnd {
       post {
         gateKeeper.authenticate { httpUser ⇒
-          sessionOption(httpUser.id) { sessionOption ⇒
+          sessionOption(httpUser) { sessionOption ⇒
             entity(as[SessionCommand]) { command ⇒
               val token = sessionOption map (_.sessionToken)
               onSuccess(execute(command, httpUser, token).runToFuture) {
