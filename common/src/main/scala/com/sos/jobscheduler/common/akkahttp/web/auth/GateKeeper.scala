@@ -111,6 +111,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     if (isPublic ||                      // Any access, even POST, is allowed !
         isLoopback && loopbackIsPublic)  // Any access, even POST, is allowed !
     {
+      if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite ${if (isPublic) "public=true" else "loopback-is-public=true"}")
       val u = U.addPermissions(user, configuraton.publicPermissions)  // Adding ALL (public) permissions to authorized user !!!
       if (u.grantedPermissions != user.grantedPermissions) {
         def reason = if (isPublic) "public = true" else "loopback-is-public = true"
@@ -119,8 +120,10 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
       Some(u)
     }
     else
-    if (getIsPublic && isGet)
+    if (getIsPublic && isGet) {
+      if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite get-is-public=true")
       Some(user)
+    }
     else
     if (user.hasPermissions(requiredPermissions) && (
           requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
