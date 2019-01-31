@@ -14,7 +14,7 @@ object JavaCollections
 
     implicit final class RichJavaStream[A](private val delegate: java.util.stream.Stream[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
-        Vector() ++ delegate.iterator.asScala
+        Vector.empty ++ delegate.iterator.asScala
     }
   }
 }

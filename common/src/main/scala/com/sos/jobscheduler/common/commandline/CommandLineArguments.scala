@@ -60,7 +60,7 @@ object CommandLineArguments {
 
   def apply(args: Seq[String]): CommandLineArguments = {
     val m = new mutable.LinkedHashMap[String, Vector[Argument]] {
-      override def default(key: String) = Vector()//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
+      override def default(key: String) = Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
     }
     for (a ← args.lastOption if a endsWith "\r")
       throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")

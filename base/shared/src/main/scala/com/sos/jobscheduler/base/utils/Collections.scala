@@ -22,7 +22,7 @@ object Collections {
       def toImmutableSeq: Seq[A] =
         delegate match {
           case o: Seq[A] ⇒ o
-          case _ ⇒ Vector() ++ delegate
+          case _ ⇒ Vector.empty ++ delegate
         }
 
       def toImmutableIterable: immutable.Iterable[A] =
@@ -52,17 +52,17 @@ object Collections {
 
     implicit final class RichArray[A](private val delegate: Array[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
-        Vector() ++ delegate
+        Vector.empty ++ delegate
     }
 
     implicit final class RichJavaIterable[A](private val delegate: java.lang.Iterable[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
-        Vector() ++ delegate.asScala
+        Vector.empty ++ delegate.asScala
     }
 
     implicit final class RichJavaIterator[A](private val delegate: java.util.Iterator[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
-        Vector() ++ delegate.asScala
+        Vector.empty ++ delegate.asScala
     }
 
     implicit final class RichTraversable[F[x] <: Traversable[x], A](private val delegate: F[A]) extends AnyVal {

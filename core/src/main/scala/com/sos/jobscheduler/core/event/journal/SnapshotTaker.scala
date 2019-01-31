@@ -28,7 +28,7 @@ private[journal] final class SnapshotTaker(
   scheduler: Scheduler)
 extends Actor
 {
-  private val remaining = mutable.Set() ++ journalingActors
+  private val remaining = mutable.Set.empty ++ journalingActors
   private var snapshotCount = 0
   private val pipeline = new ParallelExecutingPipeline[ByteString](write)(scheduler)
   private val logProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration
