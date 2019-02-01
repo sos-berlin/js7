@@ -5,4 +5,8 @@ import com.sos.jobscheduler.base.auth.{SessionToken, User}
 /**
   * @author Joacim Zschimmer
   */
-final case class SessionInit[U <: User](sessionToken: SessionToken, sessionNumber: Long, originalUser: U)
+final case class SessionInit[U <: User](
+  sessionNumber: Long,
+  sessionToken: SessionToken,
+  /** If isAnonymous, the Session's user may change later due to late authentication. */
+  loginUser: U)

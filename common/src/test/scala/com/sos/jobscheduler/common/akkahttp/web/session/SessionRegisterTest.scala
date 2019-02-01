@@ -44,7 +44,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     val someToken = SessionToken(SecretString("X"))
     for (user ← List(Some(AUser), None)) {
       assert(sessionRegister.session(sessionToken, user).await(99.seconds).map(o ⇒ o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
-        Valid(MySession(SessionInit(someToken, 1, AUser))))
+        Valid(MySession(SessionInit(1, someToken, AUser))))
     }
   }
 
@@ -61,10 +61,10 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.Anonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(sessionToken, 1, originalUser = SimpleUser.Anonymous))))
+    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(sessionToken, 1, originalUser = SimpleUser.Anonymous))))
+    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
     assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(Problem("Invalid session token")))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 

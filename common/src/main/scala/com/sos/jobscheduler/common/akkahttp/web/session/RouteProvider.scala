@@ -52,12 +52,12 @@ trait RouteProvider extends ExceptionHandling
     new Directive[Tuple1[(Session#User, Option[Session])]]
     {
       def tapply(inner: Tuple1[(Session#User, Option[Session])] ⇒ Route) =
-        gateKeeper.authenticate { user ⇒
+        gateKeeper.authenticate { authenticatedUser ⇒
           // user == Anonymous iff no credentials are given
-          sessionOption(user) { sessionOption ⇒
-            val u = sessionOption.fold(user)(_.currentUser)
-            gateKeeper.authorize(u, requiredPermissions) { u ⇒
-              inner(Tuple1((u, sessionOption)))
+          sessionOption(authenticatedUser) { sessionOption ⇒
+            gateKeeper.authorize(sessionOption.fold(authenticatedUser)(_.currentUser), requiredPermissions) { authorizedUser ⇒
+              // If and only if gateKeeper allows public access, the authorizedUser may be an empowered authenticatedUser.
+              inner(Tuple1((authorizedUser, sessionOption)))
             }
           }
         }

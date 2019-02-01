@@ -21,8 +21,8 @@ object SimpleUser extends User.Companion[SimpleUser] {
   val System = SimpleUser(UserId("System"), HashedPassword.MatchesNothing, Set(UpdateRepoPermission))
   implicit val companion = this
 
-  def addPermissions(user: SimpleUser, permissionBundle: Set[Permission]): SimpleUser =
-    user.copy(grantedPermissions = user.grantedPermissions ++ permissionBundle)
+  def addPermissions(user: SimpleUser, permissions: Set[Permission]): SimpleUser =
+    user.copy(grantedPermissions = user.grantedPermissions ++ permissions)
 
   def apply(
     id: UserId,

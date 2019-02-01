@@ -40,7 +40,7 @@ extends Actor {
       for (t ← tokenOption) delete(t, reason = "secondlogin")
       val token = SessionToken(SecretStringGenerator.newSecretString())
       assert(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
-      val session = newSession(SessionInit(token, numberIterator.next(), user))
+      val session = newSession(SessionInit(numberIterator.next(), token, user))
       if (!isEternalSession) {
         session.touch(sessionTimeout)
       }
@@ -94,10 +94,10 @@ extends Actor {
     * This may happen only once and the original user must be Anonymous.
     */
   private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Option[Session] = {
-    if (session.sessionInit.originalUser.isAnonymous &&
+    if (session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
-      logger.info(s"Session #${session.sessionNumber} for user '${session.sessionInit.originalUser.id}' changed to user '${newUser.id}'")
+      logger.info(s"Session #${session.sessionNumber} for user '${session.sessionInit.loginUser.id}' changed to user '${newUser.id}'")
       Some(session)
     } else {
       logger.debug(s"Rejecting session token #${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")

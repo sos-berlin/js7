@@ -12,6 +12,7 @@ import akka.testkit.TestDuration
 import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, SimpleUser, User, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
@@ -38,9 +39,47 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
       case UserId("Anonymous") ⇒ Some(SimpleUser.Anonymous)
       case _ ⇒ None
     },
-    publicPermissions = AllPermissions)
+    publicPermissions = AllPermissions,
+    publicGetPermissions = GetPermissions)
   private val GET = HttpRequest(HttpMethods.GET, Uri("URI"))
   private val POST = HttpRequest(HttpMethods.POST, Uri("URI"))
+
+  "ifPublic (32 combinations)" - {
+    val any = false :: true :: Nil
+    val anyMethod = HttpMethods.GET :: HttpMethods.POST :: Nil
+
+    "defaultConf doesn't allow public access" in {
+      for (isLoopback ← any; method ← anyMethod) {
+        assert(newGateKeeper(defaultConf, isLoopback = isLoopback).ifPublic(method) == None)
+      }
+    }
+
+    "public=true allows public access in all cases" in {
+      for (loopbackIsPublic ← any; isLoopback ← any; getIsPublic ← any; method ← anyMethod) {
+        assert(newGateKeeper(defaultConf.copy(isPublic = true, loopbackIsPublic = loopbackIsPublic, getIsPublic = getIsPublic), isLoopback = isLoopback).ifPublic(method) == Some(IsPublic))
+      }
+    }
+
+    "remaining cases" in {
+      assert(newGateKeeper(defaultConf.copy(getIsPublic = true)).ifPublic(HttpMethods.GET ) == Some(GetIsPublic))
+      assert(newGateKeeper(defaultConf.copy(getIsPublic = true)).ifPublic(HttpMethods.POST) == None)
+
+      assert(newGateKeeper(defaultConf.copy(getIsPublic = true), isLoopback = true ).ifPublic(HttpMethods.GET ) == Some(GetIsPublic))
+      assert(newGateKeeper(defaultConf.copy(getIsPublic = true), isLoopback = true ).ifPublic(HttpMethods.POST) == None)
+
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true)).ifPublic(HttpMethods.GET) == None)
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true)).ifPublic(HttpMethods.POST) == None)
+
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true), isLoopback = true).ifPublic(HttpMethods.GET ) == Some(LoopbackIsPublic))
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true), isLoopback = true).ifPublic(HttpMethods.POST) == Some(LoopbackIsPublic))
+
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true, getIsPublic = true)).ifPublic(HttpMethods.GET ) == Some(GetIsPublic))
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true, getIsPublic = true)).ifPublic(HttpMethods.POST) == None)
+
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true, getIsPublic = true), isLoopback = true ).ifPublic(HttpMethods.GET ) == Some(LoopbackIsPublic))
+      assert(newGateKeeper(defaultConf.copy(loopbackIsPublic = true, getIsPublic = true), isLoopback = true ).ifPublic(HttpMethods.POST) == Some(LoopbackIsPublic))
+    }
+  }
 
   "allowedUser" - {
     "isPublic" in {
@@ -52,12 +91,12 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
       assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == Some(PublicAnonymous))
       assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == Some(PublicAnonymous))
       assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == Some(PublicAnonymous))
-      assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(PublicTestUser))
-      assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(PublicTestUser))
-      assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(PublicTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(PublicTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(PublicTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(PublicTestUser))
+      assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(EmpoweredTestUser))
     }
 
     "!getIsPublic" - {
@@ -73,11 +112,11 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
           assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)      == None)
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)       == None)
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
 
         "isLoopback" in {
@@ -91,11 +130,11 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
           assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)      == None)
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)       == None)
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
       }
 
@@ -111,11 +150,11 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
           assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)      == None)
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)       == None)
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
 
         "isLoopback" in {
@@ -126,14 +165,14 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == Some(PublicAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == Some(PublicAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == Some(PublicAnonymous))
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)     == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == Some(PublicTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)      == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == Some(EmpoweredTestUser))
         }
       }
     }
@@ -142,58 +181,58 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
       "!loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = false)
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(SimpleUser.Anonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(PublicGetAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)     == Some(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)      == Some(EmpoweredGetTestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
 
         "isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = true)
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(SimpleUser.Anonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(PublicGetAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)     == Some(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)      == Some(EmpoweredGetTestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
       }
 
       "loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = true), isLoopback = false)
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(SimpleUser.Anonymous))
-          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(SimpleUser.Anonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, Set.empty)            == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(SimpleUser.Anonymous, GET, TestPermission)       == Some(PublicGetAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == None)
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)     == Some(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)      == Some(EmpoweredGetTestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
           assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)     == None)
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)      == None)
         }
 
         "isLoopback" in {
@@ -204,13 +243,13 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, Set.empty)           == Some(PublicAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, ValidUserPermission) == Some(PublicAnonymous))
           assert(gateKeeper.allowedUser(SimpleUser.Anonymous, POST, TestPermission)      == Some(PublicAnonymous))
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, Test2Permission)     == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)            == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission)  == Some(PublicTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Test2Permission)      == Some(PublicTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ReadPermission)      == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)            == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission)  == Some(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ReadPermission)       == Some(EmpoweredTestUser))
         }
       }
     }
@@ -415,14 +454,19 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
 
 private object GateKeeperTest {
   private case object TestPermission extends Permission
-  private case object Test2Permission extends Permission
-  private val AllPermissions = Set[Permission](TestPermission, Test2Permission)
+  private case object ReadPermission extends Permission
+  private val AllPermissions = Set[Permission](TestPermission, ReadPermission)
+  private val GetPermissions = Set[Permission](ReadPermission)
 
   private val TestUser = SimpleUser(UserId("USER"), HashedPassword(SecretString("DROWSSAP"), _.reverse),
     Set(TestPermission))
 
-  private val PublicTestUser = TestUser.copy(grantedPermissions = AllPermissions + ValidUserPermission)
+  private val EmpoweredTestUser = TestUser.copy(grantedPermissions = AllPermissions + ValidUserPermission)
+  private val EmpoweredGetTestUser = TestUser.copy(grantedPermissions = TestUser.grantedPermissions ++ GetPermissions)
 
   // Anonymous with added permissions due isPublic or loopbackIsPublic
   private val PublicAnonymous = SimpleUser.Anonymous.copy(grantedPermissions = AllPermissions)
+
+  // Anonymous with added permissions due isPublic or loopbackIsPublic
+  private val PublicGetAnonymous = SimpleUser.Anonymous.copy(grantedPermissions = GetPermissions)
 }

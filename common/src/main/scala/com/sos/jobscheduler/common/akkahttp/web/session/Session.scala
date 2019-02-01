@@ -16,12 +16,12 @@ trait Session extends HasTimeout
 
   final def sessionToken = sessionInit.sessionToken
 
-  private lazy val updatedUser = AtomicAny[User](sessionInit.originalUser)
+  private lazy val _user = AtomicAny[User](sessionInit.loginUser)
 
   /** User may change once concurrently from Anonymous to non-anonymous due to late authentication. */
-  final def currentUser: User = updatedUser.get
+  final def currentUser: User = _user.get
 
   /** Succeeds only once. */
   private[session] final def tryUpdateUser(user: User): Boolean =
-    updatedUser.compareAndSet(sessionInit.originalUser, user)
+    _user.compareAndSet(sessionInit.loginUser, user)
 }

@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.common.akkahttp.web.auth
 
 import akka.http.scaladsl.model.HttpMethods.{GET, HEAD}
-import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
+import akka.http.scaladsl.model.{HttpMethod, HttpRequest}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserAndPassword, UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
@@ -22,8 +23,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](configuraton: Configuration[U],
-  isLoopback: Boolean = false, mutual: Boolean = false)
+final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Boolean = false, mutual: Boolean = false)
   (implicit U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
@@ -59,7 +59,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     authenticator.authenticate(userAndPassword)
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
-  def authenticate: Directive1[U] =
+  val authenticate: Directive1[U] =
     new Directive1[U] {
       def tapply(inner: Tuple1[U] ⇒ Route) =
         seal {
@@ -70,7 +70,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     }
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
-  private def httpAuthenticate: Directive1[U] =
+  private val httpAuthenticate: Directive1[U] =
     new Directive1[U] {
       def tapply(inner: Tuple1[U] ⇒ Route) =
         handleRejections(credentialRejectionHandler) {
@@ -104,35 +104,40 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
     * In case of loopbackIsPublic or getIsPublic,
     * the returned user gets the `configuration.publicPermissioons`.
     */
-  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] = {
-    import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
-    def isGet = request.method == GET || request.method == HEAD
+  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] =
+    ifPublic(request.method) match {
+      case Some(reason) ⇒
+        if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
+        val empoweredUser = U.addPermissions(user, reason match {
+          case IsPublic | LoopbackIsPublic ⇒ configuraton.publicPermissions
+          case GetIsPublic                 ⇒ configuraton.publicGetPermissions
+        })
+        if (empoweredUser.grantedPermissions != user.grantedPermissions) {
+          logger.debug(s"Granting user '${empoweredUser.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
+        }
+        Some(empoweredUser)
 
-    if (isPublic ||                      // Any access, even POST, is allowed !
-        isLoopback && loopbackIsPublic)  // Any access, even POST, is allowed !
-    {
-      if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite ${if (isPublic) "public=true" else "loopback-is-public=true"}")
-      val u = U.addPermissions(user, configuraton.publicPermissions)  // Adding ALL (public) permissions to authorized user !!!
-      if (u.grantedPermissions != user.grantedPermissions) {
-        def reason = if (isPublic) "public = true" else "loopback-is-public = true"
-        logger.debug(s"Granting user '${u.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
-      }
-      Some(u)
+      case None ⇒
+        isPermitted(user, requiredPermissions, request.method) ? user
     }
-    else
-    if (getIsPublic && isGet) {
-      if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite get-is-public=true")
-      Some(user)
-    }
-    else
-    if (user.hasPermissions(requiredPermissions) && (
-          requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
-          user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only Anonymous does not have ValidUserPermission)
-          isGet))                                               // ... only to read
-      Some(user)
+
+  private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] = {
+    import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
+    if (isPublic)
+      Some(IsPublic)
+    else if (isLoopback && loopbackIsPublic)
+      Some(LoopbackIsPublic)
+    else if (getIsPublic && isGet(method))
+      Some(GetIsPublic)
     else
       None
   }
+
+  private def isPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Boolean =
+    user.hasPermissions(requiredPermissions) && (
+      requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
+      user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only Anonymous does not have ValidUserPermission)
+      isGet(method))                                        // ... only to read
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
@@ -157,12 +162,15 @@ final class GateKeeper[U <: User](configuraton: Configuration[U],
 object GateKeeper {
   private val logger = Logger(getClass)
 
+  private def isGet(method: HttpMethod) = method == GET || method == HEAD
+
   final case class Configuration[U <: User](
     /** Basic authentication realm */
     realm: String,
     /** To hamper an attack */
     invalidAuthenticationDelay: FiniteDuration,
     publicPermissions: Set[Permission] = Set.empty,
+    publicGetPermissions: Set[Permission] = Set.empty,
     /* Anything is allowed for Anonymous */
     isPublic: Boolean = false,
     /** HTTP bound to a loopback interface is allowed for Anonymous */
@@ -184,5 +192,16 @@ object GateKeeper {
         loopbackIsPublic            = config.getBoolean ("jobscheduler.webserver.auth.loopback-is-public"),
         getIsPublic                 = config.getBoolean ("jobscheduler.webserver.auth.get-is-public"),
         idToUser = IdToUser.fromConfig(config, toUser, toPermission))
+  }
+
+  private[auth] sealed trait AuthorizationReason
+  private[auth] object IsPublic extends AuthorizationReason {
+    override def toString = "public=true"
+  }
+  private[auth] object LoopbackIsPublic extends AuthorizationReason {
+    override def toString = "loopback-is-public=true"
+  }
+  private[auth] object GetIsPublic extends AuthorizationReason {
+    override def toString = "get-is-public=true"
   }
 }

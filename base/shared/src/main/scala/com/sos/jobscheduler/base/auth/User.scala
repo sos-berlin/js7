@@ -32,6 +32,6 @@ trait User
 object User
 {
   trait Companion[U <: User] {
-    def addPermissions(user: U, permissionBundle: Set[Permission]): U
+    def addPermissions(user: U, permissions: Set[Permission]): U
   }
 }
