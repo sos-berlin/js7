@@ -111,12 +111,6 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId ${objects.size}× objects)"
   }
 
-  /** Read the configured objects (workflows, agents) from the directory config/live. */
-  @deprecated
-  final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
-    type Response = Response.Accepted
-  }
-
   sealed trait Response
 
   object Response {
@@ -138,7 +132,6 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[ScheduleOrdersEvery]),
-    Subtype(deriveCodec[ReadConfigurationDirectory]),
     Subtype(TakeSnapshot),
     Subtype(Terminate))
 }

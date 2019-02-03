@@ -42,7 +42,7 @@ import com.sos.jobscheduler.data.agent.{Agent, AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -188,12 +188,6 @@ with MainJournalingActor[Event]
         orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
         afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
         logger.info(s"${orderRegister.size} Orders, ${repo.currentTyped[Workflow].size} Workflows and ${repo.currentTyped[Agent].size} Agent declarations recovered")
-      } else
-      for (_ ← repoReader) {
-        val (nonEmpty, io) = readConfigurationDirectory(InitialVersion.some).orThrow
-        if (nonEmpty) {  // Do not issue a single VersionAdded event when nothing has been read
-          io.unsafeRunSync()  // Persists events
-        }
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ ⇒
@@ -384,16 +378,6 @@ with MainJournalingActor[Event]
               .unsafeRunSync()  // Persist events!
               .map(_ ⇒ MasterCommand.Response.Accepted))
 
-      case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
-        val checkedSideEffect =
-          for {
-            readOrderGen ← readScheduledOrderGeneratorConfiguration()
-            readLive ← readConfigurationDirectory(versionId) map (_._2)
-          } yield readOrderGen >> readLive
-        checkedSideEffect.traverse((_: SyncIO[Future[Completed]])
-          .unsafeRunSync()  // Persist events!
-          .map(_ ⇒ MasterCommand.Response.Accepted))
-
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
         Future.successful(Valid(MasterCommand.Response.Accepted))
@@ -418,17 +402,6 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ ⇒
           Valid(MasterCommand.Response.Accepted))
     }
-
-  private def readConfigurationDirectory(versionIdOption: Option[VersionId]): Checked[(Boolean, SyncIO[Future[Completed]])] = {
-    val versionId = versionIdOption getOrElse repo.newVersionId()
-    repoReader
-      .flatMap(_.readDirectoryTree())
-      .map(FileBaseds.diffFileBaseds(_, repo.currentFileBaseds))
-      .flatMap { events ⇒
-        readConfiguration(VersionAdded(versionId) +: events)
-          .map(o ⇒ events.nonEmpty → o)
-      }
-  }
 
   private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
     def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[SyncIO[Unit]]] =
@@ -655,7 +628,6 @@ with MainJournalingActor[Event]
 
 private[master] object MasterOrderKeeper {
   private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
-  private val InitialVersion = VersionId("(initial)")  // ???
 
   private val logger = Logger(getClass)
 

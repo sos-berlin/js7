@@ -168,23 +168,6 @@ final class MasterCommandTest extends FreeSpec {
       }""")
   }
 
-  "ReadConfigurationDirectory" - {
-    "with versionId" in {
-      testJson[MasterCommand](ReadConfigurationDirectory(Some(VersionId("VERSION"))),
-        json"""{
-          "TYPE": "ReadConfigurationDirectory",
-          "versionId": "VERSION"
-        }""")
-    }
-
-    "without versionId" in {
-      testJson[MasterCommand](ReadConfigurationDirectory(None),
-        json"""{
-          "TYPE": "ReadConfigurationDirectory"
-        }""")
-    }
-  }
-
   "ScheduleOrdersEvery" in {
     testJson[MasterCommand](
       ScheduleOrdersEvery(12345.millis),
