@@ -10,10 +10,10 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.readPublicKeyRingCollection
+import com.sos.jobscheduler.core.crypt.pgp.PgpSignatureVerifier
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.problems.PGPMessageSignedByUnknownProblem
-import com.sos.jobscheduler.core.signature.PgpCommons.readPublicKeyRingCollection
-import com.sos.jobscheduler.core.signature.PgpSignatureVerifier
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterFileBaseds}

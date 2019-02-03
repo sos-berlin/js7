@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.signature
+package com.sos.jobscheduler.core.crypt.pgp
 
 import cats.Show
 import cats.effect.{Resource, SyncIO}
@@ -10,12 +10,12 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.ops._
 import java.io.{InputStream, OutputStream}
 import java.security.Security
-import org.bouncycastle.bcpg.ArmoredOutputStream
+import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.examples.PubringDump
 import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
-import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPUtil}
+import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPUtil}
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
@@ -28,15 +28,17 @@ object PgpCommons
 
   private val BufferSize = 4096
 
-  implicit val PGPPublicKeyShow = Show[PGPPublicKey](o ⇒
-    f"PGPPublicKey(${o.getKeyID}%08X " +
-      show"${o.getCreationTime} " +
-      o.getUserIDs.asScala.mkString("'", "', '", "'") + " " +
-      "algorithm=" + publicKeyAlgorithmToString(o.getAlgorithm) + " " +
-      s"isEncryptionKey=${o.isEncryptionKey} " +
-      s"isMasterKey=${o.isMasterKey} " +
-      "fingerprint=" + fingerprintToString(o.getFingerprint) +
-      ")")
+  implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key ⇒
+    import key._
+    f"PGPPublicKey($getKeyID%08X " +
+      getCreationTime.show + " " +
+      getUserIDs.asScala.mkString("'", "', '", "'") + " " +
+      "algorithm=" + publicKeyAlgorithmToString(getAlgorithm) + " " +
+      "isEncryptionKey=" + isEncryptionKey + " " +
+      "isMasterKey=" + isMasterKey + " " +
+      "fingerprint=" + fingerprintToString(getFingerprint) +
+      ")"
+  }
 
   implicit val PGPPublicKeyRingShow = Show[PGPPublicKeyRing](
     _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
@@ -44,21 +46,44 @@ object PgpCommons
   implicit val PGPPublicKeyRingCollectionShow = Show[PGPPublicKeyRingCollection](
     _.asScala.toVector.mkString_("", ", ", ""))
 
-  implicit val PGPSecretKeyShow = Show[PGPSecretKey](o ⇒
-    f"PGPSecretKey(${o.getKeyID}%08X " +
-      show"${o.getPublicKey} " +
-      "cipher=" + cipherToString(o.getKeyEncryptionAlgorithm) + " " +
-      s"isSigningKey=${o.isSigningKey} " +
-      s"isMasterKey=${o.isMasterKey} " +
-      ")")
+  implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key ⇒
+    import key._
+    f"PGPSecretKey($getKeyID%08X " +
+      getPublicKey.show + " " +
+      "cipher=" + cipherToString(getKeyEncryptionAlgorithm) + " " +
+      "isSigningKey=" + isSigningKey + " " +
+      "isMasterKey=" + isMasterKey + " " +
+      ")"
+  }
 
   implicit val PGPSecretKeyRingShow = Show[PGPSecretKeyRing](o ⇒
-    show"PGPSecretKeyRing(" +
-      show"${o.getPublicKey} " +
-      ")")
+    "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
 
   implicit val PGPSecretKeyRingCollectionShow = Show[PGPSecretKeyRingCollection](o ⇒
     f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
+
+  implicit val PGPSignatureShow = Show[PGPSignature] { sig ⇒
+    import sig._
+    f"PGPSignature($getKeyID%08X " +
+      "hash=" + hashAlgorithToString(getHashAlgorithm) + " " +
+      "keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) + " " +
+      getCreationTime.show +
+      ")"
+  }
+
+  private def hashAlgorithToString(hashAlgorithm: Int) =
+    hashAlgorithm match {
+      case HashAlgorithmTags.SHA1 ⇒ "SHA-1"
+      case HashAlgorithmTags.MD2 ⇒ "MD2"
+      case HashAlgorithmTags.MD5 ⇒ "MD5"
+      case HashAlgorithmTags.RIPEMD160 ⇒ "RIPEMD160"
+      case HashAlgorithmTags.SHA256 ⇒ "SHA-256"
+      case HashAlgorithmTags.SHA384 ⇒ "SHA-384"
+      case HashAlgorithmTags.SHA512 ⇒ "SHA-512"
+      case HashAlgorithmTags.SHA224 ⇒ "SHA-224"
+      case HashAlgorithmTags.TIGER_192 ⇒ "TIGER"
+      case _ ⇒ hashAlgorithm.toString
+    }
 
   private def publicKeyAlgorithmToString(n: Int) =
     try PubringDump.getAlgorithm(n)
@@ -74,9 +99,9 @@ object PgpCommons
       case bytes ⇒ bytes.map(b ⇒ f"$b%02X").mkString
     }
 
-  private[signature] def registerBouncyCastle() = ()  // Dummy to initialize this object
+  private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
 
-  private[signature] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) ⇒ Unit): Unit =
+  private[crypt] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) ⇒ Unit): Unit =
     message.useSync { in ⇒
       val buffer = new Array[Byte](BufferSize)
       var length = 1

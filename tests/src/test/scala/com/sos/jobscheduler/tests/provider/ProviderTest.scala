@@ -11,8 +11,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
+import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.writeSecretKeyAsAscii
 import com.sos.jobscheduler.core.filebased.{FileBasedReader, Repo, TypedPaths}
-import com.sos.jobscheduler.core.signature.PgpSigner.writeSecretKeyAsAscii
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent}
@@ -44,7 +44,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
     "-config-directory=" + directory ::
     "-master-uri=" + master.localUri :: Nil,
     testConfig)
-  private lazy val provider = new Provider(providerConfiguration)
+  private lazy val provider = Provider(providerConfiguration).orThrow
 
   override def beforeAll() = {
     directoryProvider.master.config / "private" / "private.conf" ++=
@@ -145,7 +145,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 
   "observe" - {
-    lazy val whenObserved = provider.observe()
+    lazy val whenObserved = provider.observe
       .onCancelTriggerError
       .foreach { _ ⇒ }
     var lastEventId = EventId.BeforeFirst

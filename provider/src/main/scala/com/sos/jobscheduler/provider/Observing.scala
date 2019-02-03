@@ -20,7 +20,7 @@ trait Observing {
   private val watchDuration     = conf.config.getDuration("jobscheduler.provider.file-watch.poll-interval").toFiniteDuration
   private val errorWaitDuration = conf.config.getDuration("jobscheduler.provider.file-watch.error-delay").toFiniteDuration
 
-  def observe()(implicit s: Scheduler, iox: IOExecutor): Observable[Unit] = {
+  def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Unit] = {
     // Start DirectoryWatcher before replaceMasterConfiguration, otherwise the first events may get lost!
     val watcher = new DirectoryWatcher(conf.liveDirectory, watchDuration)
     val newVersionId = new VersionIdGenerator

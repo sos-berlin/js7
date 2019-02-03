@@ -13,17 +13,17 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.writePublicKeyAsAscii
+import com.sos.jobscheduler.core.crypt.pgp.PgpKeyGenerator
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.core.signature.PgpCommons.writePublicKeyAsAscii
-import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.crypt.SignerId
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.master.RunningMaster
@@ -39,7 +39,6 @@ import java.nio.file.Files.{createDirectory, createTempDirectory, setPosixFilePe
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
-import java.util.Base64
 import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -107,18 +106,16 @@ extends HasCloser {
   }
 
   val pgpPassword = SecretString(Random.nextString(10))
-  val pgpSecretKey = PgpKeyGenerator.generateSecretKey(PgpUserId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
+  val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
   val fileBasedSigner: FileBasedSigner = {
     autoClosing(new FileOutputStream(master.config / "private" / "trusted-pgp-keys.asc")) { out ⇒
       writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)
     }
-    new FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpPassword)
+    FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpPassword).orThrow
   }
 
   def signStringToBase64(string: String): String =
-    Base64.getMimeEncoder.encodeToString(
-      fileBasedSigner.pgpSigner.sign(
-        stringToInputStreamResource(string)))
+    fileBasedSigner.pgpSigner.sign(string).string
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit): Unit =
     runAgents()(agents ⇒

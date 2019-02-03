@@ -9,10 +9,11 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.writePublicKeyAsAscii
+import com.sos.jobscheduler.core.crypt.pgp.PgpKeyGenerator
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.core.signature.PgpCommons.writePublicKeyAsAscii
-import com.sos.jobscheduler.core.signature.{PgpKeyGenerator, PgpUserId}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.crypt.SignerId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -82,10 +83,10 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 
       val pgpSecretKeyPassword = SecretString("PGP-PASSWORD")
       val pgpSecretKey = PgpKeyGenerator.generateSecretKey(
-        PgpUserId("MasterAgentWithoutAuthenticationTest"),
+        SignerId("MasterAgentWithoutAuthenticationTest"),
         pgpSecretKeyPassword,
         keySize = 1024)
-      val fileBasedSigner = new FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpSecretKeyPassword)
+      val fileBasedSigner = FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpSecretKeyPassword).orThrow
       autoClosing(new FileOutputStream(dir / "master/config/private/trusted-pgp-keys.asc")) { out ⇒
         writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)
       }

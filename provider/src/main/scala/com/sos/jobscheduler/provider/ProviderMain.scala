@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.provider
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -21,7 +22,7 @@ object ProviderMain
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       StartUp.logStartUp(configDir = conf.configDirectory, dataDir = None)
-      val cancelable = Provider.observe(conf).foreach { _ ⇒ }
+      val cancelable = Provider.observe(conf).orThrow foreach { _ ⇒ }
       handleJavaShutdown(conf.config, "ProviderMain", onJavaShutdown(cancelable)) {
         // ?
       }

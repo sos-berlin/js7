@@ -7,7 +7,7 @@ import io.circe.{Decoder, DecodingFailure, JsonObject, ObjectEncoder}
 /**
   * @author Joacim Zschimmer
   */
-final case class PgpSignature(string: String)
+final case class PgpSignature(string: String) extends Signature
 {
   override def toString = s"PgpSignature(${string.truncateWithEllipsis(29, showLength = true)})"
 }

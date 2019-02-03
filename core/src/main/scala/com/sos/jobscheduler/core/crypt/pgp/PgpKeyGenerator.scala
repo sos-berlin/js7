@@ -1,7 +1,8 @@
-package com.sos.jobscheduler.core.signature
+package com.sos.jobscheduler.core.crypt.pgp
 
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.crypt.SignerId
 import java.math.BigInteger
 import java.security.SecureRandom
 import org.bouncycastle.bcpg.sig.{Features, KeyFlags}
@@ -19,7 +20,7 @@ object PgpKeyGenerator
 {
   private val logger = Logger(getClass)
 
-  def generateSecretKey(id: PgpUserId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
+  def generateSecretKey(id: SignerId, password: SecretString, keySize: Int = 4096): PGPSecretKey = {
     // See https://stackoverflow.com/questions/3087049/bouncy-castle-rsa-keypair-generation-using-lightweight-api
     val publicExponent = 0x10001  // Should be a Fermat number
     val certainty = 80

@@ -17,9 +17,9 @@ import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.CatsUtils.autoCloseableToResource
+import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, TypedPathDirectoryWalker}
-import com.sos.jobscheduler.core.signature.PgpSigner.readSecretKey
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -44,7 +44,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class Provider(val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
+final class Provider(fileBasedSigner: FileBasedSigner, val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
 extends AutoCloseable with Observing
 {
   private val api = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
@@ -54,10 +54,6 @@ extends AutoCloseable with Observing
     } yield UserAndPassword(UserId(userName), SecretString(password))
   private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
-  private val signer = new FileBasedSigner(
-    MasterFileBaseds.jsonCodec,
-    readSecretKey(fileAsResource(conf.configDirectory / "private" / "private-pgp-key.asc")),
-    password = SecretString(conf.config.getString("jobscheduler.provider.pgp.password")))
 
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
@@ -115,7 +111,7 @@ extends AutoCloseable with Observing
       diff.deleted.map(path ⇒ TypedPathDirectoryWalker.fileToTypedFile(conf.liveDirectory, path, typedPathCompanions))
         .toVector.sequence
         .map(_ map (_.path))
-    (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(versionId, chg map (o ⇒ signer.sign(o withVersion versionId)), del))
+    (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(versionId, chg map (o ⇒ fileBasedSigner.sign(o withVersion versionId)), del))
   }
 
   private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] = {
@@ -125,7 +121,7 @@ extends AutoCloseable with Observing
         .toVector.sequence
         .flatMap(readObjects(readers, conf.liveDirectory, _))
         .map(_.toVector)
-    checkedFileBased map (o ⇒ ReplaceRepo(versionId, o map (x ⇒ signer.sign(x withVersion versionId))))
+    checkedFileBased map (o ⇒ ReplaceRepo(versionId, o map (x ⇒ fileBasedSigner.sign(x withVersion versionId))))
   }
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
@@ -138,9 +134,16 @@ object Provider
   private val logger = Logger(getClass)
   private val readers = AgentReader :: WorkflowReader :: Nil
 
-  def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Observable[Unit] =
-    autoCloseableToResource(new Provider(conf)).flatMap(provider ⇒
-      provider.observe())
+  def apply(conf: ProviderConfiguration)(implicit s: Scheduler): Checked[Provider]  =
+    FileBasedSigner(
+      MasterFileBaseds.jsonCodec,
+      readSecretKey(fileAsResource(conf.configDirectory / "private" / "private-pgp-key.asc")),
+      password = SecretString(conf.config.getString("jobscheduler.provider.pgp.password"))
+    ).map(new Provider(_, conf))
+
+
+  def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Unit]] =
+    Provider(conf).map(autoCloseableToResource(_).flatMap(_.observe))
 
   private[provider] def logThrowable(throwable: Throwable): Unit = {
     logger.error(throwable.toStringWithCauses)
