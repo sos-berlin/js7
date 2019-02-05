@@ -29,6 +29,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
@@ -191,7 +192,8 @@ object RunningMaster {
                 masterConfiguration,
                 injector.instance[JournalMeta[Event]],
                 injector.instance[JournalEventWatch[Event]],
-                injector.instance[EventIdClock])(
+                injector.instance[EventIdClock],
+                injector.instance[GenericSignatureVerifier])(
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },

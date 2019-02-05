@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import org.scalactic.Requirements._
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
 /**
@@ -146,8 +147,9 @@ object AgentConfiguration {
 
   // Same code in TextAgentClient.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
-    ConfigFactory
-      .empty  //.parseMap(Map("jobscheduler.agent.data.directory" → dataDirectory.toString))  // For substitution of ${jobscheduler.agent.data.directory}
+    ConfigFactory.parseMap(Map(
+        "jobscheduler.config-directory" → configDirectory.toString
+      ).asJava)
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
       .withFallback(parseConfigIfExists(configDirectory / "agent.conf"))
 

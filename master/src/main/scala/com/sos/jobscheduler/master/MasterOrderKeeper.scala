@@ -19,7 +19,6 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
@@ -28,6 +27,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -74,7 +74,8 @@ final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
   journalMeta: JournalMeta[Event],
   eventWatch: JournalEventWatch[Event],
-  eventIdClock: EventIdClock)
+  eventIdClock: EventIdClock,
+  signatureVerifier: GenericSignatureVerifier)
   (implicit
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
@@ -89,10 +90,8 @@ with MainJournalingActor[Event]
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal"))
   private var hasRecovered = false
-  private val repoReader = (Files.exists(masterConfiguration.fileBasedDirectory) ?
-    new MasterRepoReader(masterConfiguration.fileBasedDirectory)) toChecked Problem("No configuration directory")
   private var repo = Repo.empty
-  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration)  // TODO throws
+  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, signatureVerifier)  // TODO throws
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))

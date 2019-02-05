@@ -54,5 +54,5 @@ object SignedRepoObjectVerifierTest
   private val signer = PgpSigner(secretKey, password).orThrow
 
   private def sign(string: String): SignedRepoObject =
-    SignedRepoObject(string, signer.sign(string))
+    SignedRepoObject(string, signer.sign(string).toGenericSignature)
 }

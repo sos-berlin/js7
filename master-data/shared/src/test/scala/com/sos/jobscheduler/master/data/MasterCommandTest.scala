@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.crypt.PgpSignature
+import com.sos.jobscheduler.data.crypt.GenericSignature
 import com.sos.jobscheduler.data.filebased.{SignedRepoObject, VersionId}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -76,12 +76,40 @@ final class MasterCommandTest extends FreeSpec {
     }
   }
 
+  "ReplaceRepo" in {
+    testJson[MasterCommand](ReplaceRepo(
+      VersionId("1"),
+      objects = SignedRepoObject(
+        message = """{"TYPE": "Workflow", ...}""",
+        GenericSignature(
+          "PGP",
+          """|-----BEGIN PGP SIGNATURE-----
+            |
+            |...
+            |-----END PGP SIGNATURE-----
+            |""".stripMargin)) :: Nil),
+      json"""{
+        "TYPE": "ReplaceRepo",
+        "versionId": "1",
+        "objects": [
+          {
+            "message": "{\"TYPE\": \"Workflow\", ...}",
+            "signature": {
+              "TYPE": "PGP",
+              "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+            }
+          }
+        ]
+      }""")
+  }
+
   "UpdateRepo" in {
     testJson[MasterCommand](UpdateRepo(
       VersionId("1"),
       change = SignedRepoObject(
         message = """{"TYPE": "Workflow", ...}""",
-        signature = PgpSignature(
+        GenericSignature(
+          "PGP",
            """-----BEGIN PGP SIGNATURE-----
             |
             |...
@@ -107,32 +135,6 @@ final class MasterCommandTest extends FreeSpec {
           }, {
             "TYPE": "AgentPath",
             "path": "/AGENT-A"
-          }
-        ]
-      }""")
-  }
-
-  "ReplaceRepo" in {
-    testJson[MasterCommand](ReplaceRepo(
-      VersionId("1"),
-      objects = SignedRepoObject(
-        message = """{"TYPE": "Workflow", ...}""",
-        signature = PgpSignature(
-          """|-----BEGIN PGP SIGNATURE-----
-            |
-            |...
-            |-----END PGP SIGNATURE-----
-            |""".stripMargin)) :: Nil),
-      json"""{
-        "TYPE": "ReplaceRepo",
-        "versionId": "1",
-        "objects": [
-          {
-            "message": "{\"TYPE\": \"Workflow\", ...}",
-            "signature": {
-              "TYPE": "PGP",
-              "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
-            }
           }
         ]
       }""")

@@ -11,11 +11,11 @@ import org.bouncycastle.openpgp.PGPSecretKey
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedSigner private(val pgpSigner: PgpSigner, jsonEncoder: Encoder[FileBased], secretKey: PGPSecretKey, password: SecretString)
+final class FileBasedSigner private(val pgpSigner: PgpSigner, jsonEncoder: Encoder[FileBased])
 {
   def sign(fileBased: FileBased): SignedRepoObject = {
     val message = jsonEncoder(fileBased).compactPrint
-    SignedRepoObject(message, pgpSigner.sign(message))
+    SignedRepoObject(message, pgpSigner.sign(message).toGenericSignature)
   }
 }
 
@@ -23,5 +23,5 @@ object FileBasedSigner
 {
   def apply(jsonEncoder: Encoder[FileBased], secretKey: PGPSecretKey, password: SecretString): Checked[FileBasedSigner] =
     for (pgpSigner <- PgpSigner(secretKey, password)) yield
-      new FileBasedSigner(pgpSigner, jsonEncoder, secretKey, password)
+      new FileBasedSigner(pgpSigner, jsonEncoder)
 }

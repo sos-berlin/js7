@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import cats.effect.Resource
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -59,6 +60,9 @@ object MonixUtils
       }
     }
   }
+
+  def autoCloseableToObservable[A <: AutoCloseable](newA: ⇒ A): Observable[A] =
+    Observable.fromResource(Resource.fromAutoCloseable(Task(newA)))
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     closingIteratorToObservable(iterator.closeAtEnd)

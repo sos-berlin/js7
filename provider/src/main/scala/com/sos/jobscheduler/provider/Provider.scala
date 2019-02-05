@@ -14,9 +14,9 @@ import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqD
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.JavaSyncResources.fileAsResource
+import com.sos.jobscheduler.common.scalautil.MonixUtils.autoCloseableToObservable
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.CatsUtils.autoCloseableToResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, TypedPathDirectoryWalker}
@@ -143,7 +143,7 @@ object Provider
 
 
   def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Unit]] =
-    Provider(conf).map(autoCloseableToResource(_).flatMap(_.observe))
+    Provider(conf).map(autoCloseableToObservable(_).flatMap(_.observe))
 
   private[provider] def logThrowable(throwable: Throwable): Unit = {
     logger.error(throwable.toStringWithCauses)

@@ -16,6 +16,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.time.ZoneId
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
 /**
@@ -110,8 +111,9 @@ object MasterConfiguration
 
   // Same code in AkkaHttpMasterTextApi.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
-    ConfigFactory
-      .empty
+    ConfigFactory.parseMap(Map(
+        "jobscheduler.config-directory" → configDirectory.toString
+      ).asJava)
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
       .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
 }

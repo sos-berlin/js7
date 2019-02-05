@@ -113,16 +113,16 @@ final class PgpTest extends FreeSpec
 
 object PgpTest
 {
-  private val TestMessage = "The data to be signed\n"
-  private val signerIds = SignerId("TEST (COMMENT) <test@example.com>") :: Nil
+  private[crypt] val TestMessage = "The data to be signed\n"
+  private[crypt] val signerIds = SignerId("TEST (COMMENT) <test@example.com>") :: Nil
 
   // Keys and signatur generated gpg (GnuPG/MacGPG2) 2.2.10, libgcrypt 1.8.3
   // gpg --export --armor
-  private final val publicKeyResource = JavaResource("com/sos/jobscheduler/core/crypt/pgp/test-public-pgp-key.asc")
+  private[crypt] final val publicKeyResource = JavaResource("com/sos/jobscheduler/core/crypt/pgp/test-public-pgp-key.asc")
 
-  private val secretKeyPassword = SecretString("TEST-PASSWORD")
+  private[crypt] val secretKeyPassword = SecretString("TEST-PASSWORD")
   // gpg --export-secret-keys --armore
-  private final val secretKeyResource = JavaResource("com/sos/jobscheduler/core/crypt/pgp/test-private-pgp-key.asc")
+  private[crypt] final val secretKeyResource = JavaResource("com/sos/jobscheduler/core/crypt/pgp/test-private-pgp-key.asc")
 
   // gpg --sign --detach-sign 1 && base64 1.sig
   private val TestSignature = PgpSignature(

@@ -7,13 +7,13 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.ops._
-import com.sos.jobscheduler.common.scalautil.GuavaUtils.{stringToInputStream, stringToInputStreamResource}
+import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
-import com.sos.jobscheduler.core.crypt.pgp.PgpSignatureVerifier._
 import com.sos.jobscheduler.core.problems.{PGPMessageSignedByUnknownProblem, PGPTamperedWithMessageProblem}
-import com.sos.jobscheduler.data.crypt.{PgpSignature, SignerId}
+import com.sos.jobscheduler.data.crypt.{GenericSignature, PgpSignature, SignerId}
 import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
@@ -25,23 +25,23 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection)
-extends SignatureVerifier[PgpSignature]
+extends SignatureVerifier
 {
+  import com.sos.jobscheduler.core.crypt.pgp.PgpSignatureVerifier._
+
+  protected type MySignature = PgpSignature
+  def companion = PgpSignatureVerifier
+
   registerBouncyCastle()
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
-
-  //logger.debug(rawToString)
 
   /** Returns `Valid(message)` iff signature matches the message. */
   def verify(message: String, signature: PgpSignature): Checked[Seq[SignerId]] =
     verify(stringToInputStreamResource(message), stringToInputStreamResource(signature.string))
 
-  def verifyString(message: String, signature: Resource[SyncIO, InputStream]): Checked[(String, Seq[SignerId])] =
-    verify(Resource.fromAutoCloseable(SyncIO { stringToInputStream(message) }), signature) map message.→
-
   /** Returns `Valid(userIds)` iff signature matches the message. */
-  def verify(message: Resource[SyncIO, InputStream], signature: Resource[SyncIO, InputStream]): Checked[Seq[SignerId]] =
+  private def verify(message: Resource[SyncIO, InputStream], signature: Resource[SyncIO, InputStream]): Checked[Seq[SignerId]] =
     readMutableSignature(signature)
       .flatMap { sig ⇒
         logger.debug("Verifying with " + sig.show)
@@ -71,14 +71,27 @@ extends SignatureVerifier[PgpSignature]
       .filter(_.isMasterKey)
       .flatMap(_.getUserIDs.asScala)
       .map(SignerId.apply)
-      .toVector}
+      .toVector
+}
 
-object PgpSignatureVerifier
+object PgpSignatureVerifier extends SignatureVerifier.Companion
 {
-  val logger = Logger(getClass)
+  protected type MySignature = PgpSignature
+  protected type MySignatureVerifier = PgpSignatureVerifier
+
+  val typeName = PgpSignature.TypeName
+  private val logger = Logger(getClass)
+
+  def apply(keyRings: Seq[Byte]): PgpSignatureVerifier =
+    apply(bytesToInputStreamResource(keyRings))
 
   def apply(keyRings: Resource[SyncIO, InputStream]): PgpSignatureVerifier =
     new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings))
+
+  def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
+    assert(signature.typeName == typeName)
+    PgpSignature(signature.string)
+  }
 
   private[pgp] def readMutableSignature(in: Resource[SyncIO, InputStream]): Checked[PGPSignature] =
     in.useSync(in ⇒
