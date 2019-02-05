@@ -171,7 +171,7 @@ extends Actor with Stash {
     case Input.TakeSnapshot ⇒
       snapshotRequested = false
       if (!eventWriter.isEventWritten) {
-        if (sender != self) sender ! Output.SnapshotTaken
+        if (sender() != self) sender() ! Output.SnapshotTaken
       } else {
         val sender = this.sender()
         becomeTakingSnapshotThen() {
@@ -196,6 +196,7 @@ extends Actor with Stash {
   }
 
   private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
+    val sender = context.sender()
     def commit = Internal.Commit(writtenBuffer.length)
     if (delay.isZero)
       self.forward(commit)
@@ -203,7 +204,7 @@ extends Actor with Stash {
       forwardingCommit = delay
       if (delayedCommit != null) delayedCommit.cancel()
       delayedCommit = scheduler.scheduleOnce(delay) {
-        self.forward(commit)
+        self.tell(commit, sender)  // Don't  use forward in async operation
       }
     }
   }
@@ -215,7 +216,7 @@ extends Actor with Stash {
     catch { case NonFatal(t) ⇒
       val tt = t.appendCurrentStackTrace
       writtenBuffer foreach {
-        case w: NormallyWritten ⇒ reply(sender, w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
+        case w: NormallyWritten ⇒ reply(sender(), w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
         case _: AcceptEarlyWritten ⇒  // TODO Error handling?
       }
       throw tt;
