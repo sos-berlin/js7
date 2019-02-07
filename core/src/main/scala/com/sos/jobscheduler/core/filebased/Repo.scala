@@ -81,11 +81,6 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
         Some(FileBasedAdded(fileBased.withoutVersion))
     }
 
-  def onlyCurrentVersion: Repo =
-    new Repo(
-      versions.head :: Nil,
-      currentVersion.values.map(fileBased ⇒ fileBased.id → Some(fileBased)).toMap)
-
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).asInstanceOf[Map[A#Path, A]]
 
