@@ -28,6 +28,7 @@ trait WebLogDirectives extends ExceptionHandling {
   protected def actorSystem: ActorSystem
 
   private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
+  private lazy val logResponse = actorSystem.settings.config.getBoolean("jobscheduler.webserver.log.response")
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
   protected def webLog(userId: Option[UserId]): Directive0 =
@@ -41,23 +42,28 @@ trait WebLogDirectives extends ExceptionHandling {
 
   private def webLogOnly(userId: Option[UserId]): Directive0 =
     extractRequest flatMap { request ⇒
-      val start = nanoTime
-      mapResponse { response ⇒
-        log(request, response, logLevel, userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
-        response
-      }
+      if (logResponse) {
+        val start = nanoTime
+        mapResponse { response ⇒
+          log(request, Some(response), logLevel, userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
+          response
+        }
+      } else {
+          log(request, None, logLevel, userId, nanos = Long.MinValue, hasRemoteAddress = hasRemoteAddress)
+          pass
+        }
     }
 
-  private def log(request: HttpRequest, response: HttpResponse, logLevel: LogLevel, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)(): Unit = {
-    val isFailure = response.status.isFailure
+  private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)(): Unit = {
+    val isFailure = response.exists(_.status.isFailure)
     webLogger.log(
       if (isFailure) Warn else logLevel,
       requestResponseToLine(request, response, userId, nanos, hasRemoteAddress = hasRemoteAddress))
   }
 
-  private def requestResponseToLine(request: HttpRequest, response: HttpResponse, userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean) = {
+  private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse], userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean) = {
     val sb = new StringBuilder(200)
-    sb.append(response.status.intValue)
+    for (response ← responseOption) sb.append(response.status.intValue)
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
     //sb.append(' ')
     //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
@@ -68,28 +74,30 @@ trait WebLogDirectives extends ExceptionHandling {
     sb.append(' ')
     sb.append(request.uri)
     sb.append(' ')
-    if (response.status.isFailure)
-      response.entity match {  // Try to extract error message
-        case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) ⇒
-          appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c ⇒ !c.isControl } truncateWithEllipsis 200)
+    for (response ← responseOption) {
+      if (response.status.isFailure)
+        response.entity match {  // Try to extract error message
+          case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) ⇒
+            appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c ⇒ !c.isControl } truncateWithEllipsis 200)
 
-        case entity @ HttpEntity.Strict(`application/json`, _) ⇒
-          parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
-            case Left(_) ⇒ appendQuotedString(sb, response.status.reason)
-            case Right(problem) ⇒ appendQuotedString(sb, problem.toString)
-          }
+          case entity @ HttpEntity.Strict(`application/json`, _) ⇒
+            parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
+              case Left(_) ⇒ appendQuotedString(sb, response.status.reason)
+              case Right(problem) ⇒ appendQuotedString(sb, problem.toString)
+            }
 
+          case _ ⇒
+            appendQuotedString(sb, response.status.reason)
+        }
+      else response.entity match {
+        case entity: HttpEntity.Strict ⇒
+          sb.append(entity.data.length)
         case _ ⇒
-          appendQuotedString(sb, response.status.reason)
+          sb.append("STREAM")
       }
-    else response.entity match {
-      case entity: HttpEntity.Strict ⇒
-        sb.append(entity.data.length)
-      case _ ⇒
-        sb.append("STREAM")
+      sb.append(' ')
+      sb.append(Duration.ofNanos(nanos).pretty)
     }
-    sb.append(' ')
-    sb.append(Duration.ofNanos(nanos).pretty)
     sb.toString
   }
 }
@@ -99,6 +107,7 @@ object WebLogDirectives {
 
   val TestConfig = ConfigFactory.parseMap(Map(
     "jobscheduler.webserver.log.level" → "debug",
+    "jobscheduler.webserver.log.duration" → "false",
     "jobscheduler.webserver.verbose-error-messages" → true.toString)
     .asJava)
 
