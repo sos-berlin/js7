@@ -53,7 +53,7 @@ addCommandAlias("clean-build-only", "; clean-all; build-only")
 addCommandAlias("clean-pack"     , "; clean-all; compile-only; pack")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
-addCommandAlias("compile-all"    , "; Test/compile; ForkedTest:compile")
+addCommandAlias("compile-all"    , "; Test/compile; ForkedTest/compile; ExclusiveTest/compile")
 addCommandAlias("compile-only"   , "; compile")
 addCommandAlias("test-all",
   if (testParallel)
