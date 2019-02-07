@@ -4,7 +4,7 @@ import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
-import com.google.common.io.{Files ⇒ GuavaFiles}
+import com.google.common.io.{Files => GuavaFiles}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -53,6 +53,9 @@ object FileUtils {
       def :=(byteString: Array[Byte]): Unit =
         contentBytes = byteString
 
+      def :=(byteString: Seq[Byte]): Unit =
+        contentBytes = byteString
+
       def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
         contentString = jsonEncoder(a).pretty(CompactPrinter)
 
@@ -69,6 +72,8 @@ object FileUtils {
       def contentBytes: Array[Byte] = file.contentBytes
 
       def contentBytes_=(o: Array[Byte]): Unit = file.contentBytes = o
+
+      def contentBytes_=(o: Seq[Byte]): Unit = file.contentBytes = o
 
       def contentString: String = file.contentString
 
@@ -105,6 +110,8 @@ object FileUtils {
       def contentBytes: Array[Byte] = GuavaFiles.toByteArray(delegate)
 
       def contentBytes_=(o: Array[Byte]): Unit = GuavaFiles.write(o, delegate)
+
+      def contentBytes_=(o: Seq[Byte]): Unit = GuavaFiles.write(o.toArray, delegate)
 
       def contentString: String = contentString(UTF_8)
 

@@ -39,9 +39,16 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       new String(Files.readAllBytes(file), UTF_8) shouldEqual TestString
     }
 
-    "contentBytes" in {
+    "contentBytes = Array" in {
       file.contentBytes shouldEqual TestBytes
       file.contentBytes = Array[Byte](1, 2)
+      file.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    "contentBytes = Seq" in {
+      file.contentBytes = Array.empty[Byte]
+      assert(file.contentBytes.isEmpty)
+      file.contentBytes = Seq[Byte](1, 2)
       file.contentBytes shouldEqual Vector[Byte](1, 2)
     }
 
@@ -99,6 +106,11 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
     ":= Array[Byte]" in {
       path := Array[Byte](1, 2)
+      path.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    ":= Seq[Byte]" in {
+      path := Seq[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
     }
 
