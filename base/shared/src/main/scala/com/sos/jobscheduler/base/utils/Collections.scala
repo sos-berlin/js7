@@ -166,6 +166,9 @@ object Collections {
   }
 
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
+    def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
+      underlying mapValues Valid.apply withDefault unknownKey.andThen(Invalid.apply)
+
     def withNoSuchKey(noSuchKey: K ⇒ Nothing): Map[K, V] =
       underlying withDefault (k ⇒ noSuchKey(k))
 
