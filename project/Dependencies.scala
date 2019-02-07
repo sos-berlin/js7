@@ -44,7 +44,7 @@ object Dependencies
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = ("com.google.inject" % "guice" % "4.2.1" classifier "no_aop") :: javaxInject :: Nil
+  val guice               = ("com.google.inject" % "guice" % "4.2.2" classifier "no_aop") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.3"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
