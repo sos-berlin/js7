@@ -92,6 +92,7 @@ if [ -f "$config/log4j2.xml" ]; then :
 fi
 if $log4jAsync; then :
   javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+  javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
   javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
 fi
 

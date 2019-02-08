@@ -36,6 +36,7 @@ val rootDirectory = Paths.get(".").toAbsolutePath
 // Does not work:
 ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml"
 ForkedTest / javaOptions += "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+ForkedTest / javaOptions += "-Dlog4j2.asyncLoggerWaitStrategy=Block" 
 ForkedTest / javaOptions += "-Djobscheduler.log4j.immediateFlush=false"
 
 val testParallelization: Int = 1 * sys.runtime.availableProcessors
