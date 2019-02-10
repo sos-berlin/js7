@@ -116,6 +116,7 @@ echo "$pid" >$pidFile
 echo PID $pid
 
 function terminate() {
+  echo
   echo Terminate JobScheduler Master
   # Add some seconds to start Java with MasterClientMain
   terminateTimeout=30

@@ -41,8 +41,8 @@ trait SessionApi extends HasSessionToken
     tokenOption match {
       case None ⇒ Task.pure(Completed)
       case Some(sessionToken) ⇒
-        executeSessionCommand(Logout(sessionToken), suppressSessionToken = true) map {
-          case SessionCommand.Response.Accepted ⇒
+        executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
+          .map { _: SessionCommand.Response.Accepted ⇒
             sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Logout or Login
             Completed
         }

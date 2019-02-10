@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestsLimiter
@@ -19,6 +20,7 @@ import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEven
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.master.configuration.DoNotVerifyMasterFileBasedVerifier
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
@@ -53,7 +55,7 @@ trait FatEventRoute extends MasterRouteProvider
   // The client may impatiently abort and retry, overloading the server with multiple useless requests.
   private val concurrentRequestsLimiter = new ConcurrentRequestsLimiter(limit = 1, FatEventServiceBusyProblem)
 
-  private lazy val fatStateCache = new FatStateCache(eventWatch)
+  private lazy val fatStateCache = new FatStateCache(eventWatch, DoNotVerifyMasterFileBasedVerifier)
 
   @TestOnly
   protected def isBusy = concurrentRequestsLimiter.isBusy
@@ -107,5 +109,6 @@ trait FatEventRoute extends MasterRouteProvider
 }
 
 object FatEventRoute {
+  intelliJuseImport(Scheduler)
   private val logger = Logger(getClass)
 }

@@ -118,6 +118,7 @@ echo "$pid" >$pidFile
 echo PID $pid
 
 function terminate() {
+  echo
   echo Terminate JobScheduler Agent
   # Add some seconds to start Java with AgentClientMain
   terminateTimeout=30

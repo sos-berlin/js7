@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -62,6 +63,16 @@ final class MasterUrisTest extends FreeSpec {
 
     "list" in {
       assert(masterUris.workflow.list[Workflow] == "http://example.com/master/api/workflow/?return=Workflow")
+    }
+  }
+
+  "agent" - {
+    "single" in {
+      assert(masterUris.agent(AgentPath("/A/B")) == "http://example.com/master/api/agent/A%2FB")
+    }
+
+    "list" in {
+      assert(masterUris.agent.list[Agent] == "http://example.com/master/api/agent/?return=Agent")
     }
   }
 }

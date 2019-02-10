@@ -8,27 +8,34 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.SyncResource.ops.RichResource
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
+import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
-import com.sos.jobscheduler.core.crypt.pgp.PgpSigner._
 import com.sos.jobscheduler.data.crypt.PgpSignature
-import java.io.{InputStream, OutputStream}
+import java.io.InputStream
 import java.util.Base64
-import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags}
+import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
-import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
+import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
 final class PgpSigner private(pgpSecretKey: PGPSecretKey, password: SecretString)
-extends MessageSigner[PgpSignature]
+extends MessageSigner
 {
+  protected type MySignature = PgpSignature
+
+  def companion = PgpSigner
+
+  import PgpSigner._
+
   registerBouncyCastle()
   //logger.debug(pgpSecretKey.show)
 
-  private val privateKey = pgpSecretKey.extractPrivateKey(
+  private val pgpPrivateKey = pgpSecretKey.extractPrivateKey(
     new JcePBESecretKeyDecryptorBuilder() //?new JcaPGPDigestCalculatorProviderBuilder()
       .setProvider("BC")
       .build(password.string.toArray))
@@ -38,6 +45,14 @@ extends MessageSigner[PgpSignature]
     val signatureBytes = sign(stringToInputStreamResource(message))
     PgpSignature(Base64.getMimeEncoder.encodeToString(signatureBytes))
   }
+
+  /** The private key in armored ASCII. */
+  def privateKey: Seq[Byte] =
+    pgpSecretKey.toArmoredAsciiBytes
+
+  /** The public key in armored ASCII. */
+  def publicKey: Seq[Byte] =
+    pgpSecretKey.getPublicKey.toArmoredAsciiBytes
 
   private def sign(message: Resource[SyncIO, InputStream]): Array[Byte] = {
     val signatureGenerator = newSignatureGenerator()
@@ -49,7 +64,7 @@ extends MessageSigner[PgpSignature]
     val signatureGenerator = new PGPSignatureGenerator(
       new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
         .setProvider("BC"))
-    signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, privateKey)
+    signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
     for (u ← maybeUserId) {
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
       subpacketGenerator.setSignerUserID(false, u)
@@ -64,18 +79,22 @@ extends MessageSigner[PgpSignature]
   override def toString = show"PgpSigner($pgpSecretKey)"
 }
 
-object PgpSigner
+object PgpSigner extends MessageSigner.Companion
 {
+  protected type MySignature = PgpSignature
+  protected type MyMessageSigner = PgpSigner
+
+  def typeName = PgpSignature.TypeName
+
+  def checked(privateKey: collection.Seq[Byte], password: SecretString) =
+    Checked.catchNonFatal(
+      new PgpSigner(readSecretKey(bytesToInputStreamResource(privateKey)), password))
+
   private val OurHashAlgorithm = HashAlgorithmTags.SHA512
 
   def apply(pgpSecretKey: PGPSecretKey, password: SecretString): Checked[PgpSigner] =
-    Checked.catchNonFatal(new PgpSigner(pgpSecretKey, password))
-
-  def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit = {
-    val armored = new ArmoredOutputStream(out)
-    new PGPSecretKeyRing(List(secretKey).asJava).encode(armored)
-    armored.close()
-  }
+    Checked.catchNonFatal(
+      new PgpSigner(pgpSecretKey, password))
 
   def readSecretKey(resource: Resource[SyncIO, InputStream]): PGPSecretKey =
     selectSecretKey(readSecretKeyRingCollection(resource))

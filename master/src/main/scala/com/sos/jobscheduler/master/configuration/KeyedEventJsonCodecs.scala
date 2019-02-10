@@ -3,9 +3,9 @@ package com.sos.jobscheduler.master.configuration
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.filebased.RepoEvent
+import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.master.agent.AgentEventIdEvent
-import com.sos.jobscheduler.master.data.MasterFileBaseds._
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEvent
 

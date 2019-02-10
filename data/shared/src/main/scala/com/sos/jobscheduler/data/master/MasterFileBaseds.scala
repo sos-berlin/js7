@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.data
+package com.sos.jobscheduler.data.master
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}

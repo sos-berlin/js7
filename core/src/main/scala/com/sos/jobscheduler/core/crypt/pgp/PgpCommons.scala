@@ -8,9 +8,9 @@ import cats.syntax.show._
 import com.sos.jobscheduler.base.time.Timestamp.JavaUtilDateShow
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.ops._
-import java.io.{InputStream, OutputStream}
+import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.security.Security
-import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags}
+import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.examples.PubringDump
 import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
@@ -52,7 +52,7 @@ object PgpCommons
       getPublicKey.show + " " +
       "cipher=" + cipherToString(getKeyEncryptionAlgorithm) + " " +
       "isSigningKey=" + isSigningKey + " " +
-      "isMasterKey=" + isMasterKey + " " +
+      "isMasterKey=" + isMasterKey +
       ")"
   }
 
@@ -64,14 +64,35 @@ object PgpCommons
 
   implicit val PGPSignatureShow = Show[PGPSignature] { sig ⇒
     import sig._
-    f"PGPSignature($getKeyID%08X " +
-      "hash=" + hashAlgorithToString(getHashAlgorithm) + " " +
-      "keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) + " " +
-      getCreationTime.show +
+    f"PGPSignature(" +
+      signatureTypeToString(getSignatureType) +
+      //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)
+      f", publicKeyID=$getKeyID%08X" +
+      " hash=" + hashAlgorithmToString(getHashAlgorithm) +
+      //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
+      " created=" + getCreationTime.show +
       ")"
   }
 
-  private def hashAlgorithToString(hashAlgorithm: Int) =
+  private def signatureTypeToString(t: Int) = t match {
+    case PGPSignature.BINARY_DOCUMENT          => "binary document"
+    case PGPSignature.CANONICAL_TEXT_DOCUMENT  => "canonical text document"
+    case PGPSignature.STAND_ALONE              => "stand alone"
+    case PGPSignature.DEFAULT_CERTIFICATION    => "default certification"
+    case PGPSignature.NO_CERTIFICATION         => "no certification"
+    case PGPSignature.CASUAL_CERTIFICATION     => "casual certification"
+    case PGPSignature.POSITIVE_CERTIFICATION   => "positive certification"
+    case PGPSignature.SUBKEY_BINDING           => "subkey binding"
+    case PGPSignature.PRIMARYKEY_BINDING       => "primarykey binding"
+    case PGPSignature.DIRECT_KEY               => "direct key"
+    case PGPSignature.KEY_REVOCATION           => "key revocation"
+    case PGPSignature.SUBKEY_REVOCATION        => "subkey revocation"
+    case PGPSignature.CERTIFICATION_REVOCATION => "certification revocation"
+    case PGPSignature.TIMESTAMP                => "timestamp"
+    case _ => t.toString
+  }
+
+  private def hashAlgorithmToString(hashAlgorithm: Int) =
     hashAlgorithm match {
       case HashAlgorithmTags.SHA1 ⇒ "SHA-1"
       case HashAlgorithmTags.MD2 ⇒ "MD2"
@@ -86,8 +107,17 @@ object PgpCommons
     }
 
   private def publicKeyAlgorithmToString(n: Int) =
-    try PubringDump.getAlgorithm(n)
-    catch { case NonFatal(_) ⇒ s"digest-$n" }
+    n match {
+      case PublicKeyAlgorithmTags.RSA_GENERAL => "'RSA general'"
+      case PublicKeyAlgorithmTags.RSA_ENCRYPT => "'RSA encrypt'"
+      case PublicKeyAlgorithmTags.RSA_SIGN => "'RSA sign'"
+      case PublicKeyAlgorithmTags.ELGAMAL_ENCRYPT => "'El Gamal encrypt'"
+      case PublicKeyAlgorithmTags.ELGAMAL_GENERAL => "'El Gamal general'"
+      case PublicKeyAlgorithmTags.DIFFIE_HELLMAN => "Diffie-Hellman"
+      case _ =>
+        try PubringDump.getAlgorithm(n)
+        catch { case NonFatal(_) ⇒ n.toString }
+      }
 
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)
@@ -96,7 +126,7 @@ object PgpCommons
   private def fingerprintToString(fingerprint: Array[Byte]): String =
     fingerprint match {
       case null ⇒ "(no fingerprint)"
-      case bytes ⇒ bytes.map(b ⇒ f"$b%02X").mkString
+      case bytes ⇒ bytes.map(b ⇒ f"$b%02X").grouped(2).map(_.mkString).mkString(" ")
     }
 
   private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
@@ -112,6 +142,12 @@ object PgpCommons
         }
       }
     }
+
+  def writeSecretKeyAsAscii(secretKey: PGPSecretKey, out: OutputStream): Unit = {
+    val armored = new ArmoredOutputStream(out)
+    new PGPSecretKeyRing(List(secretKey).asJava).encode(armored)
+    armored.close()
+  }
 
   def writePublicKeyAsAscii(publicKey: PGPPublicKey, out: OutputStream): Unit = {
     val armored = new ArmoredOutputStream(out)
@@ -129,6 +165,22 @@ object PgpCommons
   def toPublicKeyRingCollection(publicKey: PGPPublicKey): PGPPublicKeyRingCollection = {
     val ring = new PGPPublicKeyRing((publicKey :: Nil).asJava)
     new PGPPublicKeyRingCollection((ring :: Nil).asJava)
+  }
+
+  implicit final class RichPgpSecretKey(private val underlying: PGPSecretKey) extends AnyVal {
+    def toArmoredAsciiBytes = {
+      val out = new ByteArrayOutputStream()
+      writeSecretKeyAsAscii(underlying, out)
+      out.toByteArray.toVector
+    }
+  }
+
+  implicit final class RichPgpPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
+    def toArmoredAsciiBytes = {
+      val out = new ByteArrayOutputStream()
+      writePublicKeyAsAscii(underlying, out)
+      out.toByteArray.toVector
+    }
   }
 
   intelliJuseImport(JavaUtilDateShow)

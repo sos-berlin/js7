@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.OrderId
@@ -49,6 +50,14 @@ final class MasterUris private(masterUri: String) {
 
     def list[A: ClassTag]: String =
       api("/" + encodePath("workflow", ""), "return" → encodeClass[A])
+  }
+
+  object agent {
+    def apply(path: AgentPath): String =
+      api("/" + encodePath("agent", path.withoutStartingSlash))
+
+    def list[A: ClassTag]: String =
+      api("/" + encodePath("agent", ""), "return" → encodeClass[A])
   }
 
   def api(query: (String, String)*): String =

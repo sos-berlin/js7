@@ -14,6 +14,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.master.configuration.DoNotVerifyMasterFileBasedVerifier
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 
 /**
@@ -120,5 +121,5 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
 }
 
 object FatState {
-  val Initial = FatState(EventId.BeforeFirst, Repo.empty, Map.empty)
+  val Initial = FatState(EventId.BeforeFirst, Repo.empty(DoNotVerifyMasterFileBasedVerifier), Map.empty)
 }

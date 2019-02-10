@@ -2,20 +2,17 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.writePublicKeyAsAscii
-import com.sos.jobscheduler.core.crypt.pgp.PgpKeyGenerator
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.crypt.SignerId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -24,10 +21,8 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand.ReplaceRepo
-import com.sos.jobscheduler.master.data.MasterFileBaseds
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentCouplingFailed
 import com.sos.jobscheduler.tests.MasterAgentWithoutAuthenticationTest._
-import java.io.FileOutputStream
 import java.nio.file.Files.createDirectories
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -76,20 +71,17 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
       val agentRef = Agent(agentPath % versionId, s"http://127.0.0.1:$agentPort")
       val agentFuture = RunningAgent(agentConfiguration)
 
+      val fileBasedSigner = {
+        val signature = SillySignature("✘✘✘")
+        val keyFile = dir / "master/config/private/silly-signature.txt"
+        keyFile := signature.string
+        dir / "master/config/master.conf" ++= s"""jobscheduler.configuration.trusted-signature-keys.Silly = "$keyFile"""" + "\n"
+        new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
+      }
       val masterConfiguration = MasterConfiguration.fromCommandLine(
         "-config-directory=" + dir / "master/config" ::
         "-data-directory=" + dir / "master/data" ::
         "-http-port=" + masterPort :: Nil)
-
-      val pgpSecretKeyPassword = SecretString("PGP-PASSWORD")
-      val pgpSecretKey = PgpKeyGenerator.generateSecretKey(
-        SignerId("MasterAgentWithoutAuthenticationTest"),
-        pgpSecretKeyPassword,
-        keySize = 1024)
-      val fileBasedSigner = FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpSecretKeyPassword).orThrow
-      autoClosing(new FileOutputStream(dir / "master/config/private/trusted-pgp-keys.asc")) { out ⇒
-        writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)
-      }
 
       val agent = agentFuture await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds

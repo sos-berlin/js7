@@ -1,12 +1,14 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.core.filebased.Repo
+import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
+import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -21,7 +23,8 @@ import org.scalatest.FreeSpec
   */
 final class FatStateTest extends FreeSpec
 {
-  private val repo = Repo.empty
+  private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
+  private val repo = Repo.empty(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))
   private val eventIds = Iterator.from(1)
   private var fatState = new FatState(eventIds.next(), repo, Map.empty)
 
@@ -31,12 +34,12 @@ final class FatStateTest extends FreeSpec
   }
 
   "RepoAdded Agent" in {
-    check(RepoEvent.FileBasedAdded(agent.withoutVersion),
+    check(RepoEvent.FileBasedAdded(agent.path, sign(agent)),
       None)
   }
 
   "RepoAdded Workflow" in {
-    check(RepoEvent.FileBasedAdded(workflow.withoutVersion),
+    check(RepoEvent.FileBasedAdded(workflow.path, sign(workflow)),
       None)
   }
 

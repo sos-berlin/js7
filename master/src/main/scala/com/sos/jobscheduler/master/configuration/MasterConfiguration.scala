@@ -102,18 +102,18 @@ object MasterConfiguration
 
   private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
     val config = configDirectoryConfig(configDirectory)
-    ConfigFactory.systemProperties
+    ConfigFactory.parseMap(Map(
+        "jobscheduler.config-directory" → configDirectory.toString
+      ).asJava)
+      .withFallback(ConfigFactory.systemProperties)
       .withFallback(config)
       .withFallback(extraDefaultConfig)
       .withFallback(DefaultConfig)
-      .resolve
+      .resolve()
   }
 
   // Same code in AkkaHttpMasterTextApi.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
-    ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" → configDirectory.toString
-      ).asJava)
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
+    parseConfigIfExists(configDirectory / "private/private.conf")
       .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
 }

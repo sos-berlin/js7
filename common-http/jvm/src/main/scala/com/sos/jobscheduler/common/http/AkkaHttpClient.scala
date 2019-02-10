@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
+import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
@@ -17,6 +17,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
@@ -71,7 +72,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil): Task[A] =
     sendReceive(HttpRequest(GET, uri, headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
-      .flatMap(unmarshal[A](uri))
+      .flatMap(unmarshal[A](GET, uri))
 
   def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean): Task[B] =
     post2[A, B](Uri(uri), data, Nil, suppressSessionToken = suppressSessionToken)
@@ -81,7 +82,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean): Task[B] =
     post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
-      .flatMap(unmarshal[B](uri))
+      .flatMap(unmarshal[B](POST, uri))
 
   def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
     post_[A](uri, data, Accept(`application/json`) :: Nil) map { response ⇒
@@ -127,11 +128,15 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       logger.debug(b.toString)
     }
 
-  private def unmarshal[A: FromResponseUnmarshaller](uri: Uri)(httpResponse: HttpResponse): Task[A] =
+  private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
     Task.deferFuture(
       executeOn(materializer.executionContext) { implicit ec ⇒
         if (httpResponse.status.isSuccess)
           Unmarshal(httpResponse).to[A]
+            .recover { case t =>
+              logger.debug(s"Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+              throw t
+            }
         else
           httpResponse.entity.toStrict(FailureTimeout)
             .map(entity ⇒ throw new HttpException(httpResponse, uri, entity.data.utf8String))

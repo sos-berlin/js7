@@ -13,6 +13,8 @@ trait SignatureVerifier
 
   def companion: SignatureVerifier.Companion { type MySignature = SignatureVerifier.this.MySignature }
 
+  def keyOrigin: String
+
   def verify(message: String, signature: MySignature): Checked[Seq[SignerId]]
 }
 
@@ -25,7 +27,7 @@ object SignatureVerifier
 
     def typeName: String
 
-    def apply(publicKey: Seq[Byte]): MySignatureVerifier
+    def checked(publicKey: Seq[Byte], keyOrigin: String = "UNKNOWN"): Checked[MySignatureVerifier]
 
     def genericSignatureToSignature(signature: GenericSignature): MySignature
   }

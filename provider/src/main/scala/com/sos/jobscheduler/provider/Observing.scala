@@ -1,14 +1,16 @@
 package com.sos.jobscheduler.provider
 
+import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.common.scalautil.IOExecutor
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
-import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.provider.Observing._
-import com.sos.jobscheduler.provider.Provider.logThrowable
+import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
@@ -20,34 +22,30 @@ trait Observing {
   private val watchDuration     = conf.config.getDuration("jobscheduler.provider.file-watch.poll-interval").toFiniteDuration
   private val errorWaitDuration = conf.config.getDuration("jobscheduler.provider.file-watch.error-delay").toFiniteDuration
 
-  def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Unit] = {
+  def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     // Start DirectoryWatcher before replaceMasterConfiguration, otherwise the first events may get lost!
-    val watcher = new DirectoryWatcher(conf.liveDirectory, watchDuration)
-    val newVersionId = new VersionIdGenerator
-    Observable.fromTask(replaceMasterConfiguration(newVersionId()).map(_ ⇒ ()))
+    val directoryWatcher = new DirectoryWatcher(conf.liveDirectory, watchDuration)
+    Observable.fromTask(
+      retryUntilNoError(/*replaceMasterConfiguration()*/initialUpdateMasterConfiguration()))
       .appendAll(
-        watcher.singleUseObservable
+        directoryWatcher.singleUseObservable
           .debounce(minimumSilence)
           .mapEval(_ ⇒
-            updateMasterConfiguration(newVersionId())
-            .map(_.toTry).dematerialize  // Collapse Invalid and Failed
-            .materialize)
-          .onErrorRecoverWith { case t ⇒
-            Observable { logThrowable(t) } delayOnNext errorWaitDuration
-          }
-          .map(_ ⇒ ()))
+            retryUntilNoError(
+              updateMasterConfiguration())))
   }
+
+  private def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A] =
+    body.map(_.toTry).dematerialize  // Collapse Invalid and Failed
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
+      logger.error(s"Transfer failed: ${throwable.toStringWithCauses}")
+      logger.debug(s"Transfer failed: ${throwable.toStringWithCauses}", throwable)
+      api.logout().onErrorHandle(_ => ()) >>
+        retry(()).delayExecution(errorWaitDuration)
+    }
 }
 
 object Observing
 {
-  private class VersionIdGenerator {
-    private val usedVersions = mutable.Set[VersionId]()  // TODO Grows endless. We need only the values of the last second (see VersionId.generate)
-
-    def apply(): VersionId = {
-      val v = VersionId.generate(usedVersions)
-      usedVersions += v
-      v
-    }
-  }
+  private val logger = Logger(getClass)
 }

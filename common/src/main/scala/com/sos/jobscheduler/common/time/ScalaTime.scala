@@ -8,7 +8,7 @@ import java.time._
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
-import scala.concurrent.duration.{FiniteDuration, Duration ⇒ ScalaDuration}
+import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
 import scala.language.implicitConversions
 import scala.math.abs
 import scala.util.Random
@@ -249,20 +249,21 @@ object ScalaTime {
 
   def sleep(d: Duration): Unit = sleep(d.toMillis)
 
-  def sleep(millis: Long) = {
-    val m = 1000*1000
-    val until = System.nanoTime() + millis * m
-    Thread.sleep(millis)
-    @tailrec def extraSleep(): Unit = {
-      val remainingNanos = until - System.nanoTime()
-      if (remainingNanos > 0) {
-        extraSleepCount += 1
-        Thread.sleep(remainingNanos / m, (remainingNanos % m).toInt)
-        extraSleep()
+  def sleep(millis: Long) =
+    if (millis > 0) {
+      val m = 1000*1000
+      val until = System.nanoTime() + millis * m
+      Thread.sleep(millis)
+      @tailrec def extraSleep(): Unit = {
+        val remainingNanos = until - System.nanoTime()
+        if (remainingNanos > 0) {
+          extraSleepCount += 1
+          Thread.sleep(remainingNanos / m, (remainingNanos % m).toInt)
+          extraSleep()
+        }
       }
+      extraSleep()
     }
-    extraSleep()
-  }
 
   private def formatNumber(number: Double, divisor: Int, suffix: String) = {
     val result = new StringBuilder(11 + suffix.length)

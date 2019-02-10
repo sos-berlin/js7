@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
-import com.sos.jobscheduler.core.problems.{PGPMessageSignedByUnknownProblem, PGPTamperedWithMessageProblem}
+import com.sos.jobscheduler.core.problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import com.sos.jobscheduler.data.crypt.{GenericSignature, PgpSignature, SignerId}
 import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
@@ -24,7 +24,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection)
+final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection, val keyOrigin: String)
 extends SignatureVerifier
 {
   import com.sos.jobscheduler.core.crypt.pgp.PgpSignatureVerifier._
@@ -44,10 +44,12 @@ extends SignatureVerifier
   private def verify(message: Resource[SyncIO, InputStream], signature: Resource[SyncIO, InputStream]): Checked[Seq[SignerId]] =
     readMutableSignature(signature)
       .flatMap { sig ⇒
-        logger.debug("Verifying with " + sig.show)
         publicKeyRingCollection.getPublicKey(sig.getKeyID) match {
-          case null ⇒ Invalid(PGPMessageSignedByUnknownProblem)
+          case null ⇒
+            logger.debug(MessageSignedByUnknownProblem.toString + ", no public key for " + sig.show)
+            Invalid(MessageSignedByUnknownProblem)
           case publicKey ⇒
+            logger.debug("Verifying message with " + sig.show + ", using " + publicKey.show)
             sig.init(contentVerifierBuilderProvider, publicKey)
             Valid(sig)
         }
@@ -55,7 +57,7 @@ extends SignatureVerifier
       .flatMap { sig ⇒
         readMessage(message, sig.update(_, 0, _))
         if (sig.verify) Valid(signatureToUserIds(sig))
-        else Invalid(PGPTamperedWithMessageProblem)
+        else Invalid(TamperedWithSignedMessageProblem)
       }
 
   private def signatureToUserIds(signature: PGPSignature) =
@@ -63,7 +65,7 @@ extends SignatureVerifier
       .flatMap(_.getUserIDs.asScala)
       .map(SignerId.apply).toVector
 
-  override def toString = s"PgpSignatureVerifier(userIds=${userIds.mkString("'", "', '", "'")} ${publicKeyRingCollection.show})"
+  override def toString = s"PgpSignatureVerifier(userIds=${userIds.mkString("'", "', '", "'")} ${publicKeyRingCollection.show} origin=$keyOrigin)"
 
   private def userIds: Seq[SignerId] =
     publicKeyRingCollection.asScala
@@ -82,11 +84,12 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   val typeName = PgpSignature.TypeName
   private val logger = Logger(getClass)
 
-  def apply(keyRings: Seq[Byte]): PgpSignatureVerifier =
-    apply(bytesToInputStreamResource(keyRings))
+  def checked(keyRings: Seq[Byte], keyOrigin: String) =
+    Checked.catchNonFatal(
+      apply(bytesToInputStreamResource(keyRings), keyOrigin = keyOrigin))
 
-  def apply(keyRings: Resource[SyncIO, InputStream]): PgpSignatureVerifier =
-    new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings))
+  private def apply(keyRings: Resource[SyncIO, InputStream], keyOrigin: String): PgpSignatureVerifier =
+    new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings), keyOrigin)
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
     assert(signature.typeName == typeName)

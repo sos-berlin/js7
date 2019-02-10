@@ -1,13 +1,15 @@
 package com.sos.jobscheduler.data.filebased
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.RepoEventTest._
+import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.workflow.instructions.Fail
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
 /**
@@ -25,69 +27,66 @@ final class RepoEventTest extends FreeSpec {
         }""")
     }
 
+    val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))
+
     "FileBasedAdded" in {
       testJson[RepoEvent](
-        FileBasedAdded(Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))),
+        FileBasedAdded(workflow.path, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE"))),
         json"""{
           "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "path": "/WORKFLOW",
-            "instructions": [
-              {
-                "TYPE": "Fail"
-              }
-            ]
+          "path": "Workflow:/WORKFLOW",
+          "signed": {
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
+            "signature": {
+              "TYPE": "PGP",
+              "string": "SIGNATURE"
+            }
           }
         }""")
     }
 
     "FileBasedChanged" in {
       testJson[RepoEvent](
-        FileBasedChanged(Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))),
+        FileBasedChanged(workflow.path, SignedString((workflow: FileBased).asJson.compactPrint, GenericSignature("PGP", "SIGNATURE"))),
         json"""{
           "TYPE": "FileBasedChanged",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "path": "/WORKFLOW",
-            "instructions": [
-              {
-                "TYPE": "Fail"
-              }
-            ]
+          "path": "Workflow:/WORKFLOW",
+          "signed": {
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
+            "signature": {
+              "TYPE": "PGP",
+              "string": "SIGNATURE"
+            }
           }
         }""")
     }
 
     "FileBasedDeleted" in {
       testJson[RepoEvent](
-        FileBasedDeleted(APath("/TEST")),
+        FileBasedDeleted(WorkflowPath("/TEST")),
         json"""{
           "TYPE": "FileBasedDeleted",
-          "path": "A:/TEST"
+          "path": "Workflow:/TEST"
         }""")
     }
   }
 
-  "FileBasedAdded must have a non-anonymous path but not a versionId" in {
-    intercept[RuntimeException] { FileBasedAdded(Workflow.of(Fail(None))) }
-    intercept[RuntimeException] { FileBasedAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
-  }
-
-  "FileBasedChanged must have a non-anonymous path but not a versionId" in {
-    intercept[RuntimeException] { FileBasedChanged(Workflow.of(Fail(None))) }
-    intercept[RuntimeException] { FileBasedChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
-  }
+  //"FileBasedAdded must have a non-anonymous path but not a versionId" in {
+  //  intercept[RuntimeException] { FileBasedAdded(Workflow.of(Fail(None))) }
+  //  intercept[RuntimeException] { FileBasedAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //}
+  //
+  //"FileBasedChanged must have a non-anonymous path but not a versionId" in {
+  //  intercept[RuntimeException] { FileBasedChanged(Workflow.of(Fail(None))) }
+  //  intercept[RuntimeException] { FileBasedChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //}
 
   "FileBasedDeleted must have a non-anonymous path" in {
     intercept[RuntimeException] { FileBasedDeleted(WorkflowPath.Anonymous) }
   }
 }
 
-object RepoEventTest {
-  private implicit val fileBasedJsonCodec: TypedJsonCodec[FileBased] = TypedJsonCodec(
-    Subtype[Workflow])
-
-  private implicit val typedPathCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(List(APath))
-  implicit val fileBasedEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec
+object RepoEventTest
+{
+  private[RepoEventTest] implicit val fileBasedEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec
 }

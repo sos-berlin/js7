@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
@@ -30,4 +31,6 @@ trait MasterApi {
   def orders: Task[Stamped[Seq[Order[Order.State]]]]
 
   def workflows: Task[Stamped[Seq[Workflow]]]
+
+  def agents: Task[Stamped[Seq[Agent]]]
 }

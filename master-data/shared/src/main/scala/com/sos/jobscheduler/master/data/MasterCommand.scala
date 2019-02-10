@@ -8,10 +8,11 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
+import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.filebased.{SignedRepoObject, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
+import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.master.data.MasterFileBaseds.typedPathJsonDecoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
@@ -94,21 +95,21 @@ object MasterCommand extends CommonCommand.Companion
 
   final case class UpdateRepo(
     versionId: VersionId,
-    change: Seq[SignedRepoObject] = Nil,
+    change: Seq[SignedString] = Nil,
     delete: Seq[TypedPath] = Nil)
   extends MasterCommand {
     type Response = Response.Accepted
 
-    def isEmpty = versionId.isEmpty && change.isEmpty && delete.isEmpty
+    def isEmpty = change.isEmpty && delete.isEmpty
 
     override def toString = s"UpdateRepo($versionId change=${change.size}× delete=${delete.size}×)"
   }
 
-  final case class ReplaceRepo(versionId: VersionId, objects: Seq[SignedRepoObject])
+  final case class ReplaceRepo(versionId: VersionId, objects: Seq[SignedString])
   extends MasterCommand {
     type Response = Response.Accepted
 
-    override def toString = s"ReplaceRepo($versionId ${objects.size}× objects)"
+    override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
   sealed trait Response

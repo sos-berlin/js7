@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner.readSecretKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpSigner, PgpTest}
-import com.sos.jobscheduler.core.problems.PGPTamperedWithMessageProblem
+import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 
@@ -24,11 +24,11 @@ final class GenericSignatureVerifierTest extends FreeSpec
 
       file := PgpTest.publicKeyResource.contentBytes
 
-      val verifier = new GenericSignatureVerifier(ConfigFactory.parseString(
+      val verifier = GenericSignatureVerifier(ConfigFactory.parseString(
         s"""jobscheduler.configuration.trusted-signature-keys.PGP = $file
-        """.stripMargin))
+        """.stripMargin)).orThrow
       assert(verifier.verify(message, signature) == Valid(PgpTest.signerIds))
-      assert(verifier.verify("TAMPERED", signature) == Invalid(PGPTamperedWithMessageProblem))
+      assert(verifier.verify("TAMPERED", signature) == Invalid(TamperedWithSignedMessageProblem))
     }
   }
 }

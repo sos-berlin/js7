@@ -23,17 +23,18 @@ import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdClock
+import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
-import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
+import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
+import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo, TypedPathDirectoryWalker}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -75,7 +76,7 @@ final class MasterOrderKeeper(
   journalMeta: JournalMeta[Event],
   eventWatch: JournalEventWatch[Event],
   eventIdClock: EventIdClock,
-  signatureVerifier: GenericSignatureVerifier)
+  fileBasedVerifier: FileBasedVerifier)
   (implicit
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
@@ -90,13 +91,12 @@ with MainJournalingActor[Event]
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal"))
   private var hasRecovered = false
-  private var repo = Repo.empty
-  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, signatureVerifier)  // TODO throws
+  private var repo = Repo.empty(fileBasedVerifier)
+  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, fileBasedVerifier)  // TODO throws
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
   }
-  private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val orderScheduleGenerator = actorOf(
@@ -154,7 +154,7 @@ with MainJournalingActor[Event]
     .toSnapshots)
 
   private def recover() = {
-    val recoverer = new MasterJournalRecoverer(journalMeta)
+    val recoverer = new MasterJournalRecoverer(journalMeta, fileBasedVerifier)
     recoverer.recoverAll()
     for (masterState ← recoverer.masterState) {
       hasRecovered = true
@@ -368,14 +368,11 @@ with MainJournalingActor[Event]
             .map(_ ⇒ MasterCommand.Response.Accepted))
 
       case cmd: MasterCommand.UpdateRepo ⇒
-        if (cmd.isEmpty)
-          Future.successful(Valid(MasterCommand.Response.Accepted))
-        else
-          updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
-            .flatMap(readConfiguration)
-            .traverse((_: SyncIO[Future[Completed]])
-              .unsafeRunSync()  // Persist events!
-              .map(_ ⇒ MasterCommand.Response.Accepted))
+        updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
+          .flatMap(readConfiguration)
+          .traverse((_: SyncIO[Future[Completed]])
+            .unsafeRunSync()  // Persist events!
+            .map(_ ⇒ MasterCommand.Response.Accepted))
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
@@ -407,18 +404,22 @@ with MainJournalingActor[Event]
       updateAgents(diff.select[AgentPath, Agent])
 
     def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[SyncIO[Unit]]] =
-      onlyAdditionPossible(diff) :+
+      deletionNotSupported(diff) ++
+        changeNotSupported(diff) :+
         Valid(SyncIO {
           for (agent ← diff.added) registerAgent(agent).start()
         })
 
-    def onlyAdditionPossible[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of configuration files is not supported: $o"))) ++:
-        diff.changed.map(o ⇒ Invalid(Problem(s"Change of configuration files is not supported: ${o.path}")))
+    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
+      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of configuration files is not supported: $o")))
+
+    def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
+      diff.updated.map(o ⇒ Invalid(Problem(s"Change of configuration files is not supported: ${o.path}")))
 
     for {
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
-      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromEvents(events) withVersionId changedRepo.versionId)
+      realChanges = FileBaseds.diffFileBaseds(changedRepo.currentFileBaseds, repo.currentFileBaseds)  // should be equivalent to events
+      checkedSideEffects = updateFileBaseds(FileBaseds.Diff.fromRepoChanges(realChanges) withVersionId changedRepo.versionId)
       foldedSideEffects ← checkedSideEffects.toVector.sequence map (_.fold(SyncIO.unit)(_ >> _))  // One problem invalidates all side effects
     } yield
       SyncIO {
@@ -433,10 +434,10 @@ with MainJournalingActor[Event]
 
   private def logRepoEvent(event: RepoEvent): Unit =
     event match {
-      case VersionAdded(version)       ⇒ //logger.info(s"New version ${version.string}")
-      case FileBasedAdded(fileBased)   ⇒ logger.info(s"Version ${repo.versionId.string}: added $fileBased")
-      case FileBasedChanged(fileBased) ⇒ logger.info(s"Version ${repo.versionId.string}: changed $fileBased")
-      case FileBasedDeleted(path)      ⇒ logger.info(s"Version ${repo.versionId.string}: deleted $path")
+      case VersionAdded(version)     ⇒ logger.info(s"Version '${version.string}' added")
+      case FileBasedAdded(path, _)   ⇒ logger.info(s"Added $path")
+      case FileBasedChanged(path, _) ⇒ logger.info(s"Changed $path")
+      case FileBasedDeleted(path)    ⇒ logger.info(s"Deleted $path")
     }
 
   private def setRepo(o: Repo): Unit = {
@@ -459,12 +460,18 @@ with MainJournalingActor[Event]
     if (!Files.exists(dir))
       Valid(SyncIO.unit)
     else {
-      val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
-      for (events ← FileBaseds.readDirectory(reader :: Nil, dir, scheduledOrderGenerators, repo.versionId)) yield
-        SyncIO {
-          scheduledOrderGenerators ++= events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o }
-          orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
-        }
+      val readers = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone) :: Nil
+      DirectoryReader.entries(dir)
+        .map(_.path)
+        .traverse(file ⇒ TypedPathDirectoryWalker.fileToTypedFile(dir, file, readers map (_.companion.typedPathCompanion)))
+        .flatMap(readObjects(readers, dir, _))
+        .map(_.toVector)
+        .map(orderGenerators ⇒
+          SyncIO {
+            orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(
+              orderGenerators collect { case o: ScheduledOrderGenerator ⇒ o })
+          }
+        )
     }
   }
 

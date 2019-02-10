@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.filebased.Repo
+import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, Repo}
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -25,10 +25,10 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private final class MasterJournalRecoverer(protected val journalMeta: JournalMeta[Event])
+private final class MasterJournalRecoverer(protected val journalMeta: JournalMeta[Event], fileBasedVerifier: FileBasedVerifier)
 extends JournalRecoverer[Event]
 {
-  private var repo = Repo.empty
+  private var repo = Repo.empty(fileBasedVerifier)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val agentToEventId = mutable.Map[AgentId, EventId]()
   private var orderScheduleEndedAt = none[Timestamp]

@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
+import com.sos.jobscheduler.core.crypt.silly.SillySignature
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -54,8 +55,12 @@ final class RecoveryTest extends FreeSpec {
   "test" in {
     for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
-      autoClosing(new DirectoryProvider(AgentIds map (_.path), TestWorkflow :: QuickWorkflow :: Nil, testName = Some("RecoveryTest"))) {
-        directoryProvider ⇒
+      val directoryProvider = new DirectoryProvider(
+        AgentIds map (_.path),
+        TestWorkflow :: QuickWorkflow :: Nil,
+        useMessageSigner = DirectoryProvider.useSillyMessageSigner(SillySignature("MY-SILLY-SIGNATURE")),
+        testName = Some("RecoveryTest"))
+      autoClosing(directoryProvider) { _ =>
         for (agent ← directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
         (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
@@ -65,13 +70,14 @@ final class RecoveryTest extends FreeSpec {
             lastEventId = master.eventWatch.tornEventId
           }
           master.eventWatch.await[MasterEvent.MasterReady](after = lastEventId)
+          import directoryProvider.sign
           assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
-              NoKey <-: FileBasedAdded(Agent(AgentIds(0).path, directoryProvider.agents(0).localUri.toString)),
-              NoKey <-: FileBasedAdded(Agent(AgentIds(1).path, directoryProvider.agents(1).localUri.toString)),
-              NoKey <-: FileBasedAdded(TestWorkflow.withoutVersion),
-              NoKey <-: FileBasedAdded(QuickWorkflow.withoutVersion))
+              NoKey <-: FileBasedAdded(AgentIds(0).path, sign(Agent(AgentIds(0), directoryProvider.agents(0).localUri.toString))),
+              NoKey <-: FileBasedAdded(AgentIds(1).path, sign(Agent(AgentIds(1), directoryProvider.agents(1).localUri.toString))),
+              NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow)),
+              NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ ⇒
             master.addOrderBlocking(QuickOrder)

@@ -1,88 +1,125 @@
 package com.sos.jobscheduler.master.tests
 
-import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.FileBaseds
+import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.agent.AgentReader
-import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorReader
 import com.sos.jobscheduler.master.tests.FileBasedsTest._
-import com.sos.jobscheduler.master.workflow.WorkflowReader
-import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
-import java.time.ZoneId
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedsTest extends FreeSpec {
+final class FileBasedsTest extends FreeSpec
+{
+  "diffFileBaseds" - {
+    "empty"  in {
+      assert(diffFileBaseds(Nil, Nil).isEmpty)
+    }
 
-  "readDirectory" in {
-    provideDirectory { directory ⇒
-      // We assume an existing version V0
-      val v0FileBaseds = List(AWorkflow, BWorkflow, DWorkflow, AAgent)
+    lazy val a = Agent(AgentPath("/A") % "1", "http://a")
+    lazy val b = Agent(AgentPath("/B") % "1", "http://b")
+    lazy val c = Agent(AgentPath("/C") % "1", "http://c")
 
-      // Write folder image for version V1, using different source types
-      (directory / "A.workflow.json").contentString = AWorkflow.withoutId.asJson.toPrettyString  // Same
-      (directory / "C.workflow.txt").contentString = CWorkflow.source.get                 // Same
-      (directory / "D.workflow.txt").contentString = D1Workflow.source.get                // Changed
-      (directory / "A.agent.json").contentString = AAgent.withoutId.asJson.toPrettyString // Same
-      (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>                // Added
+    "different order" in {
+      assert(
+        diffFileBaseds(
+          a :: b :: Nil,
+          b :: a :: Nil
+        ).isEmpty)
+    }
 
-      val eventsChecked = FileBaseds.readDirectory(readers, directory, v0FileBaseds, V1)
-      assert(eventsChecked.map(_.head) == Valid(VersionAdded(V1)))  // The first event
-      assert(eventsChecked.map(_.toSet) == Valid(Set(
-        VersionAdded(V1),
-        FileBasedDeleted(BWorkflow.path),
-        FileBasedAdded(BAgent.withoutVersion),
-        FileBasedAdded(CWorkflow.withoutVersion),
-        FileBasedChanged(D1Workflow.withoutVersion))))
+    "one added" in {
+      assert(
+        diffFileBaseds(
+          a :: b :: c :: Nil,
+          a :: b :: Nil)
+        == RepoChange.Added(c) :: Nil)
+    }
+
+    "one deleted" in {
+      assert(
+        diffFileBaseds(
+          a :: Nil,
+          a :: b :: Nil)
+        == RepoChange.Deleted(b.path) :: Nil)
+    }
+
+    "one updated" in {
+      assert(
+        diffFileBaseds(
+          a :: b.copy(uri = "http://B-CHANGED") :: Nil,
+          a :: b :: Nil
+        ) == RepoChange.Updated(b.copy(uri = "http://B-CHANGED")) :: Nil)
+    }
+
+    "added, deleted and updated" in {
+      assert(
+        diffFileBaseds(
+          a.copy(uri = "http://A-CHANGED") :: c :: Nil,
+          a :: b :: Nil
+        ).toSet == Set(
+          RepoChange.Updated(a.copy(uri = "http://A-CHANGED")),
+          RepoChange.Deleted(b.path),
+          RepoChange.Added(c)))
+    }
+
+    "version updated" in {
+      assert(
+        diffFileBaseds(
+          a :: b. withVersion(VersionId("CHANGED")) :: Nil,
+          a :: b :: Nil
+        ) == RepoChange.Updated(b withVersion VersionId("CHANGED")) :: Nil)
+    }
+
+    "version updated, ignoreVersion=true" in {
+      assert(
+        diffFileBaseds(
+          a :: b. withVersion(VersionId("CHANGED")) :: Nil,
+          a :: b :: Nil,
+          ignoreVersion = true
+        ) == Nil)
     }
   }
 
   "Diff" in {
-    val diff = FileBaseds.Diff.fromEvents(
+    val diff = FileBaseds.Diff.fromRepoChanges(
       List(
-        FileBasedDeleted(BWorkflow.path),
-        FileBasedAdded(BAgent.withoutVersion),
-        FileBasedAdded(CWorkflow.withoutVersion),
-        FileBasedChanged(D1Workflow.withoutVersion)))
+        RepoChange.Deleted(BWorkflow.path),
+        RepoChange.Added(BAgent withVersion V0),
+        RepoChange.Added(CWorkflow withVersion V1),
+        RepoChange.Updated(D1Workflow withVersion V1)))
 
     assert(diff == FileBaseds.Diff[TypedPath, FileBased](
-      added = List(BAgent, CWorkflow),
-      changed = List(D1Workflow),
+      added = List(BAgent withVersion V0, CWorkflow withVersion V1),
+      updated = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
       FileBaseds.Diff[WorkflowPath, Workflow](
-        added = List(CWorkflow),
-        changed = List(D1Workflow),
+        added = List(CWorkflow withVersion V1),
+        updated = List(D1Workflow withVersion V1),
         deleted = List(BWorkflow.path)))
 
     assert(diff.select[AgentPath, Agent] ==
       FileBaseds.Diff[AgentPath, Agent](
-        added = List(BAgent),
-        changed = Nil,
+        added = List(BAgent withVersion V0),
+        updated = Nil,
         deleted = Nil))
   }
 }
 
 object FileBasedsTest {
-  private val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(ZoneId.of("UTC")))
-
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")
 

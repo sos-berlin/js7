@@ -1,11 +1,8 @@
 package com.sos.jobscheduler.core.filebased
 
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTree
-import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
-import java.nio.file.Path
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
 import scala.collection.immutable.{Iterable, Seq}
 
 /**
@@ -13,55 +10,46 @@ import scala.collection.immutable.{Iterable, Seq}
   */
 object FileBaseds
 {
-  def readDirectory(
-    readers: Iterable[FileBasedReader],
-    directory: Path,
-    previousFileBaseds: Iterable[FileBased],
-    versionId: VersionId)
-  : Checked[Seq[RepoEvent]] =
-    for (fileBaseds ← readDirectoryTree(readers, directory)) yield
-      VersionAdded(versionId) +: diffFileBaseds(fileBaseds, previousFileBaseds)
+  def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased], ignoreVersion: Boolean = false): Seq[RepoChange] =
+    diffFileBaseds2(changed, base, ignoreVersion).sortBy(_.path)
 
-  def diffFileBaseds(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] =
-    diffFileBaseds2(changed map (_.withoutVersion), base map (_.withoutVersion)).sortBy(_.path)
-
-  private def diffFileBaseds2(changed: Iterable[FileBased], base: Iterable[FileBased]): Seq[RepoEvent.FileBasedEvent] = {
+  private def diffFileBaseds2(changed: Iterable[FileBased], base: Iterable[FileBased], ignoreVersion: Boolean): Seq[RepoChange] = {
     val pathToFileBased = base toKeyedMap (_.path: TypedPath)
-    val addedOrChangedEvents = changed.toVector flatMap toAddedOrChanged(pathToFileBased)
+    val addedOrChanged = changed.toVector flatMap toAddedOrChanged(pathToFileBased.lift, ignoreVersion)
     val readPaths = changed.map(_.path).toSet
-    val deletedEvents = base map (_.path) filterNot readPaths map FileBasedDeleted.apply
-    deletedEvents.toVector ++ addedOrChangedEvents
+    val deletedEvents = base map (_.path) filterNot readPaths map RepoChange.Deleted.apply
+    deletedEvents.toVector ++ addedOrChanged
   }
 
-  private def toAddedOrChanged(previousPathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Option[RepoEvent.FileBasedEvent] =
-    previousPathToFileBased.get(fileBased.path) match {
-      case Some(existing) if existing.withVersion(fileBased.id.versionId) == fileBased ⇒
+  private def toAddedOrChanged(previousPathToFileBased: TypedPath => Option[FileBased], ignoreVersion: Boolean)(fileBased: FileBased): Option[RepoChange] =
+    previousPathToFileBased(fileBased.path) match {
+      case Some(existing) if (if (ignoreVersion) existing == fileBased.withVersion(existing.id.versionId) else existing == fileBased) =>
         None
 
       case Some(_) ⇒
-        Some(FileBasedChanged(fileBased))
+        Some(RepoChange.Updated(fileBased))
 
       case None ⇒
-        Some(FileBasedAdded(fileBased))
+        Some(RepoChange.Added(fileBased))
     }
 
-  final case class Diff[P <: TypedPath, A <: FileBased](added: Seq[A], changed: Seq[A], deleted: Seq[P]) {
+  final case class Diff[P <: TypedPath, A <: FileBased](added: Seq[A], updated: Seq[A], deleted: Seq[P]) {
     /** Returns a subset of a certain `TypedPath` and `FileBased`. */
     def select[P1 <: P, A1 <: A](implicit A1Path: TypedPath.Companion[P1], A1: FileBased.Companion[A1]): Diff[P1, A1] =
       Diff(
         added   collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
-        changed collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
+        updated collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
         deleted collect { case o if o.companion eq A1.typedPathCompanion ⇒ o.asInstanceOf[P1] })
 
     def withVersionId(versionId: VersionId): Diff[P, A] = copy(
       added = added map (_.withVersion(versionId).asInstanceOf[A]),
-      changed = changed map (_.withVersion(versionId).asInstanceOf[A]))
+      updated = updated map (_.withVersion(versionId).asInstanceOf[A]))
   }
   object Diff {
-    def fromEvents(events: Seq[RepoEvent]) =
+    def fromRepoChanges(events: Seq[RepoChange]) =
       Diff[TypedPath, FileBased](
-        events collect { case o: FileBasedAdded ⇒ o.fileBased },
-        events collect { case o: FileBasedChanged ⇒ o.fileBased },
-        events collect { case o: FileBasedDeleted ⇒ o.path })
+        events collect { case o: RepoChange.Added ⇒ o.fileBased },
+        events collect { case o: RepoChange.Updated ⇒ o.fileBased },
+        events collect { case o: RepoChange.Deleted ⇒ o.path })
   }
 }

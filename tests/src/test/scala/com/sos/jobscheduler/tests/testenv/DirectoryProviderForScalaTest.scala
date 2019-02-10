@@ -9,10 +9,12 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.master.RunningMaster
+import com.sos.jobscheduler.tests.testenv.DirectoryProvider.MasterTree
 import com.typesafe.config.{Config, ConfigFactory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -33,6 +35,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
+    useMessageSigner = useMessageSigner,
     testName = Some(getClass.getSimpleName))
 
   protected def agentConfig: Config = ConfigFactory.empty
@@ -49,6 +52,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def masterClientCertificate: Option[JavaResource] = None
   protected def masterConfig: Config = ConfigFactory.empty
   protected def fileBased: Seq[FileBased]
+  protected def useMessageSigner: MasterTree => MessageSigner = DirectoryProvider.useDefaultMessageSigner
 
   protected final lazy val master: RunningMaster = directoryProvider.startMaster(
     masterModule,
@@ -59,11 +63,11 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     fileBased = fileBased
   ) await 99.s
 
-  protected final lazy val fileBasedSigner = directoryProvider.fileBasedSigner
-  protected final val signStringToBase64 = directoryProvider.signStringToBase64 _
+  protected final def sign(fileBased: FileBased) = directoryProvider.sign(fileBased)
 
   override def beforeAll() = {
     super.beforeAll()
+    directoryProvider
     agents
     master
   }

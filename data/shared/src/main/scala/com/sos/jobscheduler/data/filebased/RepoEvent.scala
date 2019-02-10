@@ -2,8 +2,10 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.NoKeyEvent
-import io.circe.{Decoder, Encoder, ObjectEncoder}
+import io.circe.syntax._
+import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject, ObjectEncoder}
 
 /**
   * @author Joacim Zschimmer
@@ -18,24 +20,26 @@ object RepoEvent {
   }
 
   sealed trait FileBasedAddedOrChanged extends FileBasedEvent with Product {
-    def fileBased: FileBased
-    final def path: FileBased#Path = id.path
-    def id: FileBasedId[FileBased#Path] = fileBased.id
-    def toShortString = s"$productPrefix($id)"
+    def signed: SignedString
+    def toShortString = s"$productPrefix($path)"
   }
   object FileBasedAddedOrChanged {
-    def unapply(o: FileBasedAddedOrChanged) = Some(o.fileBased)
+    def unapply(o: FileBasedAddedOrChanged) = Some((o.path, o.signed))
+
+    private[RepoEvent] def jsonEncoder: ObjectEncoder[FileBasedAddedOrChanged] = o ⇒
+      JsonObject("signed" → o.signed.asJson)
+
+    private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c ⇒
+      for {
+        signed ← c.get[SignedString]("signed")
+        parsed ← io.circe.parser.parse(signed.string).left.map(error ⇒ DecodingFailure(error.toString, Nil))
+        fileBased ← parsed.as[FileBased]
+      } yield (fileBased, signed)
   }
 
-  final case class FileBasedAdded(fileBased: FileBased) extends FileBasedAddedOrChanged {
-    require(!fileBased.id.path.isAnonymous, "FileBasedAdded event requires a path")
-    require(fileBased.id.versionId.isAnonymous, s"VersionId must be anonymous in $toString")
-  }
+  final case class FileBasedAdded(path: TypedPath, signed: SignedString) extends FileBasedAddedOrChanged
 
-  final case class FileBasedChanged(fileBased: FileBased) extends FileBasedAddedOrChanged {
-    require(!fileBased.id.path.isAnonymous, "FileChangedChanged event requires a path")
-    require(fileBased.id.versionId.isAnonymous, s"VersionId must be anonymous in $toString")
-  }
+  final case class FileBasedChanged(path: TypedPath, signed: SignedString) extends FileBasedAddedOrChanged
 
   final case class FileBasedDeleted(path: TypedPath) extends FileBasedEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")

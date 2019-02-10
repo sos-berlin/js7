@@ -10,7 +10,7 @@ final case class PgpSignature(string: String) extends Signature
 {
   def toGenericSignature = GenericSignature(TypeName, string)
 
-  override def toString = s"PgpSignature(${string.truncateWithEllipsis(29, showLength = true)})"
+  override def toString = s"PgpSignature(${string.truncateWithEllipsis(20)})"
 }
 
 object PgpSignature

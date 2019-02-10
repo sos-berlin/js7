@@ -33,7 +33,7 @@ package object problems
       "currentAfter" → currentAfter.toString)
   }
 
-  case object PGPTamperedWithMessageProblem extends Problem.ArgumentlessCoded
+  case object TamperedWithSignedMessageProblem extends Problem.ArgumentlessCoded
 
-  case object PGPMessageSignedByUnknownProblem extends Problem.ArgumentlessCoded
+  case object MessageSignedByUnknownProblem extends Problem.ArgumentlessCoded
 }

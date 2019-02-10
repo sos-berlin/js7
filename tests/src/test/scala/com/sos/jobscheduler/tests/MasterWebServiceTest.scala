@@ -17,13 +17,14 @@ import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceToYaml.yamlToJson
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.crypt.silly.SillySignature
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -51,6 +52,8 @@ import scala.concurrent.duration._
 final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
 
   ProblemCodeMessages.initialize()
+
+  override lazy val useMessageSigner = DirectoryProvider.useSillyMessageSigner(SillySignature("SILLY"))
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
 
@@ -176,16 +179,16 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "versionId": "VERSION-1",
         "change": [
           {
-            "message": "$workflowJson",
+            "string": "$workflowJson",
             "signature": {
-              "TYPE": "PGP",
-              "string": "${signStringToBase64(workflowJson)}"
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }, {
-            "message": "$workflow2Json",
+            "string": "$workflow2Json",
             "signature": {
-              "TYPE": "PGP",
-              "string": "${signStringToBase64(workflow2Json)}"
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }
         ],
@@ -425,18 +428,24 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId": 1003,
           "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Agent",
-            "path": "/AGENT",
-            "uri": "$agent1Uri"
+          "path" : "Agent:/AGENT",
+          "signed" : {
+            "string" : "{\"TYPE\":\"Agent\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
+            "signature" : {
+              "TYPE" : "Silly",
+              "string" : "MY-SILLY-SIGNATURE"
+            }
           }
         }, {
-          "eventId": 1004,
-          "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Agent",
-            "path": "/FOLDER/AGENT-A",
-            "uri": "$agent2Uri"
+          "eventId" : 1004,
+          "TYPE" : "FileBasedAdded",
+          "path" : "Agent:/FOLDER/AGENT-A",
+          "signed" : {
+            "string" : "{\"TYPE\":\"Agent\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
+            "signature" : {
+              "TYPE" : "Silly",
+              "string" : "MY-SILLY-SIGNATURE"
+            }
           }
         }, {
           "eventId": 1005,
@@ -450,43 +459,24 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId": 1007,
           "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "path": "/WORKFLOW",
-            "instructions": [
-              {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "executablePath": "/A$sh",
-                  "taskLimit": 1
-                }
-              }
-            ]
+          "path" : "Workflow:/WORKFLOW",
+          "signed" : {
+            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
+            "signature" : {
+              "TYPE" : "Silly",
+              "string" : "MY-SILLY-SIGNATURE"
+            }
           }
         }, {
           "eventId": 1008,
           "TYPE": "FileBasedAdded",
-          "fileBased": {
-            "TYPE": "Workflow",
-            "path": "/FOLDER/WORKFLOW-2",
-            "instructions": [
-              {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "executablePath": "/B$sh",
-                  "taskLimit": 1
-                }
-              }, {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "executablePath": "/MISSING$sh",
-                  "taskLimit": 1
-                }
-              }
-            ]
+          "path" : "Workflow:/FOLDER/WORKFLOW-2",
+          "signed" : {
+            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
+            "signature" : {
+              "TYPE" : "Silly",
+              "string" : "MY-SILLY-SIGNATURE"
+            }
           }
         }, {
           "eventId": 1009,
@@ -827,7 +817,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 object MasterWebServiceTest
 {
   private def writeMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
-    (master.config / "master.conf").contentString = """
+    master.config / "master.conf" ++= """
       |jobscheduler.webserver.test = true
       |""".stripMargin
     (master.config / "private" / "private.conf").append("""

@@ -5,8 +5,8 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
-import com.sos.jobscheduler.data.crypt.GenericSignature
-import com.sos.jobscheduler.data.filebased.{SignedRepoObject, VersionId}
+import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
@@ -79,8 +79,8 @@ final class MasterCommandTest extends FreeSpec {
   "ReplaceRepo" in {
     testJson[MasterCommand](ReplaceRepo(
       VersionId("1"),
-      objects = SignedRepoObject(
-        message = """{"TYPE": "Workflow", ...}""",
+      objects = SignedString(
+        string = """{"TYPE": "Workflow", ...}""",
         GenericSignature(
           "PGP",
           """|-----BEGIN PGP SIGNATURE-----
@@ -93,7 +93,7 @@ final class MasterCommandTest extends FreeSpec {
         "versionId": "1",
         "objects": [
           {
-            "message": "{\"TYPE\": \"Workflow\", ...}",
+            "string": "{\"TYPE\": \"Workflow\", ...}",
             "signature": {
               "TYPE": "PGP",
               "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
@@ -106,8 +106,8 @@ final class MasterCommandTest extends FreeSpec {
   "UpdateRepo" in {
     testJson[MasterCommand](UpdateRepo(
       VersionId("1"),
-      change = SignedRepoObject(
-        message = """{"TYPE": "Workflow", ...}""",
+      change = SignedString(
+        string = """{"TYPE": "Workflow", ...}""",
         GenericSignature(
           "PGP",
            """-----BEGIN PGP SIGNATURE-----
@@ -121,7 +121,7 @@ final class MasterCommandTest extends FreeSpec {
         "versionId": "1",
         "change": [
           {
-            "message": "{\"TYPE\": \"Workflow\", ...}",
+            "string": "{\"TYPE\": \"Workflow\", ...}",
             "signature": {
               "TYPE": "PGP",
               "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"

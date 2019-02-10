@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -19,21 +19,21 @@ import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.writePublicKeyAsAscii
-import com.sos.jobscheduler.core.crypt.pgp.PgpKeyGenerator
+import com.sos.jobscheduler.core.crypt.MessageSigner
+import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSigner}
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.crypt.SignerId
+import com.sos.jobscheduler.data.crypt.{SignedString, SignerId}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
-import com.sos.jobscheduler.master.data.MasterFileBaseds
+import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
-import java.io.FileOutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.{createDirectory, createTempDirectory, setPosixFilePermissions}
 import java.nio.file.Path
@@ -60,6 +60,7 @@ final class DirectoryProvider(
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
   masterClientCertificate: Option[JavaResource] = None,
+  useMessageSigner: MasterTree => MessageSigner = useDefaultMessageSigner,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None)
 extends HasCloser {
@@ -105,17 +106,9 @@ extends HasCloser {
          |""".stripMargin)
   }
 
-  val pgpPassword = SecretString(Random.nextString(10))
-  val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
-  val fileBasedSigner: FileBasedSigner = {
-    autoClosing(new FileOutputStream(master.config / "private" / "trusted-pgp-keys.asc")) { out ⇒
-      writePublicKeyAsAscii(pgpSecretKey.getPublicKey, out)
-    }
-    FileBasedSigner(MasterFileBaseds.jsonCodec, pgpSecretKey, pgpPassword).orThrow
-  }
+  val fileBasedSigner = new FileBasedSigner(useMessageSigner(master), MasterFileBaseds.jsonCodec)
 
-  def signStringToBase64(string: String): String =
-    fileBasedSigner.pgpSigner.sign(string).string
+  val sign: FileBased => SignedString = fileBasedSigner.sign
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit): Unit =
     runAgents()(agents ⇒
@@ -148,8 +141,13 @@ extends HasCloser {
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster ⇒
-      if (!filebasedHasBeenAdded.getAndSet(true)) {
-        updateRepo(runningMaster, Vinitial, agentFileBased ++ fileBased)
+      val myFileBased = agentFileBased ++ fileBased
+      if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
+        // startMaster may be called several times. We configure only once.
+        runningMaster.executeCommandAsSystemUser(ReplaceRepo(
+          Vinitial,
+          (agentFileBased ++ fileBased) map (_ withVersion Vinitial) map fileBasedSigner.sign)
+        ).await(99.s).orThrow
       }
       runningMaster
     }
@@ -301,5 +299,27 @@ object DirectoryProvider
     val finished = process.waitFor(9, SECONDS)
     assert(finished)
     assert(process.exitValue == 0)
+  }
+
+  final def useSillyMessageSigner(signature: SillySignature = SillySignature.Default)(master: MasterTree) = {
+    val signature = SillySignature("MY-SILLY-SIGNATURE")
+    master.config / "private/silly-signature-key.txt" := signature.string
+    master.config / "master.conf" ++=
+      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/silly-signature-key.txt"
+         |""".stripMargin
+    new SillySigner(signature)
+  }
+
+  val useDefaultMessageSigner = usePgpMessageSigner _
+
+  final def usePgpMessageSigner(master: MasterTree) = {
+    val pgpPassword = SecretString(Random.nextString(10))
+    val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
+    val signer = PgpSigner(pgpSecretKey, pgpPassword).orThrow
+    master.config / "private" / "trusted-pgp-keys.asc" := signer.publicKey
+    master.config / "master.conf" ++=
+      s"""jobscheduler.configuration.trusted-signature-keys.PGP = $${jobscheduler.config-directory}"/private/trusted-pgp-keys.asc"
+         |""".stripMargin
+    signer
   }
 }

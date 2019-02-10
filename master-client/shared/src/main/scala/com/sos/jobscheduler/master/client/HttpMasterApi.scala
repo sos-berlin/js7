@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.web.HttpClient
+import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
@@ -57,6 +58,9 @@ trait HttpMasterApi extends MasterApi with SessionApi
 
   final def workflows: Task[Stamped[Seq[Workflow]]] =
     httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])
+
+  final def agents: Task[Stamped[Seq[Agent]]] =
+    httpClient.get[Stamped[Seq[Agent]]](uris.agent.list[Agent])
 }
 
 object HttpMasterApi {
