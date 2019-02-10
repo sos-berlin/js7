@@ -6,6 +6,7 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
+import scala.collection.immutable.Seq
 import scala.util.control.NonFatal
 
 final class Closer extends AutoCloseable
@@ -78,6 +79,11 @@ object Closer {
     val closer = new Closer
     closeables.reverseIterator foreach closer.register
     closer.close()
+  }
+
+  private def combineAutoCloseables(closeables: Seq[AutoCloseable]): AutoCloseable = new HasCloser {
+    closeables foreach closer.register
+    override def close() = closer.close()
   }
 
   object ops {

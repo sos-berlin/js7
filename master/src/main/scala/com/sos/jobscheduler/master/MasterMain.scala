@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.JavaMainSupport.{handleJavaShutdown, runMain}
+import com.sos.jobscheduler.core.JavaMainSupport.{runMain, withShutdownHooks}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import monix.execution.Scheduler
@@ -23,18 +23,18 @@ object MasterMain {
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    logger.info(s"Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
+    logger.info(s"Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     runMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master ⇒
         import master.scheduler
-        master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
-          .runAsync {  // On recovery, executeCommand will delay execution until Agents are started
-            case Left(t) ⇒ logger.error(t.toStringWithCauses, t)
-            case Right(Invalid(problem)) ⇒ logger.error(problem.toString)
-            case Right(Valid(_)) ⇒
-          }
-        handleJavaShutdown(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
+        withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
+          master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
+            .runAsync {  // On recovery, executeCommand will delay execution until Agents are started
+              case Left(t) ⇒ logger.error(t.toStringWithCauses, t)
+              case Right(Invalid(problem)) ⇒ logger.error(problem.toString)
+              case Right(Valid(_)) ⇒
+            }
           master.terminated.awaitInfinite
         }
       }

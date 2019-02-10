@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.JavaMainSupport.{handleJavaShutdown, runMain}
+import com.sos.jobscheduler.core.JavaMainSupport.{runMain, withShutdownHooks}
 import scala.concurrent.duration.Duration
 
 /**
@@ -20,11 +20,11 @@ object AgentMain {
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and propery logger initialization by a single (not-parallel) call
+    logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     runMain {
       val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent ⇒
-        handleJavaShutdown(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
+        withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
           agent.terminated.awaitInfinite
         }
       }
