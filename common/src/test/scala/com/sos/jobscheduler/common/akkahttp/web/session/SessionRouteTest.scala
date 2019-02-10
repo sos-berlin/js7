@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -259,8 +259,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
       // Using old SessionToken is Unauthorized
       api.setSessionToken(sessionToken)
-      val exception = requireAccessIsUnauthorized(api)
-      assert(exception.header[`WWW-Authenticate`] == Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
+      val exception = requireAccessIsForbidden(api)
       assert(AkkaHttpClient.sessionMayBeLost(exception))
     }
   }
@@ -273,13 +272,12 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "Use of discarded SessionToken is unauthorized, clearSession" in {
+  "Use of discarded SessionToken is Forbidden, clearSession" in {
     // This applies to all commands, also Login and Logout.
     // With Unauthorized or Forbidden, stateful SessionApi learns about the invalid session.
     withSessionApi() { api ⇒
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
-      val exception = requireAccessIsUnauthorized(api)
-      assert(exception.header[`WWW-Authenticate`] == Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
+      val exception = requireAccessIsForbidden(api)
       assert(AkkaHttpClient.sessionMayBeLost(exception))
       assert(api.hasSession)
 
@@ -313,8 +311,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
         val exception = intercept[AkkaHttpClient.HttpException] {
           otherClient.get_[String](s"$localUri/authorizedUser") await 99.s
         }
-        assert(exception.status == Unauthorized)
-        assert(exception.header[`WWW-Authenticate`] == Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
+        requireAccessIsForbidden(otherClient)
         assert(AkkaHttpClient.sessionMayBeLost(exception))
       }
 
@@ -351,6 +348,16 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     assert(exception.status == Unauthorized)
     assert(exception.header[`WWW-Authenticate`] ==
       Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
+    exception
+  }
+
+  private def requireAccessIsForbidden(client: AkkaHttpClient): HttpException = {
+    requireUnprotectedAccess(client)
+    val exception = intercept[AkkaHttpClient.HttpException] {
+      getViaAuthorizedUsed(client)
+    }
+    assert(exception.status == Forbidden)
+    assert(exception.header[`WWW-Authenticate`].isEmpty)
     exception
   }
 

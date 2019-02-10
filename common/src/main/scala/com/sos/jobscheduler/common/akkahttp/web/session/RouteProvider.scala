@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, respondWithHeader}
+import akka.http.scaladsl.model.StatusCode
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
+import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{Permission, SessionToken}
@@ -12,7 +13,7 @@ import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
-import com.sos.jobscheduler.common.akkahttp.web.session.{Session ⇒ Session_}
+import com.sos.jobscheduler.common.akkahttp.web.session.{Session => Session_}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import monix.eval.Task
@@ -78,7 +79,7 @@ trait RouteProvider extends ExceptionHandling
           case Some(string) ⇒
             onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, SessionToken(SecretString(string)))) {
               case Invalid(problem) ⇒
-                completeUnauthenticatedLogin(problem)
+                completeUnauthenticatedLogin(Forbidden, problem)
 
               case Valid(session) ⇒
                 inner(Tuple1(Some(session)))
@@ -87,11 +88,11 @@ trait RouteProvider extends ExceptionHandling
     }
   }
 
-  protected def completeUnauthenticatedLogin(problem: Problem): Route =
-    respondWithHeader(gateKeeper.wwwAuthenticateHeader) {
+  protected def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
+    (if (statusCode == Unauthorized) respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
       logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
       complete {
-        Task.pure(Unauthorized → problem)
+        Task.pure(statusCode → problem)
           .delayExecution(gateKeeper.invalidAuthenticationDelay)
           .runToFuture
       }

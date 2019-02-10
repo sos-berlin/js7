@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
+import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directives._
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
@@ -30,7 +31,7 @@ trait SessionRoute extends RouteProvider {
               val token = sessionOption map (_.sessionToken)
               onSuccess(execute(command, httpUser, token).runToFuture) {
                 case Invalid(InvalidLoginProblem) ⇒
-                  completeUnauthenticatedLogin(InvalidLoginProblem)
+                  completeUnauthenticatedLogin(Unauthorized, InvalidLoginProblem)
 
                 case checked ⇒
                   complete(checked)

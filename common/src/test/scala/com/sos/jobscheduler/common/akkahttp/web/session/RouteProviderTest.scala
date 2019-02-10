@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -87,7 +87,7 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
     "Unknown session header is rejected" in {
       val t = now
       Get("/sessionOption") ~> addHeader(SessionToken.HeaderName, "UNKNOWN") ~> route ~> check {
-        assert(status == Unauthorized)
+        assert(status == Forbidden)
       }
       assert(now - t >= gateKeeper.invalidAuthenticationDelay)
     }
