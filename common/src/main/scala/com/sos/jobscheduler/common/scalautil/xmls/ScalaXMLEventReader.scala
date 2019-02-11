@@ -86,21 +86,6 @@ extends AutoCloseable {
     result
   }
 
-  @deprecated("Use attribute", "1.8")
-  def forEachAttribute(f: PartialFunction[(String, String), Unit]): Unit = {
-    def callF(nameValue: (String, String)) = {
-      try f.applyOrElse(nameValue, { o: (String, String) ⇒ sys.error(s"Unexpected XML attribute ${o._1}") })
-      catch {
-        case x: Exception ⇒
-          val (name, value) = nameValue
-          throw new RuntimeException(s"Unparsable XML attribute $name='$value': $x", x)
-      }
-      attributeMap.get(nameValue._1)  // Mark as read
-    }
-
-    attributeMap foreach callF
-  }
-
   def parseEachRepeatingElement[A](name: String)(body: ⇒ A): immutable.IndexedSeq[A] =
     parseElements[A] { case `name` ⇒ parseElement() { body } } map { _._2 }
 
