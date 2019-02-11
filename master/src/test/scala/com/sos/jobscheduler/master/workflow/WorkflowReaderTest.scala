@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.core.filebased.FileBasedReader
+import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -41,8 +41,8 @@ final class WorkflowReaderTest extends FreeSpec {
       (dir / "TXT.workflow.txt").contentString = script
       expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("/TXT"))
 
-      assert(FileBasedReader.readDirectoryTree(WorkflowReader :: Nil, dir).map(_.toSet) ==
-        Valid(expected.toSet))
+      val typedSourceReader = new TypedSourceReader(dir, WorkflowReader :: Nil)
+      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Valid(expected.toSet))
     }
   }
 }

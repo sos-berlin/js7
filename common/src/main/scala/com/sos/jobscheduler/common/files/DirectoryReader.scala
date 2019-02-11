@@ -6,6 +6,7 @@ import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{DirectoryStream, Files, Path}
 import java.util.Comparator
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -14,7 +15,10 @@ object DirectoryReader
 {
   private val NestingLimit = 100
 
-  def entries(directory: Path, filter: Path ⇒ Boolean = _ ⇒ true): Vector[Entry] = {
+  def files(directory: Path, filter: Path ⇒ Boolean = _ ⇒ true): Seq[Path] =
+    entries(directory, filter) map (_.file)
+
+  def entries(directory: Path, filter: Path ⇒ Boolean = _ ⇒ true): Seq[Entry] = {
     val array = unorderedEntryArray(directory, filter)
     java.util.Arrays.parallelSort(array, Entry.comparator)  // Uses Java's ThreadPool.common
     array.toVector
@@ -58,16 +62,16 @@ object DirectoryReader
     a.size != b.size ||
     a.fileKey != b.fileKey
 
-  final case class Entry(path: Path, attributes: BasicFileAttributes) {
+  final case class Entry(file: Path, attributes: BasicFileAttributes) {
     override def equals(other: Any) =
       other match {
-        case o: Entry ⇒ path == o.path && !fileIsTouched(attributes, o.attributes)
+        case o: Entry ⇒ file == o.file && !fileIsTouched(attributes, o.attributes)
         case _ ⇒ false
       }
 
     def isTouched(o: BasicFileAttributes) = fileIsTouched(attributes, o)
   }
   object Entry {
-    val comparator: Comparator[Entry] = (a, b) ⇒ a.path compareTo b.path
+    val comparator: Comparator[Entry] = (a, b) ⇒ a.file compareTo b.file
   }
 }

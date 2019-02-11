@@ -1,0 +1,29 @@
+package com.sos.jobscheduler.core.filebased
+
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.core.filebased.TypedPaths.fileToTypedPathAndSourceType
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import java.nio.file.Path
+import scala.collection.immutable.{Iterable, Seq}
+
+/**
+  * @author Joacim Zschimmer
+  */
+final case class TypedFile(file: Path, path: TypedPath, sourceType: SourceType)
+
+object TypedFile
+{
+  def checked(baseDirectory: Path, path: Path, companions: Iterable[TypedPath.AnyCompanion]): Checked[TypedFile] =
+    fileToTypedPathAndSourceType(companions, baseDirectory, path)
+      .map { case (typedPath, sourceType) => TypedFile(path, typedPath, sourceType) }
+
+  def checkUniqueness(typedFiles: Seq[TypedFile]): Checked[typedFiles.type] = {
+    val duplicateFiles: Iterable[Path] =
+      typedFiles groupBy (_.path) filter (_._2.lengthCompare(2) >= 0) flatMap (_._2 map (_.file))
+    if (duplicateFiles.isEmpty)
+      Valid(typedFiles)
+    else
+      Invalid(Problem(s"Duplicate configuration files: ${duplicateFiles.toVector.sorted mkString ", "}"))
+  }
+}

@@ -2,10 +2,11 @@ package com.sos.jobscheduler.core.filebased
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.{TypedFile, checkUniqueness, typedFiles}
-import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalkerTest._
+import com.sos.jobscheduler.core.filebased.TypedFile.checkUniqueness
+import com.sos.jobscheduler.core.filebased.TypedFileTest._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -17,11 +18,11 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class TypedPathDirectoryWalkerTest extends FreeSpec {
-
+final class TypedFileTest extends FreeSpec
+{
   "typedFiles, checkUniqueness" in {
     provideDataDirectory { dir ⇒
-      val checkedTypedFiles = typedFiles(dir, Set(AgentPath, WorkflowPath))
+      val checkedTypedFiles = DirectoryReader.files(dir).map(TypedFile.checked(dir, _, Set(AgentPath, WorkflowPath)))
       assert(checkedTypedFiles.toSet == Set(
         Valid(TypedFile(dir / "test.agent.json", AAgentPath, SourceType.Json)),
         Valid(TypedFile(dir / "test.workflow.json", AWorkflowPath, SourceType.Json)),
@@ -34,7 +35,8 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
   }
 }
 
-object TypedPathDirectoryWalkerTest {
+object TypedFileTest
+{
   private val AAgentPath = AgentPath("/test")
   private val BAgentPath = AgentPath("/folder/test")
   private val AWorkflowPath = WorkflowPath("/test")
@@ -52,4 +54,5 @@ object TypedPathDirectoryWalkerTest {
     try body(dir)
     finally deleteDirectoryRecursively(dir)
   }
+
 }

@@ -33,8 +33,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJourn
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.filebased.FileBasedReader.readObjects
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo, TypedPathDirectoryWalker}
+import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo, TypedSourceReader}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -460,12 +459,8 @@ with MainJournalingActor[Event]
     if (!Files.exists(dir))
       Valid(SyncIO.unit)
     else {
-      val readers = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone) :: Nil
-      DirectoryReader.entries(dir)
-        .map(_.path)
-        .traverse(file ⇒ TypedPathDirectoryWalker.fileToTypedFile(dir, file, readers map (_.companion.typedPathCompanion)))
-        .flatMap(readObjects(readers, dir, _))
-        .map(_.toVector)
+      val typedSourceReader = new TypedSourceReader(dir, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone) :: Nil)
+      typedSourceReader.readFileBaseds(DirectoryReader.entries(dir).map(_.file))
         .map(orderGenerators ⇒
           SyncIO {
             orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(

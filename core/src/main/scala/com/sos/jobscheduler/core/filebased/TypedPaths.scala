@@ -12,7 +12,10 @@ import scala.collection.immutable.Iterable
   */
 object TypedPaths
 {
-  def fileToTypedPath(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[(TypedPath, SourceType)] = {
+  def fileToTypedPath(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[TypedPath] =
+    fileToTypedPathAndSourceType(companions, directory, file) map (_._1)
+
+  def fileToTypedPathAndSourceType(companions: Iterable[TypedPath.AnyCompanion], directory: Path, file: Path): Checked[(TypedPath, SourceType)] = {
     assert(file startsWith directory)
     val relativePath = file.subpath(directory.getNameCount, file.getNameCount)
     val string = TypedPath.fileToString(relativePath)

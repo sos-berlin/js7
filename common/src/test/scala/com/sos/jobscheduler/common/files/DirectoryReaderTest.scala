@@ -32,7 +32,7 @@ final class DirectoryReaderTest extends FreeSpec
       touch(subdir / "B")
 
       val entries = DirectoryReader.entries(dir)
-      assert(entries.map(_.path) ==
+      assert(entries.map(_.file) ==
         Vector(
           dir / "A",
           dir / "B",
@@ -57,14 +57,14 @@ final class DirectoryReaderTest extends FreeSpec
       for (_ ← 1 to 10) {
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
-            entries.sortBy(_.path)
+            entries.sortBy(_.file)
           }.toString)
       }
     }
 
     "parallel" in {
       for (_ ← 1 to 10) {
-        val comparator: Comparator[Entry] = (a, b) ⇒ a.path compareTo b.path
+        val comparator: Comparator[Entry] = (a, b) ⇒ a.file compareTo b.file
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             val array = entries.toArray

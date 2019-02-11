@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.core.filebased.FileBasedReader
+import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -36,8 +36,8 @@ final class AgentReaderTest extends FreeSpec {
       (dir / "XML.agent.xml").xml = <agent uri="https://XML"/>
       expected += xmlAgent
 
-      assert(FileBasedReader.readDirectoryTree(AgentReader :: Nil, dir).map(_.toSet) ==
-        Valid(expected.toSet))
+      val typedSourceReader = new TypedSourceReader(dir, AgentReader :: Nil)
+      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Valid(expected.toSet))
     }
   }
 }

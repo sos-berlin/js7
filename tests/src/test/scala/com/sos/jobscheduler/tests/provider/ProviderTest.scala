@@ -134,19 +134,14 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       (live / "ERROR-2.workflow.json") := """{ "instructions": 0 }"""
       assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
-          TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"))))))  // Only the unknown file is noticed
-    }
-
-    "Some invalid files" in {
-      delete(live / "UNKNOWN.tmp")
-      assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
-        Invalid(Problem.Multiple(Set(
+          TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got I (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("Attempt to decode value on failed cursor: DownField(instructions)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("C[A]: DownField(instructions)"))))))
     }
 
     "Delete invalid files" in {
+      delete(live / "UNKNOWN.tmp")
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")

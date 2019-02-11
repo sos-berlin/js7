@@ -10,9 +10,9 @@ import scala.collection.immutable.Seq
 object PathSeqDiffer
 {
   def diff(newEntries: Seq[Entry], oldEntries: Seq[Entry]): PathSeqDiff = {
-    val newMap = newEntries toKeyedMap (_.path)
+    val newMap = newEntries toKeyedMap (_.file)
     val newSet = newMap.keySet
-    val oldMap = oldEntries toKeyedMap (_.path)
+    val oldMap = oldEntries toKeyedMap (_.file)
     val oldSet = oldMap.keySet
 
     PathSeqDiff(
