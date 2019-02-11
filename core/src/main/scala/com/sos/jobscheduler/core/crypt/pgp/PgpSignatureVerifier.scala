@@ -100,6 +100,9 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
             else
               Valid(o.get(0))
 
+          case null =>
+            Invalid(Problem("Not a valid PGP signature"))
+
           case o ⇒
             logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
             Invalid(Problem("Unsupported PGP signature type"))
