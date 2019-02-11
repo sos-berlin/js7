@@ -26,9 +26,9 @@ final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked
 
   def keyOrigin = "(GenericSignatureVerifier)"
 
-  def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
+  override def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
     typeToVerifier(signature.typeName)
-      .flatMap(verifier => verifier.verify(message, verifier.companion.genericSignatureToSignature(signature)))
+      .flatMap(verifier => verifier.verify(message, signature))
 
   def isEmpty = typeToVerifier.isEmpty
 }

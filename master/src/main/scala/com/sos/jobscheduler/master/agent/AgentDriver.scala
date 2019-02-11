@@ -173,7 +173,6 @@ with ReceiveLoggingActor.WithStash {
 
     case Internal.KeepEventsDelayed(agentEventId) ⇒
       if (!terminating && isCoupled) {
-        // TODO Use CommandQueue to avoid a third TCP connection
         commandQueue.enqueue(KeepEventsQueueable(agentEventId))
       }
 

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.crypt
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.data.crypt.{GenericSignature, Signature, SignerId}
+import com.sos.jobscheduler.data.crypt.{GenericSignature, Signature, SignedString, SignerId}
 import scala.collection.immutable.Seq
 
 /**
@@ -15,7 +15,13 @@ trait SignatureVerifier
 
   def keyOrigin: String
 
-  def verify(message: String, signature: MySignature): Checked[Seq[SignerId]]
+  protected def verify(message: String, signature: MySignature): Checked[Seq[SignerId]]
+
+  final def verify(signed: SignedString): Checked[Seq[SignerId]] =
+    verify(signed.string, signed.signature)
+
+  def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
+    verify(message, companion.genericSignatureToSignature(signature))
 }
 
 object SignatureVerifier

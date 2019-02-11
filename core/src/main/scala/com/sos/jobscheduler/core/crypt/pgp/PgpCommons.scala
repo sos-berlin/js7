@@ -30,13 +30,13 @@ object PgpCommons
 
   implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key ⇒
     import key._
-    f"PGPPublicKey($getKeyID%08X " +
-      getCreationTime.show + " " +
-      getUserIDs.asScala.mkString("'", "', '", "'") + " " +
-      "algorithm=" + publicKeyAlgorithmToString(getAlgorithm) + " " +
-      "isEncryptionKey=" + isEncryptionKey + " " +
-      "isMasterKey=" + isMasterKey + " " +
-      "fingerprint=" + fingerprintToString(getFingerprint) +
+    f"PGPPublicKey($getKeyID%08X" +
+      " created=" + getCreationTime.show +
+      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
+      " fingerprint=" + fingerprintToString(getFingerprint) +
+      " algorithm=" + publicKeyAlgorithmToString(getAlgorithm) +
+      " isEncryptionKey=" + isEncryptionKey +
+      " isMasterKey=" + isMasterKey +
       ")"
   }
 
@@ -48,11 +48,11 @@ object PgpCommons
 
   implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key ⇒
     import key._
-    f"PGPSecretKey($getKeyID%08X " +
-      getPublicKey.show + " " +
-      "cipher=" + cipherToString(getKeyEncryptionAlgorithm) + " " +
-      "isSigningKey=" + isSigningKey + " " +
-      "isMasterKey=" + isMasterKey +
+    f"PGPSecretKey(" +
+      getPublicKey.show +
+      " cipher=" + cipherToString(getKeyEncryptionAlgorithm) +
+      " isSigningKey=" + isSigningKey +
+      " isMasterKey=" + isMasterKey +
       ")"
   }
 

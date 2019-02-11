@@ -98,7 +98,7 @@ extends AutoCloseable with Observing
             diffFileBaseds(fileBased map (_ withVersion v), master, ignoreVersion = true))
           MasterCommand.UpdateRepo(
             v,
-            (diff.added ++ diff.updated) map fileBasedSigner.sign,
+            (diff.updated ++ diff.added) map fileBasedSigner.sign,
             diff.deleted)
         }
         .traverse(execute(versionId, _))

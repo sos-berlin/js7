@@ -4,7 +4,6 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -14,15 +13,12 @@ import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
-import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.core.system.ThreadPools
 import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.agent.AgentEventId
@@ -41,12 +37,6 @@ import scala.util.control.NonFatal
   */
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule
 {
-  @Provides @Singleton
-  def fileBasedVerifier(): FileBasedVerifier =
-    new FileBasedVerifier(
-      GenericSignatureVerifier(configuration.config).orThrow,
-      MasterFileBaseds.jsonCodec)
-
   @Provides @Singleton
   def eventWatch(p: JournalEventWatch[Event]): EventWatch[Event] =
     p

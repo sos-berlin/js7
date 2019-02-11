@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.crypt.{GenericSignature, PgpSignature, SignerId
 import java.io.InputStream
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
-import org.bouncycastle.openpgp.{PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
+import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
@@ -42,38 +42,32 @@ extends SignatureVerifier
 
   /** Returns `Valid(userIds)` iff signature matches the message. */
   private def verify(message: Resource[SyncIO, InputStream], signature: Resource[SyncIO, InputStream]): Checked[Seq[SignerId]] =
-    readMutableSignature(signature)
-      .flatMap { sig ⇒
-        publicKeyRingCollection.getPublicKey(sig.getKeyID) match {
-          case null ⇒
-            logger.debug(MessageSignedByUnknownProblem.toString + ", no public key for " + sig.show)
-            Invalid(MessageSignedByUnknownProblem)
-          case publicKey ⇒
-            logger.debug("Verifying message with " + sig.show + ", using " + publicKey.show)
-            sig.init(contentVerifierBuilderProvider, publicKey)
-            Valid(sig)
-        }
-      }
-      .flatMap { sig ⇒
-        readMessage(message, sig.update(_, 0, _))
-        if (sig.verify) Valid(signatureToUserIds(sig))
-        else Invalid(TamperedWithSignedMessageProblem)
-      }
+    for {
+      pgpSignature <- readMutableSignature(signature)
+      publicKey <- findPublicKeyInKeyRing(pgpSignature)
+      signerIds <- verifyWithPublicKey(message, pgpSignature, publicKey)
+    } yield signerIds
 
-  private def signatureToUserIds(signature: PGPSignature) =
-    Option(publicKeyRingCollection.getPublicKey(signature.getKeyID)).toList
-      .flatMap(_.getUserIDs.asScala)
-      .map(SignerId.apply).toVector
+  private def findPublicKeyInKeyRing(signature: PGPSignature): Checked[PGPPublicKey] =
+    publicKeyRingCollection.getPublicKey(signature.getKeyID) match {  // Public key is matched with the only 64-bit long key ID ???
+      case null ⇒
+        logger.debug(MessageSignedByUnknownProblem + ", no public key for " + signature.show)
+        Invalid(MessageSignedByUnknownProblem)
+      case publicKey ⇒
+        Valid(publicKey)
+    }
 
-  override def toString = s"PgpSignatureVerifier(userIds=${userIds.mkString("'", "', '", "'")} ${publicKeyRingCollection.show} origin=$keyOrigin)"
+  private def verifyWithPublicKey(message: Resource[SyncIO, InputStream], pgpSignature: PGPSignature, publicKey: PGPPublicKey): Checked[Seq[SignerId]] = {
+    logger.debug("Verifying message with " + pgpSignature.show + ", using " + publicKey.show)
+    pgpSignature.init(contentVerifierBuilderProvider, publicKey)
+    readMessage(message, pgpSignature.update(_, 0, _))
+    if (!pgpSignature.verify())
+      Invalid(TamperedWithSignedMessageProblem)
+    else
+      Valid(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
+  }
 
-  private def userIds: Seq[SignerId] =
-    publicKeyRingCollection.asScala
-      .flatMap(_.getPublicKeys.asScala)
-      .filter(_.isMasterKey)
-      .flatMap(_.getUserIDs.asScala)
-      .map(SignerId.apply)
-      .toVector
+  override def toString = s"PgpSignatureVerifier(origin=$keyOrigin, ${publicKeyRingCollection.show})"
 }
 
 object PgpSignatureVerifier extends SignatureVerifier.Companion

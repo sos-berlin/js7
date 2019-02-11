@@ -18,8 +18,7 @@ final class FileBasedVerifier(signatureVerifier: SignatureVerifier, jsonDecoder:
 {
   def verify(signedString: SignedString): Checked[Signed[FileBased]] =
     for {
-      signers ← signatureVerifier.verify(signedString.string,
-        signatureVerifier.companion.genericSignatureToSignature(signedString.signature))
+      signers ← signatureVerifier.verify(signedString)
       json ← signedString.string.parseJsonChecked
       fileBased ←  jsonDecoder.decodeJson(json).toSimpleChecked
     } yield {

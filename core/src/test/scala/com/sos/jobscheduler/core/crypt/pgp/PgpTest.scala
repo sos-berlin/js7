@@ -39,7 +39,30 @@ final class PgpTest extends FreeSpec
 
     "PgpSignatureVerifier" - {
       "toString" in {
-        assert(verifier.toString == "PgpSignatureVerifier(userIds='TEST (COMMENT) <test@example.com>' PGPPublicKeyRing(PGPPublicKey(F5726E50E5345B98 2019-01-09T10:24:28Z 'TEST (COMMENT) <test@example.com>' algorithm='RSA general' isEncryptionKey=true isMasterKey=true fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98), PGPPublicKey(20058E9B9A6C7F27 2019-01-09T10:24:28Z '' algorithm='RSA general' isEncryptionKey=true isMasterKey=false fingerprint=7105 E581 0035 32F1 43DF DEB7 2005 8E9B 9A6C 7F27)) origin=PgpTest)")
+        assert(verifier.toString ==
+          "PgpSignatureVerifier(" +
+            "origin=PgpTest, " +
+            "PGPPublicKeyRing(" +
+              "PGPPublicKey(" +
+                "F5726E50E5345B98 " +
+                "created=2019-01-09T10:24:28Z " +
+                "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
+                "algorithm='RSA general' " +
+                "isEncryptionKey=true " +
+                "isMasterKey=true" +
+              "), " +
+              "PGPPublicKey(" +
+                "20058E9B9A6C7F27 " +
+                "created=2019-01-09T10:24:28Z " +
+                "userIDs='' " +
+                "fingerprint=7105 E581 0035 32F1 43DF DEB7 2005 8E9B 9A6C 7F27 " +
+                "algorithm='RSA general' " +
+                "isEncryptionKey=true " +
+                "isMasterKey=false" +
+              ")" +
+            ")" +
+          ")")
       }
 
       "Signature by alien key is rejected" in {
@@ -62,7 +85,21 @@ final class PgpTest extends FreeSpec
       lazy val signer = PgpSigner(readSecretKey(secretKeyResource), secretKeyPassword).orThrow
 
       "toString" in {
-        assert(signer.toString == "PgpSigner(PGPSecretKey(F5726E50E5345B98 PGPPublicKey(F5726E50E5345B98 2019-01-09T10:24:28Z 'TEST (COMMENT) <test@example.com>' algorithm='RSA general' isEncryptionKey=true isMasterKey=true fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98) cipher=AES isSigningKey=true isMasterKey=true))")
+        assert(signer.toString ==
+          "PgpSigner(" +
+            "PGPSecretKey(" +
+              "PGPPublicKey(" +
+                "F5726E50E5345B98 " +
+                "created=2019-01-09T10:24:28Z " +
+                "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
+                "algorithm='RSA general' " +
+                "isEncryptionKey=true " +
+                "isMasterKey=true" +
+              ") " +
+              "cipher=AES isSigningKey=true isMasterKey=true" +
+            ")" +
+          ")")
       }
 
       "Sign and verify" in {
