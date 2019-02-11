@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.Applicative
+import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
@@ -8,7 +9,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, HCursor, ObjectEncoder}
-import scala.collection.immutable.VectorBuilder
+import scala.collection.immutable.{Seq, VectorBuilder}
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.reflect.ClassTag
@@ -138,10 +139,10 @@ object Checked
   }
 
   implicit final class FailFastMap[A](private val underlying: TraversableOnce[A]) {
-    /** Like map(f).sequence, but fails fast. Problems does not accumulate. */
-    def failFastMap[B](f: A ⇒ Checked[B]): Checked[Vector[B]] = {
+    /** Like map(f).sequence, but fails fast. `E` does not accumulate. */
+    def failFastMap[B, E](f: A ⇒ Validated[E, B]): Validated[E, Seq[B]] = {
       val builder = new VectorBuilder[B]
-      var failed: Invalid[Problem] = null
+      var failed: Invalid[E] = null
       val it = underlying.toIterator
       while (failed == null && it.hasNext) {
         f(it.next()) match {
