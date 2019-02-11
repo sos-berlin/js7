@@ -118,8 +118,7 @@ final case class Repo private(
         else
           event match {
             case event @ FileBasedAddedOrChanged(path, signedString) ⇒
-              fileBasedVerifier.verify(signedString) flatMap { signed ⇒
-                val fileBased = signed.value
+              fileBasedVerifier.verify(signedString).map(_.fileBased).flatMap(fileBased ⇒
                 if (path != fileBased.path)
                   Problem(s"Error in FileBasedAddedOrChanged: path=$path does not equals path=${fileBased.path}")
                 else if (fileBased.path.isAnonymous)
@@ -127,8 +126,7 @@ final case class Repo private(
                 else if (fileBased.id.versionId != versionId)
                   Problem(s"Version '${versionId.string}' expected in ${event.toShortString}")
                 else
-                  Valid(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString))))
-              }
+                  Valid(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString)))))
 
             case FileBasedDeleted(path) ⇒
               Valid(addEntry(path, None))

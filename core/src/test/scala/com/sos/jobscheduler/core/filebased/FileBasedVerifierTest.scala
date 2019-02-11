@@ -31,7 +31,7 @@ final class FileBasedVerifierTest extends FreeSpec
   "Verify valid objects" in {
     val signedString = fileBasedSigner.sign(workflow)
     assert(signedString == fileBasedSigner.sign(workflow))
-    assert(fileBasedVerifier.verify(signedString) == Valid(Signed(workflow, signedString)))
+    assert(fileBasedVerifier.verify(signedString) == Valid(FileBasedVerifier.Verified(Signed(workflow, signedString), signerIds)))
   }
 
   "Verify falsified" in {
@@ -47,8 +47,9 @@ object FileBasedVerifierTest
     WorkflowParser.parse(WorkflowPath("/WORKFLOW") % VersionId("1.0"), workflowScript).orThrow
   }
 
+  private val signerIds = SignerId("FileBasedVerifierTest") :: Nil
+
   private val (signer, verifier) = {
-    val signerIds = SignerId("FileBasedVerifierTest") :: Nil
     val password = SecretString("TEST-PASSWORD")
     val secretKey = PgpKeyGenerator.generateSecretKey(signerIds.head, password, keySize = 1024/*fast*/)
     val verifier = PgpSignatureVerifier.checked(secretKey.getPublicKey.toArmoredAsciiBytes).orThrow
