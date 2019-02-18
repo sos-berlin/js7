@@ -15,7 +15,7 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-trait Observing {
+private[provider] trait Observing {
   this: Provider ⇒
 
   private val minimumSilence    = conf.config.getDuration("jobscheduler.provider.file-watch.minimum-silence").toFiniteDuration
@@ -26,7 +26,7 @@ trait Observing {
     // Start DirectoryWatcher before replaceMasterConfiguration, otherwise the first events may get lost!
     val directoryWatcher = new DirectoryWatcher(conf.liveDirectory, watchDuration)
     Observable.fromTask(
-      retryUntilNoError(/*replaceMasterConfiguration()*/initialUpdateMasterConfiguration()))
+      retryUntilNoError(initialUpdateMasterConfiguration()))
       .appendAll(
         directoryWatcher.singleUseObservable
           .debounce(minimumSilence)
@@ -38,11 +38,11 @@ trait Observing {
   private def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A] =
     body.map(_.toTry).dematerialize  // Collapse Invalid and Failed
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
-      logger.error(s"Transfer failed: ${throwable.toStringWithCauses}")
-      logger.debug(s"Transfer failed: ${throwable.toStringWithCauses}", throwable)
-      api.logout().onErrorHandle(_ => ()) >>
-        retry(()).delayExecution(errorWaitDuration)
-    }
+        logger.error(s"Transfer failed: ${throwable.toStringWithCauses}")
+        logger.debug(s"Transfer failed: ${throwable.toStringWithCauses}", throwable)
+        api.logout().onErrorHandle(_ => ()) >>
+          retry(()).delayExecution(errorWaitDuration)
+      }
 }
 
 object Observing

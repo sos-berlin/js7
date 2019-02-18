@@ -1,11 +1,9 @@
 package com.sos.jobscheduler.data.filebased
 
-import com.sos.jobscheduler.data.event.NoKeyEvent
-
 /**
   * @author Joacim Zschimmer
   */
-sealed trait RepoChange extends NoKeyEvent
+sealed trait RepoChange
 {
   def path: TypedPath
 }
