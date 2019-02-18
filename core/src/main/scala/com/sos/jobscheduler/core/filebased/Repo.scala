@@ -88,6 +88,12 @@ final case class Repo private(
     }
   }
 
+  def typedCount[A <: FileBased](implicit A: FileBased.Companion[A]): Int =
+    idToSignedFileBased.values count {
+      case Some(signedFileBased) if signedFileBased.value.companion == A ⇒ true
+      case _ => false
+    }
+
   def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentFileBased(A).mapValues(_.value).asInstanceOf[Map[A#Path, A]]
 

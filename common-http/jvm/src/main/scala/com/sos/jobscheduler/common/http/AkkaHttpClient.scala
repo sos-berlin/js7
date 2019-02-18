@@ -134,7 +134,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
         if (httpResponse.status.isSuccess)
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
-              logger.debug(s"Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+              if (!materializer.isShutdown) {
+                logger.debug(s"Error when unmarshaling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+              }
               throw t
             }
         else

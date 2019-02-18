@@ -74,7 +74,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
     case Internal.Generate(every) ⇒
       val interval = InstantInterval(generatedUntil.toInstant, every.toJavaDuration)
-      logger.info(s"Generating orders for time interval $interval")
+      logger.debug(s"Generating orders for time interval $interval")
       val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
       masterOrderKeeper ! MasterOrderKeeper.Command.AddOrderSchedule(orders)
       become("addingOrderSchedule")(addingOrderSchedule(interval.until.toTimestamp, every))

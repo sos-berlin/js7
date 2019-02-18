@@ -107,6 +107,11 @@ final class RepoTest extends FreeSpec
     assert(testRepo.idTo[AFileBased](a1.id) == Valid(a1))
   }
 
+  "typedCount" in {
+    assert(testRepo.typedCount[AFileBased] == 3)
+    assert(testRepo.typedCount[BFileBased] == 2)
+  }
+
   "currentTyped" in {
     assert(testRepo.currentTyped[AFileBased] == Map(a3.path → a3))
     assert(testRepo.currentTyped[BFileBased] == Map(by2.path → by2))

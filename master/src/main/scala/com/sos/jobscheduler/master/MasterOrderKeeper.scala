@@ -186,7 +186,7 @@ with MainJournalingActor[Event]
       if (hasRecovered) {
         orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
         afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
-        logger.info(s"${orderRegister.size} Orders, ${repo.currentTyped[Workflow].size} Workflows and ${repo.currentTyped[Agent].size} Agent declarations recovered")
+        logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[Agent]} Agent references recovered")
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ ⇒
