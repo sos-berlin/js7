@@ -5,7 +5,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
@@ -16,7 +17,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.graphql.GraphqlRoute._
-import io.circe.parser.{parse ⇒ parseJson}
+import io.circe.parser.{parse => parseJson}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import monix.execution.Scheduler
@@ -95,7 +96,7 @@ trait GraphqlRoute extends MasterRouteProvider {
           val checkedVariables = body("variables")
             .map(json ⇒ if (json.isNull) EmptyObject else json)
             .map(Valid.apply)
-            .orElse(variablesParam map (parseJson(_).toChecked))
+            .orElse(variablesParam map (_.parseJsonChecked))
             .getOrElse(Valid(EmptyObject))
 
           queryString match {

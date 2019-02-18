@@ -3,6 +3,7 @@ package com.sos.jobscheduler.base.circeutils
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
@@ -67,6 +68,8 @@ object CirceUtils {
     def compactPrint: String =
       CompactPrinter.pretty(underlying)
 
+    def checkedAs[A: Decoder] = underlying.as[A].toSimpleChecked
+
     def intOrThrow: Int = {
       val number = numberOrThrow
       number.toInt match {
@@ -117,6 +120,9 @@ object CirceUtils {
   }
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
+    def parseJsonCheckedAs[A: Decoder]: Checked[A] =
+      parseJsonChecked flatMap (_.checkedAs[A])
+
     def parseJsonChecked: Checked[Json] =
       io.circe.parser.parse(underlying).toSimpleChecked
 
