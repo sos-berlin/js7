@@ -12,8 +12,9 @@ final class JavaShutdownHook private(onShutdown: () ⇒ Unit, name: String) exte
   private val hook = new Thread {
     setName(name)
     override def run() = {
-      logger.trace(s"Calling shutdown hook '$name'")
+      logger.trace(s"Shutdown hook '$name' starts")
       onShutdown()
+      logger.trace(s"Shutdown hook '$name' ends")  // May not be logged if log4j has been shutdown
     }
   }
 
@@ -26,7 +27,7 @@ final class JavaShutdownHook private(onShutdown: () ⇒ Unit, name: String) exte
     try sys.runtime.removeShutdownHook(hook)
     catch {
       case t: IllegalStateException ⇒ logger.trace(s"JavaShutdownHook.remove: $t")  // "Shutdown in progress"
-      case NonFatal(t) ⇒ logger.warn(s"JavaShutdownHook.remove: : $t", t)
+      case NonFatal(t) ⇒ logger.warn(s"JavaShutdownHook.remove: $t", t)
     }
 }
 

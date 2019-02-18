@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -37,10 +36,21 @@ object JavaMainSupport
     finally hooks foreach (_.close())
   }
 
-  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration ⇒ Unit): Seq[JavaShutdownHook] =
-    !config.as[Boolean]("akka.coordinated-shutdown.run-by-jvm-shutdown-hook", false) thenList
+  private val akkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
+
+  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration ⇒ Unit): Seq[JavaShutdownHook] = {
+    val shutdownHookTimeout = config.getDuration("jobscheduler.termination.shutdown-hook-timeout").toFiniteDuration
+    if (config.as[Boolean](akkaShutdownHook, false)) {
+      logger.debug(s"JobScheduler shutdown hook suppressed because Akka has one: $akkaShutdownHook = on")
+      Nil
+    } else
       JavaShutdownHook.add(name) {
-        try onJavaShutdown(config.getDuration("jobscheduler.termination.shutdown-hook-timeout").toFiniteDuration)
+        try onJavaShutdown(shutdownHookTimeout)
+        catch { case t: Throwable =>
+          logger.debug(t.toStringWithCauses, t)
+          throw t
+        }
         finally Log4j.shutdown()
-      }
+      } :: Nil
+  }
 }
