@@ -7,12 +7,13 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, Repo}
+import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -25,10 +26,10 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private final class MasterJournalRecoverer(protected val journalMeta: JournalMeta[Event], fileBasedVerifier: FileBasedVerifier)
+private final class MasterJournalRecoverer(protected val journalMeta: JournalMeta[Event])
 extends JournalRecoverer[Event]
 {
-  private var repo = Repo.empty(fileBasedVerifier)
+  private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val agentToEventId = mutable.Map[AgentId, EventId]()
   private var orderScheduleEndedAt = none[Timestamp]

@@ -24,7 +24,7 @@ import org.scalatest.FreeSpec
 final class FatStateTest extends FreeSpec
 {
   private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
-  private val repo = Repo.empty(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))
+  private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))
   private val eventIds = Iterator.from(1)
   private var fatState = new FatState(eventIds.next(), repo, Map.empty)
 

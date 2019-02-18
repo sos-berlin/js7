@@ -9,9 +9,11 @@ import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Memoizer
+import com.sos.jobscheduler.core.crypt.donotverify.DoNotVerifySignatureVerifier
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, RepoEvent, TypedPath, VersionId}
+import io.circe.Decoder
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable
 import scala.collection.immutable.{Iterable, Seq}
@@ -212,7 +214,10 @@ final case class Repo private(
 
 object Repo
 {
-  def empty(fileBasedVerifier: FileBasedVerifier) =
+  def apply(fileBasedJsonDecoder: Decoder[FileBased]): Repo =
+    signatureVerifying(new FileBasedVerifier(DoNotVerifySignatureVerifier, fileBasedJsonDecoder))
+
+  def signatureVerifying(fileBasedVerifier: FileBasedVerifier): Repo =
     new Repo(Nil, Map.empty, fileBasedVerifier)
 
   @TestOnly

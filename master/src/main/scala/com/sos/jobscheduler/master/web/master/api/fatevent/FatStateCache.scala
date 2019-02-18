@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
-import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.master.MasterState
@@ -15,7 +14,7 @@ import scala.concurrent.duration._
 
 /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.
   */
-private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event], fileBasedVerifier: FileBasedVerifier)
+private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
 {
   // May be accessed by multiple clients simultaneously
   @volatile
@@ -53,7 +52,7 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event], fileB
   private def recoverFatState(after: EventId): FatState = {
     val (eventId, snapshotObjects) = eventWatch.snapshotObjectsFor(after = after)  // Returns a CloseableIterator
     val state = autoClosing(snapshotObjects) { _ ⇒
-      MasterState.fromIterable(eventId, snapshotObjects, fileBasedVerifier)
+      MasterState.fromIterable(eventId, snapshotObjects)
     }
     FatState(state.eventId, state.repo, state.idToOrder)
   }

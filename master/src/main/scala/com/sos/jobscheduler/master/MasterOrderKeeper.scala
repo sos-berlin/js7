@@ -43,6 +43,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -90,8 +91,8 @@ with MainJournalingActor[Event]
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal"))
   private var hasRecovered = false
-  private var repo = Repo.empty(fileBasedVerifier)
-  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, fileBasedVerifier)  // TODO throws
+  private var repo = Repo(MasterFileBaseds.jsonCodec)
+  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, fileBasedVerifier)
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -153,7 +154,7 @@ with MainJournalingActor[Event]
     .toSnapshots)
 
   private def recover() = {
-    val recoverer = new MasterJournalRecoverer(journalMeta, fileBasedVerifier)
+    val recoverer = new MasterJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     for (masterState ← recoverer.masterState) {
       hasRecovered = true

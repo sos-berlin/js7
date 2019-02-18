@@ -5,10 +5,11 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.event.EventBasedState
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, Repo}
+import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.RepoEvent
+import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.agent.AgentEventId
@@ -35,8 +36,8 @@ extends EventBasedState
 
 object MasterState
 {
-  def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any], fileBasedVerifier: FileBasedVerifier): MasterState = {
-    var repo = Repo.empty(fileBasedVerifier)
+  def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
+    var repo = Repo(MasterFileBaseds.jsonCodec)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
     val agentToEventId = mutable.Map[AgentId, EventId]()
     var orderScheduleEndedAt = none[Timestamp]

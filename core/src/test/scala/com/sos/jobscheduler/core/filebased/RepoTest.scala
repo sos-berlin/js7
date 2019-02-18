@@ -186,7 +186,7 @@ object RepoTest {
 
   private val fileBasedSigner = new FileBasedSigner(new SillySigner, fileBasedJsonCodec)
   private val fileBasedVerifier = new FileBasedVerifier(new SillySignatureVerifier, fileBasedJsonCodec)
-  private val emptyRepo = Repo.empty(fileBasedVerifier)
+  private val emptyRepo = Repo.signatureVerifying(fileBasedVerifier)
 
   import fileBasedSigner.sign
 
