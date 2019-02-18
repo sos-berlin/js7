@@ -45,7 +45,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 
   private lazy val privateKeyPassword = SecretString("")
   private val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
-  //Regenerated PGP signatures are not comparable:
+  //Regenerated PGP signatures are not comparable ?
   //private lazy val privateKeyPassword = SecretString(Random.nextString(10))
   //val signer = PgpSigner(generateSecretKey(SignerId("TEST"), privateKeyPassword, keySize = 1024/*fast for test*/), privateKeyPassword).orThrow
 
