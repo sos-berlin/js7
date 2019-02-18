@@ -28,12 +28,20 @@ object PgpCommons
 
   private val BufferSize = 4096
 
+  def pgpPublicKeyToShortString(key: PGPPublicKey) = {
+    import key._
+    f"PGPPublicKey(" +
+      "fingerprint=" + fingerprintToString(getFingerprint) +
+      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
+      ")"
+  }
+
   implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key ⇒
     import key._
     f"PGPPublicKey($getKeyID%08X" +
-      " created=" + getCreationTime.show +
-      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
       " fingerprint=" + fingerprintToString(getFingerprint) +
+      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
+      " created=" + getCreationTime.show +
       " algorithm=" + publicKeyAlgorithmToString(getAlgorithm) +
       " isEncryptionKey=" + isEncryptionKey +
       " isMasterKey=" + isMasterKey +
@@ -67,10 +75,10 @@ object PgpCommons
     f"PGPSignature(" +
       signatureTypeToString(getSignatureType) +
       //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)
-      f", publicKeyID=$getKeyID%08X" +
+      ", created=" + getCreationTime.show +
       " hash=" + hashAlgorithmToString(getHashAlgorithm) +
       //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
-      " created=" + getCreationTime.show +
+      f" publicKeyID=$getKeyID%08X" +
       ")"
   }
 

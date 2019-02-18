@@ -58,7 +58,7 @@ extends SignatureVerifier
     }
 
   private def verifyWithPublicKey(message: Resource[SyncIO, InputStream], pgpSignature: PGPSignature, publicKey: PGPPublicKey): Checked[Seq[SignerId]] = {
-    logger.debug("Verifying message with " + pgpSignature.show + ", using " + publicKey.show)
+    logger.trace("Verifying message with " + pgpSignature.show + ", using " + pgpPublicKeyToShortString(publicKey))
     pgpSignature.init(contentVerifierBuilderProvider, publicKey)
     readMessage(message, pgpSignature.update(_, 0, _))
     if (!pgpSignature.verify())

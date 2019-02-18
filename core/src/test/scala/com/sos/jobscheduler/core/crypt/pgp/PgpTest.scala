@@ -34,7 +34,7 @@ final class PgpTest extends FreeSpec
   "Use predefine private key" - {
     "PGPSecretKey.show" in {
       val signature: PGPSignature = PgpSignatureVerifier.readMutableSignature(stringToInputStreamResource(TestSignature.string)).orThrow
-      assert(signature.show == "PGPSignature(binary document, publicKeyID=F5726E50E5345B98 hash=SHA-256 created=2019-01-09T16:32:52Z)")
+      assert(signature.show == "PGPSignature(binary document, created=2019-01-09T16:32:52Z hash=SHA-256 publicKeyID=F5726E50E5345B98)")
     }
 
     "PgpSignatureVerifier" - {
@@ -45,18 +45,18 @@ final class PgpTest extends FreeSpec
             "PGPPublicKeyRing(" +
               "PGPPublicKey(" +
                 "F5726E50E5345B98 " +
-                "created=2019-01-09T10:24:28Z " +
-                "userIDs='TEST (COMMENT) <test@example.com>' " +
                 "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
+                "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +
                 "isMasterKey=true" +
               "), " +
               "PGPPublicKey(" +
                 "20058E9B9A6C7F27 " +
-                "created=2019-01-09T10:24:28Z " +
-                "userIDs='' " +
                 "fingerprint=7105 E581 0035 32F1 43DF DEB7 2005 8E9B 9A6C 7F27 " +
+                "userIDs='' " +
+                "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +
                 "isMasterKey=false" +
@@ -90,9 +90,9 @@ final class PgpTest extends FreeSpec
             "PGPSecretKey(" +
               "PGPPublicKey(" +
                 "F5726E50E5345B98 " +
-                "created=2019-01-09T10:24:28Z " +
-                "userIDs='TEST (COMMENT) <test@example.com>' " +
                 "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
+                "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +
                 "isMasterKey=true" +
