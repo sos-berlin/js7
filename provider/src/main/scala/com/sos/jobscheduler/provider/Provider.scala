@@ -187,9 +187,7 @@ object Provider
   def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =
     for (provider <- Provider(conf)) yield
       provider.observe
-        .guarantee(
-          Task(logger.debug("logout")) >>
-            provider.closeTask map (_ => logger.debug("logout completed")))
+        .guarantee(provider.closeTask.map((_: Completed) => ()))
 
   private def logThrowable(throwable: Throwable): Unit = {
     logger.error(throwable.toStringWithCauses)

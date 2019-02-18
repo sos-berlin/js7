@@ -115,7 +115,15 @@ pidFile="$stateDir/pid"
 echo "$pid" >$pidFile
 echo PID $pid
 
+terminate() {
+  echo
+  echo Terminate JobScheduler Provider
+  kill $pid
+}
+
+trap terminate SIGTERM SIGINT
 wait $pid || echo "JobScheduler Provider exited with exit code $?"
 rm $pidFile
+trap - SIGTERM SIGINT
 
 echo -e "\n$(date --iso-8601=ns) JobScheduler Provider has been shut down" >>$logs/stdouterr.log

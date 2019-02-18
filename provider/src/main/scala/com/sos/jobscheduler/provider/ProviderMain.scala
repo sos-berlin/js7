@@ -8,8 +8,10 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.JavaMainSupport.{runMain, withShutdownHooks}
 import com.sos.jobscheduler.core.StartUp.logStartUp
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
-import monix.execution.Cancelable
+import java.util.concurrent.CancellationException
+import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -24,15 +26,21 @@ object ProviderMain
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = conf.configDirectory, dataDir = None)
-      val cancelable = Provider.observe(conf).orThrow foreach { _ ⇒ }
+      val cancelable = Provider.observe(conf).orThrow.onCancelTriggerError foreach { _ => }
       withShutdownHooks(conf.config, "ProviderMain", onJavaShutdown(cancelable)) {
-        cancelable.awaitInfinite
+        awaitTermination(cancelable)
       }
     }
   }
 
-  private def onJavaShutdown(cancelable: Cancelable)(timeout: Duration): Unit = {
+  private def onJavaShutdown(cancelable: CancelableFuture[Unit])(timeout: Duration): Unit = {
     logger.warn("Trying to terminate Provider due to Java shutdown")
     cancelable.cancel()
+    awaitTermination(cancelable)
+  }
+
+  private def awaitTermination(future: Future[Unit]): Unit = {
+    future.recover { case _: CancellationException => }.awaitInfinite
+    logger.info("JobScheduler Provider terminated")
   }
 }
