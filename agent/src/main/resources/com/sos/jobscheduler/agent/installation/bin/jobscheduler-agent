@@ -139,10 +139,10 @@ function terminate() {
   kill $killer
 }
 
-trap "terminate" SIGTERM SIGINT SIGHUP
+trap terminate SIGTERM SIGINT
 wait $pid || echo "JobScheduler Agent exited with exit code $?"
 rm $pidFile
-trap - SIGTERM SIGINT SIGHUP
+trap - SIGTERM SIGINT
 
 returnCode=$?
 if [ -n "$crashKillScript" -a -s "$crashKillScript" ]; then :

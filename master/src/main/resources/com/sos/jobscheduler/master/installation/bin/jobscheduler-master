@@ -137,9 +137,9 @@ function terminate() {
   kill $killer
 }
 
-trap "terminate" SIGTERM SIGINT SIGHUP
+trap terminate SIGTERM SIGINT
 wait $pid || echo "JobScheduler Master exited with exit code $?"
 rm $pidFile
+trap - SIGTERM SIGINT
 
-trap - SIGTERM SIGINT SIGHUP
 echo -e "\n$(date --iso-8601=ns) JobScheduler Master has been shut down" >>$logs/stdouterr.log
