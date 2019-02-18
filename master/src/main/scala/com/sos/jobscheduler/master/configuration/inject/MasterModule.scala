@@ -48,7 +48,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
   @Provides @Singleton
   def journalMeta(): JournalMeta[Event] =
-    JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.stateDirectory resolve "master")
+    JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.stateDirectory resolve "master")
 
   @Provides @Singleton
   def eventIdClock(): EventIdClock =

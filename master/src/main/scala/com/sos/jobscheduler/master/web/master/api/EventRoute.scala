@@ -4,8 +4,10 @@ import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.event.GenericEventRoute
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import com.sos.jobscheduler.master.agent.AgentEventIdEvent
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
+import com.sos.jobscheduler.data.filebased.RepoEvent
+import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 
@@ -17,7 +19,7 @@ trait EventRoute extends MasterRouteProvider with GenericEventRoute
   protected def eventWatch: EventWatch[Event]
 
   protected final lazy val eventRoute = new GenericEventRouteProvider {
-    def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec
+    def keyedEventTypedJsonCodec = MasterJournalKeyedEventJsonCodec
     def eventWatchFor(user: SimpleUser) = Task.pure(eventWatch)
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = EventRoute.isRelevantEvent(keyedEvent)
   }.route
@@ -30,10 +32,7 @@ object EventRoute
 
   private def isRelevantEvent(event: Event): Boolean =
     event match {
-      case //_: OrderEvent.OrderDetachable |
-        _: AgentEventIdEvent ⇒
-        false
-      case _ ⇒
-        true
+      case _: RepoEvent | _: MasterEvent | _: MasterAgentEvent | _: OrderEvent => true
+      case _ => false
     }
 }
