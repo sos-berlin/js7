@@ -5,7 +5,7 @@ set -e
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
-declare classpathString java
+declare classpathString java  # returned by set-context.sh
 
 config=/var/opt/jobscheduler/provider/config
 data=/var/opt/jobscheduler/provider/data
@@ -67,11 +67,13 @@ if [ ! -d "$config" ]; then :
   echo "No such directory: -config-directory=$config"
   exit 1
 fi
+config="$(toSystemPath "$config" || kill $$)"
 
 if [ ! -d "$data" ]; then :
   echo "No such directory: -data-directory=$data"
   exit 1
 fi
+data="$(toSystemPath "$data" || kill $$)"
 
 logs="$data/logs"
 [ -d "$logs" ] || mkdir "$logs"
@@ -91,7 +93,7 @@ if $log4jAsync; then :
   javaOptions+=("-Djobscheduler.log4j.immediateFlush=false")
 fi
 
-providerOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+providerOptions+=("-config-directory=$config")
 normalizedData="$(toSystemPath "$data" || kill $$)"
 #providerOptions+=("-data-directory=$normalizedData")
 
@@ -108,6 +110,7 @@ execute=(
   com.sos.jobscheduler.provider.ProviderMain
   "${providerOptions[@]}")
 echo "${execute[@]}"
+
 "${execute[@]}" &
 
 pid=$!
