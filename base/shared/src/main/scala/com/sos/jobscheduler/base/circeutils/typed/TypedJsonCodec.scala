@@ -3,7 +3,7 @@ package com.sos.jobscheduler.base.circeutils.typed
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import io.circe.{Decoder, HCursor, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, DecodingFailure, HCursor, Json, JsonObject, ObjectEncoder}
 import scala.reflect.ClassTag
 
 /**
@@ -81,4 +81,7 @@ object TypedJsonCodec {
 
   final class UnknownJsonTypeException(typeName: String, superclass: Class[_])
     extends RuntimeException(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.simpleName}'""")
+
+  final def unknownJsonTypeFailure(typeName: String, superclass: Class[_]): DecodingFailure =
+    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.simpleScalaName}'""", Nil)
 }

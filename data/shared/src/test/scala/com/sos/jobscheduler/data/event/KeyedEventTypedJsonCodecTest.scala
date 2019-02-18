@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{UnknownClassForJsonException, UnknownJsonTypeException}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.DecodingFailure
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -33,9 +33,29 @@ final class KeyedEventTypedJsonCodecTest extends FreeSpec {
   }
 
   "decode unknown subclass" in {
-    intercept[UnknownJsonTypeException] {
-      """{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[KeyedEvent[TestEvent]].orThrow
-    }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TestEvent'""")
+    assert("""{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[KeyedEvent[TestEvent]] ==
+    Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TestEvent'""", Nil)))
+  }
+
+  "Union" in {
+    implicit val ab: KeyedEventTypedJsonCodec[Event] =
+      KeyedEventTypedJsonCodec[E0.type](KeyedSubtype(E0)) |
+      KeyedEventTypedJsonCodec[StringEvent](KeyedSubtype[StringEvent]) |
+      KeyedEventTypedJsonCodec[IntEvent](KeyedSubtype[IntEvent])
+
+    testJson[KeyedEvent[Event]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
+    testJson[KeyedEvent[Event]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "key": "A", "int": 7 }""")
+    testJson[KeyedEvent[Event]]("B"   <-: E2("X"), json"""{ "TYPE": "E2", "key": "B", "string": "X" }""")
+    testJson[KeyedEvent[Event]](1     <-: E3(2),   json"""{ "TYPE": "E3", "key": 1, "int": 2 }""")
+  }
+
+  "Unknown TYPE" in {
+    implicit val e0KeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E0.type] = KeyedEventTypedJsonCodec[E0.type](
+      KeyedSubtype(E0))
+
+    testJson[KeyedEvent[E0.type]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
+    assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
+    assert(json"""{ "TYPE": "UNKNOWN" }""".as[KeyedEvent[E0.type]] == Left(DecodingFailure("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'E0'""", Nil)))
   }
 
   "typenameToClassOption" in {

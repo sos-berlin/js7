@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, UnknownJsonTypeException, typeName, unknownJsonTypeFailure}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
@@ -15,10 +15,29 @@ import scala.reflect.ClassTag
 final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
   val name: String,
   val classToEncoder: Map[Class[_], ObjectEncoder[KeyedEvent[_ <: E]]],
-  val nameToDecoder: Map[String, Decoder[KeyedEvent[_ <: E]]],
+  val nameToDecoder: Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: E]]]],
   val nameToClass: Map[String, Class[_ <: E]])
 extends ObjectEncoder[KeyedEvent[E]]
 with Decoder[KeyedEvent[E]] {
+
+  /** Union. */
+  def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {
+    val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
+    if (sameClasses.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique classes: $sameClasses")
+    val sameClassNames = nameToClass.keySet & other.nameToClass.keySet
+    if (sameClassNames.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique decoder names: $sameClassNames")
+    val sameDecoderNames = nameToDecoder.keySet & other.nameToDecoder.keySet
+    if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique class names: $sameDecoderNames")
+
+    new KeyedEventTypedJsonCodec[Event](
+      name = "Event",
+      classToEncoder.asInstanceOf[Map[Class[_ <: Event], ObjectEncoder[KeyedEvent[_ <: Event]]]] ++
+        other.classToEncoder.asInstanceOf[Map[Class[_ <: Event], ObjectEncoder[KeyedEvent[_ <: Event]]]],
+      nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]] ++
+        other.nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]],
+      nameToClass.asInstanceOf[Map[String, Class[_ <: Event]]] ++
+        other.nameToClass.asInstanceOf[Map[String, Class[_ <: Event]]])
+  }
 
   def encodeObject(keyedEvent: KeyedEvent[E]) =
     keyedEvent.asJsonObject(encoder = classToEncoder(keyedEvent.event.getClass))
@@ -26,7 +45,8 @@ with Decoder[KeyedEvent[E]] {
   def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
     for {
       typeName ← c.get[String](TypeFieldName)
-      keyedEvent ← nameToDecoder(typeName)(c)
+      decoder ← nameToDecoder(typeName)
+      keyedEvent ← decoder.apply(c)
     } yield keyedEvent
 
   implicit def keyedEventJsonCodec[EE <: E]: KeyedEventTypedJsonCodec[EE] =
@@ -52,7 +72,9 @@ object KeyedEventTypedJsonCodec {
     new KeyedEventTypedJsonCodec[E](
       cls.simpleScalaName,
       subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[ObjectEncoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownClassForJsonException(o, cls)),
-      subtypes.flatMap(_.nameToDecoder.mapValuesStrict (_.asInstanceOf[Decoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)),
+      subtypes.flatMap(_.nameToDecoder.mapValuesStrict (decoder =>
+        Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]]))).uniqueToMap
+          .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls))),
       subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)))
   }
 
