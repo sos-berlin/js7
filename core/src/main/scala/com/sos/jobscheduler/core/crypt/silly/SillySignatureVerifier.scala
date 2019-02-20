@@ -21,6 +21,8 @@ extends SignatureVerifier
 
   def companion = SillySignatureVerifier
 
+  def key = requiredSignature.string.getBytes(UTF_8).toVector
+
   def verify(message: String, signature: SillySignature) =
     if (signature != requiredSignature)
       Invalid(TamperedWithSignedMessageProblem)
@@ -35,7 +37,8 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
   protected type MySignature = SillySignature
   protected type MySignatureVerifier = SillySignatureVerifier
 
-  def typeName = SillySignature.TypeName
+  val typeName = SillySignature.TypeName
+  val recommendedKeyFileName = "trusted-silly-signature-key.txt"
 
   private val SillySignerId = SignerId("Silly")
 

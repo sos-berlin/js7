@@ -19,6 +19,10 @@ extends SignatureVerifier with SignatureVerifier.Companion  // Both Verifier and
 
   def keyOrigin = "(no signature verification)"
 
+  def recommendedKeyFileName = throw new NotImplementedError("DoNotVerifySignatureVerifier#recommendedKeyFileName")
+
+  def key = throw new NotImplementedError("DoNotVerifySignatureVerifier#key")
+
   def verify(message: String, signature: DoNotVerifySignature.type) = Valid(Nil)
 
   def typeName = DoNotVerifySignature.TypeName

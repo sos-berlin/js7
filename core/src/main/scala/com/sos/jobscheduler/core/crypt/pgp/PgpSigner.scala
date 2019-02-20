@@ -6,6 +6,7 @@ import cats.syntax.foldable.catsSyntaxFoldOps
 import cats.syntax.show._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.SyncResource.ops.RichResource
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
@@ -75,6 +76,9 @@ extends MessageSigner
 
   private def finish(signatureGenerator: PGPSignatureGenerator): Array[Byte] =
     signatureGenerator.generate.getEncoded(/*forTransfer=*/true)
+
+  def toVerifier =
+    PgpSignatureVerifier.checked(bytesToInputStreamResource(publicKey), keyOrigin = "PgpSigner").orThrow
 
   override def toString = show"PgpSigner($pgpSecretKey)"
 }

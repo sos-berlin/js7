@@ -24,6 +24,8 @@ final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked
 
   def companion = GenericSignatureVerifier
 
+  def key = throw new NotImplementedError("GenericSignatureVerifier#key")
+
   def keyOrigin = "(GenericSignatureVerifier)"
 
   override def verify(message: String, signature: GenericSignature): Checked[Seq[SignerId]] =
@@ -42,6 +44,8 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
   protected type MySignatureVerifier = GenericSignatureVerifier
 
   def typeName = "(generic)"
+
+  def recommendedKeyFileName = throw new NotImplementedError("GenericSignatureVerifier#recommendedKeyFileName")
 
   implicitly[Applicative[Checked]]
 

@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.crypt.silly.SillySignature
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -58,7 +58,7 @@ final class RecoveryTest extends FreeSpec {
       val directoryProvider = new DirectoryProvider(
         AgentIds map (_.path),
         TestWorkflow :: QuickWorkflow :: Nil,
-        useMessageSigner = DirectoryProvider.useSillyMessageSigner(SillySignature("MY-SILLY-SIGNATURE")),
+        signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         testName = Some("RecoveryTest"))
       autoClosing(directoryProvider) { _ =>
         for (agent ← directoryProvider.agentToTree.values)

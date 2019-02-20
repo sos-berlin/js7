@@ -14,7 +14,6 @@ import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.tests.testenv.DirectoryProvider.MasterTree
 import com.typesafe.config.{Config, ConfigFactory}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -35,7 +34,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
-    useMessageSigner = useMessageSigner,
+    signer = signer,
     testName = Some(getClass.getSimpleName))
 
   protected def agentConfig: Config = ConfigFactory.empty
@@ -52,7 +51,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def masterClientCertificate: Option[JavaResource] = None
   protected def masterConfig: Config = ConfigFactory.empty
   protected def fileBased: Seq[FileBased]
-  protected def useMessageSigner: MasterTree => MessageSigner = DirectoryProvider.useDefaultMessageSigner
+  protected def signer: MessageSigner = DirectoryProvider.defaultSigner
 
   protected final lazy val master: RunningMaster = directoryProvider.startMaster(
     masterModule,

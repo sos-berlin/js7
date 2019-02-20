@@ -24,7 +24,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.crypt.silly.SillySignature
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -53,7 +53,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   ProblemCodeMessages.initialize()
 
-  override lazy val useMessageSigner = DirectoryProvider.useSillyMessageSigner(SillySignature("SILLY"))
+  override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
 

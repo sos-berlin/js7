@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.RichPgpPublicKey
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.RichPGPPublicKey
 import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifierTest._
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem

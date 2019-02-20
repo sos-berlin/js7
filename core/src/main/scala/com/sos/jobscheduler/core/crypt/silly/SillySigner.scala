@@ -22,6 +22,8 @@ final class SillySigner(signature: SillySignature) extends MessageSigner
   def privateKey = signature.string.getBytes(UTF_8).toVector
 
   def publicKey = privateKey
+
+  def toVerifier = new SillySignatureVerifier(signature, keyOrigin = "SillySigner")
 }
 
 object SillySigner extends MessageSigner.Companion

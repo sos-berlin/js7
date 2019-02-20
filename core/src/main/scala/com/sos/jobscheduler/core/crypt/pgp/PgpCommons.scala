@@ -17,6 +17,7 @@ import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPUtil}
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 import scala.util.control.NonFatal
 
 /**
@@ -163,6 +164,12 @@ object PgpCommons
     armored.close()
   }
 
+  def writePublicKeyRingCollectionAsAscii(publicKey: PGPPublicKeyRingCollection, out: OutputStream): Unit = {
+    val armored = new ArmoredOutputStream(out)
+    publicKey.encode(armored)
+    armored.close()
+  }
+
   def readPublicKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPPublicKeyRingCollection =
     resource.useSync(in ⇒
       new PGPPublicKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
@@ -175,18 +182,26 @@ object PgpCommons
     new PGPPublicKeyRingCollection((ring :: Nil).asJava)
   }
 
-  implicit final class RichPgpSecretKey(private val underlying: PGPSecretKey) extends AnyVal {
-    def toArmoredAsciiBytes = {
+  implicit final class RichPGPSecretKey(private val underlying: PGPSecretKey) extends AnyVal {
+    def toArmoredAsciiBytes: Seq[Byte] = {
       val out = new ByteArrayOutputStream()
       writeSecretKeyAsAscii(underlying, out)
       out.toByteArray.toVector
     }
   }
 
-  implicit final class RichPgpPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
-    def toArmoredAsciiBytes = {
+  implicit final class RichPGPPublicKey(private val underlying: PGPPublicKey) extends AnyVal {
+    def toArmoredAsciiBytes: Seq[Byte] = {
       val out = new ByteArrayOutputStream()
       writePublicKeyAsAscii(underlying, out)
+      out.toByteArray.toVector
+    }
+  }
+
+  implicit final class RichPGPPublicKeyRingCollection(private val underlying: PGPPublicKeyRingCollection) extends AnyVal {
+    def toArmoredAsciiBytes: Seq[Byte] = {
+      val out = new ByteArrayOutputStream()
+      writePublicKeyRingCollectionAsAscii(underlying, out)
       out.toByteArray.toVector
     }
   }

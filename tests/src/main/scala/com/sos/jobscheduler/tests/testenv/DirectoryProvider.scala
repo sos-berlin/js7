@@ -19,9 +19,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSigner}
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
+import com.sos.jobscheduler.core.crypt.{MessageSigner, SignatureVerifier}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.crypt.{SignedString, SignerId}
@@ -60,7 +59,7 @@ final class DirectoryProvider(
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
   masterClientCertificate: Option[JavaResource] = None,
-  useMessageSigner: MasterTree => MessageSigner = useDefaultMessageSigner,
+  signer: MessageSigner = defaultSigner,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None)
 extends HasCloser {
@@ -104,9 +103,10 @@ extends HasCloser {
          |  key-password = "jobscheduler"
          |}
          |""".stripMargin)
+    useSignatureVerifier(signer.toVerifier)
   }
 
-  val fileBasedSigner = new FileBasedSigner(useMessageSigner(master), MasterFileBaseds.jsonCodec)
+  val fileBasedSigner = new FileBasedSigner(signer, MasterFileBaseds.jsonCodec)
 
   val sign: FileBased => SignedString = fileBasedSigner.sign
 
@@ -177,6 +177,20 @@ extends HasCloser {
     ).await(99.s).orThrow
 
   private def masterName = testName.fold(MasterConfiguration.DefaultName)(_ + "-Master")
+
+  private def useSignatureVerifier(verifier: SignatureVerifier): Unit = {
+    val keyFile = "private/" + verifier.companion.recommendedKeyFileName
+    for (config <- master.config +: agents.map(_.config)) {
+      config / keyFile := verifier.key
+    }
+    for (conf <- master.config / "master.conf" +: agents.map(_.config / "agent.conf")) {
+      conf ++=
+        s"""|jobscheduler.configuration.trusted-signature-keys {
+           |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$keyFile"
+           |}
+           |""".stripMargin
+    }
+  }
 }
 
 object DirectoryProvider
@@ -301,25 +315,11 @@ object DirectoryProvider
     assert(process.exitValue == 0)
   }
 
-  final def useSillyMessageSigner(signature: SillySignature = SillySignature.Default)(master: MasterTree) = {
-    val signature = SillySignature("MY-SILLY-SIGNATURE")
-    master.config / "private/silly-signature-key.txt" := signature.string
-    master.config / "master.conf" ++=
-      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/silly-signature-key.txt"
-         |""".stripMargin
-    new SillySigner(signature)
-  }
+  final def defaultSigner = pgpSigner
 
-  val useDefaultMessageSigner = usePgpMessageSigner _
-
-  final def usePgpMessageSigner(master: MasterTree) = {
-    val pgpPassword = SecretString(Random.nextString(10))
+  final lazy val pgpSigner: PgpSigner = {
+    val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
     val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
-    val signer = PgpSigner(pgpSecretKey, pgpPassword).orThrow
-    master.config / "private" / "trusted-pgp-keys.asc" := signer.publicKey
-    master.config / "master.conf" ++=
-      s"""jobscheduler.configuration.trusted-signature-keys.PGP = $${jobscheduler.config-directory}"/private/trusted-pgp-keys.asc"
-         |""".stripMargin
-    signer
+    PgpSigner(pgpSecretKey, pgpPassword).orThrow
   }
 }

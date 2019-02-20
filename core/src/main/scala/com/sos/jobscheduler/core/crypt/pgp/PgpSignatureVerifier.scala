@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResou
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
-import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
+import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{RichPGPPublicKeyRingCollection, _}
 import com.sos.jobscheduler.core.problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import com.sos.jobscheduler.data.crypt.{GenericSignature, PgpSignature, SignerId}
 import java.io.InputStream
@@ -35,6 +35,8 @@ extends SignatureVerifier
   registerBouncyCastle()
 
   private val contentVerifierBuilderProvider = new JcaPGPContentVerifierBuilderProvider().setProvider("BC")
+
+  def key = publicKeyRingCollection.toArmoredAsciiBytes
 
   /** Returns `Valid(message)` iff signature matches the message. */
   def verify(message: String, signature: PgpSignature): Checked[Seq[SignerId]] =
@@ -76,14 +78,16 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   protected type MySignatureVerifier = PgpSignatureVerifier
 
   val typeName = PgpSignature.TypeName
+  val recommendedKeyFileName = "trusted-pgp-key.asc"
+
   private val logger = Logger(getClass)
 
   def checked(keyRings: Seq[Byte], keyOrigin: String) =
-    Checked.catchNonFatal(
-      apply(bytesToInputStreamResource(keyRings), keyOrigin = keyOrigin))
+    checked(bytesToInputStreamResource(keyRings), keyOrigin = keyOrigin)
 
-  private def apply(keyRings: Resource[SyncIO, InputStream], keyOrigin: String): PgpSignatureVerifier =
-    new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings), keyOrigin)
+  def checked(keyRings: Resource[SyncIO, InputStream], keyOrigin: String): Checked[PgpSignatureVerifier] =
+    Checked.catchNonFatal(
+      new PgpSignatureVerifier(readPublicKeyRingCollection(keyRings), keyOrigin))
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
     assert(signature.typeName == typeName)

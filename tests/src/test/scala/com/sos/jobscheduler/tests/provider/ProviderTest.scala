@@ -44,18 +44,10 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
   protected val fileBased = Nil
 
   private lazy val privateKeyPassword = SecretString("")
-  private val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
+  override protected val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
   //Regenerated PGP signatures are not comparable ?
   //private lazy val privateKeyPassword = SecretString(Random.nextString(10))
   //val signer = PgpSigner(generateSecretKey(SignerId("TEST"), privateKeyPassword, keySize = 1024/*fast for test*/), privateKeyPassword).orThrow
-
-  override protected def useMessageSigner = master => {
-    // DirectoryProvider derives the public key from this MessageSigner
-    val keyFile = master.config / "private" / "trusted-silly-keys.txt"
-    master.config / "master.conf" ++= s"""jobscheduler.configuration.trusted-signature-keys.Silly = "$keyFile"""" + "\n"
-    keyFile := signer.publicKey
-    signer
-  }
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"

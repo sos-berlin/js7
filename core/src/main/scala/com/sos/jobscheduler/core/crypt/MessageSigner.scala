@@ -16,6 +16,8 @@ trait MessageSigner
   def privateKey: Seq[Byte]
 
   def publicKey: Seq[Byte]
+
+  def toVerifier: SignatureVerifier { type MySignature = MessageSigner.this.MySignature }
 }
 
 object MessageSigner
