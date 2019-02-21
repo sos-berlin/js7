@@ -25,20 +25,20 @@ import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
 import monix.execution.Scheduler
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
+final class OrderActor private(orderId: OrderId, protected val journalActor: ActorRef, conf: Conf)
   (implicit scheduler: Scheduler)
-extends KeyedJournalingActor[OrderEvent] {
-
+extends KeyedJournalingActor[OrderEvent]
+{
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
-  private val stdoutDelay = config.getDuration("jobscheduler.order.stdout-stderr.sync-delay").toFiniteDuration
-  private val charBufferSize = config.getInt  ("jobscheduler.order.stdout-stderr.char-buffer-size")
+  import conf.{charBufferSize, stdoutDelay}
 
-  private var stdouterr: StdouterrToEvent = null
   private var order: Order[Order.State] = null
+  private var stdouterr: StdouterrToEvent = null
   private var terminating = false
 
   protected def key = orderId
@@ -107,7 +107,7 @@ extends KeyedJournalingActor[OrderEvent] {
     receiveEvent orElse {
       case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) ⇒
         assert(stdouterr == null)
-        stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
+        stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
         val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
         val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
         become("processing")(processing(jobKey, workflowJob, jobActor,
@@ -311,8 +311,8 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config)(implicit s: Scheduler) =
-    Props { new OrderActor(orderId, journalActor = journalActor, config) }
+  private[order] def props(orderId: OrderId, journalActor: ActorRef, conf: OrderActor.Conf)(implicit s: Scheduler) =
+    Props { new OrderActor(orderId, journalActor = journalActor, conf) }
 
   sealed trait Command
   object Command {
@@ -333,5 +333,13 @@ private[order] object OrderActor
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
+  }
+
+  final case class Conf(stdoutDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf)
+  object Conf {
+    def apply(config: Config) = new Conf(
+      stdoutDelay = config.getDuration("jobscheduler.order.stdout-stderr.sync-delay").toFiniteDuration,
+      charBufferSize = config.getInt  ("jobscheduler.order.stdout-stderr.char-buffer-size"),
+      stdouterrToEventConf = StdouterrToEvent.Conf(config))
   }
 }

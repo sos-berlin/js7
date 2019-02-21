@@ -81,6 +81,7 @@ extends MainJournalingActor[Event] with Stash {
     "Journal"))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
+  private val orderActorConf = OrderActor.Conf(config)
   private val orderRegister = new OrderRegister(scheduler)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
@@ -357,7 +358,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def newOrderActor(order: Order[Order.State]) =
     watch(actorOf(
-      OrderActor.props(order.id, journalActor = journalActor, config),
+      OrderActor.props(order.id, journalActor = journalActor, orderActorConf),
       name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {

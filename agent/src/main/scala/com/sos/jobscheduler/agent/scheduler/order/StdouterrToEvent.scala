@@ -3,13 +3,14 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{ActorContext, ActorRef, DeadLetterSuppression}
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
 import com.sos.jobscheduler.base.generic.Accepted
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.typesafe.config.Config
 import java.io.Writer
-import java.time.Instant
-import java.time.Instant.now
 import monix.execution.{Cancelable, Scheduler}
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -17,17 +18,14 @@ import scala.concurrent.{Future, Promise}
   */
 private[order] class StdouterrToEvent(
   orderActorContext: ActorContext,
-  config: Config,
+  conf: Conf,
   writeEvent: (StdoutOrStderr, String) ⇒ Future[Accepted])
   (implicit scheduler: Scheduler)
 {
+  import conf.{chunkSize, delay, noDelayAfter}
   import orderActorContext.self
 
-  private val chunkSize    = config.getInt     ("jobscheduler.order.stdout-stderr.chunk-size")
-  private val delay        = config.getDuration("jobscheduler.order.stdout-stderr.delay")
-  private val noDelayAfter = config.getDuration("jobscheduler.order.stdout-stderr.no-delay-after")
-
-  private var lastEventAt = Instant.ofEpochMilli(0)
+  private var lastEventAt = Timestamp.ofEpochMilli(0)
   private var timer: Cancelable = null
 
   val writers = Map[StdoutOrStderr, Writer](
@@ -44,8 +42,8 @@ private[order] class StdouterrToEvent(
 
   def onBufferingStarted(): Unit =
     if (timer == null) {
-      val d = if (lastEventAt + noDelayAfter < now) 0.s else delay
-      timer = scheduler.scheduleOnce(d.toFiniteDuration) {
+      val d = if (lastEventAt + noDelayAfter < now) Duration.Zero else delay
+      timer = scheduler.scheduleOnce(d) {
         self ! Stdouterr.FlushStdoutStderr
       }
     }
@@ -71,8 +69,8 @@ private[order] class StdouterrToEvent(
 object StdouterrToEvent {
   private class StdWriter(stdoutOrStderr: StdoutOrStderr, orderActorSelf: ActorRef, protected val size: Int, protected val passThroughSize: Int)
     (implicit protected val scheduler: Scheduler)
-  extends BufferedStringWriter {
-
+  extends BufferedStringWriter
+  {
     protected def onFlush(string: String) = {
       val promise = Promise[Accepted]()
       orderActorSelf ! Stdouterr.StdoutStderrWritten(stdoutOrStderr, string, promise)
@@ -83,12 +81,19 @@ object StdouterrToEvent {
       orderActorSelf ! Stdouterr.BufferingStarted
   }
 
-
   private[order] sealed trait Stdouterr
   private object Stdouterr {
     final case object BufferingStarted extends Stdouterr
     final case class StdoutStderrWritten(typ: StdoutOrStderr, chunk: String, accepted: Promise[Accepted]) extends Stdouterr
     final case object FlushStdoutStderr extends Stdouterr with DeadLetterSuppression  // May arrive after death, due to timer
+  }
+
+  final case class Conf(chunkSize: Int, delay: FiniteDuration, noDelayAfter: FiniteDuration)
+  object Conf {
+    def apply(config: Config): Conf = new Conf(
+      chunkSize    = config.getInt     ("jobscheduler.order.stdout-stderr.chunk-size"),
+      delay        = config.getDuration("jobscheduler.order.stdout-stderr.delay").toFiniteDuration,
+      noDelayAfter = config.getDuration("jobscheduler.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }
 }
 

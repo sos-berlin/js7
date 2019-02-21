@@ -16,7 +16,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -166,7 +166,7 @@ private object OrderActorTest {
     private val jobActor = watch(actorOf(
       JobActor.props(jobKey, workflowJob, taskRunnerFactory, executableDirectory = dir / "config" / "executables")))
     private val orderActor = actorOf(
-      OrderActor.props(TestOrder.id, journalActor = journalActor, config),
+      OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config)),
       s"Order-${TestOrder.id.string}")
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
