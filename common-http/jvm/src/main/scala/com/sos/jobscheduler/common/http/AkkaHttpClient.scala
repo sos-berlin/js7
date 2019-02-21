@@ -114,7 +114,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     }
 
   private def logRequest(request: HttpRequest, logData: ⇒ Option[String]): Unit =
-    if (logger.underlying.isDebugEnabled) {
+    logger.whenTraceEnabled {
       val b = new StringBuilder(200)
       b.append(request.method.value)
       b.append(' ')
@@ -125,7 +125,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
           b.append(o)
         }
       }
-      logger.debug(b.toString)
+      logger.trace(b.toString)
     }
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
