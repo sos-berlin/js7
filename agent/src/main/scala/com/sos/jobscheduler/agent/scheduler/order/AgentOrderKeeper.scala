@@ -26,13 +26,16 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
+import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
+import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
@@ -57,6 +60,7 @@ import scala.concurrent.{Future, Promise}
 final class AgentOrderKeeper(
   masterId: MasterId,
   journalFileBase: Path,
+  signatureVerifier: SignatureVerifier,
   executableDirectory: Path,
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
@@ -69,6 +73,7 @@ extends MainJournalingActor[Event] with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
   private val eventWatch = new JournalEventWatch(journalMeta, config)
   protected val journalActor = watch(actorOf(
@@ -216,13 +221,13 @@ extends MainJournalingActor[Event] with Stash {
         tryStartProcessing(jobRegister(sender()))
       }
 
-    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
+    case Internal.ContinueAttachOrder(order, workflow, promise) ⇒
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
           Future.successful(Invalid(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
         else if (orderRegister contains order.id) {
           // May occur after Master restart when Master is not sure about order has been attached previously.
-          logger.debug(s"Ignoring duplicate $cmd")
+          logger.debug(s"Ignoring duplicate AttachOrder(${workflow.id})")
           Future.successful(Valid(Response.Accepted))
         } else if (terminating)
           Future.successful(Invalid(AgentIsShuttingDownProblem))
@@ -236,27 +241,33 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
-    case cmd @ AttachOrder(order, workflow) if !terminating ⇒
+    case AttachOrder(order, signedWorkflowString) if !terminating ⇒
       order.attached match {
         case Invalid(problem) ⇒ Future.successful(Invalid(problem))
-        case Valid(_) ⇒
-          (workflowRegister.get(order.workflowId) match {
-            case None ⇒
-              persist(WorkflowAttached(workflow)) { stampedEvent ⇒
-                workflowRegister.handleEvent(stampedEvent.value)
-                startJobActors(workflow)
-                Valid(Completed)
-              }
-            case Some(w) if w.withoutSource == workflow.withoutSource ⇒
-              Future.successful(Valid(Completed))
-            case Some(_) ⇒
-              Future.successful(Invalid(Problem.pure(s"Changed ${order.workflowId}")))
-          })
-          .flatMap {
+        case Valid(agentId) ⇒
+          workflowVerifier.verify(signedWorkflowString) match {
             case Invalid(problem) => Future.successful(Invalid(problem))
-            case Valid(Completed) ⇒
-              promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise ⇒
-                self ! Internal.ContinueAttachOrder(cmd, promise)
+            case Valid(verified) =>
+              val workflow = verified.signedFileBased.value.reduceForAgent(agentId.path)
+              (workflowRegister.get(order.workflowId) match {
+                case None ⇒
+                  logger.info(verified.toString)
+                  persist(WorkflowAttached(workflow)) { stampedEvent ⇒
+                    workflowRegister.handleEvent(stampedEvent.value)
+                    startJobActors(workflow)
+                    Valid(Completed)
+                  }
+                case Some(w) if w.withoutSource == workflow.withoutSource ⇒
+                  Future.successful(Valid(Completed))
+                case Some(_) ⇒
+                  Future.successful(Invalid(Problem.pure(s"Changed ${order.workflowId}")))
+              })
+              .flatMap {
+                case Invalid(problem) => Future.successful(Invalid(problem))
+                case Valid(Completed) =>
+                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise ⇒
+                  self ! Internal.ContinueAttachOrder(order, workflow, promise)
+                }
               }
           }
       }
@@ -509,7 +520,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
-    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Checked[AgentCommand.Response.Accepted]])
+    final case class ContinueAttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

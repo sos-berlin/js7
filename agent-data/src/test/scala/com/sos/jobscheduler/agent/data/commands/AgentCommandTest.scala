@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.TestCodeProblem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
+import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
@@ -114,7 +115,7 @@ final class AgentCommandTest extends FreeSpec {
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready),
           AgentPath("/AGENT") % "1",
-          SimpleTestWorkflow),
+          SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{
           "TYPE": "AttachOrder",
           "order": {
@@ -140,33 +141,12 @@ final class AgentCommandTest extends FreeSpec {
               "position": [ 3 ]
             }
           },
-          "workflow": {
-            "path": "/WORKFLOW",
-            "versionId": "VERSION",
-            "instructions": [
-              {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "defaultArguments": {
-                    "JOB_A": "A-VALUE"
-                  },
-                  "executablePath": "/A.cmd",
-                  "taskLimit": 3
-                }
-              },
-              {
-                "TYPE": "Execute.Anonymous",
-                "job": {
-                  "agentPath": "/AGENT",
-                  "defaultArguments": {
-                    "JOB_B": "B-VALUE"
-                  },
-                  "executablePath": "/B.cmd",
-                  "taskLimit": 3
-                }
-              }
-            ]
+          "signedWorkflow": {
+            "string": "{\"TYPE\":\"Workflow\",...}",
+            "signature": {
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
+            }
           }
         }""")
     }

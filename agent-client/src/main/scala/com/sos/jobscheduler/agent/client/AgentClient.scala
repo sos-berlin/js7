@@ -9,12 +9,12 @@ import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskR
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.implicits.checkedJsonDecoder
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.http.AkkaHttpClient.liftProblem
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
@@ -41,8 +41,9 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
   protected lazy val uriPrefixPath = "/agent"
 
   final def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
-    post[AgentCommand, Checked[AgentCommand.Response]](uri = agentUris.command.toString, command)
-      .map(_.asInstanceOf[Checked[command.Response]])
+    liftProblem(
+      post[AgentCommand, AgentCommand.Response](uri = agentUris.command.toString, command)
+        .map(_.asInstanceOf[command.Response]))
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
 
@@ -55,13 +56,16 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
   }
 
   final def order(orderId: OrderId): Task[Checked[Order[Order.State]]] =
-    get[Checked[Order[Order.State]]](agentUris.order(orderId))
+    liftProblem(
+      get[Order[Order.State]](agentUris.order(orderId)))
 
   final def orderIds: Task[Checked[Seq[OrderId]]] =
-    get[Checked[Seq[OrderId]]](agentUris.order.ids)
+    liftProblem(
+      get[Seq[OrderId]](agentUris.order.ids))
 
   final def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    get[Checked[Seq[Order[Order.State]]]](agentUris.order.orders)
+    liftProblem(
+      get[Seq[Order[Order.State]]](agentUris.order.orders))
 
   final def mastersEvents[E <: Event](request: EventRequest[E]): Task[TearableEventSeq[Seq, KeyedEvent[E]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()

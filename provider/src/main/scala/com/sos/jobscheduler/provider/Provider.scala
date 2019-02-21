@@ -3,7 +3,6 @@ package com.sos.jobscheduler.provider
 import cats.data.Validated.Valid
 import cats.instances.vector._
 import cats.syntax.apply._
-import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.convert.As._
@@ -45,7 +44,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class Provider(val fileBasedSigner: FileBasedSigner, val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
+final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
 extends AutoCloseable with Observing
 {
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)

@@ -17,6 +17,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.command.CancelMode
+import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -389,7 +390,7 @@ private[master] object AgentDriver
   object Input {
     final case class Start(lastAgentEventId: EventId)
 
-    final case class AttachOrder(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) extends Input with Queueable {
+    final case class AttachOrder(order: Order[Order.FreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]) extends Input with Queueable {
       def orderId = order.id
       override def toShortString = s"AttachOrder($orderId)"
     }

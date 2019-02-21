@@ -14,6 +14,7 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
@@ -22,6 +23,7 @@ import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -54,6 +56,7 @@ extends MainJournalingActor[AgentEvent] {
     JournalActor.props(journalMeta, agentConfiguration.config, keyedEventBus, scheduler),
     "Journal"))
   private val masterToOrderKeeper = new MasterRegister
+  private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
   private var terminating = false
   private var terminateRespondedAt: Option[Timestamp] = None
   private val terminateCompleted = Promise[Completed]()
@@ -209,6 +212,7 @@ extends MainJournalingActor[AgentEvent] {
         new AgentOrderKeeper(
           masterId,
           journalFileBase = stateDirectory / s"master-$masterId",
+          signatureVerifier,
           executableDirectory = agentConfiguration.executableDirectory,
           newTaskRunner,
           askTimeout = akkaAskTimeout,

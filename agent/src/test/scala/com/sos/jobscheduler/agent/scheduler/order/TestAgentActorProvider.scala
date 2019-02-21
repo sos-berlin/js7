@@ -32,6 +32,8 @@ private class TestAgentActorProvider extends HasCloser {
 
   def startAgent() = agentActor
 
+  def fileBasedSigner = directoryProvider.fileBasedSigner
+
   def executeCommand(command: AgentCommand): Future[Checked[AgentCommand.Response]] = {
     val response = Promise[Checked[AgentCommand.Response]]()
     agentActor ! AgentActor.Input.ExternalCommand(MasterUserId, command, response)

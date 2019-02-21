@@ -16,7 +16,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, fileBasedVerifier: FileBasedVerifier)
+final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, fileBasedVerifier: FileBasedVerifier[FileBased])
 {
   def replaceRepoCommandToEvents(repo: Repo, replaceRepo: MasterCommand.ReplaceRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
     meta.user.checkPermission(UpdateRepoPermission)
@@ -43,7 +43,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, 
 
   private def verify(signedString: SignedString): Checked[Signed[FileBased]] =
     for (verified <- fileBasedVerifier.verify(signedString)) yield {
-      logger.info(s"Configuration object '${verified.fileBased.id}' verified, signed by ${verified.signerIds.mkString("'", "', '", "'")}")
+      logger.info(verified.toString)
       verified.signedFileBased
     }
 }

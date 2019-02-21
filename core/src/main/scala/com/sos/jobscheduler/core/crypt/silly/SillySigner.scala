@@ -24,6 +24,8 @@ final class SillySigner(signature: SillySignature) extends MessageSigner
   def publicKey = privateKey
 
   def toVerifier = new SillySignatureVerifier(signature, keyOrigin = "SillySigner")
+
+  def verifierCompanion = SillySignatureVerifier
 }
 
 object SillySigner extends MessageSigner.Companion

@@ -9,11 +9,17 @@ import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
+import com.sos.jobscheduler.core.filebased.FileBasedSigner
+import com.sos.jobscheduler.data.workflow.Workflow
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 import scala.util.control.NonFatal
 
-trait TestAgentDirectoryProvider extends HasCloser {
+trait TestAgentDirectoryProvider extends HasCloser
+{
+  private val signature = SillySignature("MY-SILLY-SIGNATURE")
+  final val fileBasedSigner = new FileBasedSigner(new SillySigner(signature), Workflow.jsonEncoder)
 
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir ⇒
@@ -23,6 +29,7 @@ trait TestAgentDirectoryProvider extends HasCloser {
     try {
       createDirectories(agentDirectory / "config/private")
       PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
+      provideSignature(agentDirectory / "config")
     } catch { case NonFatal(t) ⇒
       deleteDirectoryRecursively(agentDirectory)
       throw t
@@ -43,6 +50,13 @@ trait TestAgentDirectoryProvider extends HasCloser {
          |  key-password = "jobscheduler"
          |}
          |""".stripMargin)
+  }
+
+  private def provideSignature(configDirectory: Path): Unit = {
+    configDirectory / "private" / "trusted-silly-signature-key.txt" := signature.string
+    configDirectory / "private" / "private.conf" ++=
+      s"""|jobscheduler.configuration.trusted-signature-keys.Silly = $${jobscheduler.config-directory}"/private/trusted-silly-signature-key.txt"
+         |""".stripMargin
   }
 }
 

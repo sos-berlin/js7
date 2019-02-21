@@ -25,7 +25,7 @@ import scala.collection.immutable.{Iterable, Seq}
 final case class Repo private(
   versions: List[VersionId],
   idToSignedFileBased: Map[FileBasedId_, Option[Signed[FileBased]]],
-  fileBasedVerifier: FileBasedVerifier)
+  fileBasedVerifier: FileBasedVerifier[FileBased])
 {
   assert(versions.nonEmpty || idToSignedFileBased.isEmpty)
 
@@ -158,7 +158,7 @@ final case class Repo private(
     idToSigned[A](id) map (_.value)
 
   /** Returns the FileBased to a FileBasedId. */
-  private def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] =
+  def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] =
     for {
       versionToSignedFileBased ← pathToVersionToSignedFileBased.checked(id.path)
       fileBasedOption ← versionToSignedFileBased.checked(id.versionId) orElse (
@@ -223,11 +223,11 @@ object Repo
   def apply(fileBasedJsonDecoder: Decoder[FileBased]): Repo =
     signatureVerifying(new FileBasedVerifier(DoNotVerifySignatureVerifier, fileBasedJsonDecoder))
 
-  def signatureVerifying(fileBasedVerifier: FileBasedVerifier): Repo =
+  def signatureVerifying(fileBasedVerifier: FileBasedVerifier[FileBased]): Repo =
     new Repo(Nil, Map.empty, fileBasedVerifier)
 
   @TestOnly
-  private[filebased] def apply(versionIds: Seq[VersionId], fileBased: Iterable[Entry], fileBasedVerifier: FileBasedVerifier) =
+  private[filebased] def apply(versionIds: Seq[VersionId], fileBased: Iterable[Entry], fileBasedVerifier: FileBasedVerifier[FileBased]) =
     new Repo(versionIds.toList, fileBased.map(_.fold(o ⇒ o.value.id → Some(o), _ → None)).uniqueToMap, fileBasedVerifier)
 
   private[filebased] sealed trait Entry {

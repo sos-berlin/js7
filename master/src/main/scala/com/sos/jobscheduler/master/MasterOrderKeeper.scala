@@ -28,6 +28,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -37,8 +38,8 @@ import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo,
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
-import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.agent.{Agent, AgentId, AgentPath}
+import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
@@ -76,7 +77,7 @@ final class MasterOrderKeeper(
   journalMeta: JournalMeta[Event],
   eventWatch: JournalEventWatch[Event],
   eventIdClock: EventIdClock,
-  fileBasedVerifier: FileBasedVerifier)
+  signatureVerifier: SignatureVerifier)
   (implicit
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler)
@@ -92,7 +93,8 @@ with MainJournalingActor[Event]
     "Journal"))
   private var hasRecovered = false
   private var repo = Repo(MasterFileBaseds.jsonCodec)
-  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration, fileBasedVerifier)
+  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration,
+    new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -597,23 +599,23 @@ with MainJournalingActor[Event]
   }
 
   private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
-    for ((workflow, job, agentEntry) ← checkedWorkflowJobAndAgentEntry(order).onProblem(p ⇒ logger.error(p))) {
+    for ((signedWorkflow, job, agentEntry) ← checkedWorkflowJobAndAgentEntry(order).onProblem(p ⇒ logger.error(p))) {
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
         persist(order.id <-: OrderAttachable(agentEntry.agentId.path)) { stamped ⇒
           handleOrderEvent(stamped)
         }
       else if (order.isAttaching) {
-        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, workflow.reduceForAgent(job.agentPath))  // OutOfMemoryError when Agent is unreachable !!!
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
       }
     }
 
-  private def checkedWorkflowJobAndAgentEntry(order: Order[Order.State]): Checked[(Workflow, WorkflowJob, AgentEntry)] =
+  private def checkedWorkflowJobAndAgentEntry(order: Order[Order.State]): Checked[(Signed[Workflow], WorkflowJob, AgentEntry)] =
     for {
-      workflow ← repo.idTo[Workflow](order.workflowId)
-      job ← workflow.checkedWorkflowJob(order.position)
+      signedWorkflow ← repo.idToSigned[Workflow](order.workflowId)
+      job ← signedWorkflow.value.checkedWorkflowJob(order.position)
       agentId ← repo.pathToCurrentId(job.agentPath)
       agentEntry ← agentRegister.checked(agentId)
-    } yield (workflow, job, agentEntry)
+    } yield (signedWorkflow, job, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     orderRegister(orderId).order.detaching

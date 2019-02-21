@@ -16,6 +16,8 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.command.CommandMeta
+import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
+import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
@@ -60,7 +62,8 @@ final class AgentTest extends FreeSpec with AgentTester
             agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
+            assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", fileBasedSigner.sign(TestWorkflow))).await(99.s)
+              == Valid(AgentCommand.Response.Accepted))
             val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))
@@ -74,6 +77,7 @@ final class AgentTest extends FreeSpec with AgentTester
 object AgentTest {
   private val TestMasterId = MasterId("MASTER")
   private val TestUser = SimpleUser(TestMasterId.toUserId)
+  private val fileBasedSigner = new FileBasedSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
 
   private val TestScript =
     if (isWindows) """

@@ -14,9 +14,9 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final class FileBasedVerifier(signatureVerifier: SignatureVerifier, jsonDecoder: Decoder[FileBased])
+final class FileBasedVerifier[A <: FileBased](signatureVerifier: SignatureVerifier, jsonDecoder: Decoder[A])
 {
-  def verify(signedString: SignedString): Checked[Verified] =
+  def verify(signedString: SignedString): Checked[Verified[A]] =
     for {
       signers ← signatureVerifier.verify(signedString)
       json ← signedString.string.parseJsonChecked
@@ -24,8 +24,12 @@ final class FileBasedVerifier(signatureVerifier: SignatureVerifier, jsonDecoder:
     } yield Verified(Signed(fileBased, signedString), signers)
 }
 
-object FileBasedVerifier {
-  final case class Verified(signedFileBased: Signed[FileBased], signerIds: Seq[SignerId]) {
-    def fileBased: FileBased = signedFileBased.value
+object FileBasedVerifier
+{
+  final case class Verified[A <: FileBased](signedFileBased: Signed[A], signerIds: Seq[SignerId]) {
+    def fileBased: A = signedFileBased.value
+
+    override def toString =
+      s"'${fileBased.id}' verified, signed by ${signerIds.mkString("'", "', '", "'")}"
   }
 }

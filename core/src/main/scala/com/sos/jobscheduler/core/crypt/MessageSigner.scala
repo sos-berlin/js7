@@ -18,6 +18,8 @@ trait MessageSigner
   def publicKey: Seq[Byte]
 
   def toVerifier: SignatureVerifier { type MySignature = MessageSigner.this.MySignature }
+
+  def verifierCompanion: SignatureVerifier.Companion { type MySignature = MessageSigner.this.MySignature }
 }
 
 object MessageSigner

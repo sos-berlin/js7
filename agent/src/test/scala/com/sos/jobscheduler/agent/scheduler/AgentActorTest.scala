@@ -40,7 +40,10 @@ final class AgentActorTest extends FreeSpec {
         executeCommand(RegisterAsMaster) await 99.s
         val stopwatch = new Stopwatch
         val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
-        orderIds map (orderId ⇒ executeCommand(AttachOrder(TestOrder.copy(id = orderId), TestAgentPath % "(initial)", SimpleTestWorkflow))) await 99.s
+        orderIds.map(orderId ⇒
+            executeCommand(
+              AttachOrder(TestOrder.copy(id = orderId), TestAgentPath % "(initial)", provider.fileBasedSigner.sign(SimpleTestWorkflow))))
+          .await(99.s)
         for (orderId ← orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
@@ -66,7 +69,8 @@ final class AgentActorTest extends FreeSpec {
   }
 }
 
-object AgentActorTest {
+object AgentActorTest
+{
   private val TestScript =
     if (isWindows) """
       |@echo off

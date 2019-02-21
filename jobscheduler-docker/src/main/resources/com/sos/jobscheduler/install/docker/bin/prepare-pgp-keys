@@ -3,9 +3,11 @@ set -e
 
 homedir="$(pwd)/gnupg"
 privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
-publicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
+masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
+agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys.asc
+agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys.asc
 
-if [ -s "$privateKeyFile" -a -s "$publicKeyFile" ]; then
+if [ -s "$privateKeyFile" -a -s "$masterPublicKeyFile" ]; then
   echo "PGP files exist already. Nothing to do"
 else
   which gpg >/dev/null || {
@@ -14,9 +16,9 @@ else
   }
   if [ -d "$homedir" ]; then
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
-    gpg --homedir "$homedir" --export --armor --output="$publicKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
   fi
-  if [ -s "$privateKeyFile" -a -s "$publicKeyFile" ]; then
+  if [ -s "$privateKeyFile" -a -s "$masterPublicKeyFile" ]; then
     :
   else
     mkdir -p gnupg
@@ -34,8 +36,11 @@ else
       Passphrase: PGP-PASSWORD
 EOF
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
-    gpg --homedir "$homedir" --export --armor --output="$publicKeyFile"
+    gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
   fi
 fi
 
-ls -ld "$privateKeyFile" "$publicKeyFile"
+for a in volumes/agent-*; do
+  cp "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys.asc"
+done
+ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys.asc

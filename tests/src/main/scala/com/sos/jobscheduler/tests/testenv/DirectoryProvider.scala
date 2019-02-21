@@ -19,11 +19,11 @@ import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSigner}
+import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
 import com.sos.jobscheduler.core.crypt.{MessageSigner, SignatureVerifier}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
-import com.sos.jobscheduler.data.crypt.{SignedString, SignerId}
+import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -317,9 +317,5 @@ object DirectoryProvider
 
   final def defaultSigner = pgpSigner
 
-  final lazy val pgpSigner: PgpSigner = {
-    val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
-    val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
-    PgpSigner(pgpSecretKey, pgpPassword).orThrow
-  }
+  final lazy val pgpSigner: PgpSigner = PgpSigner.forTest
 }

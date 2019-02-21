@@ -29,14 +29,14 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.filebased.{FileBasedApi, FileBasedVerifier, Repo}
+import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
@@ -185,7 +185,7 @@ object RunningMaster {
       closer onClose { sessionTokenFile.delete() }
     }
 
-    private def startMasterOrderKeeper(fileBasedVerifier: FileBasedVerifier)
+    private def startMasterOrderKeeper(signatureVerifier: SignatureVerifier)
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
@@ -195,7 +195,7 @@ object RunningMaster {
                 injector.instance[JournalMeta[Event]],
                 injector.instance[JournalEventWatch[Event]],
                 injector.instance[EventIdClock],
-                fileBasedVerifier)(
+                signatureVerifier)(
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },
@@ -209,14 +209,11 @@ object RunningMaster {
       StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
       createDirectories()
 
-      val fileBasedVerifier = new FileBasedVerifier(
-        GenericSignatureVerifier(masterConfiguration.config).orThrow,
-        MasterFileBaseds.jsonCodec)
-
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       createSessionTokenFile(sessionRegister)
 
-      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(fileBasedVerifier)
+      val signatureVerifier = GenericSignatureVerifier(masterConfiguration.config).orThrow
+      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(signatureVerifier)
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
       val orderKeeperCommandExecutor = new CommandExecutor[MasterCommand] {
         def executeCommand(command: MasterCommand, meta: CommandMeta) =

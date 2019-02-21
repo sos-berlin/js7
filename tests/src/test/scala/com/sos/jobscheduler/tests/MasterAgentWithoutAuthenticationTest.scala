@@ -54,6 +54,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
     withTemporaryDirectory("MasterAgentWithoutAuthenticationTest-") { dir ⇒
       createDirectories(dir / "master/config/private")
       createDirectories(dir / "master/data/state")
+      createDirectories(dir / "agent/config/private")
       createDirectories(dir / "agent/config/executables")
       createDirectories(dir / "agent/data/state")
 
@@ -62,28 +63,28 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
       }
       (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
 
+      val fileBasedSigner = {
+        val signature = SillySignature("✘✘✘")
+        for (x <- Array("master", "agent")) {
+          val keyFile = dir / x / "config/private/silly-signature.txt"
+          keyFile := signature.string
+          dir / x / "config/private/private.conf" ++= s"""jobscheduler.configuration.trusted-signature-keys.Silly = "$keyFile"""" + "\n"
+        }
+        new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
+      }
+
       val masterPort :: agentPort :: Nil = FreeTcpPortFinder.findRandomFreeTcpPorts(2)
       val agentConfiguration = AgentConfiguration.fromCommandLine(
         "-config-directory=" + dir / "agent/config" ::
         "-data-directory=" + dir / "agent/data" ::
         "-http-port=" + agentPort :: Nil)
-
-      val agentRef = Agent(agentPath % versionId, s"http://127.0.0.1:$agentPort")
-      val agentFuture = RunningAgent(agentConfiguration)
-
-      val fileBasedSigner = {
-        val signature = SillySignature("✘✘✘")
-        val keyFile = dir / "master/config/private/silly-signature.txt"
-        keyFile := signature.string
-        dir / "master/config/master.conf" ++= s"""jobscheduler.configuration.trusted-signature-keys.Silly = "$keyFile"""" + "\n"
-        new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
-      }
       val masterConfiguration = MasterConfiguration.fromCommandLine(
         "-config-directory=" + dir / "master/config" ::
         "-data-directory=" + dir / "master/data" ::
         "-http-port=" + masterPort :: Nil)
 
-      val agent = agentFuture await 99.seconds
+      val agentRef = Agent(agentPath % versionId, s"http://127.0.0.1:$agentPort")
+      val agent = RunningAgent(agentConfiguration) await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds
 
       val replaceRepo = ReplaceRepo(versionId, (agentRef :: workflow :: Nil) map fileBasedSigner.sign)

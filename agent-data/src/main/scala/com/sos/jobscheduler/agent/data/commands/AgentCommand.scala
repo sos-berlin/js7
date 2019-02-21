@@ -11,9 +11,9 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
+import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
@@ -94,7 +94,7 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
-  final case class AttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow)
+  final case class AttachOrder(order: Order[Order.FreshOrReady], signedWorkflow: SignedString)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
@@ -104,10 +104,10 @@ object AgentCommand extends CommonCommand.Companion
     override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.FreshOrReady], agentId: AgentId, workflow: Workflow) =
+    def apply(order: Order[Order.FreshOrReady], agentId: AgentId, signedWorkflow: SignedString) =
       new AttachOrder(
         order.copy(attachedState = Some(Order.Attached(agentId))),
-        workflow)
+        signedWorkflow)
   }
 
   final case class DetachOrder(orderId: OrderId)

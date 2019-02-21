@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResou
 import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons._
-import com.sos.jobscheduler.data.crypt.PgpSignature
+import com.sos.jobscheduler.data.crypt.{PgpSignature, SignerId}
 import java.io.InputStream
 import java.util.Base64
 import org.bouncycastle.bcpg.HashAlgorithmTags
@@ -20,6 +20,7 @@ import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, Jce
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
@@ -80,6 +81,8 @@ extends MessageSigner
   def toVerifier =
     PgpSignatureVerifier.checked(bytesToInputStreamResource(publicKey), keyOrigin = "PgpSigner").orThrow
 
+  def verifierCompanion = PgpSignatureVerifier
+
   override def toString = show"PgpSigner($pgpSecretKey)"
 }
 
@@ -99,6 +102,12 @@ object PgpSigner extends MessageSigner.Companion
   def apply(pgpSecretKey: PGPSecretKey, password: SecretString): Checked[PgpSigner] =
     Checked.catchNonFatal(
       new PgpSigner(pgpSecretKey, password))
+
+  def forTest = {
+    val pgpPassword = SecretString(Vector.fill(10)('a' + Random.nextInt('z' - 'a' + 1)).mkString)
+    val pgpSecretKey = PgpKeyGenerator.generateSecretKey(SignerId("TEST"), pgpPassword, keySize = 1024/*fast for test*/)
+    PgpSigner(pgpSecretKey, pgpPassword).orThrow
+  }
 
   def readSecretKey(resource: Resource[SyncIO, InputStream]): PGPSecretKey =
     selectSecretKey(readSecretKeyRingCollection(resource))
