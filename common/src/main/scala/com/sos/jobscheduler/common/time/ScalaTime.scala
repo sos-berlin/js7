@@ -286,7 +286,7 @@ object ScalaTime {
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit final class RichFinitetDuration(private val underlying: FiniteDuration) extends AnyVal {
+  implicit final class RichFiniteDuration(private val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
   }
 
