@@ -255,19 +255,20 @@ extends MainJournalingActor[Event] with Stash {
                   persist(WorkflowAttached(workflow)) { stampedEvent ⇒
                     workflowRegister.handleEvent(stampedEvent.value)
                     startJobActors(workflow)
-                    Valid(Completed)
+                    Valid(workflow)
                   }
-                case Some(w) if w.withoutSource == workflow.withoutSource ⇒
-                  Future.successful(Valid(Completed))
+                case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource ⇒
+                  Future.successful(Valid(registeredWorkflow))
                 case Some(_) ⇒
                   Future.successful(Invalid(Problem.pure(s"Changed ${order.workflowId}")))
               })
               .flatMap {
                 case Invalid(problem) => Future.successful(Invalid(problem))
-                case Valid(Completed) =>
+                case Valid(registeredWorkflow) =>
+                  // Reuse registeredWorkflow to reduce memory usage!
                   promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise ⇒
-                  self ! Internal.ContinueAttachOrder(order, workflow, promise)
-                }
+                    self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
+                  }
               }
           }
       }
