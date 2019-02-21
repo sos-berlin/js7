@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
 import monix.eval.Task
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 
 /**
   * @author Joacim Zschimmer
@@ -28,6 +28,7 @@ final class AgentHandle(actor: ActorRef)(implicit askTimeout: Timeout) {
     Task.deferFuture(
       (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[EventWatch[Event]])
 
-  def overview: Future[AgentOverview] =
-    (actor ? Command.GetOverview).mapTo[AgentOverview]
+  def overview: Task[AgentOverview] =
+    Task.deferFuture(
+      (actor ? Command.GetOverview).mapTo[AgentOverview])
 }

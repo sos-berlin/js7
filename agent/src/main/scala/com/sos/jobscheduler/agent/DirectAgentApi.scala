@@ -22,27 +22,27 @@ final class DirectAgentApi(commandHandler: CommandHandler, agentHandle: AgentHan
 extends AgentApi
 {
   def commandExecute(command: AgentCommand): Task[Checked[command.Response]] =
-    Task.deferFuture(commandHandler.typedExecute(command, meta))
+    commandHandler.typedExecute(command, meta)
 
   def commandOverview: Task[CommandHandlerOverview] =
-    Task.deferFuture(commandHandler.overview)
+    commandHandler.overview
 
   def commandDetailed: Task[CommandHandlerDetailed[AgentCommand]] =
-    Task.deferFuture(commandHandler.detailed)
+    commandHandler.detailed
 
   def overview: Task[AgentOverview] =
-    Task.deferFuture(agentHandle.overview)
+    agentHandle.overview
 
   def order(orderId: OrderId): Task[Checked[Order[Order.State]]] =
-    Task.deferFuture(commandHandler.typedExecute(AgentCommand.GetOrder(orderId), meta))
+    commandHandler.typedExecute(AgentCommand.GetOrder(orderId), meta)
       .map(_.map(_.order))
 
   def orderIds: Task[Checked[Seq[OrderId]]] =
-    Task.deferFuture(commandHandler.typedExecute(AgentCommand.GetOrderIds, meta))
+    commandHandler.typedExecute(AgentCommand.GetOrderIds, meta)
       .map(_.map(_.orderIds))
 
   def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    Task.deferFuture(commandHandler.typedExecute(AgentCommand.GetOrders, meta))
+    commandHandler.typedExecute(AgentCommand.GetOrders, meta)
       .map(_.map(_.orders))
 
   def eventWatchForMaster(masterId: MasterId): Task[EventWatch[Event]] =

@@ -15,10 +15,10 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.command.CommandMeta
 import javax.inject.Singleton
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -30,8 +30,8 @@ extends FreeSpec with ScalaFutures with AgentTester {
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton
     def commandHandler(): CommandHandler = new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] =
-        Future {
+      def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+        Task {
           (command match {
             case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
             case EmergencyStop ⇒ Valid(AgentCommand.Response.Accepted)

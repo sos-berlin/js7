@@ -24,11 +24,11 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -43,12 +43,13 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton
     def commandExecutor(): CommandHandler = new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] = {
-        val response = command match {
+      def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+      Task {
+        (command match {
           case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
           case _ ⇒ fail()
-        }
-        Future.successful(response.map(_.asInstanceOf[command.Response]))
+        })
+          .map(_.asInstanceOf[command.Response])
       }
 
       def overview = throw new NotImplementedError

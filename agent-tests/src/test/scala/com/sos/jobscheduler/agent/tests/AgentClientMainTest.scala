@@ -12,9 +12,9 @@ import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
+import monix.eval.Task
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration._
 
 /**
@@ -27,13 +27,14 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   override protected def extraAgentModule = new ScalaAbstractModule {
     override def configure() = {
       bindInstance[CommandHandler](new CommandHandler {
-        def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] = {
-          val response = command match {
-            case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
-            case _ ⇒ fail()
+        def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+          Task {
+            (command match {
+              case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
+              case _ ⇒ fail()
+            })
+            .map(_.asInstanceOf[command.Response])
           }
-          Future.successful(response.asInstanceOf[Checked[command.Response]])
-        }
 
         def overview = throw new NotImplementedError
         def detailed = throw new NotImplementedError

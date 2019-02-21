@@ -83,8 +83,7 @@ extends AutoCloseable {
     new DirectAgentApi(commandHandler, agentHandle, meta)
 
   def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]] =
-    Task.deferFuture(
-      commandHandler.execute(command, meta))
+    commandHandler.execute(command, meta)
 }
 
 object RunningAgent {

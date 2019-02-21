@@ -17,6 +17,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.Shutdown
 import com.sos.jobscheduler.core.command.{CommandMeta, CommandRegister, CommandRun}
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
@@ -108,14 +109,19 @@ object CommandActor {
   }
 
   final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {
-    def execute(command: AgentCommand, meta: CommandMeta) = {
-      val promise = Promise[Checked[Response]]()
-      actor ! Input.Execute(command, meta, promise)
-      promise.future
-    }
+    def execute(command: AgentCommand, meta: CommandMeta) =
+      Task.deferFuture {
+        val promise = Promise[Checked[Response]]()
+        actor ! Input.Execute(command, meta, promise)
+        promise.future
+      }
 
-    def overview = (actor ? Command.GetOverview).mapTo[CommandHandlerOverview]
+    def overview =
+      Task.deferFuture(
+        (actor ? Command.GetOverview).mapTo[CommandHandlerOverview])
 
-    def detailed = (actor ? Command.GetDetailed).mapTo[CommandHandlerDetailed[AgentCommand]]
+    def detailed =
+      Task.deferFuture(
+        (actor ? Command.GetDetailed).mapTo[CommandHandlerDetailed[AgentCommand]])
   }
 }
