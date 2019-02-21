@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -79,6 +80,6 @@ object MainActor {
   final case class Ready(commandHandler: CommandHandler, agentHandle: AgentHandle)
 
   object Input {
-    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
+    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
   }
 }

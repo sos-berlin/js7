@@ -11,6 +11,7 @@ import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateTest._
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closer
@@ -54,7 +55,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
               payload = Payload(Map("a" → "A"))),
             TestAgentPath % "(initial)",
             SimpleTestWorkflow))
-        ) await 99.s
+        ).await(99.s) foreach (_.orThrow)
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
@@ -64,7 +65,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 
-        client.commandExecute(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
+        client.commandExecute(Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
         val stepEnded = whenStepEnded await 99.s
         assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Undisrupted].isFailed })
         agent.terminated await 99.s
@@ -87,7 +88,7 @@ object TerminateTest {
         agentUri = agent.localUri.toString)
         //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
       client.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
-      client.commandExecute(RegisterAsMaster) await 99.s
+      client.commandExecute(RegisterAsMaster).await(99.s).orThrow
       body(client, agent)
       agent.close()
     }

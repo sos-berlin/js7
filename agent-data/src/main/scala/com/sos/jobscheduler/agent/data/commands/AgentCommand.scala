@@ -4,7 +4,9 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentId
@@ -42,24 +44,10 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Batch.Response
   }
   object Batch {
-    sealed trait SingleResponse
-
-    final case class Succeeded(response: AgentCommand.Response)
-    extends SingleResponse
-
-    /** Failed commands let the web service succeed and are returned as Failed. */
-    final case class Failed(message: String) extends SingleResponse
-
-    object SingleResponse {
-      implicit val jsonFormat = TypedJsonCodec[SingleResponse](
-        Subtype(deriveCodec[Succeeded]),
-        Subtype(deriveCodec[Failed]))
-    }
-
-    final case class Response(responses: Seq[SingleResponse])
+    final case class Response(responses: Seq[Checked[AgentCommand.Response]])
     extends AgentCommand.Response {
       override def toString = {
-        val succeeded = responses count { _.isInstanceOf[Succeeded] }
+        val succeeded = responses count (_.isValid)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
     }
@@ -162,4 +150,6 @@ object AgentCommand extends CommonCommand.Companion
     TypedJsonCodec[AgentCommand.Response](
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
       Subtype(Response.Accepted))
+
+  intelliJuseImport((checkedJsonEncoder[Int], checkedJsonDecoder[Int]))
 }

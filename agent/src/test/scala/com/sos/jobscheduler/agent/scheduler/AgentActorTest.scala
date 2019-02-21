@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrders, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorTest._
@@ -44,7 +45,7 @@ final class AgentActorTest extends FreeSpec {
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
-        val GetOrders.Response(orders) = executeCommand(GetOrders) await 99.s
+        val Valid(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
           orderIds.map(orderId ⇒ Order(
             orderId,

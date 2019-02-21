@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.master.agent
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.master.agent.AgentDriver.{Input, KeepEventsQueueable, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
-import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
+import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -16,7 +18,7 @@ import scala.util.{Failure, Success}
   */
 private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler) {
 
-  protected def executeCommand(command: AgentCommand.Batch): Task[command.Response]
+  protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
   protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable): Unit
 
@@ -61,8 +63,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       openRequestCount += 1
       executeCommand(Batch(inputs map inputToAgentCommand))
         .materialize foreach {
-          case Success(Batch.Response(responses)) ⇒
+          case Success(Valid(Batch.Response(responses))) ⇒
             asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
+
+          case Success(Invalid(problem)) ⇒
+            asyncOnBatchFailed(inputs, problem.throwable)
 
           case Failure(t) ⇒
             asyncOnBatchFailed(inputs, t)
@@ -88,13 +93,13 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
     responses.flatMap {
-      case QueuedInputResponse(input, Batch.Succeeded(AgentCommand.Response.Accepted)) ⇒
+      case QueuedInputResponse(input, Valid(AgentCommand.Response.Accepted)) ⇒
         Some(input)
-      case QueuedInputResponse(_, Batch.Succeeded(o)) ⇒
+      case QueuedInputResponse(_, Valid(o)) ⇒
         sys.error(s"Unexpected response from agent: $o")
-      case QueuedInputResponse(input, Batch.Failed(message)) ⇒
+      case QueuedInputResponse(input, Invalid(problem)) ⇒
         // CancelOrder(NotStarted) fails if order has started !!!
-        logger.error(s"Agent has rejected the command ${input.toShortString}: $message")
+        logger.error(s"Agent has rejected the command ${input.toShortString}: $problem")
         // Agent's state does not match master's state ???
         // TODO: But "Agent is shutting down" is okay
         None
@@ -116,5 +121,5 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 object CommandQueue {
   private val OpenRequestsMaximum = 2
 
-  private[agent] final case class QueuedInputResponse(input: Queueable, response: Batch.SingleResponse)
+  private[agent] final case class QueuedInputResponse(input: Queueable, response: Checked[AgentCommand.Response])
 }

@@ -10,6 +10,7 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -31,8 +32,8 @@ private class TestAgentActorProvider extends HasCloser {
 
   def startAgent() = agentActor
 
-  def executeCommand(command: AgentCommand): Future[AgentCommand.Response] = {
-    val response = Promise[AgentCommand.Response]()
+  def executeCommand(command: AgentCommand): Future[Checked[AgentCommand.Response]] = {
+    val response = Promise[Checked[AgentCommand.Response]]()
     agentActor ! AgentActor.Input.ExternalCommand(MasterUserId, command, response)
     response.future
   }

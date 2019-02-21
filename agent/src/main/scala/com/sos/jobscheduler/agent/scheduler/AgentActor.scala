@@ -13,6 +13,7 @@ import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
@@ -155,7 +156,7 @@ extends MainJournalingActor[AgentEvent] {
         if (!terminating) {
           terminating = true
           terminateOrderKeepers(command) onComplete { ordersTerminated ⇒
-            response.complete(ordersTerminated)
+            response.complete(ordersTerminated map Valid.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination
             continueTermination()
           }
@@ -163,12 +164,12 @@ extends MainJournalingActor[AgentEvent] {
 
       case AgentCommand.RegisterAsMaster if !terminating ⇒
         if (masterToOrderKeeper contains masterId) {
-          response.success(AgentCommand.Response.Accepted)
+          response.success(Valid(AgentCommand.Response.Accepted))
         } else {
           response completeWith
             persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) ⇒
               update(event)
-              AgentCommand.Response.Accepted
+              Valid(AgentCommand.Response.Accepted)
             }
         }
 
@@ -231,7 +232,7 @@ object AgentActor {
 
   object Input {
     final case object Start
-    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
+    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
     final case class GetEventWatch(masterId: MasterId)
   }
 

@@ -1,11 +1,13 @@
 package com.sos.jobscheduler.agent.tests
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.TestAgentProvider
 import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -25,12 +27,12 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   override protected def extraAgentModule = new ScalaAbstractModule {
     override def configure() = {
       bindInstance[CommandHandler](new CommandHandler {
-        def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
+        def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] = {
           val response = command match {
-            case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
+            case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
             case _ ⇒ fail()
           }
-          Future.successful(response.asInstanceOf[command.Response])
+          Future.successful(response.asInstanceOf[Checked[command.Response]])
         }
 
         def overview = throw new NotImplementedError

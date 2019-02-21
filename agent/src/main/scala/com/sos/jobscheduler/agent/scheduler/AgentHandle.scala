@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor.Command
 import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
@@ -18,7 +19,7 @@ import scala.concurrent.{Future, Promise}
   */
 final class AgentHandle(actor: ActorRef)(implicit askTimeout: Timeout) {
 
-  def executeCommand(command: AgentCommand, userId: UserId, response: Promise[AgentCommand.Response])
+  def executeCommand(command: AgentCommand, userId: UserId, response: Promise[Checked[AgentCommand.Response]])
     (implicit sender: ActorRef = ActorRef.noSender)
   : Unit =
     actor ! AgentActor.Input.ExternalCommand(userId, command, response)

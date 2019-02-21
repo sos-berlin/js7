@@ -1,11 +1,13 @@
 package com.sos.jobscheduler.agent.client
 
+import cats.data.Validated.Valid
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTester
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
@@ -28,14 +30,14 @@ extends FreeSpec with ScalaFutures with AgentTester {
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton
     def commandHandler(): CommandHandler = new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
+      def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] =
         Future {
           (command match {
-            case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
-            case EmergencyStop ⇒ AgentCommand.Response.Accepted
+            case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
+            case EmergencyStop ⇒ Valid(AgentCommand.Response.Accepted)
             case _ ⇒ throw new NotImplementedError
           })
-          .asInstanceOf[command.Response]
+          .map(_.asInstanceOf[command.Response])
         }
 
       def overview = throw new NotImplementedError
@@ -46,9 +48,9 @@ extends FreeSpec with ScalaFutures with AgentTester {
   private lazy val client = new SimpleAgentClient(agent.localUri).closeWithCloser
     .sideEffect(_.setSessionToken(agent.sessionToken))
 
-  List[(AgentCommand, AgentCommand.Response)](
-    ExpectedTerminate → AgentCommand.Response.Accepted,
-    EmergencyStop → AgentCommand.Response.Accepted)
+  List[(AgentCommand, Checked[AgentCommand.Response])](
+    ExpectedTerminate -> Valid(AgentCommand.Response.Accepted),
+    EmergencyStop -> Valid(AgentCommand.Response.Accepted))
   .foreach { case (command, response) ⇒
     command.getClass.simpleScalaName in {
       assert(client.commandExecute(command).await(99.s) == response)

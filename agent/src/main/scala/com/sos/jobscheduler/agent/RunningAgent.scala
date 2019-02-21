@@ -74,9 +74,9 @@ extends AutoCloseable {
     }
 
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
-  private def directExecuteCommand(command: AgentCommand): Task[AgentCommand.Response] =
+  private def directExecuteCommand(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
-      promiseFuture[AgentCommand.Response](promise ⇒
+      promiseFuture[Checked[AgentCommand.Response]](promise ⇒
         mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
 
   def api(meta: CommandMeta): DirectAgentApi =
@@ -84,7 +84,7 @@ extends AutoCloseable {
 
   def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
-      commandHandler.execute(command, meta)).materialize map Checked.fromTry
+      commandHandler.execute(command, meta))
 }
 
 object RunningAgent {

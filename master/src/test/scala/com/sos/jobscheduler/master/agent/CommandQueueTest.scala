@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.agent
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -33,7 +34,7 @@ final class CommandQueueTest extends FreeSpec {
       val failed = mutable.Buffer[(Vector[Queueable], Throwable)]()
 
       protected def executeCommand(command: AgentCommand.Batch) =
-        Task(Batch.Response(Vector.fill(command.commands.size)(Batch.Succeeded(AgentCommand.Response.Accepted))))
+        Task(Valid(Batch.Response(Vector.fill(command.commands.size)(Valid(AgentCommand.Response.Accepted)))))
 
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses
@@ -92,7 +93,7 @@ object CommandQueueTest {
     Execute(WorkflowJob(TestAgentPath, ExecutablePath("/EXECUTABLE"))))
 
   private def toQueuedInputResponse(order: Order[Order.FreshOrReady]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow), Batch.Succeeded(AgentCommand.Response.Accepted))
+    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow), Valid(AgentCommand.Response.Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

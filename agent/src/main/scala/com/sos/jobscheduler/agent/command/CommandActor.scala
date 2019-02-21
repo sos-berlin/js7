@@ -3,11 +3,13 @@ package com.sos.jobscheduler.agent.command
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -40,18 +42,18 @@ extends Actor {
       sender() ! register.detailed
 
     case Internal.Respond(run, promise, response) ⇒
-      if (run.batchInternalId.isEmpty || response != Success(Batch.Succeeded(AgentCommand.Response.Accepted))) {
+      if (run.batchInternalId.isEmpty || response != Success(Valid(AgentCommand.Response.Accepted))) {
         logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${(now - run.startedAt).pretty}): $response")
       }
       register.remove(run.internalId)
       promise.complete(response)
   }
 
-  private def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Response], batchId: Option[InternalCommandId] = None): Unit = {
+  private def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Checked[Response]], batchId: Option[InternalCommandId] = None): Unit = {
     val run = register.add(command, batchId)
     logCommand(run)
-    val myResponse = Promise[Response]()
-    executeCommand2(batchId, run.internalId, command, meta, myResponse)
+    val myResponse = Promise[Checked[Response]]()
+    executeCommand2(batchId, run.internalId, command, meta,myResponse)
     myResponse.future onComplete { tried ⇒
       self ! Internal.Respond(run, promise, tried)
     }
@@ -63,21 +65,21 @@ extends Actor {
       case _ ⇒ logger.info(run.toString)
     }
 
-  private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[Response]): Unit =
+  private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta,
+    response: Promise[Checked[Response]]): Unit
+  =
     command match {
       case Batch(commands) ⇒
-        val responses = Vector.fill(commands.size) { Promise[Response] }
+        val responses = Vector.fill(commands.size) { Promise[Checked[Response]] }
         for ((c, r) ← commands zip responses)
           executeCommand(c, meta, r, batchId orElse Some(id))
-        val singleResponseFutures = responses map (_.future
-          .map(Batch.Succeeded.apply)
-          .recover { case t ⇒ Batch.Failed(t.toString) }
-        )
+        val singleResponseFutures = responses map (_.future)
         response.completeWith(
-          Future.sequence(singleResponseFutures) map Batch.Response.apply)
+          Future.sequence(singleResponseFutures)
+            .map(checkedResponse => Valid(AgentCommand.Batch.Response(checkedResponse))))
 
       case NoOperation ⇒
-        response.success(AgentCommand.Response.Accepted)
+        response.success(Valid(AgentCommand.Response.Accepted))
 
       case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) ⇒
         agentHandle.executeCommand(command, meta.user.id, response)
@@ -98,16 +100,16 @@ object CommandActor {
   }
 
   object Input {
-    final case class Execute(command: AgentCommand, meta: CommandMeta, response: Promise[Response])
+    final case class Execute(command: AgentCommand, meta: CommandMeta, response: Promise[Checked[Response]])
   }
 
   private object Internal {
-    final case class Respond(run: CommandRun[AgentCommand], promise: Promise[Response], response: Try[Response])
+    final case class Respond(run: CommandRun[AgentCommand], promise: Promise[Checked[Response]], response: Try[Checked[Response]])
   }
 
   final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {
     def execute(command: AgentCommand, meta: CommandMeta) = {
-      val promise = Promise[Response]()
+      val promise = Promise[Checked[Response]]()
       actor ! Input.Execute(command, meta, promise)
       promise.future
     }

@@ -3,16 +3,13 @@ package com.sos.jobscheduler.base.problem
 import cats.Applicative
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, HCursor, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.{Seq, VectorBuilder}
 import scala.concurrent.Future
 import scala.language.higherKinds
-import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -158,30 +155,19 @@ object Checked
   }
 
   object implicits {
-    //implicit def checkedJsonCodec[A: ObjectEncoder: Decoder: ClassTag]: TypedJsonCodec[Checked[A]] =
-    //  TypedJsonCodec[Checked[A]](
-    //    Subtype[Valid[A]](
-    //      encoder = ObjectEncoder.instance[Valid[A]](_.a.asJsonObject),
-    //      decoder = Decoder.instance(_.as[A] map Valid.apply)),
-    //    Subtype[Invalid[Problem]](
-    //      encoder = ObjectEncoder.instance[Invalid[Problem]](_.e.asJsonObject),
-    //      decoder = Decoder.instance(_.as[Problem] map Invalid.apply)))
-
-    implicit def checkedJsonCodec[A: TypedJsonCodec: ClassTag]: CirceObjectCodec[Checked[A]] =
-      new ObjectEncoder[Checked[A]] with  Decoder[Checked[A]] {
-        def encodeObject(checked: Checked[A]) = checked match {
-          case Valid(a) ⇒ a.asJsonObject
-          case Invalid(problem) ⇒ Problem.typedJsonEncoder.encodeObject(problem)
-        }
-
-        def apply(c: HCursor) =
-          for {
-            typ ← c.get[String](TypedJsonCodec.TypeFieldName)
-            result ← typ match {
-              case "Problem" ⇒ c.as[Problem] map Invalid.apply
-              case _ ⇒ c.as[A] map Valid.apply
-            }
-          } yield result
+    implicit def checkedJsonEncoder[A](implicit A: Encoder[A]): Encoder[Checked[A]] =
+      checked => checked match {
+        case Valid(a) ⇒ A.apply(a)
+        case Invalid(problem) ⇒ Json.fromJsonObject(Problem.typedJsonEncoder.encodeObject(problem))
       }
+
+    implicit def checkedJsonDecoder[A: Decoder]: Decoder[Checked[A]] = c =>
+      for {
+        typ ← c.get[Option[String]](TypedJsonCodec.TypeFieldName)
+        result ← typ match {
+          case Some("Problem") ⇒ c.as[Problem] map Invalid.apply
+          case _ ⇒ c.as[A] map Valid.apply
+        }
+      } yield result
   }
 }

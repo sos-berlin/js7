@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked.implicits.checkedJsonCodec
+import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -28,7 +28,7 @@ sealed trait MasterCommand extends CommonCommand
 
 object MasterCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonCodec, Problem, typedPathJsonDecoder))
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], Problem, typedPathJsonDecoder))
 
   protected type Command = MasterCommand
 

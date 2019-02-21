@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
+import cats.data.Validated.Valid
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.agent.command.CommandHandler
@@ -12,6 +13,7 @@ import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentPro
 import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
 import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -41,12 +43,12 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton
     def commandExecutor(): CommandHandler = new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
+      def execute(command: AgentCommand, meta: CommandMeta): Future[Checked[command.Response]] = {
         val response = command match {
-          case ExpectedTerminate ⇒ AgentCommand.Response.Accepted
+          case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
           case _ ⇒ fail()
         }
-        Future.successful(response.asInstanceOf[command.Response])
+        Future.successful(response.map(_.asInstanceOf[command.Response]))
       }
 
       def overview = throw new NotImplementedError

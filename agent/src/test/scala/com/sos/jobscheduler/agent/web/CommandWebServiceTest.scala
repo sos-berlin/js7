@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.web
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
@@ -32,8 +33,8 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
     Task(
       command match {
-        case TestCommand ⇒ AgentCommand.Response.Accepted
-        case TestCommandWhileShuttingDown ⇒ throw AgentIsShuttingDownProblem.throwable
+        case TestCommand ⇒ Valid(AgentCommand.Response.Accepted)
+        case TestCommandWhileShuttingDown ⇒ Invalid(AgentIsShuttingDownProblem)
         case _ ⇒ fail()
       })
 

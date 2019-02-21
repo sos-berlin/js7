@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.agent.data.commands
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Terminate}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.TestCodeProblem
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -24,6 +26,25 @@ final class AgentCommandTest extends FreeSpec {
         "commands": [
           { "TYPE": "NoOperation" },
           { "TYPE": "EmergencyStop" }
+        ]
+      }""")
+  }
+
+  "Batch.Response" in {
+    testJson[AgentCommand.Response](
+      AgentCommand.Batch.Response(Valid(AgentCommand.Response.Accepted) :: Invalid(TestCodeProblem(Map("ARG" -> "VALUE"))) :: Nil),
+      json"""{
+        "TYPE": "BatchResponse",
+        "responses": [
+          { "TYPE": "Accepted" },
+          {
+            "TYPE": "Problem",
+            "code": "TestCode",
+            "arguments": {
+              "ARG": "VALUE"
+            },
+            "message": "TestCode (ARG=VALUE)"
+          }
         ]
       }""")
   }

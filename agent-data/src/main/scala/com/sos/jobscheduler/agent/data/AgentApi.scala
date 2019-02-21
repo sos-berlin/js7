@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.data
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.AgentOverview
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
 import scala.collection.immutable.Seq
@@ -11,7 +12,7 @@ import scala.collection.immutable.Seq
   */
 trait AgentApi
 {
-  def commandExecute(command: AgentCommand): Task[command.Response]
+  def commandExecute(command: AgentCommand): Task[Checked[command.Response]]
 
   //def commandOverview: Task[CommandHandlerOverview]
   //
@@ -19,9 +20,9 @@ trait AgentApi
 
   def overview: Task[AgentOverview]
 
-  def order(orderId: OrderId): Task[Order[Order.State]]
+  def order(orderId: OrderId): Task[Checked[Order[Order.State]]]
 
-  def orderIds: Task[Seq[OrderId]]
+  def orderIds: Task[Checked[Seq[OrderId]]]
 
-  def orders: Task[Seq[Order[Order.State]]]
+  def orders: Task[Checked[Seq[Order[Order.State]]]]
 }

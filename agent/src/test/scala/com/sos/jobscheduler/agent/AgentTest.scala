@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.AgentTest._
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -8,7 +9,7 @@ import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -56,10 +57,10 @@ final class AgentTest extends FreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
             val agentApi = agent.api(CommandMeta(TestUser))
-            agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Response.Accepted
+            agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual AgentCommand.Response.Accepted
+            agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", TestWorkflow)) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
             val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))

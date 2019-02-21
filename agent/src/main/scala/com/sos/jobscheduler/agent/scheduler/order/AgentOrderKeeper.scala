@@ -17,7 +17,7 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -219,42 +219,45 @@ extends MainJournalingActor[Event] with Stash {
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
-          Future.failed(Problem.pure(s"Unknown Position ${order.workflowPosition}").throwable)
+          Future.successful(Invalid(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
         else if (orderRegister contains order.id) {
           // May occur after Master restart when Master is not sure about order has been attached previously.
           logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(Response.Accepted)
+          Future.successful(Valid(Response.Accepted))
         } else if (terminating)
-          Future.failed(AgentIsShuttingDownProblem.throwable)
+          Future.successful(Invalid(AgentIsShuttingDownProblem))
         else
-          attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Response.Accepted }
+          attachOrder(workflowRegister.reuseMemory(order), workflow)
+            .map((_: Completed) ⇒ Valid(Response.Accepted))
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
       onOrderFreshOrReady(orderRegister(orderId))
   }
 
-  private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
+  private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
     case cmd @ AttachOrder(order, workflow) if !terminating ⇒
       order.attached match {
-        case Invalid(problem) ⇒ Future.failed(problem.throwable)
+        case Invalid(problem) ⇒ Future.successful(Invalid(problem))
         case Valid(_) ⇒
           (workflowRegister.get(order.workflowId) match {
             case None ⇒
               persist(WorkflowAttached(workflow)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 startJobActors(workflow)
-                Completed
+                Valid(Completed)
               }
             case Some(w) if w.withoutSource == workflow.withoutSource ⇒
-              Future.successful(Completed)
+              Future.successful(Valid(Completed))
             case Some(_) ⇒
-              Future.failed(new IllegalStateException(s"Changed ${order.workflowId}"))
+              Future.successful(Invalid(Problem.pure(s"Changed ${order.workflowId}")))
           })
-          .flatMap { _: Completed ⇒
-            promiseFuture[AgentCommand.Response.Accepted] { promise ⇒
-              self ! Internal.ContinueAttachOrder(cmd, promise)
-            }
+          .flatMap {
+            case Invalid(problem) => Future.successful(Invalid(problem))
+            case Valid(Completed) ⇒
+              promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise ⇒
+                self ! Internal.ContinueAttachOrder(cmd, promise)
+              }
           }
       }
 
@@ -267,12 +270,14 @@ extends MainJournalingActor[Event] with Stash {
             case Invalid(problem) ⇒ Future.failed(problem.throwable)
             case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is isTerminating
-              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }
+              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
+                .mapTo[Completed]
+                .map(_ ⇒ Valid(AgentCommand.Response.Accepted))
           }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(AgentCommand.Response.Accepted)
+          Future.successful(Valid(AgentCommand.Response.Accepted))
       }
 
     case CancelOrder(orderId, mode) ⇒
@@ -281,13 +286,13 @@ extends MainJournalingActor[Event] with Stash {
           Future.failed(problem.throwable)
         case Valid(orderEntry) ⇒
           if (orderEntry.detaching)
-            Future.successful(AgentCommand.Response.Accepted)
+            Future.successful(Valid(AgentCommand.Response.Accepted))
           else
             orderProcessor.cancel(orderId, mode, isAgent = true) match {
               case Invalid(problem) ⇒ Future.failed(problem.throwable)
-              case Valid(None) ⇒ Future.successful(AgentCommand.Response.Accepted)
+              case Valid(None) ⇒ Future.successful(Valid(AgentCommand.Response.Accepted))
               case Valid(Some(event)) ⇒
-                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ ⇒ AgentCommand.Response.Accepted }
+                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ ⇒ Valid(AgentCommand.Response.Accepted) }
             }
       }
 
@@ -295,20 +300,20 @@ extends MainJournalingActor[Event] with Stash {
       executeCommandForOrderId(orderId) { orderEntry ⇒
         Future.successful(GetOrder.Response(
           orderEntry.order))
-      }
+      } map ((r: Response) => Valid(r))
 
     case GetOrderIds ⇒
-      Future.successful(GetOrderIds.Response(
-        orderRegister.keys))
+      Future.successful(Valid(GetOrderIds.Response(
+        orderRegister.keys)))
 
     case GetOrders ⇒
-      Future.successful(GetOrders.Response(
-        for (orderEntry ← orderRegister.values) yield orderEntry.order))
+      Future.successful(Valid(GetOrders.Response(
+        for (orderEntry ← orderRegister.values) yield orderEntry.order)))
 
     case KeepEvents(eventId) if !terminating ⇒
-      Future {
+      Future {  // Concurrently!
         eventWatch.keepEvents(eventId).orThrow
-        AgentCommand.Response.Accepted
+        Valid(AgentCommand.Response.Accepted)
       }
 
     case _ if terminating ⇒
@@ -500,11 +505,11 @@ object AgentOrderKeeper {
   sealed trait Input
   object Input {
     final case object GetEventWatch
-    final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
+    final case class ExternalCommand(command: OrderCommand, response: Promise[Checked[Response]])
   }
 
   private object Internal {
-    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[AgentCommand.Response.Accepted])
+    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }
