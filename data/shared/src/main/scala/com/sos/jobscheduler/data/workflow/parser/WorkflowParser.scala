@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction, End ⇒ EndInstr, Fail ⇒ FailInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers.ops._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
@@ -21,8 +21,8 @@ import scala.concurrent.duration.Duration
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowParser {
-
+object WorkflowParser
+{
   def parse(string: String): Checked[Workflow] =
     parse(WorkflowPath.NoId, string)
 
@@ -33,7 +33,7 @@ object WorkflowParser {
   {
     private val label = identifier map Label.apply
 
-    private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
+    private val instructionTerminator = P((";" ~ w) | &("}") | End)
     //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
     private lazy val workflowDefinition = P[Workflow](
@@ -69,7 +69,7 @@ object WorkflowParser {
         map(returnCodes ⇒ ReturnCodeMeaning.Failure(returnCodes.toSet)))
 
     private val endInstruction = P[EndInstr](
-      keyword("end").!
+      keyword("end").! ~~/ instructionTerminator
         map (_ ⇒ ExplicitEnd))
 
     private val arguments =
@@ -97,14 +97,14 @@ object WorkflowParser {
       })
 
     private val executeInstruction = P[Execute.Anonymous](
-      (keyword("execute") ~~ anonymousWorkflowExecutable)
+      (keyword("execute") ~~ anonymousWorkflowExecutable ~~/ instructionTerminator)
         map Execute.Anonymous.apply)
 
     private val jobInstruction = P[Execute](
       (keyword("job") ~~ identifier ~~
         (comma ~~
           keyValueMap(Map("arguments" → arguments))
-        ).?
+        ).?  ~~/ instructionTerminator
       ).flatMap {
         case (name, None) ⇒
           valid(Execute.Named(WorkflowJob.Name(name)))
@@ -114,7 +114,7 @@ object WorkflowParser {
       })
 
     private val failInstruction = P[FailInstr](
-      (keyword("fail") ~~/ keyValueMap(Map("returnCode" → returnCode)))
+      (keyword("fail") ~~/ keyValueMap(Map("returnCode" → returnCode)) ~~/ instructionTerminator)
         .flatMap { keyToValue ⇒
           for (returnCode ← keyToValue.get[ReturnCode]("returnCode")) yield
             FailInstr(returnCode)
@@ -125,40 +125,40 @@ object WorkflowParser {
       val forkBranch = P[Fork.Branch](
         (orderSuffix ~~ curlyWorkflow)
           map Fork.Branch.fromPair)
-      P((keyword("fork") ~~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w))
+      P((keyword("fork") ~~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~~/ instructionTerminator)
         map { case (branch, more) ⇒ Fork(Vector(branch) ++ more) })
     }
 
     private val offerInstruction = P[Offer](
-      (keyword("offer") ~~ keyValue("orderId", quotedString) ~ comma ~/ keyValue("timeout", int))
+      (keyword("offer") ~~ keyValue("orderId", quotedString) ~ comma ~/ keyValue("timeout", int) ~~/ instructionTerminator)
         map { case (orderId_, duration_) ⇒
           Offer(OrderId(orderId_), Duration(duration_, SECONDS))
         })
 
     private val awaitInstruction = P[AwaitOrder](
-      (keyword("await") ~~ keyValue("orderId", quotedString))
+      (keyword("await") ~~ keyValue("orderId", quotedString) ~~/ instructionTerminator)
         map (orderId_ ⇒ AwaitOrder(OrderId(orderId_))))
 
     private val ifInstruction = P[If](
       (keyword("if") ~~/ "(" ~~ booleanExpression ~~ ")" ~~/
         curlyWorkflow ~/
-        (w ~ "else" ~~/ curlyWorkflow).?
+        (w ~ "else" ~~/ curlyWorkflow).? ~~/ instructionTerminator.?
       ) map { case (expr, then_, else_) ⇒
         If(expr, then_, else_)
       })
 
     private val tryInstruction = P[TryInstruction](
-      (keyword("try") ~~/ curlyWorkflow ~~/ keyword("catch") ~~/ curlyWorkflow)
+      (keyword("try") ~~/ curlyWorkflow ~~/ keyword("catch") ~~/ curlyWorkflow ~~/ instructionTerminator.?)
         map { case (try_, catch_) ⇒
           TryInstruction(try_, catch_)
         })
 
     private val ifNonZeroReturnCodeGotoInstruction = P[IfNonZeroReturnCodeGoto](
-      (keyword("ifNonZeroReturnCodeGoto") ~~ label)
+      (keyword("ifNonZeroReturnCodeGoto") ~~ label ~~/ instructionTerminator)
         map { n ⇒ IfNonZeroReturnCodeGoto(n) })
 
     private val gotoInstruction: Parser[Goto] =
-      P((keyword("goto") ~~ label)
+      P((keyword("goto") ~~ label ~~/ instructionTerminator)
         map { n ⇒ Goto(n) })
 
     private val instruction: Parser[Instruction] =
@@ -175,7 +175,7 @@ object WorkflowParser {
         offerInstruction)
 
     private val labeledInstruction = P[Labeled](
-      (labelDef.rep ~ instruction ~ instructionTerminator)
+      (labelDef.rep ~ instruction)
         map { case (labels, instruction_) ⇒ Labeled(labels.toImmutableSeq, instruction_)})
 
     private val jobDefinition = P[(WorkflowJob.Name, WorkflowJob)](

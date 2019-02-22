@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -59,15 +59,15 @@ object IfTest {
      |  if (true) {
      |    if (true) {
      |      execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1]; // #0/0/0
-     |    };
-     |  };
+     |    }
+     |  }
      |  if (true) {
      |    if (returnCode == 0) {   // #2
      |      execute executable="/TEST$sh", agent="AGENT";  // #2/0/0
      |    } else {
      |      execute executable="/TEST$sh", agent="AGENT";  // #2/1/0
-     |    };
-     |  };
+     |    }
+     |  }
      |  execute executable="/TEST$sh", agent="AGENT";    // #2
      |}""".stripMargin
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow

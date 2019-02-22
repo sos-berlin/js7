@@ -166,6 +166,36 @@ final class WorkflowParserTest extends FreeSpec {
             Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE")))))))))
   }
 
+  "Two consecutive ifs with semicolon" in {
+    check(
+     """define workflow {
+       |  if (returnCode == 1) {}
+       |  if (returnCode == 2) {}
+       |}""".stripMargin,
+      Workflow.anonymous(
+        Vector(
+          If(Equal(OrderReturnCode, NumericConstant(1)),
+            Workflow.empty),
+          If(Equal(OrderReturnCode, NumericConstant(2)),
+            Workflow.empty))))
+  }
+
+  "Two consecutive ifs without semicolon" in {
+    check(
+     """define workflow {
+       |  if (returnCode == 1) {
+       |  }
+       |  if (returnCode == 2) {
+       |  }
+       |}""".stripMargin,
+      Workflow.anonymous(
+        Vector(
+          If(Equal(OrderReturnCode, NumericConstant(1)),
+            Workflow.empty),
+          If(Equal(OrderReturnCode, NumericConstant(2)),
+            Workflow.empty))))
+  }
+
   "fork" in {
     check(
       """define workflow {
@@ -275,7 +305,7 @@ final class WorkflowParserTest extends FreeSpec {
   private def check(source: String, workflow: Workflow): Unit = {
     assert(WorkflowParser.parse(source) == Valid(workflow.copy(source = Some(source))))
     val generatedSource = workflow.show
-    assert(WorkflowParser.parse(generatedSource) == Valid(workflow.copy(source = Some(generatedSource))), "(generated source)")
+    assert(WorkflowParser.parse(generatedSource) == Valid(workflow.copy(source = Some(generatedSource))), s"(generated source: $generatedSource)")
   }
 
   private def parse(workflowString: String): Workflow =

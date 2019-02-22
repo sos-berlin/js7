@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -111,9 +111,9 @@ object TryTest {
      |      execute executable="/OKAY$sh", agent="AGENT";     // #0/0/0/0/1   skipped
      |    } catch {
      |      execute executable="/FAIL-2$sh", agent="AGENT";   // #0/0/0/1/0   OrderCatched
-     |    };
+     |    }
      |    execute executable="/OKAY$sh", agent="AGENT";       // #0/0/1
-     |  } catch {};
+     |  } catch {}
      |  execute executable="/OKAY$sh", agent="AGENT";         // #1
      |}""".stripMargin
   private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/FINISHING") % "INITIAL", finishingScript).orThrow
@@ -148,7 +148,7 @@ object TryTest {
      |    execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0/0  OrderCatched
      |  } catch {
      |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1/0  OrderStopped
-     |  };
+     |  }
      |}""".stripMargin
   private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") % "INITIAL", stoppingScript).orThrow
 

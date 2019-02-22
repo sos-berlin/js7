@@ -9,8 +9,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, Ri
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
-import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
@@ -301,7 +300,7 @@ object Workflow extends FileBased.Companion[Workflow] {
 
   implicit val fileBasedsOverview = WorkflowsOverview
   val typedPathCompanion = WorkflowPath
-  private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty") % VersionId.Anonymous, Vector.empty)
+  val empty = Workflow(WorkflowPath.NoId, Vector.empty)
 
   /** Test only. */
   def single(
