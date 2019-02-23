@@ -44,7 +44,7 @@ final class TryExecutorTest extends FreeSpec
 
   "toEvent" in {
     assert(InstructionExecutor.toEvent(tryInstruction, AOrder, context) ==
-      Some(AOrder.id  <-: OrderMoved(Position(7) / Try_ % 0)))
+      Some(AOrder.id <-: OrderMoved(Position(7) / Try_ % 0)))
   }
 }
 

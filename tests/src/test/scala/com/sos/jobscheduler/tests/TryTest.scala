@@ -24,9 +24,11 @@ final class TryTest extends FreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      for (a ← directoryProvider.agents) {
+        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
+        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      }
       directoryProvider.run { (master, _) ⇒
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, FinishingWorkflow.id.path))
@@ -38,8 +40,10 @@ final class TryTest extends FreeSpec
 
   "Nested try catch with failing catch, OrderStopped" in {
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      for (a ← directoryProvider.agents) {
+        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      }
       directoryProvider.run { (master, _) ⇒
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
@@ -51,20 +55,22 @@ final class TryTest extends FreeSpec
 
   "try - if - fail" in {
     val workflow = WorkflowParser.parse(WorkflowPath("/TRY-IF") % "INITIAL",
-     s"""define workflow {
-        |  try {
-        |    execute executable="/OKAY$sh", agent="AGENT";
-        |    if (true) {
-        |      fail;
-        |    }
-        |  } catch {
-        |    execute executable="/OKAY$sh", agent="AGENT";
-        |  };
-        |  execute executable="/OKAY$sh", agent="AGENT";
-        |}""".stripMargin).orThrow
+      s"""define workflow {
+         |  try {
+         |    execute executable="/OKAY$sh", agent="AGENT";
+         |    if (true) {
+         |      fail;
+         |    }
+         |  } catch {
+         |    execute executable="/OKAY$sh", agent="AGENT";
+         |  }
+         |  execute executable="/OKAY$sh", agent="AGENT";
+         |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
+      for (a ← directoryProvider.agents) {
+        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
+        a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
+      }
       directoryProvider.run { (master, _) ⇒
         val orderId = OrderId("⭕")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
