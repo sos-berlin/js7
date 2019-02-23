@@ -22,7 +22,7 @@ final case class JournalHeader(
 
 object JournalHeader
 {
-  private[data] val Version = "0.19"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  private[data] val Version = "0.20"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
 
   def apply(eventId: EventId, totalEventCount: Long) = new JournalHeader(
     version = Version,

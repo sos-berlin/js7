@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.workflow.instructions.If._
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.BooleanExpression
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -28,26 +29,25 @@ extends Instruction
 
   override def workflow(branchId: BranchId) =
     branchId match {
-      case BranchId.Indexed(index) ⇒
-        index match {
-          case 0 ⇒ Valid(thenWorkflow)
-          case 1 ⇒ elseWorkflow toChecked Problem("This If has no 'else' branch")
-          case _ ⇒ Invalid(Problem(s"Invalid index=$index for If"))
-        }
+      case Then ⇒ Valid(thenWorkflow)
+      case Else ⇒ elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
       case _ ⇒ super.workflow(branchId)
     }
 
   override def flattenedWorkflows(outer: Position) =
-      thenWorkflow.flattenedWorkflowsOf(outer / 0) :::
-      elseWorkflow.toList.flatMap(_.flattenedWorkflowsOf(outer / 1))
+      thenWorkflow.flattenedWorkflowsOf(outer / Then) :::
+      elseWorkflow.toList.flatMap(_.flattenedWorkflowsOf(outer / Else))
 
   override def flattenedInstructions(outer: Position) =
-    thenWorkflow.flattenedInstructions(outer / 0) ++
-      elseWorkflow.toVector.flatMap(_.flattenedInstructions(outer / 1))
+    thenWorkflow.flattenedInstructions(outer / Then) ++
+      elseWorkflow.toVector.flatMap(_.flattenedInstructions(outer / Else))
 
   override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w ⇒ s" else $w")
 }
 
 object If {
+  val Then = BranchId("then")
+  val Else = BranchId("else")
+
   intelliJuseImport(defaultGenericConfiguration)
 }

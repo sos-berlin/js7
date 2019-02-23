@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Problem
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction._
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
@@ -26,28 +25,24 @@ extends Instruction
 
   override def workflow(branchId: BranchId) =
     branchId match {
-      case BranchId.Indexed(index) ⇒
-        index match {
-          case 0 ⇒ Valid(tryWorkflow)
-          case 1 ⇒ Valid(catchWorkflow)
-          case _ ⇒ Invalid(Problem(s"Invalid index=$index for If"))
-        }
-      case _ ⇒ super.workflow(branchId)
+      case Try_ => Valid(tryWorkflow)
+      case Catch_ => Valid(catchWorkflow)
+      case _ => super.workflow(branchId)
     }
 
   override def flattenedWorkflows(outer: Position) =
-    tryWorkflow.flattenedWorkflowsOf(outer / TryBranchId) ++
-    catchWorkflow.flattenedWorkflowsOf(outer / CatchBranchId)
+    tryWorkflow.flattenedWorkflowsOf(outer / Try_) ++
+    catchWorkflow.flattenedWorkflowsOf(outer / Catch_)
 
   override def flattenedInstructions(outer: Position) =
-    tryWorkflow.flattenedInstructions(outer / TryBranchId) ++
-      catchWorkflow.flattenedInstructions(outer / CatchBranchId)
+    tryWorkflow.flattenedInstructions(outer / Try_) ++
+      catchWorkflow.flattenedInstructions(outer / Catch_)
 
   override def toString = s"try $tryWorkflow" + " catch " + catchWorkflow
 }
 
 object TryInstruction {
-  val TryBranchId = BranchId.Indexed(0)
-  val CatchBranchId = BranchId.Indexed(1)
+  val Try_ = BranchId("try")
+  val Catch_ = BranchId("catch")
   intelliJuseImport(defaultGenericConfiguration)
 }

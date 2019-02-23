@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 @JsonCodec
 final case class WorkflowPosition(workflowId: WorkflowId, position: Position) {
 
-  override def toString = s"$workflowId/$position"
+  override def toString = s"$workflowId$position"
 }
 
 object WorkflowPosition

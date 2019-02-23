@@ -165,7 +165,7 @@ object JournalTest {
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.19",
+      "version": "0.20",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 0,
@@ -252,7 +252,7 @@ object JournalTest {
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.19",
+      "version": "0.20",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 1000066,

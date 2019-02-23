@@ -1,14 +1,17 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.core.workflow.instructions.TryExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.Try_
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{OrderContext, Workflow, WorkflowPath}
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
 /**
@@ -22,15 +25,28 @@ final class TryExecutorTest extends FreeSpec
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
   }
 
+  "JSON" - {
+    "try" in {
+      testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction),
+        json"""[ 7, "try", 0 ]""")
+    }
+
+    // ???
+    //"catch" in {
+    //  testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction),
+    //    json"""[ 7, "catch", 0 ]""")
+    //}
+  }
+
 
   "nextPosition" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
-      Some(Position(7, 0, 0)))
+      Some(Position(7) / Try_ % 0))
   }
 
   "toEvent" in {
     assert(InstructionExecutor.toEvent(tryInstruction, AOrder, context) ==
-      Some(AOrder.id  <-: OrderMoved(Position(7, 0, 0))))
+      Some(AOrder.id  <-: OrderMoved(Position(7) / Try_ % 0)))
   }
 }
 

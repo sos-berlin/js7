@@ -1,14 +1,17 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{OrderContext, Workflow, WorkflowPath}
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
 /**
@@ -22,14 +25,26 @@ final class IfExecutorTest extends FreeSpec {
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
   }
 
+  "JSON" - {
+    "then" in {
+      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))),
+        json"""[ 7, "then", 0 ]""")
+    }
+
+    "else" in {
+      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))),
+        json"""[ 7, "else", 0 ]""")
+    }
+  }
+
   "If true" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))) ==
-      Some(Position(7, 0/*then*/, 0)))
+      Some(Position(7) / Then % 0))
   }
 
   "If false" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))) ==
-      Some(Position(7, 1/*else*/, 0)))
+      Some(Position(7) / Else % 0))
   }
 
   "If false, no else branch" in {
@@ -39,8 +54,8 @@ final class IfExecutorTest extends FreeSpec {
 
   "Variable comparison" in {
     val expr = Equal(Variable(StringConstant("A")), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Some(Position(7, 0/*then*/, 0)))
-    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Some(Position(7, 1/*else*/, 0)))
+    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Some(Position(7) / Then % 0))
+    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Some(Position(7) / Else % 0))
   }
 
   "Error in expression" in {

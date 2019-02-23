@@ -16,6 +16,8 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
@@ -58,7 +60,7 @@ final class OrderEventSourceTest extends FreeSpec
       process.transferToAgent(TestAgentId)
       process.update(OrderStarted)
       process.jobStep()
-      assert(process.step() == Some(OrderMoved(Position(1, 0, 0))))
+      assert(process.step() == Some(OrderMoved(Position(1) / Then % 0)))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(2))))
       process.jobStep()
@@ -81,11 +83,11 @@ final class OrderEventSourceTest extends FreeSpec
       executeScript)                                        // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.succeeded) == Some(OrderMoved(Position(1, 0, 0))))
+      assert(step(workflow, Outcome.succeeded) == Some(OrderMoved(Position(1) / Then % 0)))
     }
 
     "else branch executed" in {
-      assert(step(workflow, Outcome.Succeeded(ReturnCode(1))) == Some(OrderMoved(Position(1, 1, 0))))
+      assert(step(workflow, Outcome.Succeeded(ReturnCode(1))) == Some(OrderMoved(Position(1) / Else % 0)))
     }
   }
 
@@ -164,17 +166,17 @@ final class OrderEventSourceTest extends FreeSpec
         "END" @: ExplicitEnd,    // 4
         "B" @:   IfNonZeroReturnCodeGoto("C"), // 5
                  TryInstruction(               // 6
-                   Workflow.of(executeScript),  // 6/0#0
-                   Workflow.of(executeScript))) // 6/1#0
+                   Workflow.of(executeScript),  // 6/0:0
+                   Workflow.of(executeScript))) // 6/1:0
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))    // Job
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6, 0, 0))) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6) / Try_ % 0)) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(2)))    // Gap
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Valid(Position(3)))    // Job
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Valid(Position(4)))    // ExplicitEnd
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6, 0, 0))) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6) / Try_ % 0)) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Valid(Position(3)))    // failure
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6, 0, 0)))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6) / Try_ % 0))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Valid(Position(7)))    // ImplicitEnd
       eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isInvalid
     }
@@ -185,10 +187,10 @@ final class OrderEventSourceTest extends FreeSpec
         "B" @: Goto("A"),           // 1
         "C" @: IfNonZeroReturnCodeGoto("A"))   // 2
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: #1 B: goto A --> #0 A: goto B")))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: #0 A: goto B --> #1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: :1 B: goto A --> :0 A: goto B")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: :0 A: goto B --> :1 B: goto A")))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(3)))
-      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: #0 A: goto B --> #1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: :0 A: goto B --> :1 B: goto A")))
     }
 
     "Job, Fork" in {
@@ -319,41 +321,41 @@ final class OrderEventSourceTest extends FreeSpec
     "Fresh at try instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderMoved(Position(0) / 0 % 0 / 0 % 0))))
+        OrderMoved(Position(0) / Try_ % 0 / Try_ % 0))))
     }
 
     "Ready at instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Ready)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderMoved(Position(0) / 0 % 0 / 0 % 0))))
+        OrderMoved(Position(0) / Try_ % 0 / Try_ % 0))))
     }
 
     "Processed failed in inner try-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 0 % 0 / 0 % 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Try_ % 0 / Try_ % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0) / 0 % 0 / 1 % 0)) ))
+        OrderCatched(failed, Position(0) / Try_ % 0 / Catch_ % 0)) ))
     }
 
     "Processed failed in inner catch-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 0 % 0 / 1 % 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Try_ % 0 / Catch_ % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0) / 1 % 0))))
+        OrderCatched(failed, Position(0) / Catch_ % 0))))
     }
 
     "Processed failed in outer catch-block -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
         OrderStopped(failed)) ))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 1 / 0 % 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 1 / Try_ % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0) / 1 % 1 / 1 % 0))))
+        OrderCatched(failed, Position(0) / Catch_ % 1 / Catch_ % 0))))
     }
 
     "Processed failed in catch in catch -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
         OrderStopped(failed))))
     }

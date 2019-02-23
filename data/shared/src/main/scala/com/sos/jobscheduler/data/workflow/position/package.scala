@@ -28,7 +28,7 @@ package object position
   }
 
   implicit val branchPathShow: Show[BranchPath] =
-    segments ⇒ segments map (p ⇒ s"${p.nr.number}/${p.branchId}#") mkString ""
+    segments ⇒ segments map (p ⇒ s"${p.nr.number}/${p.branchId}${InstructionNr.Prefix}") mkString ""
 
   implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
 

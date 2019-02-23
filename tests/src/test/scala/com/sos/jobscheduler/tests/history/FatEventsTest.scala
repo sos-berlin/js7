@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -24,7 +24,7 @@ import com.sos.jobscheduler.data.order.Outcome.Succeeded
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tests.history.FatEventsTest._
@@ -100,7 +100,7 @@ final class FatEventsTest extends FreeSpec
         val bAgentUri = runningAgents(1).localUri.toString
         assert(fatEvents.toSet == Set(
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId),
-          OrderId("🔺") <-: OrderAddedFat(TestWorkflowId,None,Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderAddedFat(TestWorkflowId, None, Map("VARIABLE" → "VALUE")),
           AAgentPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
           BAgentPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
           OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
@@ -110,22 +110,22 @@ final class FatEventsTest extends FreeSpec
             TestWorkflowId /: Position(1),Vector(
               OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("VARIABLE" → "VALUE")),
               OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("VARIABLE" → "VALUE")))),
-          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, "🥕", 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, "🍋", 0), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
           OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🥕"), 1), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, BranchId("🍋"), 1), BAgentPath, bAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, "🥕", 1), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(1, "🍋", 1), BAgentPath, bAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
           OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" → "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" → "VALUE")),
           OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Map("VARIABLE" → "VALUE"), Succeeded(ReturnCode(0))),
           OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentPath, aAgentUri, jobName = None, Map("VARIABLE" → "VALUE")),
           OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" → "VALUE")),
+          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" → "VALUE")),
           OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))
 

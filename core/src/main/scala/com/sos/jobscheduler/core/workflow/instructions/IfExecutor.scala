@@ -9,6 +9,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.If
+import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
@@ -29,8 +30,8 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
       case Outcome.Succeeded(returnCode) ⇒
         Evaluator.evalBoolean(new Scope(returnCode, order.variables), instruction.predicate)
           .map {
-            case true ⇒ Some(0)  // Then
-            case false ⇒ instruction.elseWorkflow.isDefined ? 1  // Else
+            case true ⇒ Some(Then)
+            case false ⇒ instruction.elseWorkflow.isDefined ? Else
           }
           .map {
             case Some(thenOrElse) ⇒ order.position / thenOrElse % 0

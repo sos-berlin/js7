@@ -11,6 +11,8 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.If.Then
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.TryTest._
@@ -69,14 +71,14 @@ final class TryTest extends FreeSpec
         master.eventWatch.await[OrderFinished](_.key == orderId)
         checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
-          OrderMoved(Position(0) / 0 % 0),
+          OrderMoved(Position(0) / Try_ % 0),
           OrderAttachable(TestAgentPath),
           OrderTransferredToAgent(TestAgentPath % "INITIAL"),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
-          OrderMoved(Position(0) / 0 % 1 / 0 % 0),
-          OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0) / 1 % 0),
+          OrderMoved(Position(0) / Try_ % 1 / Then % 0),
+          OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0) / Catch_ % 0),
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),
@@ -120,18 +122,18 @@ object TryTest {
 
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
-    OrderMoved(Position(0) / 0 % 0 / 0 % 0),
+    OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
     OrderAttachable(TestAgentPath),
     OrderTransferredToAgent(TestAgentPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / 0 % 0 / 1 % 0),
+    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Catch_ % 0),
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0) / 1 % 0),
+    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0) / Catch_ % 0),
     OrderMoved(Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
@@ -154,14 +156,14 @@ object TryTest {
 
   private val ExpectedStoppedEvent = Vector(
     OrderAdded(StoppingWorkflow.id),
-    OrderMoved(Position(0, 0, 0)),
+    OrderMoved(Position(0) / Try_ % 0),
     OrderAttachable(TestAgentPath),
     OrderTransferredToAgent(TestAgentPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0, 1, 0)),
+    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0),
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),

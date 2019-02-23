@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, IfNonZeroReturnCodeGoto, ImplicitEnd, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -174,17 +174,8 @@ extends FileBased
   def isDefinedAt(position: Position): Boolean =
     position match {
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
-      case Position(BranchPath.Segment(nr, branch: BranchId.Named) :: tail, tailNr) ⇒
-        instruction(nr) match {
-          case fj: Fork ⇒ fj.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
-          case _ ⇒ false
-        }
-      case Position(BranchPath.Segment(nr, branch: BranchId.Indexed) :: tail, tailNr) ⇒
-        instruction(nr) match {
-          case instr: If ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
-          case instr: TryInstruction ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
-          case _ ⇒ false
-        }
+      case Position(BranchPath.Segment(nr, branchId: BranchId) :: tail, tailNr) ⇒
+        instruction(nr).workflow(branchId) exists (_ isDefinedAt Position(tail, tailNr))
     }
 
   private def isDefinedAt(nr: InstructionNr): Boolean =
@@ -252,8 +243,8 @@ extends FileBased
       case None ⇒ None
       case Some((parent, branchId, _)) ⇒
         instruction(parent) match {
-          case _: TryInstruction if branchId == TryInstruction.TryBranchId ⇒
-            Some(parent / TryInstruction.CatchBranchId % 0)
+          case _: TryInstruction if branchId == TryInstruction.Try_ ⇒
+            Some(parent / TryInstruction.Catch_ % 0)
           case _ ⇒
             findCatchPosition(parent)
         }
@@ -265,16 +256,7 @@ extends FileBased
         instruction(nr)
 
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) ⇒
-        (instruction(nr), branchId) match {
-          case (instr: If, BranchId.Indexed(index)) ⇒
-            instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
-          case (instr: TryInstruction, BranchId.Indexed(index)) ⇒
-            instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
-          case (fj: Fork, branchId: BranchId.Named) ⇒
-            fj.workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
-          case _ ⇒
-            Gap
-        }
+        instruction(nr).workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
     }
 
   def instruction(nr: InstructionNr): Instruction =

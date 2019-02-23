@@ -10,6 +10,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.If.Then
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.ExecuteTest._
@@ -96,13 +97,13 @@ object ExecuteTest {
     OrderMoved(Position(3)),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(2))),
-    OrderMoved(Position(4, 0, 0)),
+    OrderMoved(Position(4) / Then % 0),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
-    OrderMoved(Position(4, 0, 1)),
+    OrderMoved(Position(4) / Then % 1),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(3))),
-    OrderMoved(Position(4, 0, 2)),
+    OrderMoved(Position(4) / Then % 2),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(4))),
     OrderMoved(Position(5)),

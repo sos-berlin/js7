@@ -11,6 +11,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.IfTest._
@@ -75,13 +76,13 @@ object IfTest {
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
-      OrderMoved(Position(0) / 0/*then*/ % 0 / 0/*then*/ % 0),
+      OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      OrderMoved(Position(1) / 0/*then*/ % 0 / 0/*then*/ % 0),
+      OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(2)),
@@ -93,13 +94,13 @@ object IfTest {
       OrderFinished),
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
-      OrderMoved(Position(0) / 0/*then*/ % 0 / 0/*then*/ % 0),
+      OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
-      OrderMoved(Position(1) / 0/*else*/ % 0 / 1/*else*/ % 0),
+      OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(2)),
@@ -111,7 +112,7 @@ object IfTest {
       OrderFinished),
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
-      OrderMoved(Position(0) / 0/*then*/ % 0 / 0/*then*/ % 0),
+      OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentPath),
       OrderTransferredToAgent(TestAgentPath % "INITIAL"),
       OrderStarted,

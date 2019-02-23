@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -38,22 +39,22 @@ final class TryInstructionTest extends FreeSpec
   }
 
   "workflow" in {
-    assert(try_.workflow(0) == Valid(try_.tryWorkflow))
-    assert(try_.workflow(1) == Valid(try_.catchWorkflow))
+    assert(try_.workflow(Try_) == Valid(try_.tryWorkflow))
+    assert(try_.workflow(Catch_) == Valid(try_.catchWorkflow))
     assert(try_.workflow("A").isInvalid)
   }
 
   "flattenedWorkflows" in {
     assert(try_.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / 0) → try_.tryWorkflow) ::
-      ((Position(7) / 1) → try_.catchWorkflow) :: Nil)
+      ((Position(7) / Try_) → try_.tryWorkflow) ::
+      ((Position(7) / Catch_) → try_.catchWorkflow) :: Nil)
   }
 
   "flattenedInstructions" in {
     assert(try_.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
-      Position(7, 0, 0) → try_.tryWorkflow.instructions(0),
-      Position(7, 0, 1) → ImplicitEnd,
-      Position(7, 1, 0) → try_.catchWorkflow.instructions(0),
-      Position(7, 1, 1) → ImplicitEnd))
+      Position(7) / Try_ % 0 -> try_.tryWorkflow.instructions(0),
+      Position(7) / Try_ % 1 -> ImplicitEnd,
+      Position(7) / Catch_ % 0 -> try_.catchWorkflow.instructions(0),
+      Position(7) / Catch_ % 1 -> ImplicitEnd))
   }
 }
