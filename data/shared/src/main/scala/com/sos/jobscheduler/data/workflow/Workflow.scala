@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{CirceUtilsChecked, _}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.emptyToNone
@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, IfNonZeroReturnCodeGoto, ImplicitEnd, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, IfNonZeroReturnCodeGoto, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -242,11 +242,9 @@ extends FileBased
     position.splitBranchAndNr match {
       case None ⇒ None
       case Some((parent, branchId, _)) ⇒
-        instruction(parent) match {
-          case _: TryInstruction if branchId == TryInstruction.Try_ ⇒
-            Some(parent / TryInstruction.Catch_ % 0)
-          case _ ⇒
-            findCatchPosition(parent)
+        instruction(parent).toCatchBranchId(branchId) match {
+          case None => findCatchPosition(parent)
+          case Some(catchBranchId) => Some(parent / catchBranchId % 0)
         }
     }
 

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction._
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -37,6 +38,8 @@ extends Instruction
   override def flattenedInstructions(outer: Position) =
     tryWorkflow.flattenedInstructions(outer / Try_) ++
       catchWorkflow.flattenedInstructions(outer / Catch_)
+
+  override def toCatchBranchId(branchId: BranchId) = (branchId == Try_) ? Catch_
 
   override def toString = s"try $tryWorkflow" + " catch " + catchWorkflow
 }

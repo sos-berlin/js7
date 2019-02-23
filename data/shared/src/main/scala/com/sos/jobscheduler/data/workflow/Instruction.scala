@@ -26,6 +26,8 @@ trait Instruction
   def workflow(branchId: BranchId): Checked[Workflow] =
     Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")
 
+  def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
+
   final def @:(labels: Seq[Label]) = Labeled(labels, this)
   final def @:(label: Label) = Labeled(label :: Nil, this)
   final def @:(label: String) = Labeled(Label(label) :: Nil, this)

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.Try_
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.{OrderContext, Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -31,13 +31,11 @@ final class TryExecutorTest extends FreeSpec
         json"""[ 7, "try", 0 ]""")
     }
 
-    // ???
-    //"catch" in {
-    //  testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction),
-    //    json"""[ 7, "catch", 0 ]""")
-    //}
+    "catch" in {
+      testJson(Position(7) / TryInstruction.Catch_ % 0,
+        json"""[ 7, "catch", 0 ]""")
+    }
   }
-
 
   "nextPosition" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
