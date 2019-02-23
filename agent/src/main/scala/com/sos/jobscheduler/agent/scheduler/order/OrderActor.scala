@@ -95,9 +95,9 @@ extends KeyedJournalingActor[OrderEvent]
       }
   }
 
-  private val fresh = freshOrReady
+  private def fresh = freshOrReady
 
-  private val ready: Receive =
+  private def ready: Receive =
     freshOrReady orElse {
       case command: Command ⇒
         executeOtherCommand(command)
