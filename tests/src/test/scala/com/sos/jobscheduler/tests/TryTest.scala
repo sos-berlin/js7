@@ -69,14 +69,14 @@ final class TryTest extends FreeSpec
         master.eventWatch.await[OrderFinished](_.key == orderId)
         checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
-          OrderMoved(Position(0, 0, 0)),
+          OrderMoved(Position(0) / 0 % 0),
           OrderAttachable(TestAgentPath),
           OrderTransferredToAgent(TestAgentPath % "INITIAL"),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
-          OrderMoved(Position(0, 0, 1, 0, 0)),
-          OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0, 1, 0)),
+          OrderMoved(Position(0) / 0 % 1 / 0 % 0),
+          OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0) / 1 % 0),
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),
@@ -106,13 +106,13 @@ object TryTest {
   private val finishingScript = s"""
      |define workflow {
      |  try {                                                 // #0
-     |    try {                                               // #0/0/0
-     |      execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0/0/0/0   OrderCatched
-     |      execute executable="/OKAY$sh", agent="AGENT";     // #0/0/0/0/1   skipped
+     |    try {                                               // #0/0#0
+     |      execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0#0/0#0   OrderCatched
+     |      execute executable="/OKAY$sh", agent="AGENT";     // #0/0#0/0#1   skipped
      |    } catch {
-     |      execute executable="/FAIL-2$sh", agent="AGENT";   // #0/0/0/1/0   OrderCatched
+     |      execute executable="/FAIL-2$sh", agent="AGENT";   // #0/0#0/1#0   OrderCatched
      |    }
-     |    execute executable="/OKAY$sh", agent="AGENT";       // #0/0/1
+     |    execute executable="/OKAY$sh", agent="AGENT";       // #0/0#1
      |  } catch {}
      |  execute executable="/OKAY$sh", agent="AGENT";         // #1
      |}""".stripMargin
@@ -120,18 +120,18 @@ object TryTest {
 
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
-    OrderMoved(Position(0, 0, 0, 0, 0)),
+    OrderMoved(Position(0) / 0 % 0 / 0 % 0),
     OrderAttachable(TestAgentPath),
     OrderTransferredToAgent(TestAgentPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
-    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0, 0, 0, 1, 0)),
+    OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / 0 % 0 / 1 % 0),
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0, 1, 0)),
+    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0) / 1 % 0),
     OrderMoved(Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
@@ -145,9 +145,9 @@ object TryTest {
   private val stoppingScript = s"""
      |define workflow {
      |  try {                                               // #0
-     |    execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0/0  OrderCatched
+     |    execute executable="/FAIL-1$sh", agent="AGENT";   // #0/0#0  OrderCatched
      |  } catch {
-     |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1/0  OrderStopped
+     |    execute executable="/FAIL-2$sh", agent="AGENT";   // #0/1#0  OrderStopped
      |  }
      |}""".stripMargin
   private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") % "INITIAL", stoppingScript).orThrow

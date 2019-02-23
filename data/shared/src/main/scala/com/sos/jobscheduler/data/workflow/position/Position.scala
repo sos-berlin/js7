@@ -12,7 +12,8 @@ import scala.collection.immutable.IndexedSeq
   */
 final case class Position(branchPath: BranchPath, nr: InstructionNr)
 {
-  def /(branchId: BranchId) = branchPath ::: Segment(nr, branchId) :: Nil
+  def /(branchId: BranchId): BranchPath =
+    branchPath ::: Segment(nr, branchId) :: Nil
 
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
@@ -46,9 +47,6 @@ object Position
 
   def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int): Position =
     Position(Segment(parentInstructionNr, branchId) :: Nil, nr)
-
-  def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int, branchId2: BranchId, nr2: Int): Position =
-    Position(Segment(parentInstructionNr, branchId) :: Segment(nr, branchId2) :: Nil, nr2)
 
   implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
 

@@ -5,6 +5,7 @@ import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.TryBranchId
 import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
@@ -16,12 +17,10 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: TryInstruction): Option[Position] = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
-    Some(firstTryPosition(order))
+    Some(order.position / TryBranchId % 0)
   }
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: TryInstruction): Option[KeyedEvent[OrderActorEvent]] =
     order.ifState[Order.FreshOrReady].map(order ⇒
-      order.id <-: OrderMoved(firstTryPosition(order)))
-
-  private def firstTryPosition(order: Order[Order.State]) = order.position / TryInstruction.TryBranchId / 0
+      order.id <-: OrderMoved(order.position / TryBranchId % 0))
 }

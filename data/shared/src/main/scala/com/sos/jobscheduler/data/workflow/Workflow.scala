@@ -79,7 +79,7 @@ extends FileBased
     for {
       workflow ← nestedWorkflow(branchPath).toOption
       nr ← workflow.labelToNumber.get(label)
-    } yield branchPath / nr
+    } yield branchPath % nr
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -95,7 +95,7 @@ extends FileBased
 
   private def nestedWorkflows(parents: BranchPath): List[(BranchPath, Workflow)] =
     numberedInstructions.toList flatMap {
-      case (nr, labeled) ⇒ labeled.instruction.flattenedWorkflows(parents / nr)
+      case (nr, labeled) ⇒ labeled.instruction.flattenedWorkflows(parents % nr)
     }
 
   private[workflow] def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
@@ -109,7 +109,7 @@ extends FileBased
 
   private[workflow] def flattenedInstructions(branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =
     numberedInstructions flatMap {
-      case (nr, labeled) ⇒ ((branchPath / nr) → labeled) +: labeled.instruction.flattenedInstructions(branchPath / nr)
+      case (nr, labeled) ⇒ ((branchPath % nr) → labeled) +: labeled.instruction.flattenedInstructions(branchPath % nr)
     }
 
   def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
@@ -253,7 +253,7 @@ extends FileBased
       case Some((parent, branchId, _)) ⇒
         instruction(parent) match {
           case _: TryInstruction if branchId == TryInstruction.TryBranchId ⇒
-            Some(parent / TryInstruction.CatchBranchId / 0)
+            Some(parent / TryInstruction.CatchBranchId % 0)
           case _ ⇒
             findCatchPosition(parent)
         }

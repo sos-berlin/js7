@@ -11,6 +11,13 @@ import scala.collection.mutable
 object BranchPath
 {
   final case class Segment(nr: InstructionNr, branchId: BranchId)
+  {
+    def %(position: Position): Position =
+      Position(this :: position.branchPath, position.nr)
+
+    def %(nr: InstructionNr): Position =
+      Position(this :: Nil, nr)
+  }
   object Segment {
     def apply(nr: InstructionNr, branchId: String): Segment =
       Segment(nr, BranchId.Named(branchId))
@@ -40,7 +47,7 @@ object BranchPath
     def unapply(branchPath: BranchPath): Option[(Position, BranchId)] =
       branchPath.nonEmpty ? {
         val last = branchPath.last
-        (branchPath.dropChild / last.nr, last.branchId)
+        (branchPath.dropChild % last.nr, last.branchId)
       }
   }
 }

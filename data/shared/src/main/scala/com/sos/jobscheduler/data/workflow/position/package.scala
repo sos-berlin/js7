@@ -13,9 +13,9 @@ package object position
 
   implicit final class RichBranchPath(private val segments: BranchPath) extends AnyVal
   {
-    def /(nr: InstructionNr) = Position(segments, nr)
+    def %(nr: InstructionNr) = Position(segments, nr)
 
-    def /(parent: BranchPath.Segment): BranchPath =
+    def %(parent: BranchPath.Segment): BranchPath =
       segments ::: parent :: Nil
 
     def dropChild: BranchPath = {
@@ -28,7 +28,7 @@ package object position
   }
 
   implicit val branchPathShow: Show[BranchPath] =
-    segments ⇒ segments map (p ⇒ s"${p.nr.number}/${p.branchId}/") mkString ""
+    segments ⇒ segments map (p ⇒ s"${p.nr.number}/${p.branchId}#") mkString ""
 
   implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
 
@@ -38,4 +38,8 @@ package object position
         Left(DecodingFailure("Not a valid BranchPath", Nil))
       else
         BranchPath.decodeSegments(parts grouped 2))
+
+  implicit final class RichWorkflowId(private val underlying: WorkflowId) extends AnyVal {
+    def /(position: Position) = WorkflowPosition(underlying, position)
+  }
 }

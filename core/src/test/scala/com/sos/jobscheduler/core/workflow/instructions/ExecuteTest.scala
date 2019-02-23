@@ -36,14 +36,14 @@ final class ExecuteTest extends FreeSpec {
   }
 
   "toEvent" in {
-    assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
-    assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1, 2, 4))))
+    assert(toEvent(Outcome.Succeeded(ReturnCode(0))) == Some(orderId <-: OrderMoved(Position(1) / 2 % 4)))
+    assert(toEvent(Outcome.Succeeded(ReturnCode(1))) == Some(orderId <-: OrderMoved(Position(1) / 2 % 4)))
     assert(toEvent(Outcome.Failed(ReturnCode(1))) == Some(orderId <-: OrderFailed(Outcome.Failed(ReturnCode(1)))))
     assert(toEvent(Outcome.Disrupted(Problem("DISRUPTION"))) == Some(orderId <-: OrderFailed(Outcome.Disrupted(Problem("DISRUPTION")))))
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = Order(orderId, (WorkflowPath("/WORKFLOW") % "VERSION" ) /: Position(1, 2, 3), Order.Processed, outcome = outcome)
+    val order = Order(orderId, (WorkflowPath("/WORKFLOW") % "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed, outcome = outcome)
     ExecuteExecutor.toEvent(orderContext, order, executeAnonymous)
   }
 }

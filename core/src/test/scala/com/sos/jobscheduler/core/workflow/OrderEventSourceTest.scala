@@ -164,8 +164,8 @@ final class OrderEventSourceTest extends FreeSpec
         "END" @: ExplicitEnd,    // 4
         "B" @:   IfNonZeroReturnCodeGoto("C"), // 5
                  TryInstruction(               // 6
-                   Workflow.of(executeScript),  // 6/0/0
-                   Workflow.of(executeScript))) // 6/1/0
+                   Workflow.of(executeScript),  // 6/0#0
+                   Workflow.of(executeScript))) // 6/1#0
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))    // Job
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6, 0, 0))) // success, next instruction was try
@@ -297,17 +297,17 @@ final class OrderEventSourceTest extends FreeSpec
     val workflow = WorkflowParser.parse(
        """define workflow {
          |  try {                                      // 0
-         |    try {                                    // 0/0/0
-         |      execute agent="/a", executable="/ex";  // 0/0/0/0/0
+         |    try {                                    // 0/0#0
+         |      execute agent="/a", executable="/ex";  // 0/0#0/0#0
          |    } catch {
-         |      execute agent="/a", executable="/ex";  // 0/0/0/1/0
+         |      execute agent="/a", executable="/ex";  // 0/0#0/1#0
          |    }
          |  } catch {
-         |    execute agent="/a", executable="/ex";    // 0/1/0
-         |    try {                                    // 0/1/1
-         |      execute agent="/a", executable="/ex";  // 0/1/1/0/0
+         |    execute agent="/a", executable="/ex";    // 0/1#0
+         |    try {                                    // 0/1#1
+         |      execute agent="/a", executable="/ex";  // 0/1#1/0#0
          |    } catch {
-         |      execute agent="/a", executable="/ex";  // 0/1/1/1/0
+         |      execute agent="/a", executable="/ex";  // 0/1#1/1#0
          |    }
          |  };
          |  execute agent="/a", executable="/ex";      // 1
@@ -319,41 +319,41 @@ final class OrderEventSourceTest extends FreeSpec
     "Fresh at try instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderMoved(Position(0, 0, 0, 0, 0)))))
+        OrderMoved(Position(0) / 0 % 0 / 0 % 0))))
     }
 
     "Ready at instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Ready)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderMoved(Position(0, 0, 0, 0, 0)))))
+        OrderMoved(Position(0) / 0 % 0 / 0 % 0))))
     }
 
     "Processed failed in inner try-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 0, 0, 0, 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 0 % 0 / 0 % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0, 0, 0, 1, 0))) ))
+        OrderCatched(failed, Position(0) / 0 % 0 / 1 % 0)) ))
     }
 
     "Processed failed in inner catch-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 0, 0, 1, 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 0 % 0 / 1 % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0, 1, 0)))))
+        OrderCatched(failed, Position(0) / 1 % 0))))
     }
 
     "Processed failed in outer catch-block -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
         OrderStopped(failed)) ))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 1, 0, 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 1 / 0 % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
-        OrderCatched(failed, Position(0, 1, 1, 1, 0))) ))
+        OrderCatched(failed, Position(0) / 1 % 1 / 1 % 0))))
     }
 
     "Processed failed in catch in catch -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(0, 1, 0), Order.Processed, failed)
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / 1 % 0), Order.Processed, failed)
       assert(eventSource(order).nextEvent(order.id) == Valid(Some(order.id <-:
         OrderStopped(failed))))
     }

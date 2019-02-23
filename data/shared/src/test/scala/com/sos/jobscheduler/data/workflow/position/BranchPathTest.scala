@@ -21,8 +21,8 @@ final class BranchPathTest extends FreeSpec
   }
 
   "BranchPath and Position" in {
-    assert(Nil / 1 == Position(1))
-    assert((Segment(1, 2) :: Nil) / 3 == Position(1, 2, 3))
+    assert(Nil % 1 == Position(1))
+    assert((Segment(1, 2) :: Nil) % 3 == Position(1, 2, 3))
   }
 
   "PositionAndBranchId" in {

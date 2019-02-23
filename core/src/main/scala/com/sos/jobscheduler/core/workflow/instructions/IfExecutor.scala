@@ -33,7 +33,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
             case false ⇒ instruction.elseWorkflow.isDefined ? 1  // Else
           }
           .map {
-            case Some(thenOrElse) ⇒ order.position / thenOrElse / 0
+            case Some(thenOrElse) ⇒ order.position / thenOrElse % 0
             case None ⇒ order.position.increment  // Skip instruction
           }.onProblem(p ⇒ logger.error(s"$p")) // TODO None is an error. Return Invalid
 

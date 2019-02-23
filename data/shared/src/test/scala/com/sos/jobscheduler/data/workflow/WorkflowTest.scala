@@ -255,9 +255,9 @@ final class WorkflowTest extends FreeSpec {
     assert(TestWorkflow.keyToJob == Map(
       JobKey(TestWorkflow.id /: Position(0)) → AExecute.job,
       JobKey(WorkflowBranchPath(TestWorkflow.id, Position(1) / 0), BJobName) → B1Job,
-      JobKey(TestWorkflow.id /: (Position(1) / 1 / 0)) → BExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🥕" / 0)) → AExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🍋" / 0)) → BExecute.job,
+      JobKey(TestWorkflow.id /: (Position(1) / 1 % 0)) → BExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) /  "🥕" % 0)) → AExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) /  "🍋" % 0)) → BExecute.job,
       JobKey(TestWorkflow.id /: Position(3)) → BExecute.job,
       JobKey(TestWorkflow.id, AJobName) → AJob,
       JobKey(TestWorkflow.id, BJobName) → BJob))
@@ -296,43 +296,43 @@ final class WorkflowTest extends FreeSpec {
       WorkflowPath("/TEST") % "VERSION",
       Vector(
         TryInstruction(                               // #0
-          tryWorkflow = Workflow.of(AExecute),        // #0/0/0
-          catchWorkflow = Workflow.of(BExecute)),     // #0/1/0       catch0
+          tryWorkflow = Workflow.of(AExecute),        // #0/0#0
+          catchWorkflow = Workflow.of(BExecute)),     // #0/1#0       catch0
         TryInstruction(
           tryWorkflow = Workflow.of(
-            TryInstruction(                           // #1/0/0
-              tryWorkflow = Workflow.of(AExecute),    // #1/0/0/0/0
-              catchWorkflow = Workflow.of(BExecute))),// #1/0/0/1/0   catch10
+            TryInstruction(                           // #1/0#0
+              tryWorkflow = Workflow.of(AExecute),    // #1/0#0/0#0
+              catchWorkflow = Workflow.of(BExecute))),// #1/0#0/1#0   catch10
           catchWorkflow = Workflow.of(                //              catch1
             TryInstruction(
-              tryWorkflow = Workflow.of(AExecute),    // #1/1/0/0/0
-              catchWorkflow = Workflow.of(BExecute))  // #1/1/0/1/0   catch11
+              tryWorkflow = Workflow.of(AExecute),    // #1/1#0/0#0
+              catchWorkflow = Workflow.of(BExecute))  // #1/1#0/1#0   catch11
           ))))
-    val catch0  = Position(0, 1, 0)
-    val catch1  = Position(1, 1, 0)
-    val catch10 = Position(1, 0, 0, 1, 0)
-    val catch11 = Position(1, 1, 0, 1, 0)
+    val catch0  = Position(0) / 1 % 0
+    val catch1  = Position(1) / 1 % 0
+    val catch10 = Position(1) / 0 % 0 / 1 % 0
+    val catch11 = Position(1) / 1 % 0 / 1 % 0
 
-    assert(tryWorkflow.findCatchPosition(Position(0)) == None)
-    assert(tryWorkflow.findCatchPosition(Position(0, 0, 0)) == Some(catch0))
-    assert(tryWorkflow.findCatchPosition(Position(0, 0, 1)) == Some(catch0))
-    assert(tryWorkflow.findCatchPosition(catch0           ) == None)
-    assert(tryWorkflow.findCatchPosition(catch0.increment ) == None)
+    assert(tryWorkflow.findCatchPosition(Position(0)        ) == None)
+    assert(tryWorkflow.findCatchPosition(Position(0) / 0 % 0) == Some(catch0))
+    assert(tryWorkflow.findCatchPosition(Position(0) / 0 % 1) == Some(catch0))
+    assert(tryWorkflow.findCatchPosition(catch0             ) == None)
+    assert(tryWorkflow.findCatchPosition(catch0.increment   ) == None)
 
-    assert(tryWorkflow.findCatchPosition(Position(1)) == None)
-    assert(tryWorkflow.findCatchPosition(Position(1, 0, 0      )) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(Position(1, 0, 0, 0, 0)) == Some(catch10))
-    assert(tryWorkflow.findCatchPosition(Position(1, 0, 0, 0, 1)) == Some(catch10))
-    assert(tryWorkflow.findCatchPosition(catch10                ) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(catch10.increment      ) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(Position(1, 0, 1      )) == Some(catch1))
+    assert(tryWorkflow.findCatchPosition(Position(1)                ) == None)
+    assert(tryWorkflow.findCatchPosition(Position(1) / 0 % 0        ) == Some(catch1))
+    assert(tryWorkflow.findCatchPosition(Position(1) / 0 % 0 / 0 % 0) == Some(catch10))
+    assert(tryWorkflow.findCatchPosition(Position(1) / 0 % 0 / 0 % 1) == Some(catch10))
+    assert(tryWorkflow.findCatchPosition(catch10                    ) == Some(catch1))
+    assert(tryWorkflow.findCatchPosition(catch10.increment          ) == Some(catch1))
+    assert(tryWorkflow.findCatchPosition(Position(1) / 0 % 1        ) == Some(catch1))
 
-    assert(tryWorkflow.findCatchPosition(Position(1, 1, 0, 0, 0)) == Some(catch11))
-    assert(tryWorkflow.findCatchPosition(Position(1, 1, 0, 0, 1)) == Some(catch11))
-    assert(tryWorkflow.findCatchPosition(catch11                ) == None)
-    assert(tryWorkflow.findCatchPosition(catch11.increment      ) == None)
-    assert(tryWorkflow.findCatchPosition(catch1                 ) == None)
-    assert(tryWorkflow.findCatchPosition(catch1.increment       ) == None)
+    assert(tryWorkflow.findCatchPosition(Position(1) / 1 % 0 / 0 % 0) == Some(catch11))
+    assert(tryWorkflow.findCatchPosition(Position(1) / 1 % 0 / 0 % 1) == Some(catch11))
+    assert(tryWorkflow.findCatchPosition(catch11                    ) == None)
+    assert(tryWorkflow.findCatchPosition(catch11.increment          ) == None)
+    assert(tryWorkflow.findCatchPosition(catch1                     ) == None)
+    assert(tryWorkflow.findCatchPosition(catch1.increment           ) == None)
 
     assert(tryWorkflow.findCatchPosition(Position(2)) == None)
   }

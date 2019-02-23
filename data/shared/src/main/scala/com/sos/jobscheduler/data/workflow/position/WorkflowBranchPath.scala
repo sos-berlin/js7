@@ -9,7 +9,7 @@ import scala.language.implicitConversions
 final case class WorkflowBranchPath(workflowId: WorkflowId, branchPath: BranchPath)
 {
   def /(nr: InstructionNr): WorkflowPosition =
-    WorkflowPosition(workflowId, branchPath / nr)
+    WorkflowPosition(workflowId, branchPath % nr)
 }
 
 object WorkflowBranchPath
