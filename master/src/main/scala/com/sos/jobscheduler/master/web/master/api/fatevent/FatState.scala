@@ -74,8 +74,8 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           case named: Execute.Named ⇒ Some(named.name)
           case _ ⇒ None
         }
-        val agent = order.attached.flatMap(a ⇒ repo.idTo[AgentRef](a)).orThrow
-        Some(OrderProcessingStartedFat(order.workflowPosition, agent.path, agent.uri, jobName, order.variables))
+        val agentRef = order.attached.flatMap(a ⇒ repo.pathTo[AgentRef](a)).orThrow
+        Some(OrderProcessingStartedFat(order.workflowPosition, agentRef.path, agentRef.uri, jobName, order.variables))
 
       case OrderStdWritten(stdoutOrStderr, chunk) ⇒
         Some(OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk))

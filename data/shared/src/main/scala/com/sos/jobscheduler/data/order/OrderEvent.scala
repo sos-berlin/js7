@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.agent.{AgentRefId, AgentRefPath}
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
@@ -53,13 +53,13 @@ object OrderEvent {
   }
 
   final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, outcome: Outcome,
-    parent: Option[OrderId], agentRefId: AgentRefId,  payload: Payload)
+    parent: Option[OrderId], agentRefPath: AgentRefPath,  payload: Payload)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
     //type State = FreshOrReady
   }
 
-  final case class OrderTransferredToAgent(agentRefId: AgentRefId)
+  final case class OrderTransferredToAgent(agentRefPath: AgentRefPath)
   extends OrderCoreEvent {
     //type State = FreshOrReady
   }

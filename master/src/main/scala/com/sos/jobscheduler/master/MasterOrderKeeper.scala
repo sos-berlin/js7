@@ -16,7 +16,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -38,7 +38,7 @@ import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo,
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefId, AgentRefPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -150,8 +150,8 @@ with MainJournalingActor[Event]
     MasterState(
       persistedEventId,
       repo,
-      orderRegister.mapValues(_.order).toMap,
-      agentRegister.values.map(entry ⇒ entry.agentRefId → entry.lastAgentEventId).toMap,
+      orderRegister.mapValues(_.order).uniqueToMap,
+      agentRegister.values.map(entry ⇒ entry.agentRefPath → entry.lastAgentEventId).uniqueToMap,
       orderScheduleEndedAt = None)
     .toSnapshots)
 
@@ -164,8 +164,8 @@ with MainJournalingActor[Event]
       for (agent ← repo.currentFileBaseds collect { case o: AgentRef ⇒ o }) {
         registerAgent(agent)
       }
-      for ((agentRefId, eventId) ← masterState.agentToEventId) {
-        agentRegister(agentRefId).lastAgentEventId = eventId
+      for ((agentRefPath, eventId) ← masterState.agentToEventId) {
+        agentRegister(agentRefPath).lastAgentEventId = eventId
       }
       for (order ← masterState.idToOrder.values) {
         orderRegister.insert(order.id → OrderEntry(order))
@@ -250,12 +250,12 @@ with MainJournalingActor[Event]
 
     case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
-      import agentEntry.agentRefId
+      import agentEntry.agentRefPath
       var lastAgentEventId = none[EventId]
       var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
         case stamped @ Stamped(agentEventId, timestamp, keyedEvent) ⇒
           if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
-            logger.error(s"Agent ${agentEntry.agentRefId} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
+            logger.error(s"Agent ${agentEntry.agentRefPath} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
             None
           } else {
             lastAgentEventId = agentEventId.some
@@ -265,21 +265,21 @@ with MainJournalingActor[Event]
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
                 val ownEvent = event match {
-                  case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentRefId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentRefPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ ⇒ event
                 }
                 Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
 
               case KeyedEvent(_: NoKey, AgentMasterEvent.AgentReadyForMaster(timezone)) ⇒
-                Some(Timestamped(agentEntry.agentRefId.path <-: AgentReady(timezone), Some(timestamp)))
+                Some(Timestamped(agentEntry.agentRefPath <-: AgentReady(timezone), Some(timestamp)))
 
               case _ ⇒
-                logger.warn(s"Unknown event received from ${agentEntry.agentRefId}: $keyedEvent")
+                logger.warn(s"Unknown event received from ${agentEntry.agentRefPath}: $keyedEvent")
                 None
             }
           }
       }
-      masterStamped ++= lastAgentEventId.map(agentEventId ⇒ Timestamped(agentRefId <-: AgentEventIdEvent(agentEventId)))
+      masterStamped ++= lastAgentEventId.map(agentEventId ⇒ Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
       persistTransactionTimestamped(masterStamped) {
         _ map (_.value) foreach {
@@ -452,7 +452,7 @@ with MainJournalingActor[Event]
       AgentDriver.props(agent.id, agent.uri, masterConfiguration, journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/"))))
     val entry = AgentEntry(agent, actor)
-    agentRegister.insert(agent.id → entry)
+    agentRegister.insert(agent.path → entry)
     entry
   }
 
@@ -601,11 +601,11 @@ with MainJournalingActor[Event]
   private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
     for ((signedWorkflow, job, agentEntry) ← checkedWorkflowJobAndAgentEntry(order).onProblem(p ⇒ logger.error(p))) {
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
-        persist(order.id <-: OrderAttachable(agentEntry.agentRefId.path)) { stamped ⇒
+        persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { stamped ⇒
           handleOrderEvent(stamped)
         }
       else if (order.isAttaching) {
-        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentRefId, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentRefPath, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
       }
     }
 
@@ -613,15 +613,17 @@ with MainJournalingActor[Event]
     for {
       signedWorkflow ← repo.idToSigned[Workflow](order.workflowId)
       job ← signedWorkflow.value.checkedWorkflowJob(order.position)
-      agentRefId ← repo.pathToCurrentId(job.agentRefPath)
-      agentEntry ← agentRegister.checked(agentRefId)
+      agentEntry ← agentRegister.checked(job.agentRefPath)
     } yield (signedWorkflow, job, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     orderRegister(orderId).order.detaching
       .onProblem(p ⇒ logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
-      .foreach { agentRefId ⇒
-        agentRegister(agentRefId).actor ! AgentDriver.Input.DetachOrder(orderId)
+      .foreach { agentRefPath ⇒
+        agentRegister.get(agentRefPath) match {
+          case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentRefPath")
+          case Some(a) => a.actor ! AgentDriver.Input.DetachOrder(orderId)
+        }
       }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
@@ -656,8 +658,8 @@ private[master] object MasterOrderKeeper {
     case object AfterProceedEventsAdded
   }
 
-  private class AgentRegister extends ActorRegister[AgentRefId, AgentEntry](_.actor) {
-    override def insert(kv: (AgentRefId, AgentEntry)) = super.insert(kv)
+  private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {
+    override def insert(kv: (AgentRefPath, AgentEntry)) = super.insert(kv)
     override def -=(a: ActorRef) = super.-=(a)
   }
 
@@ -666,8 +668,6 @@ private[master] object MasterOrderKeeper {
     actor: ActorRef,
     var lastAgentEventId: EventId = EventId.BeforeFirst)
   {
-    def agentRefId = agent.id
-    @deprecated("", "")
     def agentRefPath = agent.path
 
     def start()(implicit sender: ActorRef): Unit =

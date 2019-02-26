@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentRefId
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
@@ -104,9 +104,9 @@ object AgentCommand extends CommonCommand.Companion
     override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.FreshOrReady], agentRefId: AgentRefId, signedWorkflow: SignedString) =
+    def apply(order: Order[Order.FreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: SignedString) =
       new AttachOrder(
-        order.copy(attachedState = Some(Order.Attached(agentRefId))),
+        order.copy(attachedState = Some(Order.Attached(agentRefPath))),
         signedWorkflow)
   }
 

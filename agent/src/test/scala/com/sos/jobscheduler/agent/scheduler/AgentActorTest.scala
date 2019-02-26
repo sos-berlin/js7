@@ -42,7 +42,7 @@ final class AgentActorTest extends FreeSpec {
         val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId ⇒
             executeCommand(
-              AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath % "(initial)", provider.fileBasedSigner.sign(SimpleTestWorkflow))))
+              AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))))
           .await(99.s)
         for (orderId ← orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
@@ -55,7 +55,7 @@ final class AgentActorTest extends FreeSpec {
             SimpleTestWorkflow.lastWorkflowPosition,
             Order.Ready,
             Outcome.succeeded,
-            Some(Order.Detaching(TestAgentRefPath % "(initial)")),
+            Some(Order.Detaching(TestAgentRefPath)),
             payload = TestOrder.payload.copy(
               variables = TestOrder.payload.variables + ("result" → "TEST-RESULT-B-VALUE"))
           )).toSet)

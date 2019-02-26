@@ -153,6 +153,10 @@ final case class Repo private(
       signedFileBased ← o toChecked Problem(s"Has been deleted: $path")
     } yield signedFileBased.value.id.asInstanceOf[FileBasedId[P]]
 
+  /** Returns the current FileBased to a Path. */
+  def pathTo[A <: FileBased](path: A#Path)(implicit A: FileBased.Companion[A]): Checked[A] =
+    currentTyped[A].checked(path)  // TODO Slow!
+
   /** Returns the FileBased to a FileBasedId. */
   def idTo[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[A] =
     idToSigned[A](id) map (_.value)

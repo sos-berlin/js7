@@ -245,11 +245,11 @@ extends MainJournalingActor[Event] with Stash {
     case AttachOrder(order, signedWorkflowString) if !terminating ⇒
       order.attached match {
         case Invalid(problem) ⇒ Future.successful(Invalid(problem))
-        case Valid(agentRefId) ⇒
+        case Valid(agentRefPath) ⇒
           workflowVerifier.verify(signedWorkflowString) match {
             case Invalid(problem) => Future.successful(Invalid(problem))
             case Valid(verified) =>
-              val workflow = verified.signedFileBased.value.reduceForAgent(agentRefId.path)
+              val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
               (workflowRegister.get(order.workflowId) match {
                 case None ⇒
                   logger.info(verified.toString)

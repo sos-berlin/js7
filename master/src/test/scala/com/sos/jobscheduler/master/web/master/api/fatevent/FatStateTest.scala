@@ -34,7 +34,7 @@ final class FatStateTest extends FreeSpec
   }
 
   "RepoAdded AgentRef" in {
-    check(RepoEvent.FileBasedAdded(agent.path, sign(agent)),
+    check(RepoEvent.FileBasedAdded(agentRef.path, sign(agentRef)),
       None)
   }
 
@@ -49,12 +49,12 @@ final class FatStateTest extends FreeSpec
   }
 
   "OrderAttachable" in {
-    check(orderId <-: OrderAttachable(agent.path),
+    check(orderId <-: OrderAttachable(agentRef.path),
       None)
   }
 
   "OrderTransferredToAgent" in {
-    check(orderId <-: OrderTransferredToAgent(agent.id),
+    check(orderId <-: OrderTransferredToAgent(agentRef.path),
       None)
   }
 
@@ -65,7 +65,7 @@ final class FatStateTest extends FreeSpec
 
   "OrderProcessingStarted" in {
     check(orderId <-: OrderProcessingStarted,
-      Some(orderId <-: OrderProcessingStartedFat(workflow.id /: Position(0), agent.path, agent.uri, None, Map.empty)))
+      Some(orderId <-: OrderProcessingStartedFat(workflow.id /: Position(0), agentRef.path, agentRef.uri, None, Map.empty)))
   }
 
   "OrderStdoutWritten" in {
@@ -131,7 +131,7 @@ object FatStateTest
 {
   private val versionId = VersionId("1")
   private val orderId = OrderId("ORDER")
-  private val agent = AgentRef(AgentRefPath("/AGENT") % versionId, "https://0.0.0.0/")
+  private val agentRef = AgentRef(AgentRefPath("/AGENT") % versionId, "https://0.0.0.0/")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") % versionId,
-    Execute.Anonymous(WorkflowJob(agent.path, ExecutablePath("/EXECUTABLE"))))
+    Execute.Anonymous(WorkflowJob(agentRef.path, ExecutablePath("/EXECUTABLE"))))
 }

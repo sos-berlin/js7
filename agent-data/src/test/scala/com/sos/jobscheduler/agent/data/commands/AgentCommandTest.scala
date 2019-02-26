@@ -114,7 +114,7 @@ final class AgentCommandTest extends FreeSpec {
             OrderId("ORDER-ID"),
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready),
-          AgentRefPath("/AGENT") % "1",
+          AgentRefPath("/AGENT"),
           SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{
           "TYPE": "AttachOrder",
@@ -127,10 +127,7 @@ final class AgentCommandTest extends FreeSpec {
             },
             "attachedState": {
               "TYPE": "Attached",
-              "agentRefId": {
-                "path": "/AGENT",
-                "versionId": "1"
-              }
+              "agentRefPath": "/AGENT"
             },
             "id": "ORDER-ID",
             "workflowPosition": {

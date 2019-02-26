@@ -68,7 +68,7 @@ final class OrderAgentTest extends FreeSpec {
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
 
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
-            agentClient.commandExecute(AttachOrder(order, TestAgentRefPath % "(initial)", signedWorkflow)).await(99.s)
+            agentClient.commandExecute(AttachOrder(order, TestAgentRefPath, signedWorkflow)).await(99.s)
 
           attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Invalid(TamperedWithSignedMessageProblem)
 
@@ -111,7 +111,7 @@ final class OrderAgentTest extends FreeSpec {
 
           val orders = for (i ← 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready, Outcome.succeeded,
-              Some(Order.Attached(AgentRefPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
+              Some(Order.Attached(AgentRefPath("/AGENT"))), payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(orders map { AttachOrder(_, SignedSimpleWorkflow) })) await 99.s
@@ -154,6 +154,6 @@ private object OrderAgentTest {
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedState = Some(Order.Detaching(TestAgentRefPath % "(initial)")),
+      attachedState = Some(Order.Detaching(TestAgentRefPath)),
       payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-B-VALUE")))
 }

@@ -99,10 +99,6 @@ final class MasterGraphqlSchemaTest extends FreeSpec
         attachedState {
           TYPE
           agentRefPath
-          agentRefId {
-            path
-            versionId
-          }
         }
         state {
           TYPE
@@ -200,11 +196,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT",
-                "agentRefId": {
-                  "path": "/AGENT",
-                  "versionId": "VERSION"
-                }
+                "agentRefPath": "/AGENT"
               },
               "outcome" : {
                 "TYPE" : "Succeeded",
@@ -236,11 +228,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT",
-                "agentRefId": {
-                  "path": "/AGENT",
-                  "versionId": "VERSION"
-                }
+                "agentRefPath": "/AGENT"
               }
             }, {
               "id": "15",
@@ -262,11 +250,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentRefPath": "/AGENT",
-                "agentRefId": {
-                  "path": "/AGENT",
-                  "versionId": "2"
-                }
+                "agentRefPath": "/AGENT"
               },
               "outcome" : {
                 "TYPE" : "Succeeded",
@@ -510,17 +494,17 @@ object MasterGraphqlSchemaTest
 {
   private trait TestContext extends QueryContext {
     def executionContext = ExecutionContext.global
-    private val agentRefId = AgentRefPath("/AGENT") % "VERSION"
+    private val agentRefPath = AgentRefPath("/AGENT")
     private val fresh = Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))
-    private val attached = Some(Order.Attached(agentRefId))
+    private val attached = Some(Order.Attached(agentRefPath))
 
     protected val idToOrder = Vector[Order[Order.State]](
         Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh),
-        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefId.path))),
+        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefPath))),
         Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = attached),
         Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready, attachedState = attached),
         Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
-          attachedState = Some(Order.Attached(AgentRefPath("/AGENT") % "2")),
+          attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
           parent = Some(OrderId("PARENT")),
           payload = Payload(Map("KEY" → "VALUE", "X" → "XX"))),
         Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),

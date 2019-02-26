@@ -52,7 +52,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderAdded(workflow.path % versionId),
       OrderMoved(Position(0) / Try_ % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+      OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -96,7 +96,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderAdded(workflow.path % versionId),
       OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+      OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,

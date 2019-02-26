@@ -32,7 +32,7 @@ import scala.concurrent.duration.Duration
 final class KeepEventsTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefId.path :: Nil, TestWorkflow :: Nil)) { provider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil)) { provider ⇒
       for ((_, tree) ← provider.agentToTree) {
         tree.writeExecutable(TestExecutablePath, script(0.s))
       }
@@ -83,9 +83,9 @@ final class KeepEventsTest extends FreeSpec {
 }
 
 private object KeepEventsTest {
-  private val TestAgentRefId = AgentRefPath("/agent-111") % "INITIAL"
+  private val TestAgentRefPath = AgentRefPath("/agent-111")
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(TestAgentRefId.path, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
   private val TestOrder = FreshOrder(OrderId("TEST"), TestWorkflow.id.path)
 }

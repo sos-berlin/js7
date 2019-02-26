@@ -79,7 +79,7 @@ final class TryTest extends FreeSpec
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / Try_ % 0),
           OrderAttachable(TestAgentRefPath),
-          OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+          OrderTransferredToAgent(TestAgentRefPath),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
@@ -130,7 +130,7 @@ object TryTest {
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
     OrderAttachable(TestAgentRefPath),
-    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+    OrderTransferredToAgent(TestAgentRefPath),
 
     OrderStarted,
     OrderProcessingStarted,
@@ -163,7 +163,7 @@ object TryTest {
     OrderAdded(StoppingWorkflow.id),
     OrderMoved(Position(0) / Try_ % 0),
     OrderAttachable(TestAgentRefPath),
-    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+    OrderTransferredToAgent(TestAgentRefPath),
 
     OrderStarted,
     OrderProcessingStarted,

@@ -114,7 +114,6 @@ private[graphql] object MasterGraphqlSchema
       Field("message", StringType, resolve = _.value.toString)))  // Not value.message, JSON differs from Scala !!!
 
   private implicit val WorkflowIdType = fileBasedIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
-  private implicit val AgentRefIdType = fileBasedIdType[AgentRefPath]("AgentRefId", "Agent's path and VersionId")
 
   private def fileBasedIdType[P <: TypedPath: SomeType](name: String, description: String): ObjectType[QueryContext, FileBasedId[P]] = ObjectType(
     name,
@@ -244,10 +243,6 @@ private[graphql] object MasterGraphqlSchema
       }),
       Field("agentRefPath", OptionType(AgentRefPathType), resolve = _.value match {
         case o: Order.AttachedState.HasAgentRefPath ⇒ Some(o.agentRefPath)
-        case _ ⇒ None
-      }),
-      Field("agentRefId", OptionType(AgentRefIdType), resolve = _.value match {
-        case o: Order.AttachedState.HasAgentRefId ⇒ Some(o.agentRefId)
         case _ ⇒ None
       })))
 

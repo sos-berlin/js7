@@ -260,7 +260,7 @@ object FatEventRouteTest
     (1 to 18).map(i ⇒
       Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Payload.empty)) ::     // Yields OrderFatEvent
       Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
-      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId)) ::  // No FatEvent
+      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId.path)) ::  // No FatEvent
       Nil)
   private val TestFatEvents =
     for (events ← OrderEvents; event = events.head) yield

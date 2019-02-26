@@ -61,7 +61,7 @@ final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
 
     master.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE INITIAL:0,Processing,Succeeded(ReturnCode(0)),Some(Attached(AgentRef:/AGENT-A INITIAL)),None,Payload(),None)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE/🥕,Workflow:/DUPLICATE INITIAL:0,Processing,Succeeded(ReturnCode(0)),Some(Attached(AgentRef:/AGENT-A)),None,Payload(),None)"))
     assert(master.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.FreshOrStarted)).await(99.s).orThrow
@@ -93,83 +93,83 @@ object ForkTest {
 
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
-      XOrderId <-: OrderAttachable(AAgentRefId.path),                             YOrderId <-: OrderAttachable(AAgentRefId.path),
-      XOrderId <-: OrderTransferredToAgent(AAgentRefId),                          YOrderId <-: OrderTransferredToAgent(AAgentRefId),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentRefPath),                     YOrderId <-: OrderAttachable(AAgentRefPath),
+      XOrderId <-: OrderTransferredToAgent(AAgentRefPath),             YOrderId <-: OrderTransferredToAgent(AAgentRefPath),
 
-      XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(0, "🥕", 1)),                           YOrderId <-: OrderMoved(Position(0, "🍋", 1)),
+      XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
+      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(0, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(0, "🍋", 1)),
 
-      XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
+      XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(1)),
 
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
-      XOrderId <-: OrderAttachable(AAgentRefId.path),                             YOrderId <-: OrderAttachable(AAgentRefId.path),
-      XOrderId <-: OrderTransferredToAgent(AAgentRefId),                          YOrderId <-: OrderTransferredToAgent(AAgentRefId),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentRefPath),                     YOrderId <-: OrderAttachable(AAgentRefPath),
+      XOrderId <-: OrderTransferredToAgent(AAgentRefPath),             YOrderId <-: OrderTransferredToAgent(AAgentRefPath),
 
-      XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(1, "🥕", 1)),                           YOrderId <-: OrderMoved(Position(1, "🍋", 1)),
+      XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
+      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(1, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(1, "🍋", 1)),
 
-      XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
+      XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(2)),
 
-    TestOrder.id <-: OrderAttachable(BAgentRefId.path),
-    TestOrder.id <-: OrderTransferredToAgent(BAgentRefId),
+    TestOrder.id <-: OrderAttachable(BAgentRefPath),
+    TestOrder.id <-: OrderTransferredToAgent(BAgentRefPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(3)),
 
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
-                                                                               YOrderId <-: OrderDetachable,
-                                                                               YOrderId <-: OrderTransferredToMaster,
-                                                                               YOrderId <-: OrderAttachable(AAgentRefId.path),
-                                                                               YOrderId <-: OrderTransferredToAgent(AAgentRefId),
+                                                                       YOrderId <-: OrderDetachable,
+                                                                       YOrderId <-: OrderTransferredToMaster,
+                                                                       YOrderId <-: OrderAttachable(AAgentRefPath),
+                                                                       YOrderId <-: OrderTransferredToAgent(AAgentRefPath),
 
-      XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(3, "🥕", 1)),                           YOrderId <-: OrderMoved(Position(3, "🍋", 1)),
+      XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
+      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(3, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(3, "🍋", 1)),
 
-                                                                               YOrderId <-: OrderDetachable,
-                                                                               YOrderId <-: OrderTransferredToMaster,
-                                                                               YOrderId <-: OrderAttachable(BAgentRefId.path),
-                                                                               YOrderId <-: OrderTransferredToAgent(BAgentRefId),
+                                                                       YOrderId <-: OrderDetachable,
+                                                                       YOrderId <-: OrderTransferredToMaster,
+                                                                       YOrderId <-: OrderAttachable(BAgentRefPath),
+                                                                       YOrderId <-: OrderTransferredToAgent(BAgentRefPath),
 
-                                                                               YOrderId <-: OrderProcessingStarted,
-                                                                               YOrderId <-: OrderStdoutWritten(StdoutOutput),
-                                                                               YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-                                                                               YOrderId <-: OrderMoved(Position(3, "🍋", 2)),
+                                                                       YOrderId <-: OrderProcessingStarted,
+                                                                       YOrderId <-: OrderStdoutWritten(StdoutOutput),
+                                                                       YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+                                                                       YOrderId <-: OrderMoved(Position(3, "🍋", 2)),
 
-      XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
+      XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(4)),
 
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
-      XOrderId <-: OrderAttachable(AAgentRefId.path),                             YOrderId <-: OrderAttachable(BAgentRefId.path),
-      XOrderId <-: OrderTransferredToAgent(AAgentRefId),                          YOrderId <-: OrderTransferredToAgent(BAgentRefId),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
+      XOrderId <-: OrderAttachable(AAgentRefPath),                     YOrderId <-: OrderAttachable(BAgentRefPath),
+      XOrderId <-: OrderTransferredToAgent(AAgentRefPath),             YOrderId <-: OrderTransferredToAgent(BAgentRefPath),
 
-      XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(4, "🥕", 1)),                           YOrderId <-: OrderMoved(Position(4, "🍋", 1)),
+      XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
+      XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(4, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(4, "🍋", 1)),
 
-      XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
+      XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
     TestOrder.id <-: OrderFinished)

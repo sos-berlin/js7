@@ -84,7 +84,7 @@ object ExecuteTest {
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),
     OrderAttachable(TestAgentRefPath),
-    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+    OrderTransferredToAgent(TestAgentRefPath),
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),

@@ -495,10 +495,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "eventId": 1011,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
-          "agentRefId": {
-            "path": "/AGENT",
-            "versionId": "INITIAL"
-          }
+          "agentRefPath": "/AGENT"
         }, {
           "eventId": 1012,
           "TYPE": "OrderStarted",
@@ -621,7 +618,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   position
                 },
                 attachedState {
-                  agentRefId { path, versionId }
+                  agentRefPath
                 }
               }
             }""".asJson,
@@ -640,10 +637,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   "position": [ 1 ]
                 },
                 "attachedState": {
-                  "agentRefId": {
-                    "path": "/AGENT",
-                    "versionId": "INITIAL"
-                  }
+                  "agentRefPath": "/AGENT"
                 }
               }
             }

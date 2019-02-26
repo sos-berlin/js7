@@ -47,7 +47,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+      OrderTransferredToAgent(TestAgentRefPath),
       OrderCancelationMarked(CancelMode.NotStarted),
       OrderDetachable,
       OrderTransferredToMaster,
@@ -63,7 +63,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+      OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
@@ -92,7 +92,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(TwoJobsWorkflow.id, order.scheduledFor),
       OrderAttachable(TestAgentRefPath),
-      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
+      OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
