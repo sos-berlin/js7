@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
@@ -29,12 +29,12 @@ final class AnyJsonCodecsTest extends FreeSpec {
       "boolean" → true,
       "array" → Vector(1, "two"))
     val json =
-      """{
+      json"""{
         "string": "STRING",
         "int": 333,
         "boolean": true,
         "array": [1, "two"]
-      }""".parseJsonOrThrow
+      }"""
     assert(mapToJson(map) == json)
     assert(jsonToAny(json) == map)
 

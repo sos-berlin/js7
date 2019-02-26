@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -20,9 +20,9 @@ final class JavaJsonCodecsTest extends FreeSpec {
 
   "Path" in {
     if (File.separatorChar == '\\') {
-      testJson(Paths.get("/tmp/test"), """ "\\tmp\\test" """)
+      testJson(Paths.get("/tmp/test"), json""" "\\tmp\\test" """)
     } else {
-      testJson(Paths.get("/tmp/test"), """ "/tmp/test" """)
+      testJson(Paths.get("/tmp/test"), json""" "/tmp/test" """)
     }
   }
 

@@ -30,12 +30,12 @@ final class TypedJsonCodecTest extends FreeSpec {
 
   "decode unknown subclass" in {
     intercept[UnknownJsonTypeException] {
-      """{ "TYPE": "UNKNOWN" }""".parseJsonOrThrow.as[A].orThrow
+      json"""{ "TYPE": "UNKNOWN" }""".as[A].orThrow
     }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'A'""")
   }
 
   "Nested TypedJsonCodec" in {
-    testJson[A](AA1(7)  , """{ "TYPE": "AA1", "int": 7 }""")
+    testJson[A](AA1(7), json"""{ "TYPE": "AA1", "int": 7 }""")
   }
 
   "Union" in {

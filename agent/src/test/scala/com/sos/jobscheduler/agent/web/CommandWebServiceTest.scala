@@ -58,7 +58,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
-        """{ "TYPE": "Accepted" }""".parseJsonOrThrow)
+        json"""{ "TYPE": "Accepted" }""")
     }
   }
 
@@ -69,10 +69,10 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
       assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
-        """{
+        json"""{
           "TYPE": "Problem",
           "message": "Agent is shutting down"
-         }""".parseJsonOrThrow)
+         }""")
     }
   }
 

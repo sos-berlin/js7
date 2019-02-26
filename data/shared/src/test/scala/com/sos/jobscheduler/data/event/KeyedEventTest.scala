@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.KeyedEventTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Json
 import org.scalatest.FreeSpec
 
 /**
@@ -25,7 +26,7 @@ final class KeyedEventTest extends FreeSpec {
 
   "StringEvent" in {
     check(KeyedEvent(StringEvent("HUNDRED"))(100),
-      """{
+      json"""{
         "TYPE": "StringEvent",
         "key": 100,
         "string": "HUNDRED"
@@ -34,7 +35,7 @@ final class KeyedEventTest extends FreeSpec {
 
   "IntEvent" in {
     check(KeyedEvent(IntEvent(100))(100),
-      """{
+      json"""{
         "TYPE": "IntEvent",
         "key": 100,
         "int": 100
@@ -43,31 +44,31 @@ final class KeyedEventTest extends FreeSpec {
 
   "SimpleEvent" in {
     check(KeyedEvent(SimpleEvent)(100),
-      """{
+      json"""{
         "TYPE": "SimpleEvent",
         "key": 100
       }""")
   }
 
-  private def check(event: KeyedEvent[TestEvent], jsonString: String): Unit = {
+  private def check(event: KeyedEvent[TestEvent], json: Json): Unit = {
     implicit val testEventJsonFormat = TypedJsonCodec[TestEvent](
       Subtype(deriveCodec[StringEvent]),
       Subtype(deriveCodec[IntEvent]),
       Subtype(SimpleEvent))
-    testJson(event, jsonString)
+    testJson(event, json)
   }
 
   "SimpleEvent with NoKey" in {
     checkSingletonKey(KeyedEvent(AEvent),
-      """{
+      json"""{
         "TYPE": "AEvent"
       }""")
   }
 
-  private def checkSingletonKey(event: KeyedEvent[AEvent.type], jsonString: String): Unit = {
+  private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: Json): Unit = {
     implicit val testEventJsonFormat = TypedJsonCodec[AEvent.type](
       Subtype(AEvent))
-    testJson(event, jsonString)
+    testJson(event, json)
   }
 }
 

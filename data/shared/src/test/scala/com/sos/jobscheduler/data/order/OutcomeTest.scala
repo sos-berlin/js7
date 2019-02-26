@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Outcome.Undisrupted
@@ -38,38 +39,42 @@ final class OutcomeTest extends FreeSpec {
 
   "JSON" - {
     "Succeeded" in {
-      testJson[Outcome](Outcome.Succeeded(ReturnCode(0)),"""{
-        "TYPE": "Succeeded",
-        "returnCode": 0
-      }""")
+      testJson[Outcome](Outcome.Succeeded(ReturnCode(0)), json"""
+        {
+          "TYPE": "Succeeded",
+          "returnCode": 0
+        }""")
     }
 
     "Failed" in {
-      testJson[Outcome](Outcome.Failed(ReturnCode(1)),"""{
-        "TYPE": "Failed",
-        "returnCode": 1
-      }""")
+      testJson[Outcome](Outcome.Failed(ReturnCode(1)), json"""
+        {
+          "TYPE": "Failed",
+          "returnCode": 1
+        }""")
     }
 
     "Disrupted(JobSchedulerRestarted)" in {
-      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted),"""{
-        "TYPE": "Disrupted",
-        "reason": {
-          "TYPE": "JobSchedulerRestarted"
-        }
-      }""")
+      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted), json"""
+        {
+          "TYPE": "Disrupted",
+          "reason": {
+            "TYPE": "JobSchedulerRestarted"
+          }
+        }""")
     }
 
     "Disrupted(Other)" in {
-      testJson[Outcome](Outcome.Disrupted(Problem("OTHER")),"""{
-        "TYPE": "Disrupted",
-        "reason": {
-          "TYPE": "Other",
-          "problem": {
-            "message": "OTHER"
+      testJson[Outcome](Outcome.Disrupted(Problem("OTHER")), json"""
+        {
+          "TYPE": "Disrupted",
+          "reason": {
+            "TYPE": "Other",
+            "problem": {
+              "message": "OTHER"
+            }
           }
-        }
-      }""")
+        }""")
     }
   }
 }

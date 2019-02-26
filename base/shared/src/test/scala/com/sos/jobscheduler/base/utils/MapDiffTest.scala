@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -39,13 +40,13 @@ final class MapDiffTest extends FreeSpec {
 
   "JSON" in {
     testJson(MapDiff[String, String](),
-      """{
+      json"""{
         "changed": {},
         "deleted": []
       }""")
 
     testJson(MapDiff(Map("a" → "A", "b" → "B"), Set("x", "y")),
-      """{
+      json"""{
         "changed": {
           "a": "A",
           "b": "B"

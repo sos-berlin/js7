@@ -40,7 +40,7 @@ final class CirceUtilsTest extends FreeSpec {
     implicit val myListMapCodec = listMapCodec[Int, String]()
     implicit val aCodec = deriveCodec[A]
     testJson(A(0, ListMap(1 → "eins", 2 → "zwei", 3 → "drei", 4 → "vier")),
-      """{
+      json"""{
         "a": 0,
         "listMap": [
           { "key": 1, "value": "eins" },
@@ -64,12 +64,12 @@ final class CirceUtilsTest extends FreeSpec {
 
     "Interpolating Int value" in {
       val i = 7
-      assert(json"""{ "A": $i }""" ==  Json.obj("A" → Json.fromInt(7)))
+      assert(json"""{ "A": $i }""" == Json.obj("A" → Json.fromInt(7)))
     }
 
     "Interpolating Array value" in {
       val array = List(1, 2, 3)
-      assert(json"""{ "A": $array }""" ==  Json.obj("A" → Json.fromValues(array map Json.fromInt)))
+      assert(json"""{ "A": $array }""" == Json.obj("A" → Json.fromValues(array map Json.fromInt)))
     }
   }
 

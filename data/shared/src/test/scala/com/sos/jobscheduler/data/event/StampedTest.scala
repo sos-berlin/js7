@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
@@ -21,13 +21,13 @@ final class StampedTest extends FreeSpec {
     case class A(number: Int)
     implicit val codec = deriveCodec[A]
     testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), A(111)),
-      """{
+      json"""{
         "eventId": 777,
         "timestamp": 123,
         "number": 111
       }""")
     testJson(Stamped(EventId(123007), Timestamp.ofEpochMilli(123), A(111)),
-      """{
+      json"""{
         "eventId": 123007,
         "number": 111
       }""")
@@ -35,13 +35,13 @@ final class StampedTest extends FreeSpec {
 
   "JSON with array" in {
     testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), List(111, 222)),
-      """{
+      json"""{
         "eventId": 777,
         "timestamp": 123,
         "array": [111, 222]
       }""")
     testJson(Stamped(EventId(123007), Timestamp.ofEpochMilli(123), List(111, 222)),
-      """{
+      json"""{
         "eventId": 123007,
         "array": [111, 222]
       }""")
@@ -54,7 +54,7 @@ final class StampedTest extends FreeSpec {
       Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE").asJson.as[Stamped[String]]
     }
     //testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), "VALUE"),
-    //  """{
+    //  json"""{
     //    "eventId": 777,
     //    "timestamp": 123,
     //    "value": "VALUE"

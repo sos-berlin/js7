@@ -15,8 +15,9 @@ final class CirceJsonTesterTest extends FreeSpec {
   }
 }
 
-object CirceJsonTesterTest {
-  private[tester] val JsonString = """{
+object CirceJsonTesterTest
+{
+  private val JsonString = """{
       "boole": true,
       "int": 2147483647,
       "long": -9223372036854775808,
@@ -27,10 +28,10 @@ object CirceJsonTesterTest {
       "set": [ "a", "b" ]
     }"""
 
-  private[tester] val a = A(true, Int.MaxValue, Long.MinValue, 1.23456789e33, "STRING", Some(1), None, List(1, 2, 3), Set("a", "b"))
+  private val a = A(true, Int.MaxValue, Long.MinValue, 1.23456789e33, "STRING", Some(1), None, List(1, 2, 3), Set("a", "b"))
 
   @JsonCodec
-  private[tester] final case class A(
+  private final case class A(
     boole: Boolean,
     int: Int,
     long: Long,

@@ -122,8 +122,8 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       writeFile(CWorkflowPath)
       (live / "UNKNOWN.tmp") := "?"
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
-      (live / "ERROR-1.workflow.json") := """{ "something": "different" }"""
-      (live / "ERROR-2.workflow.json") := """{ "instructions": 0 }"""
+      (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
+      (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),

@@ -58,9 +58,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
             workflowPath
           }
         }""",
-      """{
+      json"""{
         "id": "11"
-      }""".parseJsonOrThrow,
+      }""",
       json"""{
         "data": {
           "order": {
