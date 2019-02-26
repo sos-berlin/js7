@@ -34,6 +34,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentHttps = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(agentRefPaths,
+    fileBased = fileBased,
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
@@ -62,7 +63,6 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     httpPort = masterHttpPort,
     httpsPort = masterHttpsPort,
     mutualHttps = masterHttpsMutual,
-    fileBased = fileBased
   ) await 99.s
 
   protected final def sign(fileBased: FileBased) = directoryProvider.sign(fileBased)

@@ -116,7 +116,7 @@ extends HasCloser {
         body(master, agents)))
 
   def runMaster()(body: RunningMaster ⇒ Unit): Unit = {
-    val runningMaster = startMaster(name = masterName, fileBased = fileBased) await 99.s
+    val runningMaster = startMaster() await 99.s
     try {
       body(runningMaster)
       runningMaster.terminate() await 99.s
@@ -128,7 +128,17 @@ extends HasCloser {
     }
   }
 
-  private[testenv] def startMaster(
+  def startMaster(
+    module: Module = EMPTY_MODULE,
+    config: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpsPort: Option[Int] = None,
+    mutualHttps: Boolean = false)
+  : Task[RunningMaster] =
+    startMaster2(module, config, httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, fileBased = fileBased,
+      name = masterName)
+
+  private def startMaster2(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findRandomFreeTcpPort()),

@@ -30,6 +30,7 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 
   protected def httpClient = this
 
+  def baseUri: Uri
   protected def keyStoreRef: Option[KeyStoreRef]
   protected def trustStoreRef: Option[TrustStoreRef]
 

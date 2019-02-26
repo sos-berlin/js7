@@ -161,8 +161,8 @@ with MainJournalingActor[Event]
     for (masterState ← recoverer.masterState) {
       hasRecovered = true
       setRepo(masterState.repo)
-      for (agent ← repo.currentFileBaseds collect { case o: AgentRef ⇒ o }) {
-        registerAgent(agent)
+      for (agentRef ← repo.currentFileBaseds collect { case o: AgentRef ⇒ o }) {
+        registerAgent(agentRef)
       }
       for ((agentRefPath, eventId) ← masterState.agentToEventId) {
         agentRegister(agentRefPath).lastAgentEventId = eventId
@@ -406,17 +406,20 @@ with MainJournalingActor[Event]
       updateAgents(diff.select[AgentRefPath, AgentRef])
 
     def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
-      deletionNotSupported(diff) ++
-        changeNotSupported(diff) :+
+      deletionNotSupported(diff) :+
         Valid(SyncIO {
-          for (agent ← diff.added) registerAgent(agent).start()
+          for (agentRef <- diff.added) registerAgent(agentRef).start()
+          for (agentRef <- diff.updated) {
+            agentRegister.update(agentRef)
+            agentRegister(agentRef.path).reconnect()
+          }
         })
 
     def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of configuration files is not supported: $o")))
+      diff.deleted.map(o ⇒ Invalid(Problem(s"Deletion of these configuration objects is not supported: $o")))
 
-    def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-      diff.updated.map(o ⇒ Invalid(Problem(s"Change of configuration files is not supported: ${o.path}")))
+    //def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
+    //  diff.updated.map(o ⇒ Invalid(Problem(s"Change of these configuration objects is not supported: ${o.path}")))
 
     for {
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
@@ -449,8 +452,8 @@ with MainJournalingActor[Event]
 
   private def registerAgent(agent: AgentRef): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.id, agent.uri, masterConfiguration, journalActor = journalActor),
-      encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/"))))
+      AgentDriver.props(agent.path, agent.uri, masterConfiguration, journalActor = journalActor),
+      encodeAsActorName("Agent-" + agent.path.withoutStartingSlash)))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.path → entry)
     entry
@@ -661,17 +664,26 @@ private[master] object MasterOrderKeeper {
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {
     override def insert(kv: (AgentRefPath, AgentEntry)) = super.insert(kv)
     override def -=(a: ActorRef) = super.-=(a)
+
+    def update(agentRef: AgentRef): Unit = {
+      val oldEntry = apply(agentRef.path)
+      val entry = oldEntry.copy(agentRef = agentRef)
+      super.update(agentRef.path -> entry)
+    }
   }
 
   private case class AgentEntry(
-    agent: AgentRef,
+    agentRef: AgentRef,
     actor: ActorRef,
     var lastAgentEventId: EventId = EventId.BeforeFirst)
   {
-    def agentRefPath = agent.path
+    def agentRefPath = agentRef.path
 
     def start()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.Start(lastAgentEventId = lastAgentEventId)
+
+    def reconnect()(implicit sender: ActorRef): Unit =
+      actor ! AgentDriver.Input.Reconnect(uri = agentRef.uri)
   }
 
   private case class OrderEntry(var order: Order[Order.State])

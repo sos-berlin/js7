@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
-import com.sos.jobscheduler.data.agent.{AgentRefId, AgentRefPath}
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -37,12 +37,12 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentRefId: AgentRefId, uri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
+final class AgentDriver private(agentRefPath: AgentRefPath, initialUri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash {
 
-  private val logger = Logger.withPrefix[AgentDriver](agentRefId.toShortString + " " + uri)
+  private val logger = Logger.withPrefix[AgentDriver](agentRefPath.string)
   private val config = masterConfiguration.config
   private val batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size")
   private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
@@ -51,9 +51,10 @@ with ReceiveLoggingActor.WithStash {
   private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
   private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
   private val terminationLogoutTimeout = config.getDuration("jobscheduler.master.agent-driver.termination-logout-timeout").toFiniteDuration
-  private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefId.path.string)
+  private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefPath.string)
   private val recouplePause = new RecouplingPause
-  private val client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
+  private var uri = initialUri
+  private var client: AgentClient = null
 
   private val agentUserAndPassword: Option[UserAndPassword] =
     config.optionAs[SecretString](authConfigPath)
@@ -82,7 +83,7 @@ with ReceiveLoggingActor.WithStash {
       self ! Internal.BatchFailed(inputs, throwable)
   }
 
-  protected def key = agentRefId.path  // Only one version is active at any time
+  protected def key = agentRefPath  // Only one version is active at any time
   protected def recoverFromSnapshot(snapshot: Any) = {}
   protected def recoverFromEvent(event: MasterAgentEvent) = {}
   protected def snapshot = None
@@ -94,9 +95,11 @@ with ReceiveLoggingActor.WithStash {
   }
 
   override def postStop() = {
-    client.logout()
-      .guarantee(Task(client.close()))
-      .runAsyncAndForget
+    if (client != null) {
+      client.logout()
+        .guarantee(Task(client.close()))
+        .runAsyncAndForget
+    }
     keepEventsCancelable foreach (_.cancel())
     super.postStop()
   }
@@ -107,6 +110,10 @@ with ReceiveLoggingActor.WithStash {
     case Internal.Couple ⇒
       delayKeepEvents = false
       recouplePause.onCouple()
+      if (client == null/*only initially*/ || client.baseUri != uri) {
+        if (client != null) client.close()
+        client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
+      }
       ( for {
           _ ← client.login(agentUserAndPassword)  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
           _ ← if (lastEventId == EventId.BeforeFirst)
@@ -120,6 +127,9 @@ with ReceiveLoggingActor.WithStash {
       unstashAll()
       become("coupling")(coupling)
 
+    case Input.Reconnect(uri_) =>
+      uri = uri_
+
     case _ ⇒
       stash()
   }
@@ -131,6 +141,8 @@ with ReceiveLoggingActor.WithStash {
       isCoupled = true
       recouplePause.onCouplingSucceeded()
       commandQueue.onRecoupled()
+      // TODO AgentRunId einführen und vergleichen, außerdem EventId vergleichen, um erfolgreiche Koppelung melden
+      logger.info(s"Coupled with ${client.baseUri}")
       unstashAll()
       become("waitingForStart")(waitingForStart)
       if (startInputReceived) {
@@ -150,7 +162,6 @@ with ReceiveLoggingActor.WithStash {
     case Input.Start(eventId) ⇒
       lastEventId = eventId
       startInputReceived = true
-      logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
       commandQueue.maySend()
       unstashAll()
       become("ready")(ready)
@@ -161,6 +172,10 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def ready: Receive = {
+    case Input.Reconnect(uri_) =>
+      uri = uri_
+      recouple()
+
     case Internal.FetchEvents if isCoupled && !isAwaitingFetchedEvents ⇒
       if (!terminating) {
         isAwaitingFetchedEvents = true
@@ -196,9 +211,11 @@ with ReceiveLoggingActor.WithStash {
         isCoupled = false
         // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um folgende Akka-Warnungen zu vermeiden
         // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] LoggedIn entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
-        client.logout().timeout(terminationLogoutTimeout).materialize foreach { tried ⇒
-          for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
-          self ! PoisonPill
+        if (client != null) {
+          client.logout().timeout(terminationLogoutTimeout).materialize foreach { tried ⇒
+            for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
+            self ! PoisonPill
+          }
         }
       }
   }
@@ -291,7 +308,7 @@ with ReceiveLoggingActor.WithStash {
         eventSeq match {
           case EventSeq.NonEmpty(stampedEvents) ⇒
             lastError = None
-            if (logger.underlying.isTraceEnabled) for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") }
+            logger.whenTraceEnabled { for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") } }
 
             context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream or acknowledge
 
@@ -308,7 +325,7 @@ with ReceiveLoggingActor.WithStash {
             }
 
           case torn: TearableEventSeq.Torn ⇒
-            val problem = Problem(s"Bad response from Agent $agentRefId $uri: $torn, requested events after=$after")
+            val problem = Problem(s"Bad response from Agent $agentRefPath ${client.baseUri}: $torn, requested events after=$after")
             logger.error(problem.toString)
             persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
               if (isCoupled) scheduler.scheduleOnce(15.second) {
@@ -357,15 +374,15 @@ with ReceiveLoggingActor.WithStash {
     }
   }
 
-  override def toString = s"AgentDriver(${agentRefId.toShortString}: $uri)"
+  override def toString = s"AgentDriver($agentRefPath)"
 }
 
 private[master] object AgentDriver
 {
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
 
-  def props(agentRefId: AgentRefId, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
-    Props { new AgentDriver(agentRefId, uri, masterConfiguration, journalActor) }
+  def props(agentRefPath: AgentRefPath, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
+    Props { new AgentDriver(agentRefPath, uri, masterConfiguration, journalActor) }
 
   private class RecouplingPause {
     private val Minimum = 1.second
@@ -388,6 +405,8 @@ private[master] object AgentDriver
 
   sealed trait Input
   object Input {
+    final case class Reconnect(uri: Uri)
+
     final case class Start(lastAgentEventId: EventId)
 
     final case class AttachOrder(order: Order[Order.FreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow]) extends Input with Queueable {

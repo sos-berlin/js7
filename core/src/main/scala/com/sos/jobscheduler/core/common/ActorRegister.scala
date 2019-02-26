@@ -23,6 +23,11 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
     this += kv
   }
 
+  protected def update(kv: (K, V)): Unit = {
+    require(valueToActorRef(keyToValue(kv._1)) == valueToActorRef(kv._2), "ActorRef must not change")
+    keyToValue(kv._1) = kv._2
+  }
+
   protected def +=(kv: (K, V)): Unit = {
     keyToValue += kv
     val (k, v) = kv
