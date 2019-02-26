@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.order.Outcome.Undisrupted
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -16,6 +17,23 @@ final class OutcomeTest extends FreeSpec {
     assert(!Outcome.Disrupted(Problem("error")).isSucceeded)
     assert(Outcome.Disrupted(Problem("error")) == Outcome.Disrupted(Problem("error")))
     assert(!Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted).isSucceeded)
+  }
+
+  "Undisrupted" in {
+    assert(Undisrupted(ReturnCode(1), true) == Outcome.Succeeded(ReturnCode(1)))
+    assert(Undisrupted(ReturnCode(1), false) == Outcome.Failed(ReturnCode(1)))
+    assert(Outcome.Succeeded(ReturnCode(1)) match {
+      case Outcome.Undisrupted(ReturnCode(1), true) => true
+      case _ => false
+    })
+    assert(Outcome.Failed(ReturnCode(1)) match {
+      case Outcome.Undisrupted(ReturnCode(1), false) => true
+      case _ => false
+    })
+    assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
+      case Outcome.Undisrupted(_, _) => false
+      case _ => true
+    })
   }
 
   "JSON" - {

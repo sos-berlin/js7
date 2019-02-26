@@ -5,6 +5,8 @@ import com.sos.jobscheduler.data.job.ReturnCode
 /**
   * @author Joacim Zschimmer
   */
-final class Scope(
-  val returnCode: ReturnCode,
-  val variableNameToString: PartialFunction[String, String])
+trait Scope {
+  val returnCode: ReturnCode
+  val retryCount: Int
+  val variableNameToString: PartialFunction[String, String]
+}

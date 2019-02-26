@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable}
-import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.Gap
 
 /**

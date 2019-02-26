@@ -17,14 +17,20 @@ trait Instruction
   def adopt(workflow: Workflow): Instruction =
     this
 
-  def flattenedWorkflows(parentPosition: Position): List[(BranchPath, Workflow)] =
-    Nil
+  def workflows: Seq[Workflow] = branchWorkflows map (_._2)
 
-  def flattenedInstructions(parentPosition: Position): Seq[(Position, Instruction.Labeled)] =
-    Nil
+  protected def branchWorkflows: Seq[(BranchId, Workflow)] = Nil
+
+  final def flattenedWorkflows(parent: Position): Seq[(BranchPath, Workflow)] =
+    branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedWorkflowsOf(parent / branchId) }
+
+  final def flattenedInstructions(parent: Position): Seq[(Position, Instruction.Labeled)] =
+    branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedInstructions(parent / branchId) }
 
   def workflow(branchId: BranchId): Checked[Workflow] =
     Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")
+
+  def normalizeBranchId(branchId: BranchId) = branchId
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
 

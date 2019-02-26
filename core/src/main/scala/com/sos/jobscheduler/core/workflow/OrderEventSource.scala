@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancela
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext, Workflow, WorkflowId}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
 
 /**
@@ -55,7 +55,9 @@ final class OrderEventSource(
               assert(oId == orderId)
               catchPosition(orderId) match {
                 case None      ⇒ Valid(Some(oId <-: OrderStopped(outcome)))
-                case Some(pos) ⇒ Valid(Some(oId <-: OrderCatched(outcome, pos)))
+                case Some(pos) ⇒
+                  applyMoveInstructions(order.withPosition(pos))
+                    .flatMap(pos => Valid(Some(oId <-: OrderCatched(outcome, pos))))
               }
 
             case o ⇒ Valid(o)

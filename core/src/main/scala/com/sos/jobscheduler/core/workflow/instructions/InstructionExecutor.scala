@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Fork, Gap, If, Offer, TryInstruction}
+import com.sos.jobscheduler.data.workflow.Instruction
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Fork, Gap, If, Offer, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext}
 
 /**
   * @author Joacim Zschimmer
@@ -35,6 +36,7 @@ object InstructionExecutor
       case _: If ⇒ IfExecutor
       case _: TryInstruction ⇒ TryExecutor
       case _: Offer ⇒ OfferExecutor
+      case _: Retry => RetryExecutor
     }
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Option[Position] =

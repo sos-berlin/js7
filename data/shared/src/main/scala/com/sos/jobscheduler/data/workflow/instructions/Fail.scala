@@ -8,7 +8,9 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class Fail(returnCode: Option[ReturnCode]) extends Instruction
+sealed case class Fail(returnCode: Option[ReturnCode]) extends Instruction
 {
   override def toString = "fail"
 }
+
+object Fail extends Fail(None)

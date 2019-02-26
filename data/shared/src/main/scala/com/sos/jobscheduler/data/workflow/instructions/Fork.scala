@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
+import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.IndexedSeq
@@ -47,11 +47,7 @@ extends Instruction
     branches.collectFirst({ case fj: Fork.Branch if fj.id == branchId ⇒ fj.workflow })
       .fold(super.workflow(branchId))(Valid.apply)
 
-  override def flattenedWorkflows(outer: Position) =
-    branches.toList flatMap (b ⇒ b.workflow.flattenedWorkflowsOf(outer / b.id))
-
-  override def flattenedInstructions(outer: Position) =
-    branches flatMap (b ⇒ b.workflow.flattenedInstructions(outer / b.id))
+  override def branchWorkflows = branches map (b => b.id -> b.workflow)
 
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
 }

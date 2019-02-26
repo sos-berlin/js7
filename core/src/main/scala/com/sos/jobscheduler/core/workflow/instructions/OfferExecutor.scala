@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderOffered, OrderStarted}
-import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.Offer
 
 /**

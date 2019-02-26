@@ -131,6 +131,11 @@ object Expression
     override def toString = "returnCode"
   }
 
+  final case object OrderRetryCount extends NumericExpression {
+    def precedence = Precedence.Factor
+    override def toString = "retryCount"
+  }
+
   sealed trait Precedence {
     protected def precedence: Int
 

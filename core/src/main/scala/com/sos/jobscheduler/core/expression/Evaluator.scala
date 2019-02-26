@@ -50,6 +50,7 @@ final class Evaluator(scope: Scope)
     expr match {
       case NumericConstant(o) ⇒ NumericValue(o).valid
       case OrderReturnCode ⇒ NumericValue(scope.returnCode.number).valid
+      case OrderRetryCount ⇒ NumericValue(scope.retryCount).valid
       case ToNumber(e) ⇒ eval(e) flatMap toNumeric
     }
 

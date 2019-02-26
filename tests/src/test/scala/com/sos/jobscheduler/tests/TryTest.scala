@@ -139,8 +139,7 @@ object TryTest {
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(0) / Catch_ % 0),
-    OrderMoved(Position(1)),  // Empty catch-block, so Order is moved to outer block
+    OrderCatched(Outcome.Failed(ReturnCode(2)), Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),

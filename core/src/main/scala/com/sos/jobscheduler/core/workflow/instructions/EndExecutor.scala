@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.instructionToExecutor
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished, OrderMoved}
-import com.sos.jobscheduler.data.workflow.OrderContext
 import com.sos.jobscheduler.data.workflow.instructions.{End, Fork}
 import com.sos.jobscheduler.data.workflow.position.Position
 

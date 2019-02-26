@@ -18,7 +18,14 @@ import org.scalatest.prop.PropertyChecks._
   */
 final class EvaluatorTest extends FreeSpec
 {
-  private val eval = new Evaluator(new Scope(ReturnCode(1), Map("ASTRING" → "AA", "ANUMBER" → "7"))).eval _
+  private val eval = {
+    val scope = new Scope {
+      val returnCode = ReturnCode(1)
+      val retryCount = 3
+      val variableNameToString = Map("ASTRING" → "AA", "ANUMBER" → "7")
+    }
+    new Evaluator(scope).eval _
+  }
   private val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
 
   testEval("7",
@@ -117,6 +124,10 @@ final class EvaluatorTest extends FreeSpec
 
   testEval("""returnCode < 1""", false,
     Valid(LessThan(OrderReturnCode, NumericConstant(1))))
+
+  testEval("""retryCount""",
+    result = 3,
+    Valid(OrderRetryCount))
 
   testEval(""" "" matches "" """,
     result = true,

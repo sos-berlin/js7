@@ -2,15 +2,16 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderFailed, OrderMoved, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{OrderContext, WorkflowPath}
 import org.scalatest.FreeSpec
 
 /**

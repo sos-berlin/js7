@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -241,6 +241,7 @@ final class OrderTest extends FreeSpec
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
       OrderStopped(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
+      OrderRetrying(Position(1)),
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
       OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
@@ -287,6 +288,7 @@ final class OrderTest extends FreeSpec
           case (_: OrderAwaiting         , `detached`             ) ⇒ _.isInstanceOf[Awaiting]
           case (_: OrderCatched          , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]     // Fail instruction
           case (_: OrderStopped          , `detached` | `attached`) ⇒ _.isInstanceOf[Stopped]   // Fail instruction
+          case (_: OrderRetrying         , `detached` | `attached`) ⇒ _.isInstanceOf[Ready]
           case (_: OrderFinished         , `detached`             ) ⇒ _.isInstanceOf[Finished]
           case (OrderCanceled            , `detached`             ) ⇒ _.isInstanceOf[Order.Canceled]
           case (_: OrderBroken           , _                      ) ⇒ _.isInstanceOf[Broken]

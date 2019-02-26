@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -146,7 +146,7 @@ final class WorkflowParserTest extends FreeSpec {
           "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))))
   }
 
-  "if (...)" in {
+  "if (...) {...}" in {
     check("""define workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
@@ -157,12 +157,29 @@ final class WorkflowParserTest extends FreeSpec {
             Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/THEN"))))))))
   }
 
-  "if (...) else" in {
+  "if (...) {...} else {...}" in {
     check("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(Equal(OrderReturnCode, NumericConstant(-1)),
             Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/THEN")))),
+            Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE")))))))))
+  }
+
+ "if (...) instruction" in {
+    check("""define workflow { if (returnCode == -1) fail }""",
+      Workflow.anonymous(
+        Vector(
+          If(Equal(OrderReturnCode, NumericConstant(-1)),
+            Workflow.of(Fail)))))
+  }
+
+ "if (...) instruction else instruction" in {
+    check("""define workflow { if (returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
+      Workflow.anonymous(
+        Vector(
+          If(Equal(OrderReturnCode, NumericConstant(-1)),
+            Workflow.of(Fail),
             Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE")))))))))
   }
 
@@ -233,10 +250,28 @@ final class WorkflowParserTest extends FreeSpec {
           execute executable="/CATCH", agent="/AGENT";
         }
       }""".stripMargin,
-      Workflow(WorkflowPath.NoId, Vector(TryInstruction(
-        Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TRY")))),
-        Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/CATCH")))))))
+      Workflow(WorkflowPath.NoId, Vector(
+        TryInstruction(
+          Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TRY")))),
+          Workflow.of(Execute.Anonymous(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/CATCH")))))))
     )
+  }
+
+  "retry" - {
+    "no delay" in {
+      check("""
+        define workflow {
+          try {
+            fail;
+          } catch {
+            retry;
+          }
+        }""".stripMargin,
+        Workflow.of(
+          TryInstruction(
+            Workflow.of(Fail),
+            Workflow.of(Retry()))))
+    }
   }
 
   "fail" in {

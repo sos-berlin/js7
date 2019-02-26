@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
@@ -10,7 +11,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{OrderContext, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 

@@ -32,6 +32,12 @@ object Outcome
       else
         Failed(returnCode)
 
+    def unapply(undisrupted: Undisrupted): Some[(ReturnCode, Boolean)] =
+      Some(undisrupted match {
+        case Succeeded(returnCode) => returnCode -> true
+        case Failed(returnCode) => returnCode -> false
+      })
+
     private[Outcome] sealed trait Companion[A <: Undisrupted] {
       def newInstance(returnCode: ReturnCode): A
 

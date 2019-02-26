@@ -8,8 +8,8 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class WorkflowPosition(workflowId: WorkflowId, position: Position) {
-
+final case class WorkflowPosition(workflowId: WorkflowId, position: Position)
+{
   override def toString = s"$workflowId$position"
 }
 

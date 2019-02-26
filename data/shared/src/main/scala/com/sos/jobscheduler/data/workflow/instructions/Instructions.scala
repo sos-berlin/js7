@@ -19,6 +19,7 @@ object Instructions
     Subtype[Offer],
     Subtype[If],
     Subtype[IfNonZeroReturnCodeGoto],
+    Subtype[Retry],
     Subtype.named[TryInstruction]("Try"),
     Subtype[Goto],
     Subtype(singletonCodec(Gap)))

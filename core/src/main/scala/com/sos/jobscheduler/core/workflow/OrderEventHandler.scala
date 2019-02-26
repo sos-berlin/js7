@@ -38,10 +38,10 @@ final class OrderEventHandler(
     event match {
       case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome ⇒
         for {
-          workflow ← idToWorkflow(previousOrder.workflowId)
-          jobKey ← workflow.checkedExecute(previousOrder.position) map {
-            case _: Execute.Anonymous ⇒ JobKey.Anonymous(workflow.id /: previousOrder.position)
-            case o: Execute.Named     ⇒ workflow.jobKey(previousOrder.position.branchPath, o.name).orThrow
+          workflow <- idToWorkflow(previousOrder.workflowId)
+          jobKey <- workflow.checkedExecute(previousOrder.position) flatMap {
+            case _: Execute.Anonymous => workflow.anonymousJobKey(previousOrder.workflowPosition)
+            case o: Execute.Named     => workflow.jobKey(previousOrder.position.branchPath, o.name)
           }
         } yield
           FollowUp.Processed(jobKey) :: Nil

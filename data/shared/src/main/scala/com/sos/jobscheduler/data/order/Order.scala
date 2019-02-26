@@ -95,6 +95,10 @@ final case class Order[+S <: Order.State](
             workflowPosition = workflowPosition.copy(position = movedTo),
             outcome = outcome_))
 
+      case OrderRetrying(to) ⇒
+        check(isState[Ready] && (isDetached || isAttached),
+          withPosition(to))
+
       case OrderForked(children) ⇒
         check(isState[Ready] && (isDetached || isAttached),
           copy(state = Forked(children)))

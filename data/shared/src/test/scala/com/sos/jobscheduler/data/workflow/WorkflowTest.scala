@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, NumericConstant, OrderReturnCode}
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -245,6 +245,31 @@ final class WorkflowTest extends FreeSpec {
       val workflow = wrongWorkflow.copy(nameToJob = Map(AJobName → AJob))
       assert(workflow.completelyChecked == Valid(workflow))
     }
+
+    "retry is not allowed outside a catch block" - {
+      "simple case" in {
+        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
+      }
+    }
+
+    "in try" in {
+      assert(Workflow.of(TryInstruction(Workflow.of(Retry()), Workflow.empty)).completelyChecked
+        == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
+    }
+
+    "in catch" in {
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isValid)
+    }
+
+    "'if' in catch" in {
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry())))))
+        .completelyChecked.isValid)
+    }
+
+    "'fork' is a barrier" in {
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry())))))))
+        .completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
+    }
   }
 
   "namedJobs" in {
@@ -263,6 +288,24 @@ final class WorkflowTest extends FreeSpec {
       JobKey(TestWorkflow.id /: Position(3)) → BExecute.job,
       JobKey(TestWorkflow.id, AJobName) → AJob,
       JobKey(TestWorkflow.id, BJobName) → BJob))
+  }
+
+  "anonymousJobKey" in {
+    val w = Workflow(
+      WorkflowPath("/TEST") % "VERSION",
+      Vector(
+        If(BooleanConstant(true),   // :0
+          Workflow.of(Fail),        // :0/then:0
+          Some(Workflow.of(Fail))), // :0/else:0
+        TryInstruction(             // :1
+          Workflow.of(Fail),        // :1/Try:0
+          Workflow.of(Fail))))      // :1/1:0
+    assert(w.anonymousJobKey(w.id /: Position(99)) == Valid(JobKey.Anonymous(w.id /: Position(99))))
+    assert(w.anonymousJobKey(w.id /: (Position(0) / Then % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(0) / Then % 0))))
+    assert(w.anonymousJobKey(w.id /: (Position(0) / Else % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(0) / Else % 0))))
+    assert(w.anonymousJobKey(w.id /: (Position(1) / Try_ % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
+    // anonymousJobKey normalizes the retry-index of a Retry Position to 0.
+    assert(w.anonymousJobKey(w.id /: (Position(1) / 1    % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
   }
 
   "isDefinedAt, instruction" in {

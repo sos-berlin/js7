@@ -34,13 +34,7 @@ extends Instruction
       case _ ⇒ super.workflow(branchId)
     }
 
-  override def flattenedWorkflows(outer: Position) =
-      thenWorkflow.flattenedWorkflowsOf(outer / Then) :::
-      elseWorkflow.toList.flatMap(_.flattenedWorkflowsOf(outer / Else))
-
-  override def flattenedInstructions(outer: Position) =
-    thenWorkflow.flattenedInstructions(outer / Then) ++
-      elseWorkflow.toVector.flatMap(_.flattenedInstructions(outer / Else))
+  override def branchWorkflows = (Then -> thenWorkflow) :: elseWorkflow.map(Else -> _).toList
 
   override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w ⇒ s" else $w")
 }
