@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.web.master.api.fatevent
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
@@ -33,7 +33,7 @@ final class FatStateTest extends FreeSpec
       None)
   }
 
-  "RepoAdded Agent" in {
+  "RepoAdded AgentRef" in {
     check(RepoEvent.FileBasedAdded(agent.path, sign(agent)),
       None)
   }
@@ -131,7 +131,7 @@ object FatStateTest
 {
   private val versionId = VersionId("1")
   private val orderId = OrderId("ORDER")
-  private val agent = Agent(AgentPath("/AGENT") % versionId, "https://0.0.0.0/")
+  private val agent = AgentRef(AgentRefPath("/AGENT") % versionId, "https://0.0.0.0/")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") % versionId,
     Execute.Anonymous(WorkflowJob(agent.path, ExecutablePath("/EXECUTABLE"))))
 }

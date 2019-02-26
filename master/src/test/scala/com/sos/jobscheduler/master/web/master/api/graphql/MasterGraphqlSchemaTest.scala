@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
@@ -89,7 +89,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
             }
             ... on Execute_Anonymous {
               job {
-                agentPath
+                agentRefPath
                 executablePath
                 taskLimit
               }
@@ -98,8 +98,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec
         }
         attachedState {
           TYPE
-          agentPath
-          agentId {
+          agentRefPath
+          agentRefId {
             path
             versionId
           }
@@ -174,7 +174,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attaching",
-                "agentPath": "/AGENT"
+                "agentRefPath": "/AGENT"
               },
               "outcome" : {
                 "TYPE" : "Succeeded",
@@ -200,8 +200,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentPath": "/AGENT",
-                "agentId": {
+                "agentRefPath": "/AGENT",
+                "agentRefId": {
                   "path": "/AGENT",
                   "versionId": "VERSION"
                 }
@@ -236,8 +236,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentPath": "/AGENT",
-                "agentId": {
+                "agentRefPath": "/AGENT",
+                "agentRefId": {
                   "path": "/AGENT",
                   "versionId": "VERSION"
                 }
@@ -254,7 +254,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "instruction": {
                 "TYPE": "Execute.Anonymous",
                   "job": {
-                    "agentPath": "/AGENT",
+                    "agentRefPath": "/AGENT",
                     "executablePath": "/TEST.sh",
                     "taskLimit": 1
                   }
@@ -262,8 +262,8 @@ final class MasterGraphqlSchemaTest extends FreeSpec
               },
               "attachedState": {
                 "TYPE": "Attached",
-                "agentPath": "/AGENT",
-                "agentId": {
+                "agentRefPath": "/AGENT",
+                "agentRefId": {
                   "path": "/AGENT",
                   "versionId": "2"
                 }
@@ -510,17 +510,17 @@ object MasterGraphqlSchemaTest
 {
   private trait TestContext extends QueryContext {
     def executionContext = ExecutionContext.global
-    private val agentId = AgentPath("/AGENT") % "VERSION"
+    private val agentRefId = AgentRefPath("/AGENT") % "VERSION"
     private val fresh = Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z")))
-    private val attached = Some(Order.Attached(agentId))
+    private val attached = Some(Order.Attached(agentRefId))
 
     protected val idToOrder = Vector[Order[Order.State]](
         Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh),
-        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentId.path))),
+        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefId.path))),
         Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = attached),
         Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready, attachedState = attached),
         Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
-          attachedState = Some(Order.Attached(AgentPath("/AGENT") % "2")),
+          attachedState = Some(Order.Attached(AgentRefPath("/AGENT") % "2")),
           parent = Some(OrderId("PARENT")),
           payload = Payload(Map("KEY" → "VALUE", "X" → "XX"))),
         Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),
@@ -546,9 +546,9 @@ object MasterGraphqlSchemaTest
             Vector(
               Execute(WorkflowJob.Name("JOB")),
               Fork(Vector(
-                Fork.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))))
+                Fork.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))))
               ))),
-            Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
+            Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ ⇒ Problem(s"No such ''$id'")
     })
   }

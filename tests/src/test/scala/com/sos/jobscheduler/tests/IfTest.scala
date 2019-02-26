@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -22,7 +22,7 @@ import org.scalatest.FreeSpec
 final class IfTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"),
         if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%"
@@ -54,7 +54,7 @@ final class IfTest extends FreeSpec {
 }
 
 object IfTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val script = s"""
      |define workflow {
      |  if (true) {
@@ -77,8 +77,8 @@ object IfTest {
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -95,8 +95,8 @@ object IfTest {
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
@@ -113,8 +113,8 @@ object IfTest {
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),

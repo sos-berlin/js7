@@ -2,14 +2,14 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId}
@@ -32,7 +32,7 @@ import scala.concurrent.duration.Duration
 final class KeepEventsTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentId.path :: Nil, TestWorkflow :: Nil)) { provider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefId.path :: Nil, TestWorkflow :: Nil)) { provider ⇒
       for ((_, tree) ← provider.agentToTree) {
         tree.writeExecutable(TestExecutablePath, script(0.s))
       }
@@ -83,9 +83,9 @@ final class KeepEventsTest extends FreeSpec {
 }
 
 private object KeepEventsTest {
-  private val TestAgentId = AgentPath("/agent-111") % "INITIAL"
+  private val TestAgentRefId = AgentRefPath("/agent-111") % "INITIAL"
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(TestAgentId.path, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentRefId.path, TestExecutablePath)))
   private val TestOrder = FreshOrder(OrderId("TEST"), TestWorkflow.id.path)
 }

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow.test
 
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
@@ -11,16 +11,16 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
   */
 object ForkTestSetting {
 
-  val AAgentPath = AgentPath("/AGENT-A")
-  val BAgentPath = AgentPath("/AGENT-B")
-  val AAgentId = AAgentPath % "INITIAL"
-  val BAgentId = BAgentPath % "INITIAL"
-  val AgentPaths = List(AAgentPath, BAgentPath)
+  val AAgentRefPath = AgentRefPath("/AGENT-A")
+  val BAgentRefPath = AgentRefPath("/AGENT-B")
+  val AAgentRefId = AAgentRefPath % "INITIAL"
+  val BAgentRefId = BAgentRefPath % "INITIAL"
+  val AgentRefPaths = List(AAgentRefPath, BAgentRefPath)
   val TestExecutablePath = ExecutablePath("/executable.cmd")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
-  val AJob = WorkflowJob(AAgentPath, TestExecutablePath)
-  val BJob = WorkflowJob(BAgentPath, TestExecutablePath)
+  val AJob = WorkflowJob(AAgentRefPath, TestExecutablePath)
+  val BJob = WorkflowJob(BAgentRefPath, TestExecutablePath)
   val AExecute = Execute.Named(AJobName)
   val BExecute = Execute.Named(BJobName)
 
@@ -72,13 +72,13 @@ object ForkTestSetting {
     source = Some(TestWorkflowSource/*Must be the source source of this workflow*/))
   //  🥕   🍋
   //  Bx   By
-  //  Cx   Cy   ⟵ Cy runs on BAgentPath
+  //  Cx   Cy   ⟵ Cy runs on BAgentRefPath
   //     D
   //  Ex   Ey
   //  Fx   Fy
   //     G
-  //  Hx   Hy   ⟵ Hy runs on BAgentPath
-  //  Ix   Iy   ⟵ Iy runs on BAgentPath
+  //  Hx   Hy   ⟵ Hy runs on BAgentRefPath
+  //  Ix   Iy   ⟵ Iy runs on BAgentRefPath
   //     J
   //    END
 }

@@ -18,11 +18,11 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBaseds, TypedPaths, TypedSourceReader}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.agent.AgentReader
+import com.sos.jobscheduler.master.agent.AgentRefReader
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterCommand.{ReplaceRepo, UpdateRepo}
@@ -166,9 +166,9 @@ extends AutoCloseable with Observing
 
 object Provider
 {
-  private val typedPathCompanions = Set(AgentPath, WorkflowPath)
+  private val typedPathCompanions = Set(AgentRefPath, WorkflowPath)
   private val logger = Logger(getClass)
-  private val readers = AgentReader :: WorkflowReader :: Nil
+  private val readers = AgentRefReader :: WorkflowReader :: Nil
 
   def apply(conf: ProviderConfiguration)(implicit s: Scheduler): Checked[Provider] = {
     val fileBasedSigner = {

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.problems.{CancelStartedOrderProblem, UnknownOrderProblem}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -30,7 +30,7 @@ import scala.concurrent.duration._
   */
 final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentPaths = TestAgentPath :: Nil
+  protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
 
   override def beforeAll() = {
@@ -46,8 +46,8 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     master.eventWatch.await[OrderCanceled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderCancelationMarked(CancelMode.NotStarted),
       OrderDetachable,
       OrderTransferredToMaster,
@@ -62,8 +62,8 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     master.eventWatch.await[OrderFinished](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(SingleJobWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
@@ -91,8 +91,8 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
     master.eventWatch.await[OrderCanceled](_.key == order.id)
     assert(master.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(TwoJobsWorkflow.id, order.scheduledFor),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
@@ -120,12 +120,12 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
 
 object CancelOrderTest {
   private val TestExecutablePath = ExecutablePath("/executable.cmd")
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val SingleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") % "INITIAL",
-    Execute(WorkflowJob(TestAgentPath, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
   private val TwoJobsWorkflow = Workflow.of(
     WorkflowPath("/TWO") % "INITIAL",
-    Execute(WorkflowJob(TestAgentPath, TestExecutablePath)),
-    Execute(WorkflowJob(TestAgentPath, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)),
+    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
 }

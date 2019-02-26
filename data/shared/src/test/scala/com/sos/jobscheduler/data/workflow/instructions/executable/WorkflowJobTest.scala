@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions.executable
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.tester.CirceJsonTester
 import org.scalatest.FreeSpec
@@ -16,10 +16,10 @@ final class WorkflowJobTest extends FreeSpec {
   "JSON" in {
     CirceJsonTester.testJson(
       WorkflowJob(
-        AgentPath("/AGENT"),
+        AgentRefPath("/AGENT"),
         ExecutablePath("/EXECUTABLE")),
       json"""{
-        "agentPath": "/AGENT",
+        "agentRefPath": "/AGENT",
         "executablePath": "/EXECUTABLE",
         "taskLimit": 1
       }""")
@@ -33,8 +33,8 @@ final class WorkflowJobTest extends FreeSpec {
     assert(Name.checked("TEST") == Valid(Name("TEST")))
   }
 
-  "Anonymous Agent is rejected" in {
-    assert(WorkflowJob.checked(AgentPath.Anonymous, ExecutablePath("/EXECUTABLE")) ==
-      Invalid(Problem("Anonymous Agent in Job?")))
+  "Anonymous AgentRef is rejected" in {
+    assert(WorkflowJob.checked(AgentRefPath.Anonymous, ExecutablePath("/EXECUTABLE")) ==
+      Invalid(Problem("Anonymous AgentRef in Job?")))
   }
 }

@@ -5,17 +5,17 @@ import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 /**
   * @author Joacim Zschimmer
   */
-final case class AgentPath private(string: String) extends TypedPath {
+final case class AgentRefPath private(string: String) extends TypedPath {
 
-  def companion = AgentPath
+  def companion = AgentRefPath
 }
 
-object AgentPath extends TypedPath.Companion[AgentPath]
+object AgentRefPath extends TypedPath.Companion[AgentRefPath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json → ".agent.json",
     SourceType.Yaml → ".agent.yaml",
     SourceType.Xml → ".agent.xml")
 
-  protected def unchecked(string: String) = new AgentPath(string)
+  protected def unchecked(string: String) = new AgentRefPath(string)
 }

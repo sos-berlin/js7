@@ -23,7 +23,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
@@ -68,7 +68,7 @@ final class OrderAgentTest extends FreeSpec {
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
 
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
-            agentClient.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", signedWorkflow)).await(99.s)
+            agentClient.commandExecute(AttachOrder(order, TestAgentRefPath % "(initial)", signedWorkflow)).await(99.s)
 
           attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Invalid(TamperedWithSignedMessageProblem)
 
@@ -111,7 +111,7 @@ final class OrderAgentTest extends FreeSpec {
 
           val orders = for (i ← 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready, Outcome.succeeded,
-              Some(Order.Attached(AgentPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
+              Some(Order.Attached(AgentRefPath("/AGENT") % "VERSION")), payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(orders map { AttachOrder(_, SignedSimpleWorkflow) })) await 99.s
@@ -154,6 +154,6 @@ private object OrderAgentTest {
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedState = Some(Order.Detaching(TestAgentPath % "(initial)")),
+      attachedState = Some(Order.Detaching(TestAgentRefPath % "(initial)")),
       payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-B-VALUE")))
 }

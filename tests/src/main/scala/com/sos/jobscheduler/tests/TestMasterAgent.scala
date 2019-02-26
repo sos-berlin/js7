@@ -25,7 +25,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -72,12 +72,12 @@ object TestMasterAgent
   }
 
   private def run(conf: Conf): Unit = {
-    autoClosing(new DirectoryProvider(conf.agentPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env ⇒
+    autoClosing(new DirectoryProvider(conf.agentRefPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env ⇒
       env.master.config / "master.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n"
       env.agents foreach { _.config / "agent.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n" }
       withCloser { implicit closer ⇒
-        for (agentPath ← conf.agentPaths) {
-          TestExecutablePath.toFile(env.agentToTree(agentPath).config / "executables").writeExecutable(
+        for (agentRefPath ← conf.agentRefPaths) {
+          TestExecutablePath.toFile(env.agentToTree(agentRefPath).config / "executables").writeExecutable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
@@ -173,24 +173,24 @@ object TestMasterAgent
   }
 
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
-  private def testJob(conf: Conf, agentPath: AgentPath) =
-    WorkflowJob(agentPath, TestExecutablePath,
-      Map("JOB-VARIABLE" → s"VALUE-${agentPath.withoutStartingSlash}"),
+  private def testJob(conf: Conf, agentRefPath: AgentRefPath) =
+    WorkflowJob(agentRefPath, TestExecutablePath,
+      Map("JOB-VARIABLE" → s"VALUE-${agentRefPath.withoutStartingSlash}"),
       taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(TestWorkflowPath,
-      Execute(testJob(conf, conf.agentPaths.head)),
+      Execute(testJob(conf, conf.agentRefPaths.head)),
       Fork(
-        for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
+        for ((agentRefPath, pathName) ← conf.agentRefPaths.toVector zip PathNames) yield
           Fork.Branch(
             pathName,
             Workflow(
               WorkflowPath("/TestMasterAgent") % "1",
-              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentPath, TestExecutablePath)) }))),
+              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentRefPath, TestExecutablePath)) }))),
       If(Or(Equal(OrderReturnCode, NumericConstant(0)), Equal(OrderReturnCode, NumericConstant(0))),
-        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentPaths.head))),
-        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentPaths.head))))))
+        thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))),
+        elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))))))
 
   private case class Conf(
     directory: Path,
@@ -208,7 +208,7 @@ object TestMasterAgent
     require(period > 0.s)
     require(orderGeneratorCount >= 1)
 
-    val agentPaths: Seq[AgentPath] = for (i ← 1 to agentCount) yield AgentPath(s"/AGENT-$i")
+    val agentRefPaths: Seq[AgentRefPath] = for (i ← 1 to agentCount) yield AgentRefPath(s"/AGENT-$i")
   }
 
   private object Conf {

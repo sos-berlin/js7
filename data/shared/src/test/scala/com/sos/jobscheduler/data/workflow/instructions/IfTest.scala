@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -20,8 +20,8 @@ final class IfTest extends FreeSpec
 {
   private val if_ = If(
     GreaterOrEqual(OrderReturnCode, NumericConstant(3)),
-    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/THEN")))),
-    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE"))))))
+    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))),
+    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE"))))))
 
   "JSON" in {
     testJson[Instruction.Labeled](if_,
@@ -30,12 +30,12 @@ final class IfTest extends FreeSpec
         "predicate": "returnCode >= 3",
         "then": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/THEN", "taskLimit": 1 }}
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/THEN", "taskLimit": 1 }}
           ]
         },
         "else": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/ELSE", "taskLimit": 1 }}
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/ELSE", "taskLimit": 1 }}
           ]
         }
       }""")

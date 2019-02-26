@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.io.File.separator
@@ -21,9 +21,9 @@ final class TypedPathsTest extends FreeSpec {
     val dir = Paths.get("DIR")
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.json") ==
+    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.json") ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.yaml") ==
+    assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.yaml") ==
       Valid(WorkflowPath("/folder/test") → SourceType.Yaml))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
       Valid(WorkflowPath("/folder/test") → SourceType.Txt))

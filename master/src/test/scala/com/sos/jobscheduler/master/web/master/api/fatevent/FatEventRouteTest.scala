@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent
@@ -140,7 +140,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
       eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderMoved(Position(1))))
 
       assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.NonEmpty(List(
-        Stamped(191, OrderId("10") <-: OrderProcessingStartedFat(TestWorkflow.id /: Position(0), TestAgentId.path, "http://127.0.0.1:0", None, Map.empty)),
+        Stamped(191, OrderId("10") <-: OrderProcessingStartedFat(TestWorkflow.id /: Position(0), TestAgentRefId.path, "http://127.0.0.1:0", None, Map.empty)),
         Stamped(192, OrderId("10") <-: OrderProcessedFat(Outcome.succeeded, Map.empty)))))
 
       eventWatch.addStamped(Stamped(EventId(200), OrderId("10") <-: OrderDetachable))  // Does not yield an OrderFatEvent
@@ -247,20 +247,20 @@ object FatEventRouteTest
   private val logger = Logger(getClass)
   private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
   private val TestVersionId = VersionId("VERSION")
-  private val TestAgentId = AgentPath("/AGENT") % TestVersionId
+  private val TestAgentRefId = AgentRefPath("/AGENT") % TestVersionId
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/test") % TestVersionId,
-    Execute(WorkflowJob(TestAgentId.path, ExecutablePath("/executable"))))
+    Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
   private val InitialEvents =
     Stamped(EventId(1), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(2), NoKey <-: FileBasedAdded(TestAgentId.path, sign(Agent(TestAgentId, "http://127.0.0.1:0")))) ::
+    Stamped(EventId(2), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
     Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
 
   private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
     (1 to 18).map(i ⇒
       Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Payload.empty)) ::     // Yields OrderFatEvent
-      Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentId.path)) ::     // No FatEvent
-      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentId)) ::  // No FatEvent
+      Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
+      Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId)) ::  // No FatEvent
       Nil)
   private val TestFatEvents =
     for (events ← OrderEvents; event = events.head) yield

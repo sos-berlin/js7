@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.generic.JsonCodec
@@ -29,18 +29,18 @@ extends Instruction
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o ⇒ o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  def isPartiallyExecutableOnAgent(agentPath: AgentPath): Boolean =
-    branches exists (_.workflow isPartiallyExecutableOnAgent agentPath)
+  def isPartiallyExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
+    branches exists (_.workflow isPartiallyExecutableOnAgent agentRefPath)
 
-  def isStartableOnAgent(agentPath: AgentPath): Boolean =
+  def isStartableOnAgent(agentRefPath: AgentRefPath): Boolean =
     // Any Agent or the master can fork. The current Agent is okay.
-    branches exists (_.workflow isStartableOnAgent agentPath)
+    branches exists (_.workflow isStartableOnAgent agentRefPath)
 
-  //def isJoinableOnAgent(agentPath: AgentPath): Boolean =
+  //def isJoinableOnAgent(agentRefPath: AgentRefPath): Boolean =
   //  // If branches end on multiple Agents, only the Master can join the Orders
-  //  branches.values forall (_ isEndingOnAgent agentPath)
+  //  branches.values forall (_ isEndingOnAgent agentRefPath)
 
-  //def startAgents: Set[AgentPath] =
+  //def startAgents: Set[AgentRefPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) =

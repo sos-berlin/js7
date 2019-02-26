@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand.UpdateRepo
@@ -30,10 +30,10 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   ProblemCodeMessages.initialize()
 
-  protected def agentPaths: Seq[AgentPath]
+  protected def agentRefPaths: Seq[AgentRefPath]
   protected def agentHttps = false
 
-  protected final lazy val directoryProvider = new DirectoryProvider(agentPaths,
+  protected final lazy val directoryProvider = new DirectoryProvider(agentRefPaths,
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,

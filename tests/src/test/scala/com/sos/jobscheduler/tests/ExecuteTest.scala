@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 final class ExecuteTest extends FreeSpec
 {
   "Execute" in {
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) {
         for (o ← Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
         for (o ← Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd", "/SCRIPT-4.cmd", "/SCRIPT-5.cmd"))
@@ -49,7 +49,7 @@ final class ExecuteTest extends FreeSpec
 }
 
 object ExecuteTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val script = """
     define workflow {
       execute executable="/SCRIPT-0a.cmd", agent="AGENT";
@@ -83,8 +83,8 @@ object ExecuteTest {
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),
-    OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+    OrderAttachable(TestAgentRefPath),
+    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
     OrderStarted,
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),

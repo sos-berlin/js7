@@ -9,32 +9,32 @@ import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
 /**
   * @author Joacim Zschimmer
   */
-final case class Agent(id: AgentId, uri: String) extends FileBased
+final case class AgentRef(id: AgentRefId, uri: String) extends FileBased
 {
-  type Self = Agent
+  type Self = AgentRef
 
-  val companion = Agent
+  val companion = AgentRef
 
-  def withId(id: FileBasedId[AgentPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: FileBasedId[AgentRefPath]) = reuseIfEqual(this, copy(id = id))
 }
 
-object Agent extends FileBased.Companion[Agent]
+object AgentRef extends FileBased.Companion[AgentRef]
 {
-  type ThisFileBased = Agent
-  type Path = AgentPath
+  type ThisFileBased = AgentRef
+  type Path = AgentRefPath
 
-  implicit val jsonEncoder: ObjectEncoder[Agent] = agent ⇒
+  implicit val jsonEncoder: ObjectEncoder[AgentRef] = agent ⇒
     agent.id.asJsonObject ++
       JsonObject(
         "uri" → Json.fromString(agent.uri))
 
-  implicit val jsonDecoder: Decoder[Agent] =
+  implicit val jsonDecoder: Decoder[AgentRef] =
     cursor ⇒ for {
-      id ← cursor.as[Option[AgentId]] map (_ getOrElse AgentPath.NoId)
+      id ← cursor.as[Option[AgentRefId]] map (_ getOrElse AgentRefPath.NoId)
       uri ← cursor.get[String]("uri")
-    } yield Agent(id, uri)
+    } yield AgentRef(id, uri)
 
   override implicit val self = this
   implicit val fileBasedsOverview = AgentsOverview
-  val typedPathCompanion = AgentPath
+  val typedPathCompanion = AgentRefPath
 }

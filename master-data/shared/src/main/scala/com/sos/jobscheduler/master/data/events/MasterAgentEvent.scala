@@ -2,14 +2,14 @@ package com.sos.jobscheduler.master.data.events
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.Event
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait MasterAgentEvent extends Event {
-  type Key = AgentPath
+  type Key = AgentRefPath
 }
 
 object MasterAgentEvent

@@ -2,13 +2,13 @@ package com.sos.jobscheduler.data.fatevent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait AgentFatEvent extends FatEvent {
-  type Key = AgentPath
+  type Key = AgentRefPath
 }
 
 object AgentFatEvent

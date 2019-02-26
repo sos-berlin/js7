@@ -24,7 +24,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
+import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
@@ -62,7 +62,7 @@ final class AgentTest extends FreeSpec with AgentTester
             agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath % "(initial)", fileBasedSigner.sign(TestWorkflow))).await(99.s)
+            assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath % "(initial)", fileBasedSigner.sign(TestWorkflow))).await(99.s)
               == Valid(AgentCommand.Response.Accepted))
             val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
@@ -94,5 +94,5 @@ object AgentTest {
 
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW") % "VERSION",
-    Execute(WorkflowJob(TestAgentPath, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
 }

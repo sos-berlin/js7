@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.system.ThreadPools
-import com.sos.jobscheduler.data.agent.Agent
+import com.sos.jobscheduler.data.agent.AgentRef
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds._
@@ -111,7 +111,7 @@ object MasterModule {
   private val SnapshotJsonCodec =
     TypedJsonCodec[Any](
       Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[Agent],
+      Subtype[AgentRef],
       Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
       Subtype[OrderScheduleEndedAt],
       Subtype[Order[Order.State]])

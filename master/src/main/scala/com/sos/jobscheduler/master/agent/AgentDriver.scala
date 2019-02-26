@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.AgentRefId
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -37,12 +37,12 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
+final class AgentDriver private(agentRefId: AgentRefId, uri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash {
 
-  private val logger = Logger.withPrefix[AgentDriver](agentId.toShortString + " " + uri)
+  private val logger = Logger.withPrefix[AgentDriver](agentRefId.toShortString + " " + uri)
   private val config = masterConfiguration.config
   private val batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size")
   private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
@@ -51,7 +51,7 @@ with ReceiveLoggingActor.WithStash {
   private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
   private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
   private val terminationLogoutTimeout = config.getDuration("jobscheduler.master.agent-driver.termination-logout-timeout").toFiniteDuration
-  private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentId.path.string)
+  private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefId.path.string)
   private val recouplePause = new RecouplingPause
   private val client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
@@ -82,7 +82,7 @@ with ReceiveLoggingActor.WithStash {
       self ! Internal.BatchFailed(inputs, throwable)
   }
 
-  protected def key = agentId.path  // Only one version is active at any time
+  protected def key = agentRefId.path  // Only one version is active at any time
   protected def recoverFromSnapshot(snapshot: Any) = {}
   protected def recoverFromEvent(event: MasterAgentEvent) = {}
   protected def snapshot = None
@@ -308,7 +308,7 @@ with ReceiveLoggingActor.WithStash {
             }
 
           case torn: TearableEventSeq.Torn ⇒
-            val problem = Problem(s"Bad response from Agent $agentId $uri: $torn, requested events after=$after")
+            val problem = Problem(s"Bad response from Agent $agentRefId $uri: $torn, requested events after=$after")
             logger.error(problem.toString)
             persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
               if (isCoupled) scheduler.scheduleOnce(15.second) {
@@ -357,15 +357,15 @@ with ReceiveLoggingActor.WithStash {
     }
   }
 
-  override def toString = s"AgentDriver(${agentId.toShortString}: $uri)"
+  override def toString = s"AgentDriver(${agentRefId.toShortString}: $uri)"
 }
 
 private[master] object AgentDriver
 {
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
 
-  def props(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
-    Props { new AgentDriver(agentId, uri, masterConfiguration, journalActor) }
+  def props(agentRefId: AgentRefId, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
+    Props { new AgentDriver(agentRefId, uri, masterConfiguration, journalActor) }
 
   private class RecouplingPause {
     private val Minimum = 1.second
@@ -390,7 +390,7 @@ private[master] object AgentDriver
   object Input {
     final case class Start(lastAgentEventId: EventId)
 
-    final case class AttachOrder(order: Order[Order.FreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]) extends Input with Queueable {
+    final case class AttachOrder(order: Order[Order.FreshOrReady], agentRefId: AgentRefId, signedWorkflow: Signed[Workflow]) extends Input with Queueable {
       def orderId = order.id
       override def toShortString = s"AttachOrder($orderId)"
     }

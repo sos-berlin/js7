@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
 import com.sos.jobscheduler.core.filebased.Repo.{Changed, Deleted}
 import com.sos.jobscheduler.core.filebased.RepoTest._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{AFileBased, APath, BFileBased, BPath, FileBased, VersionId}
@@ -71,7 +71,7 @@ final class RepoTest extends FreeSpec
       VersionAdded(V1), FileBasedAdded(a1.path, sign(a1)),
       VersionAdded(V2), FileBasedChanged(a2.path, sign(a2)),
       VersionAdded(V3), FileBasedChanged(a3.path, sign(a3))))
-    assert(testRepo.eventsFor(Set(AgentPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
+    assert(testRepo.eventsFor(Set(AgentRefPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
   "pathToCurrentId" in {

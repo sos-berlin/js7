@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -27,12 +27,12 @@ final class WorkflowReaderTest extends FreeSpec {
       val expected = mutable.Buffer[Workflow]()
 
       // JSON
-      val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/JSON.sh"))))
+      val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/JSON.sh"))))
       (dir / "JSON.workflow.json").contentString = jsonWorkflow.asJson.toPrettyString
       expected += jsonWorkflow.withId(WorkflowPath("/JSON"))
 
       // YAML
-      val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/YAML.sh"))))
+      val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/YAML.sh"))))
       (dir / "YAML.workflow.yaml").contentString = yamlWorkflow.asJson.toYamlString
       expected += yamlWorkflow.withId(WorkflowPath("/YAML"))
 

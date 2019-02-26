@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web.master.api.fatevent
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
@@ -34,8 +34,8 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           repo = repo.applyEvent(event).orThrow)
         (updatedConverter, None)
 
-      case KeyedEvent(agentPath: AgentPath, event: MasterAgentEvent) ⇒
-        (this, toMasterAgentFatEvent(event) map (e ⇒ stamped.copy(value = agentPath <-: e)))
+      case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) ⇒
+        (this, toMasterAgentFatEvent(event) map (e ⇒ stamped.copy(value = agentRefPath <-: e)))
 
       case KeyedEvent(_: NoKey, event: MasterEvent) ⇒
         (this, toMasterFatEvent(event) map (e ⇒ stamped.copy(value = NoKey <-: e)))
@@ -74,7 +74,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           case named: Execute.Named ⇒ Some(named.name)
           case _ ⇒ None
         }
-        val agent = order.attached.flatMap(a ⇒ repo.idTo[Agent](a)).orThrow
+        val agent = order.attached.flatMap(a ⇒ repo.idTo[AgentRef](a)).orThrow
         Some(OrderProcessingStartedFat(order.workflowPosition, agent.path, agent.uri, jobName, order.variables))
 
       case OrderStdWritten(stdoutOrStderr, chunk) ⇒

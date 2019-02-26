@@ -22,7 +22,7 @@ import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
 import com.sos.jobscheduler.core.crypt.{MessageSigner, SignatureVerifier}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -51,7 +51,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class DirectoryProvider(
-  agentPaths: Seq[AgentPath],
+  agentRefPaths: Seq[AgentRefPath],
   fileBased: Seq[FileBased] = Nil,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -67,8 +67,8 @@ extends HasCloser {
   val directory = useDirectory getOrElse (createTempDirectory("test-") withCloser deleteDirectoryRecursively)
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
-  val agentToTree: Map[AgentPath, AgentTree] =
-    agentPaths.map { o ⇒ o →
+  val agentToTree: Map[AgentRefPath, AgentTree] =
+    agentRefPaths.map { o ⇒ o →
       new AgentTree(directory, o,
         testName.fold("")(_ + "-") ++ o.name,
         https = agentHttps,
@@ -77,7 +77,7 @@ extends HasCloser {
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentFileBased: Vector[Agent] = for (a ← agents) yield Agent(a.agentPath, uri = a.conf.localUri.toString)
+  lazy val agentFileBased: Vector[AgentRef] = for (a ← agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
@@ -95,7 +95,7 @@ extends HasCloser {
          |""".stripMargin)
     }
     (master.config / "private" / "private.conf").append(
-      agentPaths.map(a ⇒
+      agentRefPaths.map(a ⇒
         "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
       ).mkString +
       s"""jobscheduler.https.keystore {
@@ -159,10 +159,10 @@ extends HasCloser {
     }
 
   def startAgents(config: Config = ConfigFactory.empty): Future[Seq[RunningAgent]] =
-    Future.sequence(agents map (_.agentPath) map (startAgent(_, config)))
+    Future.sequence(agents map (_.agentRefPath) map (startAgent(_, config)))
 
-  def startAgent(agentPath: AgentPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
-    RunningAgent.startForTest(agentToTree(agentPath).conf)
+  def startAgent(agentRefPath: AgentRefPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
+    RunningAgent.startForTest(agentToTree(agentRefPath).conf)
 
   def updateRepo(
     master: RunningMaster,
@@ -232,10 +232,10 @@ object DirectoryProvider
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, name: String, https: Boolean, mutualHttps: Boolean,
+  final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, https: Boolean, mutualHttps: Boolean,
     provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
-    val directory = rootDirectory / agentPath.name
+    val directory = rootDirectory / agentRefPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
         httpPort = !https ? findRandomFreeTcpPort(),
         httpsPort = https ? findRandomFreeTcpPort(),

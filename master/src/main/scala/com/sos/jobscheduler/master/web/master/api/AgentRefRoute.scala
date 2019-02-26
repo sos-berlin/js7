@@ -9,48 +9,48 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
   */
-trait AgentRoute extends MasterRouteProvider
+trait AgentRefRoute extends MasterRouteProvider
 {
   protected def fileBasedApi: FileBasedApi
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
-  final val agentRoute: Route =
+  final val agentRefRoute: Route =
     get {
       authorizedUser(ValidUserPermission) { _ ⇒
         pathEnd {
           completeTask(
-            fileBasedApi.overview[Agent])
+            fileBasedApi.overview[AgentRef])
         } ~
           pathSingleSlash {
             parameter("return".?) {
               case None ⇒
                 completeTask(
-                  fileBasedApi.paths[Agent])
+                  fileBasedApi.paths[AgentRef])
 
-              case Some("Agent") ⇒
+              case Some("AgentRef") ⇒
                 completeTask(
-                  fileBasedApi.fileBaseds[Agent])
+                  fileBasedApi.fileBaseds[AgentRef])
 
               case _ ⇒
                 reject
             }
           } ~
-          path(remainingSegmentOrPath[AgentPath]) { agentPath ⇒
+          path(remainingSegmentOrPath[AgentRefPath]) { agentRefPath ⇒
             completeTask(
-              fileBasedApi.pathToCurrentFileBased[Agent](agentPath))
+              fileBasedApi.pathToCurrentFileBased[AgentRef](agentRefPath))
           }
       }
     }
 }
 
-object AgentRoute {
+object AgentRefRoute {
   intelliJuseImport(() ⇒ checkedToResponseMarshaller(null))
 }

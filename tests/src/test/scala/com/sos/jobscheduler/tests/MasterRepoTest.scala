@@ -2,12 +2,12 @@ package com.sos.jobscheduler.tests
 
 import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -26,7 +26,7 @@ final class MasterRepoTest extends FreeSpec {
   import MasterRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath))) { provider ⇒
+    autoClosing(new DirectoryProvider(List(TestAgentRefPath))) { provider ⇒
       for (v ← 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 
@@ -119,8 +119,8 @@ object MasterRepoTest {
   private val V4 = VersionId("4")
   private val V5 = VersionId("5")
   private val V6 = VersionId("6")
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
-    Execute(WorkflowJob(TestAgentPath, ExecutablePath(s"/EXECUTABLE-V${versionId.string}$sh"))))
+    Execute(WorkflowJob(TestAgentRefPath, ExecutablePath(s"/EXECUTABLE-V${versionId.string}$sh"))))
 }

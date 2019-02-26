@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_, nextTryBranchId, toRetryIndex}
@@ -19,8 +19,8 @@ import org.scalatest.FreeSpec
 final class TryInstructionTest extends FreeSpec
 {
   private val try_ = TryInstruction(
-    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/TRY")))),
-    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/CATCH")))))
+    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")))),
+    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/CATCH")))))
 
   "JSON" in {
     testJson[Instruction.Labeled](try_,
@@ -28,12 +28,12 @@ final class TryInstructionTest extends FreeSpec
         "TYPE": "Try",
         "try": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/TRY", "taskLimit": 1 }}
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/TRY", "taskLimit": 1 }}
           ]
         },
         "catch": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/CATCH", "taskLimit": 1 }}
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/CATCH", "taskLimit": 1 }}
           ]
         }
       }""")

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -43,7 +43,7 @@ object OrderFatEvent
 
   final case class OrderProcessingStartedFat(
     workflowPosition: WorkflowPosition,
-    agentPath: AgentPath,
+    agentRefPath: AgentRefPath,
     agentUri: String,
     jobName: Option[WorkflowJob.Name],
     variables: Map[String, String])

@@ -59,7 +59,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
           SimpleTestWorkflow.id,
           Order.Ready,
           payload = Payload(Map("a" → "A"))),
-        TestAgentPath % "(initial)",
+        TestAgentRefPath % "(initial)",
         fileBasedSigner.sign(SimpleTestWorkflow)))
     ) await 99.s
 

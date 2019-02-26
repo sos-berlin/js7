@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.{JavaResource, JavaShutdownHook}
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -36,7 +36,7 @@ import scala.concurrent.duration.DurationInt
   */
 object TestDockerExample
 {
-  private val TestAgentPaths = AgentPath("/agent-1") :: AgentPath("/agent-2") :: Nil
+  private val TestAgentRefPaths = AgentRefPath("/agent-1") :: AgentRefPath("/agent-2") :: Nil
 
   def main(args: Array[String]) = {
     val directory =
@@ -54,7 +54,7 @@ object TestDockerExample
   }
 
   private def run(directory: Path): Unit = {
-    val env = new TestEnvironment(TestAgentPaths, directory)
+    val env = new TestEnvironment(TestAgentRefPaths, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("master")) directory else env.agentsDir
       JavaResource(s"com/sos/jobscheduler/install/docker/volumes/$path").copyToFile(dir / path)
@@ -73,11 +73,11 @@ object TestDockerExample
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
-      val agents = for (agentPath ← TestAgentPaths) yield {
+      val agents = for (agentRefPath ← TestAgentRefPaths) yield {
         val agent = RunningAgent.startForTest(
-          AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
+          AgentConfiguration.forTest(configAndData = env.agentDir(agentRefPath))
         ) map { _.closeWithCloser } await 99.s
-        env.file(agentPath, SourceType.Json) := Agent(AgentPath.NoId, uri = agent.localUri.toString)
+        env.file(agentRefPath, SourceType.Json) := AgentRef(AgentRefPath.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestDockerExample") {

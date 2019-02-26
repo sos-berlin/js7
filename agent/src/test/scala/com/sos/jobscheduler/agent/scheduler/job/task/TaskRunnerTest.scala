@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -50,7 +50,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
     val shellReturnValuesProvider = new ShellReturnValuesProvider
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentPath("/TEST"), executablePath, Map("var1" → "VALUE1")), shellFile, shellReturnValuesProvider)
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath, Map("var1" → "VALUE1")), shellFile, shellReturnValuesProvider)
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),

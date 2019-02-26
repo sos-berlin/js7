@@ -28,7 +28,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
@@ -70,7 +70,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   "Shell script" in {
     val executablePath = ExecutablePath(s"/TEST-1$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, executablePath, Map("VAR1" → "FROM-JOB")))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentRefPath, executablePath, Map("VAR1" → "FROM-JOB")))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
@@ -91,7 +91,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
              |""".stripMargin).mkString)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, executablePath))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentRefPath, executablePath))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
     assert(result.stdoutStderr(Stderr).toString == expectedStderr)
     assert(result.stdoutStderr(Stdout).toString == expectedStdout)
@@ -113,10 +113,10 @@ private object OrderActorTest {
   private val TestVersion = VersionId("VERSION")
   private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/WORKFLOW") % TestVersion, Order.Ready)
   private val DummyJobKey = JobKey.Named(WorkflowPath.NoId, WorkflowJob.Name("test"))
-  private val TestAgentPath = AgentPath("/TEST-AGENT")
+  private val TestAgentRefPath = AgentRefPath("/TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.workflowPosition, Order.Ready, Outcome.succeeded, None, AgentPath("/TEST-AGENT") % "(initial)", Payload.empty),
+    OrderAttached(TestOrder.workflowPosition, Order.Ready, Outcome.succeeded, None, AgentRefPath("/TEST-AGENT") % "(initial)", Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),
@@ -187,7 +187,7 @@ private object OrderActorTest {
     private def jobActorReady: Receive = {
       case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
-          attachedState = Some(Order.Attached(TestAgentPath % "(initial)"))))
+          attachedState = Some(Order.Attached(TestAgentRefPath % "(initial)"))))
         become(attaching)
     }
 

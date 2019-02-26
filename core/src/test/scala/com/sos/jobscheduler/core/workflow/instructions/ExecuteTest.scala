@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.core.workflow.OrderContext
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderFailed, OrderMoved, OrderProcessed}
@@ -19,7 +19,7 @@ import org.scalatest.FreeSpec
   */
 final class ExecuteTest extends FreeSpec {
 
-  private val executeAnonymous = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"),
+  private val executeAnonymous = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"),
     returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))
   private val orderId = OrderId("ORDER")
 

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -23,7 +23,7 @@ import org.scalatest.FreeSpec
 final class TryTest extends FreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -39,7 +39,7 @@ final class TryTest extends FreeSpec
   }
 
   "Nested try catch with failing catch, OrderStopped" in {
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
@@ -66,7 +66,7 @@ final class TryTest extends FreeSpec
          |  }
          |  execute executable="/OKAY$sh", agent="AGENT";
          |}""".stripMargin).orThrow
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -78,8 +78,8 @@ final class TryTest extends FreeSpec
         checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / Try_ % 0),
-          OrderAttachable(TestAgentPath),
-          OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+          OrderAttachable(TestAgentRefPath),
+          OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
@@ -110,7 +110,7 @@ final class TryTest extends FreeSpec
 }
 
 object TryTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val finishingScript = s"""
      |define workflow {
      |  try {                                                 // #0
@@ -129,8 +129,8 @@ object TryTest {
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
-    OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+    OrderAttachable(TestAgentRefPath),
+    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,
@@ -162,8 +162,8 @@ object TryTest {
   private val ExpectedStoppedEvent = Vector(
     OrderAdded(StoppingWorkflow.id),
     OrderMoved(Position(0) / Try_ % 0),
-    OrderAttachable(TestAgentPath),
-    OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+    OrderAttachable(TestAgentRefPath),
+    OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
 
     OrderStarted,
     OrderProcessingStarted,

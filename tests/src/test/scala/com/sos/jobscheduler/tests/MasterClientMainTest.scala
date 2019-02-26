@@ -13,7 +13,7 @@ import scala.collection.mutable
  */
 final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
 
-  protected val agentPaths = Nil
+  protected val agentRefPaths = Nil
   protected val fileBased = Nil
   private def configDirectory = directoryProvider.master.config
   private def dataDirectory = directoryProvider.master.data

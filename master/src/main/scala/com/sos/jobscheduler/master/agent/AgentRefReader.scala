@@ -5,25 +5,25 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.agent.{Agent, AgentId}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefId}
 import com.sos.jobscheduler.data.filebased.SourceType
 import io.circe.Json
 
 /**
   * @author Joacim Zschimmer
   */
-object AgentReader extends FileBasedReader
+object AgentRefReader extends FileBasedReader
 {
-  val companion = Agent
+  val companion = AgentRef
 
-  def read(agentId: AgentId, source: ByteString) = {
+  def read(agentRefId: AgentRefId, source: ByteString) = {
     case t: SourceType.JsonLike ⇒
-      readAnonymousJsonLike(t, source) map (_ withId agentId)
+      readAnonymousJsonLike(t, source) map (_ withId agentRefId)
 
     case SourceType.Xml ⇒
-      AgentXmlParser.parseXml(agentId, simpleByteStringSource(source))
+      AgentRefXmlParser.parseXml(agentRefId, simpleByteStringSource(source))
   }
 
-  def convertFromJson(json: Json): Checked[Agent] =
-    json.checkedAs[Agent]
+  def convertFromJson(json: Json): Checked[AgentRef] =
+    json.checkedAs[AgentRef]
 }

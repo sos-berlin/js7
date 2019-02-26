@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.agent
 
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.AgentRefId
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import io.circe.generic.JsonCodec
 
@@ -9,7 +9,7 @@ import io.circe.generic.JsonCodec
   */
 @JsonCodec
 final case class AgentEventIdEvent(agentEventId: EventId) extends Event {
-  type Key = AgentId
+  type Key = AgentRefId
 
   override def toString = s"AgentEventIdEvent(${EventId.toString(agentEventId)})"
 }

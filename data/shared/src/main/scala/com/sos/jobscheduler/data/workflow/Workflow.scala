@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.Instruction.@:
@@ -154,40 +154,40 @@ extends FileBased
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
-  private[workflow] def isPartiallyExecutableOnAgent(agentPath: AgentPath): Boolean =
+  private[workflow] def isPartiallyExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     labeledInstructions map (_.instruction) collect {
-      case o: Execute.Anonymous ⇒ o.job isExecutableOnAgent agentPath
-      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentPath)
-      case o: Fork ⇒ o isPartiallyExecutableOnAgent agentPath
+      case o: Execute.Anonymous ⇒ o.job isExecutableOnAgent agentRefPath
+      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
+      case o: Fork ⇒ o isPartiallyExecutableOnAgent agentRefPath
     } contains true
 
-  def isStartableOnAgent(position: Position, agentPath: AgentPath): Boolean =
-    isStartableOnAgent(instruction(position), agentPath)
+  def isStartableOnAgent(position: Position, agentRefPath: AgentRefPath): Boolean =
+    isStartableOnAgent(instruction(position), agentRefPath)
 
-  private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
+  private def isStartableOnAgent(instruction: Instruction, agentRefPath: AgentRefPath): Boolean =
     instruction match {
-      case o: Fork ⇒ o.isStartableOnAgent(agentPath)
-      case o: Execute.Anonymous ⇒ o.job.isExecutableOnAgent(agentPath)
-      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentPath)
+      case o: Fork ⇒ o.isStartableOnAgent(agentRefPath)
+      case o: Execute.Anonymous ⇒ o.job.isExecutableOnAgent(agentRefPath)
+      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
       case _ ⇒ false
     }
 
-  private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
-    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentPath)
+  private[workflow] def isStartableOnAgent(agentRefPath: AgentRefPath): Boolean =
+    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentRefPath)
 
-  //def determinedExecutingAgent(position: Position): Option[AgentPath] =
+  //def determinedExecutingAgent(position: Position): Option[AgentRefPath] =
   //  executingAgents(position) match {
   //    case a if a.size <= 1 ⇒ a.headOption
   //    case _ ⇒ None
   //  }
   //
-  //private[workflow] def determinedExecutingAgent: Option[AgentPath] =
+  //private[workflow] def determinedExecutingAgent: Option[AgentRefPath] =
   //  determinedExecutingAgent(Position(0))
   //
-  //def executingAgents(position: Position): Set[AgentPath] =
+  //def executingAgents(position: Position): Set[AgentRefPath] =
   //  instruction(position) match {
   //    case _: Execute ⇒
-  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentPath).toSet
+  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentRefPath).toSet
   //
   //    case fork: Fork ⇒
   //      fork.startAgents
@@ -195,7 +195,7 @@ extends FileBased
   //    case _ ⇒ Set.empty
   //  }
 
-  //private[workflow] def executingAgents: Set[AgentPath] =
+  //private[workflow] def executingAgents: Set[AgentRefPath] =
   //  executingAgents(Position(0))
 
   def isDefinedAt(position: Position): Boolean =

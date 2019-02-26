@@ -40,7 +40,7 @@ import scala.concurrent.duration._
   */
 final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentPaths = Nil
+  protected val agentRefPaths = Nil
   protected val fileBased = Nil
 
   private lazy val privateKeyPassword = SecretString("")
@@ -242,14 +242,14 @@ object ProviderTest
   private val TestWorkflowJson = json"""
     {
       "instructions": [
-        { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/EXECUTABLE", "taskLimit": 1 }}
+        { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/EXECUTABLE", "taskLimit": 1 }}
       ]
     }"""
   private val TestWorkflow = TestWorkflowJson.as[Workflow].orThrow
   private val ChangedWorkflowJson = json"""
     {
       "instructions": [
-        { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/OTHER-EXECUTABLE", "taskLimit": 1 }}
+        { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/OTHER-EXECUTABLE", "taskLimit": 1 }}
       ]
     }"""
   private val ChangedWorkflow = ChangedWorkflowJson.as[Workflow].orThrow

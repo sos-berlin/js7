@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.data.events
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -14,7 +14,7 @@ import org.scalatest.FreeSpec
 final class MasterAgentEventTest extends FreeSpec
 {
   "AgentCouplingFailed" in {
-    testJson[KeyedEvent[MasterAgentEvent]](AgentPath("/AGENT") <-: AgentCouplingFailed("ERROR"),
+    testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentCouplingFailed("ERROR"),
       json"""{
         "TYPE": "AgentCouplingFailed",
         "key": "/AGENT",
@@ -23,7 +23,7 @@ final class MasterAgentEventTest extends FreeSpec
   }
 
   "AgentReady" in {
-    testJson[KeyedEvent[MasterAgentEvent]](AgentPath("/AGENT") <-: AgentReady(ZoneId.of("Europe/Berlin").getId),
+    testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentReady(ZoneId.of("Europe/Berlin").getId),
       json"""{
         "TYPE": "AgentReady",
         "key": "/AGENT",

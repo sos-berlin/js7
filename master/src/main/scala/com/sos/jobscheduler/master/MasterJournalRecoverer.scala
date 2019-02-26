@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
-import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRefId, AgentRefPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
@@ -31,15 +31,15 @@ extends JournalRecoverer[Event]
 {
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val agentToEventId = mutable.Map[AgentId, EventId]()
+  private val agentToEventId = mutable.Map[AgentRefId, EventId]()
   private var orderScheduleEndedAt = none[Timestamp]
 
   protected def recoverSnapshot = {
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
 
-    case AgentEventId(agentPath, eventId) ⇒
-      agentToEventId(agentPath) = eventId
+    case AgentEventId(agentRefPath, eventId) ⇒
+      agentToEventId(agentRefPath) = eventId
 
     case event: RepoEvent ⇒
       repo = repo.applyEvent(event).orThrow
@@ -79,7 +79,7 @@ extends JournalRecoverer[Event]
             case _: OrderStdWritten ⇒
           }
 
-        case KeyedEvent(FileBasedId(a: AgentPath, v), AgentEventIdEvent(agentEventId)) ⇒
+        case KeyedEvent(FileBasedId(a: AgentRefPath, v), AgentEventIdEvent(agentEventId)) ⇒
           agentToEventId(a % v) = agentEventId
 
         case KeyedEvent(_, _: MasterAgentEvent) ⇒

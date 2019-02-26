@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.filebased.FileBaseds
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoChange, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -27,9 +27,9 @@ final class FileBasedsTest extends FreeSpec
       assert(diffFileBaseds(Nil, Nil).isEmpty)
     }
 
-    lazy val a = Agent(AgentPath("/A") % "1", "http://a")
-    lazy val b = Agent(AgentPath("/B") % "1", "http://b")
-    lazy val c = Agent(AgentPath("/C") % "1", "http://c")
+    lazy val a = AgentRef(AgentRefPath("/A") % "1", "http://a")
+    lazy val b = AgentRef(AgentRefPath("/B") % "1", "http://b")
+    lazy val c = AgentRef(AgentRefPath("/C") % "1", "http://c")
 
     "different order" in {
       assert(
@@ -111,8 +111,8 @@ final class FileBasedsTest extends FreeSpec
         updated = List(D1Workflow withVersion V1),
         deleted = List(BWorkflow.path)))
 
-    assert(diff.select[AgentPath, Agent] ==
-      FileBaseds.Diff[AgentPath, Agent](
+    assert(diff.select[AgentRefPath, AgentRef] ==
+      FileBaseds.Diff[AgentRefPath, AgentRef](
         added = List(BAgent withVersion V0),
         updated = Nil,
         deleted = Nil))
@@ -127,10 +127,10 @@ object FileBasedsTest {
   private[tests] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd))
   private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "define workflow { /*EMPTY*/ }").orThrow
   private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd))
-  private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
+  private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
   private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D"), "define workflow { CHANGED-D-END: end; }").orThrow
-  private[tests] val AAgent = Agent(AgentPath("/A"), "http://A")
-  private[tests] val BAgent = Agent(AgentPath("/folder/B"), "http://B")
+  private[tests] val AAgent = AgentRef(AgentRefPath("/A"), "http://A")
+  private[tests] val BAgent = AgentRef(AgentRefPath("/folder/B"), "http://B")
 
   private[tests] def provideDirectory[A](body: Path ⇒ A): A = {
     val dir = createTempDirectory("test-")

@@ -31,7 +31,7 @@ object ForkExecutor extends EventInstructionExecutor
     .orElse(
       order.ifState[Order.Forked].flatMap(order ⇒
         //orderEntry.instruction match {
-        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentPath ⇒
+        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath ⇒
         if (order.isAttached)
           Some(order.id <-: OrderDetachable)  //
         else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)

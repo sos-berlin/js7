@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -40,12 +40,12 @@ final class ExecuteTest extends FreeSpec
       CirceJsonTester.testJson[Instruction.Labeled](
         Execute(
           WorkflowJob(
-            AgentPath("/AGENT"),
+            AgentRefPath("/AGENT"),
             ExecutablePath("/EXECUTABLE"))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentPath": "/AGENT",
+            "agentRefPath": "/AGENT",
             "executablePath": "/EXECUTABLE",
             "taskLimit": 1
           }
@@ -56,13 +56,13 @@ final class ExecuteTest extends FreeSpec
       CirceJsonTester.testJson[Instruction.Labeled](
         Execute(
           WorkflowJob(
-            AgentPath("/AGENT"),
+            AgentRefPath("/AGENT"),
             ExecutablePath("/EXECUTABLE"),
             Map("ARG" → "VALUE"))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentPath": "/AGENT",
+            "agentRefPath": "/AGENT",
             "executablePath": "/EXECUTABLE",
             "taskLimit": 1,
             "defaultArguments": {

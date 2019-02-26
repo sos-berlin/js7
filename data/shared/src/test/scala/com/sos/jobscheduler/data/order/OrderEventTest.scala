@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -38,10 +38,10 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderAttachable" in {
     check(
-      OrderAttachable(AgentPath("/AGENT")),
+      OrderAttachable(AgentRefPath("/AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
-        "agentPath": "/AGENT"
+        "agentRefPath": "/AGENT"
       }""")
   }
 
@@ -49,7 +49,7 @@ final class OrderEventTest extends FreeSpec {
     check(
       OrderAttached(
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(2), Order.Ready,
-        Outcome.succeeded, Some(OrderId("PARENT")), AgentPath("/AGENT") % "1", Payload(Map("VAR" → "VALUE"))),
+        Outcome.succeeded, Some(OrderId("PARENT")), AgentRefPath("/AGENT") % "1", Payload(Map("VAR" → "VALUE"))),
       json"""{
         "TYPE": "OrderAttached",
         "workflowPosition": {
@@ -71,7 +71,7 @@ final class OrderEventTest extends FreeSpec {
           "returnCode": 0
         },
         "parent": "PARENT",
-        "agentId": {
+        "agentRefId": {
           "path": "/AGENT",
           "versionId": "1"
         },
@@ -84,10 +84,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderTransferredToAgent" in {
-    check(OrderTransferredToAgent(AgentPath("/AGENT") % "1"), json"""
+    check(OrderTransferredToAgent(AgentRefPath("/AGENT") % "1"), json"""
       {
         "TYPE": "OrderTransferredToAgent",
-        "agentId": {
+        "agentRefId": {
           "path": "/AGENT",
           "versionId": "1"
         }

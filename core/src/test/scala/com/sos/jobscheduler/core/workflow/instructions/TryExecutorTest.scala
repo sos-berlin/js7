@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.TryExecutorTest._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
@@ -52,7 +52,7 @@ final class TryExecutorTest extends FreeSpec
 object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(), Outcome.Succeeded(ReturnCode(1)))
-  private val TryJob = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/THEN")))
-  private val CatchJob = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE")))
+  private val TryJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
+  private val CatchJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))
 }

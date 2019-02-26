@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.ProblemException
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -18,8 +18,8 @@ import org.scalatest.FreeSpec
 final class ForkTest extends FreeSpec {
 
   private val fork = Fork.of(
-    "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A")))),
-    "B" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))
+    "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
+    "B" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
 
   "JSON" in {
     testJson[Instruction.Labeled](
@@ -31,14 +31,14 @@ final class ForkTest extends FreeSpec {
             "id": "A",
             "workflow": {
               "instructions": [
-                { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A", "taskLimit": 1 }}
+                { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/A", "taskLimit": 1 }}
               ]
             }
           }, {
             "id": "B",
             "workflow": {
               "instructions": [
-                { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B", "taskLimit": 1 }}
+                { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B", "taskLimit": 1 }}
               ]
             }
           }
@@ -49,8 +49,8 @@ final class ForkTest extends FreeSpec {
   "Duplicate branch ids are rejected" in {  // TODO
     intercept[ProblemException] {
       Fork.of(
-        "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A")))),
-        "A" → Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))
+        "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
+        "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
     }
   }
 

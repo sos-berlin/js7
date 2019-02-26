@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
@@ -40,7 +40,7 @@ final class OrderTest extends FreeSpec
       "Ready" in {
         check(
           testOrder.copy(
-            attachedState = Some(Attached(AgentPath("/AGENT") % "1")),
+            attachedState = Some(Attached(AgentRefPath("/AGENT") % "1")),
             parent = Some(OrderId("PARENT"))),
           json"""{
             "id": "ID",
@@ -56,7 +56,7 @@ final class OrderTest extends FreeSpec
             },
             "attachedState": {
               "TYPE": "Attached",
-              "agentId": {
+              "agentRefId": {
                 "path": "/AGENT",
                 "versionId": "1"
               }
@@ -198,10 +198,10 @@ final class OrderTest extends FreeSpec
 
     "AttachedState" - {
       "Attached" in {
-        check(Attached(AgentPath("/AGENT") % "1"),
+        check(Attached(AgentRefPath("/AGENT") % "1"),
           """{
             "TYPE": "Attached",
-            "agentId": {
+            "agentRefId": {
               "path": "/AGENT",
               "versionId": "1"
             }
@@ -209,10 +209,10 @@ final class OrderTest extends FreeSpec
       }
 
       "Detaching" in {
-        check(Detaching(AgentPath("/AGENT") % "1"),
+        check(Detaching(AgentRefPath("/AGENT") % "1"),
           """{
             "TYPE": "Detaching",
-            "agentId": {
+            "agentRefId": {
               "path": "/AGENT",
               "versionId": "1"
             }
@@ -226,13 +226,13 @@ final class OrderTest extends FreeSpec
   "Order transitions: event to state" - {
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("/WORKFLOW") % "VERSION"
-    val agentId = AgentPath("/AGENT") % "version"
+    val agentRefId = AgentRefPath("/AGENT") % "version"
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
 
-      OrderAttachable(agentId.path),
-      OrderAttached(workflowId /: Position(0), Fresh(), Outcome.succeeded, None, agentId, Payload.empty),
-      OrderTransferredToAgent(agentId),
+      OrderAttachable(agentRefId.path),
+      OrderAttached(workflowId /: Position(0), Fresh(), Outcome.succeeded, None, agentRefId, Payload.empty),
+      OrderTransferredToAgent(agentRefId),
 
       OrderStarted,
       OrderProcessingStarted,
@@ -260,9 +260,9 @@ final class OrderTest extends FreeSpec
 
     assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
     val detached  = none[AttachedState]
-    val attaching = Some(Attaching(agentId.path))
-    val attached  = Some(Attached(agentId))
-    val detaching = Some(Detaching(agentId))
+    val attaching = Some(Attaching(agentRefId.path))
+    val attached  = Some(Attached(agentRefId))
+    val detaching = Some(Detaching(agentRefId))
 
     "Fresh" - {
       checkAllEvents(Order(orderId, workflowId, Fresh()),
@@ -403,17 +403,17 @@ final class OrderTest extends FreeSpec
 
   "Operations" - {
     "attached" in {
-      val agentId = AgentPath("/A") % "1"
+      val agentRefId = AgentRefPath("/A") % "1"
       assert(testOrder.attached.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .attached == Valid(agentId))
-      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).attached.isInvalid)
+      assert(testOrder.copy(attachedState = Some(Attached(agentRefId))) .attached == Valid(agentRefId))
+      assert(testOrder.copy(attachedState = Some(Detaching(agentRefId))).attached.isInvalid)
     }
 
     "detaching" in {
-      val agentId = AgentPath("/A") % "1"
+      val agentRefId = AgentRefPath("/A") % "1"
       assert(testOrder.detaching.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .detaching.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).detaching == Valid(agentId))
+      assert(testOrder.copy(attachedState = Some(Attached(agentRefId))) .detaching.isInvalid)
+      assert(testOrder.copy(attachedState = Some(Detaching(agentRefId))).detaching == Valid(agentRefId))
     }
 
     "castState" in {
@@ -434,11 +434,11 @@ final class OrderTest extends FreeSpec
 
     "isAttaching" in {
       val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Ready,
-        attachedState = Some(Detaching(AgentPath("/AGENT") % "1")))
-      assert(order.detaching == Valid(AgentPath("/AGENT") % "1"))
+        attachedState = Some(Detaching(AgentRefPath("/AGENT") % "1")))
+      assert(order.detaching == Valid(AgentRefPath("/AGENT") % "1"))
 
       for (o ← Array(
-            order.copy(attachedState = Some(Attached(AgentPath("/AGENT") % "1"))),
+            order.copy(attachedState = Some(Attached(AgentRefPath("/AGENT") % "1"))),
             order.copy(attachedState = None))) {
         val problem = o.detaching.asInstanceOf[Invalid[Problem]].e
         assert(problem.toString contains "ORDER-ID")
@@ -453,7 +453,7 @@ final class OrderTest extends FreeSpec
 
   if (sys.props contains "test.speed") "Speed" in {
     val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Ready,
-      attachedState = Some(Attached(AgentPath("/AGENT") % "1")))
+      attachedState = Some(Attached(AgentRefPath("/AGENT") % "1")))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {

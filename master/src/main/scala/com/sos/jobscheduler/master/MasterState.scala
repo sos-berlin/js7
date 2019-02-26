@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.event.EventBasedState
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.AgentRefId
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -24,7 +24,7 @@ final case class MasterState(
   eventId: EventId,
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]],
-  agentToEventId: Map[AgentId, EventId],
+  agentToEventId: Map[AgentRefId, EventId],
   orderScheduleEndedAt: Option[Timestamp])
 extends EventBasedState
 {
@@ -39,15 +39,15 @@ object MasterState
   def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
     var repo = Repo(MasterFileBaseds.jsonCodec)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-    val agentToEventId = mutable.Map[AgentId, EventId]()
+    val agentToEventId = mutable.Map[AgentRefId, EventId]()
     var orderScheduleEndedAt = none[Timestamp]
 
     snapshotObjects foreach {
       case order: Order[Order.State] ⇒
         idToOrder.insert(order.id → order)
 
-      case AgentEventId(agentPath, aEventId) ⇒
-        agentToEventId(agentPath) = aEventId
+      case AgentEventId(agentRefPath, aEventId) ⇒
+        agentToEventId(agentRefPath) = aEventId
 
       case event: RepoEvent ⇒
         repo = repo.applyEvent(event).orThrow

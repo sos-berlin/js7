@@ -7,17 +7,17 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AgentTest extends FreeSpec
+final class AgentRefTest extends FreeSpec
 {
   "JSON, anonymous" in {
-    testJson(Agent(AgentPath.NoId, "http://127.0.0.1"),
+    testJson(AgentRef(AgentRefPath.NoId, "http://127.0.0.1"),
       json"""{
         "uri": "http://127.0.0.1"
       }""")
   }
 
   "JSON, with ID" in {
-    testJson(Agent(AgentPath("/AGENT") % "VERSION", "http://127.0.0.1"),
+    testJson(AgentRef(AgentRefPath("/AGENT") % "VERSION", "http://127.0.0.1"),
       json"""{
         "path": "/AGENT",
         "versionId": "VERSION",

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
@@ -71,8 +71,8 @@ object IfExecutorTest {
     payload = Payload(Map("A" → "AA")))
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed, outcome = Outcome.Succeeded(ReturnCode(1)),
     payload = Payload(Map("A" → "XX")))
-  private val ThenJob = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/THEN")))
-  private val ElseJob = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/ELSE")))
+  private val ThenJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
+  private val ElseJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))
 
   private def ifThenElse(booleanExpr: BooleanExpression) =
     If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))

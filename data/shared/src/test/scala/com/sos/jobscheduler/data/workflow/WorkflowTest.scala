@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
@@ -27,7 +27,7 @@ final class WorkflowTest extends FreeSpec {
       testJson[Workflow](
         Workflow(WorkflowPath.NoId,
           Vector(Execute(WorkflowJob.Name("JOB"))),
-          Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
+          Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
         json"""{
           "instructions": [
             {
@@ -37,7 +37,7 @@ final class WorkflowTest extends FreeSpec {
           ],
           "jobs": {
             "JOB": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/EXECUTABLE",
               "taskLimit": 1
             }
@@ -51,7 +51,7 @@ final class WorkflowTest extends FreeSpec {
           "path": "/TEST",
           "versionId": "VERSION",
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
             {
               "TYPE": "If",
               "predicate": "returnCode == 1",
@@ -61,11 +61,11 @@ final class WorkflowTest extends FreeSpec {
                   { "TYPE": "Execute.Named", "name": "B" }
                 ],
                 "jobs": {
-                  "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3 , "defaultArguments": { "JOB_B1": "B1-VALUE" }}}
+                  "B": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3 , "defaultArguments": { "JOB_B1": "B1-VALUE" }}}
               },
               "else": {
                 "instructions": [
-                  { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
+                  { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
                 ]
               }
             }, {
@@ -75,7 +75,7 @@ final class WorkflowTest extends FreeSpec {
                   "id": "🥕",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
                       { "TYPE": "Execute.Named", "name": "A" }
                     ]
                   }
@@ -83,18 +83,18 @@ final class WorkflowTest extends FreeSpec {
                   "id": "🍋",
                   "workflow": {
                     "instructions": [
-                      { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}},
+                      { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}},
                       { "TYPE": "Execute.Named", "name": "B" }
                     ]
                   }
                 }
               ]
             },
-            { "TYPE": "Execute.Anonymous", "job": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
+            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}}
           ],
           "jobs": {
-            "A": { "agentPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }},
-            "B": { "agentPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}
+            "A": { "agentRefPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }},
+            "B": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}
           }
         }""")
     }
@@ -106,7 +106,7 @@ final class WorkflowTest extends FreeSpec {
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentPath": "/AGENT",
+                "agentRefPath": "/AGENT",
                 "executablePath": "/A.cmd",
                 "taskLimit": 3,
                 "defaultArguments": {
@@ -121,10 +121,10 @@ final class WorkflowTest extends FreeSpec {
 
   "labelToPosition" in {
     val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
+      "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
       If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
+          "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
       "B" @: ExplicitEnd)
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
@@ -134,8 +134,8 @@ final class WorkflowTest extends FreeSpec {
   "Duplicate labels" in {
     assert(intercept[RuntimeException] {
       Workflow.of(
-        "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
-        "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))
+        "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
+        "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))
     }
     .toString contains "Duplicate labels")
   }
@@ -168,7 +168,7 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "reduce" in {
-    val job = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE-A")))
+    val job = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE-A")))
     val B = Label("B")
     val C = Label("C")
     val D = Label("D")

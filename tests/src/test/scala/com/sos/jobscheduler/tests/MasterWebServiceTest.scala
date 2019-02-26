@@ -26,13 +26,13 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentPath
+import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -59,7 +59,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   private lazy val uri = master.localUri
 
-  protected val agentPaths = TestAgentPath :: AgentPath("/FOLDER/AGENT-A") :: Nil
+  protected val agentRefPaths = TestAgentRefPath :: AgentRefPath("/FOLDER/AGENT-A") :: Nil
   protected val fileBased = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri.toString
   private lazy val agent2Uri = directoryProvider.agents(1).localUri.toString
@@ -99,8 +99,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "Await AgentReady" in {
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
-    for (agentPath ← agentPaths) {
-      master.eventWatch.await[MasterAgentEvent.AgentReady](predicate = _.key == agentPath)
+    for (agentRefPath ← agentRefPaths) {
+      master.eventWatch.await[MasterAgentEvent.AgentReady](predicate = _.key == agentRefPath)
     }
   }
 
@@ -141,7 +141,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/A$sh",
               "taskLimit": 1
             }
@@ -158,14 +158,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/B$sh",
               "taskLimit": 1
             }
           }, {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/MISSING$sh",
               "taskLimit": 1
             }
@@ -233,14 +233,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/B$sh",
               "taskLimit": 1
             }
           }, {
             "TYPE": "Execute.Anonymous",
             "job": {
-              "agentPath": "/AGENT",
+              "agentRefPath": "/AGENT",
               "executablePath": "/MISSING$sh",
               "taskLimit": 1
             }
@@ -267,7 +267,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         ]
       }""")
 
-    testGet("master/api/agent/?return=Agent",
+    testGet("master/api/agent/?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
@@ -284,7 +284,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         ]
       }""")
 
-    testGet("master/api/agent/FOLDER/AGENT-A?return=Agent",
+    testGet("master/api/agent/FOLDER/AGENT-A?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
@@ -293,7 +293,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "uri": "$agent2Uri"
       }""")
 
-    testGet("master/api/agent/FOLDER%2FAGENT-A?return=Agent",
+    testGet("master/api/agent/FOLDER%2FAGENT-A?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
@@ -305,7 +305,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "/master/api/agent-proxy" - {
     "/master/api/agent-proxy/FOLDER%2FAGENT-A" in {
-      // Pass-through Agent. Slashes but the first in AgentPath must be coded as %2F.
+      // Pass-through AgentRef. Slashes but the first in AgentRefPath must be coded as %2F.
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       val overview = httpClient.get[AgentOverview](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A", Duration.Inf, headers) await 99.s
       assert(overview.version == BuildInfo.prettyVersion)
@@ -317,7 +317,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         httpClient.get[Json](s"$uri/master/api/agent-proxy/UNKNOWN", headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
-      assert(e.problem == Some(Problem("No such key 'Agent:/UNKNOWN'")))
+      assert(e.problem == Some(Problem("No such key 'AgentRef:/UNKNOWN'")))
     }
 
     "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
@@ -428,9 +428,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId": 1003,
           "TYPE": "FileBasedAdded",
-          "path" : "Agent:/AGENT",
+          "path" : "AgentRef:/AGENT",
           "signed" : {
-            "string" : "{\"TYPE\":\"Agent\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
+            "string" : "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
             "signature" : {
               "TYPE" : "Silly",
               "string" : "MY-SILLY-SIGNATURE"
@@ -439,9 +439,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId" : 1004,
           "TYPE" : "FileBasedAdded",
-          "path" : "Agent:/FOLDER/AGENT-A",
+          "path" : "AgentRef:/FOLDER/AGENT-A",
           "signed" : {
-            "string" : "{\"TYPE\":\"Agent\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
+            "string" : "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
             "signature" : {
               "TYPE" : "Silly",
               "string" : "MY-SILLY-SIGNATURE"
@@ -461,7 +461,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "path" : "Workflow:/WORKFLOW",
           "signed" : {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
+            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
             "signature" : {
               "TYPE" : "Silly",
               "string" : "MY-SILLY-SIGNATURE"
@@ -472,7 +472,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "path" : "Workflow:/FOLDER/WORKFLOW-2",
           "signed" : {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
+            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
             "signature" : {
               "TYPE" : "Silly",
               "string" : "MY-SILLY-SIGNATURE"
@@ -490,12 +490,12 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "eventId": 1010,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
-          "agentPath":"/AGENT"
+          "agentRefPath":"/AGENT"
         }, {
           "eventId": 1011,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
-          "agentId": {
+          "agentRefId": {
             "path": "/AGENT",
             "versionId": "INITIAL"
           }
@@ -543,7 +543,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     def manipulateEventsForTest(eventResponse: Json): Json = {
       def ignoreIt(json: Json): Boolean = {
         val obj = json.asObject.get.toMap
-        obj("TYPE") == Json.fromString("AgentReady") && json.as[KeyedEvent[MasterAgentEvent]].orThrow.key != TestAgentPath || // Let through only AgentReady for one Agent, because ordering is undefined
+        obj("TYPE") == Json.fromString("AgentReady") && json.as[KeyedEvent[MasterAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only AgentReady for one AgentRef, because ordering is undefined
           obj("TYPE") == Json.fromString("AgentCouplingFailed")
       }
       val eventIds = Iterator.from(1001)
@@ -621,7 +621,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   position
                 },
                 attachedState {
-                  agentId { path, versionId }
+                  agentRefId { path, versionId }
                 }
               }
             }""".asJson,
@@ -640,7 +640,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   "position": [ 1 ]
                 },
                 "attachedState": {
-                  "agentId": {
+                  "agentRefId": {
                     "path": "/AGENT",
                     "versionId": "INITIAL"
                   }

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.master.scheduledorder.ScheduledOrderGeneratorPath
@@ -18,7 +18,7 @@ import scala.collection.immutable._
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
+final class TestEnvironment(agentRefPaths: Seq[AgentRefPath], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -29,10 +29,10 @@ extends AutoCloseable {
   createDirectories(masterDir / "config/order-generators")
   createDirectories(masterDir / "config/private")
   createDirectories(masterDir / "data")
-  for (agentPath ← agentPaths) {
-    createDirectories(agentDir(agentPath) / "config/private")
-    createDirectories(agentDir(agentPath) / "config/executables")
-    createDirectory(agentDir(agentPath) / "data")
+  for (agentRefPath ← agentRefPaths) {
+    createDirectories(agentDir(agentRefPath) / "config/private")
+    createDirectories(agentDir(agentRefPath) / "config/executables")
+    createDirectory(agentDir(agentRefPath) / "data")
   }
 
   def close(): Unit = {
@@ -55,12 +55,12 @@ extends AutoCloseable {
   def masterDir: Path =
     temporaryDirectory / "master"
 
-  def agentFile(agentPath: AgentPath, path: TypedPath, t: SourceType): Path =
-    agentDir(agentPath) / "config/live" resolve path.toFile(t)
+  def agentFile(agentRefPath: AgentRefPath, path: TypedPath, t: SourceType): Path =
+    agentDir(agentRefPath) / "config/live" resolve path.toFile(t)
 
-  def agentDir(agentPath: AgentPath): Path = {
-    require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")
-    agentsDir / agentPath.withoutStartingSlash
+  def agentDir(agentRefPath: AgentRefPath): Path = {
+    require(FolderPath.parentOf(agentRefPath) == FolderPath.Root, "Directory layout is not suitable for nested AgentRef paths")
+    agentsDir / agentRefPath.withoutStartingSlash
   }
 
   def agentsDir = temporaryDirectory / "agents"

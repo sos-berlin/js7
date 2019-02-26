@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.core.problems.CancelStartedOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
-import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRefId, AgentRefPath}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
@@ -57,7 +57,7 @@ final class OrderEventSourceTest extends FreeSpec
     "again, all events" in {
       val process = new SingleOrderProcess(workflow)
       process.update(OrderAdded(TestWorkflowId))
-      process.transferToAgent(TestAgentId)
+      process.transferToAgent(TestAgentRefId)
       process.update(OrderStarted)
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(1) / Then % 0)))
@@ -65,7 +65,7 @@ final class OrderEventSourceTest extends FreeSpec
       assert(process.step() == Some(OrderMoved(Position(2))))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(3))))
-      process.transferToMaster(TestAgentId)
+      process.transferToMaster(TestAgentRefId)
       assert(process.step() == Some(OrderFinished))
     }
 
@@ -96,8 +96,8 @@ final class OrderEventSourceTest extends FreeSpec
     val orderId = succeededOrderId
 
     process.update(orderId <-: OrderAdded(TestWorkflowId))
-    process.update(orderId <-: OrderAttachable(TestAgentId.path))
-    process.update(orderId <-: OrderTransferredToAgent(TestAgentId))
+    process.update(orderId <-: OrderAttachable(TestAgentRefId.path))
+    process.update(orderId <-: OrderTransferredToAgent(TestAgentRefId))
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
       orderId <-: OrderForked(List(
@@ -129,8 +129,8 @@ final class OrderEventSourceTest extends FreeSpec
       OrderForked.Child("🍋", orderId / "🍋", MapDiff.empty)))))
 
     assert(process.run(orderId / "🥕") == List(
-      orderId / "🥕" <-: OrderAttachable(TestAgentId.path),
-      orderId / "🥕" <-: OrderTransferredToAgent(TestAgentId),
+      orderId / "🥕" <-: OrderAttachable(TestAgentRefId.path),
+      orderId / "🥕" <-: OrderTransferredToAgent(TestAgentRefId),
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
       orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 1)),
@@ -140,8 +140,8 @@ final class OrderEventSourceTest extends FreeSpec
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
     assert(process.run(orderId / "🍋") == List(
-      orderId / "🍋" <-: OrderAttachable(TestAgentId.path),
-      orderId / "🍋" <-: OrderTransferredToAgent(TestAgentId),
+      orderId / "🍋" <-: OrderAttachable(TestAgentRefId.path),
+      orderId / "🍋" <-: OrderTransferredToAgent(TestAgentRefId),
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
       orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 1)),
@@ -150,8 +150,8 @@ final class OrderEventSourceTest extends FreeSpec
       orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
 
     assert(process.step(orderId) == Some(orderId <-: OrderMoved(Position(2))))
-    assert(process.step(orderId) == Some(orderId <-: OrderAttachable(TestAgentId.path)))
-    assert(process.step(orderId) == Some(orderId <-: OrderTransferredToAgent(TestAgentId)))
+    assert(process.step(orderId) == Some(orderId <-: OrderAttachable(TestAgentRefId.path)))
+    assert(process.step(orderId) == Some(orderId <-: OrderTransferredToAgent(TestAgentRefId)))
     assert(process.step(orderId) == Some(orderId <-: OrderProcessingStarted))
     // and so forth...
   }
@@ -222,7 +222,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Fresh Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Outcome.succeeded, Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Outcome.succeeded, Some(Order.Attached(TestAgentRefId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
@@ -242,7 +242,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Ready Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentRefId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -252,7 +252,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentId)))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentRefId)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -274,7 +274,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Ready Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentRefId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -284,7 +284,7 @@ final class OrderEventSourceTest extends FreeSpec
       }
 
       "Processing Attached" in {
-        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentId)), cancel = Some(CancelMode.FreshOrStarted))
+        val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentRefId)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -371,18 +371,18 @@ final class OrderEventSourceTest extends FreeSpec
 object OrderEventSourceTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
-  private val TestAgentId = AgentPath("/AGENT") % "VERSION"
+  private val TestAgentRefId = AgentRefPath("/AGENT") % "VERSION"
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed, outcome = Outcome.Succeeded(ReturnCode.Success))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed, outcome = Outcome.Succeeded(ReturnCode.StandardFailure))
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId, Order.Processed, outcome = Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))
 
-  private val executeScript = Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/executable")))
+  private val executeScript = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/executable")))
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
-    process.transferToAgent(TestAgentId)
+    process.transferToAgent(TestAgentRefId)
     process.update(OrderStarted)
     process.jobStep(outcome = outcome)
     process.step()
@@ -391,12 +391,12 @@ object OrderEventSourceTest {
   final class SingleOrderProcess(val workflow: Workflow, val orderId: OrderId = OrderId("ORDER")) {
     private val process = new Process(workflow)
 
-    def transferToAgent(agentId: AgentId) = {
-      update(OrderAttachable(agentId.path))
-      update(OrderTransferredToAgent(agentId))
+    def transferToAgent(agentRefId: AgentRefId) = {
+      update(OrderAttachable(agentRefId.path))
+      update(OrderTransferredToAgent(agentRefId))
     }
 
-    def transferToMaster(agentId: AgentId) = {
+    def transferToMaster(agentRefId: AgentRefId) = {
       update(OrderDetachable)
       update(OrderTransferredToMaster)
     }
@@ -445,9 +445,9 @@ object OrderEventSourceTest {
         (order.state, workflow.instruction(order.position)) match {
           case (_: Order.Ready, _: Execute) ⇒
             if (order.isDetached)
-              Valid(Some(order.id <-: OrderAttachable(TestAgentId.path)))
+              Valid(Some(order.id <-: OrderAttachable(TestAgentRefId.path)))
             else if (order.isAttaching)
-              Valid(Some(order.id <-: OrderTransferredToAgent(TestAgentId)))
+              Valid(Some(order.id <-: OrderTransferredToAgent(TestAgentRefId)))
             else
               Valid(Some(order.id <-: OrderProcessingStarted))
 

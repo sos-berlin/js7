@@ -9,10 +9,10 @@ import scala.collection.immutable.Seq
   */
 final case class AgentsOverview(count: Int) extends FileBasedsOverview
 
-object AgentsOverview extends FileBasedsOverview.Companion[Agent] {
+object AgentsOverview extends FileBasedsOverview.Companion[AgentRef] {
   type Overview = AgentsOverview
 
   implicit val jsonCodec = deriveCodec[AgentsOverview]
 
-  def fileBasedsToOverview(fileBaseds: Seq[Agent]) = AgentsOverview(fileBaseds.size)
+  def fileBasedsToOverview(fileBaseds: Seq[AgentRef]) = AgentsOverview(fileBaseds.size)
 }

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -24,7 +24,7 @@ import scala.reflect.ClassTag
 
 final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentPaths = TestAgentPath :: Nil
+  protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
 
   override def beforeAll() = {
@@ -51,8 +51,8 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path % versionId),
       OrderMoved(Position(0) / Try_ % 0),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -95,8 +95,8 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path % versionId),
       OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
-      OrderAttachable(TestAgentPath),
-      OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+      OrderAttachable(TestAgentRefPath),
+      OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -172,5 +172,5 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
 }
 
 object RetryTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
 }

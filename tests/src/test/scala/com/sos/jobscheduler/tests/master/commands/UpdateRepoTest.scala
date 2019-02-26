@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -36,7 +36,7 @@ import scala.concurrent.duration._
   */
 final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentPaths = TestAgentPath :: Nil
+  protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
 
   override def beforeAll() = {
@@ -51,9 +51,9 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentPath).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentPath).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentPath).writeExecutable(ExecutablePath("/SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentRefPath).writeExecutable(ExecutablePath("/SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
@@ -143,7 +143,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 object UpdateRepoTest
 {
   private val Tick = 2.second
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """
     define workflow {

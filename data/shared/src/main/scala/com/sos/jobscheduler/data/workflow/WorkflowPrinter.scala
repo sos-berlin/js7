@@ -30,7 +30,7 @@ object WorkflowPrinter {
       sb ++= "executable="
       appendQuoted(workflowExecutable.executablePath.string)
       sb ++= ", agent="
-      appendQuoted(workflowExecutable.agentPath.string)
+      appendQuoted(workflowExecutable.agentRefPath.string)
       if (workflowExecutable.defaultArguments.nonEmpty) {
         sb ++= ", arguments="
         sb ++= workflowExecutable.defaultArguments.asJson.pretty(JsonPrinter)

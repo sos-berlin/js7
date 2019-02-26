@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
@@ -56,7 +56,7 @@ private[graphql] object MasterGraphqlSchema
     "Pattern", "Regular expression pattern")
   private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JobScheduler")
   private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
-  private implicit val AgentPathType       = genericStringType[AgentPath]("Path of Agent (String)")
+  private implicit val AgentRefPathType       = genericStringType[AgentRefPath]("Path of Agent (String)")
   private implicit val ExecutablePathType  = genericStringType[ExecutablePath]("Path of an executable (String)")
   private implicit val WorkflowJobNameType = genericStringType[WorkflowJob.Name]("Job name (String)")
   private implicit val VersionIdType       = genericStringType[VersionId]("Version identifier (String)")
@@ -114,7 +114,7 @@ private[graphql] object MasterGraphqlSchema
       Field("message", StringType, resolve = _.value.toString)))  // Not value.message, JSON differs from Scala !!!
 
   private implicit val WorkflowIdType = fileBasedIdType[WorkflowPath]("WorkflowId", "Workflow's path and VersionId")
-  private implicit val AgentIdType = fileBasedIdType[AgentPath]("AgentId", "Agent's path and VersionId")
+  private implicit val AgentRefIdType = fileBasedIdType[AgentRefPath]("AgentRefId", "Agent's path and VersionId")
 
   private def fileBasedIdType[P <: TypedPath: SomeType](name: String, description: String): ObjectType[QueryContext, FileBasedId[P]] = ObjectType(
     name,
@@ -127,7 +127,7 @@ private[graphql] object MasterGraphqlSchema
     "WorkflowJob",
     "Job",
     fields[QueryContext, WorkflowJob](
-      Field("agentPath", AgentPathType, resolve = _.value.agentPath),
+      Field("agentRefPath", AgentRefPathType, resolve = _.value.agentRefPath),
       Field("executablePath", ExecutablePathType, resolve = _.value.executablePath),
       Field("taskLimit", IntType, resolve = _.value.taskLimit)))
 
@@ -242,12 +242,12 @@ private[graphql] object MasterGraphqlSchema
         case _: Order.Attached ⇒ "Attached"
         case _: Order.Detaching ⇒ "Detaching"
       }),
-      Field("agentPath", OptionType(AgentPathType), resolve = _.value match {
-        case o: Order.AttachedState.HasAgentPath ⇒ Some(o.agentPath)
+      Field("agentRefPath", OptionType(AgentRefPathType), resolve = _.value match {
+        case o: Order.AttachedState.HasAgentRefPath ⇒ Some(o.agentRefPath)
         case _ ⇒ None
       }),
-      Field("agentId", OptionType(AgentIdType), resolve = _.value match {
-        case o: Order.AttachedState.HasAgentId ⇒ Some(o.agentId)
+      Field("agentRefId", OptionType(AgentRefIdType), resolve = _.value match {
+        case o: Order.AttachedState.HasAgentRefId ⇒ Some(o.agentRefId)
         case _ ⇒ None
       })))
 

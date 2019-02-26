@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.data
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.filebased.VersionId
@@ -115,7 +115,7 @@ final class MasterCommandTest extends FreeSpec {
             |...
             |-----END PGP SIGNATURE-----
             |""".stripMargin)) :: Nil,
-      delete = WorkflowPath("/WORKFLOW-A") :: AgentPath("/AGENT-A") :: Nil),
+      delete = WorkflowPath("/WORKFLOW-A") :: AgentRefPath("/AGENT-A") :: Nil),
       json"""{
         "TYPE": "UpdateRepo",
         "versionId": "1",
@@ -133,7 +133,7 @@ final class MasterCommandTest extends FreeSpec {
             "TYPE": "WorkflowPath",
             "path": "/WORKFLOW-A"
           }, {
-            "TYPE": "AgentPath",
+            "TYPE": "AgentRefPath",
             "path": "/AGENT-A"
           }
         ]

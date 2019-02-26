@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
@@ -39,7 +39,7 @@ trait AgentProxyRoute extends MasterRouteProvider
           extractRequest { request ⇒
             completeTask(
               for {
-                checkedAgent ← fileBasedApi.pathToCurrentFileBased[Agent](AgentPath(s"/$pathString"))
+                checkedAgent ← fileBasedApi.pathToCurrentFileBased[AgentRef](AgentRefPath(s"/$pathString"))
                 checkedResponse ← checkedAgent.map(stampedAgent ⇒ forward(stampedAgent, request)).evert
               } yield checkedResponse)
           }
@@ -47,7 +47,7 @@ trait AgentProxyRoute extends MasterRouteProvider
       }
     }
 
-  private def forward(stampedAgent: Stamped[Agent], request: HttpRequest): Task[HttpResponse] = {
+  private def forward(stampedAgent: Stamped[AgentRef], request: HttpRequest): Task[HttpResponse] = {
     val agent = stampedAgent.value
     val agentUri = Uri(agent.uri)
     val uri = agentUri.copy(

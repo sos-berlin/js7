@@ -25,7 +25,7 @@ with CommandRoute
 with GraphqlRoute
 with OrderRoute
 with WorkflowRoute
-with AgentRoute
+with AgentRefRoute
 with AgentProxyRoute
 with SessionRoute
 {
@@ -41,7 +41,7 @@ with SessionRoute
         case "fatEvent"    ⇒ fatEventRoute
         case "order"       ⇒ orderRoute
         case "workflow"    ⇒ workflowRoute
-        case "agent"       ⇒ agentRoute
+        case "agent"       ⇒ agentRefRoute
         case "agent-proxy" ⇒ agentProxyRoute
         case "graphql"     ⇒ graphqlRoute
         case _ ⇒ complete(NotFound)

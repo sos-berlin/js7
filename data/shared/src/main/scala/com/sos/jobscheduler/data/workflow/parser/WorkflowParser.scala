@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow.parser
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
@@ -83,20 +83,20 @@ object WorkflowParser
     private val anonymousWorkflowExecutable = P[WorkflowJob](
       keyValueMap(Map(
         "executable" → quotedString,
-        "agent" → path[AgentPath],
+        "agent" → path[AgentRefPath],
         "arguments" → arguments,
         "successReturnCodes" → successReturnCodes,
         "failureReturnCodes" → failureReturnCodes,
         "taskLimit" → int))
       .flatMap { keyToValue ⇒
         for {
-          agentPath ← keyToValue[AgentPath]("agent")
+          agentRefPath ← keyToValue[AgentRefPath]("agent")
           executablePath ← keyToValue[String]("executable") map ExecutablePath.apply
           arguments ← keyToValue[Arguments]("arguments", Arguments.empty)
           returnCodeMeaning ← keyToValue.oneOfOr[ReturnCodeMeaning](Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
           taskLimit ← keyToValue[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         } yield
-          WorkflowJob(agentPath, executablePath, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit)
+          WorkflowJob(agentRefPath, executablePath, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit)
       })
 
     private val executeInstruction = P[Execute.Anonymous](

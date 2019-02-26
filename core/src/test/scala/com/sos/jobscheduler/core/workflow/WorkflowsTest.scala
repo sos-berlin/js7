@@ -13,7 +13,7 @@ import org.scalatest.FreeSpec
 final class WorkflowsTest extends FreeSpec {
 
   "reduceForAgent A" in {
-    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
+    assert(TestWorkflow.reduceForAgent(AAgentRefPath) == Workflow(
       TestWorkflow.id,
       Vector(
         /*0*/ Fork.of(
@@ -36,7 +36,7 @@ final class WorkflowsTest extends FreeSpec {
   }
 
   "reduceForAgent B" in {
-    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(
+    assert(TestWorkflow.reduceForAgent(BAgentRefPath) == Workflow(
       WorkflowPath("/WORKFLOW") % "INITIAL" ,
       Vector(
         /*0*/ Gap,
@@ -56,38 +56,38 @@ final class WorkflowsTest extends FreeSpec {
 
   "isStartableOnAgent" - {
     val isStartableSetting = List(
-      Position(0) → List(AAgentPath),
-      Position(0, "🥕", 0) → List(AAgentPath),
+      Position(0) → List(AAgentRefPath),
+      Position(0, "🥕", 0) → List(AAgentRefPath),
       Position(0, "🥕", 1) → Nil,
-      Position(0, "🍋", 0) → List(AAgentPath),
+      Position(0, "🍋", 0) → List(AAgentRefPath),
       Position(0, "🍋", 1) → Nil,
-      Position(1) → List(AAgentPath),
-      Position(1, "🥕", 0) → List(AAgentPath),
+      Position(1) → List(AAgentRefPath),
+      Position(1, "🥕", 0) → List(AAgentRefPath),
       Position(1, "🥕", 1) → Nil,
-      Position(1, "🍋", 0) → List(AAgentPath),
+      Position(1, "🍋", 0) → List(AAgentRefPath),
       Position(1, "🍋", 1) → Nil,
-      Position(2) → List(BAgentPath),
-      Position(3) → List(AAgentPath, BAgentPath),
-      Position(3, "🥕", 0) → List(BAgentPath),
+      Position(2) → List(BAgentRefPath),
+      Position(3) → List(AAgentRefPath, BAgentRefPath),
+      Position(3, "🥕", 0) → List(BAgentRefPath),
       Position(3, "🥕", 1) → Nil,
-      Position(3, "🍋", 0) → List(AAgentPath),
-      Position(3, "🍋", 1) → List(BAgentPath),
+      Position(3, "🍋", 0) → List(AAgentRefPath),
+      Position(3, "🍋", 1) → List(BAgentRefPath),
       Position(3, "🍋", 2) → Nil,
-      Position(4) → List(AAgentPath, BAgentPath),  // Order 🍋 is created on A but executed on B
-      Position(4, "🥕", 0) → List(AAgentPath),
+      Position(4) → List(AAgentRefPath, BAgentRefPath),  // Order 🍋 is created on A but executed on B
+      Position(4, "🥕", 0) → List(AAgentRefPath),
       Position(4, "🥕", 1) → Nil,
-      Position(4, "🍋", 0) → List(BAgentPath),
+      Position(4, "🍋", 0) → List(BAgentRefPath),
       Position(4, "🍋", 1) → Nil,
       Position(5) → Nil)
 
-    for ((position, agentPaths) ← isStartableSetting) {
-      for ((agentPath, expected) ← agentPaths.map(_ → true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ → false)) {
-        s"isStartableOnAgent($position $agentPath) = $expected" in {
-          assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
+    for ((position, agentRefPaths) ← isStartableSetting) {
+      for ((agentRefPath, expected) ← agentRefPaths.map(_ → true) ++ (AgentRefPaths filterNot agentRefPaths.toSet).map(_ → false)) {
+        s"isStartableOnAgent($position $agentRefPath) = $expected" in {
+          assert(TestWorkflow.isStartableOnAgent(position, agentRefPath) == expected)
         }
-        s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
-          //assert(SimpleTestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
-          assert(TestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
+        s".reduceForAgent.isStartableOnAgent($position $agentRefPath) = $expected" in {
+          //assert(SimpleTestWorkflow.reduceForAgent(agentRefPath).isStartableOnAgent(position, agentRefPath))
+          assert(TestWorkflow.reduceForAgent(agentRefPath).isStartableOnAgent(position, agentRefPath) == expected)
         }
       }
     }
@@ -95,9 +95,9 @@ final class WorkflowsTest extends FreeSpec {
 
   //"determinedExecutingAgent" - {
   //  val setting = List(
-  //    Position(0) → Some(AAgentPath),
-  //    Position(1) → Some(AAgentPath),
-  //    Position(2) → Some(BAgentPath),
+  //    Position(0) → Some(AAgentRefPath),
+  //    Position(1) → Some(AAgentRefPath),
+  //    Position(2) → Some(BAgentRefPath),
   //    Position(3) → None,
   //    Position(4) → None,
   //    Position(5) → Nil)

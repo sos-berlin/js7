@@ -63,7 +63,7 @@ final class InMemoryHistory {
           finishedAt = Some(timestamp),
           endWorkflowPosition = Some(workflowPosition))
 
-      case OrderProcessingStartedFat(workflowPosition, agentPath, agentUri, jobPath, variables) ⇒
+      case OrderProcessingStartedFat(workflowPosition, agentRefPath, agentUri, jobPath, variables) ⇒
         var entry = idToOrderEntry(orderId)
         if (entry.startedAt.isEmpty) {
           entry = entry.copy(

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -24,7 +24,7 @@ import org.scalatest.FreeSpec
   */
 final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProviderForScalaTest {
 
-  protected val agentPaths = Nil
+  protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil
 
   private lazy val api = new AkkaHttpMasterApi(master.localUri)
@@ -66,6 +66,6 @@ final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProviderForScal
 private object AkkaHttpMasterApiTest
 {
   private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") % "INITIAL",
-    Execute(WorkflowJob(AgentPath("/MISSING"), ExecutablePath("/MISSING"))))
+    Execute(WorkflowJob(AgentRefPath("/MISSING"), ExecutablePath("/MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

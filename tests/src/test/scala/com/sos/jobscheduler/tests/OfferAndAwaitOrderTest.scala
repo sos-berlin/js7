@@ -3,9 +3,9 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension ⇒ sh}
+import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -39,7 +39,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
           execute executable="/executable$sh", agent="AGENT";
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflows)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) ⇒
@@ -48,8 +48,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         checkEventSeq(master.eventWatch.all[OrderEvent],
           expectedOffering = Vector(
               OrderAdded(PublishingWorkflowId),
-              OrderAttachable(TestAgentPath),
-              OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+              OrderAttachable(TestAgentRefPath),
+              OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
               OrderStarted,
               OrderProcessingStarted,
               OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -58,8 +58,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderTransferredToMaster,
               OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
               OrderMoved(Position(2)),
-              OrderAttachable(TestAgentPath),
-              OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+              OrderAttachable(TestAgentRefPath),
+              OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
               OrderProcessingStarted,
               OrderProcessed(MapDiff.empty, Outcome.succeeded),
               OrderMoved(Position(3)),
@@ -68,8 +68,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderFinished),
           expectedAwaiting = Vector(
             OrderAdded(JoiningWorkflowId),
-            OrderAttachable(TestAgentPath),
-            OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+            OrderAttachable(TestAgentRefPath),
+            OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
             OrderStarted,
             OrderProcessingStarted,
             OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -79,8 +79,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
             OrderJoined(MapDiff.empty, Outcome.succeeded),
             OrderMoved(Position(2)),
-            OrderAttachable(TestAgentPath),
-            OrderTransferredToAgent(TestAgentPath % "INITIAL"),
+            OrderAttachable(TestAgentRefPath),
+            OrderTransferredToAgent(TestAgentRefPath % "INITIAL"),
             OrderProcessingStarted,
             OrderProcessed(MapDiff.empty, Outcome.succeeded),
             OrderMoved(Position(3)),
@@ -101,7 +101,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflows)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider ⇒
       for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) ⇒
@@ -156,7 +156,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 }
 
 object OfferAndAwaitOrderTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val JoiningWorkflowId = WorkflowPath("/A") % "INITIAL"
   private val PublishingWorkflowId = WorkflowPath("/B") % "INITIAL"
 

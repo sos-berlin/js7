@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Terminate}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.TestCodeProblem
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -114,7 +114,7 @@ final class AgentCommandTest extends FreeSpec {
             OrderId("ORDER-ID"),
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready),
-          AgentPath("/AGENT") % "1",
+          AgentRefPath("/AGENT") % "1",
           SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{
           "TYPE": "AttachOrder",
@@ -127,7 +127,7 @@ final class AgentCommandTest extends FreeSpec {
             },
             "attachedState": {
               "TYPE": "Attached",
-              "agentId": {
+              "agentRefId": {
                 "path": "/AGENT",
                 "versionId": "1"
               }

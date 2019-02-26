@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
-import com.sos.jobscheduler.master.agent.AgentReader
+import com.sos.jobscheduler.master.agent.AgentRefReader
 import com.sos.jobscheduler.master.tests.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
@@ -41,7 +41,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
     super.afterAll()
   }
 
-  private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, AgentReader))
+  private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, AgentRefReader))
 
   "readFileBased with syntax errors and a alien file" in {
       assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==

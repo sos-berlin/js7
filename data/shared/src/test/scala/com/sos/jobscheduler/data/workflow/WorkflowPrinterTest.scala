@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.data.Validated.Valid
 import cats.syntax.show._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
@@ -24,7 +24,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"))))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"))))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT";
         |}
@@ -36,7 +36,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"))))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"))))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"};
         |}
@@ -48,7 +48,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
         |}
@@ -60,7 +60,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.NoFailure)))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.NoFailure)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
         |}
@@ -75,8 +75,8 @@ final class WorkflowPrinterTest extends FreeSpec {
           Execute(WorkflowJob.Name("A")),
           Execute(WorkflowJob.Name("B"))),
         Map(
-          WorkflowJob.Name("A") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
-          WorkflowJob.Name("B") → WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/b-script")))),
+          WorkflowJob.Name("A") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("B") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/b-script")))),
       """define workflow {
         |  job A;
         |  job B;
@@ -96,7 +96,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          "A" @: Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
+          "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
       """define workflow {
         |  A: execute executable="/EXECUTABLE", agent="/AGENT";
         |}
@@ -112,7 +112,7 @@ final class WorkflowPrinterTest extends FreeSpec {
             Or(
               In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
-            Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
+            Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
       """define workflow {
         |  if ((returnCode in [1, 2]) || $KEY == 'VALUE') {
         |    execute executable="/EXECUTABLE", agent="/AGENT";
@@ -128,10 +128,10 @@ final class WorkflowPrinterTest extends FreeSpec {
         Vector(
           If(Equal(OrderReturnCode, NumericConstant(-1)),
             Workflow.of(
-              Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A-THEN"))),
+              Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A-THEN"))),
               If(BooleanConstant(true),
-                Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B-THEN")))),
-                Some(Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B-ELSE")))))))))),
+                Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-THEN")))),
+                Some(Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-ELSE")))))))))),
       """define workflow {
         |  if (returnCode == -1) {
         |    execute executable="/A-THEN", agent="/AGENT";
@@ -149,8 +149,8 @@ final class WorkflowPrinterTest extends FreeSpec {
     check(
       Workflow.of(
         Fork(Vector(
-          Fork.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))))),
-          Fork.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B")))))))),
+          Fork.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))))),
+          Fork.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))))),
       """define workflow {
         |  fork (
         |    "🥕" {
@@ -186,12 +186,12 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/A"))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))),
           IfNonZeroReturnCodeGoto(Label("FAILURE")),
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/B"))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B"))),
           Goto(Label("END")),
           "FAILURE" @:
-          Execute(WorkflowJob(AgentPath("/AGENT"), ExecutablePath("/OnFailure"))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/OnFailure"))),
           "END" @:
           ExplicitEnd)),
       """define workflow {

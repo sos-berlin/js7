@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
-import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterFileBaseds
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
   */
 final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 {
-  protected def agentPaths = agentPath :: Nil
+  protected def agentRefPaths = agentRefPath :: Nil
   protected def fileBased = workflow :: Nil
 
   "jobscheduler.webserver.auth.public = true" in {
@@ -83,7 +83,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
         "-data-directory=" + dir / "master/data" ::
         "-http-port=" + masterPort :: Nil)
 
-      val agentRef = Agent(agentPath % versionId, s"http://127.0.0.1:$agentPort")
+      val agentRef = AgentRef(agentRefPath % versionId, s"http://127.0.0.1:$agentPort")
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds
 
@@ -101,9 +101,9 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 object MasterAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
-  private val agentPath = AgentPath("/AGENT")
+  private val agentRefPath = AgentRefPath("/AGENT")
   private val executablePath = ExecutablePath("/EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") % versionId,
-    Execute(WorkflowJob(agentPath, executablePath)))
+    Execute(WorkflowJob(agentRefPath, executablePath)))
   private val orderId = OrderId("🔵")
 }

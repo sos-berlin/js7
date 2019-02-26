@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderStarted, OrderStopped}
@@ -45,7 +45,7 @@ final class FailTest extends FreeSpec
       expectedEvents)
 
   private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
       directoryProvider.run { (master, _) ⇒
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -66,6 +66,6 @@ final class FailTest extends FreeSpec
 }
 
 object FailTest {
-  private val TestAgentPath = AgentPath("/AGENT")
+  private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "INITIAL"
 }
