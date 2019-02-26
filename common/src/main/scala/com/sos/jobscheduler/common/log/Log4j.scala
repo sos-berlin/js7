@@ -17,7 +17,7 @@ object Log4j {
     */
   def shutdown(): Unit =
     if (!isShutdown.getAndSet(true)) {
-      for (logManager ← Try(Class.forName("org.apache.logging.log4j.LogManager"))) {
+      for (logManager <- Try(Class.forName("org.apache.logging.log4j.LogManager"))) {
         logger.debug("log4j.LogManager.shutdown")
         logManager.getMethod("shutdown", classOf[Boolean]).invoke(null, Boolean.box(true))
       }

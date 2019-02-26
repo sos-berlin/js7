@@ -31,7 +31,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
   private val idToTask = mutable.Map[AgentTaskId, BaseAgentTask]()
   private var totalCount = 0
   private val crashKillScriptOption =
-    for (conf ← killScriptConf) yield new CrashKillScript(conf.killScript, conf.crashKillScriptFile)
+    for (conf <- killScriptConf) yield new CrashKillScript(conf.killScript, conf.crashKillScriptFile)
   private var killAllSchedule: Cancellable = null
   private var terminating = false
 
@@ -39,31 +39,31 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
     if (killAllSchedule != null) {
       killAllSchedule.cancel()
     }
-    for (o ← crashKillScriptOption)
+    for (o <- crashKillScriptOption)
       o.close()
     super.postStop()
   }
 
   def receive = {
-    case o: Input ⇒ handleInput(o)
-    case o: Command ⇒ handleCommand(o)
-    case o: Internal ⇒ handleInternal(o)
+    case o: Input => handleInput(o)
+    case o: Command => handleCommand(o)
+    case o: Internal => handleInternal(o)
   }
 
   private def handleInput(input: Input): Unit =
     input match {
-      case Input.Add(task, promise) ⇒
-        idToTask += task.id → task
+      case Input.Add(task, promise) =>
+        idToTask += task.id -> task
         totalCount += 1
-        for (o ← crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0))
-        task.terminated onComplete { _ ⇒
+        for (o <- crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0))
+        task.terminated onComplete { _ =>
           self ! Input.Remove(task.id)
         }
         promise.success(Completed)
 
-      case Input.Remove(taskId) ⇒
+      case Input.Remove(taskId) =>
         idToTask -= taskId
-        for (o ← crashKillScriptOption) o.remove(taskId)
+        for (o <- crashKillScriptOption) o.remove(taskId)
         if (idToTask.isEmpty && terminating) {
           context.stop(self)
         }
@@ -71,14 +71,14 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
 
   private def handleCommand(command: Command): Unit =
     command match {
-      case Command.SendSignalToAllProcesses(signal) ⇒
+      case Command.SendSignalToAllProcesses(signal) =>
         sendSignalToAllProcesses(signal)
         sender() ! Completed
 
-      case _: Command.Terminate if terminating ⇒
+      case _: Command.Terminate if terminating =>
         sender() ! Status.Failure(new IllegalStateException("TaskRegisterActor is already terminating"))
 
-      case cmd: Command.Terminate ⇒
+      case cmd: Command.Terminate =>
         terminating = true
         if (cmd.sigterm) {
           trySigtermProcesses()
@@ -88,24 +88,24 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
           context.self, Internal.KillAll)
         sender() ! Completed
 
-      case Command.GetOverview ⇒
+      case Command.GetOverview =>
         sender() ! TaskRegisterOverview(
           currentTaskCount = idToTask.size,
           totalTaskCount = totalCount)
 
-      case Command.GetTaskOverviews ⇒
+      case Command.GetTaskOverviews =>
         sender() ! (idToTask.values map { _.overview }).toVector
 
-      case Command.GetTaskOverview(taskId) if idToTask contains taskId ⇒
+      case Command.GetTaskOverview(taskId) if idToTask contains taskId =>
         sender() ! idToTask(taskId).overview
 
-      case Command.GetTaskOverview(taskId) ⇒
+      case Command.GetTaskOverview(taskId) =>
         sender() ! Status.Failure(new NoSuchElementException(s"Unknown task $taskId"))
     }
 
   private def handleInternal(internal: TaskRegisterActor.Internal) =
     internal match {
-      case Internal.KillAll ⇒
+      case Internal.KillAll =>
         sendSignalToAllProcesses(SIGKILL)
     }
 
@@ -117,9 +117,9 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
     }
 
   private def sendSignalToAllProcesses(signal: ProcessSignal) =
-    for (task ← idToTask.values) {
+    for (task <- idToTask.values) {
       try task.sendProcessSignal(signal)
-      catch { case NonFatal(t) ⇒
+      catch { case NonFatal(t) =>
         logger.warn(s"${task.id}: $t")
       }
     }
@@ -158,9 +158,9 @@ object TaskRegisterActor {
 private[task] final class TaskRegisterActorMailbox(settings: ActorSystem.Settings, config: Config)
 extends UnboundedStablePriorityMailbox(
   PriorityGenerator {
-    case _: Input.Remove ⇒ 0  // Process with priority, to avoid task and process overflow
-    case PoisonPill ⇒ 1
-    case _: Command ⇒ 2
-    case _: Input.Add ⇒ 3
-    case _ ⇒ 3
+    case _: Input.Remove => 0  // Process with priority, to avoid task and process overflow
+    case PoisonPill => 1
+    case _: Command => 2
+    case _: Input.Add => 3
+    case _ => 3
   })

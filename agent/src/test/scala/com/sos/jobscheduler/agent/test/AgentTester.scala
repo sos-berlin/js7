@@ -9,7 +9,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
  * @author Joacim Zschimmer
  */
 trait AgentTester extends BeforeAndAfterAll with TestAgentProvider {
-  this: Suite ⇒
+  this: Suite =>
 
   private var started = false
 

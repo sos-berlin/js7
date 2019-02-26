@@ -17,16 +17,16 @@ import shapeless.Lazy
   */
 object CirceUtils {
 
-  def toStringJsonCodec[A](from: String ⇒ A): CirceCodec[A] =
+  def toStringJsonCodec[A](from: String => A): CirceCodec[A] =
     stringJsonCodec(_.toString, from)
 
-  def stringJsonCodec[A](to: A ⇒ String, from: String ⇒ A): CirceCodec[A] =
+  def stringJsonCodec[A](to: A => String, from: String => A): CirceCodec[A] =
     circeCodec(stringEncoder(to), stringDecoder(from))
 
-  def stringEncoder[A](to: A ⇒ String): Encoder[A] =
-    o ⇒ Json.fromString(to(o))
+  def stringEncoder[A](to: A => String): Encoder[A] =
+    o => Json.fromString(to(o))
 
-  def stringDecoder[A](from: String ⇒ A): Decoder[A] =
+  def stringDecoder[A](from: String => A): Decoder[A] =
     _.as[String] map from
 
   def objectCodec[A <: AnyRef: ObjectEncoder: Decoder]: CirceObjectCodec[A] =
@@ -73,49 +73,49 @@ object CirceUtils {
     def intOrThrow: Int = {
       val number = numberOrThrow
       number.toInt match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("Int", number.toString)
+        case Some(o) => o
+        case None => throwUnexpected("Int", number.toString)
       }
     }
 
     def longOrThrow: Long = {
       val number = numberOrThrow
       number.toLong match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("Long", number.toString)
+        case Some(o) => o
+        case None => throwUnexpected("Long", number.toString)
       }
     }
 
     def numberOrThrow: JsonNumber =
       underlying.asNumber match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("number", underlying.getClass.simpleScalaName)
+        case Some(o) => o
+        case None => throwUnexpected("number", underlying.getClass.simpleScalaName)
       }
 
 
     def stringOrThrow: String =
       underlying.asString match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("string", underlying.getClass.simpleScalaName)
+        case Some(o) => o
+        case None => throwUnexpected("string", underlying.getClass.simpleScalaName)
       }
 
 
     def jsonObjectOrThrow: JsonObject =
       underlying.asObject match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("object", underlying.getClass.simpleScalaName)
+        case Some(o) => o
+        case None => throwUnexpected("object", underlying.getClass.simpleScalaName)
       }
 
     def arrayOrThrow: Vector[Json] =
       underlying.asArray match {
-        case Some(o) ⇒ o
-        case None ⇒ throwUnexpected("array", underlying.getClass.simpleScalaName)
+        case Some(o) => o
+        case None => throwUnexpected("array", underlying.getClass.simpleScalaName)
       }
 
     def fieldOrThrow(name: String): Json =
       underlying.asObject match {
-        case Some(o) ⇒ o(name) getOrElse (throw new IllegalArgumentException(s"Unknown JSON field '$name'"))
-        case None ⇒ throw new IllegalArgumentException("Not a JsonObject")
+        case Some(o) => o(name) getOrElse (throw new IllegalArgumentException(s"Unknown JSON field '$name'"))
+        case None => throw new IllegalArgumentException("Not a JsonObject")
       }
   }
 
@@ -133,8 +133,8 @@ object CirceUtils {
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {
     def toDecoderResult: Decoder.Result[A] =
       underlying match {
-        case Valid(o) ⇒ Right(o)
-        case Invalid(o) ⇒ Left(DecodingFailure(o.toString, Nil))  // Ignoring stacktrace ???
+        case Valid(o) => Right(o)
+        case Invalid(o) => Left(DecodingFailure(o.toString, Nil))  // Ignoring stacktrace ???
       }
   }
 
@@ -155,32 +155,32 @@ object CirceUtils {
     new Encoder[ListMap[K, V]] with Decoder[ListMap[K, V]] {
       def apply(listMap: ListMap[K, V]) =
         Json.fromValues(
-          for ((key, value) ← listMap) yield
+          for ((key, value) <- listMap) yield
             Json.fromJsonObject(JsonObject.fromMap(
-              ListMap(keyName → key.asJson) ++
+              ListMap(keyName -> key.asJson) ++
                 JsonObject.singleton(valueName, value.asJson).toMap)))
 
       private implicit val idAndScriptDecoder: Decoder[(K, V)] =
-        cursor ⇒
+        cursor =>
           for {
-            id ← cursor.downField(keyName).as[K]
-            value ← cursor.downField(valueName).as[V]
+            id <- cursor.downField(keyName).as[K]
+            value <- cursor.downField(valueName).as[V]
           } yield
-            id → value
+            id -> value
 
       def apply(cursor: HCursor) =
         cursor.as[Seq[(K, V)]].map(ListMap.empty.++)
     }
 
-  //def delegateCodec[A, B: Encoder: Decoder](toB: A ⇒ B, fromB: B ⇒ A): CirceCodec[A] =
+  //def delegateCodec[A, B: Encoder: Decoder](toB: A => B, fromB: B => A): CirceCodec[A] =
   //  new Encoder[A] with Decoder[A] {
   //    def apply(a: A) = toB(a).asJson
   //    def apply(c: HCursor) = c.as[B] flatMap caught(fromB)
   //  }
   //
-  //private def caught[A, B](convert: A ⇒ B)(a: A): Decoder.Result[B] =
+  //private def caught[A, B](convert: A => B)(a: A): Decoder.Result[B] =
   //  try Right(convert(a))
-  //  catch { case NonFatal(t) ⇒
+  //  catch { case NonFatal(t) =>
   //    Left(DecodingFailure(t.toStringWithCauses, Nil))
   //  }
 
@@ -190,7 +190,7 @@ object CirceUtils {
       val p = sc.parts.iterator
       val builder = new StringBuilder(sc.parts.map(_.length).sum + 50)
       builder.append(p.next())
-      for (arg ← args) {
+      for (arg <- args) {
         builder.append(toJson(arg))
         builder.append(p.next())
       }
@@ -199,10 +199,10 @@ object CirceUtils {
 
     private def toJson(arg: Any): String =
       arg match {
-        case arg: String ⇒
+        case arg: String =>
           val j = Json.fromString(arg.toString).toString
           j.substring(1, j.length - 1)  // Interpolation is expected to occur already in quotes: "$var"
-        case _ ⇒
+        case _ =>
           anyToJson(arg).toString
       }
 

@@ -22,18 +22,18 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
   private val logger = Logger(getClass)
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: If): Option[KeyedEvent[OrderActorEvent]] =
-    nextPosition(context, order, instruction) map (o ⇒ order.id <-: OrderMoved(o))
+    nextPosition(context, order, instruction) map (o => order.id <-: OrderMoved(o))
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If): Option[Position] = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
     Evaluator.evalBoolean(context.makeScope(order), instruction.predicate)
       .map {
-        case true ⇒ Some(Then)
-        case false ⇒ instruction.elseWorkflow.isDefined ? Else
+        case true => Some(Then)
+        case false => instruction.elseWorkflow.isDefined ? Else
       }
       .map {
-        case Some(thenOrElse) ⇒ order.position / thenOrElse % 0
-        case None ⇒ order.position.increment  // No else-part, skip instruction
-      }.onProblem(p ⇒ logger.error(s"$p"))  // TODO None is an error. Return Invalid
+        case Some(thenOrElse) => order.position / thenOrElse % 0
+        case None => order.position.increment  // No else-part, skip instruction
+      }.onProblem(p => logger.error(s"$p"))  // TODO None is an error. Return Invalid
   }
 }

@@ -38,7 +38,7 @@ final class MasterUris private(masterUri: String) {
     def add = api("/order")
 
     def list[A: ClassTag]: String =
-      api("/" + encodePath("order", ""), "return" → encodeClass[A])
+      api("/" + encodePath("order", ""), "return" -> encodeClass[A])
 
     def apply(orderId: OrderId): String =
       api("/" + encodePath("order", orderId.string))
@@ -49,7 +49,7 @@ final class MasterUris private(masterUri: String) {
       api("/" + encodePath("workflow", path.withoutStartingSlash))
 
     def list[A: ClassTag]: String =
-      api("/" + encodePath("workflow", ""), "return" → encodeClass[A])
+      api("/" + encodePath("workflow", ""), "return" -> encodeClass[A])
   }
 
   object agent {
@@ -57,7 +57,7 @@ final class MasterUris private(masterUri: String) {
       api("/" + encodePath("agent", path.withoutStartingSlash))
 
     def list[A: ClassTag]: String =
-      api("/" + encodePath("agent", ""), "return" → encodeClass[A])
+      api("/" + encodePath("agent", ""), "return" -> encodeClass[A])
   }
 
   def api(query: (String, String)*): String =

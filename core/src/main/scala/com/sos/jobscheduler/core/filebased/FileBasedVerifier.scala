@@ -18,9 +18,9 @@ final class FileBasedVerifier[A <: FileBased](signatureVerifier: SignatureVerifi
 {
   def verify(signedString: SignedString): Checked[Verified[A]] =
     for {
-      signers ← signatureVerifier.verify(signedString)
-      json ← signedString.string.parseJsonChecked
-      fileBased ← jsonDecoder.decodeJson(json).toSimpleChecked
+      signers <- signatureVerifier.verify(signedString)
+      json <- signedString.string.parseJsonChecked
+      fileBased <- jsonDecoder.decodeJson(json).toSimpleChecked
     } yield Verified(Signed(fileBased, signedString), signers)
 }
 

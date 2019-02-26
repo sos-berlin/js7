@@ -101,7 +101,7 @@ private object FolderPathTest
 
   private object TestPath extends TypedPath.Companion[TestPath] {
     val sourceTypeToFilenameExtension = Map(
-      SourceType.Json → ".test.json")
+      SourceType.Json -> ".test.json")
 
     protected def unchecked(string: String) = new TestPath(string)
   }

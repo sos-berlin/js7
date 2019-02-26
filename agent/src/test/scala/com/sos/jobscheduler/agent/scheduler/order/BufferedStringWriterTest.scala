@@ -49,7 +49,7 @@ final class BufferedStringWriterTest extends FreeSpec {
   }
 
   "Three small chunks are buffered" in {
-    for (_ ← 1 to 3) {
+    for (_ <- 1 to 3) {
       w.write("123456789")
     }
     assert(w.result.toList == List("onBufferingStarted", "One Two ", "....'....1....'....2....'", "....'....1....", "onBufferingStarted"))

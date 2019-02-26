@@ -20,7 +20,7 @@ import scala.util.{Failure, Success}
 final class TcpToRequestResponse(
   actorSystem: ActorSystem,
   connectTo: InetSocketAddress,
-  executeRequest: ByteString ⇒ Future[ByteString],
+  executeRequest: ByteString => Future[ByteString],
   name: String)
 extends AutoCloseable {
 
@@ -36,7 +36,7 @@ extends AutoCloseable {
     actor ! Start(connectionMessage)
 
   def close(): Unit =
-    startedPromise.future.onComplete { _ ⇒
+    startedPromise.future.onComplete { _ =>
       if (!actorClosed) {
         // Race condition: When actor has stopped itself just now, the message will be a dead letter
         actor ! Close
@@ -53,42 +53,42 @@ extends AutoCloseable {
     def receive = expectingStart
 
     private def expectingStart: Receive = {
-      case Start(connectionMessage) ⇒
+      case Start(connectionMessage) =>
         IO(Tcp) ! Tcp.Connect(connectTo)
         become(connecting(connectionMessage))
     }
 
     private def connecting(connectionMessageOption: Option[ByteString]): Receive = {
-      case connected: Tcp.Connected ⇒
+      case connected: Tcp.Connected =>
         startedPromise.success(())
         val tcp = sender()
         val bridge = actorOf(MessageTcpBridge.props(tcp, connected), name = "MessageTcpBridge")
         watch(bridge)
-        for (m ← connectionMessageOption) bridge ! MessageTcpBridge.SendMessage(m)
+        for (m <- connectionMessageOption) bridge ! MessageTcpBridge.SendMessage(m)
         become(running(bridge = bridge))
-      case m: Tcp.CommandFailed ⇒
+      case m: Tcp.CommandFailed =>
         startedPromise.failure(new RuntimeException(m.toString))
-      case Close ⇒
+      case Close =>
         stop(self)
     }
 
     private def running(bridge: ActorRef): Receive = {
-      case MessageTcpBridge.MessageReceived(message) ⇒
+      case MessageTcpBridge.MessageReceived(message) =>
         catchInFuture { executeRequest(message) } onComplete {
-          case Success(response) ⇒
+          case Success(response) =>
             bridge ! MessageTcpBridge.SendMessage(response)
-          case Failure(t) ⇒
+          case Failure(t) =>
             t match {
-              case _ if t.getClass.getName == "com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" ⇒ logger.error(t.toStringWithCauses)
-              case _ ⇒ logger.error(s"$t", t)
+              case _ if t.getClass.getName == "com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" => logger.error(t.toStringWithCauses)
+              case _ => logger.error(s"$t", t)
             }
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
         }
-      case MessageTcpBridge.PeerClosed ⇒
+      case MessageTcpBridge.PeerClosed =>
         logger.debug("MessageTcpBridge.PeerClosed")  // We ignore this. The JobScheduler COM RPC protocol ensures the server side termination.
-      case Close ⇒
+      case Close =>
         bridge ! MessageTcpBridge.Close
-      case Terminated(_) ⇒
+      case Terminated(_) =>
         stop(self)
         actorClosed = true
     }

@@ -55,6 +55,6 @@ final class AsTest extends FreeSpec {
     assert(!conv("false"))
     assert(!conv("off"))
     assert(!conv("no"))
-    for (o ← List(true, false)) assert(conv(o.toString) == o)
+    for (o <- List(true, false)) assert(conv(o.toString) == o)
   }
 }

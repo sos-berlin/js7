@@ -43,7 +43,7 @@ final class ExceptionsTest extends FreeSpec {
   "ignoreException ignores exception" in {
     val exception = new RuntimeException("TEST")
     var ignored: (String, Throwable) = null
-    def onException(message: ⇒ String, t: Throwable) = ignored = (message, t)
+    def onException(message: => String, t: Throwable) = ignored = (message, t)
     val t = ignoreException(onException) {
       throw exception
     }
@@ -68,7 +68,7 @@ final class ExceptionsTest extends FreeSpec {
   "logException" in {
     val exception = new RuntimeException("TEST")
     var logged: (String, Throwable) = null
-    def onException(message: ⇒ String, t: Throwable) = logged = (message, t)
+    def onException(message: => String, t: Throwable) = logged = (message, t)
     intercept[RuntimeException] {
       logException(onException) {
         throw exception

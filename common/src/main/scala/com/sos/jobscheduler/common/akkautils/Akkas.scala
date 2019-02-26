@@ -48,7 +48,7 @@ object Akkas {
   }
 
   def byteStringToTruncatedString(byteString: ByteString, size: Int = 100, name: String = "ByteString") =
-    s"${byteString.size} bytes " + (byteString take size map { c ⇒ f"$c%02x" } mkString " ") + (if (byteString.size > size) " ..." else "")
+    s"${byteString.size} bytes " + (byteString take size map { c => f"$c%02x" } mkString " ") + (if (byteString.size > size) " ..." else "")
 
   final class DummyCancellable extends Cancellable {
     private var _isCancelled = false
@@ -80,7 +80,7 @@ object Akkas {
 
   private def encodeAsActorName2(string: String): String = {
     val sb = new StringBuilder(string.length + 10*3)
-    for (c ← string) {
+    for (c <- string) {
       if (isValidChar(c)) {
         sb += c
       } else {
@@ -101,7 +101,7 @@ object Akkas {
   def uniqueActorName(name: String)(implicit context: ActorContext): String = {
     var _name = name
     if (context.child(name).isDefined) {
-      _name = Iterator.from(2).map(i ⇒ s"$name~$i").find { nam ⇒ context.child(nam).isEmpty }.get
+      _name = Iterator.from(2).map(i => s"$name~$i").find { nam => context.child(nam).isEmpty }.get
       logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path}/$name")
     }
     _name

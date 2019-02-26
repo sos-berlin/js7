@@ -22,6 +22,6 @@ final class UrisTest extends FreeSpec {
 
   "encodeQuery" in {
     assert(encodeQuery(Nil) == "")
-    assert(encodeQuery(List("k" → "v", "?=" → "/&")) == "?k=v&?%3D=/%26")
+    assert(encodeQuery(List("k" -> "v", "?=" -> "/&")) == "?k=v&?%3D=/%26")
   }
 }

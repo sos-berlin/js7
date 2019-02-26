@@ -29,17 +29,17 @@ private[watch] object TestData {
     KeyedSubtype[TestEvent])
 
   def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta[E], after: EventId, snapshotObjects: Seq[Any]): Unit =
-    autoClosing(SnapshotJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
+    autoClosing(SnapshotJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
       writer.writeHeader(JournalHeader(eventId = after, totalEventCount = 0))
       writer.beginSnapshotSection()
-      for (o ← snapshotObjects) {
+      for (o <- snapshotObjects) {
         writer.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
       }
       writer.endSnapshotSection(sync = false)
     }
 
   def writeJournal[E <: Event](journalMeta: JournalMeta[E], after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[E]]]): Unit =
-    autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer ⇒
+    autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
       writer.writeHeader(JournalHeader(eventId = after, totalEventCount = 0))
       writer.beginEventSection()
       writer.writeEvents(stampedEvents take 1)

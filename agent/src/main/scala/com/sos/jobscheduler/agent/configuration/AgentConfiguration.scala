@@ -56,9 +56,9 @@ extends CommonConfiguration
   }
 
   private def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
-    case None ⇒ this  // -kill-script= not given: Agent uses the internally provided kill script
-    case Some("") ⇒ copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
-    case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
+    case None => this  // -kill-script= not given: Agent uses the internally provided kill script
+    case Some("") => copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
+    case Some(o) => copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
 
   def executableDirectory: Path =
@@ -87,15 +87,15 @@ extends CommonConfiguration
 
   private def provideKillScript(): AgentConfiguration = {
     killScript match {
-      case Some(DelayUntilFinishKillScript) ⇒
+      case Some(DelayUntilFinishKillScript) =>
         val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
         copy(killScript = Some(provider.provideTo(temporaryDirectory)))
-      case _ ⇒ this
+      case _ => this
     }
   }
 
   def killScriptConf: Option[KillScriptConf] =
-    killScript map (o ⇒ KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
+    killScript map (o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
@@ -108,7 +108,7 @@ object AgentConfiguration {
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
-  def fromCommandLine(args: Seq[String], extraDefaultConfig: Config = ConfigFactory.empty) = CommandLineArguments.parse(args) { a ⇒
+  def fromCommandLine(args: Seq[String], extraDefaultConfig: Config = ConfigFactory.empty) = CommandLineArguments.parse(args) { a =>
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
     val c = fromDirectories(
       configDirectory = common.configDirectory,
@@ -131,7 +131,7 @@ object AgentConfiguration {
       name = DefaultName,
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
-    //for (o ← config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {
+    //for (o <- config.optionAs("jobscheduler.https.port")(StringToServerInetSocketAddress)) {
     //  v = v addHttps o
     //}
     v
@@ -148,7 +148,7 @@ object AgentConfiguration {
   // Same code in TextAgentClient.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" → configDirectory.toString
+        "jobscheduler.config-directory" -> configDirectory.toString
       ).asJava)
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
       .withFallback(parseConfigIfExists(configDirectory / "agent.conf"))
@@ -171,8 +171,8 @@ object AgentConfiguration {
         config)
       .copy(
         webServerPorts  =
-          httpPort.map(port ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", port))) ++:
-          httpsPort.map(port ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = mutualHttps)).toList,
+          httpPort.map(port => WebServerPort.Http(new InetSocketAddress("127.0.0.1", port))) ++:
+          httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port), mutual = mutualHttps)).toList,
         jobJavaOptions =
           s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
             sys.props.get("agent.job.javaOptions").toList)

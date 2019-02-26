@@ -6,14 +6,14 @@ import com.sos.jobscheduler.base.utils.DecimalPrefixes
   * @author Joacim Zschimmer
   */
 trait As[V, W] {
-  // Objects of this class are implicitly used. So do not extend V ⇒ W to avoid implicit use as function.
+  // Objects of this class are implicitly used. So do not extend V => W to avoid implicit use as function.
   def apply(v: V): W
 }
 
 object As {
 
-  def apply[V, W](asW: V ⇒ W): As[V, W] =
-    v ⇒ asW(v)
+  def apply[V, W](asW: V => W): As[V, W] =
+    v => asW(v)
 
   def convert[V, W](from: V)(implicit to: As[V, W]): W =
     to(from)
@@ -22,8 +22,8 @@ object As {
 
   implicit object StringAsBoolean extends As[String, Boolean] {
     val StringToBooleanMap = Map(
-      "true"  → true , "on"  → true , "yes" → true,
-      "false" → false, "off" → false, "no"  → false)
+      "true"  -> true , "on"  -> true , "yes" -> true,
+      "false" -> false, "off" -> false, "no"  -> false)
 
     def apply(o: String) = StringToBooleanMap.getOrElse(o,
       throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
@@ -38,19 +38,19 @@ object As {
 
   val StringAsIntOrUnlimited: As[String, Option[Int]] =
     As {
-      case "unlimited" ⇒ None
-      case o ⇒ Some(Integer.parseInt(o))
+      case "unlimited" => None
+      case o => Some(Integer.parseInt(o))
     }
 
   implicit val StringAsLong: As[String, Long] =
     As(java.lang.Long.parseLong)
 
   implicit val StringAsBigDecimal: As[String, BigDecimal] =
-    As(o ⇒ new java.math.BigDecimal(o))
+    As(o => new java.math.BigDecimal(o))
 
   val StringAsLongWithDecimalPrefix: As[String, Long] =
     As(DecimalPrefixes.toInt)
 
   val StringAsByteCountWithDecimalPrefix: As[String, Long] =
-    As(o ⇒ DecimalPrefixes.toInt(o stripSuffix "B"/*optional*/))
+    As(o => DecimalPrefixes.toInt(o stripSuffix "B"/*optional*/))
 }

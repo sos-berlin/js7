@@ -20,18 +20,18 @@ object ForkExecutor extends EventInstructionExecutor
   private val logger = Logger(getClass)
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Fork): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.Fresh].map(order ⇒
+    order.ifState[Order.Fresh].map(order =>
       order.id <-: OrderStarted)
     .orElse(
-      order.ifState[Order.Ready].map(order ⇒
+      order.ifState[Order.Ready].map(order =>
         checkOrderForked(context,
           order.id <-: OrderForked(
-            for (branch ← instruction.branches) yield
+            for (branch <- instruction.branches) yield
               OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))))
     .orElse(
-      order.ifState[Order.Forked].flatMap(order ⇒
+      order.ifState[Order.Forked].flatMap(order =>
         //orderEntry.instruction match {
-        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath ⇒
+        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
         if (order.isAttached)
           Some(order.id <-: OrderDetachable)  //
         else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
@@ -42,7 +42,7 @@ object ForkExecutor extends EventInstructionExecutor
       ifProcessedThenOrderMoved(order, context))
 
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
-    val duplicates = orderForked.event.children map (_.orderId) flatMap (o ⇒ context.idToOrder.lift(o))
+    val duplicates = orderForked.event.children map (_.orderId) flatMap (o => context.idToOrder.lift(o))
     if (duplicates.nonEmpty) {
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")

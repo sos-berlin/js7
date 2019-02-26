@@ -22,9 +22,9 @@ object GenericInt {
     implicit val ordering: Ordering[A] = Ordering by { _.number }
 
     implicit def stringAsGenericInt: As[String, A] =
-      As(o ⇒ apply(o.toInt))
+      As(o => apply(o.toInt))
 
-    implicit val JsonEncoder: Encoder[A] = o ⇒ Json.fromInt(o.number)
+    implicit val JsonEncoder: Encoder[A] = o => Json.fromInt(o.number)
     implicit val JsonDecoder: Decoder[A] = _.as[Int] map apply
   }
 }

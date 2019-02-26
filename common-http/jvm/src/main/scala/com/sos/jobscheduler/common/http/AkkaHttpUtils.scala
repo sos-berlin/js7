@@ -23,10 +23,10 @@ object AkkaHttpUtils {
 
   private def httpEncodingToCodec(encoding: HttpEncoding): Coder with StreamDecoder =
     encoding match {
-      case HttpEncodings.gzip ⇒ Gzip
-      case HttpEncodings.deflate ⇒ Deflate
-      case HttpEncodings.identity ⇒ NoCoding
-      case o ⇒ throw new RuntimeException(s"Unsupported Encoding: $o")
+      case HttpEncodings.gzip => Gzip
+      case HttpEncodings.deflate => Deflate
+      case HttpEncodings.identity => NoCoding
+      case o => throw new RuntimeException(s"Unsupported Encoding: $o")
     }
 
   private implicit final class RichResponseEntity(private val underlying: ResponseEntity) extends AnyVal {

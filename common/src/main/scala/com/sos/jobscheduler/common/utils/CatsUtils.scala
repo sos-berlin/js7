@@ -18,7 +18,7 @@ object CatsUtils
   def base64ToStreamResource(base64: String): Resource[SyncIO, InputStream] =
     Resource.fromAutoCloseable(SyncIO[InputStream] {
       try new ByteArrayInputStream(Base64.getMimeDecoder.decode(base64))
-      catch { case e: IllegalArgumentException ⇒
+      catch { case e: IllegalArgumentException =>
         throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
       }
     })

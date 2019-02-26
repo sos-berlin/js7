@@ -56,8 +56,8 @@ final class EventSeqTest extends FreeSpec {
   private def checkTearableEventSeq[E: ObjectEncoder: Decoder](eventSeq: TearableEventSeq[Seq, E], json: Json) = {
     testJson(eventSeq, json)
     eventSeq match {
-      case eventSeq: EventSeq[Seq, E] ⇒ testJson(eventSeq, json)
-      case _ ⇒
+      case eventSeq: EventSeq[Seq, E] => testJson(eventSeq, json)
+      case _ =>
     }
   }
 }

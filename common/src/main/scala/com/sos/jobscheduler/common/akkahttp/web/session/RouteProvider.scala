@@ -39,12 +39,12 @@ trait RouteProvider extends ExceptionHandling
 
   protected final def authorizedUser(requiredPermissions: Set[Permission] = Set.empty): Directive1[Session#User] =
     new Directive[Tuple1[Session#User]] {
-      def tapply(inner: Tuple1[Session#User] ⇒ Route) =
+      def tapply(inner: Tuple1[Session#User] => Route) =
         maybeSession(requiredPermissions) {
-          case (user, Some(session)) ⇒
+          case (user, Some(session)) =>
             inner(Tuple1(user))
 
-          case (user, None) ⇒
+          case (user, None) =>
             inner(Tuple1(user))
         }
     }
@@ -52,11 +52,11 @@ trait RouteProvider extends ExceptionHandling
   private def maybeSession(requiredPermissions: Set[Permission]): Directive1[(Session#User, Option[Session])] =
     new Directive[Tuple1[(Session#User, Option[Session])]]
     {
-      def tapply(inner: Tuple1[(Session#User, Option[Session])] ⇒ Route) =
-        gateKeeper.authenticate { authenticatedUser ⇒
+      def tapply(inner: Tuple1[(Session#User, Option[Session])] => Route) =
+        gateKeeper.authenticate { authenticatedUser =>
           // user == Anonymous iff no credentials are given
-          sessionOption(authenticatedUser) { sessionOption ⇒
-            gateKeeper.authorize(sessionOption.fold(authenticatedUser)(_.currentUser), requiredPermissions) { authorizedUser ⇒
+          sessionOption(authenticatedUser) { sessionOption =>
+            gateKeeper.authorize(sessionOption.fold(authenticatedUser)(_.currentUser), requiredPermissions) { authorizedUser =>
               // If and only if gateKeeper allows public access, the authorizedUser may be an empowered authenticatedUser.
               inner(Tuple1((authorizedUser, sessionOption)))
             }
@@ -71,17 +71,17 @@ trait RouteProvider extends ExceptionHandling
   protected def sessionOption(httpUser: Session#User): Directive[Tuple1[Option[Session]]] = {
     // user == Anonymous iff no credentials are given
     new Directive[Tuple1[Option[Session]]] {
-      def tapply(inner: Tuple1[Option[Session]] ⇒ Route) =
+      def tapply(inner: Tuple1[Option[Session]] => Route) =
         optionalHeaderValueByName(SessionToken.HeaderName) {
-          case None ⇒
+          case None =>
             inner(Tuple1(None))
 
-          case Some(string) ⇒
+          case Some(string) =>
             onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, SessionToken(SecretString(string)))) {
-              case Invalid(problem) ⇒
+              case Invalid(problem) =>
                 completeUnauthenticatedLogin(Forbidden, problem)
 
-              case Valid(session) ⇒
+              case Valid(session) =>
                 inner(Tuple1(Some(session)))
             }
           }
@@ -92,7 +92,7 @@ trait RouteProvider extends ExceptionHandling
     (if (statusCode == Unauthorized) respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
       logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
       complete {
-        Task.pure(statusCode → problem)
+        Task.pure(statusCode -> problem)
           .delayExecution(gateKeeper.invalidAuthenticationDelay)
           .runToFuture
       }

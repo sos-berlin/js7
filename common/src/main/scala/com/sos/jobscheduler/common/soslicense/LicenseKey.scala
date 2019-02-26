@@ -27,7 +27,7 @@ extends LicenseKeyChecker {
 
   val validUntilOption: Option[LocalDate] = {
     def v(p: Parameter) = settings.get(p) map { p.string + _ }
-    v(ValidIn1900) orElse v(ValidIn2000) map { o ⇒ LocalDate from BASIC_ISO_DATE.parse(o) }
+    v(ValidIn1900) orElse v(ValidIn2000) map { o => LocalDate from BASIC_ISO_DATE.parse(o) }
   }
 
   def apply(parameter: Parameter): Parameter.Result =
@@ -72,12 +72,12 @@ object LicenseKey {
         require(s.length == 3)
         LocalDate.of(1990 + charToInt(s(0)), charToInt(s(1)), charToInt(s(2)))
       }
-      val settings = for (i ← 4 until parts.length - 1) yield parseSetting(parts(i))
+      val settings = for (i <- 4 until parts.length - 1) yield parseSetting(parts(i))
       val securityCode = stringToUnsignedInt(securityPart.tail)
       val salt = securityPart.head
       val calculatedSecurityCode = {
         val b = new SecurityCodeBuilder
-        for (_ ← 1 to 7) {
+        for (_ <- 1 to 7) {
           b.addString(issuer)
           b.addString(customer)
           b.addByteIfNotZero((serialNumber >> 24) & 0xFF)
@@ -87,7 +87,7 @@ object LicenseKey {
           b.addByte(issuedAt.getYear & 0xFF)
           b.addByte(issuedAt.getMonthValue)
           b.addByte(issuedAt.getDayOfMonth)
-          for ((par, value) ← settings if par != ZZ) {
+          for ((par, value) <- settings if par != ZZ) {
             if (par.toInt >= 0x100) b.addByte(par.toInt >> 8)
             b.addByte(par.toInt & 0xFF)
             b.addString(value)
@@ -106,22 +106,22 @@ object LicenseKey {
       }
     }
     catch {
-      case NonFatal(t) ⇒
+      case NonFatal(t) =>
         logger.debug(s"Invalid license key: $key ($t)")
         throw new InvalidLicenseKeyException(key)
     }
 
   private def parseSetting(string: String): (Parameter, String) =
     if (string.length == 1)
-      Parameter(LicenseKeyString.normalize(string)) → ""
+      Parameter(LicenseKeyString.normalize(string)) -> ""
     else
-      Parameter(string take 2) → (string drop 2)
+      Parameter(string take 2) -> (string drop 2)
 
   final case class Parameter(string: String) {
     def toInt =
       string.length match {
-        case 1 ⇒ charToInt(string.head)
-        case 2 ⇒ charToInt(string(0)) * Base + charToInt(string(1))
+        case 1 => charToInt(string.head)
+        case 2 => charToInt(string(0)) * Base + charToInt(string(1))
       }
   }
 
@@ -135,7 +135,7 @@ object LicenseKey {
   private def stringToUnsignedInt(string: String): UnsignedInt32 = {
     var r = 0.unsigned
     var b = 1.unsigned
-    for (c ← string) {
+    for (c <- string) {
       r += b * charToInt(c)
       b *= Base
     }
@@ -144,14 +144,14 @@ object LicenseKey {
 
   private def charToInt(c: Char): Int =
     c match {
-      case _ if c >= '0' && c <= '9' ⇒ c - '0'
-      case _ if c >= 'A' && c <= 'Z' ⇒ 10 + c - 'A'
+      case _ if c >= '0' && c <= '9' => c - '0'
+      case _ if c >= 'A' && c <= 'Z' => 10 + c - 'A'
     }
 
   private class SecurityCodeBuilder {
     private var hash = 0.unsigned
 
-    def addString(string: String): Unit = for (c ← string) addByte(c)
+    def addString(string: String): Unit = for (c <- string) addByte(c)
 
     def addByteIfNotZero(byte: Int): Unit = if (byte != 0) addByte(byte)
 

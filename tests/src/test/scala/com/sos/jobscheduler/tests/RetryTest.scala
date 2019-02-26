@@ -28,7 +28,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
   protected val fileBased = Nil
 
   override def beforeAll() = {
-    for (a ← directoryProvider.agents) {
+    for (a <- directoryProvider.agents) {
       a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
       a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
       a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
@@ -162,10 +162,10 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit = {
     master.eventWatch.await[E](_.key == orderId, after = after)
     master.eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }

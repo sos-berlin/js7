@@ -37,7 +37,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite ⇒
+private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite =>
 
   protected implicit val askTimeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")
@@ -50,10 +50,10 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     super.afterAll()
   }
 
-  protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
+  protected def withTestActor(config: Config = ConfigFactory.empty)(body: (ActorSystem, ActorRef) => Unit): Unit = {
     val actorSystem = newActorSystem(getClass.simpleScalaName, TestConfig)
     try {
-      DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
+      DeadLetterActor.subscribe(actorSystem, o => logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()
       val actor = actorSystem.actorOf(Props { new TestActor(config, journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
@@ -73,40 +73,40 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       new Actor {
         val before = disturbanceCounter.getAndAdd(2)
         command match {
-          case _: TestAggregateActor.Command.Add | TestAggregateActor.Command.Remove | TestAggregateActor.Command.AcceptEarly ⇒
+          case _: TestAggregateActor.Command.Add | TestAggregateActor.Command.Remove | TestAggregateActor.Command.AcceptEarly =>
             actor ! TestActor.Input.Forward(key, command)
 
-          case _ ⇒
+          case _ =>
             actor ! TestActor.Input.Forward(key, TestAggregateActor.Command.Disturb(before))  // Value disturbance is expected as Command.Response
             actor ! TestActor.Input.Forward(key, command)
             actor ! TestActor.Input.Forward(key, TestAggregateActor.Command.Disturb(before + 1))  // This message must be delayed until event has been journaled
         }
 
         def receive = {
-          case msg @ TestAggregateActor.Response.Completed(disturbance) ⇒
+          case msg @ TestAggregateActor.Response.Completed(disturbance) =>
             try {
               command match {
-                case _: TestAggregateActor.Command.Add ⇒
-                case TestAggregateActor.Command.Remove ⇒
-                case TestAggregateActor.Command.AcceptEarly ⇒
+                case _: TestAggregateActor.Command.Add =>
+                case TestAggregateActor.Command.Remove =>
+                case TestAggregateActor.Command.AcceptEarly =>
 
-                case _: TestAggregateActor.Command.IsAsync ⇒
+                case _: TestAggregateActor.Command.IsAsync =>
                   // Async persist may be disturbed or not.
                   // This test does not ensure arrival of message `Command.Disturb` before message `JournalActor.Output.Stored`
                   if (disturbance != before) {
                     assert(disturbance == before + 1, s" - Disturbance expected: $command -> $msg")
                   }
 
-                case _ ⇒
+                case _ =>
                   assert(disturbance == before, s" - persist operation has been disturbed: $command -> $msg")
               }
               promise.success(())
             }
             catch {
-              case NonFatal(t) ⇒ promise.failure(t)
+              case NonFatal(t) => promise.failure(t)
             }
 
-          case msg @ ("OK" | Done) ⇒
+          case msg @ ("OK" | Done) =>
             promise.success(msg)
             context.stop(self)
         }
@@ -117,46 +117,46 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected final def journalKeyedEvents =
     journalJsons collect {
-      case o if TestKeyedEventJsonCodec canDeserialize o ⇒
+      case o if TestKeyedEventJsonCodec canDeserialize o =>
         o.as[Stamped[KeyedEvent[TestEvent]]].map(_.value).orThrow
     }
 
   protected final def journalAggregates =
     (journalJsons collect {
-      case o if TestMeta.SnapshotJsonFormat canDeserialize o ⇒
+      case o if TestMeta.SnapshotJsonFormat canDeserialize o =>
         o.as[TestAggregate].orThrow
     }).toSet
 
   protected final def journalJsons: Vector[Json] = journalJsons(JournalFiles.currentFile(journalMeta.fileBase).orThrow)
 
   protected final def journalJsons(file: Path): Vector[Json] =
-    autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
-      Vector.build[Json] { builder ⇒
-        try reader.iterator foreach (o ⇒ builder += normalizeTimestamp(o.value))
+    autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
+      Vector.build[Json] { builder =>
+        try reader.iterator foreach (o => builder += normalizeTimestamp(o.value))
         catch {
-          case _: EOFException ⇒ None
-          case _: java.util.zip.ZipException ⇒ None
+          case _: EOFException => None
+          case _: java.util.zip.ZipException => None
         }
       }
     }
 
   final def testCommands(prefix: String) = Vector(
-    s"$prefix-A" → TestAggregateActor.Command.Add("(A.Add)"),
-    s"$prefix-B" → TestAggregateActor.Command.Add("(B.Add)"),
-    s"$prefix-C" → TestAggregateActor.Command.Add("(C.Add)"),
-    s"$prefix-A" → TestAggregateActor.Command.Append("(A.Append)"),
-    s"$prefix-A" → TestAggregateActor.Command.Append(""),
-    s"$prefix-A" → TestAggregateActor.Command.AppendAsync("(A.AppendAsync)"),
-    s"$prefix-A" → TestAggregateActor.Command.AppendNested("(A.AppendNested)"),
-    s"$prefix-A" → TestAggregateActor.Command.AppendNestedAsync("(A.AppendNestedAsync)"),
-    s"$prefix-B" → TestAggregateActor.Command.Remove)
+    s"$prefix-A" -> TestAggregateActor.Command.Add("(A.Add)"),
+    s"$prefix-B" -> TestAggregateActor.Command.Add("(B.Add)"),
+    s"$prefix-C" -> TestAggregateActor.Command.Add("(C.Add)"),
+    s"$prefix-A" -> TestAggregateActor.Command.Append("(A.Append)"),
+    s"$prefix-A" -> TestAggregateActor.Command.Append(""),
+    s"$prefix-A" -> TestAggregateActor.Command.AppendAsync("(A.AppendAsync)"),
+    s"$prefix-A" -> TestAggregateActor.Command.AppendNested("(A.AppendNested)"),
+    s"$prefix-A" -> TestAggregateActor.Command.AppendNestedAsync("(A.AppendNestedAsync)"),
+    s"$prefix-B" -> TestAggregateActor.Command.Remove)
 
   final def testEvents(prefix: String) =
     Vector(
       s"$prefix-A" <-: TestEvent.Added("(A.Add)"),
       s"$prefix-B" <-: TestEvent.Added("(B.Add)"),
       s"$prefix-C" <-: TestEvent.Added("(C.Add)")) ++
-    "(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)".map(ch ⇒ s"$prefix-A" <-: TestEvent.Appended(ch)) :+
+    "(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)".map(ch => s"$prefix-A" <-: TestEvent.Appended(ch)) :+
     (s"$prefix-B" <-: TestEvent.Removed)
 }
 
@@ -170,7 +170,7 @@ private[journal] object TestJournalMixin
      |""".stripMargin)
 
   private def normalizeTimestamp(json: Json): Json = json.asObject match {
-    case Some(o) ⇒ o("timestamp").map(_ ⇒ o.add("timestamp", "TIMESTAMP".asJson)).getOrElse(o).asJson
-    case None ⇒ json
+    case Some(o) => o("timestamp").map(_ => o.add("timestamp", "TIMESTAMP".asJson)).getOrElse(o).asJson
+    case None => json
   }
 }

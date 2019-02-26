@@ -30,8 +30,8 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
         def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
           Task {
             (command match {
-              case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
-              case _ ⇒ fail()
+              case ExpectedTerminate => Valid(AgentCommand.Response.Accepted)
+              case _ => fail()
             })
             .map(_.asInstanceOf[command.Response])
           }
@@ -45,7 +45,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   "main" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
-    AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o ⇒ output += o)
+    AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
@@ -56,7 +56,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   "main with Agent URI only checks wether Agent is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString), o ⇒ output += o)
+      AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     }
     assert(output == List("JobScheduler Agent is responding"))
   }

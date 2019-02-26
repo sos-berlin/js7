@@ -26,32 +26,32 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
 
   private def fatStateFor(after: EventId): FatState =
     useFatState(after) match {
-      case Some(fatState) ⇒ fatState
-      case None ⇒ recoverFatState(after)
+      case Some(fatState) => fatState
+      case None => recoverFatState(after)
     }
 
   private def useFatState(after: EventId): Option[FatState] =
     lastDelivered match {
-      case Some(fatState) if fatState.eventId <= after ⇒
+      case Some(fatState) if fatState.eventId <= after =>
         logger.trace(s"Using last lastDelivered FatState ${EventId.toString(fatState.eventId)}" +
           (if (after > fatState.eventId) s", after=${EventId.toString(after)}" else ""))
         Some(fatState)
 
-      case _ ⇒
+      case _ =>
         lastRequested match {
-          case Some(fatState) if fatState.eventId <= after ⇒
+          case Some(fatState) if fatState.eventId <= after =>
             logger.trace(s"Using last requested FatState ${EventId.toString(fatState.eventId)}" +
               (if (after > fatState.eventId) s", after=${EventId.toString(after)}" else ""))
             Some(fatState)
 
-          case _ ⇒
+          case _ =>
             None
         }
     }
 
   private def recoverFatState(after: EventId): FatState = {
     val (eventId, snapshotObjects) = eventWatch.snapshotObjectsFor(after = after)  // Returns a CloseableIterator
-    val state = autoClosing(snapshotObjects) { _ ⇒
+    val state = autoClosing(snapshotObjects) { _ =>
       MasterState.fromIterable(eventId, snapshotObjects)
     }
     FatState(state.eventId, state.repo, state.idToOrder)
@@ -76,17 +76,17 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
     : TearableEventSeq[CloseableIterator, KeyedEvent[FatEvent]]
     =
       eventSeq match {
-        case o: TearableEventSeq.Torn ⇒ o
-        case o: EventSeq.Empty ⇒ o
-        case EventSeq.NonEmpty(stampedIterator) ⇒
+        case o: TearableEventSeq.Torn => o
+        case o: EventSeq.Empty => o
+        case EventSeq.NonEmpty(stampedIterator) =>
           var lastEventId = after
           val fatCloseableIterator = stampedIterator
-            .flatMap { stamped ⇒
+            .flatMap { stamped =>
               lastEventId = stamped.eventId
               watch(stamped.eventId)  // Watch drop events used for FatState's rebuild
               toFatEvents(stamped)
             }
-            .dropWhile { stamped ⇒
+            .dropWhile { stamped =>
               val drop = stamped.eventId <= request.after
               drop
             }

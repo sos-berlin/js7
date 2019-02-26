@@ -18,8 +18,8 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
     scheduledOrderGenerators toKeyedMap (_.path)
 
   def generateOrders(instantInterval: InstantInterval): Seq[FreshOrder] =
-    (for (orderGenerator ← pathToOrderGenerator.values;
-          instant ← orderGenerator.schedule.instants(instantInterval)) yield
+    (for (orderGenerator <- pathToOrderGenerator.values;
+          instant <- orderGenerator.schedule.instants(instantInterval)) yield
       FreshOrder(
         toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,

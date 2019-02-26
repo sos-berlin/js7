@@ -17,7 +17,7 @@ import java.nio.file.Path
   */
 private[master] final class AkkaHttpMasterTextApi(
   protected val baseUri: Uri,
-  protected val print: String ⇒ Unit,
+  protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
 
@@ -39,8 +39,8 @@ extends HasCloser with ProvideActorSystem with TextApi with SessionApi with Akka
 
   protected override lazy val httpsConnectionContextOption =
     for {
-      configDir ← configDirectory
-      trustStoreRef ← TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").toOption
+      configDir <- configDirectory
+      trustStoreRef <- TrustStoreRef.fromConfig(configDirectoryConfig(configDir), default = configDir / "private/https-keystore.p12").toOption
     } yield
       AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(trustStoreRef))
 

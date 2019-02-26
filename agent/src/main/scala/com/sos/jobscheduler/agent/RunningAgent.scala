@@ -68,15 +68,15 @@ extends AutoCloseable {
     else {
       logger.debug("terminate")
       for {
-        _ ← directExecuteCommand(AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
-        t ← Task.fromFuture(terminated)
+        _ <- directExecuteCommand(AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
+        t <- Task.fromFuture(terminated)
       } yield t
     }
 
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
   private def directExecuteCommand(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
-      promiseFuture[Checked[AgentCommand.Response]](promise ⇒
+      promiseFuture[Checked[AgentCommand.Response]](promise =>
         mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
 
   def api(meta: CommandMeta): DirectAgentApi =
@@ -90,8 +90,8 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
-    autoClosing(apply(configuration) await timeout) { agent ⇒
+  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent => A): A =
+    autoClosing(apply(configuration) await timeout) { agent =>
       val a = body(agent)
       agent.terminated await 99.s
       a
@@ -102,7 +102,7 @@ object RunningAgent {
 
   def startForTest(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
     val whenAgent = apply(module)
-    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
+    for (agent <- whenAgent; t <- agent.terminated.failed) logger.error(t.toStringWithCauses, t)
     whenAgent
   }
 
@@ -127,7 +127,7 @@ object RunningAgent {
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
-    (agentConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/agent")
+    (agentConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ => "", _ + "/agent")
 
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
     val sessionToken = blocking {
@@ -136,14 +136,14 @@ object RunningAgent {
     }
     closer onClose { sessionTokenFile.delete() }
 
-    for (ready ← readyPromise.future) yield {
+    for (ready <- readyPromise.future) yield {
       webServerReady await WebServerReadyTimeout
       val terminated = stoppedPromise.future
-        //.andThen { case _ ⇒
+        //.andThen { case _ =>
           //To early. closer.close()  // Close automatically after termination
         //}
         //.andThen {
-        //  case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
+        //  case Failure(t) => logger.error(t.toStringWithCauses, t)
         //}
       new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, ready.agentHandle, sessionToken, closer, injector)
     }

@@ -26,7 +26,7 @@ object Identifier
     string.nonEmpty &&
       string.last != '-' &&
       isIdentifierStart(string charAt 0) &&
-      (1 until string.length forall { i ⇒ isIdentifierPart(string charAt i) })
+      (1 until string.length forall { i => isIdentifierPart(string charAt i) })
 
   def isIdentifierStart(c: Char): Boolean =
     isUnicodeIdentifierStart(c) || character.isHighSurrogate(c)

@@ -33,7 +33,7 @@ extends AutoCloseable
   protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
     size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
-  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () ⇒ flushedLength)
+  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () => flushedLength)
   @volatile
   private var _closeAfterUse = false
   @volatile
@@ -78,7 +78,7 @@ extends AutoCloseable
 
     // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee
     def close() =
-      for (it ← Option(iteratorAtomic.getAndSet(null))) {
+      for (it <- Option(iteratorAtomic.getAndSet(null))) {
         iteratorPool.returnIterator(it)
         if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
           logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
@@ -89,11 +89,11 @@ extends AutoCloseable
     def hasNext =
       !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
         iteratorAtomic.get match {
-          case null ⇒
+          case null =>
             logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
             eof = true  // EOF to avoid exception logging (when closed (canceled) asynchronously before hasNext, but not before `next`).
             false
-          case iterator ⇒
+          case iterator =>
             val has = iterator.hasNext
             eof |= !has
             if (!has && isHistoric) {
@@ -108,8 +108,8 @@ extends AutoCloseable
 
     def next() =
       iteratorAtomic.get match {
-        case null ⇒ throw new ClosedException(iterator_.journalFile)
-        case iterator ⇒
+        case null => throw new ClosedException(iterator_.journalFile)
+        case iterator =>
           _lastUsed = Timestamp.currentTimeMillis
           val stamped = iterator.next()
           assert(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")

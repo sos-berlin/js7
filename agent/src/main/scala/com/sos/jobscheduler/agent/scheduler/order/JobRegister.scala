@@ -18,12 +18,12 @@ final class JobRegister extends ActorRegister[JobKey, JobEntry](_.actor) {
   override protected def noSuchKeyMessage(jobKey: JobKey) = s"No such job '$jobKey'"
 
   def onActorTerminated(actor: ActorRef): Unit =
-    for (jobEntry ← remove(actorToKey(actor))) {
+    for (jobEntry <- remove(actorToKey(actor))) {
       logger.trace(s"Removing ${jobEntry.jobKey} after Actor death")
     }
 
   def insert(key: JobKey, actor: ActorRef): Unit =
-    this.insert(key → new JobEntry(key, actor))
+    this.insert(key -> new JobEntry(key, actor))
 }
 
 object JobRegister {

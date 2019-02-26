@@ -23,7 +23,7 @@ final class JavaCollectionsTest extends FreeSpec
   }
 
   "java.util.stream.Stream.toIterator" in {
-    for ((a, b) ← java.util.stream.Stream.of(1, 2, 3).toIterator zip Iterator(1, 2, 3))
+    for ((a, b) <- java.util.stream.Stream.of(1, 2, 3).toIterator zip Iterator(1, 2, 3))
       assert(a == b)
   }
 

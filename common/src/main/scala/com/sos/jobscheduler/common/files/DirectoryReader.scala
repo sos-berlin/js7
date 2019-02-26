@@ -15,18 +15,18 @@ object DirectoryReader
 {
   private val NestingLimit = 100
 
-  def files(directory: Path, filter: Path ⇒ Boolean = _ ⇒ true): Seq[Path] =
+  def files(directory: Path, filter: Path => Boolean = _ => true): Seq[Path] =
     entries(directory, filter) map (_.file)
 
-  def entries(directory: Path, filter: Path ⇒ Boolean = _ ⇒ true): Seq[Entry] = {
+  def entries(directory: Path, filter: Path => Boolean = _ => true): Seq[Entry] = {
     val array = unorderedEntryArray(directory, filter)
     java.util.Arrays.parallelSort(array, Entry.comparator)  // Uses Java's ThreadPool.common
     array.toVector
   }
 
-  private def unorderedEntryArray(directory: Path, filter: Path ⇒ Boolean): Array[Entry] =
-    Array.build { entries ⇒
-      deepForEachPathAndAttributes(directory, p ⇒ filter(p), nestingLimit = NestingLimit) { entry ⇒
+  private def unorderedEntryArray(directory: Path, filter: Path => Boolean): Array[Entry] =
+    Array.build { entries =>
+      deepForEachPathAndAttributes(directory, p => filter(p), nestingLimit = NestingLimit) { entry =>
         entries += entry
       }
     }
@@ -35,10 +35,10 @@ object DirectoryReader
     * @param nestingLimit to avoid StackOverflowException and symbolic recursion
     */
   private def deepForEachPathAndAttributes(rootDirectory: Path, filter: DirectoryStream.Filter[Path], nestingLimit: Int)
-    (callback: Entry ⇒ Unit): Unit
+    (callback: Entry => Unit): Unit
   = {
     def nest(dir: Path, nestingLimit: Int): Unit = {
-      autoClosing(newDirectoryStream(dir, filter))(_ forEach { path ⇒
+      autoClosing(newDirectoryStream(dir, filter))(_ forEach { path =>
         val attr = Files.readAttributes(path, classOf[BasicFileAttributes])
         if (attr.isDirectory) {
           if (nestingLimit <= 0) throw new RuntimeException(s"Directory hierarchy is nested too deeply: $dir")
@@ -65,13 +65,13 @@ object DirectoryReader
   final case class Entry(file: Path, attributes: BasicFileAttributes) {
     override def equals(other: Any) =
       other match {
-        case o: Entry ⇒ file == o.file && !fileIsTouched(attributes, o.attributes)
-        case _ ⇒ false
+        case o: Entry => file == o.file && !fileIsTouched(attributes, o.attributes)
+        case _ => false
       }
 
     def isTouched(o: BasicFileAttributes) = fileIsTouched(attributes, o)
   }
   object Entry {
-    val comparator: Comparator[Entry] = (a, b) ⇒ a.file compareTo b.file
+    val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file
   }
 }

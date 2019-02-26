@@ -19,7 +19,7 @@ final class SyncExclusiveTest extends FreeSpec {
 
   "test" in {
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
-    for ((aEventId, bEventId) ← List((1L, 2L), (3L, 4L), (5L, 6L))) {
+    for ((aEventId, bEventId) <- List((1L, 2L), (3L, 4L), (5L, 6L))) {
       val a = sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture
       assert(!a.isCompleted)
       val b = sync.whenEventIsAvailable(bEventId, until = now + 1.hour).runToFuture
@@ -37,7 +37,7 @@ final class SyncExclusiveTest extends FreeSpec {
   "timeout" in {
     val tick = 100.millisecond
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
-    for (eventId ← 1L to 3L) {
+    for (eventId <- 1L to 3L) {
       withClue(s"#$eventId") {
         val a = sync.whenEventIsAvailable(eventId, until = now + 2*tick, delay = 2*tick).runToFuture
         val b = sync.whenEventIsAvailable(eventId, until = now + 1.hour, delay = 2*tick).runToFuture
@@ -67,10 +67,10 @@ final class SyncExclusiveTest extends FreeSpec {
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     val n = 10000
     val eventIdGenerator = new EventIdGenerator
-    for (_ ← 1 to 10) {
+    for (_ <- 1 to 10) {
       val stopwatch = new Stopwatch
-      val eventIds = for (_ ← 1 to n) yield eventIdGenerator.next()
-      val futures: Seq[Future[Boolean]] = (for (eventId ← eventIds) yield Future { sync.whenEventIsAvailable(after = eventId - 1, now + 99.seconds).runToFuture }) map { _.flatten }
+      val eventIds = for (_ <- 1 to n) yield eventIdGenerator.next()
+      val futures: Seq[Future[Boolean]] = (for (eventId <- eventIds) yield Future { sync.whenEventIsAvailable(after = eventId - 1, now + 99.seconds).runToFuture }) map { _.flatten }
       eventIds foreach sync.onEventAdded
       val result = futures await 99.s
       assert(result forall identity)

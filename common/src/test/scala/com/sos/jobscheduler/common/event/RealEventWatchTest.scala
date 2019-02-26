@@ -42,7 +42,7 @@ final class RealEventWatchTest extends FreeSpec {
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000
     eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = 99.seconds))
-      .foreach { stamped ⇒
+      .foreach { stamped =>
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
         events += stamped
@@ -72,7 +72,7 @@ object RealEventWatchTest {
 
     def eventsAfter(after: EventId) =
       Some(CloseableIterator.fromIterator(
-        Iterator.from(1) take EventsPerIteration map { i ⇒
+        Iterator.from(1) take EventsPerIteration map { i =>
           onEventsAdded(after + i + 1)  // Announce following event
           toStampedEvent(after + i)
         }))

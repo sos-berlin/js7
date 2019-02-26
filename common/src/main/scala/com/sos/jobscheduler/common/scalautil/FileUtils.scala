@@ -127,14 +127,14 @@ object FileUtils {
 
   import implicits._
 
-  def writeToFile[A](file: Path, append: Boolean = false)(body: OutputStream ⇒ A): A =
+  def writeToFile[A](file: Path, append: Boolean = false)(body: OutputStream => A): A =
     autoClosing(new BufferedOutputStream(new FileOutputStream(file, append)))(body)
 
   @tailrec
   def createShortNamedDirectory(directory: Path, prefix: String): Path = {
     try Files.createDirectory(directory / (prefix + newRandomFilenameString()))
     catch {
-      case _: FileAlreadyExistsException ⇒ createShortNamedDirectory(directory, prefix)
+      case _: FileAlreadyExistsException => createShortNamedDirectory(directory, prefix)
     }
   }
 
@@ -145,23 +145,23 @@ object FileUtils {
   private def newRandomFilenameString() =
     (Iterator.fill(ShortNameSize) { ThreadLocalRandom.current.nextInt(FilenameCharacterSet.length) } map FilenameCharacterSet).mkString
 
-  def withTemporaryFile[A](body: Path ⇒ A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
+  def withTemporaryFile[A](body: Path => A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
 
-  def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path ⇒ A): A =
+  def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path => A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
 
 
-  def autoDeleting[A](file: Path)(body: Path ⇒ A): A =
-    withCloser { closer ⇒
+  def autoDeleting[A](file: Path)(body: Path => A): A =
+    withCloser { closer =>
       closer.onClose {
         delete(file)
       }
       body(file)
   }
 
-  def withTemporaryDirectory[A](prefix: String = "")(body: Path ⇒ A): A = {
+  def withTemporaryDirectory[A](prefix: String = "")(body: Path => A): A = {
     val dir = Files.createTempDirectory(prefix)
-    withCloser { closer ⇒
+    withCloser { closer =>
       closer.onClose {
         deleteDirectoryRecursively(dir)
       }
@@ -178,7 +178,7 @@ object FileUtils {
   }
 
   def deleteDirectoryContentRecursively(dir: Path): Unit = {
-    for (f ← dir.pathSet) {
+    for (f <- dir.pathSet) {
       if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
       delete(f)
     }

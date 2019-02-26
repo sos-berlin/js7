@@ -72,8 +72,8 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
-    //  case o: EventRequest[_] ⇒ o.timeout + 10.s
-    //  case _ ⇒ akka configured default value
+    //  case o: EventRequest[_] => o.timeout + 10.s
+    //  case _ => akka configured default value
     //}
     get[TearableEventSeq[Seq, KeyedEvent[E]]](agentUris.mastersEvents(request))
   }
@@ -84,7 +84,7 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 object AgentClient {
   val ErrorMessageLengthMaximum = 10000
 
-  def apply(agentUri: Uri, keyStoreRef: ⇒ Option[KeyStoreRef] = None, trustStoreRef: ⇒ Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient = {
+  def apply(agentUri: Uri, keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRef: => Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient = {
     val a = actorSystem
     def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
     def t = trustStoreRef  // lazy, to avoid reference when not needed (needed only for http)

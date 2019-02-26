@@ -44,15 +44,15 @@ object CirceToYaml
   def yamlToJson(yamlString: String): Checked[Json] =
     try Valid(anyToJson(yaml.load(yamlString)))
     catch {
-      case e: org.yaml.snakeyaml.parser.ParserException ⇒
+      case e: org.yaml.snakeyaml.parser.ParserException =>
         YamlProblem(e.toStringWithCauses, e.getProblemMark.getLine, e.getProblemMark.getColumn)
 
-      case NonFatal(t) ⇒
+      case NonFatal(t) =>
         Invalid(Problem.pure(t))
     }
 
   private val dumperOptions =
-    new DumperOptions sideEffect { o ⇒
+    new DumperOptions sideEffect { o =>
       o.setDefaultFlowStyle(FlowStyle.BLOCK)
       o.setWidth(LineLength)
     }

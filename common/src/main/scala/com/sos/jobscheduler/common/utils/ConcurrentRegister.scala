@@ -26,11 +26,11 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def get(key: Key): Option[V] = keyToValue.get(key)
 
-  final def getOrElse[A >: V](key: Key, default: ⇒ A): A = keyToValue.getOrElse(key, default)
+  final def getOrElse[A >: V](key: Key, default: => A): A = keyToValue.getOrElse(key, default)
 
-  final def foreach(body: V ⇒ Unit) = keyToValue.values foreach body
+  final def foreach(body: V => Unit) = keyToValue.values foreach body
 
-  final def map[A](f: V ⇒ A) = keyToValue.values map f
+  final def map[A](f: V => A) = keyToValue.values map f
 
   final def values: Iterable[V] = keyToValue.values
 
@@ -47,8 +47,8 @@ trait ConcurrentRegister[V <: HasKey] {
   final def remove(key: Key): Option[V] = {
     val removedOption = keyToValue remove key
     removedOption match {
-      case Some(removed) ⇒ onRemoved(removed)
-      case None ⇒
+      case Some(removed) => onRemoved(removed)
+      case None =>
     }
     removedOption
   }

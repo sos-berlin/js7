@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 trait RootRoute {
 
   val root =
-    extractRequest { request ⇒
+    extractRequest { request =>
       complete((NotFound, s"Try ${request.uri.copy(rawQueryString = None).withPath(Uri.Path("/master/api"))}\n"))
     }
 }

@@ -51,10 +51,10 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.OrderAvailable ⇒
+    case Input.OrderAvailable =>
       handleIfReadyForOrder()
 
-    case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
+    case cmd: Command.ProcessOrder if waitingForNextOrder =>
       logger.debug(s"ProcessOrder(${cmd.order.id})")
       if (cmd.jobKey != jobKey)
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
@@ -65,47 +65,47 @@ extends Actor with Stash {
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)))
       } else
         Try(uncheckedFile.toRealPath()) match {
-          case Failure(t) ⇒
+          case Failure(t) =>
             sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Executable '${workflowJob.executablePath}': $t")))  // Exception.toString is published !!!
-          case Success(executableFile) ⇒
+          case Success(executableFile) =>
             assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
             assert(executableFile startsWith executableDirectory.toRealPath(), s"Executable directory '$executableDirectory' does not contain file '$executableFile' ")
             val fileSet = filePool.get()
             val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-            orderToTask.insert(cmd.order.id → Entry(fileSet, taskRunner))
+            orderToTask.insert(cmd.order.id -> Entry(fileSet, taskRunner))
             val sender = this.sender()
             taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
-              .andThen { case _ ⇒ taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
-              .onComplete { triedStepEnded ⇒
+              .andThen { case _ => taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
+              .onComplete { triedStepEnded =>
                 self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
               }
             waitingForNextOrder = false
             handleIfReadyForOrder()
         }
 
-    case Internal.TaskFinished(order, triedStepEnded) ⇒
+    case Internal.TaskFinished(order, triedStepEnded) =>
       filePool.release(orderToTask(order.id).fileSet)
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
       continueTermination()
       handleIfReadyForOrder()
 
-    case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
+    case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
       logger.debug("Terminate")
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)
       }
       sigkillProcessesAfter match {
-        case Some(duration) if taskCount > 0 ⇒
+        case Some(duration) if taskCount > 0 =>
           scheduler.scheduleOnce(duration) {
             self ! Internal.KillAll
           }
-        case _ ⇒
+        case _ =>
       }
       continueTermination()
 
-    case Internal.KillAll ⇒
+    case Internal.KillAll =>
       killAll(SIGKILL)
   }
 
@@ -117,8 +117,8 @@ extends Actor with Stash {
 
   private def recoverFromFailure(tried: Try[TaskStepEnded]): TaskStepEnded =
     tried match {
-      case Success(o) ⇒ o
-      case Failure(t) ⇒
+      case Success(o) => o
+      case Failure(t) =>
         logger.error(s"Job step failed: ${t.toStringWithCauses}", t)
         TaskStepFailed(Problem.pure(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
     }
@@ -126,7 +126,7 @@ extends Actor with Stash {
   private def killAll(signal: ProcessSignal): Unit = {
     if (orderToTask.nonEmpty) {
       logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
-      for ((orderId, t) ← orderToTask) {
+      for ((orderId, t) <- orderToTask) {
         logger.warn(s"Kill $signal ${t.taskRunner.asBaseAgentTask.id} processing $orderId")
         t.taskRunner.kill(signal)
       }

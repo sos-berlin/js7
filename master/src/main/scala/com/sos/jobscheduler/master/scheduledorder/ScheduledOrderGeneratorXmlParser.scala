@@ -18,14 +18,14 @@ object ScheduledOrderGeneratorXmlParser {
 
   def parseXml(id: FileBasedId[ScheduledOrderGeneratorPath], source: Source, timeZone: ZoneId): Checked[ScheduledOrderGenerator] =
     Checked.catchNonFatal {
-      ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
+      ScalaXMLEventReader.parseDocument(source) { eventReader =>
         import eventReader._
         val folderPath = FolderPath parentOf id.path
         parseElement("order") {
-          val workflowPath = attributeMap.as("job_chain")(As(o ⇒ folderPath.resolve[WorkflowPath](o)))
+          val workflowPath = attributeMap.as("job_chain")(As(o => folderPath.resolve[WorkflowPath](o)))
           val elements = forEachStartElement {
-            case "params" ⇒ VariablesXmlParser.parse(eventReader)
-            case "run_time" ⇒ OldScheduleXmlParser.parse(eventReader, timeZone)
+            case "params" => VariablesXmlParser.parse(eventReader)
+            case "run_time" => OldScheduleXmlParser.parse(eventReader, timeZone)
           }
           ScheduledOrderGenerator(
             id,

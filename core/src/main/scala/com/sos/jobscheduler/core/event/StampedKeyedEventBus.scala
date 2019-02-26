@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped, Event ⇒ EngineEvent}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
 import javax.inject.Singleton
 
 /**

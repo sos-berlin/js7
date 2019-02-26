@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 final class IfExecutorTest extends FreeSpec {
 
   private lazy val context = new OrderContext {
-    def idToOrder = Map(AOrder.id → AOrder, BOrder.id → BOrder)
+    def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder)
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
   }
@@ -68,9 +68,9 @@ final class IfExecutorTest extends FreeSpec {
 object IfExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed, outcome = Outcome.Succeeded(ReturnCode(1)),
-    payload = Payload(Map("A" → "AA")))
+    payload = Payload(Map("A" -> "AA")))
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed, outcome = Outcome.Succeeded(ReturnCode(1)),
-    payload = Payload(Map("A" → "XX")))
+    payload = Payload(Map("A" -> "XX")))
   private val ThenJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
   private val ElseJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))
 

@@ -20,14 +20,14 @@ object StartUp {
     logger.info(
       s"Java " + JavaInformations.implementationVersion + " " +
       "(" + toMB(sys.runtime.maxMemory) + ") · " +
-      sys.props("os.name") + distributionNameAndVersionOption.fold("")(o ⇒ s" ($o)") + " · " +
-      cpuModel.fold("")(o ⇒ s"$o ") + "(" + sys.runtime.availableProcessors + " threads) · " +
+      sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
+      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads) · " +
       (if (hostname.nonEmpty) s"host=$hostname " else "") +
       s"config=$configDir " +
         dataDir.fold("")("data=".+))
 
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running master and agents in same JVM)
-      for (o ← sys.props("java.class.path") split File.pathSeparator) {
+      for (o <- sys.props("java.class.path") split File.pathSeparator) {
         logger.debug(Logger.Java, s"Classpath $o")
       }
     }

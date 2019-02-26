@@ -26,7 +26,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
-    for (sessionToken ← login(user, isEternalSession = true)) yield {
+    for (sessionToken <- login(user, isEternalSession = true)) yield {
       file.delete()
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
       file.contentString = sessionToken.secret.string
@@ -59,7 +59,7 @@ object SessionRegister
 {
   private val logger = Logger(getClass)
 
-  def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] ⇒ S, config: Config)
+  def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] => S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
     val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, config), "session")

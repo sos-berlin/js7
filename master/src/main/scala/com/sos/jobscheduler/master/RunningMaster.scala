@@ -86,15 +86,15 @@ extends AutoCloseable
       Task.fromFuture(terminated)
     else
       injector.instance[ActorSystem].whenTerminated.value match {
-        case Some(Failure(t)) ⇒ Task.raiseError(t)
-        case Some(Success(_)) ⇒
+        case Some(Failure(t)) => Task.raiseError(t)
+        case Some(Success(_)) =>
           logger.warn("Master terminate: Akka has already been terminated")
           Task.pure(Completed)
-        case None ⇒
+        case None =>
           logger.debug("terminate")
           for {
-            _ ← executeCommandAsSystemUser(MasterCommand.Terminate) map (_.orThrow)
-            t ← Task.fromFuture(terminated)
+            _ <- executeCommandAsSystemUser(MasterCommand.Terminate) map (_.orThrow)
+            t <- Task.fromFuture(terminated)
           } yield t
       }
 
@@ -103,8 +103,8 @@ extends AutoCloseable
 
   def executeCommandAsSystemUser(command: MasterCommand): Task[Checked[command.Response]] =
     for {
-      checkedSession ← sessionRegister.systemSession
-      checkedChecked ← checkedSession.map(session ⇒ executeCommand(command, CommandMeta(session.currentUser))).evert
+      checkedSession <- sessionRegister.systemSession
+      checkedChecked <- checkedSession.map(session => executeCommand(command, CommandMeta(session.currentUser))).evert
     } yield checkedChecked.flatten
 
   def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Checked[command.Response]] =
@@ -131,9 +131,9 @@ object RunningMaster {
   val StartedAt = Timestamp.now
   private val logger = Logger(getClass)
 
-  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit s: Scheduler): Unit =
-    autoClosing(apply(configuration) await timeout) { master ⇒
-      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
+  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster => Unit)(implicit s: Scheduler): Unit =
+    autoClosing(apply(configuration) await timeout) { master =>
+      for (t <- master.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(master)
       master.terminated await timeout
     }
@@ -172,8 +172,8 @@ object RunningMaster {
 
     private def createDirectories(): Unit =
       masterConfiguration.stateDirectory match {
-        case o if !exists(o) ⇒ createDirectory(o)
-        case _ ⇒
+        case o if !exists(o) => createDirectory(o)
+        case _ =>
       }
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
@@ -189,7 +189,7 @@ object RunningMaster {
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
-            _ ⇒ Props {
+            _ => Props {
               new MasterOrderKeeper(
                 masterConfiguration,
                 injector.instance[JournalMeta[Event]],
@@ -200,7 +200,7 @@ object RunningMaster {
                 scheduler)
             },
             "MasterOrderKeeper",
-            onStopped = _ ⇒ Success(Completed)
+            onStopped = _ => Success(Completed)
           )(actorSystem)
       (tag[MasterOrderKeeper.type](actor), whenCompleted)
     }
@@ -225,12 +225,12 @@ object RunningMaster {
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
 
       val terminated = orderKeeperStopped
-        .andThen { case Failure(t) ⇒ logger.error(t.toStringWithCauses, t) }
-        .andThen { case _ ⇒ closer.close() }  // Close automatically after termination
+        .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
+        .andThen { case _ => closer.close() }  // Close automatically after termination
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
-      (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ ⇒ "", _ + "/master")
-      for (_ ← webServer.start()) yield
+      (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ => "", _ + "/master")
+      for (_ <- webServer.start()) yield
         new RunningMaster(sessionRegister, commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
     }
   }
@@ -238,23 +238,23 @@ object RunningMaster {
   final class MainFileBasedApi(masterConfiguration: MasterConfiguration, orderKeeper: ActorRef) extends FileBasedApi
   {
     def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
-      for (stamped ← stampedRepo) yield
-        for (repo ← stamped) yield
+      for (stamped <- stampedRepo) yield
+        for (repo <- stamped) yield
           O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
-      for (stamped ← stampedRepo) yield
-        for (repo ← stamped) yield
+      for (stamped <- stampedRepo) yield
+        for (repo <- stamped) yield
           repo.idTo[A](id)
 
     def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
-      for (stamped ← stampedRepo) yield
-        for (repo ← stamped) yield
+      for (stamped <- stampedRepo) yield
+        for (repo <- stamped) yield
           repo.currentTyped[A].values.toImmutableSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
 
     def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
-      for (stamped ← stampedRepo; repo = stamped.value) yield
-        for (a ← repo.currentTyped[A].checked(path)) yield
+      for (stamped <- stampedRepo; repo = stamped.value) yield
+        for (a <- repo.currentTyped[A].checked(path)) yield
           stamped.copy(value = a)
 
     def stampedRepo: Task[Stamped[Repo]] = {

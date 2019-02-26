@@ -17,10 +17,10 @@ with ConvertibleMultiPartialFunction[String, String] {
 
   def boolean(key: String, default: Boolean = false): Boolean =
     arguments(key) match {
-      case Vector() ⇒ default
-      case Vector(Switch(_, value)) ⇒ value
-      case Vector(Switch(_, _), Switch(_, value)) ⇒ value  // First switch is overriden by second switch
-      case _ ⇒ throw new IllegalArgumentException(s"Multiple command line options '$key'")
+      case Vector() => default
+      case Vector(Switch(_, value)) => value
+      case Vector(Switch(_, _), Switch(_, value)) => value  // First switch is overriden by second switch
+      case _ => throw new IllegalArgumentException(s"Multiple command line options '$key'")
     }
 
   def keylessValue(index: Int): String = {
@@ -50,7 +50,7 @@ with ConvertibleMultiPartialFunction[String, String] {
 
   def requireNoMoreArguments(): Unit = {
     if (unusedArguments.nonEmpty || unusedKeylessArguments.nonEmpty)
-      throw new IllegalArgumentException("Unknown command line arguments: " + (unusedKeylessArguments map { o ⇒ s"#${o+1}" }) .mkString(" ") +
+      throw new IllegalArgumentException("Unknown command line arguments: " + (unusedKeylessArguments map { o => s"#${o+1}" }) .mkString(" ") +
         unusedArguments.values.flatten.mkString(" "))
   }
 }
@@ -62,12 +62,12 @@ object CommandLineArguments {
     val m = new mutable.LinkedHashMap[String, Vector[Argument]] {
       override def default(key: String) = Vector.empty//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
     }
-    for (a ← args.lastOption if a endsWith "\r")
+    for (a <- args.lastOption if a endsWith "\r")
       throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")
-    for (a ← parseArgs(args)) {
+    for (a <- parseArgs(args)) {
       m.get(a.key) match {
-        case None ⇒ m += a.key → Vector(a)
-        case Some(seq) ⇒ m(a.key) = seq :+ a
+        case None => m += a.key -> Vector(a)
+        case Some(seq) => m(a.key) = seq :+ a
       }
     }
     new CommandLineArguments(m)
@@ -77,14 +77,14 @@ object CommandLineArguments {
 
   private def toArgument(string: String): Argument =
     string match {
-      case OptionWithValueRegex(key, value) ⇒ NameValue(key, value)
-      case "-" ⇒ ValueOnly("-")
-      case o if string.startsWith("-") && string.endsWith("-") ⇒ Switch(o dropRight 1, false)
-      case o if string.startsWith("-") ⇒ Switch(o, true)
-      case o ⇒ ValueOnly(o)
+      case OptionWithValueRegex(key, value) => NameValue(key, value)
+      case "-" => ValueOnly("-")
+      case o if string.startsWith("-") && string.endsWith("-") => Switch(o dropRight 1, false)
+      case o if string.startsWith("-") => Switch(o, true)
+      case o => ValueOnly(o)
     }
 
-  def parse[A](args: Seq[String])(convert: CommandLineArguments ⇒ A): A = {
+  def parse[A](args: Seq[String])(convert: CommandLineArguments => A): A = {
     val arguments = CommandLineArguments(args)
     val result = convert(arguments)
     arguments.requireNoMoreArguments()

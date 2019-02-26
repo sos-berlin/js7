@@ -67,8 +67,8 @@ final class CloserTest extends FreeSpec
     val closer = new Closer
     val ctx = new Context
     val closeables = Vector.fill(100000) { new ctx.TestCloseable }
-    for (c ← closeables) closer.register(c)
-    (1 to sys.runtime.availableProcessors).map(_ ⇒ Future(closer.close())) await 99.seconds
+    for (c <- closeables) closer.register(c)
+    (1 to sys.runtime.availableProcessors).map(_ => Future(closer.close())) await 99.seconds
     assert(closeables forall (_.isClosed))
     assert(ctx.closed.toSet == closeables.toSet)
   }
@@ -113,7 +113,7 @@ final class CloserTest extends FreeSpec
       implicit val closer = new Closer
       trait A
       var closedA: A = null
-      val c = mock[A].withCloser { a ⇒ closedA = a }
+      val c = mock[A].withCloser { a => closedA = a }
       assert(closedA == null)
       closer.close()
       assert(closedA == c)
@@ -125,7 +125,7 @@ final class CloserTest extends FreeSpec
 
     "withCloser" in {
       val a = mock[AutoCloseable]
-      withCloser { closer ⇒
+      withCloser { closer =>
         closer.register(a)
       }
       verify(a).close()
@@ -153,7 +153,7 @@ object CloserTest {
       def close() = {
         if (closed.getAndSet(true)) sys.error("Duplicate close")
         closeables.add(this)
-        for (t ← throwable) throw t
+        for (t <- throwable) throw t
       }
 
       def isClosed = closed.get

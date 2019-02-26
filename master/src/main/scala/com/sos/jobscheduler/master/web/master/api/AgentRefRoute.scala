@@ -24,26 +24,26 @@ trait AgentRefRoute extends MasterRouteProvider
 
   final val agentRefRoute: Route =
     get {
-      authorizedUser(ValidUserPermission) { _ ⇒
+      authorizedUser(ValidUserPermission) { _ =>
         pathEnd {
           completeTask(
             fileBasedApi.overview[AgentRef])
         } ~
           pathSingleSlash {
             parameter("return".?) {
-              case None ⇒
+              case None =>
                 completeTask(
                   fileBasedApi.paths[AgentRef])
 
-              case Some("AgentRef") ⇒
+              case Some("AgentRef") =>
                 completeTask(
                   fileBasedApi.fileBaseds[AgentRef])
 
-              case _ ⇒
+              case _ =>
                 reject
             }
           } ~
-          path(remainingSegmentOrPath[AgentRefPath]) { agentRefPath ⇒
+          path(remainingSegmentOrPath[AgentRefPath]) { agentRefPath =>
             completeTask(
               fileBasedApi.pathToCurrentFileBased[AgentRef](agentRefPath))
           }
@@ -52,5 +52,5 @@ trait AgentRefRoute extends MasterRouteProvider
 }
 
 object AgentRefRoute {
-  intelliJuseImport(() ⇒ checkedToResponseMarshaller(null))
+  intelliJuseImport(() => checkedToResponseMarshaller(null))
 }

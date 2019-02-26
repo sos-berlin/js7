@@ -24,10 +24,10 @@ extends Instruction
     if (dups.nonEmpty) throw Problem(s"Non-unique branch IDs in fork: ${dups.mkString(", ")}").throwable  // To Fork.checked(..): Checked[Fork]
   }
 
-  for (idAndScript ← branches) Fork.validateBranch(idAndScript).valueOr(throw _)
+  for (idAndScript <- branches) Fork.validateBranch(idAndScript).valueOr(throw _)
 
   override def adopt(outer: Workflow) = copy(
-    branches = branches.map(o ⇒ o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
+    branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
   def isPartiallyExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     branches exists (_.workflow isPartiallyExecutableOnAgent agentRefPath)
@@ -44,7 +44,7 @@ extends Instruction
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) =
-    branches.collectFirst({ case fj: Fork.Branch if fj.id == branchId ⇒ fj.workflow })
+    branches.collectFirst({ case fj: Fork.Branch if fj.id == branchId => fj.workflow })
       .fold(super.workflow(branchId))(Valid.apply)
 
   override def branchWorkflows = branches map (b => b.id -> b.workflow)
@@ -56,10 +56,10 @@ object Fork {
   implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
 
   def of(idAndWorkflows: (String, Workflow)*) =
-    new Fork(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
+    new Fork(idAndWorkflows.map { case (id, workflow) => Branch(id, workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
-    if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
+    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto]  || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
       Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
     else
       Valid(branch)

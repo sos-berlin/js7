@@ -23,13 +23,13 @@ import org.scalatest.FreeSpec
 final class TryTest extends FreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) {
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider =>
+      for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, FinishingWorkflow.id.path))
         master.eventWatch.await[OrderFinished](_.key == orderId)
@@ -39,12 +39,12 @@ final class TryTest extends FreeSpec
   }
 
   "Nested try catch with failing catch, OrderStopped" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) {
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider =>
+      for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
         master.eventWatch.await[OrderStopped](_.key == orderId)
@@ -66,12 +66,12 @@ final class TryTest extends FreeSpec
          |  }
          |  execute executable="/OKAY$sh", agent="AGENT";
          |}""".stripMargin).orThrow
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) {
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
+      for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
       }
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         val orderId = OrderId("⭕")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         master.eventWatch.await[OrderFinished](_.key == orderId)
@@ -100,10 +100,10 @@ final class TryTest extends FreeSpec
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit = {
     eventSeq match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }

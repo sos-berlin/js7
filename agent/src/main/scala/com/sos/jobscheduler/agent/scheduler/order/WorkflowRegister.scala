@@ -12,18 +12,18 @@ import scala.collection.mutable
 private[order] final class WorkflowRegister {
 
   private val _idToWorkflow = mutable.Map[WorkflowId, Workflow]()
-    .withDefault { workflowPath ⇒ throw new NoSuchElementException(s"Unknown $workflowPath") }
+    .withDefault { workflowPath => throw new NoSuchElementException(s"Unknown $workflowPath") }
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow] = _idToWorkflow
 
   def recover(workflow: Workflow): Unit = {
-    _idToWorkflow.insert(workflow.id → workflow)
+    _idToWorkflow.insert(workflow.id -> workflow)
   }
 
   def handleEvent(keyedEvent: KeyedEvent[WorkflowEvent]): Unit = {
     keyedEvent.event match {
-      case WorkflowEvent.WorkflowAttached(workflow) ⇒
-        _idToWorkflow += workflow.id → workflow   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
+      case WorkflowEvent.WorkflowAttached(workflow) =>
+        _idToWorkflow += workflow.id -> workflow   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
     }
   }
 

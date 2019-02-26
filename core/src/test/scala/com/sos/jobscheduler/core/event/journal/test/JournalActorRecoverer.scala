@@ -17,8 +17,8 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
 
   protected implicit def sender: ActorRef
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
-  protected def snapshotToKey: Any ⇒ Any
-  protected def isDeletedEvent: E ⇒ Boolean
+  protected def snapshotToKey: Any => Any
+  protected def isDeletedEvent: E => Boolean
   protected def journalEventWatch: JournalEventWatch[E]
 
   private val keyToActor = mutable.Map[Any, ActorRef]()
@@ -30,12 +30,12 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
   }
 
   protected final def recoverEvent = {
-    case stamped @ Stamped(_, _, KeyedEvent(key, event)) ⇒
+    case stamped @ Stamped(_, _, KeyedEvent(key, event)) =>
       keyToActor.get(key) match {
-        case None ⇒
+        case None =>
           recoverNewKey.getOrElse(stamped,
             sys.error(s"Uncoverable event for a new key in journal '${journalFileOption getOrElse journalMeta.fileBase}': $stamped"))
-        case Some(a) ⇒
+        case Some(a) =>
           a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO OutOfMemoryError
           if (isDeletedEvent(event.asInstanceOf[E])) {
             keyToActor -= key
@@ -46,7 +46,7 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
   protected def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
     val key = snapshotToKey(snapshot)
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal journalFile: '$key'")
-    keyToActor += key → actorRef
+    keyToActor += key -> actorRef
     actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
   }
 
@@ -54,7 +54,7 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
     val keyedEvent = stampedEvent.value
     import keyedEvent.key
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate key: '$key'")
-    keyToActor += key → actorRef
+    keyToActor += key -> actorRef
     actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(stampedEvent)
   }
 

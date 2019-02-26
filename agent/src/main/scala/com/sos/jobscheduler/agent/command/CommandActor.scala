@@ -33,16 +33,16 @@ extends Actor {
   private val register = new CommandRegister[AgentCommand]
 
   def receive = {
-    case Input.Execute(command, meta, response) ⇒
+    case Input.Execute(command, meta, response) =>
       executeCommand(command, meta, response)
 
-    case Command.GetOverview ⇒
+    case Command.GetOverview =>
       sender() ! register.overview
 
-    case Command.GetDetailed ⇒
+    case Command.GetDetailed =>
       sender() ! register.detailed
 
-    case Internal.Respond(run, promise, response) ⇒
+    case Internal.Respond(run, promise, response) =>
       if (run.batchInternalId.isEmpty || response != Success(Valid(AgentCommand.Response.Accepted))) {
         logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${(now - run.startedAt).pretty}): $response")
       }
@@ -55,37 +55,37 @@ extends Actor {
     logCommand(run)
     val myResponse = Promise[Checked[Response]]()
     executeCommand2(batchId, run.internalId, command, meta,myResponse)
-    myResponse.future onComplete { tried ⇒
+    myResponse.future onComplete { tried =>
       self ! Internal.Respond(run, promise, tried)
     }
   }
 
   private def logCommand(run: CommandRun[AgentCommand]): Unit =
     run.command match {
-      case Batch(_) ⇒  // Log only individual commands
-      case _ ⇒ logger.info(run.toString)
+      case Batch(_) =>  // Log only individual commands
+      case _ => logger.info(run.toString)
     }
 
   private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta,
     response: Promise[Checked[Response]]): Unit
   =
     command match {
-      case Batch(commands) ⇒
+      case Batch(commands) =>
         val responses = Vector.fill(commands.size) { Promise[Checked[Response]] }
-        for ((c, r) ← commands zip responses)
+        for ((c, r) <- commands zip responses)
           executeCommand(c, meta, r, batchId orElse Some(id))
         val singleResponseFutures = responses map (_.future)
         response.completeWith(
           Future.sequence(singleResponseFutures)
             .map(checkedResponse => Valid(AgentCommand.Batch.Response(checkedResponse))))
 
-      case NoOperation ⇒
+      case NoOperation =>
         response.success(Valid(AgentCommand.Response.Accepted))
 
-      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) ⇒
+      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) =>
         agentHandle.executeCommand(command, meta.user.id, response)
 
-      case EmergencyStop ⇒
+      case EmergencyStop =>
         Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW")
     }
 }

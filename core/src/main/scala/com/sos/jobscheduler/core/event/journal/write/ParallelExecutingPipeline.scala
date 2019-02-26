@@ -7,14 +7,14 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class ParallelExecutingPipeline[A](output: A ⇒ Unit)(implicit ec: ExecutionContext) {
+final class ParallelExecutingPipeline[A](output: A => Unit)(implicit ec: ExecutionContext) {
 
   private val queue = new ArrayBlockingQueue[Future[A]](sys.runtime.availableProcessors)
 
   /**
     * Blocks until the queue contains not more than `sys.runtime.availableProcessors` entries.
     */
-  def blockingAdd(a: ⇒ A): Unit = {
+  def blockingAdd(a: => A): Unit = {
     if (queue.remainingCapacity == 0) {
       writeNext()
     }

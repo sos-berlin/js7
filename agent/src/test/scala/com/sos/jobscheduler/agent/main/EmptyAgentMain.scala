@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 object EmptyAgentMain
 {
   def main(args: Array[String]): Unit = {
-    TestAgentDirectoryProvider.provideAgentDirectory { directory ⇒
+    TestAgentDirectoryProvider.provideAgentDirectory { directory =>
       val conf = AgentConfiguration.forTest(configAndData = directory, httpPort = Some(4445))
       RunningAgent.run(conf) { _.terminated.awaitInfinite }
     }

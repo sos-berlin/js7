@@ -9,7 +9,7 @@ import org.scalatest.Matchers._
   */
 final class ConvertiblePartialFunctionsTest extends FreeSpec {
 
-  private val pf: PartialFunction[String, String] = Map("KEY" → "111", "other" → "000")
+  private val pf: PartialFunction[String, String] = Map("KEY" -> "111", "other" -> "000")
 
   "as" in {
     assert(pf.as[Int]("KEY") == 111)

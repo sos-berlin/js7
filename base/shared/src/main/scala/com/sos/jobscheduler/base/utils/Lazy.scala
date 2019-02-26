@@ -7,19 +7,19 @@ package com.sos.jobscheduler.base.utils
   */
 import scala.language.implicitConversions
 
-final class Lazy[A] private(eval: ⇒ A)
+final class Lazy[A] private(eval: => A)
 {
   @volatile
   private var option: Option[A] = None
 
   def apply(): A =
     option match {
-      case Some(a) ⇒ a
-      case None ⇒
+      case Some(a) => a
+      case None =>
         synchronized {
           option match {
-            case Some(a) ⇒ a
-            case None ⇒
+            case Some(a) => a
+            case None =>
               val a = eval
               option = Some(a)
               a
@@ -32,7 +32,7 @@ final class Lazy[A] private(eval: ⇒ A)
 
 object Lazy
 {
-  def apply[A](f: ⇒ A): Lazy[A] =
+  def apply[A](f: => A): Lazy[A] =
     new Lazy(f)
 
   implicit def evalLazy[A](o: Lazy[A]): A =

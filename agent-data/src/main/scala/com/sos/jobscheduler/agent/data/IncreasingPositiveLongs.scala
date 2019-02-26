@@ -17,8 +17,8 @@ final class IncreasingPositiveLongs(start: Long = 1, maximum: Long = Long.MaxVal
     counter.getAndUpdate(new LongUnaryOperator {
       def applyAsLong(n: Long) =
         n match {
-          case `maximum` ⇒ 1
-          case _ ⇒ n + 1
+          case `maximum` => 1
+          case _ => n + 1
         }
     })
 }

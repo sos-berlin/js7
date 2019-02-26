@@ -11,7 +11,7 @@ import io.circe.syntax.EncoderOps
   */
 object WorkflowPrinter {
 
-  implicit val WorkflowShow: Show[Workflow] = w ⇒ print(w)
+  implicit val WorkflowShow: Show[Workflow] = w => print(w)
   private val JsonPrinter = CompactPrinter.copy(colonRight = " ", objectCommaRight = " ", arrayCommaRight = " ")
 
   def print(workflow: Workflow): String = {
@@ -24,7 +24,7 @@ object WorkflowPrinter {
 
   private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String = {
     def appendQuoted(string: String) = sb.append('"').append(string.replace("\"", "\\\"")).append('"')
-    def indent(nesting: Int) = for (_ ← 0 until nesting) sb ++= "  "
+    def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
 
     def appendWorkflowExecutable(workflowExecutable: WorkflowJob): Unit = {
       sb ++= "executable="
@@ -36,12 +36,12 @@ object WorkflowPrinter {
         sb ++= workflowExecutable.defaultArguments.asJson.pretty(JsonPrinter)
       }
       workflowExecutable.returnCodeMeaning match {
-        case ReturnCodeMeaning.Default ⇒
-        case ReturnCodeMeaning.Success(returnCodes) ⇒
+        case ReturnCodeMeaning.Default =>
+        case ReturnCodeMeaning.Success(returnCodes) =>
           sb ++= ", successReturnCodes=["
           sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
           sb += ']'
-        case ReturnCodeMeaning.Failure(returnCodes) ⇒
+        case ReturnCodeMeaning.Failure(returnCodes) =>
           sb ++= ", failureReturnCodes=["
           sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
           sb += ']'
@@ -52,27 +52,27 @@ object WorkflowPrinter {
       }
     }
 
-    for (labelled ← workflow.labeledInstructions if labelled.instruction != ImplicitEnd) {
+    for (labelled <- workflow.labeledInstructions if labelled.instruction != ImplicitEnd) {
       indent(nesting)
-      for (label ← labelled.labels) {
+      for (label <- labelled.labels) {
         sb ++= label.string
         sb ++= ": "
       }
       labelled.instruction match {
-        case AwaitOrder(orderId) ⇒
+        case AwaitOrder(orderId) =>
           sb ++= "await orderId="
           appendQuoted(orderId.string)
           sb ++= ";\n"
 
-        case ExplicitEnd ⇒
+        case ExplicitEnd =>
           sb ++= "end;\n"
 
-        case Execute.Anonymous(workflowExecutable) ⇒
+        case Execute.Anonymous(workflowExecutable) =>
           sb ++= "execute "
           appendWorkflowExecutable(workflowExecutable)
           sb ++= ";\n"
 
-        case Execute.Named(name, arguments) ⇒
+        case Execute.Named(name, arguments) =>
           sb ++= "job "
           sb ++= name.string
           if (arguments.nonEmpty) {
@@ -81,7 +81,7 @@ object WorkflowPrinter {
           }
           sb ++= ";\n"
 
-        case Fork(branches) ⇒
+        case Fork(branches) =>
           def appendBranch(branch: Fork.Branch) = {
             indent(nesting + 1)
             appendQuoted(branch.id.string)
@@ -92,31 +92,31 @@ object WorkflowPrinter {
           }
 
           sb ++= "fork (\n"
-          for (b ← branches.take(branches.length - 1)) {
+          for (b <- branches.take(branches.length - 1)) {
             appendBranch(b)
             sb.append(",\n")
           }
           appendBranch(branches.last)
           sb ++= ");\n"
 
-        case Gap ⇒
+        case Gap =>
           sb ++= "/*gap*/\n"
 
-        case Goto(label) ⇒
+        case Goto(label) =>
           sb ++= "goto "++= label.string ++= ";\n"
 
-        case Fail(maybeReturnCode) ⇒
+        case Fail(maybeReturnCode) =>
           sb ++= "fail"
-          for (o ← maybeReturnCode) sb ++= " returnCode=" ++= o.number.toString
+          for (o <- maybeReturnCode) sb ++= " returnCode=" ++= o.number.toString
           sb ++= ";\n"
 
-        case IfNonZeroReturnCodeGoto(label) ⇒
+        case IfNonZeroReturnCodeGoto(label) =>
           sb ++= "ifNonZeroReturnCodeGoto " ++= label.string ++= ";\n"
 
-        case If(predicate, thenWorkflow, elseWorkflowOption) ⇒
+        case If(predicate, thenWorkflow, elseWorkflowOption) =>
           sb ++= "if (" ++= predicate.toString ++= ") {\n"
           appendWorkflowContent(sb, nesting + 1, thenWorkflow)
-          for (els ← elseWorkflowOption) {
+          for (els <- elseWorkflowOption) {
             indent(nesting)
             sb ++= "} else {\n"
             appendWorkflowContent(sb, nesting + 1, els)
@@ -124,7 +124,7 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case TryInstruction(tryWorkflow, catchWorkflow) ⇒
+        case TryInstruction(tryWorkflow, catchWorkflow) =>
           sb ++= "try {\n"
           appendWorkflowContent(sb, nesting + 1, tryWorkflow)
           indent(nesting)
@@ -133,7 +133,7 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case Retry() ⇒
+        case Retry() =>
           sb ++= "retry"
           //delays.size match {
           //  case 0 =>
@@ -142,7 +142,7 @@ object WorkflowPrinter {
           //}
           sb ++= "\n"
 
-        case Offer(orderId, timeout) ⇒
+        case Offer(orderId, timeout) =>
           sb ++= s"offer orderId="
           appendQuoted(orderId.string)
           sb ++= ", timeout="
@@ -152,7 +152,7 @@ object WorkflowPrinter {
     }
 
     if (workflow.nameToJob.nonEmpty) sb ++= "\n"
-    for ((name, job) ← workflow.nameToJob) {
+    for ((name, job) <- workflow.nameToJob) {
       indent(nesting)
       sb ++= "define job "
       sb ++= name.string

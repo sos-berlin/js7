@@ -37,8 +37,8 @@ final class OrderEventSourceTest extends FreeSpec
 
   "JobSchedulerRestarted" in {
     val eventSource = new OrderEventSource(
-      Map(TestWorkflowId → ForkWorkflow).toChecked,
-      Map(disruptedOrder.id → disruptedOrder))
+      Map(TestWorkflowId -> ForkWorkflow).toChecked,
+      Map(disruptedOrder.id -> disruptedOrder))
     assert(eventSource.nextEvent(disruptedOrder.id) ==
       Valid(Some(disruptedOrder.id <-: OrderMoved(Position(1)))))  // Move to same InstructionNr, and set Order.Ready
   }
@@ -213,7 +213,7 @@ final class OrderEventSourceTest extends FreeSpec
     "Order.cancel.isEmpty" - {  // Order is not marked as being canceled
       "Fresh Detached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCanceled)))
@@ -223,7 +223,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Fresh Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), Outcome.succeeded, Some(Order.Attached(TestAgentRefPath)))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderStarted)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.NotStarted))))
@@ -233,7 +233,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Ready Detached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready)
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -243,7 +243,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Ready Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentRefPath)))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: orderForked)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -253,7 +253,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Processing Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentRefPath)))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -265,7 +265,7 @@ final class OrderEventSourceTest extends FreeSpec
     "Order.cancel.isDefined" - {  // Order is marked as being canceled
       "Ready Detached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, cancel = Some(CancelMode.FreshOrStarted))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderCanceled)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -275,7 +275,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Ready Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, Outcome.succeeded, Some(Order.Attached(TestAgentRefPath)), cancel = Some(CancelMode.FreshOrStarted))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(Some(order.id <-: OrderDetachable)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -285,7 +285,7 @@ final class OrderEventSourceTest extends FreeSpec
 
       "Processing Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, Outcome.succeeded, Some(Order.Attached(TestAgentRefPath)), cancel = Some(CancelMode.FreshOrStarted))
-        val eventSource = new OrderEventSource(Map(TestWorkflowId → ForkWorkflow).toChecked, Map(order.id → order))
+        val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Valid(None))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
         assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
@@ -315,7 +315,7 @@ final class OrderEventSourceTest extends FreeSpec
          |  execute agent="/a", executable="/ex";      // 1
          |}""".stripMargin).orThrow
 
-    def eventSource(order: Order[Order.State]) = new OrderEventSource(Map(workflow.id → workflow).toChecked, Map(order.id → order))
+    def eventSource(order: Order[Order.State]) = new OrderEventSource(Map(workflow.id -> workflow).toChecked, Map(order.id -> order))
     val failed = Outcome.Failed(ReturnCode(7))
 
     "Fresh at try instruction -> OrderMoved" in {
@@ -411,7 +411,7 @@ object OrderEventSourceTest {
   }
 
   final class Process(workflow: Workflow) {
-    val pathToWorkflow = Map(workflow.id → workflow).toChecked
+    val pathToWorkflow = Map(workflow.id -> workflow).toChecked
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
     private val eventSource = new OrderEventSource(pathToWorkflow, idToOrder)
     private val eventHandler = new OrderEventHandler(pathToWorkflow, idToOrder)
@@ -427,8 +427,8 @@ object OrderEventSourceTest {
 
     def run(orderId: OrderId): List[KeyedEvent[OrderEvent]] =
       step(orderId) match {
-        case Some(keyedEvent) ⇒ keyedEvent :: (if (idToOrder contains orderId) run(orderId) else Nil)
-        case _ ⇒ Nil
+        case Some(keyedEvent) => keyedEvent :: (if (idToOrder contains orderId) run(orderId) else Nil)
+        case _ => Nil
       }
 
     def step(orderId: OrderId): Option[KeyedEvent[OrderEvent]] = {
@@ -443,7 +443,7 @@ object OrderEventSourceTest {
         Valid(Some(order.id <-: OrderTransferredToMaster))
       else
         (order.state, workflow.instruction(order.position)) match {
-          case (_: Order.Ready, _: Execute) ⇒
+          case (_: Order.Ready, _: Execute) =>
             if (order.isDetached)
               Valid(Some(order.id <-: OrderAttachable(TestAgentRefPath)))
             else if (order.isAttaching)
@@ -451,10 +451,10 @@ object OrderEventSourceTest {
             else
               Valid(Some(order.id <-: OrderProcessingStarted))
 
-          case _ if inProcess contains orderId ⇒
+          case _ if inProcess contains orderId =>
             Valid(Some(orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded)))
 
-          case _ ⇒
+          case _ =>
             eventSource.nextEvent(orderId)
         }
     }
@@ -462,43 +462,43 @@ object OrderEventSourceTest {
     def update(keyedEvent: KeyedEvent[OrderEvent]): Unit = {
       val KeyedEvent(orderId, event) = keyedEvent
       event match {
-        case event: OrderAdded ⇒
-          idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
+        case event: OrderAdded =>
+          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
 
-        case event: OrderCoreEvent ⇒
+        case event: OrderCoreEvent =>
           processEvent(keyedEvent)
           if (event != OrderFinished) {
             idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
           }
 
-        case _ ⇒
+        case _ =>
           sys.error(s"Unhandled: $event")
       }
     }
 
     private def processEvent(keyedEvent: KeyedEvent[OrderEvent]): Unit =
       keyedEvent match {
-        case orderId <-: OrderProcessingStarted ⇒
+        case orderId <-: OrderProcessingStarted =>
           inProcess += orderId
 
-        case orderId <-: (_: OrderProcessed) ⇒
+        case orderId <-: (_: OrderProcessed) =>
           inProcess -= orderId
 
-        case _ ⇒
+        case _ =>
           eventHandler.handleEvent(keyedEvent).orThrow foreach {
-            case FollowUp.AddChild(derivedOrder) ⇒
-              idToOrder.insert(derivedOrder.id → derivedOrder)
+            case FollowUp.AddChild(derivedOrder) =>
+              idToOrder.insert(derivedOrder.id -> derivedOrder)
 
-            case FollowUp.Remove(removeOrderId) ⇒
+            case FollowUp.Remove(removeOrderId) =>
               idToOrder -= removeOrderId
 
-            case o ⇒ sys.error(o.toString)
+            case o => sys.error(o.toString)
           }
       }
   }
 
   private def newWorkflowEventSource(workflow: Workflow, orders: Iterable[Order[Order.State]]) =
     new OrderEventSource(
-      Map(TestWorkflowId → workflow).toChecked,
+      Map(TestWorkflowId -> workflow).toChecked,
       orders toKeyedMap (_.id))
 }

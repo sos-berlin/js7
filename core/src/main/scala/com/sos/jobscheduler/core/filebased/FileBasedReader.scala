@@ -25,8 +25,8 @@ trait FileBasedReader
   private[filebased] def readUntyped(id: FileBasedId_, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
     assert(id.path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
     val result: Checked[ThisFileBased] = read(id.asInstanceOf[FileBasedId[ThisTypedPath]], byteString).applyOrElse(sourceType,
-      (_: SourceType) ⇒ Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))
-    result.mapProblem(p ⇒ SourceProblem(id.path, sourceType, p))
+      (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))
+    result.mapProblem(p => SourceProblem(id.path, sourceType, p))
   }
 
   final def readJsonString(source: String): Checked[ThisFileBased] =
@@ -34,10 +34,10 @@ trait FileBasedReader
 
   final def readAnonymousJsonLike(sourceType: SourceType.JsonLike, source: ByteString): Checked[ThisFileBased] =
     sourceType match {
-      case SourceType.Json ⇒
+      case SourceType.Json =>
         readJsonString(source.utf8String)
 
-      case SourceType.Yaml ⇒
+      case SourceType.Yaml =>
         yamlToJson(source.utf8String) flatMap convertFromJson
     }
 

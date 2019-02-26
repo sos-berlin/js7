@@ -22,13 +22,13 @@ trait SessionApi extends HasSessionToken
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
   final def login(userAndPassword: Option[UserAndPassword]): Task[Unit] =
-    for (response ← executeSessionCommand(Login(userAndPassword))) yield
+    for (response <- executeSessionCommand(Login(userAndPassword))) yield
       setSessionToken(response.sessionToken)
 
-  final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration], onError: Throwable ⇒ Unit)
+  final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration], onError: Throwable => Unit)
   : Task[Unit] =
     login(userAndPassword)
-      .onErrorRestartLoop(()) { (throwable, _, retry) ⇒
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
         onError(throwable)
         if (isTemporary(throwable) && delays.hasNext)
           retry(()) delayExecution delays.next()
@@ -39,10 +39,10 @@ trait SessionApi extends HasSessionToken
   final def logout(): Task[Completed] = {
     val tokenOption = sessionTokenRef.get
     tokenOption match {
-      case None ⇒ Task.pure(Completed)
-      case Some(sessionToken) ⇒
+      case None => Task.pure(Completed)
+      case Some(sessionToken) =>
         executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
-          .map { _: SessionCommand.Response.Accepted ⇒
+          .map { _: SessionCommand.Response.Accepted =>
             sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Logout or Login
             Completed
         }
@@ -70,7 +70,7 @@ object SessionApi
 {
   private def isTemporary(throwable: Throwable) =
     throwable match {
-      case e: HttpClient.HttpException ⇒ e.isUnreachable
-      case _ ⇒ true  // May be a TCP exception
+      case e: HttpClient.HttpException => e.isUnreachable
+      case _ => true  // May be a TCP exception
     }
 }

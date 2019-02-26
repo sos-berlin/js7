@@ -7,6 +7,6 @@ import com.sos.jobscheduler.base.problem.Problem
   */
 final case class EventSeqTornProblem(requestedAfter: EventId, tornEventId: EventId) extends Problem.Coded {
   def arguments = Map(
-    "requestedAfter" → requestedAfter.toString,
-    "tornEventId" → tornEventId.toString)
+    "requestedAfter" -> requestedAfter.toString,
+    "tornEventId" -> tornEventId.toString)
 }

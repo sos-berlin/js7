@@ -26,10 +26,10 @@ object FileBaseds
       case Some(existing) if (if (ignoreVersion) existing == fileBased.withVersion(existing.id.versionId) else existing == fileBased) =>
         None
 
-      case Some(_) ⇒
+      case Some(_) =>
         Some(RepoChange.Updated(fileBased))
 
-      case None ⇒
+      case None =>
         Some(RepoChange.Added(fileBased))
     }
 
@@ -37,9 +37,9 @@ object FileBaseds
     /** Returns a subset of a certain `TypedPath` and `FileBased`. */
     def select[P1 <: P, A1 <: A](implicit A1Path: TypedPath.Companion[P1], A1: FileBased.Companion[A1]): Diff[P1, A1] =
       Diff(
-        added   collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
-        updated collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
-        deleted collect { case o if o.companion eq A1.typedPathCompanion ⇒ o.asInstanceOf[P1] })
+        added   collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
+        updated collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
+        deleted collect { case o if o.companion eq A1.typedPathCompanion => o.asInstanceOf[P1] })
 
     def withVersionId(versionId: VersionId): Diff[P, A] = copy(
       added = added map (_.withVersion(versionId).asInstanceOf[A]),
@@ -48,8 +48,8 @@ object FileBaseds
   object Diff {
     def fromRepoChanges(events: Seq[RepoChange]) =
       Diff[TypedPath, FileBased](
-        events collect { case o: RepoChange.Added ⇒ o.fileBased },
-        events collect { case o: RepoChange.Updated ⇒ o.fileBased },
-        events collect { case o: RepoChange.Deleted ⇒ o.path })
+        events collect { case o: RepoChange.Added => o.fileBased },
+        events collect { case o: RepoChange.Updated => o.fileBased },
+        events collect { case o: RepoChange.Deleted => o.path })
   }
 }

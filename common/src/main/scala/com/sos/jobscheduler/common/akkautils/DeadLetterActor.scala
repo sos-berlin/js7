@@ -8,36 +8,36 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private class DeadLetterActor(output: (⇒ String) ⇒ Unit) extends Actor {
+private class DeadLetterActor(output: (=> String) => Unit) extends Actor {
   def receive = {
-    case DeadLetter(_: DeadLetterSuppression, _, _) ⇒
-    case UnhandledMessage(_: DeadLetterSuppression, _, _) ⇒
+    case DeadLetter(_: DeadLetterSuppression, _, _) =>
+    case UnhandledMessage(_: DeadLetterSuppression, _, _) =>
 
-    case o: DeadLetter ⇒
+    case o: DeadLetter =>
       callOutput(s"DeadLetter from ${o.sender} to ${o.recipient}: ${o.message}")
 
-    case o: UnhandledMessage ⇒
+    case o: UnhandledMessage =>
       callOutput(s"UnhandledMessage from ${o.sender} to ${o.recipient}: ${o.message}")
   }
 
-  private def callOutput(string: ⇒ String) =
+  private def callOutput(string: => String) =
     try output(string)
     catch {
-      case NonFatal(t) ⇒ logger.warn(t.toString)
-      case t: OutOfMemoryError ⇒ logger.error(t.toString, t)
+      case NonFatal(t) => logger.warn(t.toString)
+      case t: OutOfMemoryError => logger.error(t.toString, t)
     }
 }
 
 object DeadLetterActor {
   private val logger = Logger(getClass)
 
-  def subscribe(actorSystem: ActorSystem, output: (⇒ String) ⇒ Unit = logDeadLetter): Unit = {
+  def subscribe(actorSystem: ActorSystem, output: (=> String) => Unit = logDeadLetter): Unit = {
     val actor = actorSystem.actorOf(props(output), "DeadLetter")
     actorSystem.eventStream.subscribe(actor, classOf[DeadLetter])
     actorSystem.eventStream.subscribe(actor, classOf[UnhandledMessage])
   }
 
-  private def logDeadLetter(message: ⇒ String): Unit = logger.warn(message)
+  private def logDeadLetter(message: => String): Unit = logger.warn(message)
 
-  private def props(output: (⇒ String) ⇒ Unit) = Props { new DeadLetterActor(output) }
+  private def props(output: (=> String) => Unit) = Props { new DeadLetterActor(output) }
 }

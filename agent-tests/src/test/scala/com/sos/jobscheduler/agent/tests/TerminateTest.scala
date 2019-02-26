@@ -46,26 +46,26 @@ final class TerminateTest extends FreeSpec with AgentTester {
     closer onClose actorSystem.terminate()
 
     val client = AgentClient(agentUri = agent.localUri.toString)
-    client.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
+    client.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
     client.commandExecute(RegisterAsMaster) await 99.s
 
     val eventCollector = newEventCollector(agent.injector)
 
-    val orderIds = for (i ← 0 until 3) yield OrderId(s"TEST-ORDER-$i")
-    (for (orderId ← orderIds) yield
+    val orderIds = for (i <- 0 until 3) yield OrderId(s"TEST-ORDER-$i")
+    (for (orderId <- orderIds) yield
       client.commandExecute(AttachOrder(
         Order(
           orderId,
           SimpleTestWorkflow.id,
           Order.Ready,
-          payload = Payload(Map("a" → "A"))),
+          payload = Payload(Map("a" -> "A"))),
         TestAgentRefPath,
         fileBasedSigner.sign(SimpleTestWorkflow)))
     ) await 99.s
 
     val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
       Future.sequence(
-        for (orderId ← orderIds) yield
+        for (orderId <- orderIds) yield
           eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = 90.seconds), orderId)
             .runToFuture: Future[OrderEvent.OrderProcessed])
     sleep(2.s)

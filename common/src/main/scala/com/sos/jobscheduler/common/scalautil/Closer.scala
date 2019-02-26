@@ -14,12 +14,12 @@ final class Closer extends AutoCloseable
   private val stack = new ConcurrentLinkedDeque[AutoCloseable]
   private val throwable = AtomicAny[Throwable](null)
 
-  def onCloseOrShutdown(body: ⇒ Unit): Unit = {
+  def onCloseOrShutdown(body: => Unit): Unit = {
     onClose(body)
     whenNotClosedAtShutdown(body)
   }
 
-  def whenNotClosedAtShutdown(body: ⇒ Unit): Unit = {
+  def whenNotClosedAtShutdown(body: => Unit): Unit = {
     val hook = new Thread(s"ShutdownHook for $toString") {
       override def run() = body
     }
@@ -32,15 +32,15 @@ final class Closer extends AutoCloseable
   /**
     * Closes the `Closer`, then "finally" (nonwithstanding any NonFatal exception) call `body`.
     */
-  def closeThen(body: ⇒ Unit) = {
+  def closeThen(body: => Unit) = {
     val c = new Closer
     c onClose body
     c.register(this)
     c.close()
   }
 
-  def onClose(closeable: ⇒ Unit): Unit =
-    register(() ⇒ closeable)
+  def onClose(closeable: => Unit): Unit =
+    register(() => closeable)
 
   def register(closeable: AutoCloseable): Unit =
     stack.add(requireNonNull(closeable))
@@ -48,13 +48,13 @@ final class Closer extends AutoCloseable
   @tailrec
   def close(): Unit =
     stack.pollLast() match {
-      case null ⇒  // finish
+      case null =>  // finish
         if (throwable.get != null) throw throwable.get
 
-      case closeable ⇒
+      case closeable =>
         try closeable.close()
         catch {
-          case NonFatal(t) ⇒
+          case NonFatal(t) =>
             if (!throwable.compareAndSet(null, t)) {
               val tt = throwable.get
               if (tt ne t) {
@@ -62,7 +62,7 @@ final class Closer extends AutoCloseable
                 tt.addSuppressed(t)
               }
             }
-          case fatal: Throwable ⇒
+          case fatal: Throwable =>
             throw fatal
         }
         close()
@@ -72,7 +72,7 @@ final class Closer extends AutoCloseable
 object Closer {
   private val logger = Logger(getClass)
 
-  def withCloser[A](f: Closer ⇒ A): A =
+  def withCloser[A](f: Closer => A): A =
     autoClosing(new Closer)(f)
 
   def closeOrdered(closeables: AutoCloseable*): Unit = {
@@ -95,7 +95,7 @@ object Closer {
     }
 
     implicit final class RichClosersAny[A <: AnyRef](private val underlying: A) extends AnyVal {
-      def withCloser(onClose: A ⇒ Unit)(implicit closer: Closer): A = {
+      def withCloser(onClose: A => Unit)(implicit closer: Closer): A = {
         closer.onClose { onClose(underlying) }
         underlying
       }

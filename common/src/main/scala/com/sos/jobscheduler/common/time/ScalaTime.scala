@@ -87,15 +87,15 @@ object ScalaTime {
   def bigDecimalToDuration(o: BigDecimal) = {
     val (seconds, fraction) = o /% 1
     try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
-    catch { case t: ArithmeticException ⇒
+    catch { case t: ArithmeticException =>
       throw new ArithmeticException(s"Not a Duration (${t.getMessage}): $o")
     }
   }
 
   implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
   implicit val StringAsOptionDuration: As[String, Option[Duration]] = {
-    case "never" | "eternal" | "" ⇒ None
-    case string ⇒ Some(parseDuration(string))
+    case "never" | "eternal" | "" => None
+    case string => Some(parseDuration(string))
   }
 
   /**
@@ -293,10 +293,10 @@ object ScalaTime {
   implicit final class RichConcurrentDuration(private val underlying: ScalaDuration) extends AnyVal {
     def pretty: String =
       underlying match {
-        case o: FiniteDuration ⇒ o.toJavaDuration.pretty
-        case ScalaDuration.Inf ⇒ "infinite"
-        case ScalaDuration.Undefined ⇒ "undefined"
-        case o ⇒ o.toString
+        case o: FiniteDuration => o.toJavaDuration.pretty
+        case ScalaDuration.Inf => "infinite"
+        case ScalaDuration.Undefined => "undefined"
+        case o => o.toString
       }
   }
 

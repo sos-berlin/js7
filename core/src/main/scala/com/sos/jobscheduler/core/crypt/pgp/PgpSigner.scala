@@ -67,7 +67,7 @@ extends MessageSigner
       new JcaPGPContentSignerBuilder(pgpSecretKey.getPublicKey.getAlgorithm, OurHashAlgorithm)
         .setProvider("BC"))
     signatureGenerator.init(PGPSignature.BINARY_DOCUMENT, pgpPrivateKey)
-    for (u ← maybeUserId) {
+    for (u <- maybeUserId) {
       val subpacketGenerator = new PGPSignatureSubpacketGenerator
       subpacketGenerator.setSignerUserID(false, u)
       signatureGenerator.setHashedSubpackets(subpacketGenerator.generate())
@@ -113,13 +113,13 @@ object PgpSigner extends MessageSigner.Companion
     selectSecretKey(readSecretKeyRingCollection(resource))
 
   private def readSecretKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPSecretKeyRingCollection =
-    resource.useSync(in ⇒
+    resource.useSync(in =>
       new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
 
   private def selectSecretKey(keyRings: PGPSecretKeyRingCollection): PGPSecretKey = {
     val keys = keyRings
       .getKeyRings.asScala
-      .map(o ⇒ o.getSecretKey(o.getPublicKey/*the master key*/.getFingerprint))
+      .map(o => o.getSecretKey(o.getPublicKey/*the master key*/.getFingerprint))
       .toVector
     if (keys.isEmpty) throw new NoSuchElementException("No master key in secret key ring")
     if (keys.size > 1) throw new IllegalArgumentException(s"More than one master key in secret key ring: " + keys.mkString_("", ", ", ""))

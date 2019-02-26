@@ -16,7 +16,7 @@ final class TypedJsonCodec[A](
 extends ObjectEncoder[A] with Decoder[A]
 {
   private val _classToName: Map[Class[_ <: A], String] =
-    nameToClass.map(o ⇒ o._2 → o._1).toMap
+    nameToClass.map(o => o._2 -> o._1).toMap
 
   /** Union. */
   def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] = {
@@ -39,12 +39,12 @@ extends ObjectEncoder[A] with Decoder[A]
     classToEncoder(a.getClass).asInstanceOf[ObjectEncoder[A]].encodeObject(a)
 
   def decode(c: HCursor): Decoder.Result[A] =
-    c.get[String](TypeFieldName) flatMap (o ⇒ nameToDecoder(o).apply(c))
+    c.get[String](TypeFieldName) flatMap (o => nameToDecoder(o).apply(c))
 
   def canDeserialize(json: Json): Boolean =
     json.asObject match {
-      case Some(o) ⇒ o.toMap.get(TypedJsonCodec.TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
-      case _ ⇒ false
+      case Some(o) => o.toMap.get(TypedJsonCodec.TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
+      case _ => false
     }
 
   def typeName[A1 <: A](a: A1): String =
@@ -55,7 +55,7 @@ extends ObjectEncoder[A] with Decoder[A]
 
   def classes[A1 <: A : ClassTag]: Set[Class[_ <: A1]] =
     classToEncoder.keySet collect {
-      case c if implicitClass[A1] isAssignableFrom c ⇒ c.asInstanceOf[Class[A1]]
+      case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[A1]]
     }
 }
 
@@ -71,9 +71,9 @@ object TypedJsonCodec {
   def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] = {
     val cls = implicitClass[A]
     new TypedJsonCodec[A](
-      subtypes.flatMap(_.classToEncoder).uniqueToMap withDefault (o ⇒ throw new UnknownClassForJsonException(o, cls)),
-      subtypes.flatMap(_.nameToDecoder).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)),
-      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)))
+      subtypes.flatMap(_.classToEncoder).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
+      subtypes.flatMap(_.nameToDecoder).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)),
+      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
   }
 
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])

@@ -35,77 +35,77 @@ extends JournalRecoverer[Event]
   private var orderScheduleEndedAt = none[Timestamp]
 
   protected def recoverSnapshot = {
-    case order: Order[Order.State] ⇒
-      idToOrder.insert(order.id → order)
+    case order: Order[Order.State] =>
+      idToOrder.insert(order.id -> order)
 
-    case AgentEventId(agentRefPath, eventId) ⇒
+    case AgentEventId(agentRefPath, eventId) =>
       agentToEventId(agentRefPath) = eventId
 
-    case event: RepoEvent ⇒
+    case event: RepoEvent =>
       repo = repo.applyEvent(event).orThrow
 
-    case OrderScheduleEndedAt(timestamp) ⇒
+    case OrderScheduleEndedAt(timestamp) =>
       orderScheduleEndedAt = Some(timestamp)
   }
 
   override protected def onAllSnapshotRecovered() = {
     val (added, removed) = followUpRecoveredSnapshots(repo.idTo[Workflow], idToOrder.toMap)
-    idToOrder ++= added.map(o ⇒ o.id → o)
+    idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed
   }
 
   protected def recoverEvent = {
-    case Stamped(_, _, keyedEvent) ⇒
+    case Stamped(_, _, keyedEvent) =>
       keyedEvent match {
-        case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) ⇒
-        case KeyedEvent(_: NoKey, OrderScheduleEvent.GeneratedUntil(instant)) ⇒
+        case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) =>
+        case KeyedEvent(_: NoKey, OrderScheduleEvent.GeneratedUntil(instant)) =>
           orderScheduleEndedAt = Some(instant)
 
-        case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
+        case KeyedEvent(_: NoKey, event: RepoEvent) =>
           repo = repo.applyEvent(event).orThrow
 
-        case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+        case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
           event match {
-            case event: OrderAdded ⇒
-              idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
+            case event: OrderAdded =>
+              idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
 
-            case OrderFinished | OrderCanceled ⇒
+            case OrderFinished | OrderCanceled =>
               idToOrder -= orderId
 
-            case event: OrderCoreEvent ⇒
+            case event: OrderCoreEvent =>
               handleForkJoinEvent(orderId, event)
               idToOrder(orderId) = idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
 
-            case _: OrderStdWritten ⇒
+            case _: OrderStdWritten =>
           }
 
-        case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) ⇒
+        case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>
           agentToEventId(a) = agentEventId
 
-        case KeyedEvent(_, _: MasterAgentEvent) ⇒
-        case KeyedEvent(_, MasterTestEvent) ⇒
+        case KeyedEvent(_, _: MasterAgentEvent) =>
+        case KeyedEvent(_, MasterTestEvent) =>
 
-        case _ ⇒ sys.error(s"Unknown event recovered from journal: $keyedEvent")
+        case _ => sys.error(s"Unknown event recovered from journal: $keyedEvent")
       }
   }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
-      case event: OrderForked ⇒
-        for (childOrder ← idToOrder(orderId).newForkedOrders(event)) {
-          idToOrder.insert(childOrder.id → childOrder)
+      case event: OrderForked =>
+        for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {
+          idToOrder.insert(childOrder.id -> childOrder)
         }
 
-      case event: OrderJoined ⇒
+      case event: OrderJoined =>
         idToOrder(orderId).state match {
-          case forked: Order.Forked ⇒
+          case forked: Order.Forked =>
             idToOrder --= forked.childOrderIds
 
-          case state ⇒
+          case state =>
             sys.error(s"Event $event recovered, but $orderId is in state $state")
         }
 
-      case _ ⇒
+      case _ =>
     }
 
   def masterState: Option[MasterState] =

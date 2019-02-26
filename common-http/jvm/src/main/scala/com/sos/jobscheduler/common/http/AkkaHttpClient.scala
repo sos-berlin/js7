@@ -49,7 +49,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
-  def close() = for (o ← materializerLazy) o.shutdown()
+  def close() = for (o <- materializerLazy) o.shutdown()
 
   def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)
@@ -85,15 +85,15 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       .flatMap(unmarshal[B](POST, uri))
 
   def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
-    post_[A](uri, data, Accept(`application/json`) :: Nil) map { response ⇒
+    post_[A](uri, data, Accept(`application/json`) :: Nil) map { response =>
       response.discardEntityBytes()
       response.status.intValue
     }
 
   def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
     for {
-      entity ← Task.deferFutureAction(implicit scheduler ⇒ Marshal(data).to[RequestEntity])
-      response ← sendReceive(
+      entity <- Task.deferFutureAction(implicit scheduler => Marshal(data).to[RequestEntity])
+      response <- sendReceive(
         HttpRequest(POST, uri, headers, entity),
         suppressSessionToken = suppressSessionToken,
         logData = Some(data.toString))
@@ -102,9 +102,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   def postRaw(uri: Uri, headers: List[HttpHeader], entity: RequestEntity): Task[HttpResponse] =
     sendReceive(HttpRequest(POST, uri, headers, entity))
 
-  final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: ⇒ Option[String] = None): Task[HttpResponse] =
-    withCheckedAgentUri(request) { request ⇒
-      val headers = if (suppressSessionToken) None else sessionToken map (token ⇒ RawHeader(SessionToken.HeaderName, token.secret.string))
+  final def sendReceive(request: HttpRequest, suppressSessionToken: Boolean = false, logData: => Option[String] = None): Task[HttpResponse] =
+    withCheckedAgentUri(request) { request =>
+      val headers = if (suppressSessionToken) None else sessionToken map (token => RawHeader(SessionToken.HeaderName, token.secret.string))
       val req = encodeGzip(request.withHeaders(headers ++: request.headers ++: standardHeaders))
       Task.deferFuture {
         logRequest(req, logData)
@@ -113,14 +113,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
       } map decodeResponse  // Decompress
     }
 
-  private def logRequest(request: HttpRequest, logData: ⇒ Option[String]): Unit =
+  private def logRequest(request: HttpRequest, logData: => Option[String]): Unit =
     logger.whenTraceEnabled {
       val b = new StringBuilder(200)
       b.append(request.method.value)
       b.append(' ')
       b.append(request.uri)
       if (!request.entity.isKnownEmpty) {
-        for (o ← logData) {
+        for (o <- logData) {
           b.append(' ')
           b.append(o)
         }
@@ -130,7 +130,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
     Task.deferFuture(
-      executeOn(materializer.executionContext) { implicit ec ⇒
+      executeOn(materializer.executionContext) { implicit ec =>
         if (httpResponse.status.isSuccess)
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
@@ -141,13 +141,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
             }
         else
           httpResponse.entity.toStrict(FailureTimeout)
-            .map(entity ⇒ throw new HttpException(httpResponse, uri, entity.data.utf8String))
+            .map(entity => throw new HttpException(httpResponse, uri, entity.data.utf8String))
       })
 
-  private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest ⇒ Task[A]): Task[A] =
+  private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri) match {
-      case Valid(uri) ⇒ body(request.copy(uri = uri))
-      case Invalid(problem) ⇒ Task.fromTry(Failure(problem.throwable))
+      case Valid(uri) => body(request.copy(uri = uri))
+      case Invalid(problem) => Task.fromTry(Failure(problem.throwable))
     }
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
@@ -180,20 +180,20 @@ object AkkaHttpClient {
 
   def sessionMayBeLost(t: Throwable): Boolean =
     t match {
-      case t: HttpException if t.status == Unauthorized || t.status == Forbidden ⇒ true
-      case _ ⇒ false
+      case t: HttpException if t.status == Unauthorized || t.status == Forbidden => true
+      case _ => false
     }
 
   /** Lifts a Failure(HttpException#problem) to Success(Invalid(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     task.materialize.map {
-      case Failure(t: HttpException) ⇒
+      case Failure(t: HttpException) =>
         t.problem match {
-          case None ⇒ Failure(t)
-          case Some(problem) ⇒ Success(Invalid(problem))
+          case None => Failure(t)
+          case Some(problem) => Success(Invalid(problem))
         }
-      case Failure(t) ⇒ Failure(t)
-      case Success(a) ⇒ Success(Valid(a))
+      case Failure(t) => Failure(t)
+      case Success(a) => Success(Valid(a))
     }
     .dematerialize
 
@@ -210,10 +210,10 @@ object AkkaHttpClient {
     lazy val problem: Option[Problem] =
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
-          case Left(error) ⇒
+          case Left(error) =>
             logger.debug(s"Problem cannot be parsed: $error")
             None
-          case Right(o) ⇒ Some(o)
+          case Right(o) => Some(o)
         }
       else
         None

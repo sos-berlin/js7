@@ -121,7 +121,7 @@ final class FatStateTest extends FreeSpec
   private def check(keyedEvent: KeyedEvent[Event], fatEvent: Option[KeyedEvent[Event]]): Unit = {
     val eventId = eventIds.next()
     val (updatedFatState, fatEvents) = fatState.toFatEvents(Stamped(eventId, keyedEvent))
-    assert(fatEvents == fatEvent.map(e ⇒Stamped(eventId, e)))
+    assert(fatEvents == fatEvent.map(e =>Stamped(eventId, e)))
     assert(updatedFatState.eventId == eventId)
     fatState = updatedFatState
   }

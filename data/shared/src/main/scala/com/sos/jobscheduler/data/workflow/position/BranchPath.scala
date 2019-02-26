@@ -31,16 +31,16 @@ object BranchPath
     val b = mutable.ListBuffer[Segment]()
     val parentResults: Iterator[Decoder.Result[Segment]] = pairs map decodeSegment
     parentResults foreach {
-      case Left(error) ⇒ left = Some(Left(error))
-      case Right(parent) ⇒ b += parent
+      case Left(error) => left = Some(Left(error))
+      case Right(parent) => b += parent
     }
     left getOrElse Right(b.toList)
   }
 
   private def decodeSegment(pair: List[Json]): Decoder.Result[Segment] =
     for {
-      nr ← pair.head.as[InstructionNr]
-      branchId ← pair(1).as[BranchId]
+      nr <- pair.head.as[InstructionNr]
+      branchId <- pair(1).as[BranchId]
     } yield Segment(nr, branchId)
 
   object PositionAndBranchId {

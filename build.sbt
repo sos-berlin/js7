@@ -29,8 +29,8 @@ import sbt.Keys.testOptions
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 val _dummy_ = {
-  sys.props += "log4j2.contextSelector" → "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
-  sys.props += "jobscheduler.log4j.immediateFlush" → "false"
+  sys.props += "log4j2.contextSelector" -> "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+  sys.props += "jobscheduler.log4j.immediateFlush" -> "false"
 }
 val rootDirectory = Paths.get(".").toAbsolutePath
 // Does not work:
@@ -41,7 +41,7 @@ ForkedTest / javaOptions += "-Djobscheduler.log4j.immediateFlush=false"
 
 val testParallelization: Int = 1 * sys.runtime.availableProcessors
 
-val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
+val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o => new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 val testParallel                     = sys.props contains "test.parallel"
@@ -75,8 +75,8 @@ val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQD")  
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
-  credentials ++= publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
-  publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
+  credentials ++= publishRepositoryCredentialsFile map (o => Credentials(o)),
+  publishTo := publishRepositoryUri map (uri => publishRepositoryName getOrElse uri at uri))
 
 val commonSettings = Seq(
   organization := "com.sos-berlin.jobscheduler.engine2",
@@ -101,8 +101,8 @@ val commonSettings = Seq(
   test in publishM2 := {},
   // Publish
   publishArtifact in (Compile, packageDoc) := false,
-  credentials += publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
-  publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
+  credentials += publishRepositoryCredentialsFile map (o => Credentials(o)),
+  publishTo := publishRepositoryUri map (uri => publishRepositoryName getOrElse uri at uri))
 
 useJGit
 git.uncommittedSignifier := Some("UNCOMMITTED")
@@ -158,7 +158,7 @@ lazy val `jobscheduler-install` = project
     universalPluginSettings,
     topLevelDirectory in Universal := Some(s"jobscheduler-${version.value}"),
     mappings in Universal :=
-      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
+      ((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
         NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "com/sos/jobscheduler/master/installation") ++
         NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "com/sos/jobscheduler/provider/installation") ++
         NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "com/sos/jobscheduler/agent/installation") ++
@@ -177,7 +177,7 @@ lazy val `jobscheduler-docker` = project
     topLevelDirectory in Universal := None,
     mappings in Universal :=
       NativePackagerHelper.contentOf(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker/")
-        .map { case (file, dest) ⇒ file → ("build/" + dest) })
+        .map { case (file, dest) => file -> ("build/" + dest) })
 
 lazy val tester = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -256,13 +256,13 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
   .settings(
     buildInfoPackage := "com.sos.jobscheduler.common",
     buildInfoKeys := BuildInfoKey.ofN(
-      "buildTime" → System.currentTimeMillis,
-      "buildId" → buildId,
-      "version" → version.value,
-      "longVersion" → BuildUtils.longVersion.value,
-      "prettyVersion" → BuildUtils.prettyVersion.value,
-      "commitId" → git.gitHeadCommit.value,
-      "commitMessage" → git.gitHeadMessage.value))
+      "buildTime" -> System.currentTimeMillis,
+      "buildId" -> buildId,
+      "version" -> version.value,
+      "longVersion" -> BuildUtils.longVersion.value,
+      "prettyVersion" -> BuildUtils.prettyVersion.value,
+      "commitId" -> git.gitHeadCommit.value,
+      "commitMessage" -> git.gitHeadMessage.value))
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -477,7 +477,7 @@ lazy val testSettings =
   inConfig(ExclusiveTest)(Defaults.testTasks) ++
   inConfig(ForkedTest   )(Defaults.testTasks) ++
   Seq(
-    Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name ⇒ !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
+    Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name => !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
     StandardTest  / testOptions := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
     ExclusiveTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
     ForkedTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),

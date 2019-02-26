@@ -36,7 +36,7 @@ object AgentTaskId extends GenericString.Checked_[AgentTaskId]
    * The numbers itself are meaningless.
    */
   def newGenerator(start: Int = 1): Iterator[AgentTaskId] =
-    new IncreasingPositiveLongs(start = start, maximum = Int.MaxValue) map { n ⇒ AgentTaskId(index = n, salt = abs(Random.nextLong())) }
+    new IncreasingPositiveLongs(start = start, maximum = Int.MaxValue) map { n => AgentTaskId(index = n, salt = abs(Random.nextLong())) }
 
   @Singleton
   final class Generator extends Iterator[AgentTaskId] {

@@ -40,7 +40,7 @@ object TestDockerExample
 
   def main(args: Array[String]) = {
     val directory =
-      temporaryDirectory / "TestDockerExample" sideEffect { directory ⇒
+      temporaryDirectory / "TestDockerExample" sideEffect { directory =>
         println(s"Using directory $directory")
         if (!Files.exists(directory))
           createDirectory(directory)
@@ -68,12 +68,12 @@ object TestDockerExample
     provide("agent-2/config/private/private.conf")
     provide("agent-2/config/executables/test")
     env.masterDir / "config" / "master.conf" := """jobscheduler.webserver.auth.loopback-is-public = on"""
-    withCloser { implicit closer ⇒
+    withCloser { implicit closer =>
       val masterConfiguration = MasterConfiguration.forTest(configAndData = env.masterDir, httpPort = Some(4444))
       val injector = Guice.createInjector(new MasterModule(masterConfiguration.copy(
         config = masterConfiguration.config)))
       injector.instance[Closer].closeWithCloser
-      val agents = for (agentRefPath ← TestAgentRefPaths) yield {
+      val agents = for (agentRefPath <- TestAgentRefPaths) yield {
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentRefPath))
         ) map { _.closeWithCloser } await 99.s
@@ -82,7 +82,7 @@ object TestDockerExample
       }
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
-        (for (agent ← agents) yield {
+        (for (agent <- agents) yield {
           agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
           val r = agent.terminated
           agent.close()
@@ -96,7 +96,7 @@ object TestDockerExample
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
-      for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())
+      for (agent <- agents) agent.executeCommand(AgentCommand.Terminate())
       agents map (_.terminated) await 60.s
       agents foreach (_.close())
     }

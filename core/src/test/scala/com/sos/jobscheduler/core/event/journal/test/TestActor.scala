@@ -46,8 +46,8 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAllAndTransferTo(journalActor = journalActor)
     keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map {
-      case (k: String, a) ⇒ k → a
-      case o ⇒ sys.error(s"UNEXPECTED: $o")
+      case (k: String, a) => k -> a
+      case o => sys.error(s"UNEXPECTED: $o")
     }
   }
 
@@ -57,54 +57,54 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
     protected val journalEventWatch = new JournalEventWatch[TestEvent](journalMeta, JournalEventWatch.TestConfig)(Scheduler.global)
 
     protected def snapshotToKey = {
-      case a: TestAggregate ⇒ a.key
+      case a: TestAggregate => a.key
     }
 
     protected def isDeletedEvent = Set(TestEvent.Removed)
 
     def recoverSnapshot = {
-      case snapshot: TestAggregate ⇒
+      case snapshot: TestAggregate =>
         recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
     }
 
     def recoverNewKey = {
-      case stamped @ Stamped(_, _, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
+      case stamped @ Stamped(_, _, KeyedEvent(key: String, _: TestEvent.Added)) =>
         recoverActorForNewKey(stamped, newAggregateActor(key))
 
-      case _ ⇒
+      case _ =>
     }
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def ready: Receive = {
-    case Input.WaitUntilReady ⇒
+    case Input.WaitUntilReady =>
       sender() ! Done
 
-    case Input.Forward(key: String, command: TestAggregateActor.Command.Add) ⇒
+    case Input.Forward(key: String, command: TestAggregateActor.Command.Add) =>
       assert(!keyToAggregate.contains(key))
       val actor = newAggregateActor(key)
-      keyToAggregate += key → actor
+      keyToAggregate += key -> actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
-    case Input.Forward(key: String, TestAggregateActor.Command.Remove) ⇒
+    case Input.Forward(key: String, TestAggregateActor.Command.Remove) =>
       val aggregateActor = keyToAggregate(key)
       val respondTo = this.sender()
-      (aggregateActor ? TestAggregateActor.Command.Remove).mapTo[TestAggregateActor.Response.Completed] foreach { response ⇒
+      (aggregateActor ? TestAggregateActor.Command.Remove).mapTo[TestAggregateActor.Response.Completed] foreach { response =>
         // Respond first when actor TestAggregateActor has been terminated
         context.actorOf(Props {
           new Actor {
             context.watch(aggregateActor)
             def receive = {
-              case Terminated(`aggregateActor`) ⇒
+              case Terminated(`aggregateActor`) =>
                 respondTo ! response
                 context.stop(self)
             }
@@ -113,25 +113,25 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
       }
       keyToAggregate -= key
 
-    case Input.Forward(key: String, disturb: TestAggregateActor.Command.Disturb) ⇒
+    case Input.Forward(key: String, disturb: TestAggregateActor.Command.Disturb) =>
       keyToAggregate(key) ! disturb
 
-    case Input.Forward(key: String, command: TestAggregateActor.Command.DisturbAndRespond.type) ⇒
+    case Input.Forward(key: String, command: TestAggregateActor.Command.DisturbAndRespond.type) =>
       (keyToAggregate(key) ? command).mapTo[String] pipeTo sender()
 
-    case Input.Forward(key: String, command: TestAggregateActor.Command) ⇒
+    case Input.Forward(key: String, command: TestAggregateActor.Command) =>
       (keyToAggregate(key) ? command).mapTo[TestAggregateActor.Response.Completed] pipeTo sender()
 
-    case Input.GetAll ⇒
-      sender() ! (keyToAggregate.values map { a ⇒ (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate] await 99.s }).toVector
+    case Input.GetAll =>
+      sender() ! (keyToAggregate.values map { a => (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate] await 99.s }).toVector
 
-    case Input.TakeSnapshot ⇒
+    case Input.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] pipeTo sender()
 
-    case Input.GetJournalState ⇒
+    case Input.GetJournalState =>
       journalActor.forward(JournalActor.Input.GetState)
 
-    case Input.Terminate ⇒
+    case Input.Terminate =>
       terminator = sender()
       if (keyToAggregate.isEmpty) {
         journalActor ! JournalActor.Input.AwaitAndTerminate
@@ -139,12 +139,12 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
         keyToAggregate.values foreach context.stop
       }
 
-    case Terminated(`journalActor`) if terminator != null ⇒
+    case Terminated(`journalActor`) if terminator != null =>
       context.stop(self)
       terminator ! Done
 
-    case Terminated(actorRef) ⇒
-      val key = keyToAggregate collectFirst { case (k, `actorRef`) ⇒ k }
+    case Terminated(actorRef) =>
+      val key = keyToAggregate collectFirst { case (k, `actorRef`) => k }
       keyToAggregate --= key
       if (terminator != null && keyToAggregate.isEmpty) {
         journalActor ! JournalActor.Input.AwaitAndTerminate

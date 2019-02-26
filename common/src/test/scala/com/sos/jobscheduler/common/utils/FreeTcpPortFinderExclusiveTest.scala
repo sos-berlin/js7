@@ -8,7 +8,7 @@ import org.scalatest.Matchers._
 final class FreeTcpPortFinderExclusiveTest extends FreeSpec {
 
   "findRandomFreePort" in {
-    for (_ ← 1 to 1000) {
+    for (_ <- 1 to 1000) {
       findRandomFreeTcpPort(20000 until 30000) should (be >= 20000 and be <= 30000)
     }
   }
@@ -28,7 +28,7 @@ final class FreeTcpPortFinderExclusiveTest extends FreeSpec {
   }
 
   "findRandomFreePorts return distinct port numbers" in {
-    for (_ ← 1 to 100) {
+    for (_ <- 1 to 100) {
       val n = 100
       findRandomFreeTcpPorts(n, 20000 until 21000).distinct should have ('size(n))
     }

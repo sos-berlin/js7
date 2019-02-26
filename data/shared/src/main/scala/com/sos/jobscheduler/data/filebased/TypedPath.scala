@@ -54,8 +54,8 @@ trait TypedPath extends GenericString {
       Problem(s"Internal path is not allowed here: $this")
     else
       withoutStartingSlash.split('/').toVector traverse officialSyntaxNameValidator.checked match {
-        case Invalid(problem) ⇒ problem.head withKey toString
-        case Valid(_) ⇒ Valid(this)
+        case Invalid(problem) => problem.head withKey toString
+        case Valid(_) => Valid(this)
       }
 
   final def isAnonymous = this == companion.Anonymous
@@ -76,9 +76,9 @@ object TypedPath {
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: TypedPath]: Ordering[P] =
-    (a, b) ⇒ a.string compare b.string match {
-      case 0 ⇒ a.companion.name compare b.companion.name
-      case o ⇒ o
+    (a, b) => a.string compare b.string match {
+      case 0 => a.companion.name compare b.companion.name
+      case o => o
     }
 
   type AnyCompanion = Companion[_ <: TypedPath]
@@ -97,7 +97,7 @@ object TypedPath {
       if (string == Anonymous.string)
         Problem(s"Anonymous $name?")
       else
-        check(string) flatMap (_ ⇒ super.checked(string))
+        check(string) flatMap (_ => super.checked(string))
 
     final private[TypedPath] def check(string: String): Checked[Unit] = {
       def errorString = s"$name '$string'"
@@ -118,15 +118,15 @@ object TypedPath {
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
     final implicit val implicitCompanion: Companion[P] = this
-    final implicit val checkedString: CheckedString[P] = string ⇒ Companion.this.checked(string)
+    final implicit val checkedString: CheckedString[P] = string => Companion.this.checked(string)
     final val camelName: String = name stripSuffix "Path"
 
     final def typedPathClass: Class[P] = implicitClass[P]
 
     /** Converts a relative file path with normalized slahes (/) to a `TypedPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
-      sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext ⇒
-        checked("/" + normalized.dropRight(ext.length)) map (_ → t)
+      sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext =>
+        checked("/" + normalized.dropRight(ext.length)) map (_ -> t)
       }
 
     /**
@@ -139,13 +139,13 @@ object TypedPath {
 
     override def toString = name
 
-    override final implicit val jsonEncoder: Encoder[P] = o ⇒ {
+    override final implicit val jsonEncoder: Encoder[P] = o => {
       if (o == Anonymous) throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
       Json.fromString(o.string)
     }
 
     override final implicit val jsonDecoder: Decoder[P] =
-      _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
+      _.as[String] flatMap (o => checked(o).toDecoderResult)
   }
 
   implicit final class ImplicitTypedPath[P <: TypedPath](private val underlying: P) extends AnyVal {
@@ -164,14 +164,14 @@ object TypedPath {
 
       def apply(c: HCursor) =
         for {
-          string ← c.as[String]
-          prefixAndPath ← string indexOf ':' match {
-            case i if i > 0 ⇒ Right((string take i, string.substring(i + 1)))
-            case _ ⇒ Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", Nil))
+          string <- c.as[String]
+          prefixAndPath <- string indexOf ':' match {
+            case i if i > 0 => Right((string take i, string.substring(i + 1)))
+            case _ => Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", Nil))
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
-          typedPath ← typeToCompanion.get(prefix).map(_.apply(path))
+          typedPath <- typeToCompanion.get(prefix).map(_.apply(path))
             .toRight(DecodingFailure(s"Unrecognized type prefix in TypedPath: $prefix", Nil))
         } yield typedPath
     }
@@ -192,15 +192,15 @@ object TypedPath {
   def isAbsolute(path: String): Boolean =
     path startsWith "/"
 
-  implicit val jsonEncoder: ObjectEncoder[TypedPath] = o ⇒ JsonObject(
-    "TYPE" → Json.fromString(o.companion.name),
-    "path" → Json.fromString(o.string))
+  implicit val jsonEncoder: ObjectEncoder[TypedPath] = o => JsonObject(
+    "TYPE" -> Json.fromString(o.companion.name),
+    "path" -> Json.fromString(o.string))
 
-  def jsonDecoder(toTypedPathCompanion: String ⇒ Checked[TypedPath.AnyCompanion]): Decoder[TypedPath] =
-    c ⇒ for {
-      typ ← c.get[String]("TYPE")
-      path ← c.get[String]("path")
-      t ← toTypedPathCompanion(typ).toDecoderResult
-      typedPath ← t.checked(path).map(_.asInstanceOf[TypedPath]).toDecoderResult
+  def jsonDecoder(toTypedPathCompanion: String => Checked[TypedPath.AnyCompanion]): Decoder[TypedPath] =
+    c => for {
+      typ <- c.get[String]("TYPE")
+      path <- c.get[String]("path")
+      t <- toTypedPathCompanion(typ).toDecoderResult
+      typedPath <- t.checked(path).map(_.asInstanceOf[TypedPath]).toDecoderResult
     } yield typedPath
 }

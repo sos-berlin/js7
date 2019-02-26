@@ -14,8 +14,8 @@ object ProblemCodeMessages
   private val resource = JavaResource("com/sos/jobscheduler/core/message/messages-en.conf")
   private val config = Configs.loadResource(resource)
 
-  private[message] val problemCodeToPattern: ProblemCode ⇒ Option[String] =
-    code ⇒ Try(config.getString(code.string)).toOption
+  private[message] val problemCodeToPattern: ProblemCode => Option[String] =
+    code => Try(config.getString(code.string)).toOption
   private val once = AtomicBoolean(false)
 
   def initialize(): Unit =

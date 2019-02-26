@@ -61,7 +61,7 @@ object Processes {
     def startRobustly(durations: Iterator[Duration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
       try delegate.start()
       catch {
-        case TextFileBusyIOException(e) if durations.hasNext ⇒
+        case TextFileBusyIOException(e) if durations.hasNext =>
           logger.warn(s"Retrying process start after error: $e")
           blocking {
             sleep(durations.next())
@@ -71,7 +71,7 @@ object Processes {
   }
 
   private[process] object RobustlyStartProcess {
-    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o ⇒ (o map { _.toMillis }).sum.ms == 2.s }
+    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o => (o map { _.toMillis }).sum.ms == 2.s }
 
     object TextFileBusyIOException {
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)

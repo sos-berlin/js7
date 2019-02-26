@@ -29,7 +29,7 @@ final case class FolderPath private(string: String) extends TypedPath {
   def isAncestorOf(path: TypedPath): Boolean =
     (path.string startsWith withTrailingSlash) ||
       PartialFunction.cond(path) {
-        case path: FolderPath ⇒ this == path
+        case path: FolderPath => this == path
       }
 
   override def toFile(t: SourceType) = throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
@@ -52,10 +52,10 @@ object FolderPath extends TypedPath.Companion[FolderPath]
 
   def parentOf(path: TypedPath): FolderPath =
     path.string lastIndexOf '/' match {
-      case 0 if path.string == "/" ⇒ throw new IllegalStateException("Root path has no parent folder")
-      case 0 ⇒ FolderPath.Root
-      case -1 ⇒ FolderPath.Root // In case of ProcessClass.Default (the empty string)
-      case n ⇒ FolderPath(path.string.substring(0, n))
+      case 0 if path.string == "/" => throw new IllegalStateException("Root path has no parent folder")
+      case 0 => FolderPath.Root
+      case -1 => FolderPath.Root // In case of ProcessClass.Default (the empty string)
+      case n => FolderPath(path.string.substring(0, n))
     }
 
   /**

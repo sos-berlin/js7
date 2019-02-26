@@ -15,9 +15,9 @@ private[jobscheduler] object TestSetting {
   val TestAgentRefPath = AgentRefPath("/AGENT")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
-  val AJob = WorkflowJob(TestAgentRefPath, ExecutablePath("/A.cmd"), Map("JOB_A" → "A-VALUE"), taskLimit = 3)
-  val BJob = WorkflowJob(TestAgentRefPath, ExecutablePath("/B.cmd"), Map("JOB_B" → "B-VALUE"), taskLimit = 3)
-  val B1Job = WorkflowJob(TestAgentRefPath, ExecutablePath("/B.cmd"), Map("JOB_B1" → "B1-VALUE"), taskLimit = 3)
+  val AJob = WorkflowJob(TestAgentRefPath, ExecutablePath("/A.cmd"), Map("JOB_A" -> "A-VALUE"), taskLimit = 3)
+  val BJob = WorkflowJob(TestAgentRefPath, ExecutablePath("/B.cmd"), Map("JOB_B" -> "B-VALUE"), taskLimit = 3)
+  val B1Job = WorkflowJob(TestAgentRefPath, ExecutablePath("/B.cmd"), Map("JOB_B1" -> "B1-VALUE"), taskLimit = 3)
   val AExecute = Execute(AJob)
   val BExecute = Execute(BJob)
   val TestExecutablePaths = Vector(AExecute.job.executablePath, BExecute.job.executablePath)
@@ -27,5 +27,5 @@ private[jobscheduler] object TestSetting {
     AExecute,
     BExecute)
 
-  val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
+  val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("VARIABLE" -> "VALUE")))
 }

@@ -79,7 +79,7 @@ final class ScalaUtilsTest extends FreeSpec
   }
 
   "function1WithToString" in {
-    val f = function1WithToString("TEST") { i: Int ⇒ 2 * i }
+    val f = function1WithToString("TEST") { i: Int => 2 * i }
     assert(f(3) == 6)
     assert(f.toString == "TEST")
   }
@@ -138,7 +138,7 @@ final class ScalaUtilsTest extends FreeSpec
     var r = 0
     def f(i: Int) =
       i switch {
-        case 11 ⇒ r = i
+        case 11 => r = i
       }
     assert(r == 0)
     f(11)
@@ -149,7 +149,7 @@ final class ScalaUtilsTest extends FreeSpec
 
   "PartialFunction.checked" in {
     val pf: PartialFunction[Int, String] = {
-      case 1 ⇒ "1"
+      case 1 => "1"
     }
     assert(pf.checked(1) == Valid("1"))
     assert(pf.checked(2) == Invalid(Problem("No such key '2'")))
@@ -157,7 +157,7 @@ final class ScalaUtilsTest extends FreeSpec
 
   "PartialFunction.toChecked" in {
     val pf: PartialFunction[Int, String] = {
-      case 1 ⇒ "1"
+      case 1 => "1"
     }
     assert(pf.toChecked(1) == Valid("1"))
     assert(pf.toChecked(2) == Invalid(Problem("No such key '2'")))
@@ -165,7 +165,7 @@ final class ScalaUtilsTest extends FreeSpec
 
   "PartialFunction.getOrElse" in {
     val pf: PartialFunction[Int, String] = {
-      case 1 ⇒ "1"
+      case 1 => "1"
     }
     assert(pf.getOrElse(1, "1") == "1")
     assert(pf.getOrElse(2, "-") == "-")
@@ -174,7 +174,7 @@ final class ScalaUtilsTest extends FreeSpec
   "PartialFunction.callIfDefined" in {
     var x = 0
     val pf: PartialFunction[Int, Unit] = {
-      case 1 ⇒ x = 1
+      case 1 => x = 1
     }
     pf.callIfDefined(2)
     assert(x == 0)
@@ -185,21 +185,21 @@ final class ScalaUtilsTest extends FreeSpec
   "PartialFunction map" in {
     case class A(string: String)
     val pf: PartialFunction[Int, A] = {
-      case 1 ⇒ A("one")
+      case 1 => A("one")
     }
 
     assert(pf(1) == A("one"))
     assert(pf.isDefinedAt(1))
     assert(!pf.isDefinedAt(2))
-    assert(pf.applyOrElse(1, (i: Int) ⇒ A(s"else $i")) == A("one"))
-    assert(pf.applyOrElse(2, (i: Int) ⇒ A(s"else $i")) == A("else 2"))
+    assert(pf.applyOrElse(1, (i: Int) => A(s"else $i")) == A("one"))
+    assert(pf.applyOrElse(2, (i: Int) => A(s"else $i")) == A("else 2"))
 
     val mappedPf = pf map (_.string)
     assert(mappedPf(1) == "one")
     assert(mappedPf.isDefinedAt(1))
     assert(!mappedPf.isDefinedAt(2))
-    assert(mappedPf.applyOrElse(1, (i: Int) ⇒ s"else $i") == "one")
-    assert(mappedPf.applyOrElse(2, (i: Int) ⇒ s"else $i") == "else 2")
+    assert(mappedPf.applyOrElse(1, (i: Int) => s"else $i") == "one")
+    assert(mappedPf.applyOrElse(2, (i: Int) => s"else $i") == "else 2")
   }
 
   "Either.toImmediateFuture" in {

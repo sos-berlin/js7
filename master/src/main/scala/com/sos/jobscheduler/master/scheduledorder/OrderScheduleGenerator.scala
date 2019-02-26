@@ -46,14 +46,14 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   protected def recoverFromEvent(event: OrderScheduleEvent) = PartialFunction.empty
 
   def receive = {
-    case Input.Recover(until) ⇒
+    case Input.Recover(until) =>
       generatedUntil = until
       recovered = true
 
-    case Input.Change(scheduledOrderGenerators) ⇒
+    case Input.Change(scheduledOrderGenerators) =>
       scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, scheduledOrderGenerators)
 
-    case Input.ScheduleEvery(every) ⇒
+    case Input.ScheduleEvery(every) =>
       val nw = Timestamp.ofEpochSecond(now.toEpochSecond)  // Last full second
       if (generatedUntil == null) {
         generatedUntil = nw
@@ -65,14 +65,14 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
       }
       self ! Internal.ScheduleNextGeneration(every)
 
-    case Internal.ScheduleNextGeneration(every) ⇒
+    case Internal.ScheduleNextGeneration(every) =>
       timer foreach (_.cancel())
       timer = Some(
         scheduler.scheduleOnce(generatedUntil - GenerateBeforeDuration - now) {
           self ! Internal.Generate(every)
         })
 
-    case Internal.Generate(every) ⇒
+    case Internal.Generate(every) =>
       val interval = InstantInterval(generatedUntil.toInstant, every.toJavaDuration)
       logger.debug(s"Generating orders for time interval $interval")
       val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
@@ -81,26 +81,26 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   }
 
   private def addingOrderSchedule(until: Timestamp, every: FiniteDuration): Receive = {
-    case Done if sender() == masterOrderKeeper ⇒
+    case Done if sender() == masterOrderKeeper =>
       onOrdersAdded(until, every)
-    case Status.Failure(t) if sender() == masterOrderKeeper ⇒
+    case Status.Failure(t) if sender() == masterOrderKeeper =>
       logger.error(t.toString, t)
       onOrdersAdded(until, every)
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def onOrdersAdded(until: Timestamp, every: FiniteDuration): Unit = {
     become("receive")(receive)
     unstashAll()
-    persist(OrderScheduleEvent.GeneratedUntil(until)) { e ⇒
+    persist(OrderScheduleEvent.GeneratedUntil(until)) { e =>
       update(e)
       self ! Internal.ScheduleNextGeneration(every)
     }
   }
 
   private def update(event: OrderScheduleEvent): Unit = event match {
-    case OrderScheduleEvent.GeneratedUntil(until) ⇒
+    case OrderScheduleEvent.GeneratedUntil(until) =>
       generatedUntil = until
   }
 

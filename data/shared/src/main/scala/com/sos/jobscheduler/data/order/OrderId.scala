@@ -28,8 +28,8 @@ final case class OrderId private(string: String) extends GenericString
     else
       Valid(this)
     //firstProblem(string.stripPrefix("/").split('/').iterator map nameValidator.checked) match {
-    //  case Some(problem) ⇒ problem withKey toString
-    //  case None ⇒ Valid(this)
+    //  case Some(problem) => problem withKey toString
+    //  case None => Valid(this)
     //}
 }
 

@@ -32,9 +32,9 @@ final class ProblemTest extends FreeSpec
     }
 
     "with ProblemCode" in {
-      val problem = TestCodeProblem(Map("argument" → "ARGUMENT"))
+      val problem = TestCodeProblem(Map("argument" -> "ARGUMENT"))
       val message = problem.messageWithCause  // While testing, ProblemCodeMessages.initialize() may be called or not, so exact message depends
-      testJson[Problem](TestCodeProblem(Map("argument" → "ARGUMENT")),
+      testJson[Problem](TestCodeProblem(Map("argument" -> "ARGUMENT")),
         json"""{
           "code": "TestCode",
           "arguments": {
@@ -46,7 +46,7 @@ final class ProblemTest extends FreeSpec
   }
 
   "String" in {
-    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).toString == "TestCode (argument=ARGUMENT)")
+    assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).toString == "TestCode (argument=ARGUMENT)")
 
     assert(Problem("").toString == "A problem occurred (no message)")
     assert(Problem(null: String).toString == "A problem occurred (null)")
@@ -98,24 +98,24 @@ final class ProblemTest extends FreeSpec
 
   "Multiple" in {
     Problem("A") |+| Problem("B") match {
-      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B")))
-      case _ ⇒ fail()
+      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B")))
+      case _ => fail()
     }
   }
 
   "Multiple is flat" in {
     Problem("A") |+| Problem("B") |+| Problem("C") match {
-      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
-      case _ ⇒ fail()
+      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case _ => fail()
     }
     val multiProblem: Problem = Problem.Multiple(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
     multiProblem |+| Problem("C") match {
-      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
-      case _ ⇒ fail()
+      case Problem.Multiple(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case _ => fail()
     }
     Problem("X") |+| multiProblem match {
-      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
-      case _ ⇒ fail()
+      case Problem.Multiple(problems) => assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
+      case _ => fail()
     }
   }
 
@@ -158,8 +158,8 @@ final class ProblemTest extends FreeSpec
   "equals" in {
     assert(TestCodeProblem(Map.empty) == TestCodeProblem(Map.empty))
     assert((TestCodeProblem(Map.empty): Problem) != TestProblem(Map.empty))
-    assert(TestCodeProblem(Map("a" → "A")) == TestCodeProblem(Map("a" → "A")))
-    assert(TestCodeProblem(Map("a" → "A")) != TestCodeProblem(Map("a" → "X")))
+    assert(TestCodeProblem(Map("a" -> "A")) == TestCodeProblem(Map("a" -> "A")))
+    assert(TestCodeProblem(Map("a" -> "A")) != TestCodeProblem(Map("a" -> "X")))
     assert(Problem("TEST") == Problem("TEST"))
     assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
@@ -170,13 +170,13 @@ final class ProblemTest extends FreeSpec
   "Problem.HasCode.unapply" in {
     val problem = new Problem.HasCode {
       val code = ProblemCode("PROBLEM")
-      val arguments = Map("ARG" → "VALUE")
+      val arguments = Map("ARG" -> "VALUE")
     }
     val NoArguments = Map.empty[String, String]
     problem match {
-      case Problem.HasCode(ProblemCode("OTHER"), problem.arguments) ⇒ fail()
-      case Problem.HasCode(ProblemCode("PROBLEM"), NoArguments) ⇒ fail()
-      case Problem.HasCode(ProblemCode("PROBLEM"), problem.arguments) ⇒  // okay
+      case Problem.HasCode(ProblemCode("OTHER"), problem.arguments) => fail()
+      case Problem.HasCode(ProblemCode("PROBLEM"), NoArguments) => fail()
+      case Problem.HasCode(ProblemCode("PROBLEM"), problem.arguments) =>  // okay
     }
   }
 

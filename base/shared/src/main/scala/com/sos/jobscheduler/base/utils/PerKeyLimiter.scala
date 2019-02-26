@@ -3,7 +3,7 @@ package com.sos.jobscheduler.base.utils
 /**
   * @author Joacim Zschimmer
   */
-final class PerKeyLimiter[K, V](limit: Int, toKey: V ⇒ K) extends (V ⇒ Boolean) {
+final class PerKeyLimiter[K, V](limit: Int, toKey: V => K) extends (V => Boolean) {
 
   require(limit >= 0, "Negative limit")
 

@@ -23,10 +23,10 @@ object CSRF
     "none/none"
 
   val forbidCSRF: Directive0 =
-    mapInnerRoute { inner ⇒
-      extractRequest { request ⇒
+    mapInnerRoute { inner =>
+      extractRequest { request =>
         if (looksLikeHtmlFormPost(request))
-          complete(Forbidden)   // be quiet: → "HTML form POST is forbidden")
+          complete(Forbidden)   // be quiet: -> "HTML form POST is forbidden")
         else
           inner
       }

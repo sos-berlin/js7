@@ -31,7 +31,7 @@ final class ProcessesForkedTest extends FreeSpec {
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
     val stopwatch = new Stopwatch
-    val filesAndProcesses = for (i ← 0 until n) yield
+    val filesAndProcesses = for (i <- 0 until n) yield
       Future {
         val file = newTemporaryShellFile(s"#$i")
         file.contentString = "exit"
@@ -41,7 +41,7 @@ final class ProcessesForkedTest extends FreeSpec {
     val (files, processes) = (filesAndProcesses await 300.s).unzip
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
     info(stopwatch.itemsPerSecondString(n, "processes"))
-    for (p ← processes) {
+    for (p <- processes) {
       val rc = p.waitFor()
       assert(rc == 0)
     }
@@ -59,7 +59,7 @@ object ProcessesForkedTest {
     // "The process cannot access the file because it is being used by another process.".
     try delete(path)
     catch {
-      case NonFatal(t) ⇒ logger.warn(s"$path: $t")
+      case NonFatal(t) => logger.warn(s"$path: $t")
     }
   }
 }

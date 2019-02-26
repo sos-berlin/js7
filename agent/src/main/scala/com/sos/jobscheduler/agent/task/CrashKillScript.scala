@@ -53,7 +53,7 @@ extends AutoCloseable {
         deleteIfExists(file)
       }
     } else {
-      for ((agentTaskId, e) ← tasks) logger.warn(s"CrashKillScript left with task $agentTaskId $e")
+      for ((agentTaskId, e) <- tasks) logger.warn(s"CrashKillScript left with task $agentTaskId $e")
     }
   }
 
@@ -70,7 +70,7 @@ extends AutoCloseable {
 
   def remove(id: AgentTaskId): Unit =
     synchronized {
-      for (_ ← tasks.remove(id)) {
+      for (_ <- tasks.remove(id)) {
         ignoreException(logger.asLazy.warn) {
           rewriteFile()
         }
@@ -83,8 +83,8 @@ extends AutoCloseable {
       deleteIfExists(file)
     } else {
       val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
-      autoClosing(open(tmp)) { writer ⇒
-        for ((id, entry) ← tasks) {
+      autoClosing(open(tmp)) { writer =>
+        for ((id, entry) <- tasks) {
           writer.write(idToKillCommand(id, entry))
         }
       }
@@ -94,7 +94,7 @@ extends AutoCloseable {
 
   private def idToKillCommand(id: AgentTaskId, entry: Entry) = {
     val args = killScript.toCommandArguments(id, entry.pidOption, entry.taskId)
-    val cleanTail = args.tail collect { case CleanArgument(o) ⇒ o }
+    val cleanTail = args.tail collect { case CleanArgument(o) => o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
   }
 }

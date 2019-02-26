@@ -13,8 +13,8 @@ final class InstructionTest extends FreeSpec {
     assert("LABEL" @: ExplicitEnd == Instruction.Labeled(Label("LABEL") :: Nil, ExplicitEnd))
     assert(() @: ExplicitEnd == Instruction.Labeled(Nil, ExplicitEnd))
     "LABEL" @: ExplicitEnd match {
-      case (Label("LABEL") :: Nil) @: ExplicitEnd ⇒ // ok
-      case _ ⇒ fail()
+      case (Label("LABEL") :: Nil) @: ExplicitEnd => // ok
+      case _ => fail()
     }
   }
 }

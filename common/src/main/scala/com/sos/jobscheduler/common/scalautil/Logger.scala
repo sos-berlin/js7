@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.log.ConvertingLogger
-import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
+import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
@@ -44,9 +44,9 @@ object Logger {
     {
       def error(problem: Problem): Unit =
         problem.throwableOption match {
-          case Some(t) ⇒
+          case Some(t) =>
             underlying.error(problem.toString, t.appendCurrentStackTrace)
-          case None ⇒
+          case None =>
             underlying.error(problem.toString)
         }
     }

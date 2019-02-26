@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 final class TypedFileTest extends FreeSpec
 {
   "typedFiles, checkUniqueness" in {
-    provideDataDirectory { dir ⇒
+    provideDataDirectory { dir =>
       val checkedTypedFiles = DirectoryReader.files(dir).map(TypedFile.checked(dir, _, Set(AgentRefPath, WorkflowPath)))
       assert(checkedTypedFiles.toSet == Set(
         Valid(TypedFile(dir / "test.agent.json", AAgentRefPath, SourceType.Json)),
@@ -29,7 +29,7 @@ final class TypedFileTest extends FreeSpec
         Valid(TypedFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
         Valid(TypedFile(dir / "folder/test.agent.json", BAgentRefPath, SourceType.Json)),
         Invalid(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file"))))
-      assert(checkUniqueness(checkedTypedFiles collect { case Valid(o) ⇒ o }) == Invalid(Problem(
+      assert(checkUniqueness(checkedTypedFiles collect { case Valid(o) => o }) == Invalid(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
   }
@@ -41,7 +41,7 @@ object TypedFileTest
   private val BAgentRefPath = AgentRefPath("/folder/test")
   private val AWorkflowPath = WorkflowPath("/test")
 
-  private def provideDataDirectory[A](body: Path ⇒ A): A = {
+  private def provideDataDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")
     val subdir = dir / "folder"
     createDirectories(subdir)

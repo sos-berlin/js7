@@ -91,10 +91,10 @@ final class TypedPathTest extends FreeSpec {
   "fromFile" in {
     assert(APath.fromFile("?/anonymous.a.json") == Some(Invalid(Problem("Anonymous APath?"))))
     assert(APath.fromFile("x").isEmpty)
-    assert(APath.fromFile("x.a.json") == Some(Valid(APath("/x") → SourceType.Json)))
-    assert(APath.fromFile("x.a.txt") == Some(Valid(APath("/x") → SourceType.Txt)))
+    assert(APath.fromFile("x.a.json") == Some(Valid(APath("/x") -> SourceType.Json)))
+    assert(APath.fromFile("x.a.txt") == Some(Valid(APath("/x") -> SourceType.Txt)))
     assert(APath.fromFile("x.b.json") == None)
-    assert(BPath.fromFile("x.b.json") == Some(Valid(BPath("/x") → SourceType.Json)))
+    assert(BPath.fromFile("x.b.json") == Some(Valid(BPath("/x") -> SourceType.Json)))
     assert(BPath.fromFile(".b.json") == Some(Invalid(Problem("Trailing slash not allowed in BPath '/'"))))
   }
 

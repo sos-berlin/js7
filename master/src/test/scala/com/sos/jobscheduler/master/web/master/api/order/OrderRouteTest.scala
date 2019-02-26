@@ -49,7 +49,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   // Seq[OrderId]
-  for (uri ← List("/master/api/order/")) {
+  for (uri <- List("/master/api/order/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         val Stamped(_, _, orders) = responseAs[Stamped[Seq[OrderId]]]
@@ -59,7 +59,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   // Seq[Order]
-  for (uri ← List("/master/api/order/?return=Order")) {
+  for (uri <- List("/master/api/order/?return=Order")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         val Stamped(_, _, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]
@@ -69,7 +69,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   // Order
-  for (uri ← List(
+  for (uri <- List(
        "/master/api/order//PATH/ORDER-1",
        "/master/api/order/%2FPATH%2FORDER-1")) {
     s"$uri" in {
@@ -80,7 +80,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" → "VALUE")))
+    val order = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" -> "VALUE")))
     Post(s"/master/api/order", order) ~> route ~> check {
       assert(status == Created)  // New order
     }

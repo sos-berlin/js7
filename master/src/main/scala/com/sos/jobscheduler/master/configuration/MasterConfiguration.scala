@@ -61,14 +61,14 @@ object MasterConfiguration
       name = name)
     .copy(
       webServerPorts =
-        httpPort.map(o ⇒ WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
-        httpsPort.map(o ⇒ WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
+        httpPort.map(o => WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
+        httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
 
   def fromCommandLine(args: Seq[String], config: Config = ConfigFactory.empty) =
-    CommandLineArguments.parse(args) { a ⇒
+    CommandLineArguments.parse(args) { a =>
       val common = CommonConfiguration.Common.fromCommandLineArguments(a)
       val conf = fromDirectories(
         configDirectory = common.configDirectory,
@@ -103,7 +103,7 @@ object MasterConfiguration
   private def resolvedConfig(configDirectory: Path, extraDefaultConfig: Config): Config = {
     val config = configDirectoryConfig(configDirectory)
     ConfigFactory.parseMap(Map(
-        "jobscheduler.config-directory" → configDirectory.toString
+        "jobscheduler.config-directory" -> configDirectory.toString
       ).asJava)
       .withFallback(ConfigFactory.systemProperties)
       .withFallback(config)

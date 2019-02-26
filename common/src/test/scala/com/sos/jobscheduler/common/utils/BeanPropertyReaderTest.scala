@@ -15,10 +15,10 @@ final class BeanPropertyReaderTest extends FreeSpec {
       def getOther = fail()
     }
     val m = BeanPropertyReader.toMap(new Bean) {
-      case "int" ⇒ Keep
-      case "string" ⇒ { case v ⇒ s"*$v*" }
+      case "int" => Keep
+      case "string" => { case v => s"*$v*" }
     }
-    assert(m == Map("int" → 7, "string" → "*STRING*"))
+    assert(m == Map("int" -> 7, "string" -> "*STRING*"))
   }
 
   "beanToMap" in {
@@ -27,6 +27,6 @@ final class BeanPropertyReaderTest extends FreeSpec {
       def getString = "STRING"
     }
     val m = BeanPropertyReader.beanToMap(new Bean)
-    assert(m == Map("class" → classOf[Bean], "int" → 7, "string" → "STRING"))
+    assert(m == Map("class" -> classOf[Bean], "int" -> 7, "string" -> "STRING"))
   }
 }

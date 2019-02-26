@@ -70,7 +70,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
         assert((a / "b").toString == s"a${separator}b")
       }
       "invalid" - {
-        for (invalid ← InvalidRelativePaths) {
+        for (invalid <- InvalidRelativePaths) {
           invalid in {
             intercept[ProblemException] {
               a / invalid
@@ -115,7 +115,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
     }
 
     ":= JSON" in {
-      path := Json.obj("key" → Json.fromInt(7))
+      path := Json.obj("key" -> Json.fromInt(7))
       path.contentString shouldEqual """{"key":7}"""
     }
 
@@ -134,7 +134,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       val dir = createTempDirectory("FileUtilsTest-")
       assert(dir.pathSet.isEmpty)
       val files = Set("a.tmp", "b.tmp") map dir.resolve
-      files foreach { o ⇒ touch(o) }
+      files foreach { o => touch(o) }
       assert(dir.pathSet == files)
       files foreach delete
       delete(dir)
@@ -158,7 +158,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "withTemporaryFile" in {
-    val f = withTemporaryFile { file ⇒
+    val f = withTemporaryFile { file =>
       assert(exists(file))
       file
     }
@@ -166,7 +166,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "withTemporaryFile, named" in {
-    val f = withTemporaryFile("TEST-", ".tmp") { file ⇒
+    val f = withTemporaryFile("TEST-", ".tmp") { file =>
       assert(exists(file))
       file
     }
@@ -175,7 +175,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
   "autoDeleting" in {
     val file = createTempFile("TEST-", ".tmp")
-    val a = autoDeleting(file) { f ⇒
+    val a = autoDeleting(file) { f =>
       assert(file eq f)
       assert(exists(f))
       123
@@ -187,7 +187,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
   "autoDeleting with exception" in {
     val file = createTempFile("TEST-", ".tmp")
     intercept[IllegalStateException] {
-      autoDeleting(file) { _ ⇒ throw new IllegalStateException }
+      autoDeleting(file) { _ => throw new IllegalStateException }
     }
     assert(!exists(file))
   }
@@ -198,7 +198,7 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
     }
 
     "invalid" - {
-      for (invalid ← InvalidRelativePaths) {
+      for (invalid <- InvalidRelativePaths) {
         invalid in {
           assert(checkRelativePath(invalid).isInvalid)
         }

@@ -55,24 +55,24 @@ object WebServerBinding {
     final lazy val localUri: Uri = (localHttpUri findValid localHttpsUri).orThrow
 
     final def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
-      webServerPorts.collectFirst { case o if o.scheme == scheme ⇒ toLocallyUsableUri(scheme, o.address) }
+      webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }
       .toChecked(Problem(s"No locally usable '$scheme' address: $webServerPorts"))
 
     private def toLocallyUsableUri(scheme: WebServerBinding.Scheme, address: InetSocketAddress) = {
       val localhost = scheme match {
-        case WebServerBinding.Http ⇒
+        case WebServerBinding.Http =>
           if (Set("0.0.0.0", "127.0.0.1") contains address.getAddress.getHostAddress)
             "127.0.0.1"
           else
             address.getAddress.getHostAddress
 
-        case WebServerBinding.Https ⇒
+        case WebServerBinding.Https =>
           assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
           "localhost"  // To match TLS host name verification
       }
       val host = address.getAddress.getHostAddress match {
-        case "0.0.0.0" | "127.0.0.1" ⇒ localhost
-        case o ⇒ o
+        case "0.0.0.0" | "127.0.0.1" => localhost
+        case o => o
       }
       val port = address.getPort
       Uri(scheme.toString, Uri.Authority(Uri.Host(host), port))

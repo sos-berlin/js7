@@ -22,14 +22,14 @@ final case class ProcessConfiguration(
 {
   require(killScriptOption.isEmpty || agentTaskIdOption.nonEmpty, "killScriptFile requires idString")
 
-  for (id ← agentTaskIdOption) require(id.nonEmpty)
+  for (id <- agentTaskIdOption) require(id.nonEmpty)
 
   def files: Seq[Path] = stdFileMap.values.toList
 
-  def idArgumentOption = agentTaskIdOption map { o ⇒ s"-agent-task-id=${o.string}" }
+  def idArgumentOption = agentTaskIdOption map { o => s"-agent-task-id=${o.string}" }
 
   def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
-    for (id ← agentTaskIdOption; killScript ← killScriptOption) yield killScript.toCommandArguments(id, pid)
+    for (id <- agentTaskIdOption; killScript <- killScriptOption) yield killScript.toCommandArguments(id, pid)
 }
 
 object ProcessConfiguration

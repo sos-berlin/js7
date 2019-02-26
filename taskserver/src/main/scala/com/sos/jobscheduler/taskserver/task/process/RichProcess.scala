@@ -51,7 +51,7 @@ extends HasCloser with ClosedFuture {
     else
       Future.successful(ReturnCode(process.exitValue))
 
-  //logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
+  //logger.debug(s"Process started " + (argumentsForLogging map { o => s"'$o'" } mkString ", "))
 
   def duration = now - startedAt
 
@@ -61,20 +61,20 @@ extends HasCloser with ClosedFuture {
   final def sendProcessSignal(signal: ProcessSignal): Unit =
     if (process.isAlive) {
       signal match {
-        case SIGTERM ⇒
+        case SIGTERM =>
           if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
           logger.info("destroy (SIGTERM)")
           process.destroy()
-        case SIGKILL ⇒
+        case SIGKILL =>
           processConfiguration.toKillScriptCommandArgumentsOption(pidOption) match {
-            case Some(args) ⇒
-              val pidArgs = pidOption map { o ⇒ s"-pid=${o.string}" }
+            case Some(args) =>
+              val pidArgs = pidOption map { o => s"-pid=${o.string}" }
               executeKillScript(args ++ pidArgs) recover {
-                case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
-              } onComplete { _ ⇒
+                case t => logger.error(s"Cannot start kill script command '$args': $t")
+              } onComplete { _ =>
                 killNow()
               }
-            case None ⇒
+            case None =>
               killNow()
           }
       }
@@ -121,7 +121,7 @@ object RichProcess {
   }
 
   private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-      (start: ProcessBuilder ⇒ Process): Process = {
+      (start: ProcessBuilder => Process): Process = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption).asJava)
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
@@ -130,10 +130,10 @@ object RichProcess {
     start(processBuilder)
   }
 
-  private def toRedirect(pathOption: Option[Path]) = pathOption.fold(INHERIT)(o ⇒ Redirect.to(o))
+  private def toRedirect(pathOption: Option[Path]) = pathOption.fold(INHERIT)(o => Redirect.to(o))
 
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
-    (StdoutOrStderr.values map { o ⇒ o → newLogFile(directory, id, o) }).toMap
+    (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Process) =
     ReturnCode(
@@ -148,12 +148,12 @@ object RichProcess {
 
   def tryDeleteFiles(files: Iterable[Path]): Boolean = {
     var allFilesDeleted = true
-    for (file ← files) {
+    for (file <- files) {
       try {
         logger.debug(s"Delete files '$file'")
         delete(file)
       }
-      catch { case NonFatal(t) ⇒
+      catch { case NonFatal(t) =>
         allFilesDeleted = false
         logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}")
       }

@@ -15,7 +15,7 @@ import scala.collection.mutable
   */
 final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
 
-  def map[B](f: A ⇒ B): Stamped[B] = functor.map(this)(f)
+  def map[B](f: A => B): Stamped[B] = functor.map(this)(f)
 
   override def toString = s"Stamped($eventId $timestamp $value)"
 }
@@ -28,37 +28,37 @@ object Stamped
   implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
   implicit val functor: Functor[Stamped] = new Functor[Stamped] {
-    def map[A,B](fa: Stamped[A])(f: A ⇒ B) =
+    def map[A,B](fa: Stamped[A])(f: A => B) =
       fa.copy(value = f(fa.value))
   }
 
   implicit def jsonEncoder[A: Encoder]: ObjectEncoder[Stamped[A]] =
-    stamped ⇒ {
+    stamped => {
       val fields = mutable.Buffer[(String, Json)]()
-      fields += "eventId" → Json.fromLong(stamped.eventId)
+      fields += "eventId" -> Json.fromLong(stamped.eventId)
       val epochMilli = stamped.timestamp.toEpochMilli
       if (epochMilli != EventId.toEpochMilli(stamped.eventId)) {
-        fields += "timestamp" → Json.fromLong(epochMilli)
+        fields += "timestamp" -> Json.fromLong(epochMilli)
       }
       val json = stamped.value.asJson
       json.asObject match {
-        case Some(o) ⇒
+        case Some(o) =>
           fields ++= o.toIterable
-        case None ⇒
+        case None =>
           if (!json.isArray) sys.error(s"Stamped[A], A must serialze to a JSON object or array, not: ${json.getClass.simpleScalaName}")
-          fields += "array" → json
+          fields += "array" -> json
       }
       JsonObject.fromIterable(fields)
     }
 
   implicit def jsonDecoder[A: Decoder]: Decoder[Stamped[A]] =
-    cursor ⇒
+    cursor =>
       for {
-        eventId ← cursor.get[EventId]("eventId")
+        eventId <- cursor.get[EventId]("eventId")
         timestamp = cursor.get[Long]("timestamp") map Timestamp.ofEpochMilli getOrElse EventId.toTimestamp(eventId)
-        a ← cursor.get[A]("array") match {  // stamped.value must not contain a field named "array" !!!
-          case o if o.isRight ⇒ o
-          case _ ⇒ cursor.as[A]
+        a <- cursor.get[A]("array") match {  // stamped.value must not contain a field named "array" !!!
+          case o if o.isRight => o
+          case _ => cursor.as[A]
         }
       } yield Stamped(eventId, timestamp, a)
 }

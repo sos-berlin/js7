@@ -24,18 +24,18 @@ trait OrderWebService extends AgentRouteProvider {
   private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val orderRoute: Route =
-    authorizedUser(ValidUserPermission) { user ⇒
-      path(Segment) { orderIdString ⇒
+    authorizedUser(ValidUserPermission) { user =>
+      path(Segment) { orderIdString =>
         val orderId = OrderId(orderIdString)
         completeTask[Checked[Order[Order.State]]](
           agentApi(CommandMeta(user)).order(orderId))
       } ~
       pathSingleSlash {
         parameter("return" ? "Order") {
-          case "OrderId" ⇒
+          case "OrderId" =>
             completeTask[Checked[Seq[OrderId]]](
               agentApi(CommandMeta(user)).orderIds)
-          case "Order" ⇒
+          case "Order" =>
             completeTask[Checked[Seq[Order[Order.State]]]](
               agentApi(CommandMeta(user)).orders)
         }

@@ -23,7 +23,7 @@ final class AgentOverviewTest extends FreeSpec {
         java = JavaInformation(
           version = "x.y.z",
           JavaInformation.Memory(maximum = 3, total = 2, free = 1),
-          systemProperties = Map("test" → "TEST"))),
+          systemProperties = Map("test" -> "TEST"))),
       json"""{
         "startedAt": "2015-06-01T12:00:00Z",
         "version": "TEST-VERSION",

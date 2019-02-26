@@ -21,7 +21,7 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 final class OrderEventSource(
-  idToWorkflow: WorkflowId ⇒ Checked[Workflow],
+  idToWorkflow: WorkflowId => Checked[Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
   private val context = new OrderContext {
@@ -33,42 +33,42 @@ final class OrderEventSource(
 
   private def childOrderEnded(order: Order[Order.State]): Boolean =
     order.parent flatMap idToOrder.lift match {
-      case Some(parentOrder) ⇒
+      case Some(parentOrder) =>
         instruction(order.workflowPosition).isInstanceOf[End] &&
           order.state == Order.Ready &&
           order.position.dropChild.contains(parentOrder.position) &&
           order.attachedState == parentOrder.attachedState
-      case _ ⇒ false
+      case _ => false
     }
 
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    idToOrder.checked(orderId) flatMap (order ⇒
+    idToOrder.checked(orderId) flatMap (order =>
       canceledEvent(order) match {
-        case Some(event) ⇒
+        case Some(event) =>
           Valid(Some(order.id <-: event))
-        case None ⇒
+        case None =>
           InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-            case Some(oId <-: (moved: OrderMoved)) ⇒
+            case Some(oId <-: (moved: OrderMoved)) =>
               applyMoveInstructions(oId, moved) map Some.apply
 
-            case Some(oId <-: OrderFailed(outcome)) ⇒  // OrderFailed is used internally only
+            case Some(oId <-: OrderFailed(outcome)) =>  // OrderFailed is used internally only
               assert(oId == orderId)
               catchPosition(orderId) match {
-                case None      ⇒ Valid(Some(oId <-: OrderStopped(outcome)))
-                case Some(pos) ⇒
+                case None      => Valid(Some(oId <-: OrderStopped(outcome)))
+                case Some(pos) =>
                   applyMoveInstructions(order.withPosition(pos))
                     .flatMap(pos => Valid(Some(oId <-: OrderCatched(outcome, pos))))
               }
 
-            case o ⇒ Valid(o)
+            case o => Valid(o)
           }
       })
 
   private def catchPosition(orderId: OrderId): Option[Position] =
     for {
-      order ← idToOrder.checked(orderId).toOption
-      workflow ← idToWorkflow(order.workflowId).toOption
-      position ← workflow.findCatchPosition(order.position)
+      order <- idToOrder.checked(orderId).toOption
+      workflow <- idToWorkflow(order.workflowId).toOption
+      position <- workflow.findCatchPosition(order.position)
     } yield position
 
   /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
@@ -80,7 +80,7 @@ final class OrderEventSource(
 
   /** Returns a `Valid(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
-    idToOrder.checked(orderId) flatMap (order ⇒
+    idToOrder.checked(orderId) flatMap (order =>
       if (order.parent.isDefined)
         Invalid(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted)
@@ -99,8 +99,8 @@ final class OrderEventSource(
 
   def isOrderCancelable(order: Order[Order.State]): Boolean =
     order.cancel match {
-      case None ⇒ false
-      case Some(mode) ⇒ isOrderCancelable(order, mode)
+      case None => false
+      case Some(mode) => isOrderCancelable(order, mode)
     }
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
@@ -112,53 +112,53 @@ final class OrderEventSource(
       !instruction(order.workflowPosition).isInstanceOf[End]  // End reached? Then normal OrderFinished (not OrderCanceled)
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
-    for (pos ← applyMoveInstructions(idToOrder(orderId).withPosition(orderMoved.to)))
+    for (pos <- applyMoveInstructions(idToOrder(orderId).withPosition(orderMoved.to)))
       yield orderId <-: OrderMoved(pos)
 
   private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] =
     applyMoveInstructions(order, Nil) map {
-      case Some(n) ⇒ n
-      case None ⇒ order.position
+      case Some(n) => n
+      case None => order.position
     }
 
   @tailrec
   private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
-      case Some(position) ⇒
+      case Some(position) =>
         if (visited contains position)
           Invalid(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos ⇒ pos + " " +
+            visited.reverse.map(pos => pos + " " +
               idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
-      case None ⇒ Valid(Some(order.position))
+      case None => Valid(Some(order.position))
     }
 
   private def applySingleMoveInstruction(order: Order[Order.State]): Option[Position] =
-    idToWorkflow(order.workflowId).toOption flatMap { workflow ⇒
+    idToWorkflow(order.workflowId).toOption flatMap { workflow =>
       workflow.instruction(order.position) match {
-        case Goto(label) ⇒
+        case Goto(label) =>
           workflow.labelToPosition(order.position.branchPath, label)
 
-        case IfNonZeroReturnCodeGoto(label) ⇒
+        case IfNonZeroReturnCodeGoto(label) =>
           if (order.outcome.isFailed)
             workflow.labelToPosition(order.position.branchPath, label)
           else
             Some(order.position.increment)
 
-        case instr: Instruction ⇒
+        case instr: Instruction =>
           InstructionExecutor.nextPosition(context, order, instr)
 
-        //case _: End if order.position.isNested ⇒
-        //  order.position.dropChild flatMap (returnPosition ⇒
+        //case _: End if order.position.isNested =>
+        //  order.position.dropChild flatMap (returnPosition =>
         //    workflow.instruction(returnPosition) match {
-        //      case _: If ⇒
+        //      case _: If =>
         //        nextPosition(order withPosition returnPosition)
-        //      case _ ⇒
+        //      case _ =>
         //        None
         //    })
 
-        case _ ⇒ None
+        case _ => None
       }
   }
 

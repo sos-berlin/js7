@@ -16,7 +16,7 @@ object OfferExecutor extends EventInstructionExecutor
   type Instr = Offer
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Offer): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.Fresh].map(order ⇒
+    order.ifState[Order.Fresh].map(order =>
       order.id <-: OrderStarted)
     .orElse(
       order.ifState[Order.Ready].map(

@@ -25,12 +25,12 @@ with SessionRoute
 
   protected final val apiRoute: Route =
     pathPrefix(Segment) {
-      case "master"  ⇒ masterRoute
-      case "command" ⇒ commandRoute
-      case "order"   ⇒ orderRoute
-      //case "task"  ⇒ taskRoute
-      case "session" ⇒ sessionRoute
-      case _ ⇒ complete(NotFound)
+      case "master"  => masterRoute
+      case "command" => commandRoute
+      case "order"   => orderRoute
+      //case "task"  => taskRoute
+      case "session" => sessionRoute
+      case _ => complete(NotFound)
     } ~
     pathEnd {
       apiRootRoute

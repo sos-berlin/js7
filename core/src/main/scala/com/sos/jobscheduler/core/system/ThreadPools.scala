@@ -17,14 +17,14 @@ object ThreadPools
   private val logger = Logger(getClass)
 
   private[system] val ThreadCount = As[String, Int] {
-    case s if s.last == 'x' ⇒ (sys.runtime.availableProcessors * s.dropRight(1).toDouble).ceil.toInt
-    case o ⇒ o.toInt
+    case s if s.last == 'x' => (sys.runtime.availableProcessors * s.dropRight(1).toDouble).ceil.toInt
+    case o => o.toInt
   }
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = {
-    case NonFatal(throwable) ⇒
+    case NonFatal(throwable) =>
       logger.error(s"Uncaught exception in thread '${Thread.currentThread.getName}': ${throwable.toStringWithCauses}", throwable)
-    case throwable ⇒
+    case throwable =>
       UncaughtExceptionReporter.default.reportFailure(throwable)
   }
 

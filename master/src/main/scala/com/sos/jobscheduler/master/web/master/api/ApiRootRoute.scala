@@ -33,7 +33,7 @@ trait ApiRootRoute extends MasterRouteProvider {
     }
 
   private def overview: Task[MasterOverview] =
-    for (orderCount ← orderCount) yield
+    for (orderCount <- orderCount) yield
       MasterOverview(
         id = masterId,
         version = BuildInfo.prettyVersion,

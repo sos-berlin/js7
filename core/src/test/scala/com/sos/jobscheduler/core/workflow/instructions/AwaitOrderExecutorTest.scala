@@ -19,7 +19,7 @@ final class AwaitOrderExecutorTest extends FreeSpec {
 
   "test" in {
     val context = new OrderContext {
-      def idToOrder = Map(awaitingOrder.id → awaitingOrder, offeredOrder.id → offeredOrder)
+      def idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder)
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def instruction(position: WorkflowPosition) = throw new NotImplementedError
     }

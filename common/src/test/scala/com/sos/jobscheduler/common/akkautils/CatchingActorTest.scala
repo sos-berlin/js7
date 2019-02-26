@@ -55,7 +55,7 @@ object CatchingActorTest {
     a ! "FROM PARENT"
 
     def receive = {
-      case "Response to FROM PARENT" ⇒
+      case "Response to FROM PARENT" =>
         assert(sender() == a)
         assert(((a ? "ASK") await  99.s) == "Response to ASK")
         a ! "END"
@@ -68,17 +68,17 @@ object CatchingActorTest {
   private def props(promise: Promise[Completed]) = Props {
     new Actor {
       def receive = {
-        case throwable: Throwable ⇒
+        case throwable: Throwable =>
           throw throwable
 
-        case "END" ⇒
+        case "END" =>
           promise.success(Completed)
           context.stop(self)
 
-        case "STOP" ⇒
+        case "STOP" =>
           context.stop(self)
 
-        case o: String ⇒
+        case o: String =>
           if (o == "FROM PARENT") assert(sender() == context.parent)
           sender() ! s"Response to $o"
       }

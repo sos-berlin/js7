@@ -21,7 +21,7 @@ private[order] final class OrderRegister(scheduler: Scheduler) extends ActorRegi
 
   def recover(order: Order[Order.State], workflow: Workflow, actor: ActorRef): OrderEntry = {
     val orderEntry = new OrderEntry(order, workflow, actor)
-    insert(order.id → orderEntry)
+    insert(order.id -> orderEntry)
     orderEntry
   }
 
@@ -30,20 +30,20 @@ private[order] final class OrderRegister(scheduler: Scheduler) extends ActorRegi
   }
 
   def insert(order: Order[Order.State], workflow: Workflow, actor: ActorRef): Unit = {
-    insert(order.id → new OrderEntry(order, workflow, actor))
+    insert(order.id -> new OrderEntry(order, workflow, actor))
   }
 
   def onActorTerminated(actor: ActorRef): Unit =
     remove(actorToKey(actor))
 
   override def remove(orderId: OrderId): Option[OrderEntry] =
-    for (orderEntry ← super.remove(orderId)) yield {
+    for (orderEntry <- super.remove(orderId)) yield {
       orderEntry.timer foreach (_.cancel())
       orderEntry
     }
 
   def idToOrder: PartialFunction[OrderId, Order[Order.State]] = {
-    case orderId if contains(orderId) ⇒ apply(orderId).order
+    case orderId if contains(orderId) => apply(orderId).order
   }
 }
 
@@ -69,7 +69,7 @@ private[order] object OrderRegister {
 
     def instruction = workflow.instruction(order.position)
 
-    def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit scheduler: Scheduler): Unit = {
+    def at(timestamp: Timestamp)(body: => Unit)(implicit scheduler: Scheduler): Unit = {
       val t = scheduler.scheduleFor(timestamp) {
         timer = None
         body

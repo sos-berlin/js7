@@ -21,7 +21,7 @@ trait TaskWebService extends AgentRouteProvider {
   protected implicit def executionContext: ExecutionContext
 
   protected final val taskRoute: Route =
-    authorizedUser(ValidUserPermission) { _ ⇒
+    authorizedUser(ValidUserPermission) { _ =>
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {
@@ -37,7 +37,7 @@ trait TaskWebService extends AgentRouteProvider {
             }
           }
         } ~
-        path(Segment) { idString ⇒
+        path(Segment) { idString =>
           val agentTaskId = AgentTaskId(idString)
           get {
             complete {
@@ -50,5 +50,5 @@ trait TaskWebService extends AgentRouteProvider {
 }
 
 object TaskWebService {
-  intelliJuseImport(() ⇒ jsonOrYamlMarshaller(null))
+  intelliJuseImport(() => jsonOrYamlMarshaller(null))
 }

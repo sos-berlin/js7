@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import com.sos.jobscheduler.base.auth.{User ⇒ User_}
+import com.sos.jobscheduler.base.auth.{User => User_}
 import monix.execution.atomic.AtomicAny
 
 /**

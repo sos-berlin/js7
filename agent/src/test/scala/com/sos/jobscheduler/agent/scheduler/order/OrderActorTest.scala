@@ -70,7 +70,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   "Shell script" in {
     val executablePath = ExecutablePath(s"/TEST-1$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentRefPath, executablePath, Map("VAR1" → "FROM-JOB")))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentRefPath, executablePath, Map("VAR1" -> "FROM-JOB")))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
@@ -82,12 +82,12 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   "Shell script with big stdout and stderr" in {
     val n = 1000
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
-    val expectedStderr = (for (i ← 1 to n) yield line("e", i) + Nl).mkString
-    val expectedStdout = (for (i ← 1 to n) yield line("o", i) + Nl).mkString
+    val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString
+    val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
     val executablePath = ExecutablePath(s"/TEST-2$sh")
     executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
       (if (isWindows) "@echo off\n" else "") +
-        (for (i ← 1 to n) yield
+        (for (i <- 1 to n) yield
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
              |""".stripMargin).mkString)
@@ -118,7 +118,7 @@ private object OrderActorTest {
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.workflowPosition, Order.Ready, Outcome.succeeded, None, AgentRefPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
+    OrderProcessed(MapDiff(Map("result" -> "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),
     OrderDetachable,
     OrderDetached)
@@ -171,7 +171,7 @@ private object OrderActorTest {
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
-    private val stdoutStderr = (for (t ← StdoutOrStderr.values) yield t → new StringBuilder).toMap
+    private val stdoutStderr = (for (t <- StdoutOrStderr.values) yield t -> new StringBuilder).toMap
     private var jobActorTerminated = false
 
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
@@ -179,74 +179,74 @@ private object OrderActorTest {
     val started = now
 
     def receive = {
-      case JournalActor.Output.Ready ⇒
+      case JournalActor.Output.Ready =>
         become(jobActorReady)
         jobActor ! JobActor.Input.OrderAvailable
     }
 
     private def jobActorReady: Receive = {
-      case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
+      case JobActor.Output.ReadyForOrder =>  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
           attachedState = Some(Order.Attached(TestAgentRefPath))))
         become(attaching)
     }
 
     private def attaching: Receive = receiveOrderEvent orElse {
-      case Completed ⇒
+      case Completed =>
         orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, defaultArguments = Map.empty, jobActor = jobActor)
         become(processing)
     }
 
     private def processing: Receive = receiveOrderEvent orElse {
-      case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
+      case JobActor.Output.ReadyForOrder =>  // Ready for next order
     }
 
     private def detachable: Receive = receiveOrderEvent
 
     private def detaching: Receive = receiveOrderEvent orElse {
-      case "DETACHED" ⇒
+      case "DETACHED" =>
         jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))
         become(terminatingJobActor)
 
-      case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
+      case JobActor.Output.ReadyForOrder =>  // Ready for next order
     }
 
     private def terminatingJobActor: Receive = receiveOrderEvent orElse {
-      case Terminated(`jobActor`) ⇒
+      case Terminated(`jobActor`) =>
         jobActorTerminated = true
         checkTermination()
     }
 
     private def receiveOrderEvent: Receive = {
-      case o: OrderActor.Output.OrderChanged ⇒
+      case o: OrderActor.Output.OrderChanged =>
         orderChangeds += o
         checkTermination()
 
-      case Stamped(_, _, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChanged, in unknown order
+      case Stamped(_, _, KeyedEvent(TestOrder.id, event: OrderEvent)) =>  // Duplicate to OrderChanged, in unknown order
         event match {
-          case OrderStdWritten(t, chunk) ⇒
+          case OrderStdWritten(t, chunk) =>
             assert(events.last == OrderProcessingStarted)
             stdoutStderr(t) ++= chunk
 
-          case _: OrderProcessed ⇒
+          case _: OrderProcessed =>
             events += event
             orderActor ? OrderActor.Command.HandleEvent(OrderMoved(TestPosition)) await 99.s
 
-          case _: OrderMoved ⇒
+          case _: OrderMoved =>
             events += event
             orderActor ? OrderActor.Command.HandleEvent(OrderDetachable) await 99.s
             become(detachable)
 
-          case OrderDetachable ⇒
+          case OrderDetachable =>
             events += event
-            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ ⇒ self ! "DETACHED" }
+            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed] map { _ => self ! "DETACHED" }
             become(detaching)
 
-          case OrderDetached ⇒
+          case OrderDetached =>
             events += event
             checkTermination()
 
-          case _ ⇒
+          case _ =>
             events += event
         }
       }

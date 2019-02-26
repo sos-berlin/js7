@@ -15,12 +15,12 @@ final class ConcurrentRequestsLimiter(limit: Int, rejectWithProblem: Problem)(im
 {
   private val busy = AtomicInt(0)
 
-  def tapply(inner: Unit ⇒ Route) = requestContext ⇒
+  def tapply(inner: Unit => Route) = requestContext =>
     if (busy.incrementAndGet() > limit) {
       busy -= 1
-      requestContext.complete(TooManyRequests → rejectWithProblem)
+      requestContext.complete(TooManyRequests -> rejectWithProblem)
     } else
-      whenResponseTerminated(_ ⇒ busy -= 1).apply(inner(()))(requestContext)
+      whenResponseTerminated(_ => busy -= 1).apply(inner(()))(requestContext)
 
   def isBusy = busy.get >= limit
 

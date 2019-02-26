@@ -6,9 +6,9 @@ package com.sos.jobscheduler.base.utils
 object DecimalPrefixes
 {
   private val PrefixToFactor = Map(
-    'k' → 1000,
-    'M' → (1000*1000),
-    'G' → (1000*1000*1000))
+    'k' -> 1000,
+    'M' -> (1000*1000),
+    'G' -> (1000*1000*1000))
 
   def toInt(string: String): Int =
     if (string.nonEmpty && string.last.isLetter) {

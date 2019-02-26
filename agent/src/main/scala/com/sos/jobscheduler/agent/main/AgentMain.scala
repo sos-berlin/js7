@@ -23,7 +23,7 @@ object AgentMain {
     logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     runMain {
       val agentConfiguration = AgentConfiguration.fromCommandLine(args.toVector)
-      autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent ⇒
+      autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
         withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
           agent.terminated.awaitInfinite
         }

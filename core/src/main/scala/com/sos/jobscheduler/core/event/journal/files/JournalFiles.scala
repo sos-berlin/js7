@@ -23,9 +23,9 @@ object JournalFiles
     if (!exists(directory))
       Vector.empty
     else
-      autoClosing(Files.list(directory)) { stream ⇒
+      autoClosing(Files.list(directory)) { stream =>
         val pattern = JournalFile.pattern(journalFileBase.getFileName)
-        stream.iterator.asScala.flatMap { file ⇒
+        stream.iterator.asScala.flatMap { file =>
           val matcher = pattern.matcher(file.getFileName.toString)
           matcher.matches ? JournalFile(afterEventId = matcher.group(1).toLong, file)
         } .toVector.sortBy(_.afterEventId)

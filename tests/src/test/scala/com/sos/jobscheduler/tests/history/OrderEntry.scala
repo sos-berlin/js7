@@ -30,7 +30,7 @@ final case class OrderEntry(
     copy(steps = steps.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Some(endedAt),
-        returnCode = Some(outcome) collect { case o: Undisrupted ⇒ o.returnCode },
+        returnCode = Some(outcome) collect { case o: Undisrupted => o.returnCode },
         endVariables = Some(variables)))
   }
 
@@ -38,7 +38,7 @@ final case class OrderEntry(
     updateLog(prefixLines(outErr, chunk))
 
   private def prefixLines(outErr: StdoutOrStderr, chunk: String) =
-    (chunk split '\n' map (o ⇒ s"$outErr: $o") mkString "\n") + "\n"
+    (chunk split '\n' map (o => s"$outErr: $o") mkString "\n") + "\n"
 
   def updateLog(chunk: String): OrderEntry = {
     val lastStep = steps.last
@@ -56,9 +56,9 @@ object OrderEntry {
     case object Forked extends Cause
   }
 
-  implicit val jsonEncoder: Encoder[Cause] = o ⇒ Json.fromString(o.getClass.simpleScalaName)
+  implicit val jsonEncoder: Encoder[Cause] = o => Json.fromString(o.getClass.simpleScalaName)
   implicit val jsonDecoder: Decoder[Cause] = _.as[String] map {
-    case "Added" ⇒ Cause.Added
-    case "Forked" ⇒ Cause.Forked
+    case "Added" => Cause.Added
+    case "Forked" => Cause.Forked
   }
 }

@@ -19,17 +19,17 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
     */
   override def logFailure(context: ActorContext, child: ActorRef, throwable: Throwable, decision: Directive): Unit = {
     def logMessage = throwable match {
-      case e: ActorInitializationException if e.getCause ne null ⇒ e.getCause match {
-        case ex: InvocationTargetException if ex.getCause ne null ⇒ ex.getCause.toStringWithCauses
-        case ex ⇒ ex.toStringWithCauses
+      case e: ActorInitializationException if e.getCause ne null => e.getCause match {
+        case ex: InvocationTargetException if ex.getCause ne null => ex.getCause.toStringWithCauses
+        case ex => ex.toStringWithCauses
       }
-      case e ⇒ e.toStringWithCauses
+      case e => e.toStringWithCauses
     }
     val logLevel = decision match {
-      case _ if !loggingEnabled ⇒ Debug
-      case Resume   ⇒ Warn
-      case Escalate ⇒ Debug
-      case Restart | Stop ⇒ Error
+      case _ if !loggingEnabled => Debug
+      case Resume   => Warn
+      case Escalate => Debug
+      case Restart | Stop => Error
     }
     logger.log(logLevel, s"$decision ${child.path}: $logMessage", throwable)
   }

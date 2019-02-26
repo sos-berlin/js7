@@ -13,7 +13,7 @@ import scala.collection.JavaConverters._
 final class AnyJsonCodecsTest extends FreeSpec {
 
   "anyToJson" in {
-    assert(anyToJson(Map("key" → 333).asJava) == Json.fromJsonObject(JsonObject.fromMap(Map("key" → 333.asJson))))
+    assert(anyToJson(Map("key" -> 333).asJava) == Json.fromJsonObject(JsonObject.fromMap(Map("key" -> 333.asJson))))
     assert(anyToJson(Vector(111, 222).asJava) == Json.fromValues(Vector(111.asJson, 222.asJson)))
     assert(anyToJson(new java.math.BigDecimal("123.456")) == Json.fromBigDecimal(BigDecimal("123.456")))
     case class A()
@@ -24,10 +24,10 @@ final class AnyJsonCodecsTest extends FreeSpec {
 
   "anyToJson, jsonToAny" in {
     val map = Map(
-      "string" → "STRING",
-      "int" → 333,
-      "boolean" → true,
-      "array" → Vector(1, "two"))
+      "string" -> "STRING",
+      "int" -> 333,
+      "boolean" -> true,
+      "array" -> Vector(1, "two"))
     val json =
       json"""{
         "string": "STRING",

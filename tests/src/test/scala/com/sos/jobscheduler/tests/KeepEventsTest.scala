@@ -32,13 +32,13 @@ import scala.concurrent.duration.Duration
 final class KeepEventsTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil)) { provider ⇒
-      for ((_, tree) ← provider.agentToTree) {
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil)) { provider =>
+      for ((_, tree) <- provider.agentToTree) {
         tree.writeExecutable(TestExecutablePath, script(0.s))
       }
 
-      RunningAgent.run(provider.agents.head.conf) { agent ⇒
-        provider.runMaster() { master ⇒
+      RunningAgent.run(provider.agents.head.conf) { agent =>
+        provider.runMaster() { master =>
           master.eventWatch.await[MasterEvent.MasterReady]()
           master.addOrderBlocking(TestOrder)
           master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
@@ -51,8 +51,8 @@ final class KeepEventsTest extends FreeSpec {
       assert(masterJournalCount == 2)
       assert(agentJournalCount == 2)
 
-      provider.runAgents() { _ ⇒
-        provider.runMaster() { master ⇒
+      provider.runAgents() { _ =>
+        provider.runMaster() { master =>
           val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(finished.size == 1)
           assert(masterJournalCount == 2)

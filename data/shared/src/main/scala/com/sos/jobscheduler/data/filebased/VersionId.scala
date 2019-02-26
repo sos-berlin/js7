@@ -27,7 +27,7 @@ object VersionId extends GenericString.Checked_[VersionId]
 {
   val Anonymous = VersionId.unchecked("⊥")
 
-  def generate(isKnown: VersionId ⇒ Boolean = _ ⇒ false): VersionId = {
+  def generate(isKnown: VersionId => Boolean = _ => false): VersionId = {
     val ts = Timestamp.now.toIsoString
     val short = VersionId("#" + ts.take(19) + ts.drop(19+4)/*tz*/)  // Without milliseconds ".123"
     if (!isKnown(short))
@@ -37,26 +37,26 @@ object VersionId extends GenericString.Checked_[VersionId]
       if (!isKnown(v))
         v
       else
-        Iterator.from(1).map(i ⇒ VersionId(s"${v.string}-$i")).collectFirst { case w if !isKnown(w) ⇒ w } .get
+        Iterator.from(1).map(i => VersionId(s"${v.string}-$i")).collectFirst { case w if !isKnown(w) => w } .get
       }
   }
 
-  override implicit val jsonEncoder: Encoder[VersionId] = o ⇒ {
+  override implicit val jsonEncoder: Encoder[VersionId] = o => {
     if (o.isAnonymous) throw new IllegalArgumentException("JSON-serialize VersionId.Anonymous?")
     Json.fromString(o.string)
   }
 
   override implicit val jsonDecoder: Decoder[VersionId] =
-    _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
+    _.as[String] flatMap (o => checked(o).toDecoderResult)
 
   def unchecked(string: String) = new VersionId(string)
 
   override def checked(string: String): Checked[VersionId] =
     for {
-      _ ← check(string)
-      versionId ← super.checked(string) match {
-        case Valid(VersionId.Anonymous) ⇒ Invalid(Problem.pure("VersionId.Anonymous?"))
-        case o ⇒ o
+      _ <- check(string)
+      versionId <- super.checked(string) match {
+        case Valid(VersionId.Anonymous) => Invalid(Problem.pure("VersionId.Anonymous?"))
+        case o => o
       }
     } yield versionId
 

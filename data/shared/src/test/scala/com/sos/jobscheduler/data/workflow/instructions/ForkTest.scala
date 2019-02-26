@@ -18,8 +18,8 @@ import org.scalatest.FreeSpec
 final class ForkTest extends FreeSpec {
 
   private val fork = Fork.of(
-    "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
-    "B" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
+    "A" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
+    "B" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
 
   "JSON" in {
     testJson[Instruction.Labeled](
@@ -49,8 +49,8 @@ final class ForkTest extends FreeSpec {
   "Duplicate branch ids are rejected" in {  // TODO
     intercept[ProblemException] {
       Fork.of(
-        "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
-        "A" → Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
     }
   }
 
@@ -62,15 +62,15 @@ final class ForkTest extends FreeSpec {
 
   "flattenedWorkflows" in {
     assert(fork.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / "A") → fork.branches(0).workflow) ::
-      ((Position(7) / "B") → fork.branches(1).workflow) :: Nil)
+      ((Position(7) / "A") -> fork.branches(0).workflow) ::
+      ((Position(7) / "B") -> fork.branches(1).workflow) :: Nil)
   }
 
   "flattenedInstructions" in {
     assert(fork.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
-      Position(7, "A", 0) → fork.branches(0).workflow.instructions(0),
-      Position(7, "A", 1) → ImplicitEnd,
-      Position(7, "B", 0) → fork.branches(1).workflow.instructions(0),
-      Position(7, "B", 1) → ImplicitEnd))
+      Position(7, "A", 0) -> fork.branches(0).workflow.instructions(0),
+      Position(7, "A", 1) -> ImplicitEnd,
+      Position(7, "B", 0) -> fork.branches(1).workflow.instructions(0),
+      Position(7, "B", 1) -> ImplicitEnd))
   }
 }

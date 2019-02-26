@@ -30,7 +30,7 @@ final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
     assert(orderGenerator == ScheduledOrderGenerator(
       id,
       WorkflowPath("/JOBCHAIN"),
-      Map("a" → "AAA"),
+      Map("a" -> "AAA"),
       OldSchedule(timeZone, EveryDay(PeriodSeq(List(RepeatPeriod.wholeDay(10.s)))))))
   }
 }

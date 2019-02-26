@@ -42,8 +42,8 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
 
   "session" in {
     val someToken = SessionToken(SecretString("X"))
-    for (user ← List(Some(AUser), None)) {
-      assert(sessionRegister.session(sessionToken, user).await(99.seconds).map(o ⇒ o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
+    for (user <- List(Some(AUser), None)) {
+      assert(sessionRegister.session(sessionToken, user).await(99.seconds).map(o => o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
         Valid(MySession(SessionInit(1, someToken, AUser))))
     }
   }

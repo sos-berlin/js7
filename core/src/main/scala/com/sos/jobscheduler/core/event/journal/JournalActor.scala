@@ -68,13 +68,13 @@ extends Actor with Stash {
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
-  for (o ← simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
+  for (o <- simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
-    for (a ← journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
+    for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
     if (snapshotWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
@@ -86,7 +86,7 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId, totalEventCount_) ⇒
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId, totalEventCount_) =>
       observerOption = observer
       lastWrittenEventId = lastEventId
       totalEventCount = totalEventCount_
@@ -107,7 +107,7 @@ extends Actor with Stash {
         sender ! Output.Ready
       }
 
-    case Input.StartWithoutRecovery(observer) ⇒  // Testing only
+    case Input.StartWithoutRecovery(observer) =>  // Testing only
       observerOption = observer
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
       eventWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
@@ -115,10 +115,10 @@ extends Actor with Stash {
       becomeReady()
       sender() ! Output.Ready
 
-    case Input.RegisterMe ⇒
+    case Input.RegisterMe =>
       handleRegisterMe()
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
@@ -129,13 +129,13 @@ extends Actor with Stash {
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
-    case Input.RegisterMe ⇒
+    case Input.RegisterMe =>
       handleRegisterMe()
 
-    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, item) ⇒
-      val stampedEvents = for (t ← timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
+    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, item) =>
+      val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
       eventWriter.writeEvents(stampedEvents, transaction = transaction)
-      for (lastStamped ← stampedEvents.lastOption) {
+      for (lastStamped <- stampedEvents.lastOption) {
         lastWrittenEventId = lastStamped.eventId
       }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
@@ -151,7 +151,7 @@ extends Actor with Stash {
         scheduleNextSnapshot()
       }
 
-    case Internal.Commit(level) ⇒
+    case Internal.Commit(level) =>
       forwardingCommit = Duration.Inf
       if (writtenBuffer.iterator.map(_.eventCount).sum >= eventLimit)
         commit()
@@ -168,7 +168,7 @@ extends Actor with Stash {
         requestSnapshot()
       }
 
-    case Input.TakeSnapshot ⇒
+    case Input.TakeSnapshot =>
       snapshotRequested = false
       if (!eventWriter.isEventWritten) {
         if (sender() != self) sender() ! Output.SnapshotTaken
@@ -180,15 +180,15 @@ extends Actor with Stash {
         }
       }
 
-    case Input.Terminate ⇒
+    case Input.Terminate =>
       commit()
       stop(self)
 
-    case Input.AwaitAndTerminate ⇒  // For testing
+    case Input.AwaitAndTerminate =>  // For testing
       if (journalingActors.isEmpty)
         stop(self)
       else
-        become(receiveTerminatedOrGet andThen { _ ⇒
+        become(receiveTerminatedOrGet andThen { _ =>
           if (journalingActors.isEmpty) {
             stop(self)
           }
@@ -213,16 +213,16 @@ extends Actor with Stash {
   private def commit(): Unit = {
     forwardingCommit = Duration.Inf
     try eventWriter.flush(sync = syncOnCommit)
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       val tt = t.appendCurrentStackTrace
       writtenBuffer foreach {
-        case w: NormallyWritten ⇒ reply(sender(), w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
-        case _: AcceptEarlyWritten ⇒  // TODO Error handling?
+        case w: NormallyWritten => reply(sender(), w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
+        case _: AcceptEarlyWritten =>  // TODO Error handling?
       }
       throw tt;
     }
-    logStored(flushed = true, synced = syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten ⇒ o } flatMap (_.stamped))
-    for (NormallyWritten(keyedEvents, replyTo, sender, item) ← writtenBuffer) {
+    logStored(flushed = true, synced = syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o } flatMap (_.stamped))
+    for (NormallyWritten(keyedEvents, replyTo, sender, item) <- writtenBuffer) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
@@ -234,11 +234,11 @@ extends Actor with Stash {
     replyTo.!(msg)(sender)
 
   private def receiveTerminatedOrGet: Receive = {
-    case Terminated(a) if journalingActors contains a ⇒
+    case Terminated(a) if journalingActors contains a =>
       logger.trace(s"Terminated: ${a.path}")
       journalingActors -= a
 
-    case Input.GetState ⇒
+    case Input.GetState =>
       sender() ! (
         if (eventWriter == null)
           Output.State(isFlushed = false, isSynced = false)
@@ -256,7 +256,7 @@ extends Actor with Stash {
       }
     }
 
-  private def becomeTakingSnapshotThen()(andThen: ⇒ Unit) = {
+  private def becomeTakingSnapshotThen()(andThen: => Unit) = {
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
@@ -276,14 +276,14 @@ extends Actor with Stash {
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
         .withDispatcher(DispatcherName),
       uniqueActorName("SnapshotTaker"))
-    become(takingSnapshot(commander = sender(), () ⇒ andThen))
+    become(takingSnapshot(commander = sender(), () => andThen))
   }
 
-  private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit): Receive = {
-    case SnapshotTaker.Output.Finished(Failure(t)) ⇒
+  private def takingSnapshot(commander: ActorRef, andThen: () => Unit): Receive = {
+    case SnapshotTaker.Output.Finished(Failure(t)) =>
       throw t.appendCurrentStackTrace
 
-    case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) ⇒
+    case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) =>
       snapshotWriter.endSnapshotSection(sync = syncOnCommit)
       snapshotWriter.close()
       val file = journalMeta.file(after = lastWrittenEventId)
@@ -294,7 +294,7 @@ extends Actor with Stash {
       unstashAll()
       andThen()
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
@@ -319,12 +319,12 @@ extends Actor with Stash {
 
   private def deleteObsoleteJournalFiles(): Unit =
     observerOption match {
-      case None ⇒
-        for (file ← listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
+      case None =>
+        for (file <- listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
           try delete(file)
-          catch { case NonFatal(t) ⇒ logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}") }
+          catch { case NonFatal(t) => logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}") }
         }
-      case Some(observer) ⇒
+      case Some(observer) =>
         observer.deleteObsoleteJournalFiles()
     }
 

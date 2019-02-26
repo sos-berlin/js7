@@ -18,19 +18,19 @@ object JavaMainSupport
 {
   private val logger = Logger(getClass)
 
-  def runMain(body: ⇒ Unit): Unit =
+  def runMain(body: => Unit): Unit =
     try {
       ProblemCodeMessages.initialize()
       body
       Log4j.shutdown()
-    } catch { case t: Throwable ⇒
+    } catch { case t: Throwable =>
       logger.error(t.toStringWithCauses, t)
       Log4j.shutdown()
       println(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
       sys.runtime.exit(1)
     }
 
-  def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration ⇒ Unit)(body: => A): A = {
+  def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration => Unit)(body: => A): A = {
     val hooks = addJavaShutdownHooks(config, name, onJavaShutdown)
     try body
     finally hooks foreach (_.close())
@@ -38,7 +38,7 @@ object JavaMainSupport
 
   private val akkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
 
-  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration ⇒ Unit): Seq[JavaShutdownHook] = {
+  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration => Unit): Seq[JavaShutdownHook] = {
     val shutdownHookTimeout = config.getDuration("jobscheduler.termination.shutdown-hook-timeout").toFiniteDuration
     if (config.as[Boolean](akkaShutdownHook, false)) {
       logger.debug(s"JobScheduler shutdown hook suppressed because Akka has one: $akkaShutdownHook = on")

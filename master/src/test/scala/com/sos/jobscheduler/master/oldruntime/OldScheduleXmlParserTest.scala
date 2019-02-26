@@ -71,26 +71,26 @@ final class OldScheduleXmlParserTest extends FreeSpec {
         </weekdays>
       </run_time>
     assert(parse(x) == OldSchedule(timeZone, Map(
-      MONDAY → PeriodSeq(List(
+      MONDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(1, 1)),
         RepeatPeriod(LocalTime.of(1, 1), LocalTime.of(1, 1), 1.s))),
-      TUESDAY → PeriodSeq(List(
+      TUESDAY -> PeriodSeq(List(
         RepeatPeriod(LocalTime.of( 2, 2), LocalTime.of( 2, 22),  2.s),
         RepeatPeriod(LocalTime.of(22, 2), LocalTime.of(22, 22), 22.s))),
-      WEDNESDAY → PeriodSeq(List(
+      WEDNESDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(3, 3)))),
-      THURSDAY → PeriodSeq(List(
+      THURSDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(4, 4)))),
-      FRIDAY → PeriodSeq(List(
+      FRIDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(5, 5)))),
-      SATURDAY → PeriodSeq(List(
+      SATURDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(6, 6)))),
-      SUNDAY → PeriodSeq(List(
+      SUNDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(7, 7)))))))
   }
 
   private def parse(x: xml.Elem) =
-    ScalaXMLEventReader.parseDocument(x) { o ⇒
+    ScalaXMLEventReader.parseDocument(x) { o =>
       OldScheduleXmlParser.parse(o, timeZone)
     }
 }

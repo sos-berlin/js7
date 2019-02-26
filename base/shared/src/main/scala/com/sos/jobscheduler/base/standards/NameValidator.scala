@@ -7,7 +7,7 @@ import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate,
 /**
   * @author Joacim Zschimmer
   */
-class NameValidator(isAllowedChar: Char ⇒ Boolean = _ ⇒ false)
+class NameValidator(isAllowedChar: Char => Boolean = _ => false)
 {
   final def checked(string: String): Checked[String] =
     if (string.isEmpty)
@@ -21,7 +21,7 @@ class NameValidator(isAllowedChar: Char ⇒ Boolean = _ ⇒ false)
     string.nonEmpty &&
       string.last != '-' &&
       isNameStart(string charAt 0) &&
-      (1 until string.length forall { i ⇒ isNamePart(string charAt i) })
+      (1 until string.length forall { i => isNamePart(string charAt i) })
 
   final def isNameStart(c: Char): Boolean =
     isUnicodeIdentifierStart(c) || isHighSurrogate(c)

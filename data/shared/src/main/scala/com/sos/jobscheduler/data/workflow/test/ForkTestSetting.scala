@@ -52,21 +52,21 @@ object ForkTestSetting {
     WorkflowPath("/WORKFLOW") % "INITIAL" ,
     Vector(
       /*0*/ Fork.of(
-        "🥕" → Workflow.of(AExecute),
-        "🍋" → Workflow.of(AExecute)),
+        "🥕" -> Workflow.of(AExecute),
+        "🍋" -> Workflow.of(AExecute)),
       /*1*/ Fork.of(
-        "🥕" → Workflow.of(AExecute),
-        "🍋" → Workflow.of(AExecute)),
+        "🥕" -> Workflow.of(AExecute),
+        "🍋" -> Workflow.of(AExecute)),
       /*2*/ BExecute,
       /*3*/ Fork.of(
-        "🥕" → Workflow.of(BExecute),
-        "🍋" → Workflow.of(AExecute, BExecute)),
+        "🥕" -> Workflow.of(BExecute),
+        "🍋" -> Workflow.of(AExecute, BExecute)),
       /*4*/ Fork.of(
-        "🥕" → Workflow.of(AExecute),
-        "🍋" → Workflow.of(BExecute))),
+        "🥕" -> Workflow.of(AExecute),
+        "🍋" -> Workflow.of(BExecute))),
     Map(
-      AJobName → AJob,
-      BJobName → BJob),
+      AJobName -> AJob,
+      BJobName -> BJob),
     source = Some(TestWorkflowSource/*Must be the source source of this workflow*/))
   //  🥕   🍋
   //  Bx   By

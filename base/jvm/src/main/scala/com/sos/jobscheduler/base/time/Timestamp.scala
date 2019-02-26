@@ -43,5 +43,5 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp]
     ofInstant(Instant.from(dateTimeFormatter parse string))
 
   implicit val TimestampShow = Show.fromToString[Timestamp]
-  implicit val JavaUtilDateShow = Show[java.util.Date](o ⇒ Timestamp(o).show)
+  implicit val JavaUtilDateShow = Show[java.util.Date](o => Timestamp(o).show)
 }

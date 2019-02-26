@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.oldruntime
 
-import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
+import com.google.common.collect.{AbstractIterator => GuavaIterator}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.master.oldruntime.OldSchedule._
 import java.time._
@@ -31,13 +31,13 @@ extends Schedule {
             periodSeq(local.toLocalDate) flatMap { _.nextLocalTime(local.toLocalTime) } map {
               _.atDate(local.toLocalDate).toInstant(timeZone)
             } match {
-              case Some(o) if o < instantInterval.until ⇒
+              case Some(o) if o < instantInterval.until =>
                 remaining -= 1
                 from = o plusNanos 1
                 o
-              case Some(_) ⇒
+              case Some(_) =>
                 endOfData
-              case None ⇒
+              case None =>
                 from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
                 find()
             }

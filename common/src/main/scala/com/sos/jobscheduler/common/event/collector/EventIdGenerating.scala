@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
   * @author Joacim Zschimmer
   */
 trait EventIdGenerating {
-  this: EventCollector ⇒
+  this: EventCollector =>
 
   protected val eventIdGenerator: EventIdGenerator
 

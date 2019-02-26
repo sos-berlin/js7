@@ -52,10 +52,10 @@ extends SignatureVerifier
 
   private def findPublicKeyInKeyRing(signature: PGPSignature): Checked[PGPPublicKey] =
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match {  // Public key is matched with the only 64-bit long key ID ???
-      case null ⇒
+      case null =>
         logger.debug(MessageSignedByUnknownProblem + ", no public key for " + signature.show)
         Invalid(MessageSignedByUnknownProblem)
-      case publicKey ⇒
+      case publicKey =>
         Valid(publicKey)
     }
 
@@ -95,10 +95,10 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   }
 
   private[pgp] def readMutableSignature(in: Resource[SyncIO, InputStream]): Checked[PGPSignature] =
-    in.useSync(in ⇒
+    in.useSync(in =>
       Checked.catchNonFatal(new JcaPGPObjectFactory(PGPUtil.getDecoderStream(in)).nextObject)
         .flatMap {
-          case o: PGPSignatureList ⇒
+          case o: PGPSignatureList =>
             if (o.size != 1)
               Invalid(Problem(s"Unsupported PGP signature type: expected exactly one PGPSignature, not ${o.size}"))
             else
@@ -107,7 +107,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
           case null =>
             Invalid(Problem("Not a valid PGP signature"))
 
-          case o ⇒
+          case o =>
             logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
             Invalid(Problem("Unsupported PGP signature type"))
         })

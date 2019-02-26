@@ -53,7 +53,7 @@ final class RecoveryTest extends FreeSpec {
   // TODO Starte Master und Agenten in eigenen Prozessen, die wir abbrechen können.
 
   "test" in {
-    for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
+    for (_ <- if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
         AgentRefPaths,
@@ -61,11 +61,11 @@ final class RecoveryTest extends FreeSpec {
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         testName = Some("RecoveryTest"))
       autoClosing(directoryProvider) { _ =>
-        for (agent ← directoryProvider.agentToTree.values)
+        for (agent <- directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
         (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
-        runMaster(directoryProvider) { master ⇒
+        runMaster(directoryProvider) { master =>
           if (lastEventId == EventId.BeforeFirst) {
             lastEventId = master.eventWatch.tornEventId
           }
@@ -79,35 +79,35 @@ final class RecoveryTest extends FreeSpec {
               NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow)),
               NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
             .sortBy(_.toString))
-          runAgents(directoryProvider) { _ ⇒
+          runAgents(directoryProvider) { _ =>
             master.addOrderBlocking(QuickOrder)
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
           }
-          assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
+          assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) => keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded(MasterId("Master")/*see default master.conf*/))))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
-          runAgents(directoryProvider) { _ ⇒
+          runAgents(directoryProvider) { _ =>
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
           }
         }
 
-        for (i ← 1 to 2) withClue(s"Run #$i:") {
+        for (i <- 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
           sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
-          runAgents(directoryProvider) { _ ⇒
-            runMaster(directoryProvider) { master ⇒
+          runAgents(directoryProvider) { _ =>
+            runMaster(directoryProvider) { master =>
               val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
               val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
               withClue(s"$orderId") {
                 try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
-                    case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledFor = Some(SomeTimestamp))
-                    case o ⇒ o
+                    case o @ OrderAdded(_, Some(_), _) => o.copy(scheduledFor = Some(SomeTimestamp))
+                    case o => o
                   }).toVector
                   == ExpectedOrderEvents)
-                catch { case NonFatal(t) ⇒
+                catch { case NonFatal(t) =>
                   logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
                   throw t
                 }
@@ -119,8 +119,8 @@ final class RecoveryTest extends FreeSpec {
     }
   }
 
-  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
-    directoryProvider.runMaster() { master ⇒
+  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster => Unit): Unit =
+    directoryProvider.runMaster() { master =>
       master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)).await(99.s).orThrow
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
@@ -128,18 +128,18 @@ final class RecoveryTest extends FreeSpec {
       master.injector.instance[ActorSystem].terminate() await 99.s
     }
 
-  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
+  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
+    multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents =>
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
-      for (agent ← agents) agent.injector.instance[ActorSystem].terminate() await 99.s
+      for (agent <- agents) agent.injector.instance[ActorSystem].terminate() await 99.s
     }
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
-    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader ⇒
+    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader =>
       UntilNoneIterator(reader.read).toVector map (_.value) collect {
-        case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) ⇒
+        case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) =>
           json.as[Stamped[KeyedEvent[AgentEvent]]].orThrow
       }
     }
@@ -161,8 +161,8 @@ private object RecoveryTest {
       Execute(WorkflowJob.Name("TEST-1")),
       Execute(WorkflowJob.Name("TEST-1"))),
     Map(
-      WorkflowJob.Name("TEST-0") → WorkflowJob(AgentRefPaths(0), TestExecutablePath, Map("var1" → s"VALUE-${AgentRefPaths(0).name}")),
-      WorkflowJob.Name("TEST-1") → WorkflowJob(AgentRefPaths(1), TestExecutablePath, Map("var1" → s"VALUE-${AgentRefPaths(1).name}"))))
+      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentRefPaths(0), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(0).name}")),
+      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentRefPaths(1), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(1).name}"))))
   private val TestOrderGeneratorElem =
     <order job_chain={TestWorkflow.path.string}>
       <run_time><period absolute_repeat="3"/></run_time>
@@ -178,7 +178,7 @@ private object RecoveryTest {
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
+    OrderProcessed(MapDiff(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
@@ -194,7 +194,7 @@ private object RecoveryTest {
     OrderTransferredToAgent(AgentRefPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),
+    OrderProcessed(MapDiff(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
@@ -209,7 +209,7 @@ private object RecoveryTest {
     val result = mutable.Buffer[Event]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(_, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) ⇒
+        case OrderProcessed(_, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) =>
           while (result.last != OrderEvent.OrderProcessingStarted) {
             result.remove(result.size - 1)
           }
@@ -217,7 +217,7 @@ private object RecoveryTest {
           val e = events.next()
           assert(e.isInstanceOf[OrderEvent.OrderMoved])  // Not if Agent restarted immediately after recovery (not expected)
 
-        case event ⇒ result += event
+        case event => result += event
       }
     }
     result.toVector

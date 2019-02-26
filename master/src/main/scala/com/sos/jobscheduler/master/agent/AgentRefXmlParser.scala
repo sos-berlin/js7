@@ -12,7 +12,7 @@ object AgentRefXmlParser {
 
   def parseXml(agentRefId: AgentRefId, source: Source): Checked[AgentRef] =
     Checked.catchNonFatal {
-      ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
+      ScalaXMLEventReader.parseDocument(source) { eventReader =>
         import eventReader._
 
         eventReader.parseElement("agent") {

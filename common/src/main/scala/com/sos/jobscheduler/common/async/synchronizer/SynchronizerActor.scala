@@ -11,12 +11,12 @@ import scala.util.Try
 private[synchronizer] final class SynchronizerActor extends Actor {
 
   def receive = {
-    case Execute(function, promise) ⇒ promise tryComplete Try { function() }
+    case Execute(function, promise) => promise tryComplete Try { function() }
   }
 }
 
 private[synchronizer] object SynchronizerActor {
-  private[synchronizer] final case class Execute[A](function: () ⇒ A, promise: Promise[A])
+  private[synchronizer] final case class Execute[A](function: () => A, promise: Promise[A])
 
   private[synchronizer] def props = Props { new SynchronizerActor }
 }

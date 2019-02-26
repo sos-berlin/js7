@@ -85,7 +85,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
         logger.debug("ActorSystem terminated")
       }
       catch {
-        case NonFatal(t) ⇒ logger.warn(s"ActorSystem.terminate(): $t")
+        case NonFatal(t) => logger.warn(s"ActorSystem.terminate(): $t")
       }
     }
     DeadLetterActor.subscribe(actorSystem)

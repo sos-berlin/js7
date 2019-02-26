@@ -23,7 +23,7 @@ final class PgpTest extends FreeSpec
   private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource), keyOrigin = "PgpTest")
 
   "Invalid password for secret key" in {
-    for (invalidPassword ← Array("", "INVALID")) {
+    for (invalidPassword <- Array("", "INVALID")) {
       val secretKey = readSecretKey(secretKeyResource)
       intercept[PGPException] {
         PgpSigner(secretKey, SecretString(invalidPassword)).orThrow

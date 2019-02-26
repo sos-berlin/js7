@@ -20,7 +20,7 @@ final class MemoizerTest extends FreeSpec {
       called += a
       s"/$a/"
     }
-    val m: Int ⇒ String = Memoizer.nonStrict(f)
+    val m: Int => String = Memoizer.nonStrict(f)
     assert(m(1) == "/1/")
     assert(called == List(1))
     assert(m(2) == "/2/")
@@ -37,7 +37,7 @@ final class MemoizerTest extends FreeSpec {
       called += ((a, b))
       s"$a $b"
     }
-    val m: (Int, Boolean) ⇒ String = Memoizer.nonStrict(f)
+    val m: (Int, Boolean) => String = Memoizer.nonStrict(f)
     assert(m(1, false) == "1 false")
     assert(called == List((1, false)))
     assert(m(1, true) == "1 true")
@@ -49,12 +49,12 @@ final class MemoizerTest extends FreeSpec {
   }
 
   "Concurrency" in {
-    val calls = testConcurreny { f ⇒ Memoizer.nonStrict(f) }
+    val calls = testConcurreny { f => Memoizer.nonStrict(f) }
     assert(calls >= Arguments.size && calls < ParallelCount * Arguments.size)
   }
 
   "strict" in {
-    val calls = testConcurreny { f ⇒ Memoizer.strict(f) }
+    val calls = testConcurreny { f => Memoizer.strict(f) }
     assert(calls == Arguments.size)
   }
 
@@ -66,8 +66,8 @@ final class MemoizerTest extends FreeSpec {
       s"/$a/"
     }
     val m = memoizer(f)
-    val result = (for (_ ← 1 to ParallelCount) yield Future { for (a ← Arguments) yield m(a) }) await 60.s
-    for (r ← result) assert(r == (Arguments map { o ⇒ s"/$o/" }))
+    val result = (for (_ <- 1 to ParallelCount) yield Future { for (a <- Arguments) yield m(a) }) await 60.s
+    for (r <- result) assert(r == (Arguments map { o => s"/$o/" }))
     calls.get
   }
 }

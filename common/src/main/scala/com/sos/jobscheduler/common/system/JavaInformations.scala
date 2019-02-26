@@ -14,7 +14,7 @@ object JavaInformations {
     "os.arch",
     "os.name",
     "os.version")
-  private val systemProperties = (for (k ← JavaSystemPropertyKeys; v ← sys.props.get(k)) yield k → v).toMap
+  private val systemProperties = (for (k <- JavaSystemPropertyKeys; v <- sys.props.get(k)) yield k -> v).toMap
 
   val javaInformation = JavaInformation(
     version = implementationVersion,
@@ -26,5 +26,5 @@ object JavaInformations {
 
   lazy val implementationVersion: String =
     try classOf[Runtime].getMethod("version").invoke(null).toString
-    catch { case _: Throwable ⇒ sys.props("java.version") }
+    catch { case _: Throwable => sys.props("java.version") }
 }

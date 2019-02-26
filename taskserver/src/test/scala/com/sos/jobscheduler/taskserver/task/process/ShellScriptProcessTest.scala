@@ -28,7 +28,7 @@ final class ShellScriptProcessTest extends FreeSpec
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
-    val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName → envValue))
+    val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
     val shellProcess = startShellScript(processConfig, name = "TEST", s"exit $exitCode")
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
@@ -46,7 +46,7 @@ final class ShellScriptProcessTest extends FreeSpec
       }
     else
       "#! (shebang) is respected" in {
-        autoDeleting(newTemporaryShellFile("test-interpreter-")) { interpreter ⇒
+        autoDeleting(newTemporaryShellFile("test-interpreter-")) { interpreter =>
           interpreter.contentString =
             """#! /bin/sh
               |echo INTERPRETER-START
@@ -79,7 +79,7 @@ final class ShellScriptProcessTest extends FreeSpec
     } else {
       val agentTaskId = AgentTaskId("TEST-PROCESS-ID")
       val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
-      withCloser { closer ⇒
+      withCloser { closer =>
         val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
         val killScriptOutputFile = createTempFile("test-", ".tmp")
         val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")

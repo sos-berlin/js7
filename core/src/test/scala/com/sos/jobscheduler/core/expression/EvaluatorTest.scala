@@ -22,7 +22,7 @@ final class EvaluatorTest extends FreeSpec
     val scope = new Scope {
       val returnCode = ReturnCode(1)
       val retryCount = 3
-      val variableNameToString = Map("ASTRING" → "AA", "ANUMBER" → "7")
+      val variableNameToString = Map("ASTRING" -> "AA", "ANUMBER" -> "7")
     }
     new Evaluator(scope).eval _
   }
@@ -180,50 +180,50 @@ final class EvaluatorTest extends FreeSpec
       In(OrderReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
 
   "Equal" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(Equal(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a == b))))
     assert(eval(Equal(NumericConstant(1), StringConstant("1"))) == Valid(BooleanValue(false)))
   }
 
   "NotEqual" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(NotEqual(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a != b))))
     assert(eval(NotEqual(NumericConstant(1), StringConstant("1"))) == Valid(BooleanValue(true)))
   }
 
   "LessOrEqual" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(LessOrEqual(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a <= b))))
   }
 
   "GreaterOrEqual" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(GreaterOrEqual(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a >= b))))
   }
 
   "LessThan" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(LessThan(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a < b))))
   }
 
   "GreaterThan" in {
-    forAll((a: Int, b: Int) ⇒ assert(
+    forAll((a: Int, b: Int) => assert(
       eval(GreaterThan(NumericConstant(a), NumericConstant(b))) == Valid(BooleanValue(a > b))))
   }
 
   "In" in {
-    forAll((a: Int, b: Int, c: Int, d: Int) ⇒ assert(
+    forAll((a: Int, b: Int, c: Int, d: Int) => assert(
       eval(In(NumericConstant(a), ListExpression(NumericConstant(b) :: NumericConstant(c) :: NumericConstant(d) :: Nil)))
         == Valid(BooleanValue(Set(b, c, d)(a)))))
   }
 
   "Not" in {
-    forAll((bool: Boolean) ⇒ assert(
+    forAll((bool: Boolean) => assert(
       eval(Not(BooleanConstant(bool))) == Valid(BooleanValue(!bool))))
   }
 
   "And" in {
-    forAll((a: Boolean, b: Boolean) ⇒ assert(
+    forAll((a: Boolean, b: Boolean) => assert(
       eval(And(BooleanConstant(a), BooleanConstant(b))) == Valid(BooleanValue(a && b))))
   }
 
@@ -233,7 +233,7 @@ final class EvaluatorTest extends FreeSpec
   }
 
   "Or" in {
-    forAll((a: Boolean, b: Boolean) ⇒ assert(
+    forAll((a: Boolean, b: Boolean) => assert(
       eval(Or(BooleanConstant(a), BooleanConstant(b))) == Valid(BooleanValue(a || b))))
   }
 
@@ -266,7 +266,7 @@ final class EvaluatorTest extends FreeSpec
   private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit pos: source.Position): Unit =
     registerTest(exprString) {
       assert(completeExpression.checkedParse(exprString.trim) == expression)
-      for (e ← expression) {
+      for (e <- expression) {
         assert(completeExpression.checkedParse(e.toString) == expression, " *** toString ***")
         assert(eval(e) == result)
       }

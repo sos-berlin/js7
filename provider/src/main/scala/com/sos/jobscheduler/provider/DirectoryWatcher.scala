@@ -42,7 +42,7 @@ extends AutoCloseable
 
   /** Observable may only be subscribed to once, because it uses the outer WatchService. */
   def singleUseObservable: Observable[Unit] =
-    subscriber ⇒ {
+    subscriber => {
       if (subscribed.getAndSet(true)) sys.error("DirectoryWatcher#singleUseObservable is subscribable only once")
       new Cancelable {
         def cancel() = {
@@ -52,19 +52,19 @@ extends AutoCloseable
 
         def continue(): Future[Completed] =
           ioFuture { waitForNextChange(timeout) }
-            .flatMap(_ ⇒ subscriber.onNext(())
+            .flatMap(_ => subscriber.onNext(())
             .flatMap {
-              case Ack.Continue ⇒ continue()
-              case Ack.Stop ⇒ Future.successful(Completed)
+              case Ack.Continue => continue()
+              case Ack.Stop => Future.successful(Completed)
             })
 
         continue() onComplete {
-          case Success(Completed) ⇒
+          case Success(Completed) =>
             logger.trace(s"$directory: completed")
-          case Failure(e: ClosedWatchServiceException) ⇒
+          case Failure(e: ClosedWatchServiceException) =>
             logger.trace(s"$directory: subscriber.onComplete due to $e")
             subscriber.onComplete()
-          case Failure(t) ⇒
+          case Failure(t) =>
             logger.trace(s"$directory: $t")
             subscriber.onError(t)
         }
@@ -85,7 +85,7 @@ extends AutoCloseable
       watchKey != null && {
         try {
           val events = watchKey.pollEvents()
-          logger.whenTraceEnabled { events.asScala foreach { o ⇒ logger.trace(s"$directory: ${watchEventShow.show(o)}") }}
+          logger.whenTraceEnabled { events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }}
         }
         finally watchKey.reset()
         true
@@ -98,6 +98,6 @@ object DirectoryWatcher
 {
   private val logger = Logger(getClass)
 
-  private implicit val watchEventShow: Show[WatchEvent[_]] = e ⇒
+  private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
     s"${e.kind.name} ${e.count}× ${e.context}"
 }

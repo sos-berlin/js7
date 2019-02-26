@@ -30,26 +30,26 @@ object JobKey
   final case class Named(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) extends JobKey
 
   implicit val jsonEncoder: ObjectEncoder[JobKey] = {
-    case Anonymous(WorkflowPosition(workflowId, position)) ⇒
+    case Anonymous(WorkflowPosition(workflowId, position)) =>
       JsonObject(
-        "workflowId" → workflowId.asJson,
-        "position" → position.asJson)
+        "workflowId" -> workflowId.asJson,
+        "position" -> position.asJson)
 
-    case Named(WorkflowBranchPath(workflowId, branchPath), name) ⇒
+    case Named(WorkflowBranchPath(workflowId, branchPath), name) =>
       JsonObject(
-        "workflowId" → workflowId.asJson,
-        "branchPath" → (branchPath.nonEmpty ? branchPath).asJson,
-        "name" → name.asJson)
+        "workflowId" -> workflowId.asJson,
+        "branchPath" -> (branchPath.nonEmpty ? branchPath).asJson,
+        "name" -> name.asJson)
   }
 
   implicit val jsonDecoder: Decoder[JobKey] =
-    c ⇒ for {
-      workflowId ← c.get[WorkflowId]("workflowId")
-      jobKey ← c.get[Position]("position").map(o ⇒ Anonymous(workflowId /: o))
+    c => for {
+      workflowId <- c.get[WorkflowId]("workflowId")
+      jobKey <- c.get[Position]("position").map(o => Anonymous(workflowId /: o))
         .orElse(
           for {
-            branchPath ← c.get[Option[BranchPath]]("branchPath") map (_ getOrElse Nil)
-            name ← c.get[WorkflowJob.Name]("name")
+            branchPath <- c.get[Option[BranchPath]]("branchPath") map (_ getOrElse Nil)
+            name <- c.get[WorkflowJob.Name]("name")
           } yield Named(WorkflowBranchPath(workflowId, branchPath), name))
     } yield jobKey
 }

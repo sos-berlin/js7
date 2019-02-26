@@ -19,7 +19,7 @@ object VariableSets {
       elementName: String = "sos.spooler.variable_set",
       subelementName: String = "variable"): xml.Elem = {
 
-    val children = variables map { case (k, v) ⇒
+    val children = variables map { case (k, v) =>
       xml.Elem(
         prefix = null,
         label = subelementName,
@@ -33,7 +33,7 @@ object VariableSets {
   def parseXml(string: String): Map[String, String] = parseXml(string, groupName = "", elementName = DefaultElementName)
 
   def parseXml(string: String, groupName: String, elementName: String): Map[String, String] =
-    ScalaXMLEventReader.parseDocument(stringToSource(string)) { eventReader ⇒ parseXml(eventReader, groupName, elementName) }
+    ScalaXMLEventReader.parseDocument(stringToSource(string)) { eventReader => parseXml(eventReader, groupName, elementName) }
 
   def parseXml(xmlEventReader: XMLEventReader, groupName: String, elementName: String): Map[String, String] = {
     val eventReader = new ScalaXMLEventReader(xmlEventReader)
@@ -42,7 +42,7 @@ object VariableSets {
     parseElement(myGroupName) {
       attributeMap.ignore("count")
       parseEachRepeatingElement(elementName) {
-        attributeMap("name") → attributeMap.getOrElse("value", "")
+        attributeMap("name") -> attributeMap.getOrElse("value", "")
       }
     } .toMap
   }

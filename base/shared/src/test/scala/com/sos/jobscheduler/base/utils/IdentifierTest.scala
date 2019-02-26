@@ -60,12 +60,12 @@ final class IdentifierTest extends FreeSpec {
                   "🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐚🐞🐜🦗🕷🕸🦂🐢🐍🦎🦖🦕🐙🦑🦐🦀🐡🐠🐟🐬🐳🐋🐊🐆🦓🦍" +
                   "🐘🐪🐫🦒🐃🐄🐎🐏🐑🦌🐕🐩🐓🕊🐁🐿🐉🎄🌲" +
                   "🇸🇪"
-    for ((cp, i) ← allowed.codePoints.iterator.asScala.zipWithIndex) {
+    for ((cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex) {
       val identifier = new String(Character.toChars(cp))
       assert(isIdentifier(identifier), f"#$i U+${cp.toInt}%04x $identifier")
     }
     assert(isIdentifier(allowed))
     assert(!isIdentifier("☺︎"))
-    assert(!isIdentifier("→"))
+    assert(!isIdentifier("->"))
   }
 }

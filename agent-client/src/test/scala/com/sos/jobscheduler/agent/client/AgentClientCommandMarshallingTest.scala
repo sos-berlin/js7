@@ -33,9 +33,9 @@ extends FreeSpec with ScalaFutures with AgentTester {
       def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
         Task {
           (command match {
-            case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
-            case EmergencyStop ⇒ Valid(AgentCommand.Response.Accepted)
-            case _ ⇒ throw new NotImplementedError
+            case ExpectedTerminate => Valid(AgentCommand.Response.Accepted)
+            case EmergencyStop => Valid(AgentCommand.Response.Accepted)
+            case _ => throw new NotImplementedError
           })
           .map(_.asInstanceOf[command.Response])
         }
@@ -51,7 +51,7 @@ extends FreeSpec with ScalaFutures with AgentTester {
   List[(AgentCommand, Checked[AgentCommand.Response])](
     ExpectedTerminate -> Valid(AgentCommand.Response.Accepted),
     EmergencyStop -> Valid(AgentCommand.Response.Accepted))
-  .foreach { case (command, response) ⇒
+  .foreach { case (command, response) =>
     command.getClass.simpleScalaName in {
       assert(client.commandExecute(command).await(99.s) == response)
     }

@@ -22,7 +22,7 @@ trait TestAgentDirectoryProvider extends HasCloser
   final val fileBasedSigner = new FileBasedSigner(new SillySigner(signature), Workflow.jsonEncoder)
 
   final lazy val agentDirectory = {
-    val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir ⇒
+    val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>
       logger.debug(s"Deleting $dir")
       deleteDirectoryRecursively(dir)
     }
@@ -30,7 +30,7 @@ trait TestAgentDirectoryProvider extends HasCloser
       createDirectories(agentDirectory / "config/private")
       PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
       provideSignature(agentDirectory / "config")
-    } catch { case NonFatal(t) ⇒
+    } catch { case NonFatal(t) =>
       deleteDirectoryRecursively(agentDirectory)
       throw t
     }
@@ -70,8 +70,8 @@ object TestAgentDirectoryProvider {
   val TestUserAndPassword = UserAndPassword(UserId("SHA512-USER"), SecretString("SHA512-PASSWORD"))
   private val logger = Logger(getClass)
 
-  def provideAgentDirectory[A](body: Path ⇒ A): A =
-    autoClosing(new TestAgentDirectoryProvider {}) { provider ⇒
+  def provideAgentDirectory[A](body: Path => A): A =
+    autoClosing(new TestAgentDirectoryProvider {}) { provider =>
       body(provider.agentDirectory)
     }
 }

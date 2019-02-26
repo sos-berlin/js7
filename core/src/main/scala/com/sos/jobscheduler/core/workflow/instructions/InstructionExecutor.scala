@@ -27,33 +27,33 @@ object InstructionExecutor
 {
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     instr match {
-      case _: AwaitOrder ⇒ AwaitOrderExecutor
-      case _: End ⇒ EndExecutor
-      case _: Execute ⇒ ExecuteExecutor
-      case _: Fail ⇒ FailExecutor
-      case _: Fork ⇒ ForkExecutor
-      case _: Gap ⇒ GapExecutor
-      case _: If ⇒ IfExecutor
-      case _: TryInstruction ⇒ TryExecutor
-      case _: Offer ⇒ OfferExecutor
+      case _: AwaitOrder => AwaitOrderExecutor
+      case _: End => EndExecutor
+      case _: Execute => ExecuteExecutor
+      case _: Fail => FailExecutor
+      case _: Fork => ForkExecutor
+      case _: Gap => GapExecutor
+      case _: If => IfExecutor
+      case _: TryInstruction => TryExecutor
+      case _: Offer => OfferExecutor
       case _: Retry => RetryExecutor
     }
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Option[Position] =
     instructionToExecutor(instruction) match {
-      case exec: PositionInstructionExecutor ⇒ exec.nextPosition(context, order, instruction.asInstanceOf[exec.Instr])
-      case _ ⇒ None
+      case exec: PositionInstructionExecutor => exec.nextPosition(context, order, instruction.asInstanceOf[exec.Instr])
+      case _ => None
     }
 
   def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Option[KeyedEvent[OrderActorEvent]] =
     instructionToExecutor(instruction) match {
-      case exec: EventInstructionExecutor ⇒
+      case exec: EventInstructionExecutor =>
         exec.toEvent(context, order, instruction.asInstanceOf[exec.Instr])
-      case _ ⇒
+      case _ =>
         None
     }
 
   private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =
-    order.ifState[Order.Processed].map(order ⇒
+    order.ifState[Order.Processed].map(order =>
       order.id <-: OrderMoved(order.position.increment))
 }

@@ -26,14 +26,14 @@ object RepoEvent {
   object FileBasedAddedOrChanged {
     def unapply(o: FileBasedAddedOrChanged) = Some((o.path, o.signed))
 
-    private[RepoEvent] def jsonEncoder: ObjectEncoder[FileBasedAddedOrChanged] = o ⇒
-      JsonObject("signed" → o.signed.asJson)
+    private[RepoEvent] def jsonEncoder: ObjectEncoder[FileBasedAddedOrChanged] = o =>
+      JsonObject("signed" -> o.signed.asJson)
 
-    private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c ⇒
+    private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c =>
       for {
-        signed ← c.get[SignedString]("signed")
-        parsed ← io.circe.parser.parse(signed.string).left.map(error ⇒ DecodingFailure(error.toString, Nil))
-        fileBased ← parsed.as[FileBased]
+        signed <- c.get[SignedString]("signed")
+        parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, Nil))
+        fileBased <- parsed.as[FileBased]
       } yield (fileBased, signed)
   }
 

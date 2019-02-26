@@ -26,14 +26,14 @@ object MasterMain {
     logger.info(s"Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     runMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
-      autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master ⇒
+      autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master =>
         import master.scheduler
         withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
           master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
             .runAsync {  // On recovery, executeCommand will delay execution until Agents are started
-              case Left(t) ⇒ logger.error(t.toStringWithCauses, t)
-              case Right(Invalid(problem)) ⇒ logger.error(problem.toString)
-              case Right(Valid(_)) ⇒
+              case Left(t) => logger.error(t.toStringWithCauses, t)
+              case Right(Invalid(problem)) => logger.error(problem.toString)
+              case Right(Valid(_)) =>
             }
           master.terminated.awaitInfinite
         }

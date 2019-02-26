@@ -26,11 +26,11 @@ final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute
 
   protected def executeCommand(command: MasterCommand, meta: CommandMeta) =
     command match {
-      case MasterCommand.Terminate ⇒
+      case MasterCommand.Terminate =>
         commandReceived = true
         Task.pure(Valid(MasterCommand.Response.Accepted))
 
-      case _ ⇒
+      case _ =>
         fail()
     }
 

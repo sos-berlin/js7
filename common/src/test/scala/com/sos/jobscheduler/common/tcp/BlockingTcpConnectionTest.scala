@@ -46,7 +46,7 @@ final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with Befor
     val length = 0x012233
     val data = Array.fill(length) { Random.nextInt().toByte }
     val message = smallIntToBytes(length) ++ data
-    for (_ ← 1 to 10) {
+    for (_ <- 1 to 10) {
       val received = namedThreadFuture("receiveMessage") { tcpConnection.receiveMessage() }
       out.write(message)
       assert((received await 10.s) == Some(ByteString(data)))

@@ -37,7 +37,7 @@ object PgpCommons
       ")"
   }
 
-  implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key ⇒
+  implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key =>
     import key._
     f"PGPPublicKey($getKeyID%08X" +
       " fingerprint=" + fingerprintToString(getFingerprint) +
@@ -55,7 +55,7 @@ object PgpCommons
   implicit val PGPPublicKeyRingCollectionShow = Show[PGPPublicKeyRingCollection](
     _.asScala.toVector.mkString_("", ", ", ""))
 
-  implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key ⇒
+  implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key =>
     import key._
     f"PGPSecretKey(" +
       getPublicKey.show +
@@ -65,13 +65,13 @@ object PgpCommons
       ")"
   }
 
-  implicit val PGPSecretKeyRingShow = Show[PGPSecretKeyRing](o ⇒
+  implicit val PGPSecretKeyRingShow = Show[PGPSecretKeyRing](o =>
     "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
 
-  implicit val PGPSecretKeyRingCollectionShow = Show[PGPSecretKeyRingCollection](o ⇒
+  implicit val PGPSecretKeyRingCollectionShow = Show[PGPSecretKeyRingCollection](o =>
     f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
 
-  implicit val PGPSignatureShow = Show[PGPSignature] { sig ⇒
+  implicit val PGPSignatureShow = Show[PGPSignature] { sig =>
     import sig._
     f"PGPSignature(" +
       signatureTypeToString(getSignatureType) +
@@ -103,16 +103,16 @@ object PgpCommons
 
   private def hashAlgorithmToString(hashAlgorithm: Int) =
     hashAlgorithm match {
-      case HashAlgorithmTags.SHA1 ⇒ "SHA-1"
-      case HashAlgorithmTags.MD2 ⇒ "MD2"
-      case HashAlgorithmTags.MD5 ⇒ "MD5"
-      case HashAlgorithmTags.RIPEMD160 ⇒ "RIPEMD160"
-      case HashAlgorithmTags.SHA256 ⇒ "SHA-256"
-      case HashAlgorithmTags.SHA384 ⇒ "SHA-384"
-      case HashAlgorithmTags.SHA512 ⇒ "SHA-512"
-      case HashAlgorithmTags.SHA224 ⇒ "SHA-224"
-      case HashAlgorithmTags.TIGER_192 ⇒ "TIGER"
-      case _ ⇒ hashAlgorithm.toString
+      case HashAlgorithmTags.SHA1 => "SHA-1"
+      case HashAlgorithmTags.MD2 => "MD2"
+      case HashAlgorithmTags.MD5 => "MD5"
+      case HashAlgorithmTags.RIPEMD160 => "RIPEMD160"
+      case HashAlgorithmTags.SHA256 => "SHA-256"
+      case HashAlgorithmTags.SHA384 => "SHA-384"
+      case HashAlgorithmTags.SHA512 => "SHA-512"
+      case HashAlgorithmTags.SHA224 => "SHA-224"
+      case HashAlgorithmTags.TIGER_192 => "TIGER"
+      case _ => hashAlgorithm.toString
     }
 
   private def publicKeyAlgorithmToString(n: Int) =
@@ -125,23 +125,23 @@ object PgpCommons
       case PublicKeyAlgorithmTags.DIFFIE_HELLMAN => "Diffie-Hellman"
       case _ =>
         try PubringDump.getAlgorithm(n)
-        catch { case NonFatal(_) ⇒ n.toString }
+        catch { case NonFatal(_) => n.toString }
       }
 
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)
-    catch { case NonFatal(_) ⇒ s"cipher-$n" }
+    catch { case NonFatal(_) => s"cipher-$n" }
 
   private def fingerprintToString(fingerprint: Array[Byte]): String =
     fingerprint match {
-      case null ⇒ "(no fingerprint)"
-      case bytes ⇒ bytes.map(b ⇒ f"$b%02X").grouped(2).map(_.mkString).mkString(" ")
+      case null => "(no fingerprint)"
+      case bytes => bytes.map(b => f"$b%02X").grouped(2).map(_.mkString).mkString(" ")
     }
 
   private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
 
-  private[crypt] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) ⇒ Unit): Unit =
-    message.useSync { in ⇒
+  private[crypt] def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
+    message.useSync { in =>
       val buffer = new Array[Byte](BufferSize)
       var length = 1
       while (length > 0) {
@@ -171,7 +171,7 @@ object PgpCommons
   }
 
   def readPublicKeyRingCollection(resource: Resource[SyncIO, InputStream]): PGPPublicKeyRingCollection =
-    resource.useSync(in ⇒
+    resource.useSync(in =>
       new PGPPublicKeyRingCollection(PGPUtil.getDecoderStream(in), newFingerPrintCalculator))
 
   def newFingerPrintCalculator: KeyFingerPrintCalculator =

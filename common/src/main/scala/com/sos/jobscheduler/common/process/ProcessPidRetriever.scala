@@ -18,7 +18,7 @@ private[process] object ProcessPidRetriever {
   private val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
   private val logger = Logger(getClass)
 
-  private[process] val processToPid: Process ⇒ Option[Pid] =
+  private[process] val processToPid: Process => Option[Pid] =
     if (hasJava9)
       Java9ProcessToPid
     else if (isWindows)
@@ -26,13 +26,13 @@ private[process] object ProcessPidRetriever {
     else
       UnixBeforeJava9ProcessToPid
 
-  private object Java9ProcessToPid extends (Process ⇒ Option[Pid]) {
+  private object Java9ProcessToPid extends (Process => Option[Pid]) {
     private val pidMethod = classOf[Process].getMethod("pid")   // Needs Java 9
     private var logged = false
 
     def apply(process: Process) =
       try Some(Pid(pidMethod.invoke(process).asInstanceOf[java.lang.Long]))
-      catch { case t: Throwable ⇒
+      catch { case t: Throwable =>
         if (!logged) {
           logged = true
           logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
@@ -41,18 +41,18 @@ private[process] object ProcessPidRetriever {
       }
   }
 
-  private object UnixBeforeJava9ProcessToPid extends (Process ⇒ Option[Pid]) {
+  private object UnixBeforeJava9ProcessToPid extends (Process => Option[Pid]) {
     def apply(process: Process) =
       try {
         val pidField = process.getClass.getDeclaredField("pid")
         pidField.setAccessible(true)
         Some(Pid(pidField.get(process).asInstanceOf[java.lang.Integer].longValue))
-      } catch { case _: Throwable ⇒
+      } catch { case _: Throwable =>
         None
       }
   }
 
-  private object WindowsBeforeJava9ProcessToPid extends (Process ⇒ Option[Pid]) {
+  private object WindowsBeforeJava9ProcessToPid extends (Process => Option[Pid]) {
     def apply(process: Process) =
       try {
         None // May be implemented with JNA https://github.com/java-native-access/jna !!!
@@ -61,7 +61,7 @@ private[process] object ProcessPidRetriever {
         //val handle = new WinNT.HANDLE
         //handle.setPointer(Pointer.createConstant(handleField.getLong(process)))
         //Kernel32.INSTANCE.GetProcessId(handle)
-      } catch { case _: Throwable ⇒
+      } catch { case _: Throwable =>
         None
       }
     }

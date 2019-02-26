@@ -19,13 +19,13 @@ object VariablesXmlParser {
       while (iterator.hasNext) {
         val a = iterator.next()
         a.getName.toString match {
-          case "name" ⇒ name = a.getValue
-          case "value" ⇒ value = a.getValue
-          case attr ⇒ throw new IllegalArgumentException(s"Unknonwn attribute '$attr' in <param>")
+          case "name" => name = a.getValue
+          case "value" => value = a.getValue
+          case attr => throw new IllegalArgumentException(s"Unknonwn attribute '$attr' in <param>")
         }
       }
       require(name.nonEmpty, "Attribute name must not be empty")
-      name → value
+      name -> value
     }
 
     def parseVariables(elementName: String): Map[String, String] = {
@@ -42,8 +42,8 @@ object VariablesXmlParser {
     }
 
     matchElement {
-      case "variables" ⇒ parseVariables("variable")
-      case "params" ⇒ parseVariables("param")
+      case "variables" => parseVariables("variable")
+      case "params" => parseVariables("param")
     }
   }
 }

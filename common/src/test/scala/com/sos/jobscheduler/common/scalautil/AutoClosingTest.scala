@@ -13,14 +13,14 @@ final class AutoClosingTest extends FreeSpec {
   "autoClosing" - {
     "without Exception" in {
       val a = new A
-      autoClosing(a) { _ ⇒ }
+      autoClosing(a) { _ => }
       a shouldBe 'closed
     }
 
     "with Exception" in {
       val a = new A
       intercept[AException] {
-        autoClosing(a) { _ ⇒
+        autoClosing(a) { _ =>
           throw new AException
         }
       } .getSuppressed shouldBe empty
@@ -29,11 +29,11 @@ final class AutoClosingTest extends FreeSpec {
 
     "with second Exception in close" in {
       val x = intercept[AException] {
-        autoClosing(new FailingClose) { _ ⇒
+        autoClosing(new FailingClose) { _ =>
           throw new AException
         }
       }
-      for (suppressed ← x.getSuppressed) suppressed.asInstanceOf[ClosedException]
+      for (suppressed <- x.getSuppressed) suppressed.asInstanceOf[ClosedException]
     }
   }
 
@@ -42,7 +42,7 @@ final class AutoClosingTest extends FreeSpec {
 
     "without Exception" in {
       val closeables = List(new AutoCloseableA, new AutoCloseableA, new AutoCloseableA)
-      multipleAutoClosing(closeables) { o ⇒
+      multipleAutoClosing(closeables) { o =>
         assert(o eq closeables)
       }
       assert(closeables forall { _.closed })
@@ -51,7 +51,7 @@ final class AutoClosingTest extends FreeSpec {
     "with Exception" in {
       val closeables = List(new AutoCloseableA, new AutoCloseableA, new AutoCloseableA)
       intercept[Exception] {
-        multipleAutoClosing(closeables) { _ ⇒
+        multipleAutoClosing(closeables) { _ =>
           throw new Exception
         }
       } .getSuppressed shouldBe empty
@@ -61,12 +61,12 @@ final class AutoClosingTest extends FreeSpec {
     "with second Exception in close" in {
       val closeables = List(new AutoCloseableA, new FailingClose, new AutoCloseableA)
       val x = intercept[AException] {
-        multipleAutoClosing(closeables) { _ ⇒
+        multipleAutoClosing(closeables) { _ =>
           throw new AException
         }
       }
-      assert(closeables collect { case a: A ⇒ a } forall { _.closed })
-      for (suppressed ← x.getSuppressed) {
+      assert(closeables collect { case a: A => a } forall { _.closed })
+      for (suppressed <- x.getSuppressed) {
         suppressed.asInstanceOf[ClosedException]
       }
     }

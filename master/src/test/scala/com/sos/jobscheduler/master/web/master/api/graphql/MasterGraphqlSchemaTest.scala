@@ -466,7 +466,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
     def run: Json = Executor.execute(MasterGraphqlSchema.schema, completeOrderGraphql, bigContext(n)) await 99.s
 
     "Internal Json" in {
-      for (_ ← 1 to 3) {
+      for (_ <- 1 to 3) {
         val stopwatch = new Stopwatch
         run
         info(stopwatch.itemsPerSecondString(n, "orders(Json)"))
@@ -506,7 +506,7 @@ object MasterGraphqlSchemaTest
         Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
           attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
           parent = Some(OrderId("PARENT")),
-          payload = Payload(Map("KEY" → "VALUE", "X" → "XX"))),
+          payload = Payload(Map("KEY" -> "VALUE", "X" -> "XX"))),
         Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),
         Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Failed(ReturnCode(8))),
         Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped  , Outcome.Disrupted(Problem("MESSAGE"))),
@@ -524,7 +524,7 @@ object MasterGraphqlSchemaTest
 
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
       Future.successful(id match {
-        case FileBasedId(_: WorkflowPath, VersionId("1")) ⇒
+        case FileBasedId(_: WorkflowPath, VersionId("1")) =>
           Valid(Workflow(
             WorkflowPath.NoId,
             Vector(
@@ -532,14 +532,14 @@ object MasterGraphqlSchemaTest
               Fork(Vector(
                 Fork.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))))
               ))),
-            Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
-        case _ ⇒ Problem(s"No such ''$id'")
+            Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
+        case _ => Problem(s"No such ''$id'")
     })
   }
   private object TestContext extends TestContext
 
   private def bigContext(n: Int): QueryContext = new TestContext {
     private val order = Order(OrderId("?"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z"))))
-    override val idToOrder = (1 to n).map(i ⇒ order.copy(id = OrderId(s"$i"))) toKeyedMap (_.id)
+    override val idToOrder = (1 to n).map(i => order.copy(id = OrderId(s"$i"))) toKeyedMap (_.id)
   }
 }

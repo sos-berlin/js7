@@ -10,17 +10,17 @@ import scala.util.{Success, Try}
 
 object WaitForCondition {
 
-  def retryUntil[A](timeout: Duration, step: Duration)(body: ⇒ A): A = {
+  def retryUntil[A](timeout: Duration, step: Duration)(body: => A): A = {
     val until = now + timeout
     try body
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       while (now < until) {
         blocking {
           sleep(step)
         }
         Try { body } match {
-          case Success(result) ⇒ return result
-          case _ ⇒
+          case Success(result) => return result
+          case _ =>
         }
       }
       throw t
@@ -30,28 +30,28 @@ object WaitForCondition {
   /** Wartet längstens t.timeout in Schritten von t.step, bis condition wahr wird.
     * condition wird bei t.timeout > 0 wenigsten zweimal aufgerufen: am Anfang und am Ende.
     * @return letztes Ergebnis von condition */
-  def waitForCondition(timeout: Duration, step: Duration)(condition: ⇒ Boolean): Boolean =
+  def waitForCondition(timeout: Duration, step: Duration)(condition: => Boolean): Boolean =
     waitForCondition(TimeoutWithSteps(timeout, step))(condition)
 
   /** Wartet längstens t.timeout in Schritten von t.step, bis condition wahr wird.
     * condition wird bei t.timeout > 0 wenigsten zweimal aufgerufen: am Anfang und am Ende.
     * @return letztes Ergebnis von condition */
-  def waitForCondition(t: TimeoutWithSteps)(condition: ⇒ Boolean) =
+  def waitForCondition(t: TimeoutWithSteps)(condition: => Boolean) =
     waitAtInstantsFor(t.toMillisInstantIterator(now))(condition)
 
   /** Wartet bis zu den relative Zeitpunkten, bis condition wahr wird.
     * Die relative Zeitpunkt gelten ab jetzt (Instant.now).
     * condition wird am Anfang und am Ende geprüft.
     * @return letztes Ergebnis von condition */
-  def waitFromNowFor(relativeInstants: TraversableOnce[Long])(condition: ⇒ Boolean) =
+  def waitFromNowFor(relativeInstants: TraversableOnce[Long])(condition: => Boolean) =
     waitAtInstantsFor(relativeInstants map now.toEpochMilli.+)(condition)
 
   /** Wartet bis zu den Zeitpunkten, bis condition wahr wird.
     * condition wird am Anfang und am Ende geprüft.
     * @return letztes Ergebnis von condition */
-  def waitAtInstantsFor(instants: TraversableOnce[Long])(condition: ⇒ Boolean) =
+  def waitAtInstantsFor(instants: TraversableOnce[Long])(condition: => Boolean) =
     blocking {
-      realTimeIterator(instants) exists {_ ⇒ condition}
+      realTimeIterator(instants) exists {_ => condition}
     }
 
   /** Ein Iterator, der bei next() (oder hasNext) auf den nächsten Zeitpunkt wartet.

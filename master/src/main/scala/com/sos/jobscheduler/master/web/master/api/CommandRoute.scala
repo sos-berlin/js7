@@ -25,8 +25,8 @@ trait CommandRoute extends MasterRouteProvider {
   final val commandRoute: Route =
     pathEnd {
       post {
-        authorizedUser(ValidUserPermission) { user ⇒
-          entity(as[MasterCommand]) { command ⇒
+        authorizedUser(ValidUserPermission) { user =>
+          entity(as[MasterCommand]) { command =>
             completeTask {
               executeCommand(command, CommandMeta(user))
             }

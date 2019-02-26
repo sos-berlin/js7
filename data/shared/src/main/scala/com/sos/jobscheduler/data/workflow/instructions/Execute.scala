@@ -23,15 +23,15 @@ object Execute
     override def toString = s"execute $name"
   }
   object Named {
-    implicit val jsonEncoder: ObjectEncoder[Named] = named ⇒
+    implicit val jsonEncoder: ObjectEncoder[Named] = named =>
       JsonObject.fromIterable(
-        ("name" → named.name.asJson) ::
-        named.defaultArguments.nonEmpty.thenList("defaultArguments" → named.defaultArguments.asJson) :::
+        ("name" -> named.name.asJson) ::
+        named.defaultArguments.nonEmpty.thenList("defaultArguments" -> named.defaultArguments.asJson) :::
         Nil)
-    implicit val jsonDecoder: Decoder[Named] = cursor ⇒
+    implicit val jsonDecoder: Decoder[Named] = cursor =>
       for {
-        name ← cursor.get[WorkflowJob.Name]("name")
-        arguments ← cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
+        name <- cursor.get[WorkflowJob.Name]("name")
+        arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
       } yield Named(name, arguments)
   }
 

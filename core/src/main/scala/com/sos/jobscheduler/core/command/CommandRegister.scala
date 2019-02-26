@@ -18,7 +18,7 @@ final class CommandRegister[C <: CommonCommand]
       totalCounter += 1
       val id = idGenerator.next()
       val run = CommandRun[C](id, command, now, batchId)
-      idToCommand += id → run
+      idToCommand += id -> run
       run
     }
 

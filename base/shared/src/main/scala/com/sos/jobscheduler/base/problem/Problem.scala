@@ -33,9 +33,9 @@ sealed trait Problem
   final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
 
   override def equals(o: Any) = o match {
-    case _: HasCode ⇒ false
-    case o: Problem ⇒ toString == o.toString
-    case _ ⇒ false
+    case _: HasCode => false
+    case o: Problem => toString == o.toString
+    case _ => false
   }
 
   override def hashCode = toString.hashCode
@@ -43,7 +43,7 @@ sealed trait Problem
   /** Message with cause. **/
   override def toString = messageWithCause
 
-  final def messageWithCause = message + cause.fold("")(o ⇒ s" [$o]")
+  final def messageWithCause = message + cause.fold("")(o => s" [$o]")
 
   /** Message without cause. **/
   protected[problem] def message: String
@@ -54,7 +54,7 @@ object Problem
   implicit def toInvalid[A](problem: Problem): Invalid[Problem] =
     Invalid(problem)
 
-  def apply(messageFunction: ⇒ String): Problem =
+  def apply(messageFunction: => String): Problem =
     new Lazy(messageFunction)
 
   def pure(message: String): Problem =
@@ -63,8 +63,8 @@ object Problem
   def pure(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 
-  def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
-    new FromLazyThrowable(() ⇒ throwable)
+  def fromLazyThrowable(throwable: => Throwable): Problem =
+    new FromLazyThrowable(() => throwable)
 
   private[Problem] trait Simple extends Problem {
     protected def rawMessage: String
@@ -73,15 +73,15 @@ object Problem
     // A val, to compute message only once.
     final lazy val message =
       rawMessage match {
-        case null ⇒ "A problem occurred (null)"
-        case "" ⇒ "A problem occurred (no message)"
-        case o ⇒ o
+        case null => "A problem occurred (null)"
+        case "" => "A problem occurred (no message)"
+        case o => o
       }
 
     final def throwable =
       cause match {
-        case Some(p: FromEagerThrowable) ⇒ new ProblemException(this, p.throwable)
-        case _ ⇒ new ProblemException(this)
+        case Some(p: FromEagerThrowable) => new ProblemException(this, p.throwable)
+        case _ => new ProblemException(this)
       }
 
     override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
@@ -96,8 +96,8 @@ object Problem
     def rawMessage = CodedMessages.problemCodeToMessage(code, arguments)
 
     override def equals(o: Any) = o match {
-      case o: HasCode ⇒ code == o.code && arguments == o.arguments && cause == o.cause
-      case _ ⇒ false
+      case o: HasCode => code == o.code && arguments == o.arguments && cause == o.cause
+      case _ => false
     }
 
     override def toString = {
@@ -128,7 +128,7 @@ object Problem
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
-  class Lazy protected[problem](messageFunction: ⇒ String, val cause: Option[Problem] = None) extends Simple {
+  class Lazy protected[problem](messageFunction: => String, val cause: Option[Problem] = None) extends Simple {
     protected def rawMessage = messageFunction
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
@@ -140,7 +140,7 @@ object Problem
     multiple(problems.toImmutableSeq)
 
   def multiple(problems: Iterable[String]): Multiple =
-    Multiple(problems.map(o ⇒ new Lazy(o)))
+    Multiple(problems.map(o => new Lazy(o)))
 
   final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
@@ -156,13 +156,13 @@ object Problem
     def cause = None
 
     override def equals(o: Any) = o match {
-      case o: Multiple ⇒
+      case o: Multiple =>
         (problems, o.problems) match {
-          case (problems: Set[Problem], _) ⇒ problems == o.problems.toSet  // Ignore ordering (used in tests)
-          case (_, o: Set[Problem])        ⇒ problems.toSet == o           // Ignore ordering (used in tests)
-          case _                           ⇒ problems == o.problems
+          case (problems: Set[Problem], _) => problems == o.problems.toSet  // Ignore ordering (used in tests)
+          case (_, o: Set[Problem])        => problems.toSet == o           // Ignore ordering (used in tests)
+          case _                           => problems == o.problems
         }
-        case _ ⇒ super.equals(o)
+        case _ => super.equals(o)
       }
 
     override def hashCode = problems.map(_.hashCode).sum  // Ignore ordering (used in tests)
@@ -181,7 +181,7 @@ object Problem
       None
   }
 
-  private final class FromLazyThrowable(throwableFunction: () ⇒ Throwable) extends FromThrowable
+  private final class FromLazyThrowable(throwableFunction: () => Throwable) extends FromThrowable
   {
     private lazy val throwable_ = throwableFunction()
     lazy val message = throwable_.toStringWithCauses
@@ -196,26 +196,26 @@ object Problem
   }
 
   implicit val semigroup: Semigroup[Problem] = {
-    case (a: Problem, b: FromThrowable) ⇒
+    case (a: Problem, b: FromThrowable) =>
       Problem.fromLazyThrowable(new ProblemException(a, b.throwable) with NoStackTrace)
 
-    case (a: FromThrowable, b: Problem) ⇒
+    case (a: FromThrowable, b: Problem) =>
       Problem.fromLazyThrowable {
         val t = new ProblemException(a, b.throwable) with NoStackTrace
         t.setStackTrace(a.throwable.getStackTrace)
         t
       }
 
-    case (a: Simple, b: Simple) ⇒
+    case (a: Simple, b: Simple) =>
       Multiple(a :: b :: Nil)
 
-    case (a: Simple, b: Multiple) ⇒
+    case (a: Simple, b: Multiple) =>
       Multiple(a +: b.problems.toVector)
 
-    case (a: Multiple, b: Lazy) ⇒
+    case (a: Multiple, b: Lazy) =>
       Multiple(a.problems.toVector :+ b)
 
-    case (a: Multiple, b: Problem) ⇒
+    case (a: Multiple, b: Problem) =>
       Multiple(a.problems.toVector :+ new Lazy(b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
   }
 
@@ -235,32 +235,32 @@ object Problem
     else
       prefix + "\n & "
 
-  implicit val jsonEncoder: ObjectEncoder[Problem] = problem ⇒
+  implicit val jsonEncoder: ObjectEncoder[Problem] = problem =>
     JsonObject.fromIterable(
-      ("message" → Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
+      ("message" -> Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
         problem match {
-          case problem: HasCode ⇒
-            ("code" → problem.code.asJson) ::
-            ("arguments" → (problem.arguments.nonEmpty ? problem.arguments).asJson) ::
+          case problem: HasCode =>
+            ("code" -> problem.code.asJson) ::
+            ("arguments" -> (problem.arguments.nonEmpty ? problem.arguments).asJson) ::
             Nil
 
-          case _: Problem ⇒
+          case _: Problem =>
             Nil
         }))
 
   val typedJsonEncoder: ObjectEncoder[Problem] = {
-    val typeField = "TYPE" → Json.fromString("Problem")
-    problem ⇒ typeField +: jsonEncoder.encodeObject(problem)
+    val typeField = "TYPE" -> Json.fromString("Problem")
+    problem => typeField +: jsonEncoder.encodeObject(problem)
   }
 
   implicit val jsonDecoder: Decoder[Problem] =
-    c ⇒ for {
-      maybeCode ← c.get[Option[ProblemCode]]("code")
-      arguments ← c.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
-      message ← c.get[String]("message")
+    c => for {
+      maybeCode <- c.get[Option[ProblemCode]]("code")
+      arguments <- c.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
+      message <- c.get[String]("message")
     } yield
       maybeCode match {
-        case None ⇒ Problem.pure(message)
-        case Some(code) ⇒ StaticMessage(code, arguments, message)
+        case None => Problem.pure(message)
+        case Some(code) => StaticMessage(code, arguments, message)
       }
 }

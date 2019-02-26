@@ -45,7 +45,7 @@ extends Actor {
 
   override def preStart() = {
     super.preStart()
-    for (t ← stoppedPromise.future.failed) readyPromise.tryFailure(t)
+    for (t <- stoppedPromise.future.failed) readyPromise.tryFailure(t)
     agentActor ! AgentActor.Input.Start
   }
 
@@ -61,13 +61,13 @@ extends Actor {
   }
 
   def receive = {
-    case AgentActor.Output.Ready ⇒
+    case AgentActor.Output.Ready =>
       readyPromise.success(Ready(commandHandler, agentHandle))
 
-    case Input.ExternalCommand(userId, cmd, response) ⇒  // For RunningMaster
+    case Input.ExternalCommand(userId, cmd, response) =>  // For RunningMaster
       agentHandle.executeCommand(cmd, userId, response)
 
-    case Terminated(`agentActor`) ⇒
+    case Terminated(`agentActor`) =>
       logger.debug("AgentActor has stopped")
       stoppedPromise.trySuccess(Completed)
       context.stop(self)

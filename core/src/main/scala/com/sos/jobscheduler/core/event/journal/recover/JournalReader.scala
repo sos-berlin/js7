@@ -85,10 +85,10 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     while (nextSnapshotJson().isDefined) {}
     if (!eventHeaderRead) { // No snapshot section
       jsonReader.read() match {
-        case Some(PositionAnd(_, EventHeader)) ⇒
+        case Some(PositionAnd(_, EventHeader)) =>
           eventHeaderRead = true
-        case None ⇒
-        case Some(positionAndJson) ⇒
+        case None =>
+        case Some(positionAndJson) =>
           throw new CorruptJournalException("Event header is missing", journalFile, positionAndJson)
       }
     }
@@ -96,7 +96,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   }
 
   def nextSnapshots(): Iterator[Any] =
-    untilNoneIterator(nextSnapshotJson()) map (json ⇒ journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
+    untilNoneIterator(nextSnapshotJson()) map (json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
 
   @tailrec
   private def nextSnapshotJson(): Option[Json] = {
@@ -105,13 +105,13 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
     val json = positionAndJson.value
     if (!snapshotHeaderRead)
       json match {
-        case EventHeader ⇒  // Journal file has no snapshot section?
+        case EventHeader =>  // Journal file has no snapshot section?
           eventHeaderRead = true
           None
-        case SnapshotHeader ⇒
+        case SnapshotHeader =>
           snapshotHeaderRead = true
           nextSnapshotJson()
-        case _ ⇒
+        case _ =>
           throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndJson)
       }
     else if (json.isObject)
@@ -141,7 +141,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
         Some(readNextCommitted())
       else
         nextEvent2()
-    for (stamped ← result) {
+    for (stamped <- result) {
       _eventId = stamped.eventId
     }
     result
@@ -150,12 +150,12 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   private def nextEvent2(): Option[Stamped[KeyedEvent[E]]] =
     if (!eventHeaderRead)
       jsonReader.read() match {
-        case Some(PositionAnd(_, EventHeader)) ⇒
+        case Some(PositionAnd(_, EventHeader)) =>
           eventHeaderRead = true
           nextEvent3()
-        case Some(positionAndJson) ⇒
+        case Some(positionAndJson) =>
           throw new CorruptJournalException(s"Event header is missing", journalFile, positionAndJson)
-        case None ⇒
+        case None =>
           None
       }
     else
@@ -164,10 +164,10 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   @tailrec
   private def nextEvent3(): Option[Stamped[KeyedEvent[E]]] =
     jsonReader.read() match {
-      case None ⇒ None
-      case Some(positionAndJson) ⇒
+      case None => None
+      case Some(positionAndJson) =>
         positionAndJson.value match {
-          case json if json.isObject ⇒
+          case json if json.isObject =>
             val stampedEvent = deserialize(positionAndJson.value)
             if (stampedEvent.eventId <= _eventId)
               throw new CorruptJournalException(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
@@ -175,22 +175,22 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
             if (_totalEventCount != -1) _totalEventCount += 1
             Some(stampedEvent)
 
-          case Transaction ⇒
+          case Transaction =>
             if (transaction.isInTransaction) throw new CorruptJournalException("Duplicate/nested transaction", journalFile, positionAndJson)
             transaction.begin()
             def read() =
               try jsonReader.read()
-              catch { case NonFatal(t) ⇒
+              catch { case NonFatal(t) =>
                 transaction.clear()  // Free memory (in case jsonReader has been closed asynchronously)
                 throw t
               }
             @tailrec def loop(): Unit =
               read() match {
-                case None ⇒
+                case None =>
                   transaction.clear() // File ends before transaction is committed.
-                case Some(PositionAnd(_, Commit)) ⇒
+                case Some(PositionAnd(_, Commit)) =>
                   transaction.commit()
-                case Some(o) if o.value.isObject ⇒
+                case Some(o) if o.value.isObject =>
                   transaction.add(o.copy(value = deserialize(o.value)))
                   loop()
               }
@@ -201,13 +201,13 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
             } else
               nextEvent3()
 
-          case Commit ⇒  // Only after seek into a transaction
+          case Commit =>  // Only after seek into a transaction
             nextEvent3()
 
-          case EventFooter ⇒
+          case EventFooter =>
             None
 
-          case _ ⇒
+          case _ =>
             throw new CorruptJournalException("Missing event footer", journalFile, positionAndJson)
         }
     }

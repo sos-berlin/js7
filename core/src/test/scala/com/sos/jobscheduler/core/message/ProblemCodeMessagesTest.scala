@@ -16,15 +16,15 @@ final class ProblemCodeMessagesTest extends FreeSpec
   }
 
   "TestCodeProblem.message" in {
-    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).message == "TestMessage argument=ARGUMENT")
+    assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).message == "TestMessage argument=ARGUMENT")
   }
 
   "TestCodeProblem.toString" in {
-    assert(TestCodeProblem(Map("argument" → "ARGUMENT")).toString == "TestCode: TestMessage argument=ARGUMENT")
+    assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).toString == "TestCode: TestMessage argument=ARGUMENT")
   }
 
   "TestCodeProblem with extra arguments" in {
-    assert(TestCodeProblem(Map("argument" → "ARGUMENT", "extra1" → "EXTRA1", "extra2" → "EXTRA2")).toString ==
+    assert(TestCodeProblem(Map("argument" -> "ARGUMENT", "extra1" -> "EXTRA1", "extra2" -> "EXTRA2")).toString ==
       "TestCode: TestMessage argument=ARGUMENT (extra1=EXTRA1, extra2=EXTRA2)")
   }
 

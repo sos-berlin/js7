@@ -19,7 +19,7 @@ import scala.concurrent.Future
 final class BlockingDirectoryWatcherTest extends FreeSpec {
 
   "waitForNextChange" in {
-    withCloser { implicit closer ⇒
+    withCloser { implicit closer =>
       val directory = createTempDirectory("sos-") withCloser delete
       val matchingPath = directory / "MATCHING-FILE"
       val watcher  = new BlockingDirectoryWatcher(directory, _ == matchingPath).closeWithCloser

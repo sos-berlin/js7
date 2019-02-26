@@ -26,7 +26,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   "Overwrites file" in {
     val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
     file.contentString = "garbage"
-    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ ⇒
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ =>
       assert(size(file) == 0)
     }
     assert(!exists(file))
@@ -35,7 +35,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   "Creates file" in {
     val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
     delete(file)
-    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ ⇒
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ =>
       assert(size(file) == 0)
     }
     assert(!exists(file))
@@ -95,11 +95,11 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
 
   "Tries to suppress code injection" in {
     val evilJobPaths = Vector("/x$(evil)", "/x|evil ", "/x'|evil")
-    for ((evilJobPath, i) ← evilJobPaths.zipWithIndex) {
+    for ((evilJobPath, i) <- evilJobPaths.zipWithIndex) {
       crashKillScript.add(AgentTaskId(s"$i"), pid = None, TaskId(i))
     }
-    assert(lines.toSet == (evilJobPaths.indices map { i ⇒ s""""test-kill.sh" -kill-agent-task-id=$i -master-task-id=$i""" }).toSet)
-    for (i ← evilJobPaths.indices) {
+    assert(lines.toSet == (evilJobPaths.indices map { i => s""""test-kill.sh" -kill-agent-task-id=$i -master-task-id=$i""" }).toSet)
+    for (i <- evilJobPaths.indices) {
       crashKillScript.remove(AgentTaskId(s"$i"))
     }
   }

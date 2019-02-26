@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 object ScalaUtils
 {
   @inline
-  def reuseIfEqual[A <: AnyRef](a: A)(f: A ⇒ A): A =
+  def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =
     reuseIfEqual(a, f(a))
 
   @inline
@@ -47,8 +47,8 @@ object ScalaUtils
   /**
     * Replaces toString of the body (argumentless function), for logging and debugging.
     */
-  def function0WithToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
-    new (() ⇒ R) {
+  def function0WithToString[R](lazyString: => String)(body: => R): () => R =
+    new (() => R) {
       def apply() = body
       override def toString() = lazyString
     }
@@ -56,23 +56,23 @@ object ScalaUtils
   /**
    * Replaces toString of the function, for logging and debugging.
    */
-  def function1WithToString[A, R](string: String)(function: A ⇒ R): A ⇒ R =
-    new (A ⇒ R) {
+  def function1WithToString[A, R](string: String)(function: A => R): A => R =
+    new (A => R) {
       def apply(a: A) = function(a)
       override def toString() = string
     }
 
   object implicits {
-    implicit final class ToStringFunction1[A, R](private val delegate: A ⇒ R) {
-      def withToString(string: String): A ⇒ R =
-        new (A ⇒ R) {
+    implicit final class ToStringFunction1[A, R](private val delegate: A => R) {
+      def withToString(string: String): A => R =
+        new (A => R) {
           def apply(a: A) = delegate(a)
           override def toString() = string
         }
     }
   }
 
-  def namedIdentity[A] = new (A ⇒ A) {
+  def namedIdentity[A] = new (A => A) {
     def apply(a: A) = a
     override def toString = "identity"
   }
@@ -81,9 +81,9 @@ object ScalaUtils
     def rootCause: Throwable = {
       @tailrec def cause(t: Throwable): Throwable =
         t.getCause match {
-          case null ⇒ t
-          case o if o == t ⇒ t
-          case o ⇒ cause(o)
+          case null => t
+          case o if o == t => t
+          case o => cause(o)
         }
       cause(delegate)
     }
@@ -112,13 +112,13 @@ object ScalaUtils
         msg
       else
         delegate match {
-          case _: java.util.NoSuchElementException ⇒
+          case _: java.util.NoSuchElementException =>
             delegate.toString stripPrefix "java.util."
 
-          case _: java.lang.IllegalStateException ⇒
+          case _: java.lang.IllegalStateException =>
             delegate.toString stripPrefix "java.lang."
 
-          case _ ⇒
+          case _ =>
             delegate.toString
         }
     }
@@ -143,43 +143,43 @@ object ScalaUtils
   implicit final class RichAny[A](private val delegate: A) extends AnyVal {
     def substitute(substitution: (A, A)): A = substitute(substitution._1, substitution._2)
 
-    @inline def substitute(when: A, _then: ⇒ A): A =
+    @inline def substitute(when: A, _then: => A): A =
       if (delegate == when) _then else delegate
   }
 
   implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal {
-    def switchOn(body: ⇒ Unit) = if (delegate.compareAndSet(false, true)) body
-    def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
+    def switchOn(body: => Unit) = if (delegate.compareAndSet(false, true)) body
+    def switchOff(body: => Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
   implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B]) extends AnyVal {
     def checked(key: A): Checked[B] =
       toChecked(key)
 
-    def checked(key: A, notFound: ⇒ Problem): Checked[B] =
-      toChecked_(_ ⇒ notFound)(key)
+    def checked(key: A, notFound: => Problem): Checked[B] =
+      toChecked_(_ => notFound)(key)
 
-    def toChecked: A ⇒ Checked[B] =
-      toChecked_(key ⇒ Problem(s"No such key '$key'"))
+    def toChecked: A => Checked[B] =
+      toChecked_(key => Problem(s"No such key '$key'"))
 
-    private def toChecked_(notFound: A ⇒ Problem): A ⇒ Checked[B] = {
+    private def toChecked_(notFound: A => Problem): A => Checked[B] = {
       val lifted = underlying.lift
-      key ⇒ lifted(key) match {
-        case Some(b) ⇒ Valid(b)
-        case None ⇒ Invalid(notFound(key))
+      key => lifted(key) match {
+        case Some(b) => Valid(b)
+        case None => Invalid(notFound(key))
       }
     }
 
-    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB =
-      underlying.applyOrElse(key, (_: A) ⇒ default)
+    def getOrElse[BB >: B](key: A, default: => BB): BB =
+      underlying.applyOrElse(key, (_: A) => default)
 
     /** applyOrElse calls isDefined, not optimized. */
-    def map[C](f: B ⇒ C): PartialFunction[A, C] =
+    def map[C](f: B => C): PartialFunction[A, C] =
       mapPartialFunction(f)
 
     /** applyOrElse calls isDefined, not optimized. */
-    def mapPartialFunction[C](f: B ⇒ C): PartialFunction[A, C] = {
-      case o if underlying.isDefinedAt(o) ⇒ f(underlying(o))
+    def mapPartialFunction[C](f: B => C): PartialFunction[A, C] = {
+      case o if underlying.isDefinedAt(o) => f(underlying(o))
     }
   }
 
@@ -192,7 +192,7 @@ object ScalaUtils
   }
 
   implicit final class RichOption[A](val underlying: Option[A]) extends AnyVal {
-    def whenEmpty(f: ⇒ Unit): underlying.type = {
+    def whenEmpty(f: => Unit): underlying.type = {
       if (underlying.isEmpty) {
         f
       }
@@ -203,46 +203,46 @@ object ScalaUtils
   implicit final class RichEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
     def toImmediateFuture: Future[R] =
       withStackTrace match {
-        case Left(t) ⇒ Future.failed(t)
-        case Right(o) ⇒ Future.successful(o)
+        case Left(t) => Future.failed(t)
+        case Right(o) => Future.successful(o)
       }
 
     def orThrow: R =
       underlying match {
-        case Left(t) ⇒ throw t.appendCurrentStackTrace
-        case Right(o) ⇒ o
+        case Left(t) => throw t.appendCurrentStackTrace
+        case Right(o) => o
       }
 
     /** Converts an `Either[Throwable, A]` to a Checked[A] with complete Throwable. */
     def toChecked: Checked[R] =
       underlying match {
-        case Left(t) ⇒ Invalid(Problem.pure(t.appendCurrentStackTrace))
-        case Right(o) ⇒ Valid(o)
+        case Left(t) => Invalid(Problem.pure(t.appendCurrentStackTrace))
+        case Right(o) => Valid(o)
       }
 
     /** Converts an `Either[Throwable, A]` to a Checked[A] with the `Throwable`'s message only (toStringWithCauses). */
     def toSimpleChecked: Checked[R] =
       underlying match {
-        case Left(t) ⇒ Invalid(Problem.pure(Option(t.getMessage) getOrElse t.toStringWithCauses))
-        case Right(o) ⇒ Valid(o)
+        case Left(t) => Invalid(Problem.pure(Option(t.getMessage) getOrElse t.toStringWithCauses))
+        case Right(o) => Valid(o)
       }
 
     def withStackTrace: Either[Throwable, R] =
       underlying match {
-        case o: Right[L, R] ⇒
+        case o: Right[L, R] =>
           o
 
-        case Left(t) if t.getStackTrace.nonEmpty ⇒
+        case Left(t) if t.getStackTrace.nonEmpty =>
           Left(t)
 
-        case Left(t) ⇒
+        case Left(t) =>
           t.fillInStackTrace()
           Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
       }
   }
 
   implicit final class RichValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal {
-    def orThrow: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
+    def orThrow: A = underlying.valueOr(t => throw t.appendCurrentStackTrace)
   }
 
   /** Simple implementation (for tests), converts the string to an Array[Byte],

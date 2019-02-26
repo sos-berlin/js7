@@ -18,7 +18,7 @@ trait OwnActorSynchronizer[A] extends AutoCloseable with ActorSynchronizer[A] {
     actor ! PoisonPill
   }
 
-  override def apply(function: ⇒ A): Future[A] = {
+  override def apply(function: => A): Future[A] = {
     if (terminated) throw new IllegalStateException("Synchronizer actor has been terminated")  // Do not rely on it. It races with close.
     super.apply(function)
   }

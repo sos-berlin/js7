@@ -96,7 +96,7 @@ final class RepoTest extends FreeSpec
   "newVersionId returns unique value" in {
     var repo = testRepo
     val n = 100
-    for (_ ← 1 to n) {
+    for (_ <- 1 to n) {
       repo = repo.applyEvent(VersionAdded(repo.newVersionId())).orThrow
     }
     assert(repo.versions.size - testRepo.versions.size == n)
@@ -113,8 +113,8 @@ final class RepoTest extends FreeSpec
   }
 
   "currentTyped" in {
-    assert(testRepo.currentTyped[AFileBased] == Map(a3.path → a3))
-    assert(testRepo.currentTyped[BFileBased] == Map(by2.path → by2))
+    assert(testRepo.currentTyped[AFileBased] == Map(a3.path -> a3))
+    assert(testRepo.currentTyped[BFileBased] == Map(by2.path -> by2))
   }
 
   "toEvent" - {

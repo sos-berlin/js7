@@ -37,10 +37,10 @@ object EventDirectives {
       classTag: ClassTag[E])
   : Directive1[EventRequest[E]] =
     new Directive1[EventRequest[E]] {
-      def tapply(inner: Tuple1[EventRequest[E]] ⇒ Route) =
+      def tapply(inner: Tuple1[EventRequest[E]] => Route) =
         someEventRequest[E](defaultAfter, defaultTimeout, defaultDelay, defaultReturnType)(keyedEventTypedJsonCodec, classTag) {
-          case request: EventRequest[E] ⇒ inner(Tuple1(request))
-          case _ ⇒ complete(Problem("Parameter limit must be positive here"))
+          case request: EventRequest[E] => inner(Tuple1(request))
+          case _ => complete(Problem("Parameter limit must be positive here"))
         }
     }
 
@@ -56,18 +56,18 @@ object EventDirectives {
       classTag: ClassTag[E])
   : Directive1[SomeEventRequest[E]] =
     new Directive1[SomeEventRequest[E]] {
-      def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
+      def tapply(inner: Tuple1[SomeEventRequest[E]] => Route) =
         parameter("return".?) {
           _ orElse defaultReturnType match {
-            case None ⇒ reject(ValidationRejection("Missing parameter return="))
-            case Some(returnType) ⇒
+            case None => reject(ValidationRejection("Missing parameter return="))
+            case Some(returnType) =>
               val eventSuperclass = implicitClass[E]
               val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
-              val eventClasses = returnTypeNames flatMap { t ⇒
+              val eventClasses = returnTypeNames flatMap { t =>
                 keyedEventTypedJsonCodec.typenameToClassOption(t)
               } collect {
-                case eventClass_ if eventSuperclass isAssignableFrom eventClass_ ⇒ eventClass_
-                case eventClass_ if eventClass_ isAssignableFrom eventSuperclass ⇒ eventSuperclass
+                case eventClass_ if eventSuperclass isAssignableFrom eventClass_ => eventClass_
+                case eventClass_ if eventClass_ isAssignableFrom eventSuperclass => eventSuperclass
               }
               if (eventClasses.size != returnTypeNames.size)
                 reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
@@ -82,11 +82,11 @@ object EventDirectives {
 
   private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
     Unmarshaller.strict {
-      case "infinite" ⇒ Duration.Inf
-      case "∞" ⇒ Duration.Inf
-      case "-∞" ⇒ Duration.MinusInf
-      case "undefined" ⇒ Duration.Undefined
-      case o ⇒ stringToFiniteDuration(o)
+      case "infinite" => Duration.Inf
+      case "∞" => Duration.Inf
+      case "-∞" => Duration.MinusInf
+      case "undefined" => Duration.Undefined
+      case o => stringToFiniteDuration(o)
     }
 
   private def stringToFiniteDuration(string: String) =
@@ -97,24 +97,24 @@ object EventDirectives {
     defaultAfter: Option[EventId],
     defaultTimeout: Duration,
     defaultDelay: FiniteDuration,
-    inner: Tuple1[SomeEventRequest[E]] ⇒ Route)
+    inner: Tuple1[SomeEventRequest[E]] => Route)
   : Route =
     parameter("limit" ? Int.MaxValue) {
-      case 0 ⇒
+      case 0 =>
         reject(ValidationRejection("Invalid limit=0"))
 
-      case limit if limit > 0 ⇒
+      case limit if limit > 0 =>
         parameter("after".as[EventId].?) {
           _ orElse defaultAfter match {
-            case None ⇒ reject(ValidationRejection("Missing parameter after="))
-            case Some(after) ⇒
-              parameter("timeout" ? defaultTimeout) { timeout ⇒
-                parameter("delay" ? defaultDelay) { delay ⇒
-                  parameter("tornOlder" ? (Duration.Inf: Duration)) { tornOlder ⇒
-                    optionalHeaderValueByType[`Timeout-Access`](()) { h ⇒  // Setting akka.http.server.request-timeout
+            case None => reject(ValidationRejection("Missing parameter after="))
+            case Some(after) =>
+              parameter("timeout" ? defaultTimeout) { timeout =>
+                parameter("delay" ? defaultDelay) { delay =>
+                  parameter("tornOlder" ? (Duration.Inf: Duration)) { tornOlder =>
+                    optionalHeaderValueByType[`Timeout-Access`](()) { h =>  // Setting akka.http.server.request-timeout
                       val akkaTimeout = h map (_.timeoutAccess.timeout) match {
-                        case Some(o: FiniteDuration) ⇒ if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
-                        case _ ⇒ timeout
+                        case Some(o: FiniteDuration) => if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
+                        case _ => timeout
                       }
                       val eventRequest = EventRequest[E](eventClasses, after = after,
                         timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit, tornOlder = tornOlder)
@@ -126,8 +126,8 @@ object EventDirectives {
           }
         }
 
-      case limit if limit < 0 ⇒
-        parameter("after" ? EventId.BeforeFirst) { after ⇒
+      case limit if limit < 0 =>
+        parameter("after" ? EventId.BeforeFirst) { after =>
           inner(Tuple1(ReverseEventRequest[E](eventClasses, after = after, limit = -limit)))
         }
     }

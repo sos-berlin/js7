@@ -50,7 +50,7 @@ final class FilePoolTest extends FreeSpec {
 
   "close" in {
     filePool.close()
-    for (o ← Array(a, b, c)) {
+    for (o <- Array(a, b, c)) {
       assert(!exists(o.shellReturnValuesProvider.file))
     }
   }

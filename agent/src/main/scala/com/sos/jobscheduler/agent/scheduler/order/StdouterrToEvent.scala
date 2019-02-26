@@ -19,7 +19,7 @@ import scala.concurrent.{Future, Promise}
 private[order] class StdouterrToEvent(
   orderActorContext: ActorContext,
   conf: Conf,
-  writeEvent: (StdoutOrStderr, String) ⇒ Future[Accepted])
+  writeEvent: (StdoutOrStderr, String) => Future[Accepted])
   (implicit scheduler: Scheduler)
 {
   import conf.{chunkSize, delay, noDelayAfter}
@@ -29,8 +29,8 @@ private[order] class StdouterrToEvent(
   private var timer: Cancelable = null
 
   val writers = Map[StdoutOrStderr, Writer](
-    Stdout → new StdWriter(Stdout, self, size = chunkSize, passThroughSize = chunkSize / 2),
-    Stderr → new StdWriter(Stderr, self, size = chunkSize, passThroughSize = chunkSize / 2))
+    Stdout -> new StdWriter(Stdout, self, size = chunkSize, passThroughSize = chunkSize / 2),
+    Stderr -> new StdWriter(Stderr, self, size = chunkSize, passThroughSize = chunkSize / 2))
 
   def close(): Unit = {
     if (timer != null) {
@@ -49,18 +49,18 @@ private[order] class StdouterrToEvent(
     }
 
   def handle(msg: Stdouterr): Unit = msg match {
-    case Stdouterr.BufferingStarted ⇒
+    case Stdouterr.BufferingStarted =>
       onBufferingStarted()
 
-    case Stdouterr.FlushStdoutStderr ⇒
+    case Stdouterr.FlushStdoutStderr =>
       flushStdoutAndStderr()
 
-    case Stdouterr.StdoutStderrWritten(t, chunk, promise) ⇒
+    case Stdouterr.StdoutStderrWritten(t, chunk, promise) =>
       promise.completeWith(writeEvent(t, chunk))
   }
 
   private def flushStdoutAndStderr(): Unit = {
-    for (o ← writers.values) o.flush()
+    for (o <- writers.values) o.flush()
     lastEventAt = now
     timer = null
   }

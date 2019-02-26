@@ -20,7 +20,7 @@ import scala.collection.mutable
  *
  * @author Joacim Zschimmer
  */
-final class SessionActor[S <: Session] private(newSession: SessionInit[S#User] ⇒ S, config: Config)
+final class SessionActor[S <: Session] private(newSession: SessionInit[S#User] => S, config: Config)
   (implicit scheduler: Scheduler)
 extends Actor {
 
@@ -36,33 +36,33 @@ extends Actor {
   }
 
   def receive = {
-    case Command.Login(user: S#User, tokenOption, isEternalSession) ⇒
-      for (t ← tokenOption) delete(t, reason = "secondlogin")
+    case Command.Login(user: S#User, tokenOption, isEternalSession) =>
+      for (t <- tokenOption) delete(t, reason = "secondlogin")
       val token = SessionToken(SecretStringGenerator.newSecretString())
       assert(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(numberIterator.next(), token, user))
       if (!isEternalSession) {
         session.touch(sessionTimeout)
       }
-      tokenToSession.insert(session.sessionToken → session)
+      tokenToSession.insert(session.sessionToken -> session)
       logger.info(s"Session #${session.sessionNumber} for user '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
       sender() ! token
       scheduleNextCleanup()
 
-    case Command.Logout(token) ⇒
+    case Command.Logout(token) =>
       delete(token, reason = "logout")
       sender() ! Completed
 
-    case Command.Get(token, userOption: Option[S#User]) ⇒
+    case Command.Get(token, userOption: Option[S#User]) =>
       val sessionOption = (tokenToSession.get(token), userOption) match {
-        case (None, _) ⇒
-          logger.debug("Rejecting unknown session token" + userOption.fold("")(o ⇒ s" (user '${o.id.string}')"))
+        case (None, _) =>
+          logger.debug("Rejecting unknown session token" + userOption.fold("")(o => s" (user '${o.id.string}')"))
           None
 
-        case (Some(session), Some(user)) if user.id != session.currentUser.id ⇒
+        case (Some(session), Some(user)) if user.id != session.currentUser.id =>
           tryUpdateLatelyAuthenticatedUser(user, session)
 
-        case (Some(session), _) ⇒
+        case (Some(session), _) =>
           if (handleTimeout(session))
             None
           else {
@@ -75,10 +75,10 @@ extends Actor {
       val checkedSession = sessionOption toChecked Problem("Invalid session token")
       sender() ! checkedSession
 
-    case Command.GetCount ⇒
+    case Command.GetCount =>
       sender() ! tokenToSession.size
 
-    case CleanUp ⇒
+    case CleanUp =>
       logger.trace("CleanUp")
       tokenToSession.values.toVector foreach handleTimeout
       nextCleanup = null
@@ -106,7 +106,7 @@ extends Actor {
   }
 
   private def scheduleNextCleanup(): Unit =
-    if (nextCleanup == null && tokenToSession.values.exists(o ⇒ !o.isEternal)) {
+    if (nextCleanup == null && tokenToSession.values.exists(o => !o.isEternal)) {
       nextCleanup = scheduler.scheduleOnce(cleanupInterval) {
         self ! CleanUp
       }
@@ -120,7 +120,7 @@ extends Actor {
       false
 
   private def delete(token: SessionToken, reason: String): Unit =
-    tokenToSession.remove(token) foreach { session ⇒
+    tokenToSession.remove(token) foreach { session =>
       logger.info(s"Session #${session.sessionNumber} for User '${session.currentUser.id}' deleted due to $reason")
     }
 }
@@ -129,7 +129,7 @@ object SessionActor
 {
   private val logger = Logger(getClass)
 
-  private[session] def props[S <: Session](newSession: SessionInit[S#User] ⇒ S, config: Config)(implicit s: Scheduler) =
+  private[session] def props[S <: Session](newSession: SessionInit[S#User] => S, config: Config)(implicit s: Scheduler) =
     Props { new SessionActor[S](newSession, config) }
 
   private[session] sealed trait Command

@@ -15,7 +15,7 @@ import scala.concurrent.duration._
   * @author Joacim Zschimmer
   */
 trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
-  this: Suite ⇒
+  this: Suite =>
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
 

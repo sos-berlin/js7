@@ -8,11 +8,11 @@ import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Mis
  */
 trait LicenseKeyChecker {
 
-  final def require(parameter: Parameter, failureText: ⇒ String = ""): Unit = {
+  final def require(parameter: Parameter, failureText: => String = ""): Unit = {
     apply(parameter) match {
-      case OK ⇒ OK
-      case Expired ⇒ throw new LicenseKeyParameterExpiredException(parameter, failureText = failureText)
-      case Missing ⇒ throw new LicenseKeyParameterIsMissingException(parameter, failureText = failureText)
+      case OK => OK
+      case Expired => throw new LicenseKeyParameterExpiredException(parameter, failureText = failureText)
+      case Missing => throw new LicenseKeyParameterIsMissingException(parameter, failureText = failureText)
     }
   }
 

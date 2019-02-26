@@ -21,8 +21,8 @@ object TypedPaths
     val string = TypedPath.fileToString(relativePath)
     companions.iterator
       .map(_.fromFile(string))
-      .collectFirst { case Some(o) ⇒
-        o flatMap { case (typedPath, sourceType) ⇒ typedPath.officialSyntaxChecked map (_ → sourceType) }
+      .collectFirst { case Some(o) =>
+        o flatMap { case (typedPath, sourceType) => typedPath.officialSyntaxChecked map (_ -> sourceType) }
       }
       .toChecked(AlienFileProblem(relativePath))
       .flatten

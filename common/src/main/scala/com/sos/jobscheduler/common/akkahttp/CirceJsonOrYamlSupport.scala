@@ -32,7 +32,7 @@ object CirceJsonOrYamlSupport
     Marshaller.oneOf(yamlMarshaller, jsonMarshaller)  // Accept: */* should return YAML (for command line curl)
 
   private def jsonMarshaller[A](implicit encoder: Encoder[A]): ToEntityMarshaller[A] =
-    Marshaller.withFixedContentType(`application/json`) { value ⇒
+    Marshaller.withFixedContentType(`application/json`) { value =>
       val string = logException(s"jsonMarhaller(${encoder.getClass.getName})") {
         CompactPrinter.pretty(value.asJson)
       }
@@ -40,22 +40,22 @@ object CirceJsonOrYamlSupport
     }
 
   private def yamlMarshaller[A](implicit encoder: Encoder[A]): ToEntityMarshaller[A] =
-    Marshaller.withOpenCharset(`text/plain`) { (value, charset) ⇒
+    Marshaller.withOpenCharset(`text/plain`) { (value, charset) =>
       try {
         val string = logException(s"yamlMarhaller(${encoder.getClass.getName})") {
           CirceToYaml.yaml.dump(jsonToYaml(value.asJson))   // OutOfMemoryError possible: two big objects in memory
         }
         HttpEntity.Strict(ContentType(`text/plain`, charset), ByteString(string.getBytes(charset.nioCharset)))
       } catch {
-        case t: OutOfMemoryError ⇒
+        case t: OutOfMemoryError =>
           logger.error(t.toString)
           throw new RuntimeException(s"While converting to YAML: $t", t)  // To avoid termination of Akka
       }
     }
 
-  private def logException[A](what: ⇒ String)(body: ⇒ A): A =
+  private def logException[A](what: => String)(body: => A): A =
     try body
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       logger.warn(s"jsonMarhaller($what: ${t.toStringWithCauses}", t)
       throw t
     }

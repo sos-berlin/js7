@@ -35,7 +35,7 @@ extends AutoCloseable {
   }
 
   protected final def fileSizeString: String =
-    try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }
+    try toMB(Files.size(file)) catch { case NonFatal(t) => t.toString }
 
   protected def flush(sync: Boolean): Unit = {
     if (!jsonWriter.isFlushed) {

@@ -30,7 +30,7 @@ final class ExecuteTest extends FreeSpec {
   }
 
   "toOrderProcessed" in {
-    val variablesDiff = MapDiff(Map("a" → "A"))
+    val variablesDiff = MapDiff(Map("a" -> "A"))
     assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(0)) == OrderProcessed(variablesDiff, Outcome.Succeeded(ReturnCode(0))))
     assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(1)) == OrderProcessed(variablesDiff, Outcome.Failed(ReturnCode(1))))
     assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(3)) == OrderProcessed(variablesDiff, Outcome.Succeeded(ReturnCode(3))))

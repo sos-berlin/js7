@@ -26,7 +26,7 @@ final class TaskSynchronizerTest extends FreeSpec
     val taskSynchronizer = new TaskSynchronizer[(Int, Int, Int)]
     val futures = 0 until n map newTask map taskSynchronizer.run
     val result = Future.sequence(futures) await 99.seconds
-    assert(result == (0 until n).map(i ⇒ Some((i, 2 * i, 2 * i + 1))))  // Task run sequentially, one after the other
+    assert(result == (0 until n).map(i => Some((i, 2 * i, 2 * i + 1))))  // Task run sequentially, one after the other
     assert(counter.get == 2 * n)
 
     // A late Task

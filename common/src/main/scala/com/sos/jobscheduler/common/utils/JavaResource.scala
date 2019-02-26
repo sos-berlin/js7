@@ -41,8 +41,8 @@ final case class JavaResource(path: String)
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
   def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): immutable.Seq[Path] = {
-    val resourcePathAndDllFiles = for (name ← resourceNames) yield (this / name, directory resolve name)
-    for ((resourcePath, file) ← resourcePathAndDllFiles) {
+    val resourcePathAndDllFiles = for (name <- resourceNames) yield (this / name, directory resolve name)
+    for ((resourcePath, file) <- resourcePathAndDllFiles) {
       resourcePath.copyToFile(file, copyOptions: _*)   // After an exception here, already created files are left !!!
     }
     resourcePathAndDllFiles.toVector map { _._2 }
@@ -59,7 +59,7 @@ final case class JavaResource(path: String)
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
   def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
-    autoClosing(openStream()) { in ⇒
+    autoClosing(openStream()) { in =>
       Files.copy(in, file, copyOptions: _*)
     }
     file
@@ -103,8 +103,8 @@ object JavaResource {
   private def url(resourceName: String): Checked[URL] = {
     val classLoader = Option(Thread.currentThread.getContextClassLoader) getOrElse classOf[JavaResource].getClassLoader
     classLoader.getResource(resourceName) match {
-      case null ⇒ Invalid(Problem(s"Unknown JavaResource '$resourceName'"))
-      case url ⇒
+      case null => Invalid(Problem(s"Unknown JavaResource '$resourceName'"))
+      case url =>
         logger.trace(s"Using JavaResource $url")
         Valid(url)
     }

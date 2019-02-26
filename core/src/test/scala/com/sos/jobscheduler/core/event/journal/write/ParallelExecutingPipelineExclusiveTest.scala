@@ -29,7 +29,7 @@ final class ParallelExecutingPipelineExclusiveTest extends FreeSpec {
       f(0)
     }
     val t = now
-    for (i ← 1 to n) {
+    for (i <- 1 to n) {
        pipeline.blockingAdd {
          f(i)
        }

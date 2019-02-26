@@ -17,7 +17,7 @@ final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends FileBasedRea
   val companion = ScheduledOrderGenerator
 
   def read(id: FileBasedId[ScheduledOrderGeneratorPath], source: ByteString) = {
-    case SourceType.Xml ⇒ ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
+    case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
   }
 
   def convertFromJson(json: Json) = Invalid(Problem("ScheduledOrderGenerator does not yet support JSON (it is for development only, anyway)"))

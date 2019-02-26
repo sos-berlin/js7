@@ -48,7 +48,7 @@ extends JournalWriter[E](append = false)
     jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
     flush(sync = sync)
     logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
-    for (o ← statistics.debugString) logger.debug(o)
+    for (o <- statistics.debugString) logger.debug(o)
   }
 
   override def toString = s"SnapshotJournalWriter(${file.getFileName})"

@@ -34,31 +34,31 @@ final case class Repo private(
   lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
 
   private lazy val pathToVersionToSignedFileBased: Map[TypedPath, Map[VersionId, Option[Signed[FileBased]]]] =
-    idToSignedFileBased.map { case (id, maybeSigned) ⇒ (id.path, id.versionId, maybeSigned) }
+    idToSignedFileBased.map { case (id, maybeSigned) => (id.path, id.versionId, maybeSigned) }
       .groupBy(_._1)
       .mapValuesStrict(_ toKeyedMap (_._2) mapValuesStrict (_._3))
 
   lazy val currentVersion: Map[TypedPath, Signed[FileBased]] =
     for {
-      (path, versionToFileBased) ← pathToVersionToSignedFileBased
-      fileBasedOption ← versionToFileBased.fileBasedOption(versions)
-      fileBased ← fileBasedOption
-    } yield path → fileBased
+      (path, versionToFileBased) <- pathToVersionToSignedFileBased
+      fileBasedOption <- versionToFileBased.fileBasedOption(versions)
+      fileBased <- fileBasedOption
+    } yield path -> fileBased
 
-  private lazy val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, Signed[FileBased]] =
-    Memoizer.nonStrict { companion: FileBased.Companion_ ⇒
+  private lazy val typeToPathToCurrentFileBased: FileBased.Companion_ => Map[TypedPath, Signed[FileBased]] =
+    Memoizer.nonStrict { companion: FileBased.Companion_ =>
       currentVersion collect {
-        case (path, signedFileBased) if signedFileBased.value.companion == companion ⇒
-          path → signedFileBased
+        case (path, signedFileBased) if signedFileBased.value.companion == companion =>
+          path -> signedFileBased
       }
     }
 
   /** Returns the difference to the repo as events. */
   def fileBasedToEvents(versionId: VersionId, changed: Iterable[Signed[FileBased]], deleted: Iterable[TypedPath] = Nil)
   : Checked[Seq[RepoEvent]] =
-    checkVersion(versionId, changed) flatMap { changed ⇒
+    checkVersion(versionId, changed) flatMap { changed =>
       val addedOrChanged = changed flatMap toAddedOrChanged
-      addedOrChanged.checkUniqueness(_.path) map { _ ⇒
+      addedOrChanged.checkUniqueness(_.path) map { _ =>
         val deletedEvents = deleted
           .filterNot(addedOrChanged.map(_.path).toSet)  // delete and change?
           .filter(currentVersion.keySet)  // delete unknown?
@@ -68,29 +68,29 @@ final case class Repo private(
     }
 
   private def checkVersion(versionId: VersionId, signedFileBased: Iterable[Signed[FileBased]]): Checked[Vector[Signed[FileBased]]] =
-    signedFileBased.toVector.traverse(o ⇒ o.value.id.versionId match {
-      case `versionId` ⇒ Valid(o)
-      case _ ⇒ Invalid(Problem(s"Expected version '${versionId.string}' in '${o.value.id}'"))
+    signedFileBased.toVector.traverse(o => o.value.id.versionId match {
+      case `versionId` => Valid(o)
+      case _ => Invalid(Problem(s"Expected version '${versionId.string}' in '${o.value.id}'"))
     })
 
   private def toAddedOrChanged(signedFileBased: Signed[FileBased]): Option[RepoEvent.FileBasedEvent] = {
     val fileBased = signedFileBased.value
     currentVersion.get(fileBased.path) match {
-      //case Some(existing) if existing.value.withVersion(fileBased.id.versionId) == fileBased ⇒
-      case Some(existing) if existing == signedFileBased ⇒
+      //case Some(existing) if existing.value.withVersion(fileBased.id.versionId) == fileBased =>
+      case Some(existing) if existing == signedFileBased =>
         None
 
-      case Some(_) ⇒
+      case Some(_) =>
         Some(FileBasedChanged(fileBased.path, signedFileBased.signedString))
 
-      case None ⇒
+      case None =>
         Some(FileBasedAdded(fileBased.path, signedFileBased.signedString))
     }
   }
 
   def typedCount[A <: FileBased](implicit A: FileBased.Companion[A]): Int =
     idToSignedFileBased.values count {
-      case Some(signedFileBased) if signedFileBased.value.companion == A ⇒ true
+      case Some(signedFileBased) if signedFileBased.value.companion == A => true
       case _ => false
     }
 
@@ -114,19 +114,19 @@ final case class Repo private(
 
   def applyEvent(event: RepoEvent): Checked[Repo] =
     event match {
-      case VersionAdded(version) ⇒
+      case VersionAdded(version) =>
         if (versions exists version.==)
           DuplicateVersionProblem(version)
         else
           Valid(copy(versions = version :: versions))
 
-      case event: FileBasedEvent ⇒
+      case event: FileBasedEvent =>
         if (versions.isEmpty)
           Problem(s"Missing first event VersionAdded for Repo")
         else
           event match {
-            case event @ FileBasedAddedOrChanged(path, signedString) ⇒
-              fileBasedVerifier.verify(signedString).map(_.fileBased).flatMap(fileBased ⇒
+            case event @ FileBasedAddedOrChanged(path, signedString) =>
+              fileBasedVerifier.verify(signedString).map(_.fileBased).flatMap(fileBased =>
                 if (path != fileBased.path)
                   Problem(s"Error in FileBasedAddedOrChanged: path=$path does not equals path=${fileBased.path}")
                 else if (fileBased.path.isAnonymous)
@@ -136,21 +136,21 @@ final case class Repo private(
                 else
                   Valid(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString)))))
 
-            case FileBasedDeleted(path) ⇒
+            case FileBasedDeleted(path) =>
               Valid(addEntry(path, None))
           }
     }
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[Signed[FileBased]]): Repo = {
     val version = versions.head
-    copy(idToSignedFileBased = idToSignedFileBased + ((path % version) → fileBasedOption))
+    copy(idToSignedFileBased = idToSignedFileBased + ((path % version) -> fileBasedOption))
   }
 
   def pathToCurrentId[P <: TypedPath](path: P): Checked[FileBasedId[P]] =
     for {
-      vToF ← pathToVersionToSignedFileBased.checked(path)
-      o ← vToF.fileBasedOption(versions) toChecked Problem(s"No such path '$path'")/*should no happen*/
-      signedFileBased ← o toChecked Problem(s"Has been deleted: $path")
+      vToF <- pathToVersionToSignedFileBased.checked(path)
+      o <- vToF.fileBasedOption(versions) toChecked Problem(s"No such path '$path'")/*should no happen*/
+      signedFileBased <- o toChecked Problem(s"Has been deleted: $path")
     } yield signedFileBased.value.id.asInstanceOf[FileBasedId[P]]
 
   /** Returns the current FileBased to a Path. */
@@ -164,44 +164,44 @@ final case class Repo private(
   /** Returns the FileBased to a FileBasedId. */
   def idToSigned[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[Signed[A]] =
     for {
-      versionToSignedFileBased ← pathToVersionToSignedFileBased.checked(id.path)
-      fileBasedOption ← versionToSignedFileBased.checked(id.versionId) orElse (
+      versionToSignedFileBased <- pathToVersionToSignedFileBased.checked(id.path)
+      fileBasedOption <- versionToSignedFileBased.checked(id.versionId) orElse (
         for {
-          history ← historyBefore(id.versionId)
-          fb ← versionToSignedFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
+          history <- historyBefore(id.versionId)
+          fb <- versionToSignedFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
         } yield fb): Checked[Option[Signed[FileBased]]]
-      signedFileBased ← fileBasedOption.toChecked(DeletedProblem(id))
+      signedFileBased <- fileBasedOption.toChecked(DeletedProblem(id))
     } yield signedFileBased.copy(signedFileBased.value.cast[A])
 
   /** Converts the Repo to an event sequence, regarding only a given type. */
-  def eventsFor(is: TypedPath.AnyCompanion ⇒ Boolean): Seq[RepoEvent] =
+  def eventsFor(is: TypedPath.AnyCompanion => Boolean): Seq[RepoEvent] =
     toEvents collect {
-      case e: VersionAdded ⇒ e
-      case e: FileBasedEvent if is(e.path.companion) ⇒ e
+      case e: VersionAdded => e
+      case e: FileBasedEvent if is(e.path.companion) => e
     }
 
   /** Converts the Repo to an event sequence. */
   private[filebased] def toEvents: Seq[RepoEvent] = {
     val versionToFileBasedOptions: Map[VersionId, Seq[Either[Signed[FileBased/*added/updated*/], TypedPath/*deleted*/]]] =
       pathToVersionToSignedFileBased.toVector.sortBy(_._1)/*for testing*/
-        .flatMap { case (path, versionToFileBasedOpt) ⇒
-          versionToFileBasedOpt map { case (v, opt) ⇒ v → (opt map Left.apply getOrElse Right(path)) }
+        .flatMap { case (path, versionToFileBasedOpt) =>
+          versionToFileBasedOpt map { case (v, opt) => v -> (opt map Left.apply getOrElse Right(path)) }
         }
         .groupBy(_._1).mapValues(_ map (_._2))
     versions.tails
       .map {
-        case Nil ⇒  // Last of tails
+        case Nil =>  // Last of tails
           Vector.empty
-        case version :: history ⇒
+        case version :: history =>
           Vector(VersionAdded(version)) ++
             versionToFileBasedOptions.getOrElse(version, Nil).map {
-              case Left(signedFileBased) ⇒
+              case Left(signedFileBased) =>
                 val vToF = pathToVersionToSignedFileBased(signedFileBased.value.path)
                 if (vToF.fileBasedOption(history).flatten.isDefined)
                   FileBasedChanged(signedFileBased.value.path, signedFileBased.signedString)
                 else
                   FileBasedAdded(signedFileBased.value.path, signedFileBased.signedString)
-              case Right(path) ⇒
+              case Right(path) =>
                 FileBasedDeleted(path)
             }
       }
@@ -210,15 +210,15 @@ final case class Repo private(
 
   private[filebased] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
     versions.dropWhile(versionId.!=) match {
-      case Nil ⇒ Problem(s"No such '$versionId'")
-      case _ :: tail ⇒ Valid(tail)
+      case Nil => Problem(s"No such '$versionId'")
+      case _ :: tail => Valid(tail)
     }
 
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
 
   override def toString = s"Repo($versions," +
-    idToSignedFileBased.keys.toVector.sortBy(_.toString).map(id ⇒ idToSignedFileBased(id).fold(s"$id deleted")(_.value.id.toString)) +
+    idToSignedFileBased.keys.toVector.sortBy(_.toString).map(id => idToSignedFileBased(id).fold(s"$id deleted")(_.value.id.toString)) +
     ")"
 }
 
@@ -232,16 +232,16 @@ object Repo
 
   @TestOnly
   private[filebased] def apply(versionIds: Seq[VersionId], fileBased: Iterable[Entry], fileBasedVerifier: FileBasedVerifier[FileBased]) =
-    new Repo(versionIds.toList, fileBased.map(_.fold(o ⇒ o.value.id → Some(o), _ → None)).uniqueToMap, fileBasedVerifier)
+    new Repo(versionIds.toList, fileBased.map(_.fold(o => o.value.id -> Some(o), _ -> None)).uniqueToMap, fileBasedVerifier)
 
   private[filebased] sealed trait Entry {
-    def fold[A](whenChanged: Signed[FileBased] ⇒ A, whenDeleted: FileBasedId_ ⇒ A): A
+    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A): A
   }
   private[filebased] final case class Changed(fileBased: Signed[FileBased]) extends Entry {
-    def fold[A](whenChanged: Signed[FileBased] ⇒ A, whenDeleted: FileBasedId_ ⇒ A) = whenChanged(fileBased)
+    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenChanged(fileBased)
   }
   private[filebased] final case class Deleted(id: FileBasedId_) extends Entry {
-    def fold[A](whenChanged: Signed[FileBased] ⇒ A, whenDeleted: FileBasedId_ ⇒ A) = whenDeleted(id)
+    def fold[A](whenChanged: Signed[FileBased] => A, whenDeleted: FileBasedId_ => A) = whenDeleted(id)
   }
 
   ///** Computes `a` - `b`, ignoring VersionId, and returning `Seq[RepoEvent.FileBasedEvent]`.
@@ -256,17 +256,17 @@ object Repo
   //private def diff(a: Map[TypedPath, FileBased], b: Map[TypedPath, FileBased]): Seq[RepoEvent.FileBasedEvent] = {
   //  val addedPaths = a.keySet -- b.keySet
   //  val deletedPaths = b.keySet -- a.keySet
-  //  val changedPaths = (a.keySet intersect b.keySet) filter (path ⇒ a(path) != b(path))
+  //  val changedPaths = (a.keySet intersect b.keySet) filter (path => a(path) != b(path))
   //  deletedPaths.toImmutableSeq.map(FileBasedDeleted.apply) ++
-  //    addedPaths.toImmutableSeq.map(a).map(o ⇒ FileBasedAdded(o.withoutVersion)) ++
-  //    changedPaths.toImmutableSeq.map(a).map(o ⇒ FileBasedChanged(o.withoutVersion))
+  //    addedPaths.toImmutableSeq.map(a).map(o => FileBasedAdded(o.withoutVersion)) ++
+  //    changedPaths.toImmutableSeq.map(a).map(o => FileBasedChanged(o.withoutVersion))
   //}
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[Signed[FileBased]]])
   extends AnyVal {
     /** None: no such version; Some(None): deleted */
     def fileBasedOption(history: List[VersionId]): Option[Option[Signed[FileBased]]] =
-      history.collectFirst { case v if versionToFileBasedOption contains v ⇒ versionToFileBasedOption(v) }
+      history.collectFirst { case v if versionToFileBasedOption contains v => versionToFileBasedOption(v) }
   }
 
   final case class DeletedProblem private[Repo](id: FileBasedId_)

@@ -58,7 +58,7 @@ with ReceiveLoggingActor.WithStash {
 
   private val agentUserAndPassword: Option[UserAndPassword] =
     config.optionAs[SecretString](authConfigPath)
-      .map(password ⇒ UserAndPassword(masterConfiguration.masterId.toUserId, password))
+      .map(password => UserAndPassword(masterConfiguration.masterId.toUserId, password))
 
   private var startInputReceived = false
   private var isCoupled = false
@@ -107,7 +107,7 @@ with ReceiveLoggingActor.WithStash {
   def receive = Actor.emptyBehavior
 
   private def decoupled: Receive = {
-    case Internal.Couple ⇒
+    case Internal.Couple =>
       delayKeepEvents = false
       recouplePause.onCouple()
       if (client == null/*only initially*/ || client.baseUri != uri) {
@@ -115,13 +115,13 @@ with ReceiveLoggingActor.WithStash {
         client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
       }
       ( for {
-          _ ← client.login(agentUserAndPassword)  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
-          _ ← if (lastEventId == EventId.BeforeFirst)
+          _ <- client.login(agentUserAndPassword)  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
+          _ <- if (lastEventId == EventId.BeforeFirst)
                 client.commandExecute(AgentCommand.RegisterAsMaster)
               else
                 Task.pure(Completed)
         } yield Completed
-      ).materialize foreach { tried ⇒
+      ).materialize foreach { tried =>
         self ! Internal.AfterCoupling(tried)
       }
       unstashAll()
@@ -130,12 +130,12 @@ with ReceiveLoggingActor.WithStash {
     case Input.Reconnect(uri_) =>
       uri = uri_
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def coupling: Receive = {
-    case Internal.AfterCoupling(Success(Completed)) ⇒
+    case Internal.AfterCoupling(Success(Completed)) =>
       couplingNumber += 1
       lastError = None
       isCoupled = true
@@ -149,17 +149,17 @@ with ReceiveLoggingActor.WithStash {
         self ! Input.Start(lastEventId)
       }
 
-    case Internal.AfterCoupling(Failure(throwable)) ⇒
+    case Internal.AfterCoupling(Failure(throwable)) =>
       handleConnectionError(throwable) {
         recouple()
       }
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def waitingForStart: Receive = {
-    case Input.Start(eventId) ⇒
+    case Input.Start(eventId) =>
       lastEventId = eventId
       startInputReceived = true
       commandQueue.maySend()
@@ -167,7 +167,7 @@ with ReceiveLoggingActor.WithStash {
       become("ready")(ready)
       self ! Internal.FetchEvents
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
@@ -176,24 +176,24 @@ with ReceiveLoggingActor.WithStash {
       uri = uri_
       recouple()
 
-    case Internal.FetchEvents if isCoupled && !isAwaitingFetchedEvents ⇒
+    case Internal.FetchEvents if isCoupled && !isAwaitingFetchedEvents =>
       if (!terminating) {
         isAwaitingFetchedEvents = true
         val fetchCouplingNumber = couplingNumber
         val after = lastEventId
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout, limit = EventLimit))
-          .materialize foreach { tried ⇒
+          .materialize foreach { tried =>
             // *** Asynchronous ***
             self ! Internal.Fetched(tried, after, fetchCouplingNumber)
           }
         }
 
-    case Internal.KeepEventsDelayed(agentEventId) ⇒
+    case Internal.KeepEventsDelayed(agentEventId) =>
       if (!terminating && isCoupled) {
         commandQueue.enqueue(KeepEventsQueueable(agentEventId))
       }
 
-    case Internal.CommandQueueReady ⇒
+    case Internal.CommandQueueReady =>
       if (!terminating) {
         commandQueue.maySend()
       }
@@ -203,7 +203,7 @@ with ReceiveLoggingActor.WithStash {
     super.become(state)(handleStandardMessage orElse recv orElse handleOtherMessage)
 
   private def handleStandardMessage: Receive = {
-    case Input.Terminate ⇒
+    case Input.Terminate =>
       terminating = true
       if (!isCoupled) {
         self ! PoisonPill
@@ -212,8 +212,8 @@ with ReceiveLoggingActor.WithStash {
         // TODO HTTP-Anfragen abbrechen und Antwort mit discardBytes() verwerfen, um folgende Akka-Warnungen zu vermeiden
         // WARN  akka.http.impl.engine.client.PoolGateway - [0 (WaitingForResponseEntitySubscription)] LoggedIn entity was not subscribed after 1 second. Make sure to read the response entity body or call `discardBytes()` on it. GET /agent/api/master/event Empty -> 200 OK Chunked
         if (client != null) {
-          client.logout().timeout(terminationLogoutTimeout).materialize foreach { tried ⇒
-            for (t ← tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
+          client.logout().timeout(terminationLogoutTimeout).materialize foreach { tried =>
+            for (t <- tried.failed) logger.debug(s"Logout failed: " ++ t.toStringWithCauses)
             self ! PoisonPill
           }
         }
@@ -221,7 +221,7 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def handleOtherMessage: Receive = {
-    case input: Input with Queueable if sender() == context.parent ⇒
+    case input: Input with Queueable if sender() == context.parent =>
       if (!terminating) {
         commandQueue.enqueue(input)
         scheduler.scheduleOnce(batchDelay) {
@@ -229,7 +229,7 @@ with ReceiveLoggingActor.WithStash {
         }
       }
 
-    case Input.EventsAccepted(after) ⇒
+    case Input.EventsAccepted(after) =>
       assert(after == lastEventId, s"Input.EventsAccepted($after) ≠ lastEventId=$lastEventId ?")
       if (isCoupled/*???*/) {
         if (keepEventsCancelable.isEmpty) {
@@ -245,36 +245,36 @@ with ReceiveLoggingActor.WithStash {
         }
       }
 
-    case Internal.BatchSucceeded(responses) ⇒
+    case Internal.BatchSucceeded(responses) =>
       lastError = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
 
-      val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) ⇒ orderId }
+      val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) => orderId }
       if (detachedOrderIds.nonEmpty) {
         context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
 
-      val canceledOrderIds = succeededInputs collect { case o: Input.CancelOrder ⇒ o.orderId }
+      val canceledOrderIds = succeededInputs collect { case o: Input.CancelOrder => o.orderId }
       if (canceledOrderIds.nonEmpty) {
         context.parent ! Output.OrdersCancelationMarked(canceledOrderIds.toSet)
       }
 
-      val keepEvents = succeededInputs collect { case o: KeepEventsQueueable ⇒ o }
+      val keepEvents = succeededInputs collect { case o: KeepEventsQueueable => o }
       if (keepEvents.nonEmpty) {
         keepEventsCancelable foreach (_.cancel())
         keepEventsCancelable = None
       }
 
-    case Internal.BatchFailed(inputs, throwable) ⇒
+    case Internal.BatchFailed(inputs, throwable) =>
       commandQueue.handleBatchFailed(inputs)
       handleConnectionError(throwable) {
         if (isCoupled) {
           recouple()
           //throwable match {
-          //  case t: AkkaHttpClient.HttpException ⇒
+          //  case t: AkkaHttpClient.HttpException =>
           //    handleConnectionError(t)
           //
-          //  case t ⇒
+          //  case t =>
           //    handleConnectionError(t)
           //    // TODO Retry several times, finally inform commander about failure (dropping the order)
           //    // 1) Wenn es ein Verbindungsfehler ist (oder ein HTTP-Fehlercode eines Proxys), dann versuchen wir endlos weiter.
@@ -290,9 +290,9 @@ with ReceiveLoggingActor.WithStash {
         }
       }
 
-    case Internal.CommandQueueReady ⇒
+    case Internal.CommandQueueReady =>
 
-    case Internal.Fetched(Failure(throwable), _, fetchCouplingNumber) ⇒
+    case Internal.Fetched(Failure(throwable), _, fetchCouplingNumber) =>
       isAwaitingFetchedEvents = false
       if (fetchCouplingNumber == couplingNumber && isCoupled) {
         handleConnectionError(throwable) {
@@ -300,34 +300,34 @@ with ReceiveLoggingActor.WithStash {
         }
       }
 
-    case Internal.Fetched(Success(eventSeq), after, fetchCouplingNumber) ⇒
+    case Internal.Fetched(Success(eventSeq), after, fetchCouplingNumber) =>
       isAwaitingFetchedEvents = false
       if (fetchCouplingNumber != couplingNumber) {
         logger.debug(s"Discarding obsolete Agent response Internal.Fetched(after=$after)")
       } else
         eventSeq match {
-          case EventSeq.NonEmpty(stampedEvents) ⇒
+          case EventSeq.NonEmpty(stampedEvents) =>
             lastError = None
-            logger.whenTraceEnabled { for (stamped ← stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") } }
+            logger.whenTraceEnabled { for (stamped <- stampedEvents) { logCount += 1; logger.trace(s"#$logCount $stamped") } }
 
             context.parent ! Output.EventsFromAgent(stampedEvents)  // TODO Possible OutOfMemoryError. Use reactive stream or acknowledge
 
-            for (last ← stampedEvents.lastOption) {
+            for (last <- stampedEvents.lastOption) {
               assert(lastEventId < last.eventId, s"last.eventId=${last.eventId} <= lastEventId=$lastEventId ?")
               lastEventId = last.eventId
             }
 
-          case EventSeq.Empty(lastEventId_) ⇒  // No events after timeout
+          case EventSeq.Empty(lastEventId_) =>  // No events after timeout
             if (isCoupled) scheduler.scheduleOnce(1.second) {
               assert(lastEventId <= lastEventId_)
               lastEventId = lastEventId_
               self ! Internal.FetchEvents
             }
 
-          case torn: TearableEventSeq.Torn ⇒
+          case torn: TearableEventSeq.Torn =>
             val problem = Problem(s"Bad response from Agent $agentRefPath ${client.baseUri}: $torn, requested events after=$after")
             logger.error(problem.toString)
-            persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ ⇒
+            persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ =>
               if (isCoupled) scheduler.scheduleOnce(15.second) {
                 self ! Internal.FetchEvents
               }
@@ -335,15 +335,15 @@ with ReceiveLoggingActor.WithStash {
         }
   }
 
-  private def handleConnectionError(throwable: Throwable)(andThen: ⇒ Unit): Unit = {
+  private def handleConnectionError(throwable: Throwable)(andThen: => Unit): Unit = {
     val msg = throwable.toStringWithCauses
     if (terminating)
       logger.debug(s"While terminating: $msg")
     else if (lastError.forall(_._1 == couplingNumber) && lastError.forall(_._2 != msg)) {
-      lastError = Some(couplingNumber → msg)
+      lastError = Some(couplingNumber -> msg)
       logger.warn(msg)
       if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)
-      persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ ⇒
+      persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ =>
         andThen
       }
     } else {
@@ -357,18 +357,18 @@ with ReceiveLoggingActor.WithStash {
       keepEventsCancelable foreach (_.cancel())
       keepEventsCancelable = None
       isCoupled = false
-      client.logout().materialize foreach { _ ⇒
+      client.logout().materialize foreach { _ =>
         self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
       }
       become("LoggedOut") {
-        case Internal.LoggedOut ⇒
+        case Internal.LoggedOut =>
           scheduler.scheduleOnce(recouplePause.nextPause()) {
             self ! Internal.Couple
           }
           unstashAll()
           become("decoupled")(decoupled)
 
-        case _ ⇒
+        case _ =>
           stash()
       }
     }

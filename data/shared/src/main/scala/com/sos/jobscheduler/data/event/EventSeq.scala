@@ -26,15 +26,15 @@ object TearableEventSeq {
 
   implicit final class Closed[E](private val underlying: TearableEventSeq[CloseableIterator, E]) extends AnyVal {
     def close(): Unit = underlying match {
-      case NonEmpty(stampeds) ⇒ stampeds.close()
-      case _ ⇒
+      case NonEmpty(stampeds) => stampeds.close()
+      case _ =>
     }
 
     /** Converts a lazy `NonEmpty[Traversable]` to a strict `NonEmpty[Vector]`. */
     def strict: TearableEventSeq[Seq, E] = underlying match {
-      case Torn(eventId) ⇒ Torn(eventId)
-      case Empty(eventId) ⇒ Empty(eventId)
-      case NonEmpty(stampeds) ⇒
+      case Torn(eventId) => Torn(eventId)
+      case Empty(eventId) => Empty(eventId)
+      case NonEmpty(stampeds) =>
         try NonEmpty(stampeds.toVector)
         finally stampeds.close()
     }
@@ -63,7 +63,7 @@ object EventSeq {
   }
 
   implicit def nonEmptyJsonEncoder[E: ObjectEncoder]: ObjectEncoder[NonEmpty[Seq, E]] =
-    eventSeq ⇒ JsonObject.singleton("stamped", eventSeq.stamped.asJson)
+    eventSeq => JsonObject.singleton("stamped", eventSeq.stamped.asJson)
 
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
     _.get[Seq[Stamped[E]]]("stamped") map NonEmpty.apply

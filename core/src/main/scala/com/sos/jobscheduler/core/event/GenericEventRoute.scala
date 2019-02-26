@@ -60,7 +60,7 @@ trait GenericEventRoute extends RouteProvider
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
     private val exceptionHandler = ExceptionHandler {
-      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException ⇒
+      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException =>
         complete((StatusCodes.ServiceUnavailable, Problem.pure(t.getMessage)))
     }
 
@@ -68,9 +68,9 @@ trait GenericEventRoute extends RouteProvider
       get {
         pathEnd {
           handleExceptions(exceptionHandler) {
-            authorizedUser(ValidUserPermission) { user ⇒
+            authorizedUser(ValidUserPermission) { user =>
               routeTask(
-                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map { eventWatch ⇒
+                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map { eventWatch =>
                   htmlPreferred {
                     oneShot(eventWatch)
                   } ~
@@ -91,38 +91,38 @@ trait GenericEventRoute extends RouteProvider
       }
 
     private def oneShot(eventWatch: EventWatch[Event]): Route =
-      eventDirective(eventWatch.lastAddedEventId) { request ⇒
+      eventDirective(eventWatch.lastAddedEventId) { request =>
         intelliJuseImport(jsonOrYamlMarshaller)
         completeTask(
           eventWatch.when[Event](request, predicate = isRelevantEvent).map {
-            case o: TearableEventSeq.Torn ⇒
+            case o: TearableEventSeq.Torn =>
               ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
 
-            case o: EventSeq.Empty ⇒
+            case o: EventSeq.Empty =>
               ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
 
-            case EventSeq.NonEmpty(events) ⇒
+            case EventSeq.NonEmpty(events) =>
               implicit val x = NonEmptyEventSeqJsonStreamingSupport
               closeableIteratorToMarshallable(events)
           })
       }
 
     private def jsonSeqEvents(eventWatch: EventWatch[Event], streamingSupport: JsonEntityStreamingSupport): Route =
-      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request ⇒
+      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request =>
         implicit val x = streamingSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
         val t = now
         completeTask(
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
           eventWatch.when(request, predicate = isRelevantEvent).map {
-            case TearableEventSeq.Torn(eventId) ⇒
+            case TearableEventSeq.Torn(eventId) =>
               EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId): ToResponseMarshallable
 
-            case EventSeq.Empty(_) ⇒
+            case EventSeq.Empty(_) =>
               monixObservableToMarshallable(
                 Observable.empty[Stamped[KeyedEvent[Event]]])
 
-            case EventSeq.NonEmpty(closeableIterator) ⇒
+            case EventSeq.NonEmpty(closeableIterator) =>
               val head = autoClosing(closeableIterator)(_.next())
               val tail = eventWatch  // Continue with an Observable, skipping the already read event
                 .observe(
@@ -131,7 +131,7 @@ trait GenericEventRoute extends RouteProvider
                     limit = request.limit - 1,
                     delay = (request.delay - (now - t)) min Duration.Zero),
                   predicate = isRelevantEvent)
-                .onErrorRecoverWith { case NonFatal(e) ⇒
+                .onErrorRecoverWith { case NonFatal(e) =>
                   logger.warn(e.toStringWithCauses)
                   Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
                 }
@@ -141,20 +141,20 @@ trait GenericEventRoute extends RouteProvider
     }
 
     private def serverSentEvents(eventWatch: EventWatch[Event]): Route =
-      parameter("v" ? BuildInfo.buildId) { requestedBuildId ⇒
+      parameter("v" ? BuildInfo.buildId) { requestedBuildId =>
         if (requestedBuildId != BuildInfo.buildId)
           complete(HttpEntity(
             `text/event-stream`,
             s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
-          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) { request ⇒
-            optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader ⇒
-              val req = lastEventIdHeader.fold(request)(header ⇒
+          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) { request =>
+            optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader =>
+              val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
               val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
               val source = logErrorToWebLog(
                 eventWatch.observe(req, predicate = isRelevantEvent)
-                  .map(stamped ⇒ ServerSentEvent(
+                  .map(stamped => ServerSentEvent(
                     data = stamped.asJson.pretty(mutableJsonPrinter),
                     id = Some(stamped.eventId.toString)))
                   .toAkkaSource)
@@ -169,13 +169,13 @@ trait GenericEventRoute extends RouteProvider
       defaultDelay: FiniteDuration = EventDirectives.DefaultDelay)
     =
       new Directive1[EventRequest[Event]] {
-        def tapply(inner: Tuple1[EventRequest[Event]] ⇒ Route) =
+        def tapply(inner: Tuple1[EventRequest[Event]] => Route) =
           eventRequest[Event](
             defaultAfter = Some(defaultAfter),
             defaultDelay = defaultDelay,
             defaultTimeout = defaultTimeout,
             defaultReturnType = defaultReturnType map (_.simpleScalaName))
-          .apply(eventRequest ⇒ inner(Tuple1(eventRequest)))
+          .apply(eventRequest => inner(Tuple1(eventRequest)))
       }
   }
 }
@@ -188,7 +188,7 @@ object GenericEventRoute
   private def toLastEventId(header: `Last-Event-ID`): EventId =
     try java.lang.Long.parseLong(header.id)
     catch {
-      case e: NumberFormatException ⇒
+      case e: NumberFormatException =>
         throw new HttpStatusCodeException(BadRequest, Problem.pure(s"Invalid header Last-Event-Id: $e"))
     }
 }

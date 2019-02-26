@@ -31,26 +31,26 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
     KeyStoreRef.fromConfig(config, default = configDirectory resolve "private/https-keystore.p12")
 
   final lazy val keyStoreRefOption: Option[KeyStoreRef] =
-    keyStoreRef onProblem (p ⇒ logger.debug(s"No keystore: $p"))
+    keyStoreRef onProblem (p => logger.debug(s"No keystore: $p"))
 
   final lazy val trustStoreRef: Checked[TrustStoreRef] =
     TrustStoreRef.fromConfig(config, default = configDirectory resolve "private/https-truststore.p12")
 
   final lazy val trustStoreRefOption: Option[TrustStoreRef] =
-    trustStoreRef onProblem (p ⇒ logger.debug(s"No truststore: $p"))
+    trustStoreRef onProblem (p => logger.debug(s"No truststore: $p"))
 
   final def http: Seq[WebServerBinding.Http] =
-    webServerBindings collect { case o: WebServerBinding.Http ⇒ o }
+    webServerBindings collect { case o: WebServerBinding.Http => o }
 
   final def https: Seq[WebServerBinding.Https] =
-    webServerBindings collect { case o: WebServerBinding.Https ⇒ o }
+    webServerBindings collect { case o: WebServerBinding.Https => o }
 
   final def webServerBindings: Seq[WebServerBinding] =
     webServerPorts map {
-      case WebServerPort.Http(port) ⇒
+      case WebServerPort.Http(port) =>
         WebServerBinding.Http(port)
 
-      case WebServerPort.Https(port, mutual) ⇒
+      case WebServerPort.Https(port, mutual) =>
         WebServerBinding.Https(port,
           keyStoreRef.mapProblem(Problem("HTTPS requires a key store") |+| _).orThrow,
           trustStoreRefOption,
@@ -63,7 +63,7 @@ object CommonConfiguration
   private val logger = Logger(getClass)
 
   private val AddressAndMutual: As[String, (InetSocketAddress, Boolean)] =
-    string ⇒ (StringToServerInetSocketAddress.apply(string stripSuffix ",mutual"), string endsWith ",mutual")
+    string => (StringToServerInetSocketAddress.apply(string stripSuffix ",mutual"), string endsWith ",mutual")
 
   final case class Common(
     configDirectory: Path,
@@ -78,7 +78,7 @@ object CommonConfiguration
         webServerPorts =
           a.seqAs("-http-port=")(StringToServerInetSocketAddress).map(WebServerPort.Http) ++
           a.seqAs("-https-port=")(AddressAndMutual).map {
-            case (address, mutual) ⇒ WebServerPort.Https(address, mutual = mutual)
+            case (address, mutual) => WebServerPort.Https(address, mutual = mutual)
           })
   }
 }

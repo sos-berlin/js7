@@ -16,14 +16,14 @@ final class SecretStringGeneratorTest extends FreeSpec {
   "newSecretString returns different secrets" in {
     logger.debug(newSecretString().string)
     val n = 100000
-    val secrets = for (_ ← 1 to n) yield newSecretString()
+    val secrets = for (_ <- 1 to n) yield newSecretString()
     assert(secrets.distinct.size == n)
     assert(secrets.map(_.string).distinct.size == n)
     assert(secrets.distinct == secrets)
   }
 
   "newSecretString returns restricted character set" in {
-    for (_ ← 1 to 1000) {
+    for (_ <- 1 to 1000) {
       val secretString = newSecretString().string
       assert(secretString forall ExpectedCharacters)
       assert(secretString.size == SecretSize)

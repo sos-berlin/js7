@@ -38,91 +38,91 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   protected final def onEventsAdded(eventId: EventId): Unit =
     sync.onEventAdded(eventId)
 
-  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean): Observable[Stamped[KeyedEvent[E1]]] =
+  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     val originalTimeout = request.timeout
     var until = Timestamp(0)  // Value not used
 
-    def next(lazyRequest: () ⇒ EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () ⇒ EventRequest[E1])] = {
+    def next(lazyRequest: () => EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () => EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
       until = now + (request.timeout min EventRequest.LongTimeout)  // Timeout is renewd after every fetched event
       if (request.limit <= 0)
         NoMoreObservable
       else
         when[E1](request, predicate) map {
-          case TearableEventSeq.Torn(tornAfter) ⇒
+          case TearableEventSeq.Torn(tornAfter) =>
             throw new TornException(after = request.after, tornEventId = tornAfter)
 
-          case EventSeq.Empty(lastEventId) ⇒
+          case EventSeq.Empty(lastEventId) =>
             val remaining = until - now
-            ((remaining > Duration.Zero) ? Observable.empty, () ⇒ request.copy[E1](after = lastEventId, timeout = until - now))
+            ((remaining > Duration.Zero) ? Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until - now))
 
-          case EventSeq.NonEmpty(events) ⇒
+          case EventSeq.NonEmpty(events) =>
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
             var lastEventId = request.after
             var limit = request.limit
             val observable = closeableIteratorToObservable(events)
-              .map { o ⇒
+              .map { o =>
                 lastEventId = o.eventId
                 limit -= 1
                 o
               }
             // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
-            (Some(observable), () ⇒ request.copy[E1](after = lastEventId, limit = limit, timeout = originalTimeout))
+            (Some(observable), () => request.copy[E1](after = lastEventId, limit = limit, timeout = originalTimeout))
         }
     }
-    Observable.fromAsyncStateAction(next)(() ⇒ request)
+    Observable.fromAsyncStateAction(next)(() => request)
       .takeWhile(_.nonEmpty)  // Take until limit reached (NoMoreObservable) or timeout elapsed
       .map(_.get).flatten
   }
 
-  final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
+  final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
     request match {
-      case request: EventRequest[E1] ⇒
+      case request: EventRequest[E1] =>
         when[E1](request, predicate)
 
-      case request: ReverseEventRequest[E1] ⇒
+      case request: ReverseEventRequest[E1] =>
         Task(reverse[E1](request, predicate))
     }
 
-  final def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
+  final def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
       whenAny[E1](request, request.eventClasses, predicate)
 
-  final def whenAny[E1 <: E](request: EventRequest[E1], eventClasses: Set[Class[_ <: E1]], predicate: KeyedEvent[E1] ⇒ Boolean)
+  final def whenAny[E1 <: E](request: EventRequest[E1], eventClasses: Set[Class[_ <: E1]], predicate: KeyedEvent[E1] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
   =
     whenAnyKeyedEvents(
       request,
       collect = {
-        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E1]]) ⇒
+        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E1]]) =>
           e.asInstanceOf[KeyedEvent[E1]]
       })
 
-  final def byKey[E1 <: E](request: SomeEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean)
+  final def byKey[E1 <: E](request: SomeEventRequest[E1], key: E1#Key, predicate: E1 => Boolean)
   : Task[TearableEventSeq[CloseableIterator, E1]] =
     request match {
-      case request: EventRequest[E1] ⇒
+      case request: EventRequest[E1] =>
         whenKey(request, key, predicate)
-      case request: ReverseEventRequest[E1] ⇒
+      case request: ReverseEventRequest[E1] =>
         Task(reverseForKey(request, key))
     }
 
-  final def whenKeyedEvent[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Task[E1] =
+  final def whenKeyedEvent[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 => Boolean): Task[E1] =
     whenKey[E1](request.copy[E1](limit = 1), key, predicate) map {
-      case eventSeq: EventSeq.NonEmpty[CloseableIterator, E1] ⇒
+      case eventSeq: EventSeq.NonEmpty[CloseableIterator, E1] =>
         try eventSeq.stamped.next().value
         finally eventSeq.close()
-      case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
-      case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
+      case _: EventSeq.Empty => throw new TimeoutException(s"Timed out: $request")
+      case _: TearableEventSeq.Torn => throw new IllegalStateException("EventSeq is torn")
     }
 
-  final def whenKey[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean): Task[TearableEventSeq[CloseableIterator, E1]] =
+  final def whenKey[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 => Boolean): Task[TearableEventSeq[CloseableIterator, E1]] =
     whenAnyKeyedEvents(
       request,
       collect = {
-        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E1]) ⇒
+        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E1]) =>
           e.event.asInstanceOf[E1]
       })
 
@@ -134,11 +134,11 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, tornOlder: Duration)
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    whenStarted.flatMap (_ ⇒
+    whenStarted.flatMap (_ =>
       sync.whenEventIsAvailable(after, until, delay)
-        .flatMap (_ ⇒
+        .flatMap (_ =>
           collectEventsSince(after, collect, limit) match {
-            case eventSeq @ EventSeq.NonEmpty(iterator) ⇒
+            case eventSeq @ EventSeq.NonEmpty(iterator) =>
               if (tornOlder.isFinite()) {
                 // If the first event is not fresh, we have a read congestion.
                 // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
@@ -151,57 +151,57 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
               } else
                 Task.pure(eventSeq)
 
-            case EventSeq.Empty(lastEventId) ⇒
+            case EventSeq.Empty(lastEventId) =>
               val nw = now
               if (nw < until)
                 whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, tornOlder)
               else
                 Task.pure(EventSeq.Empty(lastEventId))
 
-            case o: TearableEventSeq.Torn ⇒
+            case o: TearableEventSeq.Torn =>
               Task.pure(o)
           }))
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
   : TearableEventSeq[CloseableIterator, A] =
     eventsAfter(after) match {
-      case Some(stampeds) ⇒
+      case Some(stampeds) =>
         var lastEventId = after
         val eventIterator = stampeds
-          .map { o ⇒ lastEventId = o.eventId; o }
-          .collect { case stamped if collect isDefinedAt stamped.value ⇒ stamped map collect }
+          .map { o => lastEventId = o.eventId; o }
+          .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
           .take(limit)
          if (eventIterator.isEmpty) {
           eventIterator.close()
           EventSeq.Empty(lastEventId)
         } else
           EventSeq.NonEmpty(eventIterator)
-      case None ⇒
+      case None =>
         TearableEventSeq.Torn(after = tornEventId)
       }
 
-  protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean)
+  protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
   : EventSeq[CloseableIterator, KeyedEvent[E1]] =
     reverseEventsAfter(after = request.after)
       .collect {
-        case stamped if request matchesClass stamped.value.event.getClass ⇒
+        case stamped if request matchesClass stamped.value.event.getClass =>
           stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
       }
-      .filter(stamped ⇒ predicate(stamped.value))
+      .filter(stamped => predicate(stamped.value))
       .take(request.limit) match {
-        case stampeds if stampeds.nonEmpty ⇒ EventSeq.NonEmpty(stampeds)
-        case _ ⇒ EventSeq.Empty(lastAddedEventId)
+        case stampeds if stampeds.nonEmpty => EventSeq.NonEmpty(stampeds)
+        case _ => EventSeq.Empty(lastAddedEventId)
       }
 
-  protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 ⇒ Boolean = (_: E1) ⇒ true)
+  protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 => Boolean = (_: E1) => true)
   : EventSeq.NonEmpty[CloseableIterator, E1] =
     EventSeq.NonEmpty(
       reverseEventsAfter(after = request.after).collect {
-        case stamped if request matchesClass stamped.value.event.getClass ⇒
+        case stamped if request matchesClass stamped.value.event.getClass =>
           stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
       }
       .collect {
-        case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) ⇒
+        case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) =>
           Stamped(eventId, timestamp, event)
       }
       .take(request.limit))
@@ -211,26 +211,26 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] ⇒ Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler)
+  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] => Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]] =
     when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.seconds match {
-      case EventSeq.NonEmpty(events) ⇒
+      case EventSeq.NonEmpty(events) =>
         try events.toVector
         finally events.close()
 
-      case _: EventSeq.Empty ⇒
+      case _: EventSeq.Empty =>
         throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after, timeout=$timeout) timed out")
 
-      case o ⇒
+      case o =>
         sys.error(s"RealEventWatch.await[${implicitClass[E1].scalaName}](after=$after) unexpected EventSeq: $o")
     }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
   def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
-    when[E1](EventRequest.singleClass(), _ ⇒ true) await 99.s
+    when[E1](EventRequest.singleClass(), _ => true) await 99.s
 }
 
 object RealEventWatch {
-  private val NoMoreObservable = Task.pure((None, () ⇒ throw new NoSuchElementException/*dead code*/))
+  private val NoMoreObservable = Task.pure((None, () => throw new NoSuchElementException/*dead code*/))
 }

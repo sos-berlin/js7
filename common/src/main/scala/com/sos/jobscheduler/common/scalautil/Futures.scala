@@ -27,10 +27,10 @@ object Futures {
   /**
    * Maps an exception of body to Future.failed.
    */
-  def catchInFuture[A](body: ⇒ Future[A]): Future[A] =
+  def catchInFuture[A](body: => Future[A]): Future[A] =
     try body
     catch {
-      case NonFatal(t) ⇒ Future.failed(t)
+      case NonFatal(t) => Future.failed(t)
     }
 
   /**
@@ -38,23 +38,23 @@ object Futures {
     * A big number of blocking Futures may be started, each consuming a thread.
     * This differs from ExecutionContext.global, which limits the number of threads to (number of cores) + 256.
     */
-  def blockingThreadFuture[A](body: ⇒ A): Future[A] =
+  def blockingThreadFuture[A](body: => A): Future[A] =
     namedThreadFuture("Blocking")(body)
 
-  def namedThreadFuture[A](name: String)(body: ⇒ A): Future[A] = {
+  def namedThreadFuture[A](name: String)(body: => A): Future[A] = {
     val promise = Promise[A]()
     new Thread {
       if (name.nonEmpty) setName(name)
       override def run() =
         try promise.success(body)
-        catch { case t: Throwable ⇒  // Not only NonFatal (or what should we do else?)
+        catch { case t: Throwable =>  // Not only NonFatal (or what should we do else?)
           promise.failure(t)
         }
     } .start()
     promise.future
   }
 
-  def promiseFuture[A](body: Promise[A] ⇒ Unit): Future[A] = {
+  def promiseFuture[A](body: Promise[A] => Unit): Future[A] = {
     val promise = Promise[A]()
     body(promise)
     promise.future
@@ -67,9 +67,9 @@ object Futures {
        * Like .value.get.get - in case of exception own stack trace is added.
        */
       def successValue: A = delegate.value match {
-        case Some(Success(o)) ⇒ o
-        case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
-        case None ⇒ throw new FutureNotSucceededException
+        case Some(Success(o)) => o
+        case Some(Failure(t)) => throw t.appendCurrentStackTrace
+        case None => throw new FutureNotSucceededException
       }
 
       /**
@@ -78,7 +78,7 @@ object Futures {
       def appendCurrentStackTrace: Future[A] = {
         val callersStackTrace = new Exception().getStackTrace
         delegate.recoverWith {
-          case t ⇒ Future.failed[A](t.appendStackTrace(callersStackTrace))
+          case t => Future.failed[A](t.appendStackTrace(callersStackTrace))
         } (SynchronousExecutionContext)
       }
 
@@ -87,16 +87,16 @@ object Futures {
         */
       def await(duration: Option[java.time.Duration]): A =
         duration match {
-          case Some(o) ⇒ await(o)
-          case None ⇒ awaitInfinite
+          case Some(o) => await(o)
+          case None => awaitInfinite
         }
 
       // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
       def awaitInfinite: A =
         Await.ready(delegate, Duration.Inf).value match {
-          case Some(Success(o)) ⇒ o
-          case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
-          case None ⇒ throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
+          case Some(Success(o)) => o
+          case Some(Failure(t)) => throw t.appendCurrentStackTrace
+          case None => throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
         }
 
       def await(duration: java.time.Duration): A =
@@ -104,9 +104,9 @@ object Futures {
 
       def await(duration: Duration): A =
         Await.ready(delegate, duration).value match {
-          case Some(Success(o)) ⇒ o
-          case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
-          case None ⇒ throw new TimeoutException(s"await(${duration.pretty}): Future as not been completed in time")
+          case Some(Success(o)) => o
+          case Some(Failure(t)) => throw t.appendCurrentStackTrace
+          case None => throw new TimeoutException(s"await(${duration.pretty}): Future as not been completed in time")
         }
     }
 
@@ -116,8 +116,8 @@ object Futures {
         */
       def await(duration: Option[java.time.Duration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         duration match {
-          case Some(o) ⇒ await(o)
-          case None ⇒ awaitInfinite
+          case Some(o) => await(o)
+          case None => awaitInfinite
         }
 
       def await(duration: java.time.Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =

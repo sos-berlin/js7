@@ -12,7 +12,7 @@ import org.scalatest.FreeSpec
 final class PathSeqDifferTest extends FreeSpec
 {
   "diff" in {
-    withTemporaryDirectory("Z-") { dir ⇒
+    withTemporaryDirectory("Z-") { dir =>
       touch(dir / "A")
       val entries1 = DirectoryReader.entries(dir)
       assert(PathSeqDiffer.diff(entries1, DirectoryReader.entries(dir)) == PathSeqDiff(Nil, Nil, Nil))

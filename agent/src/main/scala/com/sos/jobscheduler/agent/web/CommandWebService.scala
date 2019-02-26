@@ -33,17 +33,17 @@ trait CommandWebService extends AgentRouteProvider {
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final lazy val commandRoute: Route =
-    authorizedUser(ValidUserPermission) { user ⇒
+    authorizedUser(ValidUserPermission) { user =>
       post {
         pathEnd {
-          optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption ⇒
-            entity(as[AgentCommand]) { command ⇒
+          optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption =>
+            entity(as[AgentCommand]) { command =>
               completeTask {
-                val meta = CommandMeta(user, sessionTokenOption map { o ⇒ SessionToken(SecretString(o)) })
+                val meta = CommandMeta(user, sessionTokenOption map { o => SessionToken(SecretString(o)) })
                 commandExecute(meta, command).map {
-                  case Invalid(problem @ AgentIsShuttingDownProblem) ⇒
-                    ToResponseMarshallable(ServiceUnavailable → problem)
-                  case checked ⇒
+                  case Invalid(problem @ AgentIsShuttingDownProblem) =>
+                    ToResponseMarshallable(ServiceUnavailable -> problem)
+                  case checked =>
                     ToResponseMarshallable(checked)
                 }
               }

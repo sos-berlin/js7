@@ -14,6 +14,6 @@ object MonixAntiBlocking
     * - Akka blocks in Await.ready() (after actorOf and ask), waiting for ask response
     * - After 20s, actor.creation-timeout kicks in.
     */
-  def executeOn[A](ec: ExecutionContext)(future: ExecutionContext ⇒ Future[A]): Future[A] =
+  def executeOn[A](ec: ExecutionContext)(future: ExecutionContext => Future[A]): Future[A] =
     Future(future(ec))(ec).flatten
 }

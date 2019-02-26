@@ -24,9 +24,9 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   protected final def snapshots: Future[Iterable[Any]] =
     Future.successful(snapshot.toList)
 
-  protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: EE ⇒ A): Future[A] = {
+  protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: EE => A): Future[A] = {
     registerMe()
-    super.persistKeyedEvent(KeyedEvent(key, event), async = async) { stampedEvent ⇒
+    super.persistKeyedEvent(KeyedEvent(key, event), async = async) { stampedEvent =>
       callback(stampedEvent.value.event.asInstanceOf[EE])
     }
   }
@@ -37,25 +37,25 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   }
 
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
-    (callback: Seq[EE] ⇒ A)
+    (callback: Seq[EE] => A)
   : Future[A] = {
     registerMe()
-    super.persistKeyedEvents(events map (e ⇒ Timestamped(KeyedEvent(key, e))), async = async, transaction = true) {
-      stampedEvents ⇒ callback(stampedEvents map (_.value.event.asInstanceOf[EE]))
+    super.persistKeyedEvents(events map (e => Timestamped(KeyedEvent(key, e))), async = async, transaction = true) {
+      stampedEvents => callback(stampedEvents map (_.value.event.asInstanceOf[EE]))
     }
   }
 
   override def journaling = super.journaling orElse {
-    case Input.RecoverFromSnapshot(o) ⇒
+    case Input.RecoverFromSnapshot(o) =>
       registered = true
       recoverFromSnapshot(o)
 
-    case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) ⇒
+    case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) =>
       assert(k == key)
       registered = true
       recoverFromEvent(event.asInstanceOf[E])
 
-    case Input.FinishRecovery ⇒
+    case Input.FinishRecovery =>
       callFinishRecovery()
       sender() ! KeyedJournalingActor.Output.RecoveryFinished
   }

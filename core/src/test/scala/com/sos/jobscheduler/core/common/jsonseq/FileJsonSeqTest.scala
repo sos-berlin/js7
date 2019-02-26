@@ -23,27 +23,27 @@ import org.scalatest.FreeSpec
 final class FileJsonSeqTest extends FreeSpec {
 
   "Empty file" in {
-    withTemporaryFile { file ⇒
+    withTemporaryFile { file =>
       touch(file)
-      autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
+      autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
         assert(reader.read().isEmpty)
       }
     }
   }
 
   "File with no JSON document is empty" in {
-    withTemporaryFile { file ⇒
-      autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { _ ⇒ }
+    withTemporaryFile { file =>
+      autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { _ => }
       assert(Files.size(file) == 0)
-      autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
+      autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
         assert(reader.read().isEmpty)
       }
     }
   }
 
   "Some JSON document" in {
-    withTemporaryFile { file ⇒
-      autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w ⇒
+    withTemporaryFile { file =>
+      autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w =>
         w.writeJson(A(1, "a").asJson)
         w.writeJson(A(2, "b").asJson)
         w.writeJson(A(3, "c").asJson)
@@ -51,7 +51,7 @@ final class FileJsonSeqTest extends FreeSpec {
       }
       //assert(file.contentString startsWith Ascii.RS.toChar.toString)
       assert(file.contentString endsWith "\n")
-      autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
+      autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
         assert((reader.iterator map { _.value.as[A].orThrow }).toList == List(
           A(1, "a"),
           A(2, "b"),
@@ -74,8 +74,8 @@ final class FileJsonSeqTest extends FreeSpec {
     "Speed test" - {
       "toJson" in {
         val stopwatch = new Stopwatch
-        for (_ ← 1 to 2) {
-          for (i ← 1 to n) {
+        for (_ <- 1 to 2) {
+          for (i <- 1 to n) {
             Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson
           }
           info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
@@ -87,17 +87,17 @@ final class FileJsonSeqTest extends FreeSpec {
       }
 
       //"gzip" - {
-      //  addFileTests(out ⇒ new GZIPOutputStream(out), in ⇒ new GZIPInputStream(in))
+      //  addFileTests(out => new GZIPOutputStream(out), in => new GZIPInputStream(in))
       //}
     }
 
-    def addFileTests(/*outputFilter: OutputStream ⇒ OutputStream, inputFilter: InputStream ⇒ InputStream*/): Unit = {
+    def addFileTests(/*outputFilter: OutputStream => OutputStream, inputFilter: InputStream => InputStream*/): Unit = {
       "OutputStreamJsonSeqWriter with flush at end" in {
-        withTemporaryFile { file ⇒
-          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w ⇒
+        withTemporaryFile { file =>
+          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w =>
             val stopwatch = new Stopwatch
-            for (_ ← 1 to m) {
-              for (i ← 1 to n) {
+            for (_ <- 1 to m) {
+              for (i <- 1 to n) {
                 w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
               }
               w.flush()
@@ -109,11 +109,11 @@ final class FileJsonSeqTest extends FreeSpec {
       }
 
       "OutputStreamJsonSeqWriter with flush after every document" in {
-        withTemporaryFile { file ⇒
-          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w ⇒
+        withTemporaryFile { file =>
+          autoClosing(new OutputStreamJsonSeqWriter(new FileOutputStream(file))) { w =>
             val stopwatch = new Stopwatch
-            for (_ ← 1 to m) {
-              for (i ← 1 to n) {
+            for (_ <- 1 to m) {
+              for (i <- 1 to n) {
                 w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
               }
@@ -122,13 +122,13 @@ final class FileJsonSeqTest extends FreeSpec {
             info(Files.size(file) + " bytes,  " + Files.size(file) / (m*n) + "/document")
           }
 
-          for (_ ← 1 to 5)
-          autoClosing(InputStreamJsonSeqReader.open(file)) { reader ⇒
+          for (_ <- 1 to 5)
+          autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
             val iterator: Iterator[Json] = reader.iterator map (_.value)
-            for (_ ← 1 to m) {
+            for (_ <- 1 to m) {
               val stopwatch = new Stopwatch
               var dummy = 0
-              for (_ ← 1 to n) {
+              for (_ <- 1 to n) {
                 dummy += iterator.next().jsonObjectOrThrow.toMap.size
               }
               info("read: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -140,14 +140,14 @@ final class FileJsonSeqTest extends FreeSpec {
       }
 
       "OutputStreamJsonSeqWriter with sync" in {
-        withTemporaryFile { file ⇒
-          autoClosing(new FileOutputStream(file)) { fileOut ⇒
+        withTemporaryFile { file =>
+          autoClosing(new FileOutputStream(file)) { fileOut =>
             val out = fileOut
             val w = new OutputStreamJsonSeqWriter(out)
             val stopwatch = new Stopwatch
-            for (_ ← 1 to 2) {
+            for (_ <- 1 to 2) {
               val n = 100
-              for (i ← 1 to n) {
+              for (i <- 1 to n) {
                 w.writeJson(Stamped(i, Timestamp.Epoch, KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
                 fileOut.getFD.sync()

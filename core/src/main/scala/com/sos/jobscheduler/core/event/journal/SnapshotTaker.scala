@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 private[journal] final class SnapshotTaker(
-  write: ByteString ⇒ Unit,
+  write: ByteString => Unit,
   journalingActors: Set[ActorRef],
   jsonEncoder: Encoder[Any],
   config: Config,
@@ -45,40 +45,40 @@ extends Actor
   }
 
   def receive = {
-    case Internal.Start ⇒
+    case Internal.Start =>
       if (journalingActors.isEmpty) {
         end()
       } else {
-        for (a ← journalingActors) {
+        for (a <- journalingActors) {
           context.watch(a)
           a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
         }
       }
 
-    case Internal.LogProgress ⇒
+    case Internal.LogProgress =>
       logProgressCancelable.cancel()
       val limit = remaining.size min logProgressActorLimit
       logger.info(s"Writing journal snapshot for ${(Instant.now - startedAt).pretty}, ${remaining.size} snapshot elements remaining" +
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
-      for (o ← remaining take limit) {
+      for (o <- remaining take limit) {
         logger.info(s"... awaiting snapshot element from actor ${o.path}")
       }
       logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
       testLogCount += 1
 
-    case "getTestLogCount" ⇒
+    case "getTestLogCount" =>
       sender() ! testLogCount
 
-    case Terminated(a) ⇒
+    case Terminated(a) =>
       logger.debug(s"${a.path} terminated while taking snapshot")
       onDone(a)
 
-    case JournalingActor.Output.GotSnapshot(snapshots) ⇒
+    case JournalingActor.Output.GotSnapshot(snapshots) =>
       context.unwatch(sender())
       abortOnError {
         blocking {  // blockingAdd blocks
-          for (snapshot ← snapshots) {
+          for (snapshot <- snapshots) {
             pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
             logger.trace(s"Stored $snapshot")  // Without sync
             snapshotCount += 1
@@ -101,10 +101,10 @@ extends Actor
     context.stop(self)
   }
 
-  private def abortOnError[A](body: ⇒ A): Unit = {
+  private def abortOnError[A](body: => A): Unit = {
     try body
     catch {
-      case NonFatal(t) ⇒
+      case NonFatal(t) =>
         logger.error(t.toStringWithCauses)
         context.parent ! Output.Finished(Failure(t))
         context.stop(self)

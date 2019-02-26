@@ -8,13 +8,13 @@ import scala.concurrent.{Future, Promise}
   *
   * @author Joacim Zschimmer
   */
-trait ActorSynchronizer[A] extends ((⇒ A) ⇒ Future[A]) {
+trait ActorSynchronizer[A] extends ((=> A) => Future[A]) {
 
   protected def actor: ActorRef
 
-  def apply(function: ⇒ A): Future[A] = {
+  def apply(function: => A): Future[A] = {
     val promise = Promise[A]()
-    actor ! SynchronizerActor.Execute(() ⇒ function, promise)
+    actor ! SynchronizerActor.Execute(() => function, promise)
     promise.future
   }
 }

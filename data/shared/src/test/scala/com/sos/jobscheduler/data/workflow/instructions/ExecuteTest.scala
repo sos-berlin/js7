@@ -26,7 +26,7 @@ final class ExecuteTest extends FreeSpec
 
     "Named with defaultArguments" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" → "VALUE")),
+        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" -> "VALUE")),
         json"""{
           "TYPE": "Execute.Named",
           "name": "EXECUTABLE",
@@ -58,7 +58,7 @@ final class ExecuteTest extends FreeSpec
           WorkflowJob(
             AgentRefPath("/AGENT"),
             ExecutablePath("/EXECUTABLE"),
-            Map("ARG" → "VALUE"))),
+            Map("ARG" -> "VALUE"))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {

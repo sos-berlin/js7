@@ -10,6 +10,6 @@ import java.nio.file.{Path, Paths}
 final class AsJavaTest extends org.scalatest.FreeSpec {
 
   "as[Path]" in {
-    assert(Map("path" → "/PATH").as[Path]("path") == Paths.get("/PATH"))
+    assert(Map("path" -> "/PATH").as[Path]("path") == Paths.get("/PATH"))
   }
 }

@@ -17,10 +17,10 @@ object WorkflowReader extends FileBasedReader
   val companion = Workflow
 
   def read(workflowId: WorkflowId, source: ByteString) = {
-    case t: SourceType.JsonLike ⇒
+    case t: SourceType.JsonLike =>
       readAnonymousJsonLike(t, source).map(_ withId workflowId)
 
-    case SourceType.Txt ⇒
+    case SourceType.Txt =>
       WorkflowParser.parse(source.utf8String) map (_ withId workflowId)
   }
 

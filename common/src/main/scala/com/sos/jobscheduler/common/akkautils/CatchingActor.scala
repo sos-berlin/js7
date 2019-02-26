@@ -17,7 +17,7 @@ final class CatchingActor[A](
   props: Props,
   name: String,
   decider: Decider = CatchingSupervisorStrategy.defaultDecider,
-  onStopped: ActorRef ⇒ Try[A],
+  onStopped: ActorRef => Try[A],
   loggingEnabled: Boolean = false)
 extends Actor {
 
@@ -34,19 +34,19 @@ extends Actor {
   }
 
   def receive = {
-    case Terminated(`child`) ⇒
+    case Terminated(`child`) =>
       if (!terminated.isCompleted) {
         terminated.tryComplete(onStopped(child))
       }
       stop(self)
 
-    case msg if sender() == child ⇒
+    case msg if sender() == child =>
       parent ! msg
 
-    case msg if sender() == parent ⇒
+    case msg if sender() == parent =>
       child ! msg
 
-    case msg ⇒
+    case msg =>
       // Any other sender is presumed to address the child, not the parent.
       child.!(msg)(sender())
   }
@@ -56,10 +56,10 @@ object CatchingActor {
   private def defaultOnStopped(child: ActorRef) = Failure(new StoppedException(child))
 
   def actorOf[A](
-    props: Promise[A] ⇒ Props,
+    props: Promise[A] => Props,
     name: String = "",
     decider: Decider = CatchingSupervisorStrategy.defaultDecider,
-    onStopped: ActorRef ⇒ Try[A] = defaultOnStopped _,
+    onStopped: ActorRef => Try[A] = defaultOnStopped _,
     loggingEnabled: Boolean = false)
     (implicit actorRefFactory: ActorRefFactory)
   : (ActorRef, Future[A]) = {

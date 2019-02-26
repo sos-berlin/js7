@@ -38,7 +38,7 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
   }
 
   // Seq[AgentsOverview]
-  for (uri ← List(
+  for (uri <- List(
       s"$AgentUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
@@ -50,7 +50,7 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
   }
 
   // Seq[AgentRef]
-  for (uri ← List(
+  for (uri <- List(
        s"$AgentUri/?return=AgentRef")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
@@ -62,7 +62,7 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
   }
 
   // AgentRef
-  for (uri ← List(
+  for (uri <- List(
        s"$AgentUri/${pathToAgent.values.head.path.withoutStartingSlash}",
        s"$AgentUri/${pathToAgent.values.head.path.withoutStartingSlash.replace("/", "%2F")}")) {
     s"$uri" in {
@@ -81,5 +81,5 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
 object AgentRefRouteTest {
   private val AgentUri = "/api/agent"
   private val TestAgent = AgentRef(AgentRefPath("/PATH/AGENT") % "VERSION", "https://localhost:65535")
-  private val pathToAgent = Map(TestAgent.path → TestAgent)
+  private val pathToAgent = Map(TestAgent.path -> TestAgent)
 }

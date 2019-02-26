@@ -46,8 +46,8 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
       def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       Task {
         (command match {
-          case ExpectedTerminate ⇒ Valid(AgentCommand.Response.Accepted)
-          case _ ⇒ fail()
+          case ExpectedTerminate => Valid(AgentCommand.Response.Accepted)
+          case _ => fail()
         })
           .map(_.asInstanceOf[command.Response])
       }
@@ -59,8 +59,8 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     @Provides @Singleton
     def authenticator(conf: AgentConfiguration): Authenticator[SimpleUser] =
       new OurMemoizingAuthenticator({
-        case TestUserId ⇒ Some(SimpleUser(TestUserId, HashedPassword(Password, identity)))
-        case _ ⇒ None
+        case TestUserId => Some(SimpleUser(TestUserId, HashedPassword(Password, identity)))
+        case _ => None
       })
   }
 
@@ -72,7 +72,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   override def afterAll() = closer closeThen { super.afterAll() }
 
   "Unauthorized when credentials are missing" in {
-    autoClosing(newTextAgentClient(_ ⇒ ())) { client ⇒
+    autoClosing(newTextAgentClient(_ => ())) { client =>
       interceptUnauthorized {
         client.executeCommand("""{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       }
@@ -80,9 +80,9 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   }
 
   "Unauthorized when credentials are wrong" in {
-    autoClosing(newTextAgentClient(_ ⇒ ())) { client ⇒
+    autoClosing(newTextAgentClient(_ => ())) { client =>
       val e = intercept[AkkaHttpClient.HttpException] {
-        client.login(Some(TestUserId → SecretString("WRONG-PASSWORD"))) await 99.s
+        client.login(Some(TestUserId -> SecretString("WRONG-PASSWORD"))) await 99.s
       }
       assert(e.status == Unauthorized)
       assert(e.dataAsString contains "Login: unknown user or invalid password")
@@ -91,8 +91,8 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
 
   "AgentCommand" in {
     val output = mutable.Buffer[String]()
-    autoClosing(newTextAgentClient(output += _)) { client ⇒
-      client.login(Some(TestUserId → Password)) await 99.s
+    autoClosing(newTextAgentClient(output += _)) { client =>
+      client.login(Some(TestUserId -> Password)) await 99.s
       client.executeCommand("""{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       client.getApi("")
     }
@@ -105,13 +105,13 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
 
   "requireIsResponding" in {
     val output = mutable.Buffer[String]()
-    autoClosing(newTextAgentClient(output += _)) { client ⇒
-      client.login(Some(TestUserId → Password)) await 99.s
+    autoClosing(newTextAgentClient(output += _)) { client =>
+      client.login(Some(TestUserId -> Password)) await 99.s
       client.requireIsResponding()
     }
     assert(output == List("JobScheduler Agent is responding"))
     val agentUri = AgentAddress(s"http://127.0.0.1:${findRandomFreeTcpPort()}")
-    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ ⇒ Unit)) { client ⇒
+    autoClosing(new AkkaHttpAgentTextApi(agentUri, _ => Unit)) { client =>
       val t = intercept[Exception] {
         client.requireIsResponding()
       }
@@ -119,7 +119,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     }
   }
 
-  private def newTextAgentClient(output: String ⇒ Unit) =
+  private def newTextAgentClient(output: String => Unit) =
     new AkkaHttpAgentTextApi(agentUri = AgentAddress(agent.localUri.toString), output, configDirectory = Some(configDirectory))
 }
 
@@ -128,7 +128,7 @@ private object AkkaHttpAgentTextApiTest {
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password
 
-  private def interceptUnauthorized(body: ⇒ Unit) = {
+  private def interceptUnauthorized(body: => Unit) = {
     val e = intercept[AkkaHttpClient.HttpException] {
       body
     }

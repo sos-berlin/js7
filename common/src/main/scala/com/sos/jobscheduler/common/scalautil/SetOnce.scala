@@ -20,19 +20,19 @@ class SetOnce[A](name: String = "SetOnce") {
 
   final override def toString = toStringOr("(not yet set)")
 
-  @inline final def toStringOr(or: ⇒ String): String =
+  @inline final def toStringOr(or: => String): String =
     ref.get match {
-      case null ⇒ or
-      case o ⇒ o.toString
+      case null => or
+      case o => o.toString
     }
 
-  @inline final def getOrElse[B >: A](els: ⇒ B) =
+  @inline final def getOrElse[B >: A](els: => B) =
     ref.get match {
-      case null ⇒ els
-      case o ⇒ o
+      case null => els
+      case o => o
     }
 
-  final def getOrUpdate(value: ⇒ A) =
+  final def getOrUpdate(value: => A) =
     if (ref.get != null)
       ref.get
     else {
@@ -79,7 +79,7 @@ object SetOnce {
     * </pre>
     */
   trait Implicit {
-    this: SetOnce[_] ⇒
+    this: SetOnce[_] =>
   }
 
   object Implicit {

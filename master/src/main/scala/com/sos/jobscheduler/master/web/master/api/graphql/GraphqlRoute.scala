@@ -45,15 +45,15 @@ trait GraphqlRoute extends MasterRouteProvider {
       orderApi.order(orderId).runToFuture
 
     def orders(selector: QueryContext.OrderFilter) = {
-      val idMatches: Order[Order.State] ⇒ Boolean =
+      val idMatches: Order[Order.State] => Boolean =
         selector.idPattern match {
-          case None ⇒ _ ⇒ true
-          case Some(pattern) ⇒ o ⇒ pattern.matcher(o.id.string).matches
+          case None => _ => true
+          case Some(pattern) => o => pattern.matcher(o.id.string).matches
         }
-      val workflowMatches: Order[Order.State] ⇒ Boolean =
+      val workflowMatches: Order[Order.State] => Boolean =
         selector.workflowPath match {
-          case None ⇒ _ ⇒ true
-          case Some(workflowPath) ⇒ _.workflowId.path == workflowPath
+          case None => _ => true
+          case Some(workflowPath) => _.workflowId.path == workflowPath
         }
 
       def matches(order: Order[Order.State]) = workflowMatches(order) && idMatches(order)
@@ -67,7 +67,7 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   final val graphqlRoute: Route =
     pathEnd {
-      authorizedUser(ValidUserPermission) { _ ⇒
+      authorizedUser(ValidUserPermission) { _ =>
         standardGraphqlRoute
       }
     } ~
@@ -80,31 +80,31 @@ trait GraphqlRoute extends MasterRouteProvider {
       getFromResource(GraphiqlResource.path)
     } ~
     get {
-      parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) ⇒
+      parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) =>
         parseJson(variables getOrElse "{}") match {
-          case Left(t) ⇒ completeWithFailure(t)
-          case Right(json) ⇒ executeGraphql(queryString, operationName, json)
+          case Left(t) => completeWithFailure(t)
+          case Right(json) => executeGraphql(queryString, operationName, json)
         }
       }
     } ~
     post {
-      parameters(("query".?, "operationName".?, "variables".?)) { (queryParam, operationNameParam, variablesParam) ⇒
-        entity(as[JsonObject]) { body ⇒
+      parameters(("query".?, "operationName".?, "variables".?)) { (queryParam, operationNameParam, variablesParam) =>
+        entity(as[JsonObject]) { body =>
           // GraphiQL GUI may send both query parameter and JSON content. For GraphiQL, POST content has precedence
           val queryString = body("query") flatMap (_.asString) orElse queryParam
           val operationName = body("operationName") flatMap (_.asString) orElse operationNameParam
           val checkedVariables = body("variables")
-            .map(json ⇒ if (json.isNull) EmptyObject else json)
+            .map(json => if (json.isNull) EmptyObject else json)
             .map(Valid.apply)
             .orElse(variablesParam map (_.parseJsonChecked))
             .getOrElse(Valid(EmptyObject))
 
           queryString match {
-            case None ⇒ completeWithFailure("Missing query")
-            case Some(q) ⇒
+            case None => completeWithFailure("Missing query")
+            case Some(q) =>
               checkedVariables match {
-                case Invalid(problem) ⇒ completeWithFailure(problem.toString)
-                case Valid(variables) ⇒
+                case Invalid(problem) => completeWithFailure(problem.toString)
+                case Valid(variables) =>
                   executeGraphql(q, operationName, variables)
               }
           }
@@ -114,11 +114,11 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   private def executeGraphql(queryString: String, operationName: Option[String], variables: Json): Route = {
     QueryParser.parse(queryString).toEither match {
-      case Left(throwable) ⇒ completeWithFailure(throwable)
-      case Right(query) ⇒
+      case Left(throwable) => completeWithFailure(throwable)
+      case Right(query) =>
         onComplete(executeGraphql(query, operationName, variables)) {
-          case Failure(t) ⇒ completeWithFailure(t)
-          case Success(json) ⇒ complete(json)
+          case Failure(t) => completeWithFailure(t)
+          case Success(json) => complete(json)
         }
     }
   }
@@ -132,29 +132,29 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   private def completeWithFailure(throwable: Throwable): Route =
     throwable match {
-      case parsingFailure: io.circe.ParsingFailure ⇒
+      case parsingFailure: io.circe.ParsingFailure =>
         completeWithFailure(parsingFailure.toStringWithCauses)
 
-      case syntaxError: sangria.parser.SyntaxError ⇒
-        complete(BadRequest →
-          Json.obj("errors" → Json.arr(
+      case syntaxError: sangria.parser.SyntaxError =>
+        complete(BadRequest ->
+          Json.obj("errors" -> Json.arr(
             Json.obj(
-              "message" → syntaxError.getMessage.asJson,
-              "locations" → Json.arr(Json.obj(
-                "line" → syntaxError.originalError.position.line.asJson,
-                "column" → syntaxError.originalError.position.column.asJson))))))
+              "message" -> syntaxError.getMessage.asJson,
+              "locations" -> Json.arr(Json.obj(
+                "line" -> syntaxError.originalError.position.line.asJson,
+                "column" -> syntaxError.originalError.position.column.asJson))))))
 
-      case throwable @ (_: sangria.execution.ExecutionError | _: sangria.execution.QueryAnalysisError) ⇒
+      case throwable @ (_: sangria.execution.ExecutionError | _: sangria.execution.QueryAnalysisError) =>
         completeWithFailure(Option(throwable.getMessage) getOrElse throwable.toStringWithCauses)
 
-      case _ ⇒ throw throwable
+      case _ => throw throwable
     }
 
   private def completeWithFailure(message: String) =
-    complete(BadRequest → errorToJson(message))
+    complete(BadRequest -> errorToJson(message))
 
   private def errorToJson(message: String): Json =
-    Json.obj("errors" → Json.arr(Json.obj("message" → message.asJson)))
+    Json.obj("errors" -> Json.arr(Json.obj("message" -> message.asJson)))
 }
 
 object GraphqlRoute {

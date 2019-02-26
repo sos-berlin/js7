@@ -17,8 +17,8 @@ final case class CommandRun[C <: CommonCommand](
   override def toString = s"$idString ${command.toShortString}"
 
   def idString = batchInternalId match {
-    case None ⇒ internalId.toString  // #101
-    case Some(batchId) ⇒ s"$batchId+${internalId.number - batchId.number}"  // #100+1
+    case None => internalId.toString  // #101
+    case Some(batchId) => s"$batchId+${internalId.number - batchId.number}"  // #100+1
   }
 
   def overview = new CommandRunOverview(internalId, startedAt, command)

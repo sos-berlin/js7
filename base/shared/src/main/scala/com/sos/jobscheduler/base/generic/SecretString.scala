@@ -22,8 +22,8 @@ final case class SecretString(string: String) {
     */
   override def equals(other: Any) =
     other match {
-      case SecretString(otherString) ⇒ timingAttackSecureEqual(string, otherString)
-      case _ ⇒ false
+      case SecretString(otherString) => timingAttackSecureEqual(string, otherString)
+      case _ => false
     }
 }
 
@@ -32,7 +32,7 @@ object SecretString {
   object implicits {
     // Import explicitly, it's secret.
 
-    implicit val JsonEncoder: Encoder[SecretString] = o ⇒ Json.fromString(o.string)
+    implicit val JsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
     implicit val JsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
     val jsonCodec = CirceUtils.circeCodec[SecretString]
   }

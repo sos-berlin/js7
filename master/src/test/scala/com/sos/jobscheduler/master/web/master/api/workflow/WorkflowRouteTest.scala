@@ -39,7 +39,7 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
   }
 
   // Seq[WorkflowsOverview]
-  for (uri ← List(
+  for (uri <- List(
       s"$WorkflowUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
@@ -51,7 +51,7 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
   }
 
   // Seq[Workflow]
-  for (uri ← List(
+  for (uri <- List(
        s"$WorkflowUri/?return=Workflow")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
@@ -63,7 +63,7 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
   }
 
   // Workflow
-  for (uri ← List(
+  for (uri <- List(
        s"$WorkflowUri/${pathToWorkflow.values.head.path.withoutStartingSlash}",
        s"$WorkflowUri/${pathToWorkflow.values.head.path.withoutStartingSlash.replace("/", "%2F")}")) {
     s"$uri" in {
@@ -82,5 +82,5 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
   private val TestWorkflow = ForkTestSetting.TestWorkflow.withId(WorkflowPath("/PATH/WORKFLOW") % "VERSION")
-  private val pathToWorkflow = Map(TestWorkflow.path → TestWorkflow)
+  private val pathToWorkflow = Map(TestWorkflow.path -> TestWorkflow)
 }

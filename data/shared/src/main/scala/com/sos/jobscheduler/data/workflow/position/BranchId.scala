@@ -23,7 +23,7 @@ object BranchId
     override def toString = string
   }
   object Named {
-    implicit val jsonEncoder: Encoder[Named] = o ⇒ Json.fromString(o.string)
+    implicit val jsonEncoder: Encoder[Named] = o => Json.fromString(o.string)
     implicit val jsonDecoder: Decoder[Named] = _.as[String] map Named.apply
   }
 
@@ -32,14 +32,14 @@ object BranchId
     override def toString = number.toString
   }
   object Indexed {
-    implicit val jsonEncoder: Encoder[Indexed] = o ⇒ Json.fromInt(o.number)
+    implicit val jsonEncoder: Encoder[Indexed] = o => Json.fromInt(o.number)
     implicit val jsonDecoder: Decoder[Indexed] = _.as[Int] map Indexed.apply
   }
 
   implicit val jsonEncoder: Encoder[BranchId] = {
-    case o: Named ⇒ o.asJson    // String
-    case o: Indexed ⇒ o.asJson  // Number
+    case o: Named => o.asJson    // String
+    case o: Indexed => o.asJson  // Number
   }
-  implicit val jsonDecoder: Decoder[BranchId] = cursor ⇒
+  implicit val jsonDecoder: Decoder[BranchId] = cursor =>
     cursor.as[Named]/*String*/ orElse cursor.as[Indexed]/*Number*/
 }

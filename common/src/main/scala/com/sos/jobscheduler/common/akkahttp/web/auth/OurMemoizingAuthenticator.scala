@@ -14,28 +14,28 @@ import com.sos.jobscheduler.common.scalautil.Memoizer
   *
   * @author Joacim Zschimmer
   */
-final class OurMemoizingAuthenticator[U <: User](toUser: UserId ⇒ Option[U])
+final class OurMemoizingAuthenticator[U <: User](toUser: UserId => Option[U])
 extends Authenticator[U] {
 
   private val memoizedToUser = Memoizer.strict(toUser)  // Only cache for short time if source will be a changing database !!!
 
   def apply(credentials: Credentials) =
     credentials match {
-      case provided: Credentials.Provided ⇒
+      case provided: Credentials.Provided =>
         val userId = UserId(provided.identifier)
         userId match {
-          case UserId.Anonymous ⇒
+          case UserId.Anonymous =>
             None  // Anonymous is only for internal use, not for explicit authentication
-          case _ ⇒
+          case _ =>
             memoizedToUser(userId) match {
-              case Some(user) ⇒
+              case Some(user) =>
                 provided.verify(user.hashedPassword.hashed.string, user.hashedPassword.hasher) ? user
-              case None ⇒
+              case None =>
                 None
             }
         }
 
-      case Credentials.Missing ⇒
+      case Credentials.Missing =>
         authenticate(AnonymousAndPassword)
     }
 
@@ -44,5 +44,5 @@ extends Authenticator[U] {
 }
 
 object OurMemoizingAuthenticator {
-  private val AnonymousAndPassword = UserAndPassword(UserId.Anonymous → SecretString(""))
+  private val AnonymousAndPassword = UserAndPassword(UserId.Anonymous -> SecretString(""))
 }

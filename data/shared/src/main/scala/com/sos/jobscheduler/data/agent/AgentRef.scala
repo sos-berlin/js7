@@ -23,15 +23,15 @@ object AgentRef extends FileBased.Companion[AgentRef]
   type ThisFileBased = AgentRef
   type Path = AgentRefPath
 
-  implicit val jsonEncoder: ObjectEncoder[AgentRef] = agent ⇒
+  implicit val jsonEncoder: ObjectEncoder[AgentRef] = agent =>
     agent.id.asJsonObject ++
       JsonObject(
-        "uri" → Json.fromString(agent.uri))
+        "uri" -> Json.fromString(agent.uri))
 
   implicit val jsonDecoder: Decoder[AgentRef] =
-    cursor ⇒ for {
-      id ← cursor.as[Option[AgentRefId]] map (_ getOrElse AgentRefPath.NoId)
-      uri ← cursor.get[String]("uri")
+    cursor => for {
+      id <- cursor.as[Option[AgentRefId]] map (_ getOrElse AgentRefPath.NoId)
+      uri <- cursor.get[String]("uri")
     } yield AgentRef(id, uri)
 
   override implicit val self = this

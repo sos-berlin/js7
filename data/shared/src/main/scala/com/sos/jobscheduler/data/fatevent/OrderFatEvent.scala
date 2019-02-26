@@ -61,15 +61,15 @@ object OrderFatEvent
     override def toString = s"${getClass.simpleScalaName}(${chunk.trim.truncateWithEllipsis(80, showLength = true)})"
   }
   object OrderStdWrittenFat {
-    def apply(orderId: OrderId, t: StdoutOrStderr): String ⇒ OrderStdWrittenFat =
+    def apply(orderId: OrderId, t: StdoutOrStderr): String => OrderStdWrittenFat =
       t match {
-        case Stdout ⇒ OrderStdoutWrittenFat
-        case Stderr ⇒ OrderStderrWrittenFat
+        case Stdout => OrderStdoutWrittenFat
+        case Stderr => OrderStderrWrittenFat
       }
 
     def unapply(o: OrderStdWrittenFat) = o match {
-      case OrderStdoutWrittenFat(chunk) ⇒ Some((Stdout, chunk))
-      case OrderStderrWrittenFat(chunk) ⇒ Some((Stderr, chunk))
+      case OrderStdoutWrittenFat(chunk) => Some((Stdout, chunk))
+      case OrderStderrWrittenFat(chunk) => Some((Stderr, chunk))
     }
   }
 

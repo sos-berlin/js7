@@ -44,7 +44,7 @@ with JournalingObserver
   private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
       listJournalFiles(journalMeta.fileBase)
-      .map(o ⇒ new HistoricJournalFile(o.afterEventId, o.file))
+      .map(o => new HistoricJournalFile(o.afterEventId, o.file))
       .toKeyedMap(_.afterEventId)
   private val started = Promise[this.type]()
   @volatile
@@ -66,13 +66,13 @@ with JournalingObserver
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
-      for (current ← currentEventReaderOption) {
+      for (current <- currentEventReaderOption) {
         if (current.lastEventId != after)
           throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
-        for (o ← afterEventIdToHistoric.get(current.tornEventId)) {
+        for (o <- afterEventIdToHistoric.get(current.tornEventId)) {
           o.closeAfterUse()  // In case last journal file had no events (and `after` remains), we exchange it
         }
-        afterEventIdToHistoric += current.tornEventId → new HistoricJournalFile(
+        afterEventIdToHistoric += current.tornEventId -> new HistoricJournalFile(
           afterEventId = current.tornEventId,
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
@@ -111,19 +111,19 @@ with JournalingObserver
   protected[journal] def deleteObsoleteJournalFiles(): Unit = {
     val after = keepEventsAfter.get
     val keepFileAfter = currentEventReaderOption match {
-      case Some(current) if current.tornEventId <= after ⇒
+      case Some(current) if current.tornEventId <= after =>
         current.tornEventId
-      case _ ⇒
+      case _ =>
         historicJournalFileAfter(after).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
     }
-    for (historic ← afterEventIdToHistoric.values if historic.afterEventId < keepFileAfter) {
+    for (historic <- afterEventIdToHistoric.values if historic.afterEventId < keepFileAfter) {
       logger.info(s"Deleting obsolete journal file '$historic'")
       historic.close()
       try {
         delete(historic.file)
         afterEventIdToHistoric -= historic.afterEventId
       } catch {
-        case e: IOException ⇒ logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
+        case e: IOException => logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
       }
     }
   }
@@ -139,9 +139,9 @@ with JournalingObserver
     */
   def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
     val result = currentEventReaderOption match {
-      case Some(current) if current.tornEventId <= after ⇒
+      case Some(current) if current.tornEventId <= after =>
         current.eventsAfter(after)
-      case _ ⇒
+      case _ =>
         historicEventsAfter(after)
     }
     evictUnusedEventReaders()
@@ -149,10 +149,10 @@ with JournalingObserver
   }
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
-    historicJournalFileAfter(after) flatMap { historicJournalFile ⇒
+    historicJournalFileAfter(after) flatMap { historicJournalFile =>
       var last = after
-      historicJournalFile.eventReader.eventsAfter(after) map { events ⇒
-        events.map { stamped ⇒
+      historicJournalFile.eventReader.eventsAfter(after) map { events =>
+        events.map { stamped =>
           last = stamped.eventId
           stamped
         } ++  // ++ is lazy, so last contains last read eventId
@@ -178,9 +178,9 @@ with JournalingObserver
 
   override def snapshotObjectsFor(after: EventId) =
     historicJournalFileAfter(after)
-      .fold(super.snapshotObjectsFor(after)) { historyJournalFile ⇒
+      .fold(super.snapshotObjectsFor(after)) { historyJournalFile =>
         logger.debug(s"Reading snapshot from journal file '$historyJournalFile'")
-        historyJournalFile.afterEventId → historyJournalFile.eventReader.snapshotObjects
+        historyJournalFile.afterEventId -> historyJournalFile.eventReader.snapshotObjects
       }
 
   private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
@@ -192,9 +192,9 @@ with JournalingObserver
 
   private def lastEventId =
     currentEventReaderOption match {
-      case Some(o) ⇒ o.lastEventId
-      case None if afterEventIdToHistoric.nonEmpty ⇒ afterEventIdToHistoric.keys.max
-      case None ⇒ EventId.BeforeFirst
+      case Some(o) => o.lastEventId
+      case None if afterEventIdToHistoric.nonEmpty => afterEventIdToHistoric.keys.max
+      case None => EventId.BeforeFirst
     }
 
   private final class HistoricJournalFile(
@@ -205,15 +205,15 @@ with JournalingObserver
     private val _eventReader = AtomicAny[EventReader[E]](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
-      for (r ← Option(_eventReader.get)) r.closeAfterUse()
+      for (r <- Option(_eventReader.get)) r.closeAfterUse()
 
     def close(): Unit =
-      for (r ← Option(_eventReader.get)) r.close()
+      for (r <- Option(_eventReader.get)) r.close()
 
     @tailrec
     def eventReader: EventReader[E] =
       _eventReader.get match {
-        case null ⇒
+        case null =>
           val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
@@ -222,7 +222,7 @@ with JournalingObserver
             r.close()
             eventReader
           }
-        case r ⇒ r
+        case r => r
       }
 
     def evictEventReader(): Unit = {
@@ -237,8 +237,8 @@ with JournalingObserver
 
     def lastUsedAt: Long =
       _eventReader.get match {
-        case null ⇒ 0L
-        case reader ⇒ reader.lastUsedAt
+        case null => 0L
+        case reader => reader.lastUsedAt
       }
 
     def isEvictable: Boolean = {

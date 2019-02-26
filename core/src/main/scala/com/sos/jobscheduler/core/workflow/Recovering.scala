@@ -22,40 +22,40 @@ object Recovering
 
   // TODO Some events (OrderForked, OrderFinished, OrderOffered) handels by OrderActor let AgentOrderKeeper add or remove orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
-  final def followUpRecoveredSnapshots(idToWorkflow: WorkflowId ⇒ Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
+  final def followUpRecoveredSnapshots(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
   : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
     val added = mutable.Map[OrderId, Order[Order.State]]()
     val removed = mutable.Buffer[OrderId]()
     val orderProcessor = new OrderProcessor(idToWorkflow, idToOrder)
-    for (order ← idToOrder.values;
-         event ← snapshotToEvent(order);
-         followUps ← orderProcessor.handleEvent(event) onProblem (p ⇒ logger.error(p)))
+    for (order <- idToOrder.values;
+         event <- snapshotToEvent(order);
+         followUps <- orderProcessor.handleEvent(event) onProblem (p => logger.error(p)))
     {
       followUps foreach {
-        case FollowUp.AddChild(childOrder) ⇒  // OrderForked
+        case FollowUp.AddChild(childOrder) =>  // OrderForked
           if (!idToOrder.contains(childOrder.id)) {  // Snapshot of child order is missing? Add the child now!
-            added.insert(childOrder.id → childOrder)
+            added.insert(childOrder.id -> childOrder)
           }
 
-        case FollowUp.Remove(removeOrderId) ⇒  // OrderFinished
+        case FollowUp.Remove(removeOrderId) =>  // OrderFinished
           removed += removeOrderId
 
-        case _ ⇒
+        case _ =>
       }
     }
     (added.values.toVector, removed.toVector)
   }
 
   private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =
-    order.ifState[Order.Forked].map(order ⇒
+    order.ifState[Order.Forked].map(order =>
       order.id <-: OrderForked(order.state.children))
     //.orElse(
-    //  order.ifState[Order.Offering].map(order ⇒
+    //  order.ifState[Order.Offering].map(order =>
     //    Valid(FollowUp.AddOffered(order.newPublishedOrder(event)) :: Nil)))
     //.orElse(
-    //  order.ifState[Order.Awaiting].map(order ⇒   TODO Missing?
+    //  order.ifState[Order.Awaiting].map(order =>   TODO Missing?
     //  )
     .orElse(
-      order.ifState[Order.Finished].map(_ ⇒
+      order.ifState[Order.Finished].map(_ =>
         order.id <-: OrderFinished))
 }

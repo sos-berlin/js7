@@ -38,8 +38,8 @@ object MonixUtils
         */
       def await(duration: Option[java.time.Duration])(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
         duration match {
-          case Some(o) ⇒ await(o)
-          case None ⇒ awaitInfinite
+          case Some(o) => await(o)
+          case None => awaitInfinite
         }
 
       def await(duration: java.time.Duration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
@@ -51,17 +51,17 @@ object MonixUtils
 
     implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
     {
-      def scheduleFor(timestamp: Timestamp)(action: ⇒ Unit): Cancelable = {
+      def scheduleFor(timestamp: Timestamp)(action: => Unit): Cancelable = {
         val nw = Timestamp.now
         Try(if (timestamp <= nw) Duration.Zero else timestamp - nw) match {
-          case Success(delay) ⇒ underlying.scheduleOnce(delay)(action)
-          case Failure(_) ⇒ Cancelable.empty  // More than 292 years
+          case Success(delay) => underlying.scheduleOnce(delay)(action)
+          case Failure(_) => Cancelable.empty  // More than 292 years
         }
       }
     }
   }
 
-  def autoCloseableToObservable[A <: AutoCloseable](newA: ⇒ A): Observable[A] =
+  def autoCloseableToObservable[A <: AutoCloseable](newA: => A): Observable[A] =
     Observable.fromResource(Resource.fromAutoCloseable(Task(newA)))
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
@@ -70,7 +70,7 @@ object MonixUtils
   private def closingIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] = {
     logger.trace(s"closeableIteratorToObservable($iterator)")
     Observable.fromIterator(Task(iterator))
-      .guaranteeCase { exitCase ⇒
+      .guaranteeCase { exitCase =>
         Task {
           logger.trace(s"Close $iterator $exitCase")
           iterator.close()

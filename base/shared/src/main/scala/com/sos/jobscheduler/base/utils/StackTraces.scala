@@ -14,8 +14,8 @@ object StackTraces {
   implicit final class StackTraceTry[A](private val delegate: Try[A]) extends AnyVal {
     def appendCurrentStackTrace: Try[A] = {
       delegate match {
-        case Failure(t) ⇒ t.appendStackTrace(new Exception().getStackTrace)
-        case o ⇒ o
+        case Failure(t) => t.appendStackTrace(new Exception().getStackTrace)
+        case o => o
       }
       delegate
     }

@@ -44,12 +44,12 @@ final class AgentTest extends FreeSpec with AgentTester
   }
 
   "Job working directory" - {
-    for ((testName, toWorkingDirectory) ←
-           Array[(String, Path ⇒ Path)](
-             ("default", _ ⇒ WorkingDirectory),
+    for ((testName, toWorkingDirectory) <-
+           Array[(String, Path => Path)](
+             ("default", _ => WorkingDirectory),
              ("not default", _ / "working")))
       testName in {
-        provideAgentDirectory { directory ⇒
+        provideAgentDirectory { directory =>
           createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
           TestExecutablePath.toFile(directory / "config" / "executables").writeExecutable(TestScript)
@@ -57,7 +57,7 @@ final class AgentTest extends FreeSpec with AgentTester
           if (directory != WorkingDirectory) {
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
           }
-          RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
+          RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
             agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
 
@@ -66,7 +66,7 @@ final class AgentTest extends FreeSpec with AgentTester
               == Valid(AgentCommand.Response.Accepted))
             val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
-            assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" → workingDirectory.toString)))
+            assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" -> workingDirectory.toString)))
             agent.terminate() await 99.s
           }
         }

@@ -22,7 +22,7 @@ import scala.util.Random
 final class DirectoryReaderTest extends FreeSpec
 {
   "entries" in {
-    withTemporaryDirectory("Z-") { dir ⇒
+    withTemporaryDirectory("Z-") { dir =>
       touch(dir / "C")
       touch(dir / "A")
       touch(dir / "B")
@@ -41,7 +41,7 @@ final class DirectoryReaderTest extends FreeSpec
           subdir / "B"))
 
       def isValidInstant(instant: Instant) = instant > now - 30.s && instant <= now
-      assert(entries.forall(e ⇒ e.attributes.size == 0 && !e.attributes.isDirectory && e.attributes.isRegularFile &&
+      assert(entries.forall(e => e.attributes.size == 0 && !e.attributes.isDirectory && e.attributes.isRegularFile &&
         isValidInstant(e.attributes.lastModifiedTime.toInstant)))
 
       // Second call yields equivalent result
@@ -51,10 +51,10 @@ final class DirectoryReaderTest extends FreeSpec
 
   if (sys.props contains "test.speed") "Sort speed" - {
     val n = 200000
-    val entries = 1 to n map (_ ⇒ Entry(Paths.get(Random.nextString(100)), null))
+    val entries = 1 to n map (_ => Entry(Paths.get(Random.nextString(100)), null))
 
     "single thread" in {
-      for (_ ← 1 to 10) {
+      for (_ <- 1 to 10) {
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             entries.sortBy(_.file)
@@ -63,8 +63,8 @@ final class DirectoryReaderTest extends FreeSpec
     }
 
     "parallel" in {
-      for (_ ← 1 to 10) {
-        val comparator: Comparator[Entry] = (a, b) ⇒ a.file compareTo b.file
+      for (_ <- 1 to 10) {
+        val comparator: Comparator[Entry] = (a, b) => a.file compareTo b.file
         logger.info(
           measureTime(1, "directories", warmUp = 0) {
             val array = entries.toArray

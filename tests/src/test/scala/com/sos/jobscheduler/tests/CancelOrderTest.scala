@@ -34,7 +34,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
   protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
 
   override def beforeAll() = {
-    for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(1.s))
+    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(1.s))
     super.beforeAll()
   }
 
@@ -109,12 +109,12 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i ← 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
-    for (o ← orders) master.addOrderBlocking(o)
-    for (o ← orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
-    val response = master.executeCommandAsSystemUser(Batch(for (o ← orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
+    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
+    for (o <- orders) master.addOrderBlocking(o)
+    for (o <- orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
+    val response = master.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Valid(Response.Accepted))))
-    for (o ← orders) master.eventWatch.await[OrderCanceled](_.key == o.id)
+    for (o <- orders) master.eventWatch.await[OrderCanceled](_.key == o.id)
   }
 }
 

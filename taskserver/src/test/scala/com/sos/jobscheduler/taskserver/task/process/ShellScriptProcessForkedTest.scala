@@ -24,12 +24,12 @@ final class ShellScriptProcessForkedTest extends FreeSpec {
     // Handling "Text file busy" when starting many processes.
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
-    val processFutures = for (i ← 0 until n) yield Future {
+    val processFutures = for (i <- 0 until n) yield Future {
       startShellScript(ProcessConfiguration.forTest, name = s"#$i", scriptString = script)
     }
     val processes = processFutures await 300.s
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
-    for (p ← processes) {
+    for (p <- processes) {
       val rc = p.terminated await 99.s
       assert(rc == ReturnCode(0))
       p.close()

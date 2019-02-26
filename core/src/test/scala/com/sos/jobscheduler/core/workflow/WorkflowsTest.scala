@@ -17,21 +17,21 @@ final class WorkflowsTest extends FreeSpec {
       TestWorkflow.id,
       Vector(
         /*0*/ Fork.of(
-          "🥕" → Workflow.of(AExecute),
-          "🍋" → Workflow.of(AExecute)),
+          "🥕" -> Workflow.of(AExecute),
+          "🍋" -> Workflow.of(AExecute)),
         /*1*/ Fork.of(
-          "🥕" → Workflow.of(AExecute),
-          "🍋" → Workflow.of(AExecute)),
+          "🥕" -> Workflow.of(AExecute),
+          "🍋" -> Workflow.of(AExecute)),
         /*2*/ Gap,
         /*3*/ Fork.of(
-          "🥕" → Workflow.of(Gap),
-          "🍋" → Workflow.of(AExecute, Gap)),
+          "🥕" -> Workflow.of(Gap),
+          "🍋" -> Workflow.of(AExecute, Gap)),
         /*4*/ Fork.of(
-          "🥕" → Workflow.of(AExecute),
-          "🍋" → Workflow.of(Gap))),
+          "🥕" -> Workflow.of(AExecute),
+          "🍋" -> Workflow.of(Gap))),
       Map(
-        AJobName → AJob,
-        BJobName → BJob), // TODO May be deleted, too
+        AJobName -> AJob,
+        BJobName -> BJob), // TODO May be deleted, too
       source = TestWorkflow.source))
   }
 
@@ -43,45 +43,45 @@ final class WorkflowsTest extends FreeSpec {
         /*1*/ Gap,
         /*2*/ BExecute,
         /*3*/ Fork.of(
-          "🥕" → Workflow.of(BExecute),
-          "🍋" → Workflow.of(Gap, BExecute)),
+          "🥕" -> Workflow.of(BExecute),
+          "🍋" -> Workflow.of(Gap, BExecute)),
         /*4*/ Fork.of(
-          "🥕" → Workflow.of(Gap),
-          "🍋" → Workflow.of(BExecute))),
+          "🥕" -> Workflow.of(Gap),
+          "🍋" -> Workflow.of(BExecute))),
       Map(
-        AJobName → AJob,  // TODO May be deleted, too
-        BJobName → BJob),
+        AJobName -> AJob,  // TODO May be deleted, too
+        BJobName -> BJob),
       source = TestWorkflow.source))
   }
 
   "isStartableOnAgent" - {
     val isStartableSetting = List(
-      Position(0) → List(AAgentRefPath),
-      Position(0, "🥕", 0) → List(AAgentRefPath),
-      Position(0, "🥕", 1) → Nil,
-      Position(0, "🍋", 0) → List(AAgentRefPath),
-      Position(0, "🍋", 1) → Nil,
-      Position(1) → List(AAgentRefPath),
-      Position(1, "🥕", 0) → List(AAgentRefPath),
-      Position(1, "🥕", 1) → Nil,
-      Position(1, "🍋", 0) → List(AAgentRefPath),
-      Position(1, "🍋", 1) → Nil,
-      Position(2) → List(BAgentRefPath),
-      Position(3) → List(AAgentRefPath, BAgentRefPath),
-      Position(3, "🥕", 0) → List(BAgentRefPath),
-      Position(3, "🥕", 1) → Nil,
-      Position(3, "🍋", 0) → List(AAgentRefPath),
-      Position(3, "🍋", 1) → List(BAgentRefPath),
-      Position(3, "🍋", 2) → Nil,
-      Position(4) → List(AAgentRefPath, BAgentRefPath),  // Order 🍋 is created on A but executed on B
-      Position(4, "🥕", 0) → List(AAgentRefPath),
-      Position(4, "🥕", 1) → Nil,
-      Position(4, "🍋", 0) → List(BAgentRefPath),
-      Position(4, "🍋", 1) → Nil,
-      Position(5) → Nil)
+      Position(0) -> List(AAgentRefPath),
+      Position(0, "🥕", 0) -> List(AAgentRefPath),
+      Position(0, "🥕", 1) -> Nil,
+      Position(0, "🍋", 0) -> List(AAgentRefPath),
+      Position(0, "🍋", 1) -> Nil,
+      Position(1) -> List(AAgentRefPath),
+      Position(1, "🥕", 0) -> List(AAgentRefPath),
+      Position(1, "🥕", 1) -> Nil,
+      Position(1, "🍋", 0) -> List(AAgentRefPath),
+      Position(1, "🍋", 1) -> Nil,
+      Position(2) -> List(BAgentRefPath),
+      Position(3) -> List(AAgentRefPath, BAgentRefPath),
+      Position(3, "🥕", 0) -> List(BAgentRefPath),
+      Position(3, "🥕", 1) -> Nil,
+      Position(3, "🍋", 0) -> List(AAgentRefPath),
+      Position(3, "🍋", 1) -> List(BAgentRefPath),
+      Position(3, "🍋", 2) -> Nil,
+      Position(4) -> List(AAgentRefPath, BAgentRefPath),  // Order 🍋 is created on A but executed on B
+      Position(4, "🥕", 0) -> List(AAgentRefPath),
+      Position(4, "🥕", 1) -> Nil,
+      Position(4, "🍋", 0) -> List(BAgentRefPath),
+      Position(4, "🍋", 1) -> Nil,
+      Position(5) -> Nil)
 
-    for ((position, agentRefPaths) ← isStartableSetting) {
-      for ((agentRefPath, expected) ← agentRefPaths.map(_ → true) ++ (AgentRefPaths filterNot agentRefPaths.toSet).map(_ → false)) {
+    for ((position, agentRefPaths) <- isStartableSetting) {
+      for ((agentRefPath, expected) <- agentRefPaths.map(_ -> true) ++ (AgentRefPaths filterNot agentRefPaths.toSet).map(_ -> false)) {
         s"isStartableOnAgent($position $agentRefPath) = $expected" in {
           assert(TestWorkflow.isStartableOnAgent(position, agentRefPath) == expected)
         }
@@ -95,14 +95,14 @@ final class WorkflowsTest extends FreeSpec {
 
   //"determinedExecutingAgent" - {
   //  val setting = List(
-  //    Position(0) → Some(AAgentRefPath),
-  //    Position(1) → Some(AAgentRefPath),
-  //    Position(2) → Some(BAgentRefPath),
-  //    Position(3) → None,
-  //    Position(4) → None,
-  //    Position(5) → Nil)
+  //    Position(0) -> Some(AAgentRefPath),
+  //    Position(1) -> Some(AAgentRefPath),
+  //    Position(2) -> Some(BAgentRefPath),
+  //    Position(3) -> None,
+  //    Position(4) -> None,
+  //    Position(5) -> Nil)
   //
-  //  for ((position, expected) ← setting) {
+  //  for ((position, expected) <- setting) {
   //    s"determinedExecutingAgent($position)" in {
   //      assert(TestWorkflow.determinedExecutingAgent(position) == expected)
   //    }

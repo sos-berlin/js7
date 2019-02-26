@@ -21,8 +21,8 @@ object KeyedEvent {
 
   sealed trait NoKey
   case object NoKey extends NoKey {
-    implicit val JsonEncoder: Encoder[NoKey] = _ ⇒ sys.error("NoKey Encoder")
-    implicit val JsonDecoder: Decoder[NoKey] = _ ⇒ sys.error("NoKey Decoder")
+    implicit val JsonEncoder: Encoder[NoKey] = _ => sys.error("NoKey Encoder")
+    implicit val JsonDecoder: Decoder[NoKey] = _ => sys.error("NoKey Decoder")
 
     override def toString = "NoKey"
   }
@@ -34,20 +34,20 @@ object KeyedEvent {
   def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
   implicit def jsonEncoder[E <: Event](implicit eventEncoder: ObjectEncoder[E], keyEncoder: Encoder[E#Key]): ObjectEncoder[KeyedEvent[E]] =
-    keyedEvent ⇒ {
+    keyedEvent => {
       val jsonObject = keyedEvent.event.asJsonObject
       keyedEvent.key match {
-        case _: NoKey.type ⇒ jsonObject
-        case key ⇒
+        case _: NoKey.type => jsonObject
+        case key =>
           require(!jsonObject.contains(KeyFieldName), s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
-          (KeyFieldName → key.asJson) +: jsonObject
+          (KeyFieldName -> key.asJson) +: jsonObject
       }
     }
 
   implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key]): Decoder[KeyedEvent[E]] =
-    cursor ⇒ {
+    cursor => {
       val key = cursor.get[E#Key]("key") getOrElse NoKey.asInstanceOf[E#Key]
-      for (event ← cursor.as[E]) yield
+      for (event <- cursor.as[E]) yield
         KeyedEvent(key, event)
     }
 

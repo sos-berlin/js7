@@ -30,54 +30,54 @@ extends KeyedJournalingActor[TestEvent] {
     update(event)
 
   def receive = {
-    case command: Command ⇒
+    case command: Command =>
       command match {
 
-        case Command.Disturb(value) ⇒
+        case Command.Disturb(value) =>
           disturbance = value
 
-        case Command.DisturbAndRespond ⇒
+        case Command.DisturbAndRespond =>
           deferAsync {
             sender() ! "OK"
           }
 
-        case Command.Add(string) ⇒
+        case Command.Add(string) =>
           val before = persistedEventId
-          persist(TestEvent.Added(string)) { e ⇒
+          persist(TestEvent.Added(string)) { e =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Done
           }
 
-        case Command.Remove ⇒
+        case Command.Remove =>
           val before = persistedEventId
-          persist(TestEvent.Removed) { e ⇒
+          persist(TestEvent.Removed) { e =>
             assert(before < persistedEventId)
             update(e)
             sender() ! Response.Completed(disturbance)
           }
 
-        case Command.Append(string) ⇒
-          persistTransaction(string map TestEvent.Appended.apply)(es ⇒ es foreach update)
+        case Command.Append(string) =>
+          persistTransaction(string map TestEvent.Appended.apply)(es => es foreach update)
           defer {
             sender() ! Response.Completed(disturbance)
           }
 
-        case Command.AcceptEarly ⇒
+        case Command.AcceptEarly =>
           val sender = this.sender()
           val event = TestEvent.NothingDone
           persistAcceptEarly(event) onComplete {
             // persistAcceptEarly does not update persistedEventId
-            case Success(_: Accepted) ⇒ sender ! Response.Completed(disturbance)
-            case Failure(t) ⇒
+            case Success(_: Accepted) => sender ! Response.Completed(disturbance)
+            case Failure(t) =>
               logger.error(t.toStringWithCauses, t)
               sender ! Status.Failure(t)
           }
 
-        case Command.AppendAsync(string) ⇒
-          for (c ← string) {
+        case Command.AppendAsync(string) =>
+          for (c <- string) {
             val before = persistedEventId
-            persist(TestEvent.Appended(c), async = true) { event ⇒
+            persist(TestEvent.Appended(c), async = true) { event =>
               assert(before < persistedEventId)
               update(event)
             }
@@ -86,32 +86,32 @@ extends KeyedJournalingActor[TestEvent] {
             sender() ! Response.Completed(disturbance)
           }
 
-        case Command.AppendNested(string) ⇒
+        case Command.AppendNested(string) =>
           def append(string: List[Char]): Unit = string match {
-            case char :: tail ⇒
-              persist(TestEvent.Appended(char)) { e ⇒
+            case char :: tail =>
+              persist(TestEvent.Appended(char)) { e =>
                 update(e)
                 append(tail)
               }
-            case Nil ⇒
+            case Nil =>
               sender() ! Response.Completed(disturbance)
           }
           append(string.toList)
 
-        case Command.AppendNestedAsync(string) ⇒
+        case Command.AppendNestedAsync(string) =>
           def append(string: List[Char]): Unit = string match {
-            case char :: tail ⇒
-              persist(TestEvent.Appended(char), async = true) { e ⇒
+            case char :: tail =>
+              persist(TestEvent.Appended(char), async = true) { e =>
                 update(e)
                 append(tail)
               }
-            case Nil ⇒
+            case Nil =>
               sender() ! Response.Completed(disturbance)
           }
           append(string.toList)
       }
 
-    case Input.Get ⇒
+    case Input.Get =>
       assert(aggregate != null)
       deferAsync {  // For testing
         sender() ! aggregate
@@ -121,16 +121,16 @@ extends KeyedJournalingActor[TestEvent] {
 
   private def update(event: TestEvent): Unit =
     event match {
-      case event: TestEvent.Added ⇒
+      case event: TestEvent.Added =>
         assert(aggregate == null)
         import event._
         aggregate = TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
 
-      case TestEvent.Removed ⇒
+      case TestEvent.Removed =>
         aggregate = null
         context.stop(self)
 
-      case event: TestEvent ⇒
+      case event: TestEvent =>
         aggregate = aggregate.applyEvent(event)
     }
 }

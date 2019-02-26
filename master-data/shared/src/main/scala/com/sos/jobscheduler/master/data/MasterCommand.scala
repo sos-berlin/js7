@@ -47,14 +47,14 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
   object CancelOrder {
-    implicit val jsonEncoder: ObjectEncoder[CancelOrder] = o ⇒
+    implicit val jsonEncoder: ObjectEncoder[CancelOrder] = o =>
       JsonObject.fromIterable(
-        ("orderId" → o.orderId.asJson) ::
-          (o.mode != CancelMode.Default).thenList("mode" → o.mode.asJson))
-    implicit val jsonDecoder: Decoder[CancelOrder] = c ⇒
+        ("orderId" -> o.orderId.asJson) ::
+          (o.mode != CancelMode.Default).thenList("mode" -> o.mode.asJson))
+    implicit val jsonDecoder: Decoder[CancelOrder] = c =>
       for {
-        orderId ← c.get[OrderId]("orderId")
-        mode ← c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
+        orderId <- c.get[OrderId]("orderId")
+        mode <- c.get[Option[CancelMode]]("mode") map (_ getOrElse CancelMode.Default)
       } yield CancelOrder(orderId, mode)
   }
 

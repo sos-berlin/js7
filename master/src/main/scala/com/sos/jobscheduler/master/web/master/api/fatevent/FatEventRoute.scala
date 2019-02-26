@@ -40,14 +40,14 @@ trait FatEventRoute extends MasterRouteProvider
   protected def eventWatch: EventWatch[Event]
 
   private implicit val fatScheduler = Scheduler(
-    newSingleThreadExecutor { runnable ⇒
+    newSingleThreadExecutor { runnable =>
       val thread = new Thread(runnable)
       thread.setName(s"JobScheduler-fatEvent-${thread.getId}")
       thread
     },
     _ match {
-      case t: ClosedException ⇒ logger.debug(t.toString)  // Why throws thread?
-      case throwable: Throwable ⇒ logger.error(throwable.toStringWithCauses, throwable)
+      case t: ClosedException => logger.debug(t.toString)  // Why throws thread?
+      case throwable: Throwable => logger.error(throwable.toStringWithCauses, throwable)
     })
 
   // Rebuilding FatState may take a long time, so we allow only one per time.
@@ -62,8 +62,8 @@ trait FatEventRoute extends MasterRouteProvider
   final val fatEventRoute: Route =
     pathEnd {
       get {
-        authorizedUser(ValidUserPermission) { _ ⇒
-          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest ⇒
+        authorizedUser(ValidUserPermission) { _ =>
+          eventRequest[FatEvent](defaultReturnType = Some("FatEvent")).apply { fatRequest =>
             concurrentRequestsLimiter(
               complete(requestFatEvents(fatRequest).runToFuture))
           }
@@ -80,10 +80,10 @@ trait FatEventRoute extends MasterRouteProvider
         eventWatch.when[Event](underlyingRequest.copy[Event](timeout = timeoutAt - now))
           .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
           .map {
-            case o: TearableEventSeq.Torn ⇒
+            case o: TearableEventSeq.Torn =>
               ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-            case empty: EventSeq.Empty ⇒
+            case empty: EventSeq.Empty =>
               stateAccessor.skipIgnoredEventIds(empty.lastEventId)
               val nextTimeout = timeoutAt - now
               if (nextTimeout > Duration.Zero)
@@ -91,7 +91,7 @@ trait FatEventRoute extends MasterRouteProvider
               else
                 ToResponseMarshallable(empty: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-            case EventSeq.NonEmpty(stampedIterator) ⇒
+            case EventSeq.NonEmpty(stampedIterator) =>
               implicit val x = NonEmptyEventSeqJsonStreamingSupport
               closeableIteratorToMarshallable(stampedIterator)
           }

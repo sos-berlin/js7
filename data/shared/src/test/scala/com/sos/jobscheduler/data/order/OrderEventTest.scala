@@ -23,7 +23,7 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", None, Payload(Map("VAR" → "VALUE"))), json"""
+    check(OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", None, Payload(Map("VAR" -> "VALUE"))), json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
@@ -49,7 +49,7 @@ final class OrderEventTest extends FreeSpec {
     check(
       OrderAttached(
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(2), Order.Ready,
-        Outcome.succeeded, Some(OrderId("PARENT")), AgentRefPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
+        Outcome.succeeded, Some(OrderId("PARENT")), AgentRefPath("/AGENT"), Payload(Map("VAR" -> "VALUE"))),
       json"""{
         "TYPE": "OrderAttached",
         "workflowPosition": {
@@ -120,7 +120,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Succeeded(ReturnCode(0))), json"""
+    check(OrderProcessed(MapDiff(changed = Map("VAR" -> "VALUE"), deleted = Set("REMOVED")), Outcome.Succeeded(ReturnCode(0))), json"""
       {
         "TYPE": "OrderProcessed",
         "variablesDiff": {
@@ -165,7 +165,7 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderForked" in {
     check(OrderForked(List(
-      OrderForked.Child("A", OrderId("A/1"), MapDiff(Map("CHANGED" → "x"))),
+      OrderForked.Child("A", OrderId("A/1"), MapDiff(Map("CHANGED" -> "x"))),
       OrderForked.Child("B", OrderId("B/1")))), json"""
       {
         "TYPE": "OrderForked",
@@ -267,22 +267,22 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  private def check(event: OrderEvent, json: ⇒ Json) = testJson(event, json)
+  private def check(event: OrderEvent, json: => Json) = testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val event = Stamped(12345678, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", payload = Payload(Map("VAR" → "VALUE")))))
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", payload = Payload(Map("VAR" -> "VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
-    for (_ ← 1 to 10) {
+    for (_ <- 1 to 10) {
       val circeSerialize = measure(event.asJson.compactPrint)
       val circeDeserialize = measure(jsonString.parseJsonOrThrow.as[OrderEvent].orThrow: OrderEvent)
       println(f"$circeSerialize%-20s $circeDeserialize%-20s")
     }
-    def measure[A](serialize: ⇒ Unit) = {
+    def measure[A](serialize: => Unit) = {
       val t = System.currentTimeMillis
-      for (_ ← 1 to n) serialize
+      for (_ <- 1 to n) serialize
       val d = System.currentTimeMillis - t
       s"${d}ms ${n*1000/d}/s"
     }

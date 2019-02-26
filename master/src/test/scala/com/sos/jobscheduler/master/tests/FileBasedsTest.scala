@@ -132,7 +132,7 @@ object FileBasedsTest {
   private[tests] val AAgent = AgentRef(AgentRefPath("/A"), "http://A")
   private[tests] val BAgent = AgentRef(AgentRefPath("/folder/B"), "http://B")
 
-  private[tests] def provideDirectory[A](body: Path ⇒ A): A = {
+  private[tests] def provideDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")
     val folder = dir / "folder"
     createDirectories(folder)

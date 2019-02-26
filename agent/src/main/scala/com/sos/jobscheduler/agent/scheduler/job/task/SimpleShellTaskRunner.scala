@@ -42,7 +42,7 @@ extends TaskRunner {
     def overview = TaskOverview(jobKey, id, pidOption, startedAt.toTimestamp)
 
     def sendProcessSignal(signal: ProcessSignal) =
-      for (o ← richProcessOnce) o.sendProcessSignal(signal)
+      for (o <- richProcessOnce) o.sendProcessSignal(signal)
 
     override def toString = SimpleShellTaskRunner.this.toString
   }
@@ -56,24 +56,24 @@ extends TaskRunner {
 
   def terminate(): Future[Completed] =
     richProcessOnce.toOption match {
-      case Some(richProcess) ⇒
-        richProcess.terminated map (_ ⇒ Completed)
-      case None ⇒
+      case Some(richProcess) =>
+        richProcess.terminated map (_ => Completed)
+      case None =>
         Future.successful(Completed)
     }
 
   def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
-    for (returnCode ← runProcess(order, defaultArguments, stdChannels)) yield
+    for (returnCode <- runProcess(order, defaultArguments, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
         returnCode)
 
   private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
     for {
-      richProcess ← startProcess(order, defaultArguments, stdChannels) andThen {
-        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
+      richProcess <- startProcess(order, defaultArguments, stdChannels) andThen {
+        case Success(richProcess) => logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobKey}, script ${conf.shellFile}")
       }
-      returnCode ← richProcess.terminated andThen { case tried ⇒
+      returnCode <- richProcess.terminated andThen { case tried =>
         logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
       }
     } yield {
@@ -85,7 +85,7 @@ extends TaskRunner {
     val result = returnValuesProvider.variables
     // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
     try delete(returnValuesProvider.file)
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       logger.error(s"Cannot delete file '${returnValuesProvider.file}': ${t.toStringWithCauses}")
       throw t
     }
@@ -98,7 +98,7 @@ extends TaskRunner {
     else {
       val env = {
         val params = conf.workflowJob.defaultArguments ++ defaultArguments ++ order.variables
-        val paramEnv = params map { case (k, v) ⇒ (variablePrefix + k.toUpperCase) → v }
+        val paramEnv = params map { case (k, v) => (variablePrefix + k.toUpperCase) -> v }
         paramEnv + returnValuesProvider.env
       }
       val processConfiguration = ProcessConfiguration(
@@ -110,8 +110,8 @@ extends TaskRunner {
         killScriptOption = agentConfiguration.killScript)
       synchronizedStartProcess {
         startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
-      } andThen { case Success(richProcess) ⇒
-        terminatedPromise.completeWith(richProcess.terminated map { _ ⇒ Completed })
+      } andThen { case Success(richProcess) =>
+        terminatedPromise.completeWith(richProcess.terminated map { _ => Completed })
         richProcessOnce := richProcess
       }
     }
@@ -119,9 +119,9 @@ extends TaskRunner {
 
   def kill(signal: ProcessSignal): Unit =
     richProcessOnce.toOption match {
-      case Some(richProcess) ⇒
+      case Some(richProcess) =>
         richProcess.sendProcessSignal(signal)
-      case None ⇒
+      case None =>
         terminatedPromise.tryFailure(new RuntimeException(s"$agentTaskId killed before start"))
         killedBeforeStart = true
     }

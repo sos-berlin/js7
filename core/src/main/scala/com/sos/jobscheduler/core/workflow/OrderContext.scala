@@ -17,7 +17,7 @@ trait OrderContext extends InstructionContext
   final def makeScope(order: Order[Order.State]): Scope =
     new Scope {
       lazy val returnCode = order.outcome match {
-        case Outcome.Undisrupted(rc, _) ⇒ rc
+        case Outcome.Undisrupted(rc, _) => rc
         case _: Outcome.Disrupted => DisruptedReturnCode
       }
 

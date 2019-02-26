@@ -50,8 +50,8 @@ package object event {
 
     def toDateTimeString(eventId: EventId): String =
       eventId match {
-        case BeforeFirst ⇒ "BeforeFirst"
-        case _ ⇒
+        case BeforeFirst => "BeforeFirst"
+        case _ =>
           val millis = eventId / 1000
           val micros = eventId % 1000
           val iso = Timestamp.ofEpochMilli(millis).toIsoString  // Timestamp has millisecond presision

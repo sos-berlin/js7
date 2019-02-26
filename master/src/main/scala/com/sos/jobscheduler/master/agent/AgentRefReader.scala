@@ -17,10 +17,10 @@ object AgentRefReader extends FileBasedReader
   val companion = AgentRef
 
   def read(agentRefId: AgentRefId, source: ByteString) = {
-    case t: SourceType.JsonLike ⇒
+    case t: SourceType.JsonLike =>
       readAnonymousJsonLike(t, source) map (_ withId agentRefId)
 
-    case SourceType.Xml ⇒
+    case SourceType.Xml =>
       AgentRefXmlParser.parseXml(agentRefId, simpleByteStringSource(source))
   }
 

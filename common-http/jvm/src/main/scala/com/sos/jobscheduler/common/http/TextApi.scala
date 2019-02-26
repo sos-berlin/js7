@@ -14,7 +14,7 @@ import scala.concurrent.{Await, Future}
   */
 trait TextApi {
 
-  protected val print: String ⇒ Unit
+  protected val print: String => Unit
   protected def serverName: String
   protected def sessionUri: String
   protected def commandUri: Uri
@@ -40,7 +40,7 @@ trait TextApi {
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {
-      case ConnectionLost(t) ⇒
+      case ConnectionLost(t) =>
         print(s"$serverName is not responding: $t")
         throw t
     }
@@ -50,13 +50,13 @@ trait TextApi {
       requireIsResponding()
       true
     } catch {
-      case ConnectionLost(_) ⇒ false
+      case ConnectionLost(_) => false
     }
 
   private def awaitResult[A](future: Future[A]): A =
     try Await.result(future, 65.seconds)  // TODO Use standard Futures method await when available in subproject 'base'
     catch {
-      case t: Throwable ⇒
+      case t: Throwable =>
         t.appendCurrentStackTrace
         throw t
     }
@@ -77,9 +77,9 @@ trait TextApi {
   object ConnectionLost {
      def apply(t: Throwable): Boolean =
        t match {
-         case _: akka.stream.StreamTcpException ⇒
+         case _: akka.stream.StreamTcpException =>
            true
-         case _ if t.getMessage == "Connection was shutdown." ⇒  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
+         case _ if t.getMessage == "Connection was shutdown." =>  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
            true
        }
 

@@ -8,7 +8,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * @author Joacim Zschimmer
   */
 trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
-  this: A ⇒
+  this: A =>
 
   def toEpochMilli: Long
 
@@ -45,15 +45,15 @@ object GenericTimestamp {
   trait Companion[A <: GenericTimestamp[A]] {
     final val Epoch = ofEpochMilli(0)
     final val StringTimestampJsonEncoder: circe.Encoder[A] =
-      o ⇒ circe.Json.fromString(o.toIsoString)
+      o => circe.Json.fromString(o.toIsoString)
 
     final val NumericTimestampJsonEncoder: circe.Encoder[A] =
-      o ⇒ circe.Json.fromLong(o.toEpochMilli)
+      o => circe.Json.fromLong(o.toEpochMilli)
 
     implicit final val jsonEncoder: circe.Encoder[A] = NumericTimestampJsonEncoder
 
     implicit final val jsonDecoder: circe.Decoder[A] =
-      cursor ⇒
+      cursor =>
         if (cursor.value.isNumber)
           cursor.as[Long] map ofEpochMilli
         else

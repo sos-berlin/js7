@@ -36,23 +36,23 @@ private[graphql] object MasterGraphqlSchema
       "IntegerOrString",
       "Integer or String",
       coerceOutput = {
-        case (v: String, _) ⇒ v
-        case (v: Int, _) ⇒ v
-        case (v, _) ⇒ sys.error(s"GraphQL schema: Int or String expected, not: ${v.getClass.scalaName}:$v")
+        case (v: String, _) => v
+        case (v: Int, _) => v
+        case (v, _) => sys.error(s"GraphQL schema: Int or String expected, not: ${v.getClass.scalaName}:$v")
       },
       coerceInput = {
-        case o: ast.StringValue ⇒ Right(o)
-        case o: ast.IntValue ⇒ Right(o)
-        case _ ⇒ Left(violation)
+        case o: ast.StringValue => Right(o)
+        case o: ast.IntValue => Right(o)
+        case _ => Left(violation)
       },
       coerceUserInput = {
-        case o: String ⇒ Right(o)
-        case o: Int ⇒ Right(o)
-        case _ ⇒ Left(violation)
+        case o: String => Right(o)
+        case o: Int => Right(o)
+        case _ => Left(violation)
       })
   }
 
-  private implicit val PatternType = stringEquivalentType[Pattern](str ⇒ Checked.catchNonFatal(Pattern.compile(str)), _.toString,
+  private implicit val PatternType = stringEquivalentType[Pattern](str => Checked.catchNonFatal(Pattern.compile(str)), _.toString,
     "Pattern", "Regular expression pattern")
   private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JobScheduler")
   private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
@@ -63,47 +63,47 @@ private[graphql] object MasterGraphqlSchema
   private implicit val ReturnCodeType      = genericIntType[ReturnCode]("Return code")
 
   private def genericStringType[A <: GenericString](description: String)(implicit A: GenericString.Checked_[A]): ScalarType[A] =
-    stringEquivalentType[A](str ⇒ A.checked(str), _.string, A.name.replace('.', '_'), description)
+    stringEquivalentType[A](str => A.checked(str), _.string, A.name.replace('.', '_'), description)
 
-  private def stringEquivalentType[A](fromString: String ⇒ Checked[A], toString: A ⇒ String, name: String, description: String): ScalarType[A] = {
+  private def stringEquivalentType[A](fromString: String => Checked[A], toString: A => String, name: String, description: String): ScalarType[A] = {
     val violation = valueCoercionViolation(s"'$name' string expected")
     ScalarType[A](
       name = name,
       description = description,
-      coerceOutput = (v, _) ⇒ toString(v),
+      coerceOutput = (v, _) => toString(v),
       coerceInput = {
-        case o: ast.StringValue ⇒ fromChecked(fromString(o.value), valueCoercionViolation)
-        case _ ⇒ Left(violation)
+        case o: ast.StringValue => fromChecked(fromString(o.value), valueCoercionViolation)
+        case _ => Left(violation)
       },
       coerceUserInput = {
-        case o: String ⇒ fromChecked(fromString(o), valueCoercionViolation)
-        case _ ⇒ Left(violation)
+        case o: String => fromChecked(fromString(o), valueCoercionViolation)
+        case _ => Left(violation)
       })
   }
 
   private def genericIntType[A <: GenericInt](description: String)(implicit A: GenericInt.Companion[A]): ScalarType[A] =
-    intEquivalentType[A](i ⇒ Valid(A(i)), _.number, A.name, description)
+    intEquivalentType[A](i => Valid(A(i)), _.number, A.name, description)
 
-  private def intEquivalentType[A](fromInt: Int ⇒ Checked[A], toInt: A ⇒ Int, name: String, description: String): ScalarType[A] = {
+  private def intEquivalentType[A](fromInt: Int => Checked[A], toInt: A => Int, name: String, description: String): ScalarType[A] = {
     val violation = valueCoercionViolation(s"'$name' string expected")
     ScalarType[A](
       name = name,
       description = description,
-      coerceOutput = (v, _) ⇒ toInt(v),
+      coerceOutput = (v, _) => toInt(v),
       coerceInput = {
-        case o: ast.IntValue ⇒ fromChecked(fromInt(o.value), valueCoercionViolation)
-        case _ ⇒ Left(violation)
+        case o: ast.IntValue => fromChecked(fromInt(o.value), valueCoercionViolation)
+        case _ => Left(violation)
       },
       coerceUserInput = {
-        case o: Int ⇒ fromChecked(fromInt(o), valueCoercionViolation)
-        case _ ⇒ Left(violation)
+        case o: Int => fromChecked(fromInt(o), valueCoercionViolation)
+        case _ => Left(violation)
       })
   }
 
-  private def fromChecked[A, V <: Violation](checked: Checked[A], toViolation: String ⇒ V): Either[Violation, A] =
+  private def fromChecked[A, V <: Violation](checked: Checked[A], toViolation: String => V): Either[Violation, A] =
     checked match {
-      case Invalid(problem) ⇒ Left(toViolation(problem.toString))
-      case Valid(a) ⇒ Right(a)
+      case Invalid(problem) => Left(toViolation(problem.toString))
+      case Valid(a) => Right(a)
     }
 
   private def valueCoercionViolation(message: String) = new ValueCoercionViolation(message) {}
@@ -134,7 +134,7 @@ private[graphql] object MasterGraphqlSchema
     "Instruction",
     "Workflow instruction",
     fields[QueryContext, Instruction](
-      Field("TYPE", StringType, resolve = ctx ⇒ Instructions.jsonCodec.classToName(ctx.value.getClass))))
+      Field("TYPE", StringType, resolve = ctx => Instructions.jsonCodec.classToName(ctx.value.getClass))))
 
   private implicit val InstructionTypes = List(
     ObjectType[QueryContext, AwaitOrder](
@@ -204,7 +204,7 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowId", WorkflowIdType, resolve = _.value.workflowId),
       Field("position", PositionType, resolve = _.value.position.asSeq,
         description = "An array of a instruction number (starting with 0) followed by nested positions"),
-      Field("instruction", OptionType(InstructionType), resolve = ctx ⇒ {
+      Field("instruction", OptionType(InstructionType), resolve = ctx => {
         import ctx.ctx.executionContext
         ctx.ctx.idTo[Workflow](ctx.value.workflowId) map (_.toOption flatMap (_.instruction(ctx.value.position)))
       })))
@@ -212,60 +212,60 @@ private[graphql] object MasterGraphqlSchema
   private implicit val StringStringMapType = ScalarType[Map[String, String]](
     "StringMap",
     "A map of String values",
-    coerceOutput = (o, _) ⇒ ast.ObjectValue(o.map(kv ⇒ ast.ObjectField(kv._1, ast.StringValue(kv._2))).toVector),
+    coerceOutput = (o, _) => ast.ObjectValue(o.map(kv => ast.ObjectField(kv._1, ast.StringValue(kv._2))).toVector),
     coerceUserInput = {
-      case o: Map[_, _] if isStringStringMap(o) ⇒ Right(o.asInstanceOf[Map[String, String]])
-      case _ ⇒ Left(StringCoercionViolation)
+      case o: Map[_, _] if isStringStringMap(o) => Right(o.asInstanceOf[Map[String, String]])
+      case _ => Left(StringCoercionViolation)
     },
     coerceInput = {
-      case ast.ObjectValue(fields, _, _) ⇒
+      case ast.ObjectValue(fields, _, _) =>
         val tuples = fields.map {
-          case ast.ObjectField(k, v: ast.StringValue, _, _) ⇒ k → v.value
-          case ast.ObjectField(k, v, _, _) ⇒ sys.error(s"GraphQL schema: String expected for entry '$k', not: ${v.getClass.scalaName}:$v")
+          case ast.ObjectField(k, v: ast.StringValue, _, _) => k -> v.value
+          case ast.ObjectField(k, v, _, _) => sys.error(s"GraphQL schema: String expected for entry '$k', not: ${v.getClass.scalaName}:$v")
         }
         Right(tuples.toMap)
-      case _ ⇒ Left(StringCoercionViolation)
+      case _ => Left(StringCoercionViolation)
     })
 
   private def isStringStringMap(map: Map[_, _]) =
     map forall {
-      case (_: String, _: String) ⇒ true
-      case _ ⇒ false
+      case (_: String, _: String) => true
+      case _ => false
     }
 
   private implicit val OrderAttachedStateType = ObjectType(
     "Order_AttachedState",
     fields[Unit, Order.AttachedState](
       Field("TYPE", StringType, resolve = _.value match {
-        case _: Order.Attaching ⇒ "Attaching"
-        case _: Order.Attached ⇒ "Attached"
-        case _: Order.Detaching ⇒ "Detaching"
+        case _: Order.Attaching => "Attaching"
+        case _: Order.Attached => "Attached"
+        case _: Order.Detaching => "Detaching"
       }),
       Field("agentRefPath", OptionType(AgentRefPathType), resolve = _.value match {
-        case o: Order.AttachedState.HasAgentRefPath ⇒ Some(o.agentRefPath)
-        case _ ⇒ None
+        case o: Order.AttachedState.HasAgentRefPath => Some(o.agentRefPath)
+        case _ => None
       })))
 
   private implicit val DisruptedOutcomeReasonType = InterfaceType(
     "DisruptedOutcomeReason",
     fields[QueryContext, Outcome.Disrupted.Reason](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.Disrupted.Reason.jsonCodec.classToName(o.value.getClass)),
+      Field("TYPE", StringType, resolve = o => Outcome.Disrupted.Reason.jsonCodec.classToName(o.value.getClass)),
       Field("problem", OptionType(ProblemType), resolve = _.value match {
-        case Outcome.Disrupted.Other(problem) ⇒ Some(problem)
-        case _ ⇒ None
+        case Outcome.Disrupted.Other(problem) => Some(problem)
+        case _ => None
       })))
 
   private implicit val OutcomeType = InterfaceType(
     "Outcome",
     fields[QueryContext, Outcome](
-      Field("TYPE", StringType, resolve = o ⇒ Outcome.jsonCodec.classToName(o.value.getClass)),
+      Field("TYPE", StringType, resolve = o => Outcome.jsonCodec.classToName(o.value.getClass)),
       Field("returnCode", OptionType(ReturnCodeType), resolve = _.value match {
-        case o: Outcome.Undisrupted ⇒ Some(o.returnCode)
-        case _ ⇒ None
+        case o: Outcome.Undisrupted => Some(o.returnCode)
+        case _ => None
       }),
       Field("reason", OptionType(DisruptedOutcomeReasonType), resolve = _.value match {
-        case o: Outcome.Disrupted ⇒ Some(o.reason)
-        case _ ⇒ None
+        case o: Outcome.Disrupted => Some(o.reason)
+        case _ => None
       })))
 
   private val ReasonTypes = List(
@@ -296,7 +296,7 @@ private[graphql] object MasterGraphqlSchema
   private implicit val OrderStateType = ObjectType(
     "OrderState",
     fields[QueryContext, Order.State](
-      Field("TYPE", StringType, resolve = o ⇒ Order.StateJsonCodec.classToName(o.value.getClass))))
+      Field("TYPE", StringType, resolve = o => Order.StateJsonCodec.classToName(o.value.getClass))))
 
   private implicit val OrderType = ObjectType(
     "Order",
@@ -311,22 +311,22 @@ private[graphql] object MasterGraphqlSchema
         description = "Order is attaching to, attached to, or detaching from an Agent"),
       Field("outcome", OutcomeType, resolve = _.value.outcome),
       Field("state", OrderStateType, resolve = _.value.state),
-      Field("variables", OptionType(StringStringMapType), resolve = ctx ⇒ ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
+      Field("variables", OptionType(StringStringMapType), resolve = ctx => ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
       Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
-        case o: Order.Fresh ⇒ o.scheduledFor map (_.toEpochMilli)
-        case _ ⇒ None
+        case o: Order.Fresh => o.scheduledFor map (_.toEpochMilli)
+        case _ => None
       }),
       Field("childOrderIds", OptionType(ListType(OrderIdType)), resolve = _.value.state match {
-        case o: Order.Forked ⇒ Some(o.childOrderIds)
-        case _ ⇒ None
+        case o: Order.Forked => Some(o.childOrderIds)
+        case _ => None
       }),
       Field("offeredOrderId", OptionType(OrderIdType), resolve = _.value.state match {
-        case o: Order.Awaiting ⇒ Some(o.offeredOrderId)
-        case _ ⇒ None
+        case o: Order.Awaiting => Some(o.offeredOrderId)
+        case _ => None
       }),
       Field("problem", OptionType(ProblemType), resolve = _.value.state match {
-        case o: Order.Broken ⇒ Some(o.problem)
-        case _ ⇒ None
+        case o: Order.Broken => Some(o.problem)
+        case _ => None
       })))
 
   private val OrderIdArg        = Argument("id", OrderIdType)
@@ -341,12 +341,12 @@ private[graphql] object MasterGraphqlSchema
     fields[QueryContext, Unit](
       Field("order", OptionType(OrderType),
         arguments = OrderIdArg :: Nil,
-        resolve = ctx ⇒ ctx.ctx.order(ctx.arg(OrderIdArg)),
+        resolve = ctx => ctx.ctx.order(ctx.arg(OrderIdArg)),
         description = "A single order identified by its OrderId"),
       Field("orders", ListType(OrderType),
         arguments = LimitArg :: WorkflowPathArg :: OrderIdPatternArg :: Nil,
         description = "The list of all orders, optionally filtered by some arguments",
-        resolve = ctx ⇒ {
+        resolve = ctx => {
           import ctx.ctx.executionContext
           ctx.ctx.orders(QueryContext.OrderFilter(
             limit = ctx.arg(LimitArg) getOrElse Int.MaxValue,

@@ -65,7 +65,7 @@ final class ConcurrentRequestsLimiterExclusiveTest extends FreeSpec with Scalate
     implicit val y = jsonSeqMarshaller[Json]
     val n = 10
     val duration = 30.millis
-    val source: Source[Json, NotUsed] = Source(1 to n) map { o ⇒ blocking(sleep(duration.toMillis)); Json.fromInt(o) }
+    val source: Source[Json, NotUsed] = Source(1 to n) map { o => blocking(sleep(duration.toMillis)); Json.fromInt(o) }
     val route = complete(source)
 
     val longRequest = Future {

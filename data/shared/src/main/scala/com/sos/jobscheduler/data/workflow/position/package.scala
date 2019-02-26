@@ -24,16 +24,16 @@ package object position
     }
 
     private[workflow] def asJsonArray: Vector[Json] =
-      segments.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson))
+      segments.toVector.flatMap(p => Array(p.nr.asJson, p.branchId.asJson))
   }
 
   implicit val branchPathShow: Show[BranchPath] =
-    segments ⇒ segments map (p ⇒ s"${p.nr.number}/${p.branchId}${InstructionNr.Prefix}") mkString ""
+    segments => segments map (p => s"${p.nr.number}/${p.branchId}${InstructionNr.Prefix}") mkString ""
 
   implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[BranchPath] =
-    _.as[List[Json]] flatMap (parts ⇒
+    _.as[List[Json]] flatMap (parts =>
       if (parts.size % 2 != 0)
         Left(DecodingFailure("Not a valid BranchPath", Nil))
       else

@@ -59,11 +59,11 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
     val length = (1 << 24) | (200 << 16) | (33 << 8) | 4
     val expectedContent = new Array[Byte](length)
     val chunkSize = 100000
-    for (_ ← 1 to 3) {
+    for (_ <- 1 to 3) {
       assert(collector(ByteString(1)).isEmpty)
       assert(collector(ByteString(200, 33, 4)).isEmpty)
       Random.nextBytes(expectedContent)
-      for (i ← 0 until length / chunkSize) {
+      for (i <- 0 until length / chunkSize) {
         val chunk = ByteString.fromArray(expectedContent, i * chunkSize, length = chunkSize)
         val complete: Option[ByteString] = collector(chunk)
         assert(complete.isEmpty)
@@ -87,10 +87,10 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
     val lastChunk = ByteString.fromArray(chunkArray, 0, length = length % chunkSize)
     val start = now()
     val n = 1000
-    for (_ ← 1 to n) {
+    for (_ <- 1 to n) {
       assert(collector.isReset)
       collector(intToBytesString(length))
-      for (i ← 0 until length / chunkSize) collector(chunk)
+      for (i <- 0 until length / chunkSize) collector(chunk)
       val result = collector(lastChunk)
       if (result.get.size != length) fail()
     }

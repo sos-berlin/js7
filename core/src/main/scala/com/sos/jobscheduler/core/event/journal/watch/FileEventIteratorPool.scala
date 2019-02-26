@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: JournalMeta[E], journalFile: Path, tornEventId: EventId,
-  flushedLength: () ⇒ Long)
+  flushedLength: () => Long)
 {
   private val freeIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
   private val lentIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
@@ -38,7 +38,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
   lazy val firstEventPosition: Long = {
     val iterator = borrowIterator()
     try iterator.firstEventPosition
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       iterator.close()
       throw t
     }

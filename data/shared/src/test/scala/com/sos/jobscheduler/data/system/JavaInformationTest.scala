@@ -13,7 +13,7 @@ final class JavaInformationTest extends FreeSpec {
     testJson(JavaInformation(
       version = "x.y.z",
       JavaInformation.Memory(maximum = 3, total = 2, free = 1),
-      systemProperties = Map("test" → "TEST")),
+      systemProperties = Map("test" -> "TEST")),
     json"""{
       "version": "x.y.z",
       "memory": {

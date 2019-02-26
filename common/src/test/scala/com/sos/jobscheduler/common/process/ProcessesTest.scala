@@ -42,7 +42,7 @@ final class ProcessesTest extends FreeSpec {
   }
 
   "newTemporaryShellFile, toShellCommandArguments and script execution" in {
-    autoDeleting(newTemporaryShellFile("NAME")) { file ⇒
+    autoDeleting(newTemporaryShellFile("NAME")) { file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
       file.contentString = ShellScript
@@ -50,14 +50,14 @@ final class ProcessesTest extends FreeSpec {
       val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)
-      for ((a, b) ← echoLines.tail zip Args) assert(a == b)
+      for ((a, b) <- echoLines.tail zip Args) assert(a == b)
       assert(echoLines.size - 1 == Args.size)
       process.waitFor()
     }
   }
 
   "newLogFile" in {
-    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)) { file ⇒
+    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)) { file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
     }
@@ -65,14 +65,14 @@ final class ProcessesTest extends FreeSpec {
 
   "TextFileBusyIOException" in {
     val (expected, exceptions) = List(
-      true → new IOException("xx  error=26, Text file busy"),
-      true → new IOException("xx  error=26, Das Programm kann nicht ausgeführt oder verändert werden (busy)"),
-      true → new IOException("error=26"),
-      false → new IOException("error=261")
+      true -> new IOException("xx  error=26, Text file busy"),
+      true -> new IOException("xx  error=26, Das Programm kann nicht ausgeführt oder verändert werden (busy)"),
+      true -> new IOException("error=26"),
+      false -> new IOException("error=261")
     ).unzip
-    val r = for (e ← exceptions) yield e match {
-      case RobustlyStartProcess.TextFileBusyIOException(x) ⇒ assert(x eq e); true
-      case _ ⇒ false
+    val r = for (e <- exceptions) yield e match {
+      case RobustlyStartProcess.TextFileBusyIOException(x) => assert(x eq e); true
+      case _ => false
     }
     assert(r == expected)
   }
@@ -96,7 +96,7 @@ private object ProcessesTest {
   private val ShellScript =
     if (isWindows)
       "@echo off\r\n" +
-        (0 to Args.size map { i ⇒ s"echo %$i\r\n" } mkString "")
+        (0 to Args.size map { i => s"echo %$i\r\n" } mkString "")
     else
-      0 to Args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
+      0 to Args.size map { i => s"""echo "$$$i"""" + '\n' } mkString ""
 }

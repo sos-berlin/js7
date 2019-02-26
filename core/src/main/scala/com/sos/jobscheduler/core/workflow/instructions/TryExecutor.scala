@@ -21,6 +21,6 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
   }
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: TryInstruction): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.FreshOrReady].map(order ⇒
+    order.ifState[Order.FreshOrReady].map(order =>
       order.id <-: OrderMoved(order.position / Try_ % 0))
 }

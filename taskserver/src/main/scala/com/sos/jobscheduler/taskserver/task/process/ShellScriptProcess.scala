@@ -41,15 +41,15 @@ object ShellScriptProcess
       shellFile.write(scriptString, processConfiguration.encoding)
       val process = startProcessBuilder(processConfiguration, shellFile, arguments = Nil) { _.startRobustly() }
       new ShellScriptProcess(processConfiguration, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
-        override val terminated = promiseFuture[ReturnCode] { p ⇒
-          super.terminated onComplete { o ⇒
+        override val terminated = promiseFuture[ReturnCode] { p =>
+          super.terminated onComplete { o =>
             tryDeleteFile(shellFile)
             p.complete(o)
           }
         }
       }
     }
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       tryDeleteFile(shellFile)
       throw t
     }
@@ -59,7 +59,7 @@ object ShellScriptProcess
     (implicit ec: ExecutionContext, iox: IOExecutor): ShellScriptProcess =
   {
     val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, conf.idArgumentOption.toList).asJava)
-    for (o ← conf.workingDirectory) processBuilder.directory(o)
+    for (o <- conf.workingDirectory) processBuilder.directory(o)
     processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
     def copy(in: InputStream, w: Writer) = copyChunks(new InputStreamReader(in, conf.encoding), stdChannels.charBufferSize, w)
@@ -72,9 +72,9 @@ object ShellScriptProcess
 
     new ShellScriptProcess(conf, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
       override def terminated = for {
-        _ ← stdoutClosed
-        _ ← stderrClosed
-        returnCode ← super.terminated
+        _ <- stdoutClosed
+        _ <- stderrClosed
+        returnCode <- super.terminated
       } yield returnCode
     }
   }
@@ -84,8 +84,8 @@ object ShellScriptProcess
 
     @tailrec def loop(): Unit =
       reader.read(array) match {
-        case -1 ⇒
-        case len ⇒
+        case -1 =>
+        case len =>
           writer.write(array, 0, len)
           loop()
       }

@@ -13,11 +13,11 @@ final case class JsonString(string: String)
 
 object JsonString {
   implicit val marshaller: ToEntityMarshaller[JsonString] =
-    Marshaller.withFixedContentType(`application/json`) { value ⇒
+    Marshaller.withFixedContentType(`application/json`) { value =>
       HttpEntity(`application/json`, value.string.getBytes(UTF_8))
   }
 
   implicit val unmarshaller: FromEntityUnmarshaller[JsonString] =
-    for (byteString ← Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/json`))
+    for (byteString <- Unmarshaller.byteStringUnmarshaller.forContentTypes(`application/json`))
       yield JsonString(byteString.utf8String)
 }

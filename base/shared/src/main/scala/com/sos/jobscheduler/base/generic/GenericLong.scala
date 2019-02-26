@@ -14,7 +14,7 @@ object GenericLong {
   trait Companion[A <: GenericLong] {
     def apply(o: Long): A
 
-    implicit val JsonEncoder: Encoder[A] = o ⇒ Json.fromLong(o.number)
+    implicit val JsonEncoder: Encoder[A] = o => Json.fromLong(o.number)
     implicit val JsonDecoder: Decoder[A] = _.as[Long] map apply
   }
 }

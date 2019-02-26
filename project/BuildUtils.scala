@@ -31,7 +31,7 @@ object BuildUtils
       else if (version.value endsWith "-SNAPSHOT") {
         // "2.0.0-SNAPSHOT-2019-01-14T1200-9abcdef"
         val ts = git.gitHeadCommitDate.value.fold(Instant.now)(parseInstant).toString
-        version.value + "-" + ts.take(13) + ts.substring(14, 16) + git.gitHeadCommit.value.fold("")(o ⇒ "-" + o.take(CommitHashLength))
+        version.value + "-" + ts.take(13) + ts.substring(14, 16) + git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
       } else
         // "2.0.0-M1"
         version.value)
@@ -42,9 +42,9 @@ object BuildUtils
       sb ++= version.value
       if (version.value endsWith "-SNAPSHOT") {
         val branch = git.gitCurrentBranch.value match {
-          case o if o.isEmpty || git.gitHeadCommit.value.getOrElse("").startsWith(o) ⇒
+          case o if o.isEmpty || git.gitHeadCommit.value.getOrElse("").startsWith(o) =>
             sys.env.getOrElse("GIT_BRANCH", "")  // Maybe set by Jenkins Git plugin
-          case o ⇒ o
+          case o => o
         }
         sb ++= " "
         sb ++= (branch +: commitHash.value.map(_ take CommitHashLength) ++: commitDate.value.toList)

@@ -20,7 +20,7 @@ import scala.concurrent.duration._
   * @author Joacim Zschimmer
   */
 trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRouteTest {
-  this: AgentRouteProvider with Suite ⇒
+  this: AgentRouteProvider with Suite =>
 
   protected def uriPathPrefix = ""
 

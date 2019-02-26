@@ -52,7 +52,7 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "countEquals" in {
-    Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 → 1, 22 → 2, 33 → 3)
+    Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
     Map[Int, Int]().countEquals shouldEqual Map()
   }
 
@@ -71,12 +71,12 @@ final class CollectionsTest extends FreeSpec {
 
   "toKeyedMap" in {
     case class A(name: String, i: Int)
-    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 → A("eins", 1), 2 → A("zwei", 2))
-    intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
+    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 -> A("eins", 1), 2 -> A("zwei", 2))
+    intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett") toKeyedMap { _._1 } }
   }
 
   "mapValuesStrict" - {
-    def newF = new (Int ⇒ Int) {
+    def newF = new (Int => Int) {
       var called = 0
       def apply(i: Int) = {
         called += 1
@@ -86,7 +86,7 @@ final class CollectionsTest extends FreeSpec {
 
     "Scala's mapValues is lazy" in {
       val f = newF
-      val a = Map(1 → 10).mapValues(f)
+      val a = Map(1 -> 10).mapValues(f)
       assert(f.called == 0)
       a(1)
       assert(f.called == 1)
@@ -96,7 +96,7 @@ final class CollectionsTest extends FreeSpec {
 
     "mapValuesStrict is strict" in {
       val f = newF
-      val a = Map(1 → 10).mapValuesStrict(f)
+      val a = Map(1 -> 10).mapValuesStrict(f)
       assert(f.called == 1)
       a(1)
       assert(f.called == 1)
@@ -112,12 +112,12 @@ final class CollectionsTest extends FreeSpec {
     case class A(name: String, i: Int)
     val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
     (list retainOrderGroupBy { _.i }) shouldEqual Vector(
-      1 → Vector(A("eins", 1)),
-      2 → Vector(A("zwei a", 2), A("zwei b", 2)),
-      3 → Vector(A("drei", 3)),
-      4 → Vector(A("vier", 4)),
-      5 → Vector(A("fünf", 5)))
-    intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
+      1 -> Vector(A("eins", 1)),
+      2 -> Vector(A("zwei a", 2), A("zwei b", 2)),
+      3 -> Vector(A("drei", 3)),
+      4 -> Vector(A("vier", 4)),
+      5 -> Vector(A("fünf", 5)))
+    intercept[DuplicateKeyException] { List(1 -> "eins", 1 -> "ett") toKeyedMap { _._1 } }
   }
 
   "duplicate" in {
@@ -136,10 +136,10 @@ final class CollectionsTest extends FreeSpec {
     assert(dup(Seq(a1)) == None)
     assert(dup(Seq(a1, b1)) == None)
     assert(dup(Seq(a1, b1, c1)) == None)
-    assert(dup(Seq(a1, a1)) == Some(Map(1 → Seq(a1, a1))))
-    assert(dup(Seq(a1, a2)) == Some(Map(1 → Seq(a1, a2))))
-    assert(dup(Seq(a1, a2, b1)) == Some(Map(1 → Seq(a1, a2))))
-    assert(dup(Seq(a1, a2, b1, c1, c2, c3)) == Some(Map(1 → Seq(a1, a2), 3 → Seq(c1, c2, c3))))
+    assert(dup(Seq(a1, a1)) == Some(Map(1 -> Seq(a1, a1))))
+    assert(dup(Seq(a1, a2)) == Some(Map(1 -> Seq(a1, a2))))
+    assert(dup(Seq(a1, a2, b1)) == Some(Map(1 -> Seq(a1, a2))))
+    assert(dup(Seq(a1, a2, b1, c1, c2, c3)) == Some(Map(1 -> Seq(a1, a2), 3 -> Seq(c1, c2, c3))))
   }
 
   "requireUniqueness" in {
@@ -164,14 +164,14 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "toSeqMultiMap" in {
-    List(1 → 11, 2 → 22, 3 → 33, 2 → 222).toSeqMultiMap shouldEqual Map(1 → List(11), 2 → List(22, 222), 3 → List(33))
+    List(1 -> 11, 2 -> 22, 3 -> 33, 2 -> 222).toSeqMultiMap shouldEqual Map(1 -> List(11), 2 -> List(22, 222), 3 -> List(33))
   }
 
   "insert" in {
-    val m = mutable.Map(1 → "eins", 2 → "zwei")
-    m.insert(3 → "drei")
+    val m = mutable.Map(1 -> "eins", 2 -> "zwei")
+    m.insert(3 -> "drei")
     m(3) shouldEqual "drei"
-    intercept[DuplicateKeyException] { m.insert(3 → "drei") }
+    intercept[DuplicateKeyException] { m.insert(3 -> "drei") }
   }
 
   "isDisjoint with" in {
@@ -194,9 +194,9 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "uniqueToMap" in {
-    val list = List(1 → "eins", 2 → "zwei", 3 → "drei")
+    val list = List(1 -> "eins", 2 -> "zwei", 3 -> "drei")
     list.uniqueToMap shouldEqual list.toMap
-    intercept[DuplicateKeyException] { List(1 → "eins", 2 → "zwei", 1 → "duplicate").uniqueToMap }
+    intercept[DuplicateKeyException] { List(1 -> "eins", 2 -> "zwei", 1 -> "duplicate").uniqueToMap }
   }
 
   "compareChain" in {
@@ -213,28 +213,28 @@ final class CollectionsTest extends FreeSpec {
 
   "Map" - {
     "toChecked" in {
-      val m = Map(1 → "A") toChecked (key ⇒ Problem(s"NO SUCH KEY: $key"))
+      val m = Map(1 -> "A") toChecked (key => Problem(s"NO SUCH KEY: $key"))
       assert(m(1) == Valid("A"))
       assert(m(2) == Invalid(Problem("NO SUCH KEY: 2")))
     }
 
     "withNoSuchKey" in {
-      val m = Map(1 → "A") withNoSuchKey (key ⇒ throw new NoSuchElementException(s"NO SUCH KEY: $key"))
+      val m = Map(1 -> "A") withNoSuchKey (key => throw new NoSuchElementException(s"NO SUCH KEY: $key"))
       assert(m(1) == "A")
       assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
     }
   }
 
   "Vector.build" in {
-    assert(Vector.build[Int] { builder ⇒ builder += 7} == Vector(7))
+    assert(Vector.build[Int] { builder => builder += 7} == Vector(7))
   }
 
   "Map.build" in {
-    assert(Map.build[Int, String] { builder ⇒ builder += 7 → "seven"} == Map(7 → "seven"))
+    assert(Map.build[Int, String] { builder => builder += 7 -> "seven"} == Map(7 -> "seven"))
   }
 
   "Array.build" in {
-    assert(Array.build[Int] { builder ⇒ builder += 7 } sameElements Array(7))
+    assert(Array.build[Int] { builder => builder += 7 } sameElements Array(7))
   }
 }
 

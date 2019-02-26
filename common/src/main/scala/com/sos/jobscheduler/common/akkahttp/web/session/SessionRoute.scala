@@ -25,15 +25,15 @@ trait SessionRoute extends RouteProvider {
   protected final lazy val sessionRoute =
     pathEnd {
       post {
-        gateKeeper.authenticate { httpUser ⇒
-          sessionOption(httpUser) { sessionOption ⇒
-            entity(as[SessionCommand]) { command ⇒
+        gateKeeper.authenticate { httpUser =>
+          sessionOption(httpUser) { sessionOption =>
+            entity(as[SessionCommand]) { command =>
               val token = sessionOption map (_.sessionToken)
               onSuccess(execute(command, httpUser, token).runToFuture) {
-                case Invalid(InvalidLoginProblem) ⇒
+                case Invalid(InvalidLoginProblem) =>
                   completeUnauthenticatedLogin(Unauthorized, InvalidLoginProblem)
 
-                case checked ⇒
+                case checked =>
                   complete(checked)
               }
             }
@@ -44,20 +44,20 @@ trait SessionRoute extends RouteProvider {
 
   private def execute(command: SessionCommand, httpUser: Session#User, sessionTokenOption: Option[SessionToken]): Task[Checked[SessionCommand.Response]] =
     command match {
-      case Login(userAndPasswordOption) ⇒
+      case Login(userAndPasswordOption) =>
         authenticateOrUseHttpUser(userAndPasswordOption, httpUser)
-        .map(user ⇒
+        .map(user =>
           sessionRegister.login(user, sessionTokenOption).map(Login.LoggedIn.apply)
         ).evert
 
-      case Logout(sessionToken) ⇒
+      case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
-          .map { _: Completed ⇒ Valid(SessionCommand.Response.Accepted) }
+          .map { _: Completed => Valid(SessionCommand.Response.Accepted) }
     }
 
   private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =
     userAndPasswordOption match {
-      case Some(userAndPassword) ⇒
+      case Some(userAndPassword) =>
         if (!httpUser.id.isAnonymous)
           Invalid(Problem("Both command Login and HTTP header authentication?"))
         else if (userAndPassword.userId.isAnonymous)
@@ -65,7 +65,7 @@ trait SessionRoute extends RouteProvider {
         else
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
-      case None ⇒
+      case None =>
         Valid(httpUser)  // Take authenticated user from HTTP header `Authorization` or Anonymous
     }
 }

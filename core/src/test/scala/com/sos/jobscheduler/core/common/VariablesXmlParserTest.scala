@@ -23,8 +23,8 @@ final class VariablesXmlParserTest extends FreeSpec {
     {
       assert(ScalaXMLEventReader.parseDocument(variablesXml)(VariablesXmlParser.parse) ==
         Map(
-          "NAME" → "VALUE",
-          "a" → "aa"))
+          "NAME" -> "VALUE",
+          "a" -> "aa"))
     }
   }
 
@@ -32,10 +32,10 @@ final class VariablesXmlParserTest extends FreeSpec {
     val n = 10000
     val xmlString =
       <variables>{
-        for (i ← 1 to 10) yield <variable name={s"NAME-$i"} value={"*" * 100}/>
+        for (i <- 1 to 10) yield <variable name={s"NAME-$i"} value={"*" * 100}/>
       }</variables>
       .toString
-    for (_ ← 1 to 10) info(
+    for (_ <- 1 to 10) info(
       measureTime(n, "job") {
         ScalaXMLEventReader.parseDocument(xmlString)(VariablesXmlParser.parse)
       }.toString)

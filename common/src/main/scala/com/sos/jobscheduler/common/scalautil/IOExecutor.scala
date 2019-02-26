@@ -22,7 +22,7 @@ final class IOExecutor(_executionContext: ExecutionContext) extends Executor
   def this(threadPool: ThreadPoolExecutor) = this(
     ExecutionContext.fromExecutor(
       threadPool,
-      t ⇒ logger.error(t.toStringWithCauses, t)))
+      t => logger.error(t.toStringWithCauses, t)))
 
   def this(keepAlive: FiniteDuration) = this(newThreadPoolExecutor(keepAlive))
 
@@ -50,17 +50,17 @@ object IOExecutor
       if (maximum.isEmpty) new SynchronousQueue[Runnable] else new LinkedBlockingQueue[Runnable],
       MyThreadFactory) //with NamedRunnable.RenamesThread
 
-  private val MyThreadFactory: ThreadFactory = runnable ⇒ {
+  private val MyThreadFactory: ThreadFactory = runnable => {
     val thread = new Thread(runnable)
     thread.setName(s"JobScheduler I/O ${thread.getId}")
     thread.setDaemon(true)  // Do it like Monix and Akka
     thread
   }
 
-  def ioFuture[A](body: ⇒ A)(implicit iox: IOExecutor): Future[A] =
+  def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try
-      promiseFuture[A] { p ⇒
-        iox execute { () ⇒
+      promiseFuture[A] { p =>
+        iox execute { () =>
           p.complete(Try {
             blocking {
               body
@@ -69,6 +69,6 @@ object IOExecutor
         }
       }
     catch {
-      case NonFatal(t) ⇒ Future.failed(t)
+      case NonFatal(t) => Future.failed(t)
     }
 }

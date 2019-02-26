@@ -29,7 +29,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Missing boolean" in {
       assertResult(false) {
-        parse(Nil) { a ⇒
+        parse(Nil) { a =>
           a.boolean("-missing")
         }
       }
@@ -37,7 +37,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Invalid used boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(Array("-option=value")) { a ⇒
+        parse(Array("-option=value")) { a =>
           a.boolean("-option")
         }
       }
@@ -46,7 +46,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Multiple boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(Array("-option", "-option", "-option")) { a ⇒
+        parse(Array("-option", "-option", "-option")) { a =>
           a.boolean("-option")
         }
       }
@@ -57,7 +57,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "Single value" - {
     "as String" in {
       assertResult("333") {
-        parse(List("-int=333")) { a ⇒
+        parse(List("-int=333")) { a =>
           a.as[String]("-int=")
         }
       }
@@ -65,7 +65,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "as Int" in {
       assertResult(333) {
-        parse(List("-int=333")) { a ⇒
+        parse(List("-int=333")) { a =>
           a.as[Int]("-int=")
         }
       }
@@ -73,7 +73,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "as invalid Int" in {
       intercept[IllegalArgumentException] {
-        parse(List("-int=X")) { a ⇒
+        parse(List("-int=X")) { a =>
           a.as[Int]("-int=")
         }
       }
@@ -82,7 +82,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "optionAs Int" in {
       assertResult(Some(333)) {
-        parse(List("-int=333")) { a ⇒
+        parse(List("-int=333")) { a =>
           a.optionAs[Int]("-int=")
         }
       }
@@ -92,7 +92,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "Multiple values" - {
     "multiple Int" in {
       assertResult(List(111, 222)) {
-        parse(List("-int=111", "-int=222")) { a ⇒
+        parse(List("-int=111", "-int=222")) { a =>
           a.seqAs[Int]("-int=")
         }
       }
@@ -100,7 +100,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Zero multiple Int" in {
       assertResult(Nil) {
-        parse(List[String]()) { a ⇒
+        parse(List[String]()) { a =>
           a.seqAs[Int]("-int=")
         }
       }
@@ -110,7 +110,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "keylessValue" - {
     "One" in {
       assertResult("333") {
-        parse(List("333")) { a ⇒
+        parse(List("333")) { a =>
           a.keylessValue(0)
         }
       }
@@ -118,7 +118,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Two" in {
       assertResult(("222", "111")) {
-        parse(List("111", "222")) { a ⇒
+        parse(List("111", "222")) { a =>
           (a.keylessValue(1), a.keylessValue(0))
         }
       }
@@ -126,7 +126,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Too many" in {
       intercept[IllegalArgumentException] {
-        parse(List("111", "222")) { a ⇒
+        parse(List("111", "222")) { a =>
           a.keylessValue(0)
         }
       }
@@ -135,7 +135,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Too few" in {
       intercept[NoSuchElementException] {
-        parse(Nil) { a ⇒
+        parse(Nil) { a =>
           a.keylessValue(0)
         }
       }
@@ -146,7 +146,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "keylessValues" - {
     "Zero" in {
       assertResult(Nil) {
-        parse(Nil) { a ⇒
+        parse(Nil) { a =>
           a.keylessValues
         }
       }
@@ -154,7 +154,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "One" in {
       assertResult(List("111")) {
-        parse(List("111")) { a ⇒
+        parse(List("111")) { a =>
           a.keylessValues
         }
       }
@@ -162,7 +162,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Two" in {
       assertResult(List("111", "222")) {
-        parse(List("111", "222")) { a ⇒
+        parse(List("111", "222")) { a =>
           a.keylessValues
         }
       }
@@ -171,7 +171,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
   "Unused options" in {
     intercept[IllegalArgumentException] {
-      parse(List("-option", "-unknown=333")) { a ⇒ }
+      parse(List("-option", "-unknown=333")) { a => }
     }
       .getMessage shouldEqual "Unknown command line arguments: -option -unknown=333"
   }

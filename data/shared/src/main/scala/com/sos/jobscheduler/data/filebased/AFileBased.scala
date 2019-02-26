@@ -29,8 +29,8 @@ case class APath(string: String) extends TypedPath
 object APath extends TypedPath.Companion[APath]
 {
   val sourceTypeToFilenameExtension = Map(
-    SourceType.Json → ".a.json",
-    SourceType.Txt → ".a.txt")
+    SourceType.Json -> ".a.json",
+    SourceType.Txt -> ".a.txt")
 
   def unchecked(string: String) = new APath(string)
 }

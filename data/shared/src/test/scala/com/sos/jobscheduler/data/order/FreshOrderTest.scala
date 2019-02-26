@@ -20,7 +20,7 @@ final class FreshOrderTest extends FreeSpec
       }""")
 
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" → "VALUE"))),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" -> "VALUE"))),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW",

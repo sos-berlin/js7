@@ -66,9 +66,9 @@ final class IdToUserTest extends FreeSpec {
 
     "thread-safe" in {
       val n = 10000
-      val a = Future.sequence(for (i ← 1 to n) yield
+      val a = Future.sequence(for (i <- 1 to n) yield
         Future { assert(idToUser(UserId("A")).get.hashedPassword equalsClearText PlainPassword, s"#$i identity") })
-      val b = Future.sequence((1 to n).map(i ⇒
+      val b = Future.sequence((1 to n).map(i =>
         Future { assert(idToUser(UserId("B")).get.hashedPassword equalsClearText Sha512Password, s"#$i SHA-512") }))
       List(a, b) await 99.s
     }
@@ -85,11 +85,11 @@ private object IdToUserTest {
     "sha512:130c7809c9e5a8d81347b55f5c82c3a7407f4b41b461eb641887d276b11af4b575c5a32d1cf104e531c700e4b1ddd75b27b9e849576f6dfb8ca42789fbc7ece2")
 
   private val TestConfigValidator = ConfigFactory.parseMap(Map(
-    PlainUserId.string → PlainConfiguredPassword.string,
-    Sha512UserId.string → Sha512ConfiguredPassword.string).asJava)
+    PlainUserId.string -> PlainConfiguredPassword.string,
+    Sha512UserId.string -> Sha512ConfiguredPassword.string).asJava)
 
   private val idToUser = new IdToUser(
-    userId ⇒ TestConfigValidator.optionAs[SecretString](userId.string).map(o ⇒ RawUserAccount(o, Set.empty)),
+    userId => TestConfigValidator.optionAs[SecretString](userId.string).map(o => RawUserAccount(o, Set.empty)),
     SimpleUser.apply,
     toPermission = Map.empty)
 }

@@ -23,8 +23,8 @@ final class MasterJsonValidator {
 
   private def checkJson[A: Decoder](jsonString: String): Optional[Problem] =
     // catchNonFatal, because TypedJsonCodec throws
-    jsonString.parseJsonChecked >>= (o ⇒ Checked.catchNonFatal(o.as[A])) >>= (_.toSimpleChecked) match {
-      case Valid(_) ⇒ Optional.empty()
-      case Invalid(problem) ⇒ Optional.of(problem)
+    jsonString.parseJsonChecked >>= (o => Checked.catchNonFatal(o.as[A])) >>= (_.toSimpleChecked) match {
+      case Valid(_) => Optional.empty()
+      case Invalid(problem) => Optional.of(problem)
     }
 }

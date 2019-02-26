@@ -61,9 +61,9 @@ final class GenericTimestampTest extends FreeSpec {
     run("ISO string  ")(Timestamp.StringTimestampJsonEncoder, Timestamp.jsonDecoder)
 
     def run(what: String)(implicit encoder: Encoder[Timestamp], decoder: Decoder[Timestamp]) = {
-      for (i ← 1 to 100000) Timestamp.ofEpochMilli(i).asJson.as[Timestamp].orThrow  // Warm-up
+      for (i <- 1 to 100000) Timestamp.ofEpochMilli(i).asJson.as[Timestamp].orThrow  // Warm-up
       val t = System.currentTimeMillis
-      for (i ← 1 to n) Timestamp.ofEpochMilli(millis + i).asJson.as[Timestamp].orThrow
+      for (i <- 1 to n) Timestamp.ofEpochMilli(millis + i).asJson.as[Timestamp].orThrow
       val duration = System.currentTimeMillis - t
       info(s"Timestamp as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
     }

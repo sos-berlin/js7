@@ -29,23 +29,23 @@ object StandardMarshallers
   private val logger = Logger(getClass)
 
   val StringMarshaller: ToEntityMarshaller[String] =
-    Marshaller.withOpenCharset(`text/plain`) { (string, charset) ⇒
+    Marshaller.withOpenCharset(`text/plain`) { (string, charset) =>
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
 
   def closeableIteratorToMarshallable[A: ToEntityMarshaller](closeableIterator: CloseableIterator[A])
-    (implicit s: Scheduler, q: Source[A, NotUsed] ⇒ ToResponseMarshallable)
+    (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     // Detour through Monix Observable to handle stream close
     monixObservableToMarshallable(closeableIteratorToObservable(closeableIterator))
 
   def monixObservableToMarshallable[A: ToEntityMarshaller](observable: Observable[A])
-    (implicit s: Scheduler, q: Source[A, NotUsed] ⇒ ToResponseMarshallable)
+    (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     logErrorToWebLog(observable.toAkkaSource)
 
   def logErrorToWebLog[A](source: Source[A, NotUsed]): Source[A, NotUsed] =
-    source.mapError { case throwable ⇒
+    source.mapError { case throwable =>
       val msg = s"Exception in Akka stream: ${throwable.toStringWithCauses}"
       // This area the only messages logged
       ExceptionHandling.webLogger.warn(msg)
@@ -61,13 +61,13 @@ object StandardMarshallers
       jsonMarshaller[Problem](Problem.typedJsonEncoder))  // Add "TYPE": "Problem"
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
-    problemToEntityMarshaller map (entity ⇒ HttpResponse(ProblemStatusCode, Nil, entity))
+    problemToEntityMarshaller map (entity => HttpResponse(ProblemStatusCode, Nil, entity))
 
   implicit def problemToResponseMarshallable(problem: Problem): ToResponseMarshallable =
-    ToResponseMarshallable(ProblemStatusCode → problem)
+    ToResponseMarshallable(ProblemStatusCode -> problem)
 
-  def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A ⇒ String): ToEntityMarshaller[A] =
-    Marshaller.withOpenCharset(mediaType) { (a, charset) ⇒
+  def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A => String): ToEntityMarshaller[A] =
+    Marshaller.withOpenCharset(mediaType) { (a, charset) =>
       var byteString = ByteString(toString(a), charset.nioCharset)
       if (!byteString.endsWith(Nl)) byteString ++= Nl   // Append \n to terminate curl output properly
       HttpEntity.Strict(ContentType(mediaType, charset), byteString)
@@ -75,10 +75,10 @@ object StandardMarshallers
 
   implicit def checkedToResponseMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
     Marshaller {
-      implicit ec ⇒ {
-        case Valid(a) ⇒
+      implicit ec => {
+        case Valid(a) =>
           implicitly[ToResponseMarshaller[A]].apply(a)
-        case Invalid(problem) ⇒
+        case Invalid(problem) =>
           problemToResponseMarshaller(problem)
       }
     }

@@ -55,7 +55,7 @@ final class WorkflowParserTest extends FreeSpec {
         Execute(
           WorkflowJob(AgentRefPath("/AGENT"),
             ExecutablePath("/my/executable"),
-            Map("A" → "aaa", "B" → "bbb"),
+            Map("A" -> "aaa", "B" -> "bbb"),
             taskLimit = 3))))
   }
 
@@ -79,19 +79,19 @@ final class WorkflowParserTest extends FreeSpec {
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A")),
-          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" → "VALUE")),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> "VALUE")),
           Execute.Named(WorkflowJob.Name("C"))),
         Map(
-          WorkflowJob.Name("A") →
+          WorkflowJob.Name("A") ->
             WorkflowJob(
               AgentRefPath("/AGENT"),
               ExecutablePath("/my/executable"),
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
-          WorkflowJob.Name("B") →
+          WorkflowJob.Name("B") ->
             WorkflowJob(
               AgentRefPath("/AGENT"),
               ExecutablePath("/my/executable")),
-          WorkflowJob.Name("C") →
+          WorkflowJob.Name("C") ->
             WorkflowJob(
               AgentRefPath("/AGENT"),
               ExecutablePath("/my/executable")))))
@@ -308,7 +308,7 @@ final class WorkflowParserTest extends FreeSpec {
         ExplicitEnd)))
   }
 
-  //for (n ← sys.props.get("test.speed") map (_.toInt)) "Speed" - {
+  //for (n <- sys.props.get("test.speed") map (_.toInt)) "Speed" - {
   //  s"Parsing $n processes" in {
   //    info(measureTime(n, "processes") {
   //      parse(TestWorkflowSource)
@@ -345,7 +345,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   private def parse(workflowString: String): Workflow =
     WorkflowParser.parse(workflowString) match {
-      case Valid(workflow) ⇒ workflow
-      case Invalid(problem) ⇒ throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
+      case Valid(workflow) => workflow
+      case Invalid(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
     }
 }

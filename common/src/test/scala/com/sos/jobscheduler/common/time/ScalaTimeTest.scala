@@ -43,12 +43,12 @@ final class ScalaTimeTest extends FreeSpec {
 
     "BigDecimal.s and toBigDecimal" in {
       List(
-        BigDecimal(0) → Duration.ZERO,
-        BigDecimal(1) → Duration.ofSeconds(1),
-        BigDecimal("0.001") → Duration.ofMillis(1),
-        BigDecimal("111222333444555666.123456789") → Duration.ofSeconds(111222333444555666L, 123456789),
-        BigDecimal("-111222333444555666.123456789") → Duration.ofSeconds(111222333444555666L, 123456789).negated)
-      .foreach { case (bigDecimal, duration) ⇒
+        BigDecimal(0) -> Duration.ZERO,
+        BigDecimal(1) -> Duration.ofSeconds(1),
+        BigDecimal("0.001") -> Duration.ofMillis(1),
+        BigDecimal("111222333444555666.123456789") -> Duration.ofSeconds(111222333444555666L, 123456789),
+        BigDecimal("-111222333444555666.123456789") -> Duration.ofSeconds(111222333444555666L, 123456789).negated)
+      .foreach { case (bigDecimal, duration) =>
         assert(bigDecimal.s == duration)
         assert(bigDecimalToDuration(bigDecimal) == duration)
         assert(duration.toBigDecimal == bigDecimal)
@@ -88,7 +88,7 @@ final class ScalaTimeTest extends FreeSpec {
 //    }
 
     "randomDuration" in {
-      val durations = 1 to 1000 map { _ ⇒ randomDuration(2.s) }
+      val durations = 1 to 1000 map { _ => randomDuration(2.s) }
       val min = durations.min
       val max = durations.max
       assert(min >= 0.s && min <= 100.ms)

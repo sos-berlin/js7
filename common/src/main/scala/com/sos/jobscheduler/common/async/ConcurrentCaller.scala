@@ -9,7 +9,7 @@ import scala.concurrent.{Future, Promise, blocking}
  *
  * @author Joacim Zschimmer
  */
-final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () ⇒ Unit, name: String) extends AutoCloseable {
+final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () => Unit, name: String) extends AutoCloseable {
 
   private val terminatedPromise = Promise[Unit]()
 
@@ -27,7 +27,7 @@ final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () ⇒
 
     override def run(): Unit = {
       try {
-        for (t ← pauses) {
+        for (t <- pauses) {
           function()
           synchronized {
             if (t.toMillis > 0) {  // wait(0) blocks forever
@@ -39,7 +39,7 @@ final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () ⇒
         }
         function()
       }
-      catch { case t: Throwable ⇒ terminatedPromise.failure(t.appendCurrentStackTrace) }
+      catch { case t: Throwable => terminatedPromise.failure(t.appendCurrentStackTrace) }
       finally terminatedPromise.trySuccess(())
     }
   }

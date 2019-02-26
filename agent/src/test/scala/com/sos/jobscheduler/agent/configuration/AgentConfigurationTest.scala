@@ -21,7 +21,7 @@ final class AgentConfigurationTest extends FreeSpec  {
   private val shellExt = if (isWindows) "cmd" else "sh"
 
   "Shortest argument list" in {
-    provideConfigAndData { (config, data) ⇒
+    provideConfigAndData { (config, data) =>
       val c = AgentConfiguration.fromCommandLine(List(s"-config-directory=$config", s"-data-directory=$data")).finishAndProvideFiles
       assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
         configDirectory = config,
@@ -59,7 +59,7 @@ final class AgentConfigurationTest extends FreeSpec  {
   }
 
   "-kill-script= is missing (default)" in {
-    provideConfigAndData { (config, data) ⇒
+    provideConfigAndData { (config, data) =>
       val expectedFile = data / s"tmp/kill_task.$shellExt"
       val myConf = conf(s"-config-directory=$config", s"-data-directory=$data").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
@@ -67,14 +67,14 @@ final class AgentConfigurationTest extends FreeSpec  {
   }
 
   "-kill-script= (empty)" in {
-    provideConfigAndData { (config, data) ⇒
+    provideConfigAndData { (config, data) =>
       val myConf = conf(s"-config-directory=$config", s"-data-directory=$data", "-kill-script=").finishAndProvideFiles
       assert(myConf.killScript == None)
     }
   }
 
   "-kill-script=FILE" in {
-    provideConfigAndData { (config, data) ⇒
+    provideConfigAndData { (config, data) =>
       val myConf = conf(s"-config-directory=$config", s"-data-directory=$data", "-kill-script=/my/kill/script").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     }
@@ -96,7 +96,7 @@ final class AgentConfigurationTest extends FreeSpec  {
 
 object AgentConfigurationTest
 {
-  private def provideConfigAndData(body: (Path, Path) ⇒ Unit): Unit = {
+  private def provideConfigAndData(body: (Path, Path) => Unit): Unit = {
     val config = createTempDirectory("AgentConfigurationTest-config")
     val data = createTempDirectory("AgentConfigurationTest-data")
     try body(config, data)

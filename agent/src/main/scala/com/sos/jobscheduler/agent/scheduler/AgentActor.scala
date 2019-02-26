@@ -72,7 +72,7 @@ extends MainJournalingActor[AgentEvent] {
 
   override def postStop() = {
     super.postStop()
-    for (t ← terminateRespondedAt) {
+    for (t <- terminateRespondedAt) {
       val millis = (t + 500.millis - now).toMillis
       if (millis > 0) {
         logger.debug("Delaying to let HTTP server respond to Terminate command")
@@ -89,58 +89,58 @@ extends MainJournalingActor[AgentEvent] {
     protected val journalMeta = AgentActor.this.journalMeta
 
     def recoverSnapshot = {
-      case AgentSnapshot.Master(masterId) ⇒
+      case AgentSnapshot.Master(masterId) =>
         addOrderKeeper(masterId)
     }
 
     def recoverEvent = {
-      case Stamped(_, _, KeyedEvent(NoKey, event: AgentEvent)) ⇒
+      case Stamped(_, _, KeyedEvent(NoKey, event: AgentEvent)) =>
         update(event)
     }
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady =>
       if (masterToOrderKeeper.nonEmpty) {
         logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       }
       become("startable")(startable)
       unstashAll()
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def startable: Receive = {
-    case Input.Start ⇒
+    case Input.Start =>
       become("ready")(ready)
       sender() ! Output.Ready
   }
 
   private def ready: Receive = {
-    case cmd: Input.ExternalCommand ⇒
+    case cmd: Input.ExternalCommand =>
       executeExternalCommand(cmd)
 
-    case Input.GetEventWatch(masterId) ⇒
+    case Input.GetEventWatch(masterId) =>
       masterToOrderKeeper.checked(masterId) match {
-        case Valid(actor) ⇒ actor.forward(AgentOrderKeeper.Input.GetEventWatch)
-        case Invalid(problem) ⇒ sender() ! Status.Failure(problem.throwable)
+        case Valid(actor) => actor.forward(AgentOrderKeeper.Input.GetEventWatch)
+        case Invalid(problem) => sender() ! Status.Failure(problem.throwable)
       }
 
-    case msg: JobActor.Output.ReadyForOrder.type ⇒
-      for (actor ← masterToOrderKeeper.values) {
+    case msg: JobActor.Output.ReadyForOrder.type =>
+      for (actor <- masterToOrderKeeper.values) {
         actor.forward(msg)
       }
 
-    case Terminated(a) if masterToOrderKeeper.contains(a) ⇒
+    case Terminated(a) if masterToOrderKeeper.contains(a) =>
       logger.debug("Actor for master " + masterToOrderKeeper.actorToKey(a) + " terminated")
       masterToOrderKeeper -= a
       continueTermination()
 
-    case Terminated(`journalActor`) if terminating ⇒
-      for (_ ← terminateCompleted.future) context.self ! PoisonPill
+    case Terminated(`journalActor`) if terminating =>
+      for (_ <- terminateCompleted.future) context.self ! PoisonPill
 
-    case Command.GetOverview ⇒
+    case Command.GetOverview =>
       sender() ! AgentOverview(
         version = AgentStartInformation.PrettyVersion,
         buildId = AgentStartInformation.BuildId,
@@ -154,37 +154,37 @@ extends MainJournalingActor[AgentEvent] {
     import externalCommand.{command, response, userId}
     val masterId = MasterId.fromUserId(userId)
     command match {
-      case command: AgentCommand.Terminate ⇒
+      case command: AgentCommand.Terminate =>
         terminateRespondedAt = Some(now)
         if (!terminating) {
           terminating = true
-          terminateOrderKeepers(command) onComplete { ordersTerminated ⇒
+          terminateOrderKeepers(command) onComplete { ordersTerminated =>
             response.complete(ordersTerminated map Valid.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination
             continueTermination()
           }
         }
 
-      case AgentCommand.RegisterAsMaster if !terminating ⇒
+      case AgentCommand.RegisterAsMaster if !terminating =>
         if (masterToOrderKeeper contains masterId) {
           response.success(Valid(AgentCommand.Response.Accepted))
         } else {
           response completeWith
-            persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) ⇒
+            persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
               update(event)
               Valid(AgentCommand.Response.Accepted)
             }
         }
 
-      case command: AgentCommand.OrderCommand ⇒
+      case command: AgentCommand.OrderCommand =>
         masterToOrderKeeper.checked(masterId) match {
-          case Valid(actor) ⇒
+          case Valid(actor) =>
             actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
-          case Invalid(problem) ⇒
+          case Invalid(problem) =>
             response.failure(problem.throwable)
         }
 
-      case _ if terminating ⇒
+      case _ if terminating =>
         response.failure(AgentIsShuttingDownProblem.throwable)
     }
   }
@@ -196,13 +196,13 @@ extends MainJournalingActor[AgentEvent] {
 
   private def terminateOrderKeepers(terminate: AgentCommand.Terminate): Future[AgentCommand.Response.Accepted] =
     Future.sequence(
-      for (a ← masterToOrderKeeper.values) yield
+      for (a <- masterToOrderKeeper.values) yield
         (a ? terminate).mapTo[AgentCommand.Response.Accepted])
-    .map { _ ⇒ AgentCommand.Response.Accepted }
+    .map { _ => AgentCommand.Response.Accepted }
 
   private def update(event: AgentEvent): Unit =
     event match {
-      case AgentEvent.MasterAdded(masterId) ⇒
+      case AgentEvent.MasterAdded(masterId) =>
         addOrderKeeper(masterId)
     }
 
@@ -220,7 +220,7 @@ extends MainJournalingActor[AgentEvent] {
           agentConfiguration.config)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
-    masterToOrderKeeper.insert(masterId → actor)
+    masterToOrderKeeper.insert(masterId -> actor)
     watch(actor)
   }
 

@@ -5,6 +5,6 @@ package com.sos.jobscheduler.common
   */
 package object utils
 {
-  def untilNoneIterator[A](read: ⇒ Option[A]): Iterator[A] =
+  def untilNoneIterator[A](read: => Option[A]): Iterator[A] =
     UntilNoneIterator(read)
 }

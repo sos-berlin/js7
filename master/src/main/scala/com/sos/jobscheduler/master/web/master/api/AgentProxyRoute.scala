@@ -34,13 +34,13 @@ trait AgentProxyRoute extends MasterRouteProvider
 
   final val agentProxyRoute: Route =
     get {
-      authorizedUser(ValidUserPermission) { _ ⇒
-        path(Segment) { pathString ⇒
-          extractRequest { request ⇒
+      authorizedUser(ValidUserPermission) { _ =>
+        path(Segment) { pathString =>
+          extractRequest { request =>
             completeTask(
               for {
-                checkedAgent ← fileBasedApi.pathToCurrentFileBased[AgentRef](AgentRefPath(s"/$pathString"))
-                checkedResponse ← checkedAgent.map(stampedAgent ⇒ forward(stampedAgent, request)).evert
+                checkedAgent <- fileBasedApi.pathToCurrentFileBased[AgentRef](AgentRefPath(s"/$pathString"))
+                checkedResponse <- checkedAgent.map(stampedAgent => forward(stampedAgent, request)).evert
               } yield checkedResponse)
           }
         }
@@ -62,8 +62,8 @@ trait AgentProxyRoute extends MasterRouteProvider
       masterConfiguration.keyStoreRefOption,
       masterConfiguration.trustStoreRefOption)
     agentClient
-      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h ⇒ isForwardableHeaderClass(h.getClass) }))
-      .map(response ⇒ response.withHeaders(response.headers filterNot { h ⇒ IsIgnoredAgentHeader(h.getClass) }))
+      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h => isForwardableHeaderClass(h.getClass) }))
+      .map(response => response.withHeaders(response.headers filterNot { h => IsIgnoredAgentHeader(h.getClass) }))
       .guarantee(Task(agentClient.close()))
   }
 }

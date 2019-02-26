@@ -22,7 +22,7 @@ final class OrderFatEventTest extends FreeSpec {
       OrderAddedFat(
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
         Some(Timestamp.ofEpochMilli(111)),
-        Map("VARIABLE" → "VALUE")),
+        Map("VARIABLE" -> "VALUE")),
       json"""{
         "TYPE": "OrderAddedFat",
         "workflowPosition": {
@@ -44,7 +44,7 @@ final class OrderFatEventTest extends FreeSpec {
       OrderForkedFat(
         (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
         List(
-          OrderForkedFat.Child("A", OrderId("ORDER-ID/A"), Map("KEY" → "VALUE")),
+          OrderForkedFat.Child("A", OrderId("ORDER-ID/A"), Map("KEY" -> "VALUE")),
           OrderForkedFat.Child("B", OrderId("ORDER-ID/B"), Map.empty))),
       json"""
       {
@@ -76,7 +76,7 @@ final class OrderFatEventTest extends FreeSpec {
     testJson[OrderFatEvent](
       OrderJoinedFat(
         OrderId("A/1") :: OrderId("B/1") :: Nil,
-        Map("KEY" → "VALUE"), Outcome.Undisrupted(ReturnCode(0), success = true)),
+        Map("KEY" -> "VALUE"), Outcome.Undisrupted(ReturnCode(0), success = true)),
       json"""
       {
         "TYPE": "OrderJoinedFat",
@@ -118,7 +118,7 @@ final class OrderFatEventTest extends FreeSpec {
         AgentRefPath("/AGENT"),
         "https://agent-1",
         Some(WorkflowJob.Name("JOB")),
-        Map("KEY" → "VALUE")),
+        Map("KEY" -> "VALUE")),
       json"""{
         "TYPE": "OrderProcessingStartedFat",
         "workflowPosition": {
@@ -142,7 +142,7 @@ final class OrderFatEventTest extends FreeSpec {
     testJson[OrderFatEvent](
       OrderProcessedFat(
         Outcome.succeeded,
-        Map("KEY" → "VALUE")),
+        Map("KEY" -> "VALUE")),
       json"""{
         "TYPE": "OrderProcessedFat",
         "outcome": {

@@ -10,27 +10,27 @@ import com.sos.jobscheduler.data.order.OrderId
 package object problems
 {
   final case class CancelChildOrderProblem(orderId: OrderId) extends Problem.Coded {
-    def arguments = Map("orderId" → orderId.string)
+    def arguments = Map("orderId" -> orderId.string)
   }
 
   final case class CancelStartedOrderProblem(orderId: OrderId) extends Problem.Coded {
-    def arguments = Map("orderId" → orderId.string)
+    def arguments = Map("orderId" -> orderId.string)
   }
 
   final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded {
-    def arguments = Map("orderId" → orderId.string)
+    def arguments = Map("orderId" -> orderId.string)
   }
 
   final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded {
-    def arguments = Map("file" → file)
+    def arguments = Map("file" -> file)
   }
 
   final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
 
   final case class ReverseKeepEventsProblem(requestedAfter: EventId, currentAfter: EventId) extends Problem.Coded {
     def arguments = Map(
-      "requestedAfter" → requestedAfter.toString,
-      "currentAfter" → currentAfter.toString)
+      "requestedAfter" -> requestedAfter.toString,
+      "currentAfter" -> currentAfter.toString)
   }
 
   case object TamperedWithSignedMessageProblem extends Problem.ArgumentlessCoded

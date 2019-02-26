@@ -22,14 +22,14 @@ import org.scalatest.FreeSpec
 final class IfTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"),
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
+      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"),
         if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%"
         else "exit $SCHEDULER_PARAM_RETURN_CODE")
 
-      directoryProvider.run { (master, _) ⇒
-        for (returnCode ← ExpectedEvents.keys) withClue(s"$returnCode: ") {
+      directoryProvider.run { (master, _) =>
+        for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
           master.addOrderBlocking(newOrder(orderId, returnCode))
           if (returnCode == ReturnCode(2))
@@ -44,10 +44,10 @@ final class IfTest extends FreeSpec {
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], returnCode: ReturnCode): Unit = {
     eventSeq match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == ExpectedEvents(returnCode))
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }
@@ -74,8 +74,8 @@ object IfTest {
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow
 
   private val ExpectedEvents = Map(
-    ReturnCode(0) → Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
+    ReturnCode(0) -> Vector(
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "0"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
@@ -92,8 +92,8 @@ object IfTest {
       OrderDetachable,
       OrderTransferredToMaster,
       OrderFinished),
-    ReturnCode(1) → Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
+    ReturnCode(1) -> Vector(
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
@@ -110,8 +110,8 @@ object IfTest {
       OrderDetachable,
       OrderTransferredToMaster,
       OrderFinished),
-    ReturnCode(2) →  Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
+    ReturnCode(2) ->  Vector(
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
@@ -121,5 +121,5 @@ object IfTest {
       OrderStopped(Outcome.Failed(ReturnCode(2)))))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
-    FreshOrder(orderId, TestWorkflow.id.path, payload = Payload(Map("RETURN_CODE" → returnCode.number.toString)))
+    FreshOrder(orderId, TestWorkflow.id.path, payload = Payload(Map("RETURN_CODE" -> returnCode.number.toString)))
 }

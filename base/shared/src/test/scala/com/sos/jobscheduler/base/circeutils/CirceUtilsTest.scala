@@ -39,7 +39,7 @@ final class CirceUtilsTest extends FreeSpec {
     final case class A(a: Int, listMap: ListMap[Int, String])
     implicit val myListMapCodec = listMapCodec[Int, String]()
     implicit val aCodec = deriveCodec[A]
-    testJson(A(0, ListMap(1 → "eins", 2 → "zwei", 3 → "drei", 4 → "vier")),
+    testJson(A(0, ListMap(1 -> "eins", 2 -> "zwei", 3 -> "drei", 4 -> "vier")),
       json"""{
         "a": 0,
         "listMap": [
@@ -53,23 +53,23 @@ final class CirceUtilsTest extends FreeSpec {
 
   "json string interpolator" - {
     "Simple string" in {
-      assert(json"""{ "A": "STRING" }""" == Json.obj("A" → Json.fromString("STRING")))
-      assert(json"""{ "A": "STRING\"\u007f." }""" == Json.obj("A" → Json.fromString("STRING\"\u007f.")))
+      assert(json"""{ "A": "STRING" }""" == Json.obj("A" -> Json.fromString("STRING")))
+      assert(json"""{ "A": "STRING\"\u007f." }""" == Json.obj("A" -> Json.fromString("STRING\"\u007f.")))
     }
 
     "Interpolating String value" in {
-      for (string ← "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil)
-        assert(json"""{ "A": "!$string" }""" == Json.obj("A" → Json.fromString("!" + string)))
+      for (string <- "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil)
+        assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
     }
 
     "Interpolating Int value" in {
       val i = 7
-      assert(json"""{ "A": $i }""" == Json.obj("A" → Json.fromInt(7)))
+      assert(json"""{ "A": $i }""" == Json.obj("A" -> Json.fromInt(7)))
     }
 
     "Interpolating Array value" in {
       val array = List(1, 2, 3)
-      assert(json"""{ "A": $array }""" == Json.obj("A" → Json.fromValues(array map Json.fromInt)))
+      assert(json"""{ "A": $array }""" == Json.obj("A" -> Json.fromValues(array map Json.fromInt)))
     }
   }
 
@@ -90,6 +90,6 @@ final class CirceUtilsTest extends FreeSpec {
   }
 
   "JsonObject ++ JsonObject" in {
-    assert(JsonObject("a" → 1.asJson) ++ JsonObject("b" → 2.asJson) == JsonObject("a" → 1.asJson, "b" → 2.asJson))
+    assert(JsonObject("a" -> 1.asJson) ++ JsonObject("b" -> 2.asJson) == JsonObject("a" -> 1.asJson, "b" -> 2.asJson))
   }
 }

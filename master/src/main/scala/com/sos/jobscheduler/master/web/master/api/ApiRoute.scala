@@ -35,16 +35,16 @@ with SessionRoute
         apiRootRoute
       } ~
       pathPrefix(Segment) {
-        case "session"     ⇒ sessionRoute
-        case "event"       ⇒ eventRoute
-        case "command"     ⇒ commandRoute
-        case "fatEvent"    ⇒ fatEventRoute
-        case "order"       ⇒ orderRoute
-        case "workflow"    ⇒ workflowRoute
-        case "agent"       ⇒ agentRefRoute
-        case "agent-proxy" ⇒ agentProxyRoute
-        case "graphql"     ⇒ graphqlRoute
-        case _ ⇒ complete(NotFound)
+        case "session"     => sessionRoute
+        case "event"       => eventRoute
+        case "command"     => commandRoute
+        case "fatEvent"    => fatEventRoute
+        case "order"       => orderRoute
+        case "workflow"    => workflowRoute
+        case "agent"       => agentRefRoute
+        case "agent-proxy" => agentProxyRoute
+        case "graphql"     => graphqlRoute
+        case _ => complete(NotFound)
       }
     }
 }

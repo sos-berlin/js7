@@ -46,7 +46,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   private def route = pathSegments("event")(eventRoute)
 
-  for (uri ← List(
+  for (uri <- List(
     "/event?return=OrderEvent&timeout=60&after=0",
     "/event?timeout=60&after=0"))
   {
@@ -186,11 +186,11 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getEventSeq(uri) match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         assert(stampeds.nonEmpty)
         stampeds
 
-      case x ⇒ fail(s"Unexpected response: $x")
+      case x => fail(s"Unexpected response: $x")
     }
 
   private def getEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderEvent]] =
@@ -247,7 +247,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
 object EventRouteTest
 {
-  private val TestEvents = for (i ← 1 to 18) yield
+  private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty))
 }

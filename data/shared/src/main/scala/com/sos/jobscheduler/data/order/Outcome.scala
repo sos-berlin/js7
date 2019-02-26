@@ -42,7 +42,7 @@ object Outcome
       def newInstance(returnCode: ReturnCode): A
 
       // re-use memory for usual values.
-      private val usualValues: Vector[A] = (0 to 255).map(i ⇒ newInstance(ReturnCode(i))).toVector
+      private val usualValues: Vector[A] = (0 to 255).map(i => newInstance(ReturnCode(i))).toVector
 
       def apply(returnCode: ReturnCode): A =
         if (usualValues.indices contains returnCode.number)

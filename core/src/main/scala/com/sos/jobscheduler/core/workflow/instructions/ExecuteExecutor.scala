@@ -16,19 +16,19 @@ object ExecuteExecutor extends EventInstructionExecutor {
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Execute): Option[KeyedEvent[OrderActorEvent]] =
     // Order.Ready: Execution has to be started by the caller
-    //order.ifState[Order.Fresh].map(order ⇒
+    //order.ifState[Order.Fresh].map(order =>
     //  order.id <-: OrderStarted)
     //.orElse(
-      order.ifState[Order.Processed].map(order ⇒
+      order.ifState[Order.Processed].map(order =>
         order.id <-: (
           order.outcome match {
-            case Outcome.Disrupted(JobSchedulerRestarted) ⇒
+            case Outcome.Disrupted(JobSchedulerRestarted) =>
               OrderMoved(order.position) // Repeat
 
-            case _: Outcome.Succeeded ⇒
+            case _: Outcome.Succeeded =>
               OrderMoved(order.position.increment)
 
-            case failed: Outcome.NotSucceeded ⇒
+            case failed: Outcome.NotSucceeded =>
               OrderFailed(failed)
           }))
 }

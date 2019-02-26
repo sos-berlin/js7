@@ -13,10 +13,10 @@ final class AnyJavaJsonCodecsTest extends FreeSpec {
 
   "jsonToJava" in {
     val map = Map(
-      "string" → "STRING",
-      "int" → 333,
-      "boolean" → true,
-      "array" → Vector(1, "two").asJava).asJava
+      "string" -> "STRING",
+      "int" -> 333,
+      "boolean" -> true,
+      "array" -> Vector(1, "two").asJava).asJava
     val json =
       json"""{
         "string": "STRING",

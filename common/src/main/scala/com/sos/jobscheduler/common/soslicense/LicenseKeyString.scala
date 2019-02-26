@@ -13,7 +13,7 @@ final class LicenseKeyString(val string: String) {
 
   override def hashCode = normalizedString.hashCode
 
-  override def equals(o: Any) = cond(o) { case o: LicenseKeyString ⇒ normalizedString == o.normalizedString }
+  override def equals(o: Any) = cond(o) { case o: LicenseKeyString => normalizedString == o.normalizedString }
 
   override def toString = string
 }

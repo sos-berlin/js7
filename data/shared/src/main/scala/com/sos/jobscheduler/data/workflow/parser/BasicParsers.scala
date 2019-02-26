@@ -47,19 +47,19 @@ private[parser] object BasicParsers
   val comma = w ~ "," ~ w
   //val newline = P(h ~ "\r".? ~ "\n" ~ w)
   //val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
-  val int = P[Int](("-".? ~ CharsWhile(c ⇒ c >= '0' && c <= '9')).! map (_.toInt))
-  val identifierEnd = &(CharPred(c ⇒ !isIdentifierPart(c))) | End
+  val int = P[Int](("-".? ~ CharsWhile(c => c >= '0' && c <= '9')).! map (_.toInt))
+  val identifierEnd = &(CharPred(c => !isIdentifierPart(c))) | End
   val identifier = P[String]((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).! ~ identifierEnd)
   val quotedString = P[String] {
     val singleQuoted = P("'" ~/
-      (CharsWhile(ch ⇒ ch != '\'' && ch >= ' ', min = 0).! ~ "'").opaque(
+      (CharsWhile(ch => ch != '\'' && ch >= ' ', min = 0).! ~ "'").opaque(
         "Single-quoted (') string is not properly terminated or contains a non-printable character"))
     val doubleQuoted = P("\"" ~/
-      (CharsWhile(ch ⇒ ch != '"' && ch >= ' ' && ch != '\\', min = 0).! ~ "\"").opaque(
+      (CharsWhile(ch => ch != '"' && ch >= ' ' && ch != '\\', min = 0).! ~ "\"").opaque(
         "Double-quoted (\") string is not properly terminated or contains a non-printable character or backslash (\\)"))
       .flatMap {
-        case o if o contains '$' ⇒ invalid("Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes (')")
-        case o ⇒ valid(o)
+        case o if o contains '$' => invalid("Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes (')")
+        case o => valid(o)
       }
     singleQuoted | doubleQuoted
   }
@@ -72,24 +72,24 @@ private[parser] object BasicParsers
   def keyword(name: String) = P[Unit](name ~ identifierEnd)
 
   def path[A <: TypedPath: TypedPath.Companion] = P[A](
-    pathString map (p ⇒ FolderPath.Root.resolve[A](p)))
+    pathString map (p => FolderPath.Root.resolve[A](p)))
 
   def keyValueMap[A](keyParsers: Map[String, P[A]]): P[KeyToValue[A]] =
     keyValues(keyParsers)
-      .flatMap(kvs ⇒
+      .flatMap(kvs =>
         kvs.duplicateKeys(_._1) match {
-          case Some(dups) ⇒ Fail.opaque("Duplicate keywords: " + dups.keys.mkString(", "))
-          case None       ⇒ PassWith(KeyToValue(kvs.toMap))
+          case Some(dups) => Fail.opaque("Duplicate keywords: " + dups.keys.mkString(", "))
+          case None       => PassWith(KeyToValue(kvs.toMap))
         })
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
-    def apply[A1 <: A](key: String, default: ⇒ A1): P[A1] =
+    def apply[A1 <: A](key: String, default: => A1): P[A1] =
       PassWith(keyToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
     def apply[A1 <: A](key: String): P[A1] =
       keyToValue.get(key) match {
-        case None    ⇒ Fail.opaque(s"Missing required argument '$key='")
-        case Some(o) ⇒ PassWith(o.asInstanceOf[A1])
+        case None    => Fail.opaque(s"Missing required argument '$key='")
+        case Some(o) => PassWith(o.asInstanceOf[A1])
       }
 
     def get[A1 <: A](key: String): P[Option[A1]] =
@@ -98,27 +98,27 @@ private[parser] object BasicParsers
     def noneOrOneOf[A1 <: A](keys: Set[String]): P[Option[(String, A1)]] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
-        case 0 ⇒ PassWith(None)
-        case 1 ⇒ PassWith(Some(intersection.head → keyToValue(intersection.head).asInstanceOf[A1]))
-        case _ ⇒ Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
+        case 0 => PassWith(None)
+        case 1 => PassWith(Some(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1]))
+        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
 
     def oneOf[A1 <: A](keys: Set[String]): P[(String, A1)] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
-        case 0 ⇒ Fail.opaque("Missing one of the keywords: " + keys.mkString(", "))
-        case 1 ⇒ PassWith(intersection.head → keyToValue(intersection.head).asInstanceOf[A1])
-        case _ ⇒ Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
+        case 0 => Fail.opaque("Missing one of the keywords: " + keys.mkString(", "))
+        case 1 => PassWith(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1])
+        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
 
     def oneOfOr[A1 <: A](keys: Set[String], default: A1): P[A1] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
-        case 0 ⇒ PassWith(default)
-        case 1 ⇒ PassWith(keyToValue(intersection.head).asInstanceOf[A1])
-        case _ ⇒ Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
+        case 0 => PassWith(default)
+        case 1 => PassWith(keyToValue(intersection.head).asInstanceOf[A1])
+        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
   }
@@ -126,8 +126,8 @@ private[parser] object BasicParsers
   def keyValues[A](keyParsers: Map[String, P[A]]): P[Seq[(String, A)]] =
     comma0Seq(
       keyParsers
-        .map { case (k, p) ⇒ keyValue(k, p) map k.→ }
-        .reduce((a, b) ⇒ a | b))
+        .map { case (k, p) => keyValue(k, p) map k.-> }
+        .reduce((a, b) => a | b))
 
   def keyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
     P(P(name) ~~ "=" ~~/ valueParser)
@@ -140,29 +140,29 @@ private[parser] object BasicParsers
 
   //def parenthesizedCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
   //  P("(") ~~/
-  //    (P(")").map(_ ⇒ Nil) | commaSeq(parser) ~~ ")")
+  //    (P(")").map(_ => Nil) | commaSeq(parser) ~~ ")")
 
   def bracketCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P("[") ~~/
-      (P("]").map(_ ⇒ Nil) | commaSeq(parser) ~~ "]")
+      (P("]").map(_ => Nil) | commaSeq(parser) ~~ "]")
 
   def comma0Seq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     commaSeq(parser).? map (_ getOrElse Nil)
 
   def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P(parser ~ (comma ~ parser).rep ~ w) map {
-      case (head, tail) ⇒ head +: tail
+      case (head, tail) => head +: tail
     }
 
-  def leftRecurse[A, O](operand: P[A], operator: P[O])(operation: (A, O, A) ⇒ P[A]): P[A] = {
+  def leftRecurse[A, O](operand: P[A], operator: P[O])(operation: (A, O, A) => P[A]): P[A] = {
     operand ~/ (w ~ operator ~~/ operand).rep(min = 0) flatMap {
-      case (head, tail) ⇒
+      case (head, tail) =>
         def loop(left: A, tail: List[(O, A)]): P[A] =
           tail match {
-            case Nil ⇒
+            case Nil =>
               valid(left)
-            case (op, right) :: tl ⇒
-              operation(left, op, right) flatMap (a ⇒ loop(a, tl))
+            case (op, right) :: tl =>
+              operation(left, op, right) flatMap (a => loop(a, tl))
           }
         loop(head, tail.toList)
     }
@@ -184,8 +184,8 @@ private[parser] object BasicParsers
   final case class CheckedParser[T](checked: Checked[T]) extends core.Parser[T, Char, String]{
     def parseRec(cfg: core.ParseCtx[Char, String], index: Int) =
       checked match {
-        case Valid(elem) ⇒ success(cfg.success, elem, index, Set.empty, false)
-        case Invalid(problem) ⇒
+        case Valid(elem) => success(cfg.success, elem, index, Set.empty, false)
+        case Invalid(problem) =>
           val failure = fail(cfg.failure, index)
           failure.lastParser = ProblemParser(problem)
           failure

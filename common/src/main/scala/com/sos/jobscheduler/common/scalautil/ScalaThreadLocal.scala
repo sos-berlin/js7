@@ -7,7 +7,7 @@ abstract class ScalaThreadLocal[A] {
 }
 
 object ScalaThreadLocal {
-  def threadLocal[A](f: ⇒ A): ScalaThreadLocal[A] =
+  def threadLocal[A](f: => A): ScalaThreadLocal[A] =
     new ScalaThreadLocal[A] {
       private val threadLocal = new ThreadLocal[A] {
         override def initialValue = f

@@ -16,8 +16,8 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
 object HtmlDirectives
 {
   def dontCache: Directive0 =
-    mapInnerRoute { inner ⇒
-      extractRequest { request ⇒
+    mapInnerRoute { inner =>
+      extractRequest { request =>
         val header =
           if (isHtmlPreferred(request))
             `Cache-Control`(`max-age`(0))  // This allows browsers to use the cache when hitting the back button - for good user experience
@@ -34,21 +34,21 @@ object HtmlDirectives
     */
   val pathEndRedirectToSlash: Route =
     pathEnd {
-      redirectEmptyQueryBy(path ⇒ Uri.Path(path.toString + "/"))
+      redirectEmptyQueryBy(path => Uri.Path(path.toString + "/"))
     }
 
   /**
     * If HTML is requested, path ends with slash and request has no query, then redirect to path without slash, in case of typo.
     */
   def pathEndElseRedirect: Directive0 =
-    mapInnerRoute { route ⇒
+    mapInnerRoute { route =>
       pathEnd {
         route
       } ~
       pathSingleSlash {
         htmlPreferred {
           get {
-            extractRequest { request ⇒
+            extractRequest { request =>
               passIf(request.uri.query() == Uri.Query.Empty) {
                 val withoutSlash = request.uri.copy(
                   scheme = "",
@@ -66,12 +66,12 @@ object HtmlDirectives
     * If HTML is requested, trailing slash is missing and request has no query, then redirect to trailing slash, in case of typo.
     */
   def getRequiresSlash: Directive0 =
-    mapInnerRoute { route ⇒
+    mapInnerRoute { route =>
       get {
         redirectToSlash ~
         extractUnmatchedPath {
-          case _: Uri.Path.Slash ⇒ route
-          case _ ⇒ reject
+          case _: Uri.Path.Slash => route
+          case _ => reject
         }
       } ~
         route
@@ -83,7 +83,7 @@ object HtmlDirectives
   val redirectToSlash: Route =
     pathEnd {
       htmlPreferred {  // The browser user may type "api/"
-        extractRequest { request ⇒
+        extractRequest { request =>
           passIf(request.uri.query() == Uri.Query.Empty) {
             val withSlash = request.uri.copy(
               scheme = "",
@@ -98,10 +98,10 @@ object HtmlDirectives
   /**
     * If HTML is requested and request has no query, then redirect according to `changePath`, in case of user typo.
     */
-  def redirectEmptyQueryBy(changePath: Uri.Path ⇒ Uri.Path): Route =
+  def redirectEmptyQueryBy(changePath: Uri.Path => Uri.Path): Route =
     htmlPreferred {
       get {
-        extractRequest { request ⇒
+        extractRequest { request =>
           if (request.uri.query() == Uri.Query.Empty) {
             redirect(
               request.uri.copy(
@@ -116,8 +116,8 @@ object HtmlDirectives
     }
 
   def htmlPreferred: Directive0 =
-    mapInnerRoute { route ⇒
-      extractRequest { request ⇒
+    mapInnerRoute { route =>
+      extractRequest { request =>
         passIf(request.method == GET && isHtmlPreferred(request)) {
           handleRejections(RejectionHandler.default) {
             route
@@ -127,7 +127,7 @@ object HtmlDirectives
     }
 
   private def isHtmlPreferred(request: HttpRequest): Boolean =
-    request.header[Accept] exists { o ⇒ isHtmlPreferred(o.mediaRanges) }
+    request.header[Accept] exists { o => isHtmlPreferred(o.mediaRanges) }
 
   /**
     * Workaround for Spray 1.3.3, which weights the MediaType ordering of the UnMarshaller over the (higher) weight of more specific MediaRange.
@@ -136,7 +136,7 @@ object HtmlDirectives
     */
   private def isHtmlPreferred(mediaRanges: Iterable[MediaRange]): Boolean =
     mediaRanges exists {
-      case MediaRange.One(`text/html`, 1.0f) ⇒ true  // Highest priority q < 1 is not respected (and should be unusual for a browser)
-      case _ ⇒ false
+      case MediaRange.One(`text/html`, 1.0f) => true  // Highest priority q < 1 is not respected (and should be unusual for a browser)
+      case _ => false
     }
 }

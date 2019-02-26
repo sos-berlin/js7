@@ -17,17 +17,17 @@ import org.scalatest.FreeSpec
 final class HistoricEventReaderTest extends FreeSpec
 {
   "eventsAfter" in {
-    withTemporaryDirectory("HistoricEventReaderTest-") { dir ⇒
+    withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
-      autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer ⇒
+      autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer =>
         writer.writeHeader(JournalHeader(eventId = After, totalEventCount = 0))
         writer.beginEventSection()
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)
       }
 
-      autoClosing(new HistoricEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader ⇒
+      autoClosing(new HistoricEventReader[TestEvent](journalMeta, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader =>
         assert(reader.eventsAfter(After + 5) == None)
         assert(reader.eventsAfter(After + 15) == None)
         assert(reader.eventsAfter(After + 25) == None)

@@ -31,17 +31,17 @@ object FreshOrder
     new FreshOrder(order.id, order.workflowId.path, order.state.scheduledFor, order.payload)
 
   implicit val jsonCodec: ObjectEncoder[FreshOrder] =
-    o ⇒ JsonObject(
-      "id" → o.id.asJson,
-      "workflowPath" → o.workflowPath.asJson,
-      "scheduledFor" → o.scheduledFor.asJson,
-      "variables" → ((o.payload != Payload.empty) ? o.payload.variables).asJson)
+    o => JsonObject(
+      "id" -> o.id.asJson,
+      "workflowPath" -> o.workflowPath.asJson,
+      "scheduledFor" -> o.scheduledFor.asJson,
+      "variables" -> ((o.payload != Payload.empty) ? o.payload.variables).asJson)
 
   implicit val jsonDecoder: Decoder[FreshOrder] =
-    c ⇒ for {
-      id ← c.get[OrderId]("id")
-      workflowPath ← c.get[WorkflowPath]("workflowPath")
-      scheduledFor ← c.get[Option[Timestamp]]("scheduledFor")
-      payload ← c.get[Option[Map[String, String]]]("variables") map (_.fold(Payload.empty)(Payload.apply))
+    c => for {
+      id <- c.get[OrderId]("id")
+      workflowPath <- c.get[WorkflowPath]("workflowPath")
+      scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
+      payload <- c.get[Option[Map[String, String]]]("variables") map (_.fold(Payload.empty)(Payload.apply))
     } yield FreshOrder(id, workflowPath, scheduledFor, payload)
 }

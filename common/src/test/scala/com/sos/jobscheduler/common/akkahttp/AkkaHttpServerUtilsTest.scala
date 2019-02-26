@@ -69,14 +69,14 @@ final class AkkaHttpServerUtilsTest extends FreeSpec with ScalatestRouteTest {
   "pathSegments" in {
     def aRoute =
       pathSegments("prefix") {
-        extractUnmatchedPath { path ⇒
+        extractUnmatchedPath { path =>
           complete(path.toString)
         }
       }
 
     def bRoute =
       pathSegments("prefix/b") {
-        extractUnmatchedPath { path ⇒
+        extractUnmatchedPath { path =>
           complete(path.toString)
         }
       }

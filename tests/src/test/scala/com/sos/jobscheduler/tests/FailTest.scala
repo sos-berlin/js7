@@ -45,8 +45,8 @@ final class FailTest extends FreeSpec
       expectedEvents)
 
   private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider ⇒
-      directoryProvider.run { (master, _) ⇒
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
+      directoryProvider.run { (master, _) =>
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         master.eventWatch.await[E](_.key == orderId)
@@ -56,10 +56,10 @@ final class FailTest extends FreeSpec
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit = {
     eventSeq match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }

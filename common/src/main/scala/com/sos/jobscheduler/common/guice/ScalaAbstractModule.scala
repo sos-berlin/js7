@@ -15,9 +15,9 @@ abstract class ScalaAbstractModule extends AbstractModule {
   final def bindClass[A <: AnyRef : ClassTag] =
     myBinder bind implicitClass[A]
 
-  final def provideSingleton[A <: AnyRef : ClassTag](provider: ⇒ A) =
+  final def provideSingleton[A <: AnyRef : ClassTag](provider: => A) =
     provide[A](provider) in SINGLETON
 
-  private def provide[A <: AnyRef : ClassTag](provider: ⇒ A) =
+  private def provide[A <: AnyRef : ClassTag](provider: => A) =
     myBinder bind implicitClass[A] toProvider new Provider[A] { def get = provider }
 }

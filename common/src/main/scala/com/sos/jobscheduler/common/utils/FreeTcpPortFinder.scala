@@ -26,6 +26,6 @@ object FreeTcpPortFinder {
       new ServerSocket(port, backlog).close()
       true
     } catch {
-      case _: BindException ⇒ false
+      case _: BindException => false
     }
 }

@@ -10,6 +10,6 @@ object SupervisorStrategies {
 
   def escalate: SupervisorStrategy =
     new LoggingOneForOneStrategy()({
-      case _: Throwable ⇒ Escalate
+      case _: Throwable => Escalate
     })
 }

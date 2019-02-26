@@ -18,7 +18,7 @@ import scala.concurrent._
  *
  * @param pathMatches Predicate for a `Path` resolved against `directory`
  */
-private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, pathMatches: Path ⇒ Boolean) extends HasCloser {
+private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, pathMatches: Path => Boolean) extends HasCloser {
 
   private val watchService = FileSystems.getDefault.newWatchService().closeWithCloser
 
@@ -44,7 +44,7 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
         false
       } else
         try
-          watchKey.pollEvents().asInstanceOf[java.util.List[WatchEvent[Path]]].asScala exists { event ⇒
+          watchKey.pollEvents().asInstanceOf[java.util.List[WatchEvent[Path]]].asScala exists { event =>
             logger.trace(s"$logPrefix, event ${event.kind} ${event.context}")
             event.kind == OVERFLOW || pathMatches(directory resolve event.context)
           }

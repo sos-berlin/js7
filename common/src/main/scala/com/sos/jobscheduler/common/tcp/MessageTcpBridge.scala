@@ -31,7 +31,7 @@ extends Actor {
   def receive = running
 
   private def running: Receive = {
-    case m @ SendMessage(message) ⇒
+    case m @ SendMessage(message) =>
       logger.trace(s"$m")
       if (message.size > MessageSizeMaximum) {
         parent ! Failed(newTooBigException(message.size))
@@ -39,35 +39,35 @@ extends Actor {
         tcp ! Tcp.Write(intToBytesString(message.size) ++ message)
       }
 
-    case Close ⇒
+    case Close =>
       tcp ! Tcp.Close
       become(closing)
 
-    case Abort ⇒
+    case Abort =>
       tcp ! Tcp.Abort
       become(closing)
 
-    case Tcp.Received(bytes) ⇒
+    case Tcp.Received(bytes) =>
       val completedMessageOption = messageBuilder.apply(bytes)
       messageBuilder.expectedLength match {
-        case Some(len) if len > MessageSizeMaximum ⇒
+        case Some(len) if len > MessageSizeMaximum =>
           parent ! Failed(newTooBigException(len))
           tcp ! Tcp.Abort
           become(closing)
-        case _ ⇒
-          for (completeMessage ← completedMessageOption) {
+        case _ =>
+          for (completeMessage <- completedMessageOption) {
             val m = MessageReceived(completeMessage)
             logger.trace(s"$m")
             parent ! m
           }
       }
 
-    case Tcp.PeerClosed ⇒
+    case Tcp.PeerClosed =>
       logger.debug("Tcp.PeerClosed")
       parent ! PeerClosed
       stop(self)
 
-    case closed: Tcp.ConnectionClosed ⇒
+    case closed: Tcp.ConnectionClosed =>
       logger.debug(s"$closed")
       val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
       parent ! Failed(exception)
@@ -75,8 +75,8 @@ extends Actor {
   }
 
   private def closing: Receive = {
-    case Close ⇒
-    case closed: Tcp.ConnectionClosed ⇒
+    case Close =>
+    case closed: Tcp.ConnectionClosed =>
       logger.debug(s"$closed")
       stop(self)
   }

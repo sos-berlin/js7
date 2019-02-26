@@ -35,25 +35,25 @@ object FileBasedId {
     FileBasedId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: TypedPath]: Ordering[FileBasedId[P]] =
-    Ordering.by(o ⇒ (o.path, o.versionId))
+    Ordering.by(o => (o.path, o.versionId))
 
   implicit def jsonEncoder[P <: TypedPath: Encoder]: ObjectEncoder[FileBasedId[P]] =
-    o ⇒ JsonObject(
-      "path" → (!o.path.isAnonymous ? o.path).asJson,
-      "versionId" → (!o.versionId.isAnonymous ? o.versionId).asJson)
+    o => JsonObject(
+      "path" -> (!o.path.isAnonymous ? o.path).asJson,
+      "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)
 
   implicit def jsonDecoder[P <: TypedPath: TypedPath.Companion: Decoder]: Decoder[FileBasedId[P]] =
-    cursor ⇒
+    cursor =>
       for {
-        path ← cursor.get[Option[P]]("path") map (_ getOrElse implicitly[TypedPath.Companion[P]].Anonymous)
-        version ← cursor.get[Option[VersionId]]("versionId") map (_ getOrElse VersionId.Anonymous)
+        path <- cursor.get[Option[P]]("path") map (_ getOrElse implicitly[TypedPath.Companion[P]].Anonymous)
+        version <- cursor.get[Option[VersionId]]("versionId") map (_ getOrElse VersionId.Anonymous)
       } yield FileBasedId(path, version)
 
   trait Companion[P <: TypedPath] {
     //def checked(string: String)(implicit P: TypedPath.Companion[P]): Checked[FileBasedId[P]] =
     //  string indexOf VersionSeparator match {
-    //    case -1 ⇒ Problem(s"FileBasedIdPath without version (denoted by '$VersionSeparator')?: $string")
-    //    case i ⇒ Valid(new FileBasedId(P(string take i), VersionId(string drop i + 1)))
+    //    case -1 => Problem(s"FileBasedIdPath without version (denoted by '$VersionSeparator')?: $string")
+    //    case i => Valid(new FileBasedId(P(string take i), VersionId(string drop i + 1)))
     //  }
   }
 }

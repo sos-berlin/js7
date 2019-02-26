@@ -68,7 +68,7 @@ extends HasCloser {
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
-    agentRefPaths.map { o ⇒ o →
+    agentRefPaths.map { o => o ->
       new AgentTree(directory, o,
         testName.fold("")(_ + "-") ++ o.name,
         https = agentHttps,
@@ -77,12 +77,12 @@ extends HasCloser {
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentFileBased: Vector[AgentRef] = for (a ← agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
+  lazy val agentFileBased: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
     master.createDirectoriesAndFiles()
-    for (a ← agents) {
+    for (a <- agents) {
       a.createDirectoriesAndFiles()
       (a.config / "private" / "private.conf").append(s"""
          |jobscheduler.auth.users {
@@ -95,7 +95,7 @@ extends HasCloser {
          |""".stripMargin)
     }
     (master.config / "private" / "private.conf").append(
-      agentRefPaths.map(a ⇒
+      agentRefPaths.map(a =>
         "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
       ).mkString +
       s"""jobscheduler.https.keystore {
@@ -110,20 +110,20 @@ extends HasCloser {
 
   val sign: FileBased => SignedString = fileBasedSigner.sign
 
-  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit): Unit =
-    runAgents()(agents ⇒
-      runMaster()(master ⇒
+  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) => Unit): Unit =
+    runAgents()(agents =>
+      runMaster()(master =>
         body(master, agents)))
 
-  def runMaster()(body: RunningMaster ⇒ Unit): Unit = {
+  def runMaster()(body: RunningMaster => Unit): Unit = {
     val runningMaster = startMaster() await 99.s
     try {
       body(runningMaster)
       runningMaster.terminate() await 99.s
     }
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       try runningMaster.terminate() await 99.s
-      catch { case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt) }
+      catch { case NonFatal(tt) if tt ne t => t.addSuppressed(tt) }
       throw t
     }
   }
@@ -150,7 +150,7 @@ extends HasCloser {
     Task.deferFuture(
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
-    .map { runningMaster ⇒
+    .map { runningMaster =>
       val myFileBased = agentFileBased ++ fileBased
       if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
         // startMaster may be called several times. We configure only once.
@@ -162,8 +162,8 @@ extends HasCloser {
       runningMaster
     }
 
-  def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
+  def runAgents()(body: IndexedSeq[RunningAgent] => Unit): Unit =
+    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents =>
       body(agents)
       agents map (_.terminate()) await 99.s
     }
@@ -237,7 +237,7 @@ object DirectoryProvider
         |}""".stripMargin)
       val trustStore = config / "private/https-truststore.p12"
       trustStore.contentBytes = AgentTrustStoreResource.contentBytes
-      for (o ← clientCertificate) importKeyStore(trustStore, o)
+      for (o <- clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
     }
   }
@@ -285,12 +285,12 @@ object DirectoryProvider
       (s"""@echo off
           |echo ${StdoutOutput.trim}
           |ping -n ${1 + (duration + 999999.µs).toMillis / 1000} 127.0.0.1 >nul""" +
-          resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
+          resultVariable.fold("")(o => s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
       ).stripMargin
     else
       (s"""echo ${StdoutOutput.trim}
           |sleep ${duration.toSecondsString}""" +
-          resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
+          resultVariable.fold("")(o => s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 
   // Following resources have been generated with the command line:
@@ -304,7 +304,7 @@ object DirectoryProvider
   private val AgentTrustStoreResource = JavaResource("com/sos/jobscheduler/tests/agent/config/export/https-truststore.p12")
 
   private def importKeyStore(keyStore: Path, add: JavaResource): Unit =
-    FileUtils.withTemporaryFile("test-", ".p12") { file ⇒
+    FileUtils.withTemporaryFile("test-", ".p12") { file =>
       file.contentBytes = add.contentBytes
       importKeyStore(keyStore, file)
     }

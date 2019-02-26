@@ -26,7 +26,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
-  this: org.scalatest.Suite ⇒
+  this: org.scalatest.Suite =>
 
   ProblemCodeMessages.initialize()
 
@@ -79,7 +79,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     master.close()
     agents.map(_.terminate()) await 15.s
     closer.close()
-    for (a ← agents) a.close()
+    for (a <- agents) a.close()
     super.afterAll()
     directoryProvider.close()
   }

@@ -23,26 +23,26 @@ trait WorkflowRoute extends MasterRouteProvider {
 
   final val workflowRoute: Route =
     get {
-      authorizedUser(ValidUserPermission) { _ ⇒
+      authorizedUser(ValidUserPermission) { _ =>
         pathEnd {
           completeTask(
             fileBasedApi.overview[Workflow])
         } ~
         pathSingleSlash {
           parameter("return".?) {
-            case None ⇒
+            case None =>
               completeTask(
                 fileBasedApi.paths[Workflow])
 
-            case Some("Workflow") ⇒
+            case Some("Workflow") =>
               completeTask(
                 fileBasedApi.fileBaseds[Workflow])
 
-            case _ ⇒
+            case _ =>
               reject
           }
         } ~
-        path(remainingSegmentOrPath[WorkflowPath]) { workflowPath ⇒
+        path(remainingSegmentOrPath[WorkflowPath]) { workflowPath =>
           completeTask(
             fileBasedApi.pathToCurrentFileBased[Workflow](workflowPath))
         }

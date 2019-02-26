@@ -71,9 +71,9 @@ object ExtendedLocalTime {
 
   def fromString(o: String): ExtendedLocalTime =
     o match {
-      case ParseRegex(hours, minutes, seconds) ⇒
+      case ParseRegex(hours, minutes, seconds) =>
         of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
-      case _ ⇒ throw new IllegalArgumentException(s"Not a local time: '$o'")
+      case _ => throw new IllegalArgumentException(s"Not a local time: '$o'")
   }
 
   def of(hour: Int, minute: Int, second: Int = 0): ExtendedLocalTime = {

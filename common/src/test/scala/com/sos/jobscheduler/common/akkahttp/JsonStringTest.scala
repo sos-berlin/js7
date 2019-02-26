@@ -53,7 +53,7 @@ private object JsonStringTest {
   import org.scalatest.Assertions._
 
   private def testRoute(expected: String): Route =
-    entity(as[JsonString]) { jsonString ⇒
+    entity(as[JsonString]) { jsonString =>
       assert(jsonString.string == expected)
       complete(jsonString)
     }

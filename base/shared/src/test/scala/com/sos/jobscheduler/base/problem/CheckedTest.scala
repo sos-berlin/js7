@@ -76,34 +76,34 @@ final class CheckedTest extends FreeSpec
   private val invalidY: Checked[Int] = Invalid(Problem("Y"))
 
   "flatMap" in {
-    assert((Invalid(Problem("A")): Checked[String]).flatMap((_: String) ⇒ throw new NotImplementedError) == Invalid(Problem("A")))
-    assert((Valid("A"): Checked[String]).flatMap(_ ⇒ Valid(2)) == Valid(2))
+    assert((Invalid(Problem("A")): Checked[String]).flatMap((_: String) => throw new NotImplementedError) == Invalid(Problem("A")))
+    assert((Valid("A"): Checked[String]).flatMap(_ => Valid(2)) == Valid(2))
   }
 
   "for-comprehension (flatMap)" in {
     val valid = for {
-      a ← valid1
-      b ← valid2
-    } yield a → b
-    assert(valid == Valid(1 → 2))
+      a <- valid1
+      b <- valid2
+    } yield a -> b
+    assert(valid == Valid(1 -> 2))
   }
 
   "for-comprehension (flatMap), fail-fast" in {
     val invalid = for {
-      a ← valid1
-      b ← invalidX
-      c ← valid2
-      d ← invalidY
+      a <- valid1
+      b <- invalidX
+      c <- valid2
+      d <- invalidY
     } yield (a, b, c, d)
     assert(invalid == Invalid(Problem("X")))
   }
 
   "mapN" in {
-    assert((valid1, valid2).mapN((a, b) ⇒ (a, b)) == Valid(1 → 2))
+    assert((valid1, valid2).mapN((a, b) => (a, b)) == Valid(1 -> 2))
   }
 
   "mapN combines Problems" in {
-    assert((valid1, invalidX, valid2, invalidY).mapN((_, _, _, _) ⇒ ()) == Invalid(Problem("X\n & Y")))
+    assert((valid1, invalidX, valid2, invalidY).mapN((_, _, _, _) => ()) == Invalid(Problem("X\n & Y")))
   }
 
   "withProblemKey" in {
@@ -112,21 +112,21 @@ final class CheckedTest extends FreeSpec
   }
 
   "mapProblem" in {
-    assert(Valid(1).mapProblem(_ ⇒ throw new NotImplementedError) == Valid(1))
-    assert(Invalid(Problem("X")).mapProblem(p ⇒ Problem(s"/$p/")) == Invalid(Problem("/X/")))
+    assert(Valid(1).mapProblem(_ => throw new NotImplementedError) == Valid(1))
+    assert(Invalid(Problem("X")).mapProblem(p => Problem(s"/$p/")) == Invalid(Problem("/X/")))
   }
 
   "onProblem" in {
-    assert(Valid(1).onProblem(_ ⇒ throw new NotImplementedError) == 1.some)
+    assert(Valid(1).onProblem(_ => throw new NotImplementedError) == 1.some)
     var flag = false
-    assert(Invalid(Problem("X")).onProblem(_ ⇒ flag = true) == none)
+    assert(Invalid(Problem("X")).onProblem(_ => flag = true) == none)
     assert(flag)
   }
 
   "onProblemHandle" in {
-    assert(Valid(1).onProblemHandle(_ ⇒ throw new NotImplementedError) == 1)
+    assert(Valid(1).onProblemHandle(_ => throw new NotImplementedError) == 1)
     var flag = false
-    assert(Problem("X").invalid[Int].onProblemHandle { _ ⇒ flag = true; 7 } == 7)
+    assert(Problem("X").invalid[Int].onProblemHandle { _ => flag = true; 7 } == 7)
     assert(flag)
   }
 
@@ -210,7 +210,7 @@ final class CheckedTest extends FreeSpec
     }
 
     "ap" in {
-      val ff: Checked[Int ⇒ String] = Valid(_.toString)
+      val ff: Checked[Int => String] = Valid(_.toString)
       assert(Applicative[Checked].ap(ff)(valid1) == Valid("1"))
       assert(Applicative[Checked].ap(ff)(problemB) == Invalid(problemB))
       assert(Applicative[Checked].ap(problemA)(valid1) == Invalid(problemA))
@@ -219,8 +219,8 @@ final class CheckedTest extends FreeSpec
     }
 
     "<*> (ap)" in {
-      val validFf: Checked[Int ⇒ String] = Valid(_.toString)
-      val invalidFf: Checked[Int ⇒ String] = Problem("ff")
+      val validFf: Checked[Int => String] = Valid(_.toString)
+      val invalidFf: Checked[Int => String] = Problem("ff")
       assert((validFf <*> valid1) == Valid("1"))
       assert((validFf <*> invalidB) == Invalid(Problem("B")))
       assert((invalidFf <*> valid1) == Invalid(Problem("ff")))
@@ -228,7 +228,7 @@ final class CheckedTest extends FreeSpec
     }
 
     "ap2" in {
-      val ff: Checked[(Int, Int) ⇒ String] = Valid(_.toString + _.toString)
+      val ff: Checked[(Int, Int) => String] = Valid(_.toString + _.toString)
       assert(Applicative[Checked].ap2(ff)(valid1, valid2) == Valid("12"))
       assert(Applicative[Checked].ap2(ff)(valid1, problemB) == Invalid(problemB))
       assert(Applicative[Checked].ap2(ff)(problemA, valid2) == Invalid(problemA))

@@ -18,7 +18,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 final class OrderEventHandler(
-  idToWorkflow: WorkflowId ⇒ Checked[Workflow],
+  idToWorkflow: WorkflowId => Checked[Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
   private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn FileBased erneut eingelesen werden. Event OrderOffered?
@@ -29,14 +29,14 @@ final class OrderEventHandler(
   def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] = {
     val KeyedEvent(orderId, event) = keyedEvent
     for {
-      previousOrderId ← idToOrder.checked(orderId)
-      followUps ← handleEvent(previousOrderId, orderId, event)
+      previousOrderId <- idToOrder.checked(orderId)
+      followUps <- handleEvent(previousOrderId, orderId, event)
     } yield followUps
   }
 
   private def handleEvent(previousOrder: Order[Order.State], orderId: OrderId, event: OrderEvent): Checked[Seq[FollowUp]] =
     event match {
-      case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome ⇒
+      case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome =>
         for {
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.checkedExecute(previousOrder.position) flatMap {
@@ -46,33 +46,33 @@ final class OrderEventHandler(
         } yield
           FollowUp.Processed(jobKey) :: Nil
 
-      case event: OrderForked ⇒
+      case event: OrderForked =>
         Valid(previousOrder.newForkedOrders(event) map FollowUp.AddChild.apply)
 
-      case joined: OrderJoined ⇒
+      case joined: OrderJoined =>
         previousOrder.state match {
-          case o: Order.Forked ⇒
+          case o: Order.Forked =>
             Valid(o.childOrderIds map FollowUp.Remove.apply)
 
-          case Order.Awaiting(_) ⇒
+          case Order.Awaiting(_) =>
             _offeredToAwaitingOrder -= previousOrder.castState[Order.Awaiting].state.offeredOrderId
             Valid(Nil)  // Offering order is being kept
 
-          case state ⇒
+          case state =>
             Invalid(Problem(s"Event $joined, but Order is in state $state"))
         }
 
-      case event: OrderOffered ⇒
+      case event: OrderOffered =>
         Valid(FollowUp.AddOffered(previousOrder.newPublishedOrder(event)) :: Nil)
 
-      case OrderAwaiting(offeredOrderId) ⇒
+      case OrderAwaiting(offeredOrderId) =>
         _offeredToAwaitingOrder(offeredOrderId) = _offeredToAwaitingOrder.getOrElse(offeredOrderId, Set.empty) + orderId
         Valid(Nil)
 
-      case OrderFinished | OrderCanceled ⇒
+      case OrderFinished | OrderCanceled =>
         Valid(FollowUp.Remove(orderId) :: Nil)
 
-      case _ ⇒
+      case _ =>
         Valid(Nil)
     }
 }

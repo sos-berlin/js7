@@ -39,16 +39,16 @@ object OrderEvent {
   }
   object OrderAdded {
     private[OrderEvent] implicit val jsonCodec: ObjectEncoder[OrderAdded] =
-      o ⇒ JsonObject(
-        "workflowId" → o.workflowId.asJson,
-        "scheduledFor" → o.scheduledFor.asJson,
-        "variables" → ((o.payload != Payload.empty) ? o.payload.variables).asJson)
+      o => JsonObject(
+        "workflowId" -> o.workflowId.asJson,
+        "scheduledFor" -> o.scheduledFor.asJson,
+        "variables" -> ((o.payload != Payload.empty) ? o.payload.variables).asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
-      c ⇒ for {
-        workflowId ← c.get[WorkflowId]("workflowId")
-        scheduledFor ← c.get[Option[Timestamp]]("scheduledFor")
-        payload ← c.get[Option[Map[String, String]]]("variables") map (_ map Payload.apply getOrElse Payload.empty)
+      c => for {
+        workflowId <- c.get[WorkflowId]("workflowId")
+        scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
+        payload <- c.get[Option[Map[String, String]]]("variables") map (_ map Payload.apply getOrElse Payload.empty)
       } yield OrderAdded(workflowId, scheduledFor, payload)
   }
 
@@ -88,15 +88,15 @@ object OrderEvent {
       chunk.trim.truncateWithEllipsis(80, showLength = true).replace("\n", "\\n").replace("\r", "\\r") + ")"
   }
   object OrderStdWritten {
-    def apply(t: StdoutOrStderr): String ⇒ OrderStdWritten =
+    def apply(t: StdoutOrStderr): String => OrderStdWritten =
       t match {
-        case Stdout ⇒ OrderStdoutWritten.apply
-        case Stderr ⇒ OrderStderrWritten.apply
+        case Stdout => OrderStdoutWritten.apply
+        case Stderr => OrderStderrWritten.apply
       }
 
     def unapply(o: OrderStdWritten) = o match {
-      case OrderStdoutWritten(chunk) ⇒ Some((Stdout, chunk))
-      case OrderStderrWritten(chunk) ⇒ Some((Stderr, chunk))
+      case OrderStdoutWritten(chunk) => Some((Stdout, chunk))
+      case OrderStderrWritten(chunk) => Some((Stderr, chunk))
     }
   }
 

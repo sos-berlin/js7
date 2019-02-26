@@ -36,7 +36,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"))))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"))))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"};
         |}
@@ -48,7 +48,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
         |}
@@ -60,7 +60,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.NoFailure)))),
+          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.NoFailure)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
         |}
@@ -75,8 +75,8 @@ final class WorkflowPrinterTest extends FreeSpec {
           Execute(WorkflowJob.Name("A")),
           Execute(WorkflowJob.Name("B"))),
         Map(
-          WorkflowJob.Name("A") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" → "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
-          WorkflowJob.Name("B") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/b-script")))),
+          WorkflowJob.Name("A") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("B") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/b-script")))),
       """define workflow {
         |  job A;
         |  job B;

@@ -48,8 +48,8 @@ extends AutoCloseable {
       if (!synced) {
         flush()
         simulateSync match {
-          case Some(duration) ⇒ Thread.sleep(duration.toMillis)
-          case None ⇒ out.getFD.sync()
+          case Some(duration) => Thread.sleep(duration.toMillis)
+          case None => out.getFD.sync()
         }
         synced = true
       }
@@ -73,9 +73,9 @@ extends AutoCloseable {
 
   def bytesWritten  = writer.bytesWritten
 
-  protected def wrapException[A](body: ⇒ A): A =
+  protected def wrapException[A](body: => A): A =
     try body
-    catch { case NonFatal(t) if !t.getMessage.contains(file.toAbsolutePath.toString) ⇒
+    catch { case NonFatal(t) if !t.getMessage.contains(file.toAbsolutePath.toString) =>
       throw new RuntimeException(s"Error while writing file '$file': $t", t)
     }
 }

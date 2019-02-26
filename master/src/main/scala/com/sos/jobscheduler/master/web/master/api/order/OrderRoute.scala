@@ -30,17 +30,17 @@ trait OrderRoute extends MasterRouteProvider
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final lazy val orderRoute: Route =
-    authorizedUser(ValidUserPermission) { _ ⇒
+    authorizedUser(ValidUserPermission) { _ =>
       post {
         pathEnd {
-          entity(as[FreshOrder]) { order ⇒
-            extractUri { uri ⇒
+          entity(as[FreshOrder]) { order =>
+            extractUri { uri =>
               respondWithHeader(Location(uri + "/" + order.id.string)) {
                 completeTask(
                   orderApi.addOrder(order).map[ToResponseMarshallable] {
-                  case Invalid(problem) ⇒ problem
-                  case Valid(false) ⇒ Conflict → Problem.pure(s"Order '${order.id.string}' has already been added")
-                  case Valid(true) ⇒ Created
+                  case Invalid(problem) => problem
+                  case Valid(false) => Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
+                  case Valid(true) => Created
                 })
               }
             }
@@ -50,23 +50,23 @@ trait OrderRoute extends MasterRouteProvider
       get {
         pathEnd {
           parameter("return".?) {
-            case None ⇒
+            case None =>
               complete(orderApi.ordersOverview.runToFuture)  // TODO Should be streamed
-            case _ ⇒
+            case _ =>
               complete(Problem.pure("Parameter return is not supported here"))
           }
         } ~
         pathSingleSlash {
           parameter("return".?) {
-            case None ⇒
+            case None =>
               complete(orderApi.orderIds.runToFuture)  // TODO Should be streamed
-            case Some("Order") ⇒
+            case Some("Order") =>
               complete(orderApi.orders.runToFuture)   // TODO Should be streamed
-            case Some(unrecognized) ⇒
+            case Some(unrecognized) =>
               complete(Problem.pure(s"Unrecognized return=$unrecognized"))
           }
         } ~
-        matchOrderId { orderId ⇒
+        matchOrderId { orderId =>
           singleOrder(orderId)
         }
       }
@@ -75,9 +75,9 @@ trait OrderRoute extends MasterRouteProvider
   private def singleOrder(orderId: OrderId): Route =
     completeTask(
       orderApi.order(orderId).map {
-        case Some(o) ⇒
+        case Some(o) =>
           o: ToResponseMarshallable
-        case None ⇒
+        case None =>
           Problem.pure(s"Does not exist: $orderId"): ToResponseMarshallable
       })
 }
@@ -86,14 +86,14 @@ object OrderRoute {
   intelliJuseImport(keyedEventJsonCodec)
 
   private val matchOrderId = new Directive[Tuple1[OrderId]] {
-    def tapply(inner: Tuple1[OrderId] ⇒ Route) =
-      path(Segment) { orderIdString ⇒
+    def tapply(inner: Tuple1[OrderId] => Route) =
+      path(Segment) { orderIdString =>
         inner(Tuple1(OrderId(orderIdString)))
       } ~
       extractUnmatchedPath {
-        case Uri.Path.Slash(tail) if !tail.isEmpty ⇒
+        case Uri.Path.Slash(tail) if !tail.isEmpty =>
           inner(Tuple1(OrderId(tail.toString)))  // Slashes not escaped
-        case _ ⇒
+        case _ =>
           complete(NotFound)  // Invalid OrderId syntax
       }
   }

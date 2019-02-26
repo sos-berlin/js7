@@ -38,22 +38,22 @@ final class ConfigsTest extends FreeSpec {
   }
 
   "boolean" in {
-    for ((v, ks) ← List(false → List("false", "off", "no"),
-                        true → List("true", "on", "yes"));
-         k ← ks) {
+    for ((v, ks) <- List(false -> List("false", "off", "no"),
+                        true -> List("true", "on", "yes"));
+         k <- ks) {
       assert(TestConfig.getBoolean(k) == v)
       assert(TestConfig.as[Boolean](k) == v)
     }
   }
 
   "checkedPath" in {
-    assert(TestConfig.checkedPath("string") (path ⇒ Valid(TestConfig.getString(path))) == Valid("STRING"))
-    assert(TestConfig.checkedPath("MISSING") (path ⇒ Valid(TestConfig.getString(path))) == Invalid(Problem(s"Missing configuration key 'MISSING'")))
+    assert(TestConfig.checkedPath("string") (path => Valid(TestConfig.getString(path))) == Valid("STRING"))
+    assert(TestConfig.checkedPath("MISSING") (path => Valid(TestConfig.getString(path))) == Invalid(Problem(s"Missing configuration key 'MISSING'")))
   }
 
   "ifPath" in {
-    assert(TestConfig.ifPath("string") (path ⇒ TestConfig.getString(path)) == Some("STRING"))
-    assert(TestConfig.ifPath("MISSING") (path ⇒ TestConfig.getString(path)) == None)
+    assert(TestConfig.ifPath("string") (path => TestConfig.getString(path)) == Some("STRING"))
+    assert(TestConfig.ifPath("MISSING") (path => TestConfig.getString(path)) == None)
   }
 }
 

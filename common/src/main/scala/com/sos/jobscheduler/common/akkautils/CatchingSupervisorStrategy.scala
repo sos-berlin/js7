@@ -29,7 +29,7 @@ trait CatchingSupervisorStrategy[A] extends SupervisorStrategy {
 object CatchingSupervisorStrategy {
   private val logger = Logger(getClass)
   val StoppingDecider: Decider = {
-    case _ ⇒ Stop
+    case _ => Stop
   }
   def defaultDecider = StoppingDecider
 

@@ -21,18 +21,18 @@ object Collections {
     implicit final class RichTraversableOnce[A](private val delegate: TraversableOnce[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         delegate match {
-          case o: Seq[A] ⇒ o
-          case _ ⇒ Vector.empty ++ delegate
+          case o: Seq[A] => o
+          case _ => Vector.empty ++ delegate
         }
 
       def toImmutableIterable: immutable.Iterable[A] =
         delegate match {
-          case o: immutable.Iterable[A] ⇒ o
-          case _ ⇒ immutable.Iterable() ++ delegate
+          case o: immutable.Iterable[A] => o
+          case _ => immutable.Iterable() ++ delegate
         }
 
       def countEquals: Map[A, Int] =
-        delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
+        delegate.toTraversable groupBy identity map { case (k, v) => k -> v.size }
 
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
@@ -43,10 +43,10 @@ object Collections {
         *
         * @param neutral is assumed to be a real neutral element
         */
-      def foldFast(neutral: A)(operation: (A, A) ⇒ A): A = delegate match {
-        case Nil ⇒ neutral
-        case collection.Seq(a) ⇒ a
-        case seq ⇒ seq reduce operation
+      def foldFast(neutral: A)(operation: (A, A) => A): A = delegate match {
+        case Nil => neutral
+        case collection.Seq(a) => a
+        case seq => seq reduce operation
       }
     }
 
@@ -66,9 +66,9 @@ object Collections {
     }
 
     implicit final class RichTraversable[F[x] <: Traversable[x], A](private val delegate: F[A]) extends AnyVal {
-      def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
+      def toKeyedMap[K](toKey: A => K): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap
 
-      def toKeyedMap[K](toKey: A ⇒ K, ifNot: Iterable[K] ⇒ Nothing): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap(ifNot)
+      def toKeyedMap[K](toKey: A => K, ifNot: Iterable[K] => Nothing): Map[K, A] = (delegate map { o => toKey(o) -> o }).uniqueToMap(ifNot)
 
       def uniqueToSet: Set[A] =
         delegate.requireUniqueness.toSet
@@ -76,45 +76,45 @@ object Collections {
       def checkUniqueness: Checked[F[A]] =
         checkUniqueness(identity[A])
 
-      def checkUniqueness[K](key: A ⇒ K): Checked[F[A]] =
+      def checkUniqueness[K](key: A => K): Checked[F[A]] =
         duplicateKeys(key) match {
-          case Some(duplicates) ⇒ Invalid(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
-          case None ⇒ Valid(delegate)
+          case Some(duplicates) => Invalid(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
+          case None => Valid(delegate)
         }
 
       def requireUniqueness: Traversable[A] =
         requireUniqueness(identity[A])
 
-      def requireUniqueness[K](key: A ⇒ K): Traversable[A] =
-        ifNotUnique[K, A](key, keys ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
+      def requireUniqueness[K](key: A => K): Traversable[A] =
+        ifNotUnique[K, A](key, keys => throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
-      def ifNotUnique[K, B >: A](key: A ⇒ K, then_ : Iterable[K] ⇒ Traversable[B]): Traversable[B] =
+      def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Traversable[B]): Traversable[B] =
         duplicateKeys(key) match {
-          case Some(o) ⇒ then_(o.keys)
-          case None ⇒ delegate
+          case Some(o) => then_(o.keys)
+          case None => delegate
         }
 
       def duplicates: Traversable[A] =
-        delegate groupBy identity collect { case (k, v) if v.size > 1 ⇒ k }
+        delegate groupBy identity collect { case (k, v) if v.size > 1 => k }
 
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
-      def duplicateKeys[K](key: A ⇒ K): Option[Map[K, Traversable[A]]] =
+      def duplicateKeys[K](key: A => K): Option[Map[K, Traversable[A]]] =
         delegate groupBy key filter { _._2.size > 1 } match {
-          case o if o.isEmpty ⇒ None
-          case o ⇒ Some(o)
+          case o if o.isEmpty => None
+          case o => Some(o)
         }
 
       /**
         * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
         */
-      def retainOrderGroupBy[K](toKey: A ⇒ K): Vector[(K, Vector[A])] = {
+      def retainOrderGroupBy[K](toKey: A => K): Vector[(K, Vector[A])] = {
         val m = mutable.LinkedHashMap[K, immutable.VectorBuilder[A]]()
-        for (elem ← delegate) {
+        for (elem <- delegate) {
           m.getOrElseUpdate(toKey(elem), new immutable.VectorBuilder[A]) += elem
         }
         val b = Vector.newBuilder[(K, Vector[A])]
         b.sizeHint(m.size)
-        for ((k, vectorBuilder) ← m) {
+        for ((k, vectorBuilder) <- m) {
           b += ((k, vectorBuilder.result))
         }
         b.result
@@ -123,7 +123,7 @@ object Collections {
 
     implicit final class RichSet[A](private val delegate: Set[A]) extends AnyVal {
       def isDisjointWith(o: Set[A]): Boolean =
-        delegate forall (k ⇒ !o.contains(k))
+        delegate forall (k => !o.contains(k))
     }
 
     implicit final class RichPairTraversable[A, B](private val delegate: Traversable[(A, B)]) extends AnyVal {
@@ -132,13 +132,13 @@ object Collections {
         delegate.toMap
       }
 
-      def uniqueToMap(ifNot: Iterable[A] ⇒ Nothing): Map[A, B] = {
+      def uniqueToMap(ifNot: Iterable[A] => Nothing): Map[A, B] = {
         delegate.ifNotUnique(_._1, ifNot)
         delegate.toMap
       }
 
       def toSeqMultiMap: Map[A, Seq[B]] =
-        delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
+        delegate groupBy { _._1 } map { case (key, seq) => key -> (seq map { _._2 }).toImmutableSeq }
     }
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {
@@ -150,7 +150,7 @@ object Collections {
   }
 
   implicit final class RichGenericCompanion[+CC[X] <: GenTraversable[X]](private val delegate: GenericCompanion[CC]) extends AnyVal {
-    def build[A](body: mutable.Builder[A, CC[A]] ⇒ Unit): CC[A] = {
+    def build[A](body: mutable.Builder[A, CC[A]] => Unit): CC[A] = {
       val b = delegate.newBuilder[A]
       body(b)
       b.result
@@ -158,7 +158,7 @@ object Collections {
   }
 
   implicit final class RichArrayCompanion(private val underlying: Array.type) extends AnyVal {
-    def build[A: ClassTag](body: mutable.ArrayBuilder[A] ⇒ Unit): Array[A] = {
+    def build[A: ClassTag](body: mutable.ArrayBuilder[A] => Unit): Array[A] = {
       val b = mutable.ArrayBuilder.make[A]()
       body(b)
       b.result()
@@ -169,20 +169,20 @@ object Collections {
     def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
       underlying mapValues Valid.apply withDefault unknownKey.andThen(Invalid.apply)
 
-    def withNoSuchKey(noSuchKey: K ⇒ Nothing): Map[K, V] =
-      underlying withDefault (k ⇒ noSuchKey(k))
+    def withNoSuchKey(noSuchKey: K => Nothing): Map[K, V] =
+      underlying withDefault (k => noSuchKey(k))
 
-    def mapValuesStrict[W](f: V ⇒ W): Map[K, W] =
-      underlying map { case (k, v) ⇒ k → f(v) }
+    def mapValuesStrict[W](f: V => W): Map[K, W] =
+      underlying map { case (k, v) => k -> f(v) }
   }
 
   implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {
-    def mapValuesStrict[W](f: V ⇒ W): mutable.Map[K, W] =
-      underlying map { case (k, v) ⇒ k → f(v) }
+    def mapValuesStrict[W](f: V => W): mutable.Map[K, W] =
+      underlying map { case (k, v) => k -> f(v) }
   }
 
   implicit final class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](private val delegate: GenMapFactory[CC]) extends AnyVal {
-    def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] ⇒ Unit): CC[A, B] = {
+    def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] => Unit): CC[A, B] = {
       val b = delegate.newBuilder[A, B]
       body(b)
       b.result
@@ -211,13 +211,13 @@ object Collections {
   @tailrec
   private def compareIteratorsElementWise[A](a: Iterator[A], b: Iterator[A])(implicit ordering: Ordering[A]): Int =
     (a.nonEmpty, b.nonEmpty) match {
-      case (false, false) ⇒ 0
-      case (true, false) ⇒ +1
-      case (false, true) ⇒ -1
-      case (true, true) ⇒
+      case (false, false) => 0
+      case (true, false) => +1
+      case (false, true) => -1
+      case (true, true) =>
         ordering.compare(a.next(), b.next()) match {
-          case 0 ⇒ compareIteratorsElementWise(a, b)
-          case o ⇒ o
+          case 0 => compareIteratorsElementWise(a, b)
+          case o => o
         }
     }
 }

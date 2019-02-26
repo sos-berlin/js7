@@ -38,16 +38,16 @@ object Https
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRef: Option[TrustStoreRef] = None): SSLContext = {
     val keyManagers = keyStoreRef match {
-      case None ⇒ Array.empty[KeyManager]
-      case Some(ref) ⇒
+      case None => Array.empty[KeyManager]
+      case Some(ref) =>
         val keyStore = loadKeyStore(ref)
         val factory = KeyManagerFactory.getInstance("SunX509")
         factory.init(keyStore, ref.keyPassword.string.toCharArray)
         factory.getKeyManagers
     }
     val trustManagers = trustStoreRef match {
-      case None ⇒ Array.empty[TrustManager]
-      case Some(ref) ⇒
+      case None => Array.empty[TrustManager]
+      case Some(ref) =>
         val keyStore = loadKeyStore(ref)
         val factory = TrustManagerFactory.getInstance("SunX509")
         factory.init(keyStore)
@@ -60,7 +60,7 @@ object Https
 
   private def loadKeyStore(storeRef: StoreRef): KeyStore = {
     val keyStore = KeyStore.getInstance("PKCS12")
-    autoClosing(storeRef.url.openStream()) { inputStream ⇒
+    autoClosing(storeRef.url.openStream()) { inputStream =>
       keyStore.load(inputStream, storeRef.storePassword.string.toCharArray)
     }
     log(storeRef.url, keyStore)
@@ -74,7 +74,7 @@ object Https
   //  if (aliases.isEmpty)
   //    logger.info("Key store does not contain any certificate")
   //  else
-  //    for (alias ← aliases) {
+  //    for (alias <- aliases) {
   //      logger.info(certificateToString(keyStore.getCertificate(alias)) +
   //        (if (keyStore.isKeyEntry(alias)) " (private key)" else "")) +
   //        ", alias=" + alias
@@ -86,7 +86,7 @@ object Https
     if (aliases.isEmpty)
       "Key store does not contain any certificate"
     else
-      aliases.map(alias ⇒
+      aliases.map(alias =>
         s"Alias $alias: " +
         certificateToString(keyStore.getCertificate(alias)) +
           (if (keyStore.isKeyEntry(alias)) " (private key)" else ""))
@@ -95,12 +95,12 @@ object Https
 
   private def certificateToString(cert: Certificate): String =
     cert match {
-      case cert: X509Certificate ⇒
+      case cert: X509Certificate =>
         "X509 certificate " +
           '"' + cert.getSubjectX500Principal.toString + '"'
           //", valid from " + Timestamp.ofEpochMilli(cert.getNotBefore.getTime) +
           //" until " + Timestamp.ofEpochMilli(cert.getNotAfter.getTime)
-      case o ⇒
+      case o =>
         o.getClass.getName
     }
 }

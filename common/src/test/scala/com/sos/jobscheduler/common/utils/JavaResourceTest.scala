@@ -66,7 +66,7 @@ final class JavaResourceTest extends FreeSpec
   }
 
   "openStream" in {
-    autoClosing(javaResource.openStream()) { in ⇒
+    autoClosing(javaResource.openStream()) { in =>
       assert(ByteStreams.toByteArray(in).toSeq == Resources.toByteArray(javaResource.url).toSeq)
     }
   }
@@ -84,7 +84,7 @@ final class JavaResourceTest extends FreeSpec
   }
 
   "asResource (Cats Effect)" in {
-    val io = javaResource.asResource.use(in ⇒
+    val io = javaResource.asResource.use(in =>
       SyncIO {
         new BufferedReader(new InputStreamReader(in)).readLine()
       })
@@ -92,7 +92,7 @@ final class JavaResourceTest extends FreeSpec
   }
 
   "Implicit cats.effect.Resource" in {
-    val io = javaResource.use(in ⇒
+    val io = javaResource.use(in =>
       SyncIO {
         new BufferedReader(new InputStreamReader(in)).readLine()
       })
@@ -104,7 +104,7 @@ object JavaResourceTest
 {
   private val dirPath = "com/sos/jobscheduler/common/utils"
   private val path = "com/sos/jobscheduler/common/utils/test.txt"
-  private val expectedString = "TEST CONTENT IN → UTF-8\n"
+  private val expectedString = "TEST CONTENT IN -> UTF-8\n"
   private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
   private val javaResource = JavaResource(path)
   private val nonExistentJavaResource = JavaResource(nonExistentPath)

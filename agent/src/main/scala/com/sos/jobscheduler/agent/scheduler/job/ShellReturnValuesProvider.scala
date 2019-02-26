@@ -18,10 +18,10 @@ final class ShellReturnValuesProvider {
   }
 
   def env: (String, String) =
-    ReturnValuesFileEnvironmentVariableName → file.toString
+    ReturnValuesFileEnvironmentVariableName -> file.toString
 
   def variables: Map[String, String] =
-    autoClosing(scala.io.Source.fromFile(file)(FileEncoding)) { source ⇒
+    autoClosing(scala.io.Source.fromFile(file)(FileEncoding)) { source =>
       (source.getLines map lineToKeyValue).toMap
     }
 
@@ -33,8 +33,8 @@ object ShellReturnValuesProvider {
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
 
   private def lineToKeyValue(line: String): (String, String) = line match {
-    case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim
-    case _ ⇒ throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable " +
+    case ReturnValuesRegex(name, value) => name.trim -> value.trim
+    case _ => throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable " +
       s"$ReturnValuesFileEnvironmentVariableName: $line")
   }
 }

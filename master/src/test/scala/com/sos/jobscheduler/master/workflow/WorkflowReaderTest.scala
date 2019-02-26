@@ -23,7 +23,7 @@ import scala.collection.mutable
 final class WorkflowReaderTest extends FreeSpec {
 
   "Different Workflow file formats" in {
-    FileUtils.withTemporaryDirectory("WorkflowReaderTest-") { dir ⇒
+    FileUtils.withTemporaryDirectory("WorkflowReaderTest-") { dir =>
       val expected = mutable.Buffer[Workflow]()
 
       // JSON

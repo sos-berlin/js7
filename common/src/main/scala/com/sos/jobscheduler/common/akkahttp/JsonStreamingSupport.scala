@@ -26,7 +26,7 @@ object JsonStreamingSupport
   val JsonSeqStreamingSupport = jsonSeqStreamingSupport(`application/json-seq`, RS ++ _ ++ LF)
   val NdJsonStreamingSupport = jsonSeqStreamingSupport(`application/x-ndjson`, _ ++ LF)
 
-  private def jsonSeqStreamingSupport(mediaType: MediaType.WithFixedCharset, frame: ByteString ⇒ ByteString): JsonEntityStreamingSupport =
+  private def jsonSeqStreamingSupport(mediaType: MediaType.WithFixedCharset, frame: ByteString => ByteString): JsonEntityStreamingSupport =
     EntityStreamingSupport
       .json(maxObjectLength = JsonObjectMaxSize)
       .withContentType(ContentType(mediaType))
@@ -34,7 +34,7 @@ object JsonStreamingSupport
       .withFramingRenderer(Flow[ByteString].map(frame))
 
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =
-    Marshaller.withFixedContentType(streamingSupport.contentType)(value ⇒
+    Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
       HttpEntity.Strict(streamingSupport.contentType, ByteString(CompactPrinter.pretty(value.asJson))))
 }
 

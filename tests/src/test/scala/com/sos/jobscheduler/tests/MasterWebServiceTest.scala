@@ -99,7 +99,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "Await AgentReady" in {
     // Proceed first after all AgentReady have been received, to get an event sequence as expected
-    for (agentRefPath ← agentRefPaths) {
+    for (agentRefPath <- agentRefPaths) {
       master.eventWatch.await[MasterAgentEvent.AgentReady](predicate = _.key == agentRefPath)
     }
   }
@@ -548,9 +548,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         val obj = json.asObject.get
         Json.fromJsonObject(JsonObject.fromMap(
           obj.toMap flatMap {
-            case ("eventId", _) ⇒ ("eventId" → Json.fromInt(eventIds.next())) :: Nil
-            case ("timestamp", _) ⇒ Nil
-            case o ⇒ o :: Nil
+            case ("eventId", _) => ("eventId" -> Json.fromInt(eventIds.next())) :: Nil
+            case ("timestamp", _) => Nil
+            case o => o :: Nil
           }))
       }
       eventResponse.hcursor
@@ -609,7 +609,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
       "Single order" in {
         val body = Json.obj(
-          "query" → """
+          "query" -> """
             query Q($orderId: OrderId!) {
               order(id: $orderId) {
                 id
@@ -622,8 +622,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             }""".asJson,
-          "variables" → Json.obj(
-            "orderId" → order2Id.asJson))
+          "variables" -> Json.obj(
+            "orderId" -> order2Id.asJson))
         assert(postGraphql(body) ==
           json"""{
             "data": {
@@ -646,7 +646,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
       "All orders" in {
         val body = Json.obj(
-          "query" → """{
+          "query" -> """{
             orders {
               id
               workflowPosition {
@@ -679,7 +679,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
       "Order in /FOLDER/WORKFLOW-2" in {
         val body = Json.obj(
-          "query" → """
+          "query" -> """
             query Q($workflowPath: WorkflowPath) {
               orders(workflowPath: $workflowPath) {
                 id
@@ -694,8 +694,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                 }
               }
             }""".asJson,
-          "variables" → Json.obj(
-            "workflowPath" → "/FOLDER/WORKFLOW-2".asJson))
+          "variables" -> Json.obj(
+            "workflowPath" -> "/FOLDER/WORKFLOW-2".asJson))
         assert(postGraphql(body) ==
           json"""{
            "data": {
@@ -789,10 +789,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     }
   }
 
-  private def testGets(suburis: Iterable[String], headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: JsonObject ⇒ JsonObject = identity): Unit =
-    for (suburi ← suburis) testGet(suburi, headers, expected, manipulateResponse)
+  private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: JsonObject => JsonObject = identity): Unit =
+    for (suburi <- suburis) testGet(suburi, headers, expected, manipulateResponse)
 
-  private def testGet(suburi: String, headers: ⇒ List[HttpHeader], expected: ⇒ Json, manipulateResponse: JsonObject ⇒ JsonObject = identity): Unit =
+  private def testGet(suburi: String, headers: => List[HttpHeader], expected: => Json, manipulateResponse: JsonObject => JsonObject = identity): Unit =
     suburi - {
       "JSON" in {
         testJson(

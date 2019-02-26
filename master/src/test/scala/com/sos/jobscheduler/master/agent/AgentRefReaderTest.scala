@@ -18,7 +18,7 @@ import scala.collection.mutable
 final class AgentRefReaderTest extends FreeSpec {
 
   "Different AgentRef file formats" in {
-    FileUtils.withTemporaryDirectory("AgentRefReaderTest-") { dir ⇒
+    FileUtils.withTemporaryDirectory("AgentRefReaderTest-") { dir =>
       val expected = mutable.Buffer[AgentRef]()
 
       // JSON

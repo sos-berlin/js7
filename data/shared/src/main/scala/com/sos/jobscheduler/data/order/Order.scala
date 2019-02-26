@@ -34,7 +34,7 @@ final case class Order[+S <: Order.State](
   cancel: Option[CancelMode] = None)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
-    for (child ← event.children) yield
+    for (child <- event.children) yield
       Order(
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position / child.branchId % InstructionNr.First),
@@ -63,109 +63,109 @@ final case class Order[+S <: Order.State](
       if (okay) Valid(updated) else inapplicable
 
     event match {
-      case _: OrderAdded | _: OrderAttached ⇒
+      case _: OrderAdded | _: OrderAttached =>
         Invalid(Problem("OrderAdded and OrderAttached are not handled by the Order itself"))
 
-      case OrderStarted ⇒
+      case OrderStarted =>
         check(isState[Fresh] && (isDetached || isAttached),
           copy(state = Ready))
 
-      case OrderProcessingStarted ⇒
+      case OrderProcessingStarted =>
         check(isState[Ready] && isAttached,
           copy(state = Processing))
 
-      case OrderProcessed(diff, outcome_) ⇒
+      case OrderProcessed(diff, outcome_) =>
         check(isState[Processing] && isAttached,
           copy(
             state = Processed,
             outcome = outcome_,
             payload = Payload(diff.applyTo(payload.variables))))
 
-      case OrderFailed(_) ⇒
+      case OrderFailed(_) =>
         inapplicable
 
-      case OrderStopped(outcome_) ⇒
+      case OrderStopped(outcome_) =>
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(state = Stopped, outcome = outcome_))
 
-      case OrderCatched(outcome_, movedTo) ⇒
+      case OrderCatched(outcome_, movedTo) =>
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
             outcome = outcome_))
 
-      case OrderRetrying(to) ⇒
+      case OrderRetrying(to) =>
         check(isState[Ready] && (isDetached || isAttached),
           withPosition(to))
 
-      case OrderForked(children) ⇒
+      case OrderForked(children) =>
         check(isState[Ready] && (isDetached || isAttached),
           copy(state = Forked(children)))
 
-      case OrderJoined(variablesDiff, outcome_) ⇒
+      case OrderJoined(variablesDiff, outcome_) =>
         check((isState[Forked] || isState[Awaiting]) && isDetached,
           copy(
             state = Processed,
             outcome = outcome_,
             payload = Payload(variablesDiff applyTo variables)))
 
-      case _: OrderOffered ⇒
+      case _: OrderOffered =>
         check(isState[Ready] && isDetached,
           copy(
             state = Processed,
             outcome = Outcome.succeeded))
 
-      case OrderAwaiting(orderId) ⇒
+      case OrderAwaiting(orderId) =>
         check(isState[Ready] && isDetached,
           copy(state = Awaiting(orderId)))
 
-      case OrderMoved(to) ⇒
+      case OrderMoved(to) =>
         check((isState[FreshOrReady]/*before TryInstruction*/ || isState[Processed]) && (isDetached || isAttached),
           withPosition(to).copy(
             state = if (isState[Fresh]) state else Ready))
 
-      case OrderFinished ⇒
+      case OrderFinished =>
         check(isState[Ready] && isDetached,
           position.dropChild match {
-            case Some(position) ⇒ copy(workflowPosition = workflowPosition.copy(position = position))
-            case None ⇒ copy(state = Finished)
+            case Some(position) => copy(workflowPosition = workflowPosition.copy(position = position))
+            case None => copy(state = Finished)
           })
 
-      case OrderBroken(message) ⇒
+      case OrderBroken(message) =>
         // No state check ???
         Valid(copy(state = Broken(message)))
 
-      case OrderAttachable(agentRefPath) ⇒
+      case OrderAttachable(agentRefPath) =>
         check(isDetached && (isState[Fresh] || isState[Ready] || isState[Forked]),
           copy(attachedState = Some(Attaching(agentRefPath))))
 
-      case OrderTransferredToAgent(agentRefPath) ⇒
+      case OrderTransferredToAgent(agentRefPath) =>
         check(isAttaching && (isState[Fresh] || isState[Ready] || isState[Forked]),
           copy(attachedState = Some(Attached(agentRefPath))))
 
-      case OrderDetachable ⇒
+      case OrderDetachable =>
         attachedState match {
           case Some(Attached(agentRefPath))
-            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] ⇒
+            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] =>
               Valid(copy(attachedState = Some(Detaching(agentRefPath))))
-          case _ ⇒
+          case _ =>
             inapplicable
         }
 
-      case OrderDetached ⇒
+      case OrderDetached =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderTransferredToMaster ⇒
+      case OrderTransferredToMaster =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
-      case OrderCancelationMarked(mode) ⇒
+      case OrderCancelationMarked(mode) =>
         check(!isState[Canceled] && !isDetaching && !isState[Finished],
           copy(cancel = Some(mode)))
 
-      case OrderCanceled ⇒
+      case OrderCanceled =>
         check((isState[FreshOrReady] || isState[Stopped] || isState[Broken]) && isDetached,
           copy(state = Canceled))
     }
@@ -201,10 +201,10 @@ final case class Order[+S <: Order.State](
 
   def attachedStateString: String =
     attachedState match {
-      case None ⇒ "on Master"
-      case Some(Attaching(agentRefPath)) ⇒ s"attachable to $agentRefPath"
-      case Some(Attached(agentRefPath)) ⇒ s"attached to $agentRefPath"
-      case Some(Detaching(agentRefPath)) ⇒ s"detaching from $agentRefPath"
+      case None => "on Master"
+      case Some(Attaching(agentRefPath)) => s"attachable to $agentRefPath"
+      case Some(Attached(agentRefPath)) => s"attached to $agentRefPath"
+      case Some(Detaching(agentRefPath)) => s"detaching from $agentRefPath"
     }
 
   /** `true` iff order is going to be attached to an Agent.. */
@@ -225,17 +225,17 @@ final case class Order[+S <: Order.State](
 
   def attached: Checked[AgentRefPath] =
     attachedState match {
-      case Some(Attached(agentRefPath)) ⇒
+      case Some(Attached(agentRefPath)) =>
         Valid(agentRefPath)
-      case o ⇒
+      case o =>
         Invalid(Problem(s"'$id' should be 'Attached', but is $o"))
     }
 
   def detaching: Checked[AgentRefPath] =
     attachedState match {
-      case Some(Detaching(agentRefPath)) ⇒
+      case Some(Detaching(agentRefPath)) =>
         Valid(agentRefPath)
-      case o ⇒
+      case o =>
         Invalid(Problem(s"'$id' should be Detaching, but is $o"))
     }
 }
@@ -329,36 +329,36 @@ object Order {
     Subtype(Canceled),
     Subtype[Broken])
 
-  implicit val jsonEncoder: ObjectEncoder[Order[State]] = order ⇒
+  implicit val jsonEncoder: ObjectEncoder[Order[State]] = order =>
     JsonObject(
-      "id" →  order.id.asJson,
-      "workflowPosition" → order.workflowPosition.asJson,
-      "state" → order.state.asJson,
-      "attachedState" → order.attachedState.asJson,
-      "parent" → order.parent.asJson,
-      "payload" → order.payload.asJson,
-      "outcome" → ((order.outcome != Outcome.succeeded) ? order.outcome).asJson,
-      "cancel" → order.cancel.asJson)
+      "id" ->  order.id.asJson,
+      "workflowPosition" -> order.workflowPosition.asJson,
+      "state" -> order.state.asJson,
+      "attachedState" -> order.attachedState.asJson,
+      "parent" -> order.parent.asJson,
+      "payload" -> order.payload.asJson,
+      "outcome" -> ((order.outcome != Outcome.succeeded) ? order.outcome).asJson,
+      "cancel" -> order.cancel.asJson)
 
-  implicit val jsonDecoder: Decoder[Order[State]] = cursor ⇒
+  implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
-      id ← cursor.get[OrderId]("id")
-      workflowPosition ← cursor.get[WorkflowPosition]("workflowPosition")
-      state ← cursor.get[State]("state")
-      attachedState ← cursor.get[Option[AttachedState]]("attachedState")
-      parent ← cursor.get[Option[OrderId]]("parent")
-      payload ← cursor.get[Payload]("payload")
-      outcome ← cursor.get[Option[Outcome]]("outcome") map (_ getOrElse Outcome.succeeded)
-      cancel ← cursor.get[Option[CancelMode]]("cancel")
+      id <- cursor.get[OrderId]("id")
+      workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
+      state <- cursor.get[State]("state")
+      attachedState <- cursor.get[Option[AttachedState]]("attachedState")
+      parent <- cursor.get[Option[OrderId]]("parent")
+      payload <- cursor.get[Payload]("payload")
+      outcome <- cursor.get[Option[Outcome]]("outcome") map (_ getOrElse Outcome.succeeded)
+      cancel <- cursor.get[Option[CancelMode]]("cancel")
     } yield
       Order(id, workflowPosition, state, outcome, attachedState, parent, payload, cancel)
 
-  implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o ⇒ jsonEncoder.encodeObject(o)
-  implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor ⇒
+  implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o => jsonEncoder.encodeObject(o)
+  implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor =>
     jsonDecoder(cursor) flatMap {
-      o ⇒ o.ifState[FreshOrReady] match {
-        case None ⇒ Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", Nil))
-        case Some(x) ⇒ Right(x)
+      o => o.ifState[FreshOrReady] match {
+        case None => Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", Nil))
+        case Some(x) => Right(x)
       }
     }
 }

@@ -16,7 +16,7 @@ final case class ProcessKillScript(file: Path) extends GenericString {
     toCommandArguments(id, pid) :+ s"-master-task-id=${taskId.string}" //:+ s"-job=${jobPath.string}"
 
   def toCommandArguments(id: AgentTaskId, pid: Option[Pid]): immutable.Seq[String] =
-    Vector(file.toString, s"-kill-agent-task-id=${id.string}") ++ (pid map { o ⇒ s"-pid=${o.string}" })
+    Vector(file.toString, s"-kill-agent-task-id=${id.string}") ++ (pid map { o => s"-pid=${o.string}" })
 }
 
 object ProcessKillScript extends GenericString.Companion[ProcessKillScript]

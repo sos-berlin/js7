@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.log.LogLevel._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
-import io.circe.parser.{parse ⇒ parseJson}
+import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
 import java.time.Duration
 import scala.collection.JavaConverters._
@@ -32,7 +32,7 @@ trait WebLogDirectives extends ExceptionHandling {
   private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
   protected def webLog(userId: Option[UserId]): Directive0 =
-    mapInnerRoute { inner ⇒
+    mapInnerRoute { inner =>
       webLogOnly(userId) {
         seal {
           inner
@@ -41,10 +41,10 @@ trait WebLogDirectives extends ExceptionHandling {
     }
 
   private def webLogOnly(userId: Option[UserId]): Directive0 =
-    extractRequest flatMap { request ⇒
+    extractRequest flatMap { request =>
       if (logResponse) {
         val start = nanoTime
-        mapResponse { response ⇒
+        mapResponse { response =>
           log(request, Some(response), logLevel, userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
           response
         }
@@ -63,7 +63,7 @@ trait WebLogDirectives extends ExceptionHandling {
 
   private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse], userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean) = {
     val sb = new StringBuilder(200)
-    for (response ← responseOption) sb.append(response.status.intValue)
+    for (response <- responseOption) sb.append(response.status.intValue)
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
     //sb.append(' ')
     //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
@@ -74,25 +74,25 @@ trait WebLogDirectives extends ExceptionHandling {
     sb.append(' ')
     sb.append(request.uri)
     sb.append(' ')
-    for (response ← responseOption) {
+    for (response <- responseOption) {
       if (response.status.isFailure)
         response.entity match {  // Try to extract error message
-          case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) ⇒
-            appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c ⇒ !c.isControl } truncateWithEllipsis 200)
+          case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
+            appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c => !c.isControl } truncateWithEllipsis 200)
 
-          case entity @ HttpEntity.Strict(`application/json`, _) ⇒
+          case entity @ HttpEntity.Strict(`application/json`, _) =>
             parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
-              case Left(_) ⇒ appendQuotedString(sb, response.status.reason)
-              case Right(problem) ⇒ appendQuotedString(sb, problem.toString)
+              case Left(_) => appendQuotedString(sb, response.status.reason)
+              case Right(problem) => appendQuotedString(sb, problem.toString)
             }
 
-          case _ ⇒
+          case _ =>
             appendQuotedString(sb, response.status.reason)
         }
       else response.entity match {
-        case entity: HttpEntity.Strict ⇒
+        case entity: HttpEntity.Strict =>
           sb.append(entity.data.length)
-        case _ ⇒
+        case _ =>
           sb.append("STREAM")
       }
       sb.append(' ')
@@ -106,9 +106,9 @@ object WebLogDirectives {
   private val webLogger = Logger("jobscheduler.web.log")
 
   val TestConfig = ConfigFactory.parseMap(Map(
-    "jobscheduler.webserver.log.level" → "debug",
-    "jobscheduler.webserver.log.duration" → "false",
-    "jobscheduler.webserver.verbose-error-messages" → true.toString)
+    "jobscheduler.webserver.log.level" -> "debug",
+    "jobscheduler.webserver.log.duration" -> "false",
+    "jobscheduler.webserver.verbose-error-messages" -> true.toString)
     .asJava)
 
   def apply(config: Config, actorSystem: ActorSystem): WebLogDirectives = {
@@ -123,8 +123,8 @@ object WebLogDirectives {
   private def appendQuotedString(sb: StringBuilder, string: String) = {
     sb.append('"')
     string foreach {
-      case '"' ⇒ sb.append('\\').append('"')
-      case ch ⇒ sb.append(ch)
+      case '"' => sb.append('\\').append('"')
+      case ch => sb.append(ch)
     }
     sb.append('"')
   }

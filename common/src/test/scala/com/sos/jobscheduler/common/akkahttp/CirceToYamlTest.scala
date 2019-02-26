@@ -12,15 +12,15 @@ import org.scalatest.FreeSpec
 final class CirceToYamlTest extends FreeSpec {
 
   private val json = Json.fromJsonObject(JsonObject.fromMap(Map[String, Json](
-    "number" → Json.fromDoubleOrNull(1.23),
-    "string" → Json.fromString("STRING"),
-    "array" → Json.fromValues(List(
+    "number" -> Json.fromDoubleOrNull(1.23),
+    "string" -> Json.fromString("STRING"),
+    "array" -> Json.fromValues(List(
       Json.fromLong(-1112223334445556667L),
       Json.fromBoolean(true),
-      Json.fromJsonObject(JsonObject.fromMap(Map("x" → Json.fromString("X")))),
+      Json.fromJsonObject(JsonObject.fromMap(Map("x" -> Json.fromString("X")))),
       Json.fromValues(List(Json.fromInt(2), Json.Null)))),
-    "nested" → Json.fromJsonObject(JsonObject.fromMap(Map(
-      "a" → Json.fromBoolean(true)))))))
+    "nested" -> Json.fromJsonObject(JsonObject.fromMap(Map(
+      "a" -> Json.fromBoolean(true)))))))
   private val yaml = """number: 1.23
                        |string: STRING
                        |array:

@@ -79,7 +79,7 @@ final class UpdateRepoAgentTest extends FreeSpec
 
   private def executeCommand(master: RunningMaster, cmd: MasterCommand): Checked[cmd.Response] =
     master.httpApi.executeCommand(cmd).map(Valid.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined ⇒ Invalid(e.problem.get) }
+      .onErrorRecover { case e: HttpException if e.problem.isDefined => Invalid(e.problem.get) }
       .await(99.seconds)
 }
 

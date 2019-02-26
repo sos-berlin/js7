@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
-import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
+import com.google.common.collect.{AbstractIterator => GuavaIterator}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Stamped}
 import java.util.NoSuchElementException
@@ -57,7 +57,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
           if (result.hasNext) result.peek
           // result is empty or has the first Stamped in its head buffer.
           after >= tornEventId option result.asScala
-        } catch { case _: NoSuchElementException ⇒
+        } catch { case _: NoSuchElementException =>
           None
         }
     }
@@ -88,7 +88,7 @@ final class MemoryKeyedEventQueue(sizeLimit: Int)
             endOfData
         } else
           endOfData
-      catch { case _: NoSuchElementException ⇒
+      catch { case _: NoSuchElementException =>
         endOfData
       }
   }

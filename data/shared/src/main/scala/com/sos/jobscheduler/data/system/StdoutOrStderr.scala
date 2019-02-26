@@ -17,15 +17,15 @@ object StdoutOrStderr {
 
   implicit val keyJsonEncoder: KeyEncoder[StdoutOrStderr] = _.string
   implicit val keyJsonDecoder: KeyDecoder[StdoutOrStderr] = {
-    case Stdout.string ⇒ Some(Stdout)
-    case Stderr.string ⇒ Some(Stderr)
-    case _ ⇒ None
+    case Stdout.string => Some(Stdout)
+    case Stderr.string => Some(Stderr)
+    case _ => None
   }
-  implicit val jsonEncoder: Encoder[StdoutOrStderr] = o ⇒ Json.fromString(o.string)
-  implicit val jsonDecoder: Decoder[StdoutOrStderr] = _.as[String] flatMap { string ⇒
+  implicit val jsonEncoder: Encoder[StdoutOrStderr] = o => Json.fromString(o.string)
+  implicit val jsonDecoder: Decoder[StdoutOrStderr] = _.as[String] flatMap { string =>
     keyJsonDecoder(string) match {
-      case Some(o) ⇒ Right(o)
-      case None ⇒ Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", Nil))
+      case Some(o) => Right(o)
+      case None => Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", Nil))
     }
   }
 }

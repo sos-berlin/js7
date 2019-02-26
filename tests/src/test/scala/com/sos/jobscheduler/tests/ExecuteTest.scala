@@ -21,14 +21,14 @@ import org.scalatest.FreeSpec
 final class ExecuteTest extends FreeSpec
 {
   "Execute" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) {
-        for (o ← Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
-        for (o ← Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd", "/SCRIPT-4.cmd", "/SCRIPT-5.cmd"))
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
+      for (a <- directoryProvider.agents) {
+        for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
+        for (o <- Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd", "/SCRIPT-4.cmd", "/SCRIPT-5.cmd"))
           a.writeExecutable(ExecutablePath(o),
             if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
         master.eventWatch.await[OrderFinished](_.key == orderId)
@@ -39,10 +39,10 @@ final class ExecuteTest extends FreeSpec
 
   private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]]): Unit = {
     eventSeq match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == ExpectedEvents)
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }

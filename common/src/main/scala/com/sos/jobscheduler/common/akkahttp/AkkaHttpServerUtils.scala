@@ -24,32 +24,32 @@ object AkkaHttpServerUtils
 {
   object implicits {
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal {
-      def applyRoute(f: A ⇒ Route): Route =
+      def applyRoute(f: A => Route): Route =
         delegate match {
-          case Some(a) ⇒ f(a)
-          case None ⇒ reject
+          case Some(a) => f(a)
+          case None => reject
         }
     }
   }
 
   // Test via ConcurrentRequestsLimiterTest
-  def whenResponseTerminated(onTerminated: Try[RouteResult] ⇒ Unit)(implicit ec: ExecutionContext): Directive0 =
+  def whenResponseTerminated(onTerminated: Try[RouteResult] => Unit)(implicit ec: ExecutionContext): Directive0 =
     mapInnerRoute {
       _ andThen {
         _ transform {
-          case Success(c @ Complete(response)) ⇒
+          case Success(c @ Complete(response)) =>
             Success(Complete(
               response mapEntity {
-                case entity if entity.isKnownEmpty || entity.isInstanceOf[HttpEntity.Strict] ⇒
+                case entity if entity.isKnownEmpty || entity.isInstanceOf[HttpEntity.Strict] =>
                   onTerminated(Success(c))
                   entity
-                case entity ⇒
-                  entity.transformDataBytes(Flow[ByteString].watchTermination() { case (NotUsed, whenTerminated) ⇒
-                    whenTerminated.map((_: Done) ⇒ c).onComplete(onTerminated)
+                case entity =>
+                  entity.transformDataBytes(Flow[ByteString].watchTermination() { case (NotUsed, whenTerminated) =>
+                    whenTerminated.map((_: Done) => c).onComplete(onTerminated)
                     NotUsed
                   })
               }))
-          case o ⇒
+          case o =>
             onTerminated(o)
             o
         }
@@ -60,14 +60,14 @@ object AkkaHttpServerUtils
     accept(mediaTypes.toSet + mediaType)
 
   def accept(mediaTypes: Set[MediaType]): Directive0 =
-    mapInnerRoute { route ⇒
+    mapInnerRoute { route =>
       headerValueByType[Accept](()) {
-        case Accept(requestedMediaTypes) if requestedMediaTypes exists { o ⇒ mediaTypes exists o.matches } ⇒
+        case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
           route
-        case _ ⇒
+        case _ =>
           reject(UnacceptedResponseContentTypeRejection(mediaTypes collect {
-            case m: MediaType.WithOpenCharset ⇒ ContentNegotiator.Alternative.MediaType(m)
-            case m: MediaType.WithFixedCharset ⇒ ContentNegotiator.Alternative.ContentType(m)
+            case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
+            case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
           }))
       }
     }
@@ -77,19 +77,19 @@ object AkkaHttpServerUtils
     */
   def passSome[A](option: Option[A]): Directive1[A] =
     new Directive1[A] {
-      def tapply(inner: Tuple1[A] ⇒ Route) =
+      def tapply(inner: Tuple1[A] => Route) =
         option match {
-          case Some(o) ⇒ inner(Tuple1(o))
-          case None ⇒ reject
+          case Some(o) => inner(Tuple1(o))
+          case None => reject
         }
     }
 
   def passRight[R](either: Either[String, R]): Directive1[R] =
     new Directive1[R] {
-      def tapply(inner: Tuple1[R] ⇒ Route) =
+      def tapply(inner: Tuple1[R] => Route) =
         either match {
-          case Right(r) ⇒ inner(Tuple1(r))
-          case Left(message) ⇒ reject(ValidationRejection(message))
+          case Right(r) => inner(Tuple1(r))
+          case Left(message) => reject(ValidationRejection(message))
         }
     }
 
@@ -97,7 +97,7 @@ object AkkaHttpServerUtils
     * Passes x iff argument is true.
     */
   def passIf(condition: Boolean): Directive0 =
-    mapInnerRoute { inner ⇒
+    mapInnerRoute { inner =>
       if (condition)
         inner
       else
@@ -105,46 +105,46 @@ object AkkaHttpServerUtils
     }
 
   def addHeader(header: HttpHeader): Directive0 =
-    mapRequest(o ⇒ o.copy(headers = o.headers :+ header))
+    mapRequest(o => o.copy(headers = o.headers :+ header))
 
   /*
   private type ParameterMap = Map[String, String]
 
   private def eatParameterOption(parameterMap: ParameterMap, key: String) =
     new Directive[ParameterMap :: Option[String] :: HNil] {
-      override def tapply(inner: (ParameterMap :: Option[String] :: HNil) ⇒ Route) =
+      override def tapply(inner: (ParameterMap :: Option[String] :: HNil) => Route) =
         inner((parameterMap - key) :: parameterMap.get(key) :: HNil)
     }
 
   private def eatParameter(parameterMap: ParameterMap, key: String) =
     new Directive[ParameterMap :: String :: HNil] {
-      override def tapply(inner: (ParameterMap :: String :: HNil) ⇒ Route) =
+      override def tapply(inner: (ParameterMap :: String :: HNil) => Route) =
         parameterMap.get(key) match {
-          case Some(value) ⇒ inner((parameterMap - key) :: value :: HNil)
-          case None ⇒ reject
+          case Some(value) => inner((parameterMap - key) :: value :: HNil)
+          case None => reject
         }
     }
 
   def removeParameters(keys: Set[String]): Directive0 =
-    mapRequest { request ⇒
+    mapRequest { request =>
       request.copy(uri = request.uri.copy(query = removeKeysFromQuery(keys, request.uri.query)))
     }
 
   private def removeKeysFromQuery(keys: Set[String], query: Uri.Query): Uri.Query = {
     query match {
-      case Uri.Query.Empty ⇒ Uri.Query.Empty
-      case q @ Uri.Query.Cons(key, value, tail, keep) ⇒
+      case Uri.Query.Empty => Uri.Query.Empty
+      case q @ Uri.Query.Cons(key, value, tail, keep) =>
         if (keys contains key)
           removeKeysFromQuery(keys, tail)
         else
           Uri.Query.Cons(key, value, removeKeysFromQuery(keys, tail), keep)
-      case q: Uri.Query.Raw ⇒ q
+      case q: Uri.Query.Raw => q
     }
   }
 
   def noParameters(keys: Set[String]): Directive0 =
-    mapInnerRoute { inner ⇒
-      requestUri { uri ⇒
+    mapInnerRoute { inner =>
+      requestUri { uri =>
         if (uri.query.isEmpty)
           inner
         else
@@ -154,7 +154,7 @@ object AkkaHttpServerUtils
 */
 
   def emptyParameterMap(parameterMap: Map[String, String]) =
-    mapInnerRoute { route ⇒
+    mapInnerRoute { route =>
       if (parameterMap.isEmpty) route
       else reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
     }
@@ -165,16 +165,16 @@ object AkkaHttpServerUtils
   //implicit val DurationFromStringOptionDeserializer: FromStringOptionDeserializer[Duration] =
   //  simpleFromStringOptionDeserializer(parseDuration)
   //
-  //final def simpleFromStringOptionDeserializer[A](fromString: String ⇒ A) =
+  //final def simpleFromStringOptionDeserializer[A](fromString: String => A) =
   //  new FromStringOptionDeserializer[A] {
   //    def apply(value: Option[String]): Deserialized[A] =
   //      value match {
-  //        case Some(string) ⇒
+  //        case Some(string) =>
   //          try Right(fromString(string))
   //          catch {
-  //            case NonFatal(t) ⇒ Left(new MalformedContent(t.toSimplifiedString, Some(t)))
+  //            case NonFatal(t) => Left(new MalformedContent(t.toSimplifiedString, Some(t)))
   //          }
-  //        case None ⇒
+  //        case None =>
   //          Left(ContentExpected)
   //      }
   //  }
@@ -188,9 +188,9 @@ object AkkaHttpServerUtils
     @tailrec
     def startsWithPath(prefix: Uri.Path): Boolean =
       (delegate, prefix) match {
-        case (Slash(a), Slash(b)) ⇒ a startsWithPath b
-        case (Segment(aHead, aTail), Segment(bHead, bTail)) ⇒ aHead == bHead && (aTail startsWithPath bTail)
-        case _ ⇒ prefix.isEmpty
+        case (Slash(a), Slash(b)) => a startsWithPath b
+        case (Segment(aHead, aTail), Segment(bHead, bTail)) => aHead == bHead && (aTail startsWithPath bTail)
+        case _ => prefix.isEmpty
       }
 
     @tailrec
@@ -213,9 +213,9 @@ object AkkaHttpServerUtils
 
   private class SegmentPathMatcher(segment: String) extends PathMatcher0 {
     def apply(path: Uri.Path) = path match {
-      case Uri.Path.Segment(`segment`, tail) ⇒
+      case Uri.Path.Segment(`segment`, tail) =>
         Matched(tail, HNil)
-      case _ ⇒
+      case _ =>
         Unmatched
     }
   }

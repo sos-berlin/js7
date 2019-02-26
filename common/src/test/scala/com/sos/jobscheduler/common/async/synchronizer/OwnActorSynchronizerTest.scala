@@ -16,7 +16,7 @@ import scala.concurrent.Future
 final class OwnActorSynchronizerTest extends FreeSpec {
 
   "test" in {
-    withCloser { implicit closer ⇒
+    withCloser { implicit closer =>
       val actorSystem = newActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
       import actorSystem.dispatcher
       val synchronizer =
@@ -24,11 +24,11 @@ final class OwnActorSynchronizerTest extends FreeSpec {
           protected def actorRefFactory = actorSystem
         }
         .closeWithCloser
-      val synchronizedFuture: (⇒ Int) ⇒ Future[Int] = synchronizer
+      val synchronizedFuture: (=> Int) => Future[Int] = synchronizer
       val numbers = 1 to 100
       @volatile var critical = false
       val futureFutures: IndexedSeq[Future[Future[Int]]] =
-        for (i ← numbers) yield blockingThreadFuture {
+        for (i <- numbers) yield blockingThreadFuture {
           synchronizedFuture {
             assert(!critical)
             critical = true

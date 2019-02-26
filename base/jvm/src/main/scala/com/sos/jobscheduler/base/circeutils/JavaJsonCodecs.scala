@@ -13,16 +13,16 @@ import scala.util.control.NonFatal
   */
 object JavaJsonCodecs {
 
-  implicit val PathJsonCodec: CirceCodec[Path] = toStringJsonCodec(o ⇒ Paths.get(o))
+  implicit val PathJsonCodec: CirceCodec[Path] = toStringJsonCodec(o => Paths.get(o))
 
   implicit val DurationEncoder: Encoder[Duration] =
-    o ⇒ o.getNano match {
-      case 0 ⇒ Json.fromLong(o.getSeconds)
-      case nano ⇒ Json.fromBigDecimal(BigDecimal(o.getSeconds) + BigDecimal(nano, scale = 9))
+    o => o.getNano match {
+      case 0 => Json.fromLong(o.getSeconds)
+      case nano => Json.fromBigDecimal(BigDecimal(o.getSeconds) + BigDecimal(nano, scale = 9))
     }
 
   implicit val DurationDecoder: Decoder[Duration] =
-    cursor ⇒
+    cursor =>
       cursor.as[Long] map Duration.ofSeconds orElse (
         cursor.as[BigDecimal] map bigDecimalToDuration orElse (
           cursor.as[String] map Duration.parse))
@@ -49,7 +49,7 @@ object JavaJsonCodecs {
       if (cursor.value.isNumber)
         cursor.as[Long] map Instant.ofEpochMilli
       else
-        cursor.as[String] map (o ⇒ Instant.from(dateTimeFormatter parse o))
+        cursor.as[String] map (o => Instant.from(dateTimeFormatter parse o))
   }
   object InstantDecoder extends InstantDecoder
 
@@ -61,12 +61,12 @@ object JavaJsonCodecs {
   }
 
   implicit val zoneIdJsonEncoder: Encoder[ZoneId] =
-    o ⇒ Json.fromString(o.getId)
+    o => Json.fromString(o.getId)
 
   implicit val zoneIdJsonDecoder: Decoder[ZoneId] =
-    _.as[String] flatMap (string ⇒
+    _.as[String] flatMap (string =>
       try Right(ZoneId.of(string))
       catch {
-        case NonFatal(e) ⇒ Left(DecodingFailure(e.toString, Nil))
+        case NonFatal(e) => Left(DecodingFailure(e.toString, Nil))
       })
 }

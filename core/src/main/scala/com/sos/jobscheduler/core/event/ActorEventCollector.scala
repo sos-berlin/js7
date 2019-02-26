@@ -12,7 +12,7 @@ import monix.execution.Scheduler
   * @author Joacim Zschimmer
   */
 final class ActorEventCollector private(
-  isCollectable: Event ⇒ Boolean)(
+  isCollectable: Event => Boolean)(
   configuration: EventCollector.Configuration,
   scheduler: Scheduler,
   keyedEventBus: StampedKeyedEventBus,
@@ -36,7 +36,7 @@ with AutoCloseable {
         }
 
         def receive = {
-          case stamped @ Stamped(_, _, KeyedEvent(_, event)) ⇒
+          case stamped @ Stamped(_, _, KeyedEvent(_, event)) =>
             if (isCollectable(event)) {
               addStamped(stamped.asInstanceOf[Stamped[AnyKeyedEvent]])
             }
@@ -58,9 +58,9 @@ object ActorEventCollector {
     keyedEventBus: StampedKeyedEventBus,
     actorSystem: ActorSystem)
   {
-    def apply() = filterEvents(_ ⇒ true)
+    def apply() = filterEvents(_ => true)
 
-    def filterEvents(isEventCollectable: Event ⇒ Boolean) =
+    def filterEvents(isEventCollectable: Event => Boolean) =
       new ActorEventCollector(
         isEventCollectable)(
         configuration,

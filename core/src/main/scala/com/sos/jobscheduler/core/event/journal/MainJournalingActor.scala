@@ -13,29 +13,29 @@ import scala.concurrent.Future
   */
 trait MainJournalingActor[E <: Event] extends JournalingActor[E] {
 
-  protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
+  protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] => A): Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp = None, async = true)(callback)
 
-  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]])(callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A): Future[A] =
+  protected final def persistMultipleAsync[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]])(callback: Seq[Stamped[KeyedEvent[EE]]] => A): Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = true)(callback)
 
   protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false)
-    (callback: Stamped[KeyedEvent[EE]] ⇒ A)
+    (callback: Stamped[KeyedEvent[EE]] => A)
   : Future[A] =
     super.persistKeyedEvent(keyedEvent, timestamp, async = async)(callback)
 
   protected final def persistMultiple[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], async: Boolean = false)
-    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] => A)
   : Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = async)(callback)
 
   protected final def persistTransaction[EE <: E, A](keyedEvents: collection.Iterable[KeyedEvent[EE]], async: Boolean = false)
-    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] => A)
   : Future[A] =
     persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)
 
   protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]], async: Boolean = false)
-    (callback: Seq[Stamped[KeyedEvent[EE]]] ⇒ A)
+    (callback: Seq[Stamped[KeyedEvent[EE]]] => A)
   : Future[A] =
     super.persistKeyedEvents(keyedEvents, async = async, transaction = true)(callback)
 }

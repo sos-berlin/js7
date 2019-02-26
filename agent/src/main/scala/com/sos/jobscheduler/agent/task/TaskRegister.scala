@@ -23,7 +23,7 @@ final class TaskRegister(actor: ActorRef)(implicit askTimeout: Timeout) {
     * TaskRegister removes task automatically when task terminates.
     */
   def add(task: BaseAgentTask): Future[Completed] =
-    promiseFuture[Completed] { promise ⇒
+    promiseFuture[Completed] { promise =>
       actor ! TaskRegisterActor.Input.Add(task, promise)
     }
 

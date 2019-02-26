@@ -15,8 +15,8 @@ object SyncResource
   object ops {
     implicit final class RichResource[A](private val underlying: Resource[SyncIO, A]) extends AnyVal {
       /** Like `SyncIO`'s `use`, but synchronously. */
-      def useSync[B](f: A ⇒ B)(implicit F: Bracket[SyncIO, Throwable]): B =
-        underlying.use(a ⇒
+      def useSync[B](f: A => B)(implicit F: Bracket[SyncIO, Throwable]): B =
+        underlying.use(a =>
           SyncIO {
             f(a)
           }

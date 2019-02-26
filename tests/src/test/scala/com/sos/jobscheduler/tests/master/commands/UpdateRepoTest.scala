@@ -74,9 +74,9 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     master.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
     val promises = Vector.fill(2)(Promise[Timestamp]())
-    for (i ← orderIds.indices) {
+    for (i <- orderIds.indices) {
       master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = 99.seconds), _.key == orderIds(i)) foreach {
-        case EventSeq.NonEmpty(_) ⇒
+        case EventSeq.NonEmpty(_) =>
           promises(i).success(now)
       }
     }
@@ -117,7 +117,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 
     val promise = Promise[Timestamp]()
     master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = 99.seconds), _.key == orderId) foreach {
-      case EventSeq.NonEmpty(_) ⇒
+      case EventSeq.NonEmpty(_) =>
         promise.success(now)
     }
   }
@@ -136,7 +136,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 
   private def executeCommand(cmd: MasterCommand): Checked[cmd.Response] =
     master.httpApi.executeCommand(cmd).map(Valid.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined ⇒ Invalid(e.problem.get) }
+      .onErrorRecover { case e: HttpException if e.problem.isDefined => Invalid(e.problem.get) }
       .await(99.seconds)
 }
 

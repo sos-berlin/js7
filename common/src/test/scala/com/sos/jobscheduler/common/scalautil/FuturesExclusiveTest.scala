@@ -54,7 +54,7 @@ final class FuturesExclusiveTest extends FreeSpec {
   }
 
   "namedThreadFuture" in {
-    val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o ⇒ (o.toInt, 1000))
+    val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o => (o.toInt, 1000))
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
       val future = namedThreadFuture("FuturesExclusiveTest") { "x" }
       assert(Await.result(future, 2.seconds) == "x")
@@ -64,7 +64,7 @@ final class FuturesExclusiveTest extends FreeSpec {
   }
 
   "promiseFuture" in {
-    val a: Future[Int] = promiseFuture[Int] { _ ⇒ }
+    val a: Future[Int] = promiseFuture[Int] { _ => }
     assert(!a.isCompleted)
     val b: Future[Int] = promiseFuture[Int] { _.success(7) }
     assert(b.value.get.get == 7)
@@ -89,7 +89,7 @@ final class FuturesExclusiveTest extends FreeSpec {
     assert((a.flatten await 100.ms) == 77)
   }
 
-  private def stackTraceContainsCreationsStackTrace(body: ⇒ Int): Boolean =
+  private def stackTraceContainsCreationsStackTrace(body: => Int): Boolean =
     intercept[TestException] { body } .getStackTrace exists { _.toString contains classOf[FreeSpec].getName }
 
   private class TestException extends Exception

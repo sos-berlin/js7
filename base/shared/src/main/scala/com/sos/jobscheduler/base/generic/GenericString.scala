@@ -26,8 +26,8 @@ trait GenericString
 object GenericString
 {
   @Nullable def stringOrNull[A <: GenericString](o: Option[A]): String = o match {
-    case Some(a) ⇒ a.string
-    case None ⇒ null
+    case Some(a) => a.string
+    case None => null
   }
 
   trait Companion[A <: GenericString]
@@ -48,10 +48,10 @@ object GenericString
 
     final def apply(o: String): A = checked(o).orThrow
 
-    implicit val jsonEncoder: Encoder[A] = o ⇒ Json.fromString(o.string)
-    implicit val jsonDecoder: Decoder[A] = _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
+    implicit val jsonEncoder: Encoder[A] = o => Json.fromString(o.string)
+    implicit val jsonDecoder: Decoder[A] = _.as[String] flatMap (o => checked(o).toDecoderResult)
     implicit val keyEncoder: KeyEncoder[A] = _.string
-    implicit val keyDecoder: KeyDecoder[A] = o ⇒ Some(apply(o))  // throws?
+    implicit val keyDecoder: KeyDecoder[A] = o => Some(apply(o))  // throws?
 
     implicit val GenericStringAsString: As[String, A] = As(apply)
 

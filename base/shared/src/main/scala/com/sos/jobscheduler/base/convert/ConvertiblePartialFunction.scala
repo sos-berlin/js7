@@ -14,16 +14,16 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
   def as[W](key: K)(implicit convert: As[V, W]): W =
     wrappedConvert(convert.apply, renderKey(key))(apply(key))
 
-  def as[W](key: K, default: ⇒ W)(implicit convert: As[V, W]): W =
+  def as[W](key: K, default: => W)(implicit convert: As[V, W]): W =
     optionAs[W](key) getOrElse default
 
   def checkedAs[W](key: K)(implicit convert: As[V, W]): Checked[W] =
     checkedAs[W](key, None)
 
-  def checkedAs[W](key: K, default: ⇒ Option[W])(implicit convert: As[V, W]): Checked[W] =
+  def checkedAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Checked[W] =
     optionAs[W](key, default) toChecked Problem(s"Missing configuration key '$key'")
 
-  def optionAs[W](key: K, default: ⇒ Option[W])(implicit convert: As[V, W]): Option[W] =
+  def optionAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Option[W] =
     optionAs(key)(convert) orElse default
 
   def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =

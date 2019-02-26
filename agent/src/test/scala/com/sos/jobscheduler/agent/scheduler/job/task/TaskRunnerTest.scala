@@ -50,19 +50,19 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
     val shellReturnValuesProvider = new ShellReturnValuesProvider
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath, Map("var1" → "VALUE1")), shellFile, shellReturnValuesProvider)
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile, shellReturnValuesProvider)
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
         WorkflowPath("/JOBCHAIN") % "VERSION",
         Order.Processing,
-        payload = Payload(Map("a" → "A")))
+        payload = Payload(Map("a" -> "A")))
       val taskRunner = newTaskRunner(taskConfiguration)
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
-      val ended = taskRunner.processOrder(order, Map.empty, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
-      assert(ended == TaskStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-VALUE1")), ReturnCode(0)))
+      val ended = taskRunner.processOrder(order, Map.empty, stdChannels) andThen { case _ => taskRunner.terminate() } await 30.s
+      assert(ended == TaskStepSucceeded(MapDiff(Map("result" -> "TEST-RESULT-VALUE1")), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
       assert(stderrWriter.string == s"THIS IS STDERR$nl")

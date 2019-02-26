@@ -32,12 +32,12 @@ final class IPTest extends FreeSpec {
   }
 
   "StringToInetSocketAddress with default" - {
-    def use(defaultHost: String, defaultPort: Option[Int])(body: (String ⇒ InetSocketAddress) ⇒ Unit): Unit =
+    def use(defaultHost: String, defaultPort: Option[Int])(body: (String => InetSocketAddress) => Unit): Unit =
       s"With defaults $defaultHost and $defaultPort" in {
-        body { string ⇒ toInetSocketAddress(string, defaultHost, defaultPort) }
+        body { string => toInetSocketAddress(string, defaultHost, defaultPort) }
       }
 
-    use("0.0.0.0", None) { c ⇒
+    use("0.0.0.0", None) { c =>
       intercept[IllegalArgumentException] { c("") }
       assert(c("1.2.3.4:9999") == new InetSocketAddress("1.2.3.4", 9999))
       assert(c("[1:2:3:4:5:6]:9999") == new InetSocketAddress("1:2:3:4:5:6", 9999))
@@ -45,7 +45,7 @@ final class IPTest extends FreeSpec {
       assert(c("9999") == new InetSocketAddress("0.0.0.0", 9999))
     }
 
-    use("127.0.0.1", Some(1111)) { c ⇒
+    use("127.0.0.1", Some(1111)) { c =>
       assert(c("") == new InetSocketAddress("127.0.0.1", 1111))
       assert(c("1.2.3.4:9999") == new InetSocketAddress("1.2.3.4", 9999))
       assert(c("[1:2:3:4:5:6]:9999") == new InetSocketAddress("1:2:3:4:5:6", 9999))
@@ -53,7 +53,7 @@ final class IPTest extends FreeSpec {
       assert(c("9999") == new InetSocketAddress("127.0.0.1", 9999))
     }
 
-    use("127.0.0.1", None) { c ⇒
+    use("127.0.0.1", None) { c =>
       intercept[IllegalArgumentException] { c("") }
       assert(c("1.2.3.4:9999") == new InetSocketAddress("1.2.3.4", 9999))
       assert(c("[1:2:3:4:5:6]:9999") == new InetSocketAddress("1:2:3:4:5:6", 9999))
@@ -61,7 +61,7 @@ final class IPTest extends FreeSpec {
       assert(c("9999") == new InetSocketAddress("127.0.0.1", 9999))
     }
 
-    use("0.0.0.0", Some(1111)) { c ⇒
+    use("0.0.0.0", Some(1111)) { c =>
       assert(c("") == new InetSocketAddress("0.0.0.0", 1111))
       assert(c("1.2.3.4:9999") == new InetSocketAddress("1.2.3.4", 9999))
       assert(c("[1:2:3:4:5:6]:9999") == new InetSocketAddress("1:2:3:4:5:6", 9999))

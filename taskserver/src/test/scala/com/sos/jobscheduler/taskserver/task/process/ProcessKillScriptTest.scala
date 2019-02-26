@@ -71,7 +71,7 @@ final class ProcessKillScriptTest extends FreeSpec {
   }
 
   private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
-    autoClosing(new ProcessKillScriptProvider) { provider ⇒
+    autoClosing(new ProcessKillScriptProvider) { provider =>
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(agentTaskId, pidOption)
@@ -111,5 +111,5 @@ private object ProcessKillScriptTest {
     logger.info("\n" + readLines(in, prefix).mkString("\n"))
 
   private def readLines(in: InputStream, prefix: String): Iterator[String] =
-    for (line ← scala.io.Source.fromInputStream(in).getLines()) yield s"$prefix: $line"
+    for (line <- scala.io.Source.fromInputStream(in).getLines()) yield s"$prefix: $line"
 }

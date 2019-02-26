@@ -17,7 +17,7 @@ trait ProvideActorSystem extends HasCloser
   protected def actorSystemName: String = getClass.simpleScalaName
   protected def config: Config
 
-  protected lazy val actorSystem = newActorSystem(actorSystemName, config) withCloser { o ⇒
+  protected lazy val actorSystem = newActorSystem(actorSystemName, config) withCloser { o =>
     if (!o.whenTerminated.isCompleted) {
       logger.debug(s"ActorSystem('${o.name}') terminate")
       o.terminate() await TerminationTimeout

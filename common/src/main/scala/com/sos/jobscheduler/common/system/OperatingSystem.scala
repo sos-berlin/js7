@@ -88,16 +88,16 @@ object OperatingSystem {
 
     lazy val distributionNameAndVersionOption: Option[String] = {
       def readFirstLine(file: Path): String =
-        autoClosing(new FileInputStream(file)) { in ⇒
+        autoClosing(new FileInputStream(file)) { in =>
           fromInputStream(in).getLines.next().trim
         }
 
       def readFileOsRelease() = {
         val prettyNamePrefix = "PRETTY_NAME="
         val file = "/etc/os-release"
-        autoClosing(new FileInputStream(file)) { in ⇒    // http://man7.org/linux/man-pages/man5/os-release.5.html
+        autoClosing(new FileInputStream(file)) { in =>    // http://man7.org/linux/man-pages/man5/os-release.5.html
           fromInputStream(in).getLines collectFirst {
-            case line if line startsWith prettyNamePrefix ⇒
+            case line if line startsWith prettyNamePrefix =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
           }
         }
@@ -105,7 +105,7 @@ object OperatingSystem {
       }
 
       def readFileAnyRelease() = {
-        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream ⇒
+        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream =>
           val iterator = stream.iterator
           if (!iterator.hasNext) sys.error("No file matches /etc/*-release")
           iterator.next
@@ -117,9 +117,9 @@ object OperatingSystem {
         None
       else
         Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
-          .recover { case _ ⇒ readFileOsRelease() }   // New standard ?
-          .recover { case _ ⇒ readFileAnyRelease() }  // Vendor-specific
-          .recover { case _ ⇒ readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+          .recover { case _ => readFileOsRelease() }   // New standard ?
+          .recover { case _ => readFileAnyRelease() }  // Vendor-specific
+          .recover { case _ => readFirstLine(Paths.get("/etc/release")) } // Solaris ?
           .toOption
     }
 
@@ -129,9 +129,9 @@ object OperatingSystem {
       else
         Try {
           val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
-          autoClosing(new FileInputStream("/proc/cpuinfo")) { in ⇒
+          autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
             fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
-              case CpuModelRegex(model) ⇒ model.trim.replaceAll("""[ \t\n]+""", " ")
+              case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
             }
           }
         } .toOption.flatten
@@ -142,6 +142,6 @@ object OperatingSystem {
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {
     val abs = f.getAbsolutePath
-    abs +: (pathChain split File.pathSeparator filter { o ⇒ o.nonEmpty && o != abs }) mkString File.pathSeparatorChar.toString
+    abs +: (pathChain split File.pathSeparator filter { o => o.nonEmpty && o != abs }) mkString File.pathSeparatorChar.toString
   }
 }

@@ -30,7 +30,7 @@ extends EventBasedState
 {
   def toSnapshots: Seq[Any] =
     repo.eventsFor(MasterTypedPathCompanions) ++
-    agentToEventId.toVector.map(o ⇒ AgentEventId(o._1, o._2)) ++
+    agentToEventId.toVector.map(o => AgentEventId(o._1, o._2)) ++
     idToOrder.values
 }
 
@@ -43,16 +43,16 @@ object MasterState
     var orderScheduleEndedAt = none[Timestamp]
 
     snapshotObjects foreach {
-      case order: Order[Order.State] ⇒
-        idToOrder.insert(order.id → order)
+      case order: Order[Order.State] =>
+        idToOrder.insert(order.id -> order)
 
-      case AgentEventId(agentRefPath, aEventId) ⇒
+      case AgentEventId(agentRefPath, aEventId) =>
         agentToEventId(agentRefPath) = aEventId
 
-      case event: RepoEvent ⇒
+      case event: RepoEvent =>
         repo = repo.applyEvent(event).orThrow
 
-      case OrderScheduleEndedAt(timestamp) ⇒
+      case OrderScheduleEndedAt(timestamp) =>
         orderScheduleEndedAt = Some(timestamp)
     }
     MasterState(eventId, repo, idToOrder.toMap, agentToEventId.toMap, orderScheduleEndedAt)

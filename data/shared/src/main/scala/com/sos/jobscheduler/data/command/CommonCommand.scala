@@ -30,7 +30,7 @@ object CommonCommand
     implicit val jsonCodec: TypedJsonCodec[Command]
 
     trait CommonBatch {
-      this: Command ⇒
+      this: Command =>
 
       def commands: Seq[Command]
 
@@ -43,7 +43,7 @@ object CommonCommand
           last = ""
           n = 0
         }
-        for (command ← commands) {
+        for (command <- commands) {
           val name = jsonCodec.typeName(command)
           if (last != name) {
             flush()

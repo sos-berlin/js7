@@ -33,9 +33,9 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
     Task(
       command match {
-        case TestCommand ⇒ Valid(AgentCommand.Response.Accepted)
-        case TestCommandWhileShuttingDown ⇒ Invalid(AgentIsShuttingDownProblem)
-        case _ ⇒ fail()
+        case TestCommand => Valid(AgentCommand.Response.Accepted)
+        case TestCommandWhileShuttingDown => Invalid(AgentIsShuttingDownProblem)
+        case _ => fail()
       })
 
   protected def commandOverview = Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
@@ -85,8 +85,8 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   "commandHandler returns overview" in {
     Get("/agent/api/command") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[Json] == Json.obj(
-        "currentCommandCount" → Json.fromInt(111),
-        "totalCommandCount" → Json.fromInt(222)))
+        "currentCommandCount" -> Json.fromInt(111),
+        "totalCommandCount" -> Json.fromInt(222)))
     }
   }
 
@@ -95,9 +95,9 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       assert(status == OK)
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(
-          "internalId" → "333".asJson,
-          "startedAt" → Timestamp("2015-06-22T12:00:00Z").toEpochMilli.asJson,
-          "command" → (TestCommand: AgentCommand).asJson))))
+          "internalId" -> "333".asJson,
+          "startedAt" -> Timestamp("2015-06-22T12:00:00Z").toEpochMilli.asJson,
+          "command" -> (TestCommand: AgentCommand).asJson))))
     }
   }
 }

@@ -22,7 +22,7 @@ import scala.collection.JavaConverters._
   */
 private[agent] final class AkkaHttpAgentTextApi(
   agentUri: AgentAddress,
-  protected val print: String ⇒ Unit,
+  protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
 
@@ -31,15 +31,15 @@ extends HasCloser with ProvideActorSystem with TextApi with SessionApi with Akka
   private val agentUris = AgentUris(agentUri)
 
   protected override lazy val httpsConnectionContextOption = {
-    configDirectory.flatMap { configDir ⇒
+    configDirectory.flatMap { configDir =>
       // Use Master's keystore as truststore for client access, using also Master's store-password
       val mastersConfig = configDirectoryConfig(configDir)
-      mastersConfig.optionAs[String]("jobscheduler.https.keystore.store-password").flatMap { storePassword ⇒
+      mastersConfig.optionAs[String]("jobscheduler.https.keystore.store-password").flatMap { storePassword =>
         val file = mastersConfig.optionAs[Path]("jobscheduler.https.keystore.file") getOrElse configDir / "private/https-keystore.p12"
-        val config = ConfigFactory.parseMap(Map("jobscheduler.https.truststore.store-password" → storePassword).asJava)
-        TrustStoreRef.fromConfig(config, default = file).onProblem(o ⇒ logger.debug(s"No keystore: $o"))
+        val config = ConfigFactory.parseMap(Map("jobscheduler.https.truststore.store-password" -> storePassword).asJava)
+        TrustStoreRef.fromConfig(config, default = file).onProblem(o => logger.debug(s"No keystore: $o"))
       }
-      .map(trustStoreRef ⇒
+      .map(trustStoreRef =>
         AkkaHttps.loadHttpsConnectionContext(trustStoreRef = Some(trustStoreRef)))
     }
   }

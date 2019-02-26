@@ -108,8 +108,8 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       v1Timestamp
       provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
-        (AWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (BWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1)))))
+        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
+        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1)))))
     }
 
     "Duplicate VersionId" in {
@@ -139,10 +139,10 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
-        (AWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (AWorkflowPath % V2) → Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
-        (BWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
-        (CWorkflowPath % V2) → Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
+        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
+        (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
+        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
+        (CWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
     }
 
     "Delete a Workflow" in {
@@ -150,11 +150,11 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(repo.versions == V3 :: V2 :: V1 :: Nil)
       assert(repo.idToSignedFileBased == Map(
-        (AWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (AWorkflowPath % V2) → Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
-        (BWorkflowPath % V1) → Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
-        (BWorkflowPath % V3) → None,
-        (CWorkflowPath % V2) → Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
+        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
+        (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
+        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
+        (BWorkflowPath % V3) -> None,
+        (CWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
     }
 
     "closeTask" in {
@@ -165,7 +165,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
   "observe" - {
     lazy val whenObserved = Provider.observe(providerConfiguration).orThrow
       .onCancelTriggerError
-      .foreach { _ ⇒ }
+      .foreach { _ => }
     var lastEventId = EventId.BeforeFirst
 
     // Observer does not call replaceMasterConfiguration because MasterOrderKeeper does not support change of Agents !!!

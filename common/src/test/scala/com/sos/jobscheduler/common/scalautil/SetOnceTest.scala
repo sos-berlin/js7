@@ -24,9 +24,9 @@ final class SetOnceTest extends FreeSpec {
     assert(a.toOption == Some(0))
     assert((a getOrElse -1) == -0)
     intercept[IllegalStateException] { a := 0 } .getMessage should include ("SetOnce[java.lang.Integer]")
-    assert((for (i ← a) yield (i: Int) + 3) == Some(3))
+    assert((for (i <- a) yield (i: Int) + 3) == Some(3))
     var r = 7
-    for (i ← a) r = a()
+    for (i <- a) r = a()
     assert(r == 0)
   }
 

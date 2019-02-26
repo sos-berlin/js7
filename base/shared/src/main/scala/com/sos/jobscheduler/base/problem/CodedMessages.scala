@@ -10,14 +10,14 @@ import scala.collection.mutable
 object CodedMessages
 {
   // Yes, a global static variable, to be intialized by main()
-  private val _codeToPattern = AtomicAny[ProblemCode ⇒ Option[String]](noCodeToPattern)
+  private val _codeToPattern = AtomicAny[ProblemCode => Option[String]](noCodeToPattern)
 
-  implicit val problemCodeToPattern: ProblemCode ⇒ Option[String] = codeToPattern
+  implicit val problemCodeToPattern: ProblemCode => Option[String] = codeToPattern
 
-  def codeToPattern: ProblemCode ⇒ Option[String] =
+  def codeToPattern: ProblemCode => Option[String] =
     _codeToPattern.get()
 
-  def codeToPattern_=(f: ProblemCode ⇒ Option[String]): Unit =
+  def codeToPattern_=(f: ProblemCode => Option[String]): Unit =
     _codeToPattern := f
 
   private def noCodeToPattern(code: ProblemCode): Option[String] =
@@ -25,8 +25,8 @@ object CodedMessages
 
   def problemCodeToMessage(code: ProblemCode, arguments: Map[String, String]) =
     codeToPattern(code) match {
-      case None ⇒ code.string + unusedArgumentsToString(arguments)
-      case Some(pattern) ⇒ patternToMessage(pattern, arguments)
+      case None => code.string + unusedArgumentsToString(arguments)
+      case Some(pattern) => patternToMessage(pattern, arguments)
     }
 
   private[problem] def patternToMessage(pattern: String, arguments: Map[String, String]) = {
@@ -41,10 +41,10 @@ object CodedMessages
         while (it.headOption.exists(isUnicodeIdentifierPart)) keyBuilder += it.next()
         val key = keyBuilder.toString
         arguments.get(key) match {
-          case None ⇒
+          case None =>
             sb += '$'
             sb ++= key
-          case Some(value) ⇒
+          case Some(value) =>
             sb ++= value
             used += key
         }
@@ -58,5 +58,5 @@ object CodedMessages
 
   private def unusedArgumentsToString(arguments: Map[String, String]): String =
     if (arguments.isEmpty) ""
-    else arguments.map { case (k, v) ⇒ s"$k=$v" } .mkString(" (", ", ", ")")
+    else arguments.map { case (k, v) => s"$k=$v" } .mkString(" (", ", ", ")")
 }

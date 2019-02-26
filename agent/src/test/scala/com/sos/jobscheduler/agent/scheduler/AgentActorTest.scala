@@ -28,40 +28,40 @@ final class AgentActorTest extends FreeSpec {
 
   private implicit val askTimeout = Timeout(60.seconds)
 
-  for (n ← List(10) ++ (sys.props contains "test.speed" option 1000 /*needs taskLimit=100 !!!*/)) {
+  for (n <- List(10) ++ (sys.props contains "test.speed" option 1000 /*needs taskLimit=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
-      TestAgentActorProvider.provide { provider ⇒
+      TestAgentActorProvider.provide { provider =>
         import provider.{agentDirectory, eventCollector, executeCommand}
-        for (executablePath ← TestExecutablePaths) {
+        for (executablePath <- TestExecutablePaths) {
           val file = executablePath.toFile(agentDirectory / "config" / "executables")
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
         executeCommand(RegisterAsMaster) await 99.s
         val stopwatch = new Stopwatch
-        val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
-        orderIds.map(orderId ⇒
+        val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
+        orderIds.map(orderId =>
             executeCommand(
               AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))))
           .await(99.s)
-        for (orderId ← orderIds)
+        for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
         val Valid(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
-          orderIds.map(orderId ⇒ Order(
+          orderIds.map(orderId => Order(
             orderId,
             SimpleTestWorkflow.lastWorkflowPosition,
             Order.Ready,
             Outcome.succeeded,
             Some(Order.Detaching(TestAgentRefPath)),
             payload = TestOrder.payload.copy(
-              variables = TestOrder.payload.variables + ("result" → "TEST-RESULT-B-VALUE"))
+              variables = TestOrder.payload.variables + ("result" -> "TEST-RESULT-B-VALUE"))
           )).toSet)
 
-        (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
-        for (orderId ← orderIds)
+        (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
+        for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
         executeCommand(AgentCommand.Terminate()) await 99.s
       }

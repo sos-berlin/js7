@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 final class TryExecutorTest extends FreeSpec
 {
   private lazy val context = new OrderContext {
-    def idToOrder = Map(AOrder.id → AOrder)
+    def idToOrder = Map(AOrder.id -> AOrder)
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
   }

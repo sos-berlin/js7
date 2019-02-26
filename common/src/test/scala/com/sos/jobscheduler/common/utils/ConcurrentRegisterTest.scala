@@ -37,7 +37,7 @@ final class ConcurrentRegisterTest extends FreeSpec {
     assert((register map { _.key }) == List(1, 2))
     assert(register.totalCount == 2)
     val values = mutable.Set[Value]()
-    for (v ← register) values += v
+    for (v <- register) values += v
     assert(values == Set(Value(1), Value(2)))
   }
 
@@ -72,7 +72,7 @@ final class ConcurrentRegisterTest extends FreeSpec {
     assert((register map { _.key }) == List(2))
     assert(register.totalCount == 2)
     val values = mutable.Set[Value]()
-    for (v ← register) values += v
+    for (v <- register) values += v
     assert(values == Set(Value(2)))
   }
 

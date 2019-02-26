@@ -17,7 +17,7 @@ final class MonixAntiBlockingTest extends FreeSpec
       val task = Task.deferFuture {
         Future {
           val p = Promise[Int]()
-          Future { scheduler execute { () ⇒ p.success(7) } }
+          Future { scheduler execute { () => p.success(7) } }
           Await.result(p.future, 1.second)
         }
       }

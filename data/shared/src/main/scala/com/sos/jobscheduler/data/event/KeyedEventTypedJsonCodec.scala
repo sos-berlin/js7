@@ -44,9 +44,9 @@ with Decoder[KeyedEvent[E]] {
 
   def apply(c: HCursor): Decoder.Result[KeyedEvent[E]] =
     for {
-      typeName ← c.get[String](TypeFieldName)
-      decoder ← nameToDecoder(typeName)
-      keyedEvent ← decoder.apply(c)
+      typeName <- c.get[String](TypeFieldName)
+      decoder <- nameToDecoder(typeName)
+      keyedEvent <- decoder.apply(c)
     } yield keyedEvent
 
   implicit def keyedEventJsonCodec[EE <: E]: KeyedEventTypedJsonCodec[EE] =
@@ -54,8 +54,8 @@ with Decoder[KeyedEvent[E]] {
 
   def canDeserialize(json: Json): Boolean =
     json.asObject match {
-      case Some(o) ⇒ o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
-      case _ ⇒ false
+      case Some(o) => o.toMap.get(TypeFieldName) flatMap (_.asString) exists nameToDecoder.contains
+      case _ => false
     }
 
   def typenameToClassOption(name: String): Option[Class[_ <: E]] =
@@ -71,11 +71,11 @@ object KeyedEventTypedJsonCodec {
     val cls = implicitClass[E]
     new KeyedEventTypedJsonCodec[E](
       cls.simpleScalaName,
-      subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[ObjectEncoder[KeyedEvent[E]]])).uniqueToMap withDefault (o ⇒ throw new UnknownClassForJsonException(o, cls)),
+      subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[ObjectEncoder[KeyedEvent[E]]])).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
       subtypes.flatMap(_.nameToDecoder.mapValuesStrict (decoder =>
         Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]]))).uniqueToMap
           .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls))),
-      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o ⇒ throw new UnknownJsonTypeException(o, cls)))
+      subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
   }
 
   final class KeyedSubtype[E <: Event](
@@ -110,13 +110,13 @@ object KeyedEventTypedJsonCodec {
 
     def of[E <: Event: ClassTag](name: String)(implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E]): KeyedSubtype[E] = {
       new KeyedSubtype[E](
-        classToEncoder = codec.classToEncoder.mapValuesStrict { _ ⇒
+        classToEncoder = codec.classToEncoder.mapValuesStrict { _ =>
           KeyedEvent.jsonEncoder[E]
         },
-        nameToDecoder = codec.nameToDecoder.mapValuesStrict { _ ⇒
+        nameToDecoder = codec.nameToDecoder.mapValuesStrict { _ =>
           KeyedEvent.jsonDecoder[E]
         },
-        nameToClass = codec.nameToClass + (name → implicitClass[E])
+        nameToClass = codec.nameToClass + (name -> implicitClass[E])
       )
     }
   }

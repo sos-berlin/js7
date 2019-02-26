@@ -32,8 +32,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
     def enqueue(input: Queueable): Unit =
       input match {
-        case o: Input.DetachOrder ⇒ detachQueue += o
-        case o ⇒ queue += o
+        case o: Input.DetachOrder => detachQueue += o
+        case o => queue += o
       }
 
     def dequeueAll(what: Set[Queueable]): Unit = {
@@ -63,13 +63,13 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       openRequestCount += 1
       executeCommand(Batch(inputs map inputToAgentCommand))
         .materialize foreach {
-          case Success(Valid(Batch.Response(responses))) ⇒
-            asyncOnBatchSucceeded(for ((i, r) ← inputs zip responses) yield QueuedInputResponse(i, r))
+          case Success(Valid(Batch.Response(responses))) =>
+            asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
 
-          case Success(Invalid(problem)) ⇒
+          case Success(Invalid(problem)) =>
             asyncOnBatchFailed(inputs, problem.throwable)
 
-          case Failure(t) ⇒
+          case Failure(t) =>
             asyncOnBatchFailed(inputs, t)
         }
     }
@@ -77,13 +77,13 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
-      case Input.AttachOrder(order, agentRefPath, signedWorkflow) ⇒
+      case Input.AttachOrder(order, agentRefPath, signedWorkflow) =>
         AgentCommand.AttachOrder(order, agentRefPath, signedWorkflow.signedString)
-      case Input.DetachOrder(orderId) ⇒
+      case Input.DetachOrder(orderId) =>
         AgentCommand.DetachOrder(orderId)
-      case Input.CancelOrder(orderId, mode) ⇒
+      case Input.CancelOrder(orderId, mode) =>
         AgentCommand.CancelOrder(orderId, mode)
-      case KeepEventsQueueable(after) ⇒
+      case KeepEventsQueueable(after) =>
         AgentCommand.KeepEvents(after)
     }
 
@@ -93,11 +93,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
     responses.flatMap {
-      case QueuedInputResponse(input, Valid(AgentCommand.Response.Accepted)) ⇒
+      case QueuedInputResponse(input, Valid(AgentCommand.Response.Accepted)) =>
         Some(input)
-      case QueuedInputResponse(_, Valid(o)) ⇒
+      case QueuedInputResponse(_, Valid(o)) =>
         sys.error(s"Unexpected response from agent: $o")
-      case QueuedInputResponse(input, Invalid(problem)) ⇒
+      case QueuedInputResponse(input, Invalid(problem)) =>
         // CancelOrder(NotStarted) fails if order has started !!!
         logger.error(s"Agent has rejected the command ${input.toShortString}: $problem")
         // Agent's state does not match master's state ???

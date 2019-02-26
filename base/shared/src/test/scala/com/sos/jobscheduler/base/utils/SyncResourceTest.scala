@@ -29,7 +29,7 @@ final class SyncResourceTest extends FreeSpec
 
     val resource = Resource.fromAutoCloseable(SyncIO { new MySimpleResource })
     assert(opened.isEmpty)
-    val b = resource.useSync { a ⇒
+    val b = resource.useSync { a =>
       assert(a.isOpened)
       assert(opened == Set(a))
       7

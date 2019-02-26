@@ -42,15 +42,15 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
 
   private val route = Route.seal(
     path("authorizedUser") {
-      authorizedUser() { user ⇒
+      authorizedUser() { user =>
         complete("authorizedUser=" + user.id.string)
       }
     } ~
     path("sessionOption") {
-      gateKeeper.authenticate { user ⇒
+      gateKeeper.authenticate { user =>
         sessionOption(user) {
-          case None ⇒ complete("NO SESSION")
-          case Some(session) ⇒ complete("userId=" + session.currentUser.id.string)
+          case None => complete("NO SESSION")
+          case Some(session) => complete("userId=" + session.currentUser.id.string)
         }
       }
     })

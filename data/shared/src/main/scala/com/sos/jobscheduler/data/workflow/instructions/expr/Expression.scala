@@ -15,9 +15,9 @@ object Expression
 {
   sealed trait BooleanExpression extends Expression
   object BooleanExpression {
-    implicit val jsonEncoder: Encoder[BooleanExpression] = expr ⇒ Json.fromString(expr.toString)
+    implicit val jsonEncoder: Encoder[BooleanExpression] = expr => Json.fromString(expr.toString)
     implicit val jsonDecoder: Decoder[BooleanExpression] =
-      _.as[String] flatMap (string ⇒ ExpressionParser.booleanExpression.checkedParse(string).toDecoderResult)
+      _.as[String] flatMap (string => ExpressionParser.booleanExpression.checkedParse(string).toDecoderResult)
   }
   sealed trait NumericExpression extends Expression
   sealed trait StringExpression extends Expression
@@ -115,9 +115,9 @@ object Expression
   final case class Variable(name: StringExpression, default: Option[StringExpression] = None) extends StringExpression {
     def precedence = Precedence.Factor
     override def toString = (name, default) match {
-      case (StringConstant(nam), None) if Variable.isSimpleName(nam) ⇒ "$" + nam
-      case (_, None) ⇒ s"variable($name)"
-      case (_, Some(o)) ⇒ s"variable($name, $o)"
+      case (StringConstant(nam), None) if Variable.isSimpleName(nam) => "$" + nam
+      case (_, None) => s"variable($name)"
+      case (_, Some(o)) => s"variable($name, $o)"
     }
   }
   object Variable {

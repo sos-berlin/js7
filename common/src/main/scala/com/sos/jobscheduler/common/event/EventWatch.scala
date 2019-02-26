@@ -18,46 +18,46 @@ trait EventWatch[E <: Event] {
 
   def strict: StrictEventWatch[E] = new StrictEventWatch(this)
 
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Observable[Stamped[KeyedEvent[E1]]]
 
-  def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
-  def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+  def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def whenAny[E1 <: E](
     request: EventRequest[E1],
     eventClasses: Set[Class[_ <: E1]],
-    predicate: KeyedEvent[E1] ⇒ Boolean = Every)
+    predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def byKey[E1 <: E](
     request: SomeEventRequest[E1],
     key: E1#Key,
-    predicate: E1 ⇒ Boolean = Every)
+    predicate: E1 => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E1]]
 
   def whenKeyedEvent[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
-    predicate: E1 ⇒ Boolean = Every)
+    predicate: E1 => Boolean = Every)
   : Task[E1]
 
   def whenKey[E1 <: E](
     request: EventRequest[E1],
     key: E1#Key,
-    predicate: E1 ⇒ Boolean = Every)
+    predicate: E1 => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E1]]
 
   def snapshotObjectsFor(after: EventId): (EventId, CloseableIterator[Any]) =
-    EventId.BeforeFirst → CloseableIterator.empty
+    EventId.BeforeFirst -> CloseableIterator.empty
 
   /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E1 <: E: ClassTag](
-    predicate: KeyedEvent[E1] ⇒ Boolean = Every,
+    predicate: KeyedEvent[E1] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler)
@@ -74,5 +74,5 @@ trait EventWatch[E <: Event] {
 
 object EventWatch
 {
-  private[event] val Every: Any ⇒ Boolean = function1WithToString("Every")(_ ⇒ true)
+  private[event] val Every: Any => Boolean = function1WithToString("Every")(_ => true)
 }

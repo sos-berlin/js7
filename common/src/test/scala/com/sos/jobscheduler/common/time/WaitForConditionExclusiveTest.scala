@@ -18,7 +18,7 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 
   "retryUntil" - {
-    class Fun(n: Int) extends (() ⇒ Int) {
+    class Fun(n: Int) extends (() => Int) {
       var count = 0
       def apply() = {
         count += 1
@@ -81,7 +81,7 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
 }
 
 private object WaitForConditionExclusiveTest {
-  def meterElapsedTime(f: ⇒ Unit): Duration = {
+  def meterElapsedTime(f: => Unit): Duration = {
     val start = currentTimeMillis()
     f
     (currentTimeMillis() - start).ms

@@ -23,20 +23,20 @@ trait ExceptionHandling
 
   implicit protected val exceptionHandler: ExceptionHandler =
     ExceptionHandler {
-      case e: HttpStatusCodeException ⇒
+      case e: HttpStatusCodeException =>
         complete((e.statusCode, e.problem))
 
-      case e: PublicException ⇒
-        extractRequest { request ⇒
+      case e: PublicException =>
+        extractRequest { request =>
           webLogger.warn(toLogMessage(request, e), e)
-          complete(BadRequest → Problem.pure(e))
+          complete(BadRequest -> Problem.pure(e))
         }
 
-      case e ⇒
-        extractRequest { request ⇒
+      case e =>
+        extractRequest { request =>
           webLogger.warn(toLogMessage(request, e), e)
           if (respondWithException)
-            complete(InternalServerError → Problem.pure(e))
+            complete(InternalServerError -> Problem.pure(e))
           else
             complete(InternalServerError)
         }

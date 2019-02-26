@@ -16,7 +16,7 @@ import monix.reactive.Observable
   * @author Joacim Zschimmer
   */
 private[provider] trait Observing {
-  this: Provider ⇒
+  this: Provider =>
 
   private val minimumSilence    = conf.config.getDuration("jobscheduler.provider.file-watch.minimum-silence").toFiniteDuration
   private val watchDuration     = conf.config.getDuration("jobscheduler.provider.file-watch.poll-interval").toFiniteDuration
@@ -30,7 +30,7 @@ private[provider] trait Observing {
       .appendAll(
         directoryWatcher.singleUseObservable
           .debounce(minimumSilence)
-          .mapEval(_ ⇒
+          .mapEval(_ =>
             retryUntilNoError(
               updateMasterConfiguration())))
   }

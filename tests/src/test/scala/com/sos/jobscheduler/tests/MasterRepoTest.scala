@@ -26,12 +26,12 @@ final class MasterRepoTest extends FreeSpec {
   import MasterRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentRefPath))) { provider ⇒
-      for (v ← 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
+    autoClosing(new DirectoryProvider(List(TestAgentRefPath))) { provider =>
+      for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 
-      provider.runAgents() { _ ⇒
-        provider.runMaster() { master ⇒
+      provider.runAgents() { _ =>
+        provider.runMaster() { master =>
           // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
@@ -46,7 +46,7 @@ final class MasterRepoTest extends FreeSpec {
           changeWorkflowAndRunOrder(master, V3, AWorkflowPath, OrderId("A-3"))
         }
         // Recovery
-        provider.runMaster() { master ⇒
+        provider.runMaster() { master =>
           // V2
           // Previously defined workflow is still known
           runOrder(master, BWorkflowPath % V2, OrderId("B-AGAIN"))

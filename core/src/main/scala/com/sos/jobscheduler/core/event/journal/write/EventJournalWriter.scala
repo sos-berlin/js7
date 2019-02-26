@@ -45,7 +45,7 @@ with AutoCloseable
 
   override def close(): Unit = {
     super.close()
-    for (o ← statistics.debugString) logger.debug(o)
+    for (o <- statistics.debugString) logger.debug(o)
   }
 
   def beginEventSection(): Unit = {
@@ -53,7 +53,7 @@ with AutoCloseable
     jsonWriter.write(ByteString(EventHeader.compactPrint))
     flush(sync = false)
     eventsStarted = true
-    for (r ← observer) {
+    for (r <- observer) {
       r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId))
     }
   }
@@ -65,13 +65,13 @@ with AutoCloseable
     statistics.countEventsToBeCommitted(stampedEvents.size)
     val ta = transaction && stampedEvents.lengthCompare(1) > 0
     if (ta) jsonWriter.write(TransactionByteString)
-    for (stamped ← stampedEvents) {
+    for (stamped <- stampedEvents) {
       if (stamped.eventId <= _lastEventId)
         throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
       _lastEventId = stamped.eventId
       val byteString =
         try ByteString(stamped.asJson.compactPrint)
-        catch { case t: Exception ⇒ throw new SerializationException(t) }
+        catch { case t: Exception => throw new SerializationException(t) }
       jsonWriter.write(byteString)
       notFlushedCount += stampedEvents.length
     }
@@ -88,7 +88,7 @@ with AutoCloseable
   override def flush(sync: Boolean): Unit = {
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
-    if (notFlushedCount > 0) for (r ← observer) {
+    if (notFlushedCount > 0) for (r <- observer) {
       r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId), n = notFlushedCount)
       notFlushedCount = 0
     }

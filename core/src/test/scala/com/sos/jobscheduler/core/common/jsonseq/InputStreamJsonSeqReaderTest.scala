@@ -130,7 +130,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
   }
 
   "Reading closed" in {
-    withTemporaryFile { file ⇒
+    withTemporaryFile { file =>
       val in = SeekableInputStream.openFile(file)
       val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       reader.close()
@@ -141,10 +141,10 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
   }
 
   "InputStreamJsonSeqReader" in {
-    for (blockSize ← 1 to 2 * FourByteUtf8.length) {
-      for (n ← 0 to 3) {
+    for (blockSize <- 1 to 2 * FourByteUtf8.length) {
+      for (n <- 0 to 3) {
         withClue(s"blockSize=$blockSize n=$n:\n") {
-          val expected = for (i ← 0 until n; (_, PositionAnd(pos, json)) ← Chunk) yield PositionAnd(i * ChunkBytes.size + pos, json)
+          val expected = for (i <- 0 until n; (_, PositionAnd(pos, json)) <- Chunk) yield PositionAnd(i * ChunkBytes.size + pos, json)
           val bytes = Array.fill(n)(ChunkBytes).flatten
           val posAndJsons = newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes), blockSize = blockSize)
             .iterator.toVector
@@ -159,12 +159,12 @@ private object InputStreamJsonSeqReaderTest
 {
   private val rs = RS.toChar
   private val Chunk: Seq[(Array[Byte], PositionAnd[Json])] = Vector(
-      "1"       → PositionAnd(0    , Json.fromInt(1)),
-      "23"      → PositionAnd(3    , Json.fromInt(23)),
-      "\"x\""   → PositionAnd(3+4  , Json.fromString("x")),
-      "\"x🥕\"" → PositionAnd(3+4+5, Json.fromString("x🥕")))
-    .map(o ⇒ o.copy(_1 = o._1.getBytes(UTF_8)))
-  private val ChunkBytes: Seq[Byte] = Chunk flatMap (o ⇒ Array(RS) ++ o._1 :+ LF)
+      "1"       -> PositionAnd(0    , Json.fromInt(1)),
+      "23"      -> PositionAnd(3    , Json.fromInt(23)),
+      "\"x\""   -> PositionAnd(3+4  , Json.fromString("x")),
+      "\"x🥕\"" -> PositionAnd(3+4+5, Json.fromString("x🥕")))
+    .map(o => o.copy(_1 = o._1.getBytes(UTF_8)))
+  private val ChunkBytes: Seq[Byte] = Chunk flatMap (o => Array(RS) ++ o._1 :+ LF)
 
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
   assert(Chunk.last._1 sameElements FourByteUtf8)

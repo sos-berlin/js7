@@ -12,8 +12,8 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
-  private val keyToValue = mutable.Map[K, V]() withDefault (k ⇒ throw new NoSuchElementException(noSuchKeyMessage(k)))
+class ActorRegister[K, V](valueToActorRef: V => ActorRef)  {
+  private val keyToValue = mutable.Map[K, V]() withDefault (k => throw new NoSuchElementException(noSuchKeyMessage(k)))
   private val _actorToKey = mutable.Map[ActorRef, K]()
 
   protected def noSuchKeyMessage(k: K) = s"No such key '$k'"
@@ -31,23 +31,23 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
   protected def +=(kv: (K, V)): Unit = {
     keyToValue += kv
     val (k, v) = kv
-    _actorToKey += valueToActorRef(v) → k
+    _actorToKey += valueToActorRef(v) -> k
   }
 
   protected def -=(key: K): Unit = {
-    for (v ← keyToValue.remove(key)) {
+    for (v <- keyToValue.remove(key)) {
       _actorToKey -= valueToActorRef(v)
     }
   }
 
   protected def -=(a: ActorRef): Unit = {
-    for (id ← _actorToKey.remove(a)) {
+    for (id <- _actorToKey.remove(a)) {
       keyToValue -= id
     }
   }
 
   protected def remove(key: K): Option[V] = {
-    for (v ← keyToValue.remove(key)) yield {
+    for (v <- keyToValue.remove(key)) yield {
       _actorToKey -= valueToActorRef(v)
       v
     }
@@ -66,8 +66,8 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
     keyToValue.get(key)
 
   final def get(actorRef: ActorRef): Option[V] =
-    for (k ← _actorToKey.get(actorRef);
-         v ← keyToValue.get(k))
+    for (k <- _actorToKey.get(actorRef);
+         v <- keyToValue.get(k))
       yield v
 
   final def actorRefOf(key: K): ActorRef =

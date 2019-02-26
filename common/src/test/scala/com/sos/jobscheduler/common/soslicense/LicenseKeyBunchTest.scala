@@ -39,7 +39,7 @@ final class LicenseKeyBunchTest extends FreeSpec {
     assert(keyBunch(ClassicAgent) == OK)
     assert(keyBunch(UniversalAgent) == Missing)
     assert(keyBunch(ZZ) == Missing)
-    for (p ← List("2", "4", "7", "A", "1A", "22")) assert(keyBunch(Parameter(s"$p")) == OK)
+    for (p <- List("2", "4", "7", "A", "1A", "22")) assert(keyBunch(Parameter(s"$p")) == OK)
     intercept[LicenseKeyParameterIsMissingException] { keyBunch.require(Parameter("3")) }
   }
 
@@ -49,7 +49,7 @@ final class LicenseKeyBunchTest extends FreeSpec {
     assert(keyBunch(ClassicAgent) == Expired)
     assert(keyBunch(UniversalAgent) == Expired)
     assert(keyBunch(ZZ) == Expired)
-    for (p ← List("2", "4", "7", "A", "1A")) assert(keyBunch(Parameter(s"$p")) == OK)
+    for (p <- List("2", "4", "7", "A", "1A")) assert(keyBunch(Parameter(s"$p")) == OK)
     intercept[LicenseKeyParameterIsMissingException] { keyBunch.require(Parameter("3")) }
   }
 

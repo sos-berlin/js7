@@ -14,13 +14,13 @@ import scala.collection.mutable
 final class OurMemoizingAuthenticatorTest extends FreeSpec
 {
   private val accessCounter = mutable.Map[UserId, Int]()
-  private lazy val authenticator = new OurMemoizingAuthenticator[SimpleUser](userId ⇒ {
+  private lazy val authenticator = new OurMemoizingAuthenticator[SimpleUser](userId => {
     accessCounter.put(userId, accessCounter.getOrElse(userId, 0) + 1)
     userId match {
-      case AUser.id ⇒ Some(AUser)
-      case BUser.id ⇒ Some(BUser)
-      case UserId.Anonymous ⇒ Some(SimpleUser.Anonymous)
-      case _ ⇒ None
+      case AUser.id => Some(AUser)
+      case BUser.id => Some(BUser)
+      case UserId.Anonymous => Some(SimpleUser.Anonymous)
+      case _ => None
     }
   })
 
@@ -40,24 +40,24 @@ final class OurMemoizingAuthenticatorTest extends FreeSpec
 
   "Missing credential rejected if user account Anonymous has a non-empty password" in {
     val authenticator = new OurMemoizingAuthenticator[SimpleUser]({
-      case UserId.Anonymous ⇒ Some(SimpleUser(UserId.Anonymous, HashedPassword(SecretString("NON-EMPTY"), identity)))
-      case o ⇒ throw new MatchError(o)
+      case UserId.Anonymous => Some(SimpleUser(UserId.Anonymous, HashedPassword(SecretString("NON-EMPTY"), identity)))
+      case o => throw new MatchError(o)
     })
     assert(authenticator(Credentials(None)) == None)
   }
 
   "authenticate" in {
-    assert(authenticator.authenticate(UserAndPassword(UserId("x") → SecretString("xxx"))) == None)
-    assert(authenticator.authenticate(UserAndPassword(UserId("A") → SecretString("cba"))) == None)
-    assert(authenticator.authenticate(UserAndPassword(UserId("A") → SecretString("abc"))) == Some(AUser))
+    assert(authenticator.authenticate(UserAndPassword(UserId("x") -> SecretString("xxx"))) == None)
+    assert(authenticator.authenticate(UserAndPassword(UserId("A") -> SecretString("cba"))) == None)
+    assert(authenticator.authenticate(UserAndPassword(UserId("A") -> SecretString("abc"))) == Some(AUser))
   }
 
   "cached" in {
     assert(accessCounter == Map(
-      AUser.id → 1,
-      BUser.id → 1,
-      UserId.Anonymous → 1,
-      UserId("x") → 1))  // Unknown users are memoized, too !!!
+      AUser.id -> 1,
+      BUser.id -> 1,
+      UserId.Anonymous -> 1,
+      UserId("x") -> 1))  // Unknown users are memoized, too !!!
   }
 }
 

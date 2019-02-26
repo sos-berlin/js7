@@ -50,13 +50,13 @@ object Configs {
 
   implicit final class RichConfig(private val underlying: Config) extends AnyVal
   {
-    def seqAs[W](path: String, default: ⇒ Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
+    def seqAs[W](path: String, default: => Iterable[W])(implicit convert: As[String, W]): IndexedSeq[W] =
       if (underlying.hasPath(path)) seqAs(path)(convert) else default.toVector
 
     def seqAs[W](path: String)(implicit convert: As[String, W]): IndexedSeq[W] =
       stringSeq(path) map wrappedConvert(convert.apply, path)
 
-    def stringSeq(path: String, default: ⇒ Iterable[String]): IndexedSeq[String] =
+    def stringSeq(path: String, default: => Iterable[String]): IndexedSeq[String] =
       if (underlying.hasPath(path)) stringSeq(path) else default.toVector
 
     def stringSeq(path: String): IndexedSeq[String] =
@@ -65,13 +65,13 @@ object Configs {
     def durationOption(path: String): Option[Duration] =
       underlying.hasPath(path) ? underlying.getDuration(path)
 
-    def checkedPath[A](path: String)(f: String ⇒ Checked[A]): Checked[A] =
+    def checkedPath[A](path: String)(f: String => Checked[A]): Checked[A] =
       if (!underlying.hasPath(path))
         Invalid(Problem(s"Missing configuration key '$path'"))
       else
         f(path)
 
-    def ifPath[A](path: String)(f: String ⇒ A): Option[A] =
+    def ifPath[A](path: String)(f: String => A): Option[A] =
       underlying.hasPath(path) ? f(path)
   }
 }

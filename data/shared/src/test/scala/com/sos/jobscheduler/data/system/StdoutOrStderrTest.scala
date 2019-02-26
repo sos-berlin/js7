@@ -14,7 +14,7 @@ final class StdoutOrStderrTest extends FreeSpec {
   }
 
   "JSON KeyEncoder" in {
-    testJson(Map(Stdout → 1, Stderr → 2),
+    testJson(Map(Stdout -> 1, Stderr -> 2),
       json"""{
         "stdout": 1,
         "stderr": 2

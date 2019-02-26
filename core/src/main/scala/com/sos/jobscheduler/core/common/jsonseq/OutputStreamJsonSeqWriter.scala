@@ -20,8 +20,8 @@ final class OutputStreamJsonSeqWriter(out: OutputStream, withRS: Boolean = false
   private var _written = 0L
 
   private val buffered = out match {
-    case o: BufferedOutputStream ⇒ o
-    case o ⇒ new BufferedOutputStream(o)
+    case o: BufferedOutputStream => o
+    case o => new BufferedOutputStream(o)
   }
   private var array: Array[Byte] = null
 

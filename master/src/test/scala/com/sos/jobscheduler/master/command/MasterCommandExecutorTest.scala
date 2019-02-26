@@ -29,10 +29,10 @@ final class MasterCommandExecutorTest extends FreeSpec
 
     def executeCommand(command: MasterCommand, meta: CommandMeta): Task[Validated[Problem, command.Response]] =
       (command, meta) match {
-        case (`cancelOrder`, `meta`) ⇒
+        case (`cancelOrder`, `meta`) =>
           canceled += 1
           Task.pure(Valid(Response.Accepted.asInstanceOf[command.Response]))
-        case _ ⇒ Task.pure(Invalid(Problem("COMMAND NOT IMPLEMENTED")))
+        case _ => Task.pure(Invalid(Problem("COMMAND NOT IMPLEMENTED")))
       }
   }
   private val commandExecutor = new MasterCommandExecutor(otherCommandExecutor)

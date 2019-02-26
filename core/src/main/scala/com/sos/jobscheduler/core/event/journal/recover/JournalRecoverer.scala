@@ -37,11 +37,11 @@ trait JournalRecoverer[E <: Event] {
   protected final def hasJournal = journalFileOption.isDefined
 
   final def recoverAll(): Unit =
-    for (file ← journalFileOption) {
+    for (file <- journalFileOption) {
       logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
       //blocking {  // May take a long time
         // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
-        autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
+        autoClosing(new JournalReader(journalMeta, file)) { journalReader =>
           recoverSnapshots(journalReader)
           onAllSnapshotRecovered()
           recoverEvents(journalReader)
@@ -53,7 +53,7 @@ trait JournalRecoverer[E <: Event] {
     }
 
   private def recoverSnapshots(journalReader: JournalReader[E]): Unit =
-    for (snapshot ← journalReader.nextSnapshots()) {
+    for (snapshot <- journalReader.nextSnapshots()) {
       wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
         snapshotCount += 1
         recoverSnapshot(snapshot)
@@ -61,7 +61,7 @@ trait JournalRecoverer[E <: Event] {
     }
 
   private def recoverEvents(journalReader: JournalReader[E]): Unit =
-    for (stampedEvent ← journalReader.nextEvents()) {
+    for (stampedEvent <- journalReader.nextEvents()) {
       wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
         eventCount += 1
         recoverEvent(stampedEvent)
@@ -103,15 +103,15 @@ object JournalRecoverer {
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
-    val actorToKey = recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k }
+    val actorToKey = recoveredActors.keyToJournalingActor map { case (k, a) => a -> k }
     actorRefFactory.actorOf(
       Props {
         new Actor {
           journalActor ! JournalActor.Input.Start(recoveredActors, observer, lastEventId = lastEventId, totalEventCount = totalEventCount)
 
           def receive = {
-            case JournalActor.Output.Ready ⇒
-              for (a ← actors) {
+            case JournalActor.Output.Ready =>
+              for (a <- actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
               logger.debug(s"Awaiting RecoveryFinished from ${actors.size} actors")
@@ -125,11 +125,11 @@ object JournalRecoverer {
               context.stop(self)
             } else {
               context.become {
-                case KeyedJournalingActor.Output.RecoveryFinished ⇒
+                case KeyedJournalingActor.Output.RecoveryFinished =>
                   logger.trace(s"${n - 1} actors left: Actor has RecoveryFinished: ${actorToKey(sender())}'")
                   becomeWaitingForChildren(n - 1)
 
-                case msg if actorToKey contains sender() ⇒
+                case msg if actorToKey contains sender() =>
                   context.parent.forward(msg)  // For example OrderActor.Output.RecoveryFinished
               }
             }

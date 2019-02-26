@@ -15,7 +15,7 @@ private trait NamedRunnable extends Runnable
 
 private object NamedRunnable
 {
-  def apply(name: String)(body: ⇒ Unit) = {
+  def apply(name: String)(body: => Unit) = {
     val name_ = name
     new NamedRunnable {
       def name = name_
@@ -25,27 +25,27 @@ private object NamedRunnable
 
   private trait RenamesThread extends ThreadPoolExecutor
   {
-    private var restoreName: () ⇒ Unit = null
+    private var restoreName: () => Unit = null
 
     override def beforeExecute(thread: Thread, runnable: Runnable) = {
       super.beforeExecute(thread, runnable)
       runnable match {
-        case runnable: NamedRunnable ⇒
+        case runnable: NamedRunnable =>
           val originalName = thread.getName
-          restoreName = () ⇒ thread.setName(originalName)
+          restoreName = () => thread.setName(originalName)
           thread.setName(runnable.name)
-        case _ ⇒
+        case _ =>
       }
     }
 
     override def afterExecute(runnable: Runnable, throwable: Throwable) = {
       runnable match {
-        case _: NamedRunnable ⇒
+        case _: NamedRunnable =>
           if (restoreName != null) {
             restoreName()
             restoreName = null
           }
-        case _ ⇒
+        case _ =>
       }
       super.afterExecute(runnable, throwable)
     }

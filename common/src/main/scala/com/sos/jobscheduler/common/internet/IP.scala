@@ -28,14 +28,14 @@ object IP {
 
     def apply(string: String) =
       try string match {
-        case StandardRegex(host, port) ⇒ useDefaults(host, port)
-        case IPv6Regex(host, port) ⇒ useDefaults(host, port)
-        case IPv6Host(host) ⇒ useDefaults(host, defaultPortString)
-        case "" ⇒ makeInetSocketAddress(defaultHost, defaultPortString)
-        case _ if string forall { _.isDigit } ⇒ makeInetSocketAddress(defaultHost, string)
-        case _ ⇒ makeInetSocketAddress(string, defaultPortString)
+        case StandardRegex(host, port) => useDefaults(host, port)
+        case IPv6Regex(host, port) => useDefaults(host, port)
+        case IPv6Host(host) => useDefaults(host, defaultPortString)
+        case "" => makeInetSocketAddress(defaultHost, defaultPortString)
+        case _ if string forall { _.isDigit } => makeInetSocketAddress(defaultHost, string)
+        case _ => makeInetSocketAddress(string, defaultPortString)
       } catch {
-        case NonFatal(t) ⇒ throw new IllegalArgumentException(s"Invalid IP address and port combination in '$string': $t", t)
+        case NonFatal(t) => throw new IllegalArgumentException(s"Invalid IP address and port combination in '$string': $t", t)
       }
 
     private def useDefaults(host: String, port: String) =
@@ -51,9 +51,9 @@ object IP {
 
     def apply(string: String) =
       string match {
-        case StandardRegex(host, port) ⇒ makeInetSocketAddress(host, port)
-        case IPv6Regex(host, port) ⇒ makeInetSocketAddress(host, port)
-        case _ ⇒ throw new IllegalArgumentException(s"ipAddress:port or [ip6Address]:port expected")
+        case StandardRegex(host, port) => makeInetSocketAddress(host, port)
+        case IPv6Regex(host, port) => makeInetSocketAddress(host, port)
+        case _ => throw new IllegalArgumentException(s"ipAddress:port or [ip6Address]:port expected")
       }
 
     private def makeInetSocketAddress(host: String, port: String) = {

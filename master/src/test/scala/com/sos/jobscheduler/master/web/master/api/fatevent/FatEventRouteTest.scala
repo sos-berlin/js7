@@ -48,9 +48,9 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     logger.debug(s"""Test "$testName"""")
     val status = super.runTest(testName, args)
     status.whenCompleted {
-      case Success(true) ⇒
-      case Success(false) ⇒ logger.warn(s"""Test "$testName" FAILED""")
-      case Failure(t) ⇒ logger.warn(s"""Test "$testName" FAILED: $t""")
+      case Success(true) =>
+      case Success(false) => logger.warn(s"""Test "$testName" FAILED""")
+      case Failure(t) => logger.warn(s"""Test "$testName" FAILED: $t""")
     }
     status
   }
@@ -65,7 +65,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 
   private def route = pathSegments("fatEvent")(fatEventRoute)
 
-  for (uri ← List(
+  for (uri <- List(
     "/fatEvent?return=OrderFatEvent&timeout=60&after=0",
     "/fatEvent?after=0"))
   {
@@ -207,11 +207,11 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 
   private def getFatEvents(uri: String): Seq[Stamped[KeyedEvent[OrderFatEvent]]] =
     getFatEventSeq(uri) match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         assert(stampeds.nonEmpty)
         stampeds
 
-      case x ⇒ fail(s"Unexpected response: $x")
+      case x => fail(s"Unexpected response: $x")
     }
 
   @tailrec
@@ -219,17 +219,17 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     var retryCount = 0
     Get(uri) ~> Accept(`application/json`) ~> route ~> check {
       status match {
-        case TooManyRequests if retryCount < 1000 ⇒
+        case TooManyRequests if retryCount < 1000 =>
           retryCount += 1
           logger.debug("TooManyRequests #" + retryCount)
           sleep(10.ms)
           None
-        case OK ⇒ Some(responseAs[TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]]])
-        case _ ⇒ fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+        case OK => Some(responseAs[TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]]])
+        case _ => fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       }
     } match {
-      case None ⇒ getFatEventSeq(uri)
-      case Some(result) ⇒ result
+      case None => getFatEventSeq(uri)
+      case Some(result) => result
     }
   }
 
@@ -257,13 +257,13 @@ object FatEventRouteTest
     Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
 
   private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
-    (1 to 18).map(i ⇒
+    (1 to 18).map(i =>
       Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Payload.empty)) ::     // Yields OrderFatEvent
       Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
       Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId.path)) ::  // No FatEvent
       Nil)
   private val TestFatEvents =
-    for (events ← OrderEvents; event = events.head) yield
+    for (events <- OrderEvents; event = events.head) yield
       Stamped(event.eventId, event.timestamp, event.value.key <-: OrderAddedFat(TestWorkflow.id, None, Map.empty))
 
   private def fatEventsAfter(after: EventId) = TestFatEvents dropWhile (_.eventId <= after)

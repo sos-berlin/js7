@@ -32,8 +32,8 @@ extends ExecutionContext {
       def run() = {
         runnable.run()
         tryDequeue() match {
-          case null ⇒
-          case next ⇒ executeThisAndQueued(next)
+          case null =>
+          case next => executeThisAndQueued(next)
         }
       }
     })

@@ -33,13 +33,13 @@ final class AgentUris private(agentUri: AgentAddress) {
       toUri(Uri(path = Path("api/order") / orderId.string))
 
     val ids: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderId"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "OrderId"))
 
     val events: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderEvent"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "OrderEvent"))
 
     val orders: Uri =
-      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "Order"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" -> "Order"))
   }
 
   def mastersEvents[E <: Event](request: EventRequest[E]) =
@@ -74,6 +74,6 @@ object AgentUris {
 
   private def stripLeadingSlash(o: String) =
     o match {
-      case _ ⇒ o stripPrefix "/"
+      case _ => o stripPrefix "/"
     }
 }

@@ -73,7 +73,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   def highestEventId = _highestEventId
 
   private def compress(factor: Int): Unit = {
-    for (i ← 1 until length / factor) {
+    for (i <- 1 until length / factor) {
       positions(i) = positions(factor * i)
       eventIds(i) = eventIds(factor * i)
     }
@@ -84,7 +84,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 
   private val buildSynchronizer = new Synchronizer("building JournalIndex")
 
-  def synchronizeBuilding[A](body: ⇒ A): A =
+  def synchronizeBuilding[A](body: => A): A =
     buildSynchronizer.synchronize {
       body
     }
@@ -96,10 +96,10 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
     synchronized {
       if (length == 0) throw new IllegalStateException("JournalIndex.positionAfter but length=0")
       val index = binarySearch(eventIds, 0, length, after) match {
-        case i if i >= 0 ⇒
+        case i if i >= 0 =>
           i
 
-        case i ⇒
+        case i =>
           if (after < eventIds.head) throw new IllegalArgumentException(s"JournalIndex.positionAfter($after) but oldest EventId is ${eventIds.head}")
           -i - 2
       }
@@ -109,7 +109,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
   @TestOnly
   def positionAndEventIds: Seq[PositionAnd[EventId]] =
     synchronized {
-      for (i ← 0 until length) yield PositionAnd(positions(i), eventIds(i))
+      for (i <- 0 until length) yield PositionAnd(positions(i), eventIds(i))
     }
 
   override def toString = {

@@ -34,8 +34,8 @@ final case class Workflow private(
 extends FileBased
 {
   override def equals(o: Any) = o match {
-    case o: Workflow ⇒ id == o.id && rawLabeledInstructions == o.rawLabeledInstructions && nameToJob == o.nameToJob && source == o.source  // Ignore outer ???
-    case _ ⇒ false
+    case o: Workflow => id == o.id && rawLabeledInstructions == o.rawLabeledInstructions && nameToJob == o.nameToJob && source == o.source  // Ignore outer ???
+    case _ => false
   }
 
   assert(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
@@ -43,17 +43,17 @@ extends FileBased
   type Self = Workflow
 
   val companion = Workflow
-  val labeledInstructions = rawLabeledInstructions map (o ⇒ o.copy(instruction = o.instruction.adopt(this)))
+  val labeledInstructions = rawLabeledInstructions map (o => o.copy(instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
-    numberedInstructions.flatMap { case (nr, Instruction.Labeled(labels, _)) ⇒ labels map (_ → nr) }
-      .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
+    numberedInstructions.flatMap { case (nr, Instruction.Labeled(labels, _)) => labels map (_ -> nr) }
+      .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: FileBasedId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
-      case jump: JumpInstruction if !labelToNumber.contains(jump.to) ⇒
+      case jump: JumpInstruction if !labelToNumber.contains(jump.to) =>
         Problem.pure(s"Unknown label '${jump.to}'")
     }
     if (problems.nonEmpty)
@@ -66,10 +66,10 @@ extends FileBased
   def completelyChecked: Checked[Workflow] = {
     val chk = flattenedWorkflows.map(_._2.checked) ++
       flattenedInstructions.collect {
-        case (position, _ @: (o: Execute.Named)) ⇒ nestedWorkflow(position.branchPath).flatMap(_.findJob(o.name))
+        case (position, _ @: (o: Execute.Named)) => nestedWorkflow(position.branchPath).flatMap(_.findJob(o.name))
       } ++
       checkRetry(false)
-    val problems = chk collect { case Invalid(problem) ⇒ problem }
+    val problems = chk collect { case Invalid(problem) => problem }
     if (problems.nonEmpty)
       Invalid(Problem.Multiple(problems))
     else
@@ -90,8 +90,8 @@ extends FileBased
 
   def labelToPosition(branchPath: BranchPath, label: Label): Option[Position] =
     for {
-      workflow ← nestedWorkflow(branchPath).toOption
-      nr ← workflow.labelToNumber.get(label)
+      workflow <- nestedWorkflow(branchPath).toOption
+      nr <- workflow.labelToNumber.get(label)
     } yield branchPath % nr
 
   def lastWorkflowPosition: WorkflowPosition =
@@ -118,17 +118,17 @@ extends FileBased
     flattenedWorkflowsOf(Nil).toMap
 
   private[workflow] def flattenedWorkflowsOf(parents: BranchPath): List[(BranchPath, Workflow)] =
-    (parents → this) :: nestedWorkflows(parents)
+    (parents -> this) :: nestedWorkflows(parents)
 
   private def nestedWorkflows(parents: BranchPath): List[(BranchPath, Workflow)] =
     numberedInstructions.toList flatMap {
-      case (nr, labeled) ⇒ labeled.instruction.flattenedWorkflows(parents % nr)
+      case (nr, labeled) => labeled.instruction.flattenedWorkflows(parents % nr)
     }
 
   private[workflow] def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
     branchPath match {
-      case Nil ⇒ Valid(this)
-      case BranchPath.PositionAndBranchId(position, branchId) ⇒ instruction(position).workflow(branchId)
+      case Nil => Valid(this)
+      case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
     }
 
   private[workflow] def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
@@ -136,29 +136,29 @@ extends FileBased
 
   private[workflow] def flattenedInstructions(branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =
     numberedInstructions flatMap {
-      case (nr, labeled) ⇒ ((branchPath % nr) → labeled) +: labeled.instruction.flattenedInstructions(branchPath % nr)
+      case (nr, labeled) => ((branchPath % nr) -> labeled) +: labeled.instruction.flattenedInstructions(branchPath % nr)
     }
 
   def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
     labeledInstructions.zipWithIndex.map {
-      case (s, i) ⇒ InstructionNr(i) → s
+      case (s, i) => InstructionNr(i) -> s
     }
 
   private[workflow] def reduce: Workflow =
     copy(rawLabeledInstructions =
       rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
-        case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(labels, _)) if labels contains jmp.to ⇒ Nil
-        case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo), _ @: Goto(to)) if errorTo == to ⇒ Nil
-        case Seq(a, _) ⇒ a :: Nil
-        case Seq(_) ⇒ Nil  // Unused code in contrast to sliding's documentation?
+        case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(labels, _)) if labels contains jmp.to => Nil
+        case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo), _ @: Goto(to)) if errorTo == to => Nil
+        case Seq(a, _) => a :: Nil
+        case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
   private[workflow] def isPartiallyExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     labeledInstructions map (_.instruction) collect {
-      case o: Execute.Anonymous ⇒ o.job isExecutableOnAgent agentRefPath
-      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
-      case o: Fork ⇒ o isPartiallyExecutableOnAgent agentRefPath
+      case o: Execute.Anonymous => o.job isExecutableOnAgent agentRefPath
+      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
+      case o: Fork => o isPartiallyExecutableOnAgent agentRefPath
     } contains true
 
   def isStartableOnAgent(position: Position, agentRefPath: AgentRefPath): Boolean =
@@ -166,10 +166,10 @@ extends FileBased
 
   private def isStartableOnAgent(instruction: Instruction, agentRefPath: AgentRefPath): Boolean =
     instruction match {
-      case o: Fork ⇒ o.isStartableOnAgent(agentRefPath)
-      case o: Execute.Anonymous ⇒ o.job.isExecutableOnAgent(agentRefPath)
-      case o: Execute.Named ⇒ findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
-      case _ ⇒ false
+      case o: Fork => o.isStartableOnAgent(agentRefPath)
+      case o: Execute.Anonymous => o.job.isExecutableOnAgent(agentRefPath)
+      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentRefPath)
+      case _ => false
     }
 
   private[workflow] def isStartableOnAgent(agentRefPath: AgentRefPath): Boolean =
@@ -177,8 +177,8 @@ extends FileBased
 
   //def determinedExecutingAgent(position: Position): Option[AgentRefPath] =
   //  executingAgents(position) match {
-  //    case a if a.size <= 1 ⇒ a.headOption
-  //    case _ ⇒ None
+  //    case a if a.size <= 1 => a.headOption
+  //    case _ => None
   //  }
   //
   //private[workflow] def determinedExecutingAgent: Option[AgentRefPath] =
@@ -186,13 +186,13 @@ extends FileBased
   //
   //def executingAgents(position: Position): Set[AgentRefPath] =
   //  instruction(position) match {
-  //    case _: Execute ⇒
+  //    case _: Execute =>
   //      checkedWorkflowJob(Position(0)).toOption.map(_.agentRefPath).toSet
   //
-  //    case fork: Fork ⇒
+  //    case fork: Fork =>
   //      fork.startAgents
   //
-  //    case _ ⇒ Set.empty
+  //    case _ => Set.empty
   //  }
 
   //private[workflow] def executingAgents: Set[AgentRefPath] =
@@ -200,8 +200,8 @@ extends FileBased
 
   def isDefinedAt(position: Position): Boolean =
     position match {
-      case Position(Nil, nr) ⇒ isDefinedAt(nr)
-      case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) ⇒
+      case Position(Nil, nr) => isDefinedAt(nr)
+      case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
         instruction(nr).workflow(branchId) exists (_ isDefinedAt Position(tail, tailNr))
     }
 
@@ -213,11 +213,11 @@ extends FileBased
   @tailrec
   def findJob(name: WorkflowJob.Name): Checked[WorkflowJob] =
     nameToJob.get(name) match {
-      case Some(job) ⇒ Valid(job)
-      case None ⇒
+      case Some(job) => Valid(job)
+      case None =>
         outer match {
-          case None ⇒ Invalid(Problem(s"Unknown job '$name'"))
-          case Some(o) ⇒ o.findJob(name)
+          case None => Invalid(Problem(s"Unknown job '$name'"))
+          case Some(o) => o.findJob(name)
         }
     }
 
@@ -226,42 +226,42 @@ extends FileBased
     jobKey(WorkflowBranchPath(id, branchPath), name)
 
   private def jobKey(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Checked[JobKey] =
-    nestedWorkflow(workflowBranchPath.branchPath) flatMap (w ⇒
+    nestedWorkflow(workflowBranchPath.branchPath) flatMap (w =>
       if (w.nameToJob contains name)
         Valid(JobKey(workflowBranchPath, name))
       else
         workflowBranchPath.branchPath match {
-          case Nil ⇒
+          case Nil =>
             Invalid(Problem(s"Unknown job '$name'"))
-          case branchPath ⇒
+          case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })
 
   def keyToJob: Map[JobKey, WorkflowJob] =
-    flattenedWorkflows flatMap { case (p, w) ⇒
+    flattenedWorkflows flatMap { case (p, w) =>
       val workflowBranchPath = WorkflowBranchPath(id, p)
-      val namedJobKeys = w.nameToJob.toVector.map { case (k, v) ⇒ JobKey.Named(workflowBranchPath, k) → v }
+      val namedJobKeys = w.nameToJob.toVector.map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
       val anonymousJobKeys = w.numberedInstructions.collect {
-        case (nr, _ @: (ex: Execute.Anonymous)) ⇒ JobKey.Anonymous(workflowBranchPath / nr) → ex.job
+        case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
       }
       namedJobKeys ++ anonymousJobKeys
     }
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
     checkedExecute(position) flatMap {
-      case o: Execute.Anonymous ⇒ Valid(o.job)
-      case o: Execute.Named ⇒ nestedWorkflow(position.branchPath) flatMap (_.findJob(o.name))
+      case o: Execute.Anonymous => Valid(o.job)
+      case o: Execute.Named => nestedWorkflow(position.branchPath) flatMap (_.findJob(o.name))
     }
 
   def checkedExecute(position: Position): Checked[Execute] =
     instruction(position) match {
-      case o: Execute ⇒ Valid(o)
-      case o ⇒ Invalid(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+      case o: Execute => Valid(o)
+      case o => Invalid(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
   /** Find catch instruction and return position of the first instruction. */
   def findCatchPosition(position: Position): Option[Position] =
-    position.splitBranchAndNr flatMap { case (parent, branchId, _) ⇒
+    position.splitBranchAndNr flatMap { case (parent, branchId, _) =>
       instruction(parent).toCatchBranchId(branchId) match {
         case None => findCatchPosition(parent)
         case Some(catchBranchId) => Some(parent / catchBranchId % 0)
@@ -270,10 +270,10 @@ extends FileBased
 
   def instruction(position: Position): Instruction =
     position match {
-      case Position(Nil, nr) ⇒
+      case Position(Nil, nr) =>
         instruction(nr)
 
-      case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) ⇒
+      case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
         instruction(nr).workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
     }
 
@@ -291,7 +291,7 @@ extends FileBased
   def withoutSource = copy(source = None)
 
   override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") +
-    s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) ⇒ s"define job $k { $v }" }.mkString(" ")} }"
+    s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 }
 
 object Workflow extends FileBased.Companion[Workflow] {
@@ -377,25 +377,25 @@ object Workflow extends FileBased.Companion[Workflow] {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {
-    case Workflow(id, instructions, namedJobs, source, _) ⇒
+    case Workflow(id, instructions, namedJobs, source, _) =>
       id.asJsonObject ++
         JsonObject(
-          "instructions" → instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
-          "jobs" → emptyToNone(namedJobs).asJson,
-          "source" → source.asJson)
+          "instructions" -> instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
+          "jobs" -> emptyToNone(namedJobs).asJson,
+          "source" -> source.asJson)
   }
 
   implicit val jsonDecoder: Decoder[Workflow] =
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
-    cursor ⇒ for {
-      id ← cursor.value.as[WorkflowId]
-      instructions ← cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
-      namedJobs ← cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
-      source ← cursor.get[Option[String]]("source")
-      workflow ← Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult
+    cursor => for {
+      id <- cursor.value.as[WorkflowId]
+      instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
+      namedJobs <- cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
+      source <- cursor.get[Option[String]]("source")
+      workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult
     } yield workflow
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =
-    cursor ⇒ jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult)
+    cursor => jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult)
 }

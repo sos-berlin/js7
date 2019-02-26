@@ -26,7 +26,7 @@ object LicenseKeyBunch {
   private val BunchSplitter = Splitter.on(" ").trimResults.omitEmptyStrings
   private val Empty = new LicenseKeyBunch(Nil)
 
-  def apply(keys: String) = new LicenseKeyBunch((BunchSplitter.split(keys).asScala map { o ⇒ LicenseKey(o) }).toVector)
+  def apply(keys: String) = new LicenseKeyBunch((BunchSplitter.split(keys).asScala map { o => LicenseKey(o) }).toVector)
 
   def apply() = Empty
 }

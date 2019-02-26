@@ -26,11 +26,11 @@ extends SomeEventRequest[E]
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     builder += returnQueryParameter
-    if (timeout != Duration.Zero) builder += "timeout" → durationToString(timeout)
-    if (delay != DefaultDelay) builder += "delay" → durationToString(delay)
-    if (limit != DefaultLimit) builder += "limit" → limit.toString
-    if (tornOlder != Duration.Inf) builder += "tornOlder" → durationToString(tornOlder)
-    builder += "after" → after.toString
+    if (timeout != Duration.Zero) builder += "timeout" -> durationToString(timeout)
+    if (delay != DefaultDelay) builder += "delay" -> durationToString(delay)
+    if (limit != DefaultLimit) builder += "limit" -> limit.toString
+    if (tornOlder != Duration.Inf) builder += "tornOlder" -> durationToString(tornOlder)
+    builder += "after" -> after.toString
     builder.result()
   }
 
@@ -39,18 +39,18 @@ extends SomeEventRequest[E]
     * Blocking - for testing.
     */
   @tailrec
-  def repeat[A](fetchEvents: EventRequest[E] ⇒ Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
+  def repeat[A](fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
     val waitTimeout = duration.Duration(timeout.toMillis + 10000, duration.MILLISECONDS)
     Await.result(fetchEvents(this), waitTimeout) match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         stampeds.collect(collect) match {
-          case Seq() ⇒ copy[E](after = stampeds.last.eventId).repeat(fetchEvents)(collect)
-          case o ⇒ o
+          case Seq() => copy[E](after = stampeds.last.eventId).repeat(fetchEvents)(collect)
+          case o => o
         }
-      case EventSeq.Empty(lastEventId) ⇒
+      case EventSeq.Empty(lastEventId) =>
         copy[E](after = lastEventId).repeat(fetchEvents)(collect)
 
-      case torn: TearableEventSeq.Torn ⇒
+      case torn: TearableEventSeq.Torn =>
         sys.error(s"Unexpected $torn")
     }
   }
@@ -80,10 +80,10 @@ object EventRequest {
 
   private def durationToString(duration: Duration): String =
     duration match {
-      case Duration.Inf ⇒ "infinite"
-      case Duration.MinusInf ⇒ "-∞"
-      case Duration.Undefined ⇒ "undefined"
-      case duration: FiniteDuration ⇒
+      case Duration.Inf => "infinite"
+      case Duration.MinusInf => "-∞"
+      case Duration.Undefined => "undefined"
+      case duration: FiniteDuration =>
         BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
     }
 }
@@ -98,8 +98,8 @@ extends SomeEventRequest[E] {
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     if (eventClasses != Set(classOf[Event])) builder += returnQueryParameter
-    builder += "limit" → (-limit).toString
-    if (after != EventId.BeforeFirst) builder += "after" → after.toString
+    builder += "limit" -> (-limit).toString
+    if (after != EventId.BeforeFirst) builder += "after" -> after.toString
     builder.result()
   }
 }
@@ -118,7 +118,7 @@ sealed trait SomeEventRequest[E <: Event] {
   def toQueryParameters: Vector[(String, String)]
 
   protected def returnQueryParameter: (String, String) =
-    "return" → (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
+    "return" -> (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
 
   def matchesClass(clazz: Class[_ <: Event]): Boolean =
     eventClasses exists { _ isAssignableFrom clazz }

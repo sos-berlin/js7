@@ -11,13 +11,13 @@ import org.scalatest.FreeSpec
  */
 final class LicenseKeyTest extends FreeSpec {
 
-  testLicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6") { key ⇒
+  testLicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6") { key =>
     assert(key.toString == "SOS-DEMO-1-D3Q-1AWS-ZZ")
     assert(key.issuer == "SOS")
     assert(key.customer == "DEMO")
     assert(key.issuedAt == LocalDate.of(2003, 3, 26))
     assert(key.serialNumber == 1)
-    assert(key.settings == Map(OperatingSystems → "WS", ZZ → ""))
+    assert(key.settings == Map(OperatingSystems -> "WS", ZZ -> ""))
     assert(key.securityCode == 406925453)
     assert(key.salt == 73)
     assert(key.isValidToday)
@@ -31,12 +31,12 @@ final class LicenseKeyTest extends FreeSpec {
     intercept[LicenseKeyParameterIsMissingException] { key.require(Parameter("XX")) }
   }
 
-  testLicenseKey("SOS-DEMO-1-94S-19990531-1AW-ZZ-J1BVPQW") { key ⇒
+  testLicenseKey("SOS-DEMO-1-94S-19990531-1AW-ZZ-J1BVPQW") { key =>
     assert(key.issuer == "SOS")
     assert(key.customer == "DEMO")
     assert(key.issuedAt == LocalDate.of(1999, 4, 28))
     assert(key.serialNumber == 1)
-    assert(key.settings == Map(ValidIn1900 → "990531", OperatingSystems → "W", ZZ → ""))
+    assert(key.settings == Map(ValidIn1900 -> "990531", OperatingSystems -> "W", ZZ -> ""))
     assert(!key.isValidToday)
     assert(key(JobScheduler) == Expired)
     assert(key(UniversalAgent) == Expired)
@@ -46,12 +46,12 @@ final class LicenseKeyTest extends FreeSpec {
     intercept[LicenseKeyParameterIsMissingException] { key.require(Parameter("XX")) }
   }
 
-  testLicenseKey("SOS-DEMO-1-F2D-2-4-7-A-1AWS-ZHZAF9O") { key ⇒
+  testLicenseKey("SOS-DEMO-1-F2D-2-4-7-A-1AWS-ZHZAF9O") { key =>
     assert(key.issuer == "SOS")
     assert(key.customer == "DEMO")
     assert(key.issuedAt == LocalDate.of(2005, 2, 13))
     assert(key.serialNumber == 1)
-    assert(key.settings == Map(Parameter("2") → "", Parameter("4") → "", Parameter("7") → "", Parameter("A") → "", OperatingSystems → "WS"))
+    assert(key.settings == Map(Parameter("2") -> "", Parameter("4") -> "", Parameter("7") -> "", Parameter("A") -> "", OperatingSystems -> "WS"))
     assert(key.isValidToday)
     assert(key(UniversalAgent) == Missing)
     assert(key(ZZ) == Missing)
@@ -64,12 +64,12 @@ final class LicenseKeyTest extends FreeSpec {
     intercept[LicenseKeyParameterIsMissingException] { key.require(UniversalAgent) }
   }
 
-  testLicenseKey("SOS-DEMO-1-L2O-4-7-22-KL22SL7") { key ⇒
+  testLicenseKey("SOS-DEMO-1-L2O-4-7-22-KL22SL7") { key =>
     assert(key.issuer == "SOS")
     assert(key.customer == "DEMO")
     assert(key.issuedAt == LocalDate.of(2011, 2, 24))
     assert(key.serialNumber == 1)
-    assert(key.settings == Map(Parameter("4") → "", Parameter("7") → "", ClassicAgent → ""))
+    assert(key.settings == Map(Parameter("4") -> "", Parameter("7") -> "", ClassicAgent -> ""))
     assert(key.isValidToday)
     assert(key(Parameter("4")) == OK)
     assert(key(JobScheduler) == OK)
@@ -81,7 +81,7 @@ final class LicenseKeyTest extends FreeSpec {
     intercept[LicenseKeyParameterIsMissingException] { key.require(UniversalAgent) }
   }
 
-  private def testLicenseKey(key: String)(body: LicenseKey ⇒ Unit): Unit = {
+  private def testLicenseKey(key: String)(body: LicenseKey => Unit): Unit = {
     key in body(LicenseKey(key))
   }
 

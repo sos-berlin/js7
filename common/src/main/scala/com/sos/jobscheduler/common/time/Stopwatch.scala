@@ -30,18 +30,18 @@ final class Stopwatch {
 }
 
 object Stopwatch {
-  def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: ⇒ Unit): Result = {
-    for (_ ← 1 to warmUp) body
+  def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result = {
+    for (_ <- 1 to warmUp) body
     val start = nanoTime
-    for (_ ← 1 to n) body
+    for (_ <- 1 to n) body
     val duration = Duration.ofNanos(nanoTime - start)
     Result(duration, n, ops)
   }
 
-  def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: ⇒ Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
-    (for (_ ← 1 to warmUp) yield Future { body }).awaitInfinite
+  def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
+    (for (_ <- 1 to warmUp) yield Future { body }).awaitInfinite
     val start = nanoTime
-    (for (_ ← 1 to n) yield Future { body }).awaitInfinite
+    (for (_ <- 1 to n) yield Future { body }).awaitInfinite
     val duration = Duration.ofNanos(nanoTime - start)
     Result(duration, n, ops)
   }

@@ -37,7 +37,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
 
   private implicit val timeout = Timeout(99.seconds)
   private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
-    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis").asJava))  // Our default of 1s slows down this test
+    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" -> "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles
   private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf) )
@@ -67,7 +67,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "GetTaskOverview" in {
-    for (task ← Array(aTask, bTask)) {
+    for (task <- Array(aTask, bTask)) {
       assert((handle.taskOverview(task.id) await 99.s) == task.overview)
     }
   }
@@ -107,7 +107,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
       new Actor() {
         context.watch(actor)
         def receive = {
-          case Terminated(`actor`) ⇒ terminated.success(())
+          case Terminated(`actor`) => terminated.success(())
         }
       }
     })

@@ -35,9 +35,9 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
     realm = "REALM",
     invalidAuthenticationDelay = 100.millis,
     idToUser = {   // Like master.conf and agent.conf
-      case UserId("USER")      ⇒ Some(TestUser)
-      case UserId("Anonymous") ⇒ Some(SimpleUser.Anonymous)
-      case _ ⇒ None
+      case UserId("USER")      => Some(TestUser)
+      case UserId("Anonymous") => Some(SimpleUser.Anonymous)
+      case _ => None
     },
     publicPermissions = AllPermissions,
     publicGetPermissions = GetPermissions)
@@ -49,13 +49,13 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
     val anyMethod = HttpMethods.GET :: HttpMethods.POST :: Nil
 
     "defaultConf doesn't allow public access" in {
-      for (isLoopback ← any; method ← anyMethod) {
+      for (isLoopback <- any; method <- anyMethod) {
         assert(newGateKeeper(defaultConf, isLoopback = isLoopback).ifPublic(method) == None)
       }
     }
 
     "public=true allows public access in all cases" in {
-      for (loopbackIsPublic ← any; isLoopback ← any; getIsPublic ← any; method ← anyMethod) {
+      for (loopbackIsPublic <- any; isLoopback <- any; getIsPublic <- any; method <- anyMethod) {
         assert(newGateKeeper(defaultConf.copy(isPublic = true, loopbackIsPublic = loopbackIsPublic, getIsPublic = getIsPublic), isLoopback = isLoopback).ifPublic(method) == Some(IsPublic))
       }
     }
@@ -258,16 +258,16 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
   private def route(conf: GateKeeper.Configuration[SimpleUser]): Route = route(newGateKeeper(conf))
 
   private def route(gateKeeper: GateKeeper[SimpleUser]): Route =
-    gateKeeper.authenticate { user ⇒
+    gateKeeper.authenticate { user =>
       path("ValidUserPermission") {
-        gateKeeper.authorize(user, Set(ValidUserPermission)) { user ⇒
+        gateKeeper.authorize(user, Set(ValidUserPermission)) { user =>
           (get | post) {
             complete(user.id.toString)
           }
         }
       } ~
       path("OPEN") {
-        gateKeeper.authorize(user, Set.empty) { user ⇒  // GET is public, POST is public only with loopbackIsPublic on loopback interface
+        gateKeeper.authorize(user, Set.empty) { user =>  // GET is public, POST is public only with loopbackIsPublic on loopback interface
           (get | post) {
             complete(user.id.toString)
           }
@@ -443,8 +443,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest
   private def assertPlainStatus(statusCode: StatusCode): Unit = {
     assert(status == statusCode)
     (status: @unchecked) match {
-      case OK ⇒
-      case Unauthorized ⇒
+      case OK =>
+      case Unauthorized =>
         assert(headers contains `WWW-Authenticate`(HttpChallenges.basic(defaultConf.realm)))
         val responseString = Unmarshaller.stringUnmarshaller.forContentTypes(`text/plain`)(response.entity).await(99.s)
         assert(responseString == "The resource requires authentication, which was not supplied with the request")  // Akka message, by reject(AuthenticationFailedRejection(CredentialsMissing, ...)

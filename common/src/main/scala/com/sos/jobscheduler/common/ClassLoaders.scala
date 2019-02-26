@@ -10,10 +10,10 @@ object ClassLoaders {
 
   def currentClassLoader: ClassLoader =
     Thread.currentThread.getContextClassLoader match {
-      case null ⇒
+      case null =>
         val o = getClass.getClassLoader
         logger.debug(s"currentThread.getContextClassLoader is null, using ${getClass.getName}.getClassLoader=$o")
         o
-      case o ⇒ o
+      case o => o
     }
 }

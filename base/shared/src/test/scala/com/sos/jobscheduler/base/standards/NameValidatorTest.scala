@@ -63,12 +63,12 @@ final class NameValidatorTest extends FreeSpec {
                   "🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐚🐞🐜🦗🕷🕸🦂🐢🐍🦎🦖🦕🐙🦑🦐🦀🐡🐠🐟🐬🐳🐋🐊🐆🦓🦍" +
                   "🐘🐪🐫🦒🐃🐄🐎🐏🐑🦌🐕🐩🐓🕊🐁🐿🐉🎄🌲" +
                   "🇸🇪"
-    for ((cp, i) ← allowed.codePoints.iterator.asScala.zipWithIndex) {
+    for ((cp, i) <- allowed.codePoints.iterator.asScala.zipWithIndex) {
       val identifier = new String(Character.toChars(cp))
       assert(isValid(identifier), f"#$i U+${cp.toInt}%04x $identifier")
     }
     assert(isValid(allowed))
     assert(!isValid("☺︎"))
-    assert(!isValid("→"))
+    assert(!isValid("->"))
   }
 }

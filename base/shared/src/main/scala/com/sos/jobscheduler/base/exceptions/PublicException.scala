@@ -6,7 +6,7 @@ package com.sos.jobscheduler.base.exceptions
  * @author Joacim Zschimmer
  */
 trait PublicException {
-  this: Throwable ⇒
+  this: Throwable =>
 
   def publicMessage: String = Option(getMessage) getOrElse getClass.getName
 }

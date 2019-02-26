@@ -29,7 +29,7 @@ extends AutoCloseable {
   createDirectories(masterDir / "config/order-generators")
   createDirectories(masterDir / "config/private")
   createDirectories(masterDir / "data")
-  for (agentRefPath ← agentRefPaths) {
+  for (agentRefPath <- agentRefPaths) {
     createDirectories(agentDir(agentRefPath) / "config/private")
     createDirectories(agentDir(agentRefPath) / "config/executables")
     createDirectory(agentDir(agentRefPath) / "data")
@@ -38,7 +38,7 @@ extends AutoCloseable {
   def close(): Unit = {
     deleteDirectoryContentRecursively(temporaryDirectory)
     try deleteIfExists(temporaryDirectory)
-    catch { case t: IOException ⇒ logger.debug(s"Delete $temporaryDirectory: $t", t)}
+    catch { case t: IOException => logger.debug(s"Delete $temporaryDirectory: $t", t)}
   }
 
   def writeJson[A: ObjectEncoder](path: TypedPath, a: A): Unit =

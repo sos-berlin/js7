@@ -50,8 +50,8 @@ extends AutoCloseable with Observing
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   protected val api = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
   private val userAndPassword: Option[UserAndPassword] = for {
-      userName ← conf.config.optionAs[String]("jobscheduler.provider.master.user")
-      password ← conf.config.optionAs[String]("jobscheduler.provider.master.password")
+      userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
+      password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
   private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
@@ -68,11 +68,11 @@ extends AutoCloseable with Observing
   // TODO MasterOrderKeeper does not support change of Agents yet
   private def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
-      _ ← loginUntilReachable
+      _ <- loginUntilReachable
       currentEntries = readDirectory
       checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries map (_.file))
-      response ← checkedCommand
-        .traverse(o ⇒ AkkaHttpClient.liftProblem(
+      response <- checkedCommand
+        .traverse(o => AkkaHttpClient.liftProblem(
           api.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
@@ -86,7 +86,7 @@ extends AutoCloseable with Observing
     * Parses each file, so it may take some time for a big configuration directory. */
   def initialUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
-      _ ← loginUntilReachable
+      _ <- loginUntilReachable
       currentEntries = readDirectory
       master <- masterFileBased
       checked <- typedSourceReader.readFileBaseds(currentEntries map (_.file))
@@ -110,10 +110,10 @@ extends AutoCloseable with Observing
 
   def updateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
-      _ ← loginUntilReachable
+      _ <- loginUntilReachable
       last = lastEntries.get
       currentEntries = readDirectory
-      response ← toUpdateRepoCommand(versionId getOrElse newVersionId(), PathSeqDiffer.diff(currentEntries, last))
+      response <- toUpdateRepoCommand(versionId getOrElse newVersionId(), PathSeqDiffer.diff(currentEntries, last))
         .traverse(execute(versionId, _))
         .map(_.flatten)
     } yield {
@@ -129,7 +129,7 @@ extends AutoCloseable with Observing
       if (api.hasSession)
         Task.unit
       else
-        api.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ ⇒ ())
+        api.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ => ())
     }.flatten
 
 
@@ -138,7 +138,7 @@ extends AutoCloseable with Observing
       Task(Checked.completed)
     else
       AkkaHttpClient.liftProblem(
-        api.executeCommand(updateRepo) map ((_: MasterCommand.Response) ⇒ Completed))
+        api.executeCommand(updateRepo) map ((_: MasterCommand.Response) => Completed))
 
   private def masterFileBased: Task[Seq[FileBased]] =
     for {
@@ -152,13 +152,13 @@ extends AutoCloseable with Observing
     val checkedChanged = typedSourceReader.readFileBaseds(diff.added ++ diff.changed)
     val checkedDeleted: Checked[Vector[TypedPath]] =
       diff.deleted.toVector
-        .traverse(path ⇒ TypedPaths.fileToTypedPath(typedPathCompanions, conf.liveDirectory, path))
-    (checkedChanged, checkedDeleted) mapN ((chg, del) ⇒ UpdateRepo(versionId, chg map (o ⇒ fileBasedSigner.sign(o withVersion versionId)), del))
+        .traverse(path => TypedPaths.fileToTypedPath(typedPathCompanions, conf.liveDirectory, path))
+    (checkedChanged, checkedDeleted) mapN ((chg, del) => UpdateRepo(versionId, chg map (o => fileBasedSigner.sign(o withVersion versionId)), del))
   }
 
   private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] =
     typedSourceReader.readFileBaseds(files)
-      .map(fileBaseds ⇒ ReplaceRepo(versionId, fileBaseds map (x ⇒ fileBasedSigner.sign(x withVersion versionId))))
+      .map(fileBaseds => ReplaceRepo(versionId, fileBaseds map (x => fileBasedSigner.sign(x withVersion versionId))))
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
     firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.seconds)

@@ -16,15 +16,15 @@ object AwaitOrderExecutor extends EventInstructionExecutor
   type Instr = AwaitOrder
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: AwaitOrder): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.Fresh].map(order ⇒
+    order.ifState[Order.Fresh].map(order =>
       order.id <-: OrderStarted)
     .orElse(
       order.ifState[Order.Ready].map(
         _.id <-: OrderAwaiting(instruction.orderId)))
     .orElse(
         for {
-          order ← order.ifState[Order.Awaiting]
-          _ ← context.idToOrder.lift(instruction.orderId) flatMap (_.ifState[Order.Offering])
+          order <- order.ifState[Order.Awaiting]
+          _ <- context.idToOrder.lift(instruction.orderId) flatMap (_.ifState[Order.Offering])
         } yield
           order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
     .orElse(

@@ -18,32 +18,32 @@ object Workflows {
     def reduceForAgent(agentRefPath: AgentRefPath): Workflow =
       reuseIfEqual(underlying, underlying.copy(
         rawLabeledInstructions = labeledInstructions map {
-          case labels @: (instr: If) ⇒
+          case labels @: (instr: If) =>
             labels @: reuseIfEqual(instr, instr.copy(
               thenWorkflow = instr.thenWorkflow.reduceForAgent(agentRefPath),
               elseWorkflow = instr.elseWorkflow map (_.reduceForAgent(agentRefPath))))
 
-          case labels @: (instr: TryInstruction) ⇒
+          case labels @: (instr: TryInstruction) =>
             labels @: reuseIfEqual(instr, instr.copy(
               tryWorkflow = instr.tryWorkflow.reduceForAgent(agentRefPath),
               catchWorkflow = instr.catchWorkflow.reduceForAgent(agentRefPath)))
 
-          case labels @: (fj: Fork) if fj isPartiallyExecutableOnAgent agentRefPath ⇒
+          case labels @: (fj: Fork) if fj isPartiallyExecutableOnAgent agentRefPath =>
             labels @: Fork(
-              for (b ← fj.branches) yield
+              for (b <- fj.branches) yield
                 reuseIfEqual(b, b.copy(
                   workflow = b.workflow.reduceForAgent(agentRefPath))))
 
-          case o @ _ @: (ex: Execute.Named) if underlying.findJob(ex.name).orThrow/*never*/ isExecutableOnAgent agentRefPath ⇒
+          case o @ _ @: (ex: Execute.Named) if underlying.findJob(ex.name).orThrow/*never*/ isExecutableOnAgent agentRefPath =>
             o
 
-          case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentRefPath ⇒
+          case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentRefPath =>
             o
 
-          case o @ _ @: (_: Fail |  _: End | _: IfNonZeroReturnCodeGoto | _: Goto | _: Retry)  ⇒
+          case o @ _ @: (_: Fail |  _: End | _: IfNonZeroReturnCodeGoto | _: Goto | _: Retry)  =>
             o
 
-          case Labeled(labels, _) ⇒
+          case Labeled(labels, _) =>
             Labeled(labels, Gap)
         }))
   }

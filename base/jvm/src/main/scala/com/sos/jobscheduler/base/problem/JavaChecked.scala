@@ -18,20 +18,20 @@ final case class JavaChecked[A](checked: Checked[A])
   def get: A =
     try checked.orThrow
     catch { // Don't throw undeclared unchecked exception
-      case t @ (_: RuntimeException | _: Error) ⇒ throw t
-      case t: Throwable ⇒ throw new RuntimeException(t.toSimplifiedString, t)
+      case t @ (_: RuntimeException | _: Error) => throw t
+      case t: Throwable => throw new RuntimeException(t.toSimplifiedString, t)
     }
 
   def toOptional: Optional[A] =
     checked match {
-      case Valid(a) ⇒ Optional.of(a)
-      case Invalid(_) ⇒ Optional.empty[A]
+      case Valid(a) => Optional.of(a)
+      case Invalid(_) => Optional.empty[A]
     }
 
   def problem: Optional[Problem] =
     checked match {
-      case Valid(_) ⇒ Optional.empty[Problem]
-      case Invalid(problem) ⇒ Optional.of(problem)
+      case Valid(_) => Optional.empty[Problem]
+      case Invalid(problem) => Optional.of(problem)
     }
 }
 

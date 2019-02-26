@@ -37,7 +37,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
   }
 
   "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-    for ((uri, None) ← Setting) s"$uri" in {
+    for ((uri, None) <- Setting) s"$uri" in {
       assert(agentClient.checkAgentUri(uri).isInvalid)
       assert(agentClient.toCheckedAgentUri(uri).isInvalid)
       assert(Await.result(agentClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
@@ -46,7 +46,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
   }
 
   "normalizeAgentUri" - {
-    for ((uri, Some(converted)) ← Setting) s"$uri" in {
+    for ((uri, Some(converted)) <- Setting) s"$uri" in {
       assert(agentClient.normalizeAgentUri(uri) == converted)
       assert(agentClient.toCheckedAgentUri(uri) == Valid(converted))
     }
@@ -95,30 +95,30 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
 
 object AkkaHttpClientTest {
   private val Setting = List[(Uri, Option[Uri])](
-    Uri("http://example.com:9999") →
+    Uri("http://example.com:9999") ->
       None,
-    Uri("http://example.com:9999/PREFIX/api") →
+    Uri("http://example.com:9999/PREFIX/api") ->
       None,
-    Uri("https://example.net:9999/PREFIX/api") →
+    Uri("https://example.net:9999/PREFIX/api") ->
       None,
-    Uri("https://example.com:7777/PREFIX/api") →
+    Uri("https://example.com:7777/PREFIX/api") ->
       None,
-    Uri("https://example.com:9999/jobscheduler/invalid") →
+    Uri("https://example.com:9999/jobscheduler/invalid") ->
       None,
-    Uri("https://example.com:9999/jobscheduler/invalid/api") →
+    Uri("https://example.com:9999/jobscheduler/invalid/api") ->
       None,
-    Uri("//example.com:9999/PREFIX/api") →
+    Uri("//example.com:9999/PREFIX/api") ->
       None,
-    Uri("https:/PREFIX/api") →
+    Uri("https:/PREFIX/api") ->
       None,
-    Uri("/jobscheduler/invalid") →
+    Uri("/jobscheduler/invalid") ->
       None,
-    Uri("https://example.com:9999/PREFIX") →
+    Uri("https://example.com:9999/PREFIX") ->
       Some(Uri("https://example.com:9999/PREFIX")),
-    Uri("https://example.com:9999/PREFIX/api?q=1") →
+    Uri("https://example.com:9999/PREFIX/api?q=1") ->
       Some(Uri("https://example.com:9999/PREFIX/api?q=1")),
-    Uri("/PREFIX") →
+    Uri("/PREFIX") ->
       Some(Uri("https://example.com:9999/PREFIX")),
-    Uri("/PREFIX/api?q=1") →
+    Uri("/PREFIX/api?q=1") ->
       Some(Uri("https://example.com:9999/PREFIX/api?q=1")))
 }

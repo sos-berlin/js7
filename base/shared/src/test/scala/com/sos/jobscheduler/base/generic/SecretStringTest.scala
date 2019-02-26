@@ -31,12 +31,12 @@ final class SecretStringTest extends FreeSpec {
     val secret2 = SecretString(Random.nextString(100000))
     val n = 100
 
-    def meter(body: ⇒ Boolean) = {
+    def meter(body: => Boolean) = {
       val t = nanoTime
-      for (_ ← 1 to n) body
+      for (_ <- 1 to n) body
       nanoTime - t
     }
-    val times = for (_ ← 1 to 10) yield (meter(secret1.string == secret2.string), meter(secret1 == secret2))
+    val times = for (_ <- 1 to 10) yield (meter(secret1.string == secret2.string), meter(secret1 == secret2))
     assert(times.map(_._1).sum < 10 * times.map(_._2).sum)
   }
 }

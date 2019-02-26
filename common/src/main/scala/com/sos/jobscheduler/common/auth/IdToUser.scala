@@ -29,10 +29,10 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class IdToUser[U <: User](
-  userIdToRaw: UserId ⇒ Option[RawUserAccount],
-  toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
+  userIdToRaw: UserId => Option[RawUserAccount],
+  toUser: (UserId, HashedPassword, Set[Permission]) => U,
   toPermission: PartialFunction[String, Permission])
-extends (UserId ⇒ Option[U]) {
+extends (UserId => Option[U]) {
 
   private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty, Set.empty))
 
@@ -40,10 +40,10 @@ extends (UserId ⇒ Option[U]) {
     if (userId.isAnonymous)
       someAnonymous
     else
-      userIdToRaw(userId).flatMap(o ⇒ rawToUser(userId, o))
+      userIdToRaw(userId).flatMap(o => rawToUser(userId, o))
 
   private def rawToUser(userId: UserId, raw: RawUserAccount): Option[U] =
-    for (hashedPassword ← toHashedPassword(userId, raw.encodedPassword))
+    for (hashedPassword <- toHashedPassword(userId, raw.encodedPassword))
       yield toUser(userId, hashedPassword.hashAgainRandom, raw.permissions.map(toPermission.lift).flatten)
 }
 
@@ -54,7 +54,7 @@ object IdToUser {
 
   def fromConfig[U <: User](
     config: Config,
-    toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
+    toUser: (UserId, HashedPassword, Set[Permission]) => U,
     toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
   : IdToUser[U] = {
     val cfg = config.getConfig(UsersConfigPath)
@@ -69,16 +69,16 @@ object IdToUser {
 
     def existentUserIdToRaw(userId: UserId) =
       Try(cfg.getConfig(userId.string)) match {
-        case Failure(_: com.typesafe.config.ConfigException.WrongType) ⇒  // Entry is not a configuration object {...} but a string (the password)
-          cfg.optionAs[SecretString](userId.string) map (o ⇒
+        case Failure(_: com.typesafe.config.ConfigException.WrongType) =>  // Entry is not a configuration object {...} but a string (the password)
+          cfg.optionAs[SecretString](userId.string) map (o =>
             RawUserAccount(encodedPassword = o, permissions = Set.empty))
 
-        case Failure(t) ⇒
+        case Failure(t) =>
           throw t
 
-        case Success(c) ⇒
+        case Success(c) =>
           for {
-            encodedPassword ← c.optionAs[SecretString]("password")
+            encodedPassword <- c.optionAs[SecretString]("password")
             permissions = c.hasPath("permissions").thenList(c.getStringList("permissions").asScala).flatten.toSet
           } yield RawUserAccount(encodedPassword = encodedPassword, permissions = permissions)
       }
@@ -86,22 +86,22 @@ object IdToUser {
     new IdToUser(userIdToRaw, toUser, toPermission)
   }
 
-  private val sha512Hasher = { o: String ⇒ sha512.hashString(o: String, UTF_8).toString } withToString "sha512"
-  private val identityHasher = { o: String ⇒ identity(o) } withToString "identity"
+  private val sha512Hasher = { o: String => sha512.hashString(o: String, UTF_8).toString } withToString "sha512"
+  private val identityHasher = { o: String => identity(o) } withToString "identity"
 
   private def toHashedPassword(userId: UserId, encodedPassword: SecretString) =
     encodedPassword.string match {
-      case EntryRegex("plain", pw) ⇒
+      case EntryRegex("plain", pw) =>
         Some(HashedPassword(SecretString(pw), identityHasher))
 
-      case EntryRegex("sha512", pw) ⇒
+      case EntryRegex("sha512", pw) =>
         Some(HashedPassword(SecretString(pw), sha512Hasher))
 
-      case EntryRegex(_, _) ⇒
+      case EntryRegex(_, _) =>
         logger.error(s"Unknown password encoding scheme for user '$userId'")
         None
 
-      case _ ⇒
+      case _ =>
         logger.error(s"Missing password encoding scheme for user '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
         None
     }

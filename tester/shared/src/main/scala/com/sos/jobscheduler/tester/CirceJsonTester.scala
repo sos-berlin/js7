@@ -15,7 +15,7 @@ object CirceJsonTester {
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit =
     testJson(a, parseJson(jsonString))
 
-  def testJson[A: Encoder: Decoder](a: A, json: ⇒ Json): Unit = {
+  def testJson[A: Encoder: Decoder](a: A, json: => Json): Unit = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
     if (asJson != json) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(json))}")
@@ -30,29 +30,29 @@ object CirceJsonTester {
 
   private def rightOrThrow[R](either: Either[Throwable, R]): R =
     either match {
-      case Right(o) ⇒ o
-      case Left(t) ⇒ throw new RuntimeException(t.toString, t)   // Add stacktrace
+      case Right(o) => o
+      case Left(t) => throw new RuntimeException(t.toString, t)   // Add stacktrace
     }
 
   private def normalize(json: Json): Json =
     json.asObject match {
-      case Some(o) ⇒ Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) ⇒ k → normalize(v) })
-      case None ⇒
+      case Some(o) => Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) => k -> normalize(v) })
+      case None =>
         json.asArray match {
-          case Some(o) ⇒ Json.fromValues(o map normalize)
-          case None ⇒ json
+          case Some(o) => Json.fromValues(o map normalize)
+          case None => json
         }
     }
 
   private def removeJNull(json: Json): Json =
     json.asObject match {
-      case Some(o) ⇒ Json.fromFields(o.toMap collect {
-        case (k, v) if !v.isNull ⇒ k → removeJNull(v)
+      case Some(o) => Json.fromFields(o.toMap collect {
+        case (k, v) if !v.isNull => k -> removeJNull(v)
       })
-      case None ⇒
+      case None =>
         json.asArray match {
-          case Some(elements) ⇒ Json.fromValues(elements map removeJNull)
-          case None ⇒ json
+          case Some(elements) => Json.fromValues(elements map removeJNull)
+          case None => json
         }
     }
 }

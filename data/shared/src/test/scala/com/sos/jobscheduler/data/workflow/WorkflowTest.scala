@@ -27,7 +27,7 @@ final class WorkflowTest extends FreeSpec {
       testJson[Workflow](
         Workflow(WorkflowPath.NoId,
           Vector(Execute(WorkflowJob.Name("JOB"))),
-          Map(WorkflowJob.Name("JOB") → WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
+          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))),
         json"""{
           "instructions": [
             {
@@ -175,20 +175,20 @@ final class WorkflowTest extends FreeSpec {
     val END = Label("END")
 
     val instructions = Vector[(Instruction.Labeled, Boolean)](
-      (()  @: job)              → true,
-      (()  @: Goto(B))          → true,
-      (C   @: job)              → true,
-      (()  @: Goto(D))          → true,   // reducible?
-      (()  @: IfNonZeroReturnCodeGoto(D))  → false,  // reducible
-      (()  @: Goto(D))          → false,  // reducible
-      (D   @: job)              → true,
-      (()  @: Goto(END))        → false,  // reducible
-      (END @: ExplicitEnd)      → true,
-      (B   @: job)              → true,
-      (()  @: Goto(C))          → true)
+      (()  @: job)              -> true,
+      (()  @: Goto(B))          -> true,
+      (C   @: job)              -> true,
+      (()  @: Goto(D))          -> true,   // reducible?
+      (()  @: IfNonZeroReturnCodeGoto(D))  -> false,  // reducible
+      (()  @: Goto(D))          -> false,  // reducible
+      (D   @: job)              -> true,
+      (()  @: Goto(END))        -> false,  // reducible
+      (END @: ExplicitEnd)      -> true,
+      (B   @: job)              -> true,
+      (()  @: Goto(C))          -> true)
     val id = WorkflowPath("/WORKFLOW") % "VERSION"
     val a = Workflow(id, instructions map (_._1))
-    assert(a.reduce == Workflow(id, instructions collect { case (s, true) ⇒ s }))
+    assert(a.reduce == Workflow(id, instructions collect { case (s, true) => s }))
   }
 
   "numberedInstruction" in {
@@ -202,11 +202,11 @@ final class WorkflowTest extends FreeSpec {
 
   "flattendWorkflows" in {
     assert(TestWorkflow.flattenedWorkflows == Map(
-      Nil → TestWorkflow,
-      (Position(1) / Then) → TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
-      (Position(1) / Else) → TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,
-      (Position(2) / "🥕") → TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
-      (Position(2) / "🍋") → TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
+      Nil -> TestWorkflow,
+      (Position(1) / Then) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
+      (Position(1) / Else) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,
+      (Position(2) / "🥕") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
+      (Position(2) / "🍋") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
     ))
   }
 
@@ -242,7 +242,7 @@ final class WorkflowTest extends FreeSpec {
     }
 
     "Known job" in {
-      val workflow = wrongWorkflow.copy(nameToJob = Map(AJobName → AJob))
+      val workflow = wrongWorkflow.copy(nameToJob = Map(AJobName -> AJob))
       assert(workflow.completelyChecked == Valid(workflow))
     }
 
@@ -274,20 +274,20 @@ final class WorkflowTest extends FreeSpec {
 
   "namedJobs" in {
     assert(TestWorkflow.nameToJob == Map(
-      AJobName → AJob,
-      BJobName → BJob))
+      AJobName -> AJob,
+      BJobName -> BJob))
   }
 
   "keyToJob" in {
     assert(TestWorkflow.keyToJob == Map(
-      JobKey(TestWorkflow.id /: Position(0)) → AExecute.job,
-      JobKey(WorkflowBranchPath(TestWorkflow.id, Position(1) / Then), BJobName) → B1Job,
-      JobKey(TestWorkflow.id /: (Position(1) / Else % 0)) → BExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🥕" % 0)) → AExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🍋" % 0)) → BExecute.job,
-      JobKey(TestWorkflow.id /: Position(3)) → BExecute.job,
-      JobKey(TestWorkflow.id, AJobName) → AJob,
-      JobKey(TestWorkflow.id, BJobName) → BJob))
+      JobKey(TestWorkflow.id /: Position(0)) -> AExecute.job,
+      JobKey(WorkflowBranchPath(TestWorkflow.id, Position(1) / Then), BJobName) -> B1Job,
+      JobKey(TestWorkflow.id /: (Position(1) / Else % 0)) -> BExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) /  "🥕" % 0)) -> AExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) /  "🍋" % 0)) -> BExecute.job,
+      JobKey(TestWorkflow.id /: Position(3)) -> BExecute.job,
+      JobKey(TestWorkflow.id, AJobName) -> AJob,
+      JobKey(TestWorkflow.id, BJobName) -> BJob))
   }
 
   "anonymousJobKey" in {
@@ -310,8 +310,8 @@ final class WorkflowTest extends FreeSpec {
 
   "isDefinedAt, instruction" in {
     val addressToInstruction = List(
-      Position(0) → AExecute,
-      Position(1) → TestWorkflow.instruction(1),
+      Position(0) -> AExecute,
+      Position(1) -> TestWorkflow.instruction(1),
       Position(1) / Then % 0 -> Execute.Named(AJobName),
       Position(1) / Then % 1 -> Execute.Named(BJobName),
       Position(1) / Else % 0 -> BExecute,
@@ -322,10 +322,10 @@ final class WorkflowTest extends FreeSpec {
       Position(2) / "🍋" % 0 -> BExecute,
       Position(2) / "🍋" % 1 -> Execute.Named(BJobName),
       Position(2) / "🍋" % 2 -> ImplicitEnd,
-      Position(3) → BExecute,
-      Position(4) → ImplicitEnd)
+      Position(3) -> BExecute,
+      Position(4) -> ImplicitEnd)
 
-    for ((address, instruction) ← addressToInstruction) {
+    for ((address, instruction) <- addressToInstruction) {
       assert(TestWorkflow isDefinedAt address)
       assert(TestWorkflow.instruction(address) == instruction, s" - $address")
     }
@@ -395,19 +395,19 @@ private object WorkflowTest
             Execute.Named(AJobName),
             Execute.Named(BJobName)),
           Map(
-            BJobName → B1Job)),
+            BJobName -> B1Job)),
         elseWorkflow = Some(Workflow.of(
           BExecute))),
       Fork.of(
-        "🥕" → Workflow.of(
+        "🥕" -> Workflow.of(
           AExecute,
           Execute.Named(AJobName)),
-        "🍋" → Workflow.of(
+        "🍋" -> Workflow.of(
           BExecute,
           Execute.Named(BJobName))),
       BExecute),
     Map(
-      AJobName → AJob,
-      BJobName → BJob)
+      AJobName -> AJob,
+      BJobName -> BJob)
   )
 }

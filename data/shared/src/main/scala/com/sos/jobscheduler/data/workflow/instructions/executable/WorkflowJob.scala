@@ -33,9 +33,9 @@ final case class WorkflowJob private(
 
   override def toString = s"Job(agent=${agentRefPath.string}, executable=${executablePath.string}" + (
     returnCodeMeaning match {
-      case ReturnCodeMeaning.Default ⇒ ""
-      case ReturnCodeMeaning.Success(returnCodes) ⇒ s", successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
-      case ReturnCodeMeaning.Failure(returnCodes) ⇒ s", failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
+      case ReturnCodeMeaning.Default => ""
+      case ReturnCodeMeaning.Success(returnCodes) => s", successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
+      case ReturnCodeMeaning.Failure(returnCodes) => s", failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
     }) +
     ")"
 }
@@ -73,26 +73,26 @@ object WorkflowJob
   }
 
   /** To be used in Workflow with known WorkflowId. */
-  implicit val jsonEncoder: ObjectEncoder[WorkflowJob] = workflowJob ⇒
+  implicit val jsonEncoder: ObjectEncoder[WorkflowJob] = workflowJob =>
     JsonObject.fromIterable(
       //(workflowJob.jobKey match {
-      //  case JobKey.Named(_, name) ⇒ ("name" → name.asJson) :: Nil
-      //  case _ ⇒ Nil
+      //  case JobKey.Named(_, name) => ("name" -> name.asJson) :: Nil
+      //  case _ => Nil
       //}) :::
-      ("agentRefPath" → workflowJob.agentRefPath.asJson) ::
-      ("executablePath" → workflowJob.executablePath.asJson) ::
-      workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" → workflowJob.defaultArguments.asJson) :::
-      (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" → workflowJob.returnCodeMeaning.asJson)) :::
-      ("taskLimit" → workflowJob.taskLimit.asJson) ::
+      ("agentRefPath" -> workflowJob.agentRefPath.asJson) ::
+      ("executablePath" -> workflowJob.executablePath.asJson) ::
+      workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
+      (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
+      ("taskLimit" -> workflowJob.taskLimit.asJson) ::
       Nil)
-  implicit val jsonDecoder: Decoder[WorkflowJob] = cursor ⇒
+  implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
-      //name ← cursor.get[Option[Name]]("name") map (_ getOrElse Name.Anonymous)
-      executablePath ← cursor.get[ExecutablePath]("executablePath")
-      agentRefPath ← cursor.get[AgentRefPath]("agentRefPath")
-      arguments ← cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
-      rc ← cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-      taskLimit ← cursor.get[Int]("taskLimit")
-      job ← checked(agentRefPath, executablePath, arguments, rc, taskLimit).toDecoderResult
+      //name <- cursor.get[Option[Name]]("name") map (_ getOrElse Name.Anonymous)
+      executablePath <- cursor.get[ExecutablePath]("executablePath")
+      agentRefPath <- cursor.get[AgentRefPath]("agentRefPath")
+      arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
+      rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
+      taskLimit <- cursor.get[Int]("taskLimit")
+      job <- checked(agentRefPath, executablePath, arguments, rc, taskLimit).toDecoderResult
     } yield job
 }

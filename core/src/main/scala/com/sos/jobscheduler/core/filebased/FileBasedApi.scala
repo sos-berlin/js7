@@ -22,7 +22,7 @@ trait FileBasedApi
   def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]]
 
   def paths[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A#Path]]] =
-    for (o ← fileBaseds) yield
+    for (o <- fileBaseds) yield
       o map (_ map (_.path))
 }
 
@@ -40,7 +40,7 @@ object FileBasedApi {
 
       def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
         Task(
-          for (a ← pathTo[A].checked(path))
+          for (a <- pathTo[A].checked(path))
             yield Stamped(3, a))
 
       def pathTo[A <: FileBased] = pathToFileBased.asInstanceOf[Map[A#Path, A]]

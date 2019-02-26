@@ -53,22 +53,22 @@ object Instruction {
   final case class Labeled(labels: Seq[Label], instruction: Instruction) {
     override def toString = labelsString + instruction
 
-    def labelsString = labels.map(o ⇒ s"$o: ").mkString
+    def labelsString = labels.map(o => s"$o: ").mkString
   }
   object Labeled {
     implicit def jsonEncoder(implicit instrEncoder: ObjectEncoder[Instruction]): ObjectEncoder[Labeled] = {
-      case Labeled(Seq(), instruction) ⇒
+      case Labeled(Seq(), instruction) =>
         instruction.asJsonObject
-      case Labeled(labels, instruction) ⇒
-        ("labels" → labels.asJson) +: instruction.asJsonObject
+      case Labeled(labels, instruction) =>
+        ("labels" -> labels.asJson) +: instruction.asJsonObject
     }
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =
-      cursor ⇒ for {
-        instruction ← cursor.as[Instruction]
-        labels ← cursor.get[Json]("labels") match {
-          case Right(json) ⇒ json.as[Seq[Label]]
-          case Left(_) ⇒ Right(Nil)
+      cursor => for {
+        instruction <- cursor.as[Instruction]
+        labels <- cursor.get[Json]("labels") match {
+          case Right(json) => json.as[Seq[Label]]
+          case Left(_) => Right(Nil)
         }
       } yield Labeled(labels, instruction)
   }

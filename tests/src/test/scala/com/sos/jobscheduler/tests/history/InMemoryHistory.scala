@@ -15,20 +15,20 @@ final class InMemoryHistory {
 
   def handleFatEvent(stampedEvent: Stamped[KeyedEvent[FatEvent]]): Unit = {
     stampedEvent.value match {
-      case (orderId: OrderId) <-: (event: OrderFatEvent) ⇒ handleOrderFatEvent(stampedEvent.copy(value = orderId <-: event))
-      case _ ⇒
+      case (orderId: OrderId) <-: (event: OrderFatEvent) => handleOrderFatEvent(stampedEvent.copy(value = orderId <-: event))
+      case _ =>
     }
   }
 
   private def handleOrderFatEvent(stampedEvent: Stamped[KeyedEvent[OrderFatEvent]]): Unit = {
     val Stamped(_, timestamp, KeyedEvent(orderId, event)) = stampedEvent
     event match {
-      case OrderAddedFat(workflowPosition, scheduledFor, variables) ⇒
+      case OrderAddedFat(workflowPosition, scheduledFor, variables) =>
         idToOrderEntry.get(orderId) match {
-          case None ⇒
+          case None =>
             idToOrderEntry(orderId) = OrderEntry(orderId, None, variables, OrderEntry.Cause.Added, Some(workflowPosition), scheduledFor = scheduledFor)
 
-          case Some(existing) ⇒
+          case Some(existing) =>
             idToOrderEntry(orderId) = existing.copy(
               parent = None,
               startWorkflowPosition = Some(workflowPosition),
@@ -37,13 +37,13 @@ final class InMemoryHistory {
               endWorkflowPosition = None)
         }
 
-      case OrderForkedFat(workflowPosition, children) ⇒
-        for (child ← children) {
+      case OrderForkedFat(workflowPosition, children) =>
+        for (child <- children) {
           idToOrderEntry.get(child.orderId) match {
-            case None ⇒
+            case None =>
               idToOrderEntry(child.orderId) = OrderEntry(child.orderId, Some(orderId), child.variables, OrderEntry.Cause.Forked, Some(workflowPosition), None)
 
-            case Some(existing) ⇒
+            case Some(existing) =>
               idToOrderEntry(child.orderId) = existing.copy(
                 parent = Some(orderId),
                 startWorkflowPosition = Some(workflowPosition),
@@ -53,17 +53,17 @@ final class InMemoryHistory {
           }
         }
 
-      case OrderJoinedFat(childOrderIds, variables, outcome) ⇒
-        for (id ← childOrderIds) {
+      case OrderJoinedFat(childOrderIds, variables, outcome) =>
+        for (id <- childOrderIds) {
           idToOrderEntry(id) = idToOrderEntry(id).copy(finishedAt = Some(timestamp))
         }
 
-      case OrderFinishedFat(workflowPosition) ⇒
+      case OrderFinishedFat(workflowPosition) =>
         idToOrderEntry(orderId) = idToOrderEntry(orderId).copy(
           finishedAt = Some(timestamp),
           endWorkflowPosition = Some(workflowPosition))
 
-      case OrderProcessingStartedFat(workflowPosition, agentRefPath, agentUri, jobPath, variables) ⇒
+      case OrderProcessingStartedFat(workflowPosition, agentRefPath, agentUri, jobPath, variables) =>
         var entry = idToOrderEntry(orderId)
         if (entry.startedAt.isEmpty) {
           entry = entry.copy(
@@ -73,10 +73,10 @@ final class InMemoryHistory {
         idToOrderEntry(orderId) = entry.copy(
           steps = entry.steps :+ OrderStepEntry(orderId, workflowPosition, agentUri, jobPath, variables, timestamp))
 
-      case OrderProcessedFat(outcome, variables) ⇒
+      case OrderProcessedFat(outcome, variables) =>
         idToOrderEntry(orderId) = idToOrderEntry(orderId).updateLastStep(timestamp, outcome, variables)
 
-      case OrderStdWrittenFat(t, chunk) ⇒
+      case OrderStdWrittenFat(t, chunk) =>
         idToOrderEntry(orderId) = idToOrderEntry(orderId).addToLog(t, chunk)
     }
   }

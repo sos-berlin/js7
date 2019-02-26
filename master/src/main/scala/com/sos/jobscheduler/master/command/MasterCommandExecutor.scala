@@ -28,7 +28,7 @@ extends CommandExecutor[MasterCommand]
     val run = register.add(command, batchId)
     logCommand(run)
     executeCommand2(command, meta, run.internalId, batchId)
-      .map { checkedResponse ⇒
+      .map { checkedResponse =>
         if (run.batchInternalId.isEmpty || checkedResponse != Valid(MasterCommand.Response.Accepted)) {
           logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${(now - run.startedAt).pretty}): $checkedResponse")
         }
@@ -40,24 +40,24 @@ extends CommandExecutor[MasterCommand]
   private def executeCommand2(command: MasterCommand, meta: CommandMeta, id: InternalCommandId, batchId: Option[InternalCommandId])
   : Task[Checked[MasterCommand.Response]] =
     command match {
-      case Batch(commands) ⇒
-        val tasks = for (c ← commands) yield executeCommand(c, meta, batchId orElse Some(id))
-        Task.sequence(tasks) map (checkedResponses ⇒ Valid(Batch.Response(checkedResponses)))
+      case Batch(commands) =>
+        val tasks = for (c <- commands) yield executeCommand(c, meta, batchId orElse Some(id))
+        Task.sequence(tasks) map (checkedResponses => Valid(Batch.Response(checkedResponses)))
 
-      case NoOperation ⇒
+      case NoOperation =>
         Task.pure(Valid(MasterCommand.Response.Accepted))
 
-      case EmergencyStop ⇒
+      case EmergencyStop =>
         Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
 
-      case _ ⇒
+      case _ =>
         otherCommandExecutor.executeCommand(command, meta)
     }
 
   private def logCommand(run: CommandRun[MasterCommand]): Unit =
     run.command match {
-      case Batch(_) ⇒   // Log only individual commands
-      case _ ⇒ logger.info(run.toString)
+      case Batch(_) =>   // Log only individual commands
+      case _ => logger.info(run.toString)
     }
 
   def overview: CommandHandlerOverview =

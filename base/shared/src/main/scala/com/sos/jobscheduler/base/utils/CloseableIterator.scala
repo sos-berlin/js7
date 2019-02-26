@@ -18,10 +18,10 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
   /** Automatically closes the `CloseableIterator` when `hasNext` becomes false. */
   def closeAtEnd: CloseableIterator[A] =
     this match {
-      case _: CloseAtEnd[A] ⇒
+      case _: CloseAtEnd[A] =>
         this
 
-      case _ ⇒
+      case _ =>
         if (hasNext)
           new CloseAtEnd[A](this)
         else {
@@ -30,39 +30,39 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
         }
     }
 
-  def :+[B >: A](b: ⇒ B) = wrap(this ++ Iterator(b))
+  def :+[B >: A](b: => B) = wrap(this ++ Iterator(b))
 
-  def +:[B >: A](b: ⇒ B) = wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
+  def +:[B >: A](b: => B) = wrap(CloseableIterator.fromIterator(Iterator(b)) ++ this)
 
-  def ++[B >: A](b: ⇒ CloseableIterator[B]): CloseableIterator[B] =
+  def ++[B >: A](b: => CloseableIterator[B]): CloseableIterator[B] =
     new Concatenated(this, b)
 
   override def take(n: Int): CloseableIterator[A] =
     wrap(super.take(n))
 
-  override def takeWhile(p: A ⇒ Boolean): CloseableIterator[A] =
+  override def takeWhile(p: A => Boolean): CloseableIterator[A] =
     wrap(super.takeWhile(p))
 
   override def drop(n: Int): CloseableIterator[A] =
     wrap(super.drop(n))
 
-  override def dropWhile(p: A ⇒ Boolean): CloseableIterator[A] =
+  override def dropWhile(p: A => Boolean): CloseableIterator[A] =
     wrap(super.dropWhile(p))
 
-  override def filter(p: A ⇒ Boolean): CloseableIterator[A] =
+  override def filter(p: A => Boolean): CloseableIterator[A] =
     wrap(super.filter(p))
 
-  override def map[B](f: A ⇒ B): CloseableIterator[B] =
+  override def map[B](f: A => B): CloseableIterator[B] =
     wrap(super.map(f))
 
-  override def flatMap[B](f: A ⇒ GenTraversableOnce[B]): CloseableIterator[B] =
+  override def flatMap[B](f: A => GenTraversableOnce[B]): CloseableIterator[B] =
     wrap(super.flatMap(f))
 
   override def collect[B](pf: PartialFunction[A, B]): CloseableIterator[B] =
     wrap(super.collect[B](pf))
 
   /** Side-effect after successful close. */
-  final def onClosed(sideEffect: ⇒ Unit): CloseableIterator[A] =
+  final def onClosed(sideEffect: => Unit): CloseableIterator[A] =
     new CloseableIterator[A] {
       def close() = {
         CloseableIterator.this.close()
@@ -92,11 +92,11 @@ object CloseableIterator {
 
   def apply[A](as: A*) = fromIterator(as.iterator)
 
-  def fromCloseable[C <: AutoCloseable, A](closeable: C)(toIterator: C ⇒ Iterator[A]): CloseableIterator[A] =
+  def fromCloseable[C <: AutoCloseable, A](closeable: C)(toIterator: C => Iterator[A]): CloseableIterator[A] =
     try fromIterator(toIterator(closeable)) onClosed { closeable.close() }
-    catch { case NonFatal(t) ⇒  // TODO Use AutoClosable.closeOnError
+    catch { case NonFatal(t) =>  // TODO Use AutoClosable.closeOnError
       try closeable.close()
-      catch { case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt) }
+      catch { case NonFatal(tt) if tt ne t => t.addSuppressed(tt) }
       throw t
     }
 
@@ -118,10 +118,10 @@ object CloseableIterator {
     def next() =
       try underlying.next()
       catch {
-        case t: NoSuchElementException ⇒
+        case t: NoSuchElementException =>
           try underlying.close()
           catch {
-            case NonFatal(tt) if tt ne t ⇒ t.addSuppressed(tt)
+            case NonFatal(tt) if tt ne t => t.addSuppressed(tt)
           }
           throw t
       }
@@ -131,7 +131,7 @@ object CloseableIterator {
     override def toString = s"CloseableIterator.CloseAtEnd($underlying)"
   }
 
-  private class Concatenated[A, B >: A](a: CloseableIterator[A], lazyB: ⇒ CloseableIterator[B])
+  private class Concatenated[A, B >: A](a: CloseableIterator[A], lazyB: => CloseableIterator[B])
   extends CloseableIterator[B]
   {
     private lazy val b = lazyB

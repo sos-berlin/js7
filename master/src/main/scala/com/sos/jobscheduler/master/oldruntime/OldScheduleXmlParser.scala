@@ -9,15 +9,15 @@ import javax.xml.stream.XMLEventReader
 object OldScheduleXmlParser{
 
   private implicit val StringAsDayOfWeek = As[String, DayOfWeek](
-    (for (dayOfWeek ← DayOfWeek.values) yield dayOfWeek.toString.toLowerCase → dayOfWeek).toMap)
-  private implicit val StringAsZoneId = As[String, ZoneId](o ⇒ ZoneId.of(o))
+    (for (dayOfWeek <- DayOfWeek.values) yield dayOfWeek.toString.toLowerCase -> dayOfWeek).toMap)
+  private implicit val StringAsZoneId = As[String, ZoneId](o => ZoneId.of(o))
 
   private implicit val StringAsLocalTime: As[String, LocalTime] = {
     val ParseRegex = """([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?""".r
     As {
-      case ParseRegex(hours, minutes, seconds) ⇒
+      case ParseRegex(hours, minutes, seconds) =>
         LocalTime.of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
-      case o ⇒ throw new IllegalArgumentException(s"Not a local time: '$o'")
+      case o => throw new IllegalArgumentException(s"Not a local time: '$o'")
     }
   }
 
@@ -26,16 +26,16 @@ object OldScheduleXmlParser{
     import eventReader._
 
     def parsePeriodSeq(): PeriodSeq =
-      PeriodSeq(parseElements[Period] { case _ ⇒
+      PeriodSeq(parseElements[Period] { case _ =>
         parsePeriod()
       } map { _._2 })
 
     def parsePeriod(): Period =
       parseElement("period") {
         attributeMap.optionAs[LocalTime]("single_start") match {
-          case Some(singleStart) ⇒
+          case Some(singleStart) =>
             SingleStartPeriod(singleStart)
-          case None ⇒
+          case None =>
             RepeatPeriod(
               begin = attributeMap.as[LocalTime]("begin", LocalTime.MIN),
               end = attributeMap.as[ExtendedLocalTime]("end", ExtendedLocalTime.EndOfDay),
@@ -57,7 +57,7 @@ object OldScheduleXmlParser{
           parseElement("weekdays") {
             parseEachRepeatingElement[(DayOfWeek, PeriodSeq)]("day") {
               val dayOfWeek = attributeMap.as[DayOfWeek]("day")
-              dayOfWeek → parsePeriodSeq()
+              dayOfWeek -> parsePeriodSeq()
             }
           } .toMap)
     }

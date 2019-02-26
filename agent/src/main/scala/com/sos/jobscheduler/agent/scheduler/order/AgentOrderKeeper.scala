@@ -98,7 +98,7 @@ extends MainJournalingActor[Event] with Stash {
       if (!_terminating) {
         _terminating = true
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-        for (a ← jobRegister.values) a.actor ! terminate
+        for (a <- jobRegister.values) a.actor ! terminate
         stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillTerminating
         })
@@ -124,7 +124,7 @@ extends MainJournalingActor[Event] with Stash {
         if (snapshotTaken && jobRegister.isEmpty) {
           if (orderRegister.nonEmpty && !terminatingOrders) {
             terminatingOrders = true
-            for (o ← orderRegister.values if !o.detaching) {
+            for (o <- orderRegister.values if !o.detaching) {
               o.actor ! OrderActor.Input.Terminate
             }
           } else
@@ -146,12 +146,12 @@ extends MainJournalingActor[Event] with Stash {
     val recoverer = new OrderJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     val state = recoverer.state
-    for (workflow ← state.idToWorkflow.values)
+    for (workflow <- state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
         workflowRegister.recover(workflow)
         startJobActors(workflow)
       }
-    for (recoveredOrder ← state.idToOrder.values)
+    for (recoveredOrder <- state.idToOrder.values)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
         val order = workflowRegister.reuseMemory(recoveredOrder)
         val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
@@ -172,57 +172,57 @@ extends MainJournalingActor[Event] with Stash {
   def snapshots = Future.successful(workflowRegister.workflows)
 
   def receive = {
-    case OrderActor.Output.RecoveryFinished(order) ⇒
+    case OrderActor.Output.RecoveryFinished(order) =>
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
 
-    case JournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault.getId)) { _ ⇒
+      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault.getId)) { _ =>
         become("ready")(ready)
         unstashAll()
         logger.info("Ready")
       }
 
-    case _: AgentCommand.Terminate ⇒
+    case _: AgentCommand.Terminate =>
       logger.info("Command 'Terminate' terminates Agent while recovering")
       context.stop(self)
       sender() ! AgentCommand.Response.Accepted
 
-    case _ ⇒
+    case _ =>
       stash()
   }
 
   private def ready: Receive = {
-    case Input.ExternalCommand(cmd, response) ⇒
+    case Input.ExternalCommand(cmd, response) =>
       response.completeWith(processOrderCommand(cmd))
 
-    case Input.GetEventWatch ⇒
+    case Input.GetEventWatch =>
       sender() ! eventWatch
 
-    case terminate: AgentCommand.Terminate ⇒
+    case terminate: AgentCommand.Terminate =>
       termination.start(terminate)
       sender() ! AgentCommand.Response.Accepted
 
-    case JournalActor.Output.SnapshotTaken ⇒
+    case JournalActor.Output.SnapshotTaken =>
       termination.onSnapshotTaken()
 
-    case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
+    case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id =>
       if (!terminating) {
         handleOrderEvent(order, event)
         (event, orderRegister(order.id).instruction) match {
-          case (_: OrderStarted, _: Execute) ⇒  // Special for OrderActor: it issues immediately an OrderProcessingStarted
-          case _ ⇒
+          case (_: OrderStarted, _: Execute) =>  // Special for OrderActor: it issues immediately an OrderProcessingStarted
+          case _ =>
             proceedWithOrder(order.id)
         }
       }
 
-    case JobActor.Output.ReadyForOrder if jobRegister contains sender() ⇒
+    case JobActor.Output.ReadyForOrder if jobRegister contains sender() =>
       if (!terminating) {
         tryStartProcessing(jobRegister(sender()))
       }
 
-    case Internal.ContinueAttachOrder(order, workflow, promise) ⇒
+    case Internal.ContinueAttachOrder(order, workflow, promise) =>
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
           Future.successful(Invalid(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
@@ -234,118 +234,118 @@ extends MainJournalingActor[Event] with Stash {
           Future.successful(Invalid(AgentIsShuttingDownProblem))
         else
           attachOrder(workflowRegister.reuseMemory(order), workflow)
-            .map((_: Completed) ⇒ Valid(Response.Accepted))
+            .map((_: Completed) => Valid(Response.Accepted))
       }
 
-    case Internal.Due(orderId) if orderRegister contains orderId ⇒
+    case Internal.Due(orderId) if orderRegister contains orderId =>
       onOrderFreshOrReady(orderRegister(orderId))
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
-    case AttachOrder(order, signedWorkflowString) if !terminating ⇒
+    case AttachOrder(order, signedWorkflowString) if !terminating =>
       order.attached match {
-        case Invalid(problem) ⇒ Future.successful(Invalid(problem))
-        case Valid(agentRefPath) ⇒
+        case Invalid(problem) => Future.successful(Invalid(problem))
+        case Valid(agentRefPath) =>
           workflowVerifier.verify(signedWorkflowString) match {
             case Invalid(problem) => Future.successful(Invalid(problem))
             case Valid(verified) =>
               val workflow = verified.signedFileBased.value.reduceForAgent(agentRefPath)
               (workflowRegister.get(order.workflowId) match {
-                case None ⇒
+                case None =>
                   logger.info(verified.toString)
-                  persist(WorkflowAttached(workflow)) { stampedEvent ⇒
+                  persist(WorkflowAttached(workflow)) { stampedEvent =>
                     workflowRegister.handleEvent(stampedEvent.value)
                     startJobActors(workflow)
                     Valid(workflow)
                   }
-                case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource ⇒
+                case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
                   Future.successful(Valid(registeredWorkflow))
-                case Some(_) ⇒
+                case Some(_) =>
                   Future.successful(Invalid(Problem.pure(s"Changed ${order.workflowId}")))
               })
               .flatMap {
                 case Invalid(problem) => Future.successful(Invalid(problem))
                 case Valid(registeredWorkflow) =>
                   // Reuse registeredWorkflow to reduce memory usage!
-                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise ⇒
+                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
                     self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
                   }
               }
           }
       }
 
-    case DetachOrder(orderId) if !terminating ⇒
+    case DetachOrder(orderId) if !terminating =>
       orderRegister.get(orderId) match {
-        case Some(orderEntry) ⇒
+        case Some(orderEntry) =>
           // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
           // Bei langsamem Agenten, schnellem Master-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
           orderEntry.order.detaching match {
-            case Invalid(problem) ⇒ Future.failed(problem.throwable)
-            case Valid(_) ⇒
+            case Invalid(problem) => Future.failed(problem.throwable)
+            case Valid(_) =>
               orderEntry.detaching = true  // OrderActor is isTerminating
               (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
                 .mapTo[Completed]
-                .map(_ ⇒ Valid(AgentCommand.Response.Accepted))
+                .map(_ => Valid(AgentCommand.Response.Accepted))
           }
-        case None ⇒
+        case None =>
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
           Future.successful(Valid(AgentCommand.Response.Accepted))
       }
 
-    case CancelOrder(orderId, mode) ⇒
+    case CancelOrder(orderId, mode) =>
       orderRegister.checked(orderId) match {
-        case Invalid(problem) ⇒
+        case Invalid(problem) =>
           Future.failed(problem.throwable)
-        case Valid(orderEntry) ⇒
+        case Valid(orderEntry) =>
           if (orderEntry.detaching)
             Future.successful(Valid(AgentCommand.Response.Accepted))
           else
             orderProcessor.cancel(orderId, mode, isAgent = true) match {
-              case Invalid(problem) ⇒ Future.failed(problem.throwable)
-              case Valid(None) ⇒ Future.successful(Valid(AgentCommand.Response.Accepted))
-              case Valid(Some(event)) ⇒
-                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ ⇒ Valid(AgentCommand.Response.Accepted) }
+              case Invalid(problem) => Future.failed(problem.throwable)
+              case Valid(None) => Future.successful(Valid(AgentCommand.Response.Accepted))
+              case Valid(Some(event)) =>
+                (orderEntry.actor ? OrderActor.Command.HandleEvent(event)).mapTo[Completed] map { _ => Valid(AgentCommand.Response.Accepted) }
             }
       }
 
-    case GetOrder(orderId) ⇒
-      executeCommandForOrderId(orderId) { orderEntry ⇒
+    case GetOrder(orderId) =>
+      executeCommandForOrderId(orderId) { orderEntry =>
         Future.successful(GetOrder.Response(
           orderEntry.order))
       } map ((r: Response) => Valid(r))
 
-    case GetOrderIds ⇒
+    case GetOrderIds =>
       Future.successful(Valid(GetOrderIds.Response(
         orderRegister.keys)))
 
-    case GetOrders ⇒
+    case GetOrders =>
       Future.successful(Valid(GetOrders.Response(
-        for (orderEntry ← orderRegister.values) yield orderEntry.order)))
+        for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
-    case KeepEvents(eventId) if !terminating ⇒
+    case KeepEvents(eventId) if !terminating =>
       Future {  // Concurrently!
         eventWatch.keepEvents(eventId).orThrow
         Valid(AgentCommand.Response.Accepted)
       }
 
-    case _ if terminating ⇒
+    case _ if terminating =>
       Future.failed(AgentIsShuttingDownProblem.throwable)
   }
 
   private def startJobActors(workflow: Workflow): Unit =
-    for ((jobKey, job) ← workflow.keyToJob) {
+    for ((jobKey, job) <- workflow.keyToJob) {
       val jobActor = watch(actorOf(
         JobActor.props(jobKey, job, newTaskRunner, executableDirectory = executableDirectory)
         /*TODO name actor?*/))
       jobRegister.insert(jobKey, jobActor)
     }
 
-  private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
+  private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry => Future[Response]): Future[Response] =
     orderRegister.checked(orderId) match {
-      case Invalid(problem) ⇒
+      case Invalid(problem) =>
         Future.failed(problem.throwable)
-      case Valid(orderEntry) ⇒
+      case Valid(orderEntry) =>
         body(orderEntry)
     }
 
@@ -364,24 +364,24 @@ extends MainJournalingActor[Event] with Stash {
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
     val orderEntry = orderRegister(order.id)
     val checkedFollowUps = orderProcessor.handleEvent(order.id <-: event)
-    for (followUps ← checkedFollowUps onProblem (p ⇒ logger.error(p))) {
+    for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {
       followUps foreach {
-        case FollowUp.Processed(jobKey) ⇒
+        case FollowUp.Processed(jobKey) =>
           //TODO assert(orderEntry.jobOption exists (_.jobPath == job.jobPath))
-          for (jobEntry ← jobRegister.checked(jobKey) onProblem (p ⇒ logger.error(p withKey order.id))) {
+          for (jobEntry <- jobRegister.checked(jobKey) onProblem (p => logger.error(p withKey order.id))) {
             jobEntry.queue -= order.id
           }
 
-        case FollowUp.AddChild(childOrder) ⇒
+        case FollowUp.AddChild(childOrder) =>
           val actor = newOrderActor(childOrder)
           orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
 
-        case FollowUp.Remove(removeOrderId) ⇒
+        case FollowUp.Remove(removeOrderId) =>
           removeOrder(removeOrderId)
 
-        case o: FollowUp.AddOffered ⇒
+        case o: FollowUp.AddOffered =>
           sys.error(s"Unexpected FollowUp: $o")  // Only Master handles this
       }
     }
@@ -393,17 +393,17 @@ extends MainJournalingActor[Event] with Stash {
     val order = orderEntry.order
     if (order.isAttached) {
       order.state match {
-        case Order.Fresh(Some(scheduledFor)) if now < scheduledFor ⇒
+        case Order.Fresh(Some(scheduledFor)) if now < scheduledFor =>
           orderEntry.at(scheduledFor) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }
 
-        case _ ⇒
-          orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten match {
-            case Some(KeyedEvent(orderId_, event)) ⇒
+        case _ =>
+          orderProcessor.nextEvent(order.id).onProblem(p => logger.error(p)).flatten match {
+            case Some(KeyedEvent(orderId_, event)) =>
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
 
-            case None ⇒
+            case None =>
               if (order.isState[Order.FreshOrReady]) {
                 onOrderFreshOrReady(orderEntry)
               }
@@ -414,18 +414,18 @@ extends MainJournalingActor[Event] with Stash {
 
   private def onOrderFreshOrReady(orderEntry: OrderEntry): Unit =
     if (!terminating) {
-      for (_ ← orderEntry.order.attached onProblem (p ⇒ logger.error(s"onOrderFreshOrReady: $p"))) {
+      for (_ <- orderEntry.order.attached onProblem (p => logger.error(s"onOrderFreshOrReady: $p"))) {
         orderEntry.instruction match {
-          case execute: Execute ⇒
+          case execute: Execute =>
             val checkedJobKey = execute match {
-              case _: Execute.Anonymous ⇒ orderEntry.workflow.anonymousJobKey(orderEntry.order.workflowPosition)
-              case o: Execute.Named     ⇒ orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
+              case _: Execute.Anonymous => orderEntry.workflow.anonymousJobKey(orderEntry.order.workflowPosition)
+              case o: Execute.Named     => orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
             }
-            for (jobEntry ← checkedJobKey flatMap jobRegister.checked onProblem (p ⇒ logger.error(p))){
+            for (jobEntry <- checkedJobKey flatMap jobRegister.checked onProblem (p => logger.error(p))){
               onOrderAvailableForJob(orderEntry.order.id, jobEntry)
             }
 
-          case _ ⇒
+          case _ =>
         }
       }
     }
@@ -442,27 +442,27 @@ extends MainJournalingActor[Event] with Stash {
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit =
     jobEntry.queue.dequeue() match {
-      case Some(orderId) ⇒
+      case Some(orderId) =>
         orderRegister.get(orderId) match {
-          case None ⇒
+          case None =>
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
-          case Some(orderEntry) ⇒
-            for (workflowJob ← orderEntry.checkedJob onProblem (o ⇒ logger.error(o))) {
+          case Some(orderEntry) =>
+            for (workflowJob <- orderEntry.checkedJob onProblem (o => logger.error(o))) {
               startProcessing(orderEntry, jobEntry.jobKey, workflowJob, jobEntry)
             }
             jobEntry.waitingForOrder = false
         }
 
-      case None ⇒
+      case None =>
         jobEntry.waitingForOrder = true
     }
 
   private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
     logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobKey}")
     val defaultArguments = orderEntry.instruction match {
-      case o: Execute.Named ⇒ o.defaultArguments
-      case _ ⇒ Map.empty[String, String]
+      case o: Execute.Named => o.defaultArguments
+      case _ => Map.empty[String, String]
     }
     //assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
@@ -470,7 +470,7 @@ extends MainJournalingActor[Event] with Stash {
   }
 
   private def removeOrder(orderId: OrderId): Unit = {
-    for (orderEntry ← orderRegister.get(orderId)) {
+    for (orderEntry <- orderRegister.get(orderId)) {
       orderEntry.actor ! OrderActor.Input.Terminate
       //context.unwatch(orderEntry.actor)
       orderRegister.remove(orderId)
@@ -479,7 +479,7 @@ extends MainJournalingActor[Event] with Stash {
 
   override def unhandled(message: Any) =
     message match {
-      case Terminated(actorRef) if jobRegister contains actorRef ⇒
+      case Terminated(actorRef) if jobRegister contains actorRef =>
         val jobKey = jobRegister.actorToKey(actorRef)
         if (terminating) {
           logger.debug(s"Actor '$jobKey' stopped")
@@ -489,19 +489,19 @@ extends MainJournalingActor[Event] with Stash {
         jobRegister.onActorTerminated(actorRef)
         termination.continue()
 
-      case Terminated(actorRef) if orderRegister contains actorRef ⇒
+      case Terminated(actorRef) if orderRegister contains actorRef =>
         val orderId = orderRegister(actorRef).order.id
         logger.debug(s"Actor '$orderId' stopped")
         orderRegister.onActorTerminated(actorRef)
         termination.continue()
 
-      case Terminated(`journalActor`) if terminating ⇒
+      case Terminated(`journalActor`) if terminating =>
         context.stop(self)
 
-      case Internal.StillTerminating ⇒
+      case Internal.StillTerminating =>
         termination.onStillTerminating()
 
-      case _ ⇒
+      case _ =>
         super.unhandled(message)
     }
 

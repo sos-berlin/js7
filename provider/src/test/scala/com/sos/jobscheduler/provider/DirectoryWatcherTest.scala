@@ -24,7 +24,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
-  private lazy val observableFuture = observable map (_ ⇒ bar()) foreach { _ ⇒ }
+  private lazy val observableFuture = observable map (_ => bar()) foreach { _ => }
   private val barrier = new CyclicBarrier(2)
 
   private def bar() = barrier.await(99, SECONDS)
@@ -40,7 +40,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
   }
 
   "Add some files" - {
-    for (i ← 1 to 2) s"file #$i" in {
+    for (i <- 1 to 2) s"file #$i" in {
       testUpdate {
         touch(dir / i.toString)
       }
@@ -59,7 +59,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
     }
   }
 
-  private def testUpdate(body: ⇒ Unit): Unit = {
+  private def testUpdate(body: => Unit): Unit = {
     val delay = 50.milliseconds
     assert(barrier.getNumberWaiting == 0)
     val t = now

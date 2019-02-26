@@ -25,7 +25,7 @@ final class LengthHeaderMessageCollector {
     if (lengthBuffer.hasRemaining) {
       val contentPosition = lengthBuffer.remaining
       val (nextLengthBytes, content) = chunk.splitAt(contentPosition)
-      for (byte ← nextLengthBytes) lengthBuffer.put(byte)
+      for (byte <- nextLengthBytes) lengthBuffer.put(byte)
       if (!lengthBuffer.hasRemaining) {
         length = lengthBuffer.getInt(0)
         if (length < 0) throw new IllegalArgumentException(f"Invalid (negative) length bytes: 0x$length%08x")

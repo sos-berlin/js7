@@ -43,10 +43,10 @@ trait AkkaWebServer extends AutoCloseable {
     else {
       logger.debug(bindings mkString ", ")
       activeBindings = bindings map {
-        case o: WebServerBinding.Http ⇒ bindHttp(o)
-        case o: WebServerBinding.Https ⇒ bindHttps(o)
+        case o: WebServerBinding.Http => bindHttp(o)
+        case o: WebServerBinding.Https => bindHttps(o)
       }
-      Future.sequence(activeBindings) map { _ ⇒ Completed }
+      Future.sequence(activeBindings) map { _ => Completed }
     }
 
   private def bindHttp(http: WebServerBinding.Http): Future[Http.ServerBinding] =
@@ -70,8 +70,8 @@ trait AkkaWebServer extends AutoCloseable {
   def close() = {
     materializer.shutdown()
     if (activeBindings != null) {
-      (for (future ← activeBindings) yield
-        for (binding ← future) yield
+      (for (future <- activeBindings) yield
+        for (binding <- future) yield
           binding.unbind()
       ) await ShutdownTimeout
       //akkaHttp.gracefulShutdown()  https://github.com/akka/akka-http/issues/188, https://github.com/lagom/lagom/issues/644
@@ -84,7 +84,7 @@ object AkkaWebServer {
   private val logger = Logger(getClass)
 
   trait HasUri extends WebServerBinding.HasLocalUris {
-    this: AkkaWebServer ⇒
+    this: AkkaWebServer =>
 
     protected final def webServerPorts = bindings map (_.toWebServerPort)
   }

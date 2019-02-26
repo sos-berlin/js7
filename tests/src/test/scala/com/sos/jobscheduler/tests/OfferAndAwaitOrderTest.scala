@@ -39,10 +39,10 @@ final class OfferAndAwaitOrderTest extends FreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
           execute executable="/executable$sh", agent="AGENT";
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider =>
+      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         runOrders(master)
 
         checkEventSeq(master.eventWatch.all[OrderEvent],
@@ -101,10 +101,10 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider ⇒
-      for (a ← directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider =>
+      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
-      directoryProvider.run { (master, _) ⇒
+      directoryProvider.run { (master, _) =>
         runOrders(master)
 
         checkEventSeq(master.eventWatch.all[OrderEvent],
@@ -144,13 +144,13 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 
   private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], expectedOffering: Seq[OrderEvent], expectedAwaiting: Seq[OrderEvent]): Unit =
     eventSeq match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
-        for (orderId ← Array(JoinBefore1Order.id, JoinBefore2Order.id, JoinAfterOrder.id)) {
-          assert(keyedEvents.collect { case `orderId` <-: event ⇒ event } == expectedAwaiting, s" - $orderId")
+        for (orderId <- Array(JoinBefore1Order.id, JoinBefore2Order.id, JoinAfterOrder.id)) {
+          assert(keyedEvents.collect { case `orderId` <-: event => event } == expectedAwaiting, s" - $orderId")
         }
-        assert(keyedEvents.collect { case OfferedOrderId <-: event ⇒ event }.map(cleanPublishedUntil) == expectedOffering)
-      case o ⇒
+        assert(keyedEvents.collect { case OfferedOrderId <-: event => event }.map(cleanPublishedUntil) == expectedOffering)
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
 }
@@ -172,7 +172,7 @@ object OfferAndAwaitOrderTest {
 
   private def cleanPublishedUntil(event: OrderEvent): OrderEvent =
     event match {
-      case OrderOffered(o, _) ⇒ OrderOffered(o, TestPublishedUntil)
-      case o ⇒ o
+      case OrderOffered(o, _) => OrderOffered(o, TestPublishedUntil)
+      case o => o
     }
 }

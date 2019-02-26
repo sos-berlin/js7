@@ -65,7 +65,7 @@ private[order] trait BufferedStringWriter extends Writer {
         stringBuilder.appendAll(chars, offset, length)
         if (bufferLength >= size) {
           val flushed = flushBuffer()
-          Future.sequence(flushed :: startWritten :: Nil) map (_ reduce ((_, _) ⇒ Accepted))
+          Future.sequence(flushed :: startWritten :: Nil) map (_ reduce ((_, _) => Accepted))
         }
         else
           startWritten

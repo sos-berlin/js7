@@ -20,14 +20,14 @@ object CirceJsonSupport {
     }
 
   implicit final def unmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
-    jsonUnmarshaller map (json ⇒
+    jsonUnmarshaller map (json =>
       implicitly[Decoder[A]].decodeJson(json).orThrow)
 
   implicit final val jsonUnmarshaller: FromEntityUnmarshaller[Json] =
     Unmarshaller.byteStringUnmarshaller
       .forContentTypes(`application/json`)
       .map {
-        case ByteString.empty ⇒ throw Unmarshaller.NoContentException
-        case byteString ⇒ jawn.parseByteBuffer(byteString.asByteBuffer).orThrow
+        case ByteString.empty => throw Unmarshaller.NoContentException
+        case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).orThrow
       }
 }

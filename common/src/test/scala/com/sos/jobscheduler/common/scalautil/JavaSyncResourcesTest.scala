@@ -13,8 +13,8 @@ import org.scalatest.FreeSpec
 final class JavaSyncResourcesTest extends FreeSpec
 {
   "use" in {
-    withTemporaryFile { file ⇒
-      val io = fileAsResource(file).use(in ⇒
+    withTemporaryFile { file =>
+      val io = fileAsResource(file).use(in =>
         SyncIO {
           new BufferedReader(new InputStreamReader(in)).readLine()
         })

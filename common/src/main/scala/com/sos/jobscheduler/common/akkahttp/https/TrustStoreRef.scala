@@ -25,7 +25,7 @@ extends StoreRef
 object TrustStoreRef
 {
   def fromConfig(config: Config, default: Path): Checked[TrustStoreRef] =
-    config.checkedPath("jobscheduler.https.truststore.store-password")(path ⇒
+    config.checkedPath("jobscheduler.https.truststore.store-password")(path =>
       Valid(
         TrustStoreRef(
           url = config.as[Path]("jobscheduler.https.truststore.file", default).toAbsolutePath.toURI.toURL,

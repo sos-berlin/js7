@@ -28,11 +28,11 @@ object SessionCommand
 
     object LoggedIn {
       implicit val jsonEncoder: ObjectEncoder[LoggedIn] =
-        o ⇒ JsonObject("sessionToken" → Json.fromString(o.sessionToken.secret.string))
+        o => JsonObject("sessionToken" -> Json.fromString(o.sessionToken.secret.string))
 
       implicit val jsonDecoder: Decoder[LoggedIn] =
-        cursor ⇒
-          for (token ← cursor.get[String]("sessionToken")) yield
+        cursor =>
+          for (token <- cursor.get[String]("sessionToken")) yield
             LoggedIn(SessionToken(SecretString(token)))
     }
   }
@@ -44,11 +44,11 @@ object SessionCommand
   }
   object Logout {
     implicit val jsonEncoder: ObjectEncoder[Logout] =
-      o ⇒ JsonObject("sessionToken" → Json.fromString(o.sessionToken.secret.string))
+      o => JsonObject("sessionToken" -> Json.fromString(o.sessionToken.secret.string))
 
     implicit val jsonDecoder: Decoder[Logout] =
-      cursor ⇒
-        for (token ← cursor.get[String]("sessionToken")) yield
+      cursor =>
+        for (token <- cursor.get[String]("sessionToken")) yield
           Logout(SessionToken(SecretString(token)))
   }
 

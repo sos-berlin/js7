@@ -16,7 +16,7 @@ object MasterId extends GenericString.Checked_[MasterId]
 {
   def unchecked(string: String) = new MasterId(string)
 
-  override def checked(o: String) = UserId.checked(o) flatMap (u ⇒ super.checked(u.string))
+  override def checked(o: String) = UserId.checked(o) flatMap (u => super.checked(u.string))
 
   def fromUserId(userId: UserId) = MasterId(userId.string)
 }

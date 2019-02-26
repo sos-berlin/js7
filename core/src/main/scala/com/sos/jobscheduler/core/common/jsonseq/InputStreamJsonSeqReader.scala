@@ -37,14 +37,14 @@ extends AutoCloseable {
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
 
   private def in = inAtomic.get match {
-    case null ⇒ throw new ClosedException(name)
-    case o ⇒ o
+    case null => throw new ClosedException(name)
+    case o => o
   }
 
   /** Closes underlying `SeekableInputStream`. May be called asynchronously. */
   def close() =
     synchronized {
-      for (in ← Option(inAtomic.getAndSet(null))) {
+      for (in <- Option(inAtomic.getAndSet(null))) {
         in.close()
       }
     }
@@ -54,10 +54,10 @@ extends AutoCloseable {
   def read(): Option[PositionAnd[Json]] =
     synchronized {
       val pos = position
-      readByteString() map (o ⇒
+      readByteString() map (o =>
         io.circe.parser.parse(o.decodeString(UTF_8)) match {
-          case Left(failure) ⇒ throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
-          case Right(json) ⇒ PositionAnd(pos, json)
+          case Left(failure) => throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
+          case Right(json) => PositionAnd(pos, json)
         })
     }
 
@@ -129,9 +129,9 @@ extends AutoCloseable {
 
   def position = blockPos + blockRead
 
-  private def check[A](body: ⇒ A): A =
+  private def check[A](body: => A): A =
     try body
-    catch { case _: IOException if isClosed ⇒ throw new ClosedException(name) }
+    catch { case _: IOException if isClosed => throw new ClosedException(name) }
 
   private def throwCorrupt(extra: String) =
     throwCorrupt2(lineNumber, position, extra)

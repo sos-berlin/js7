@@ -28,7 +28,7 @@ private[process] sealed trait OperatingSystemSpecific {
   def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr) = {
     val file = directory resolve s"$name-$outerr.log"
     try createFile(file, outputFileAttributes: _*)
-    catch { case t: FileAlreadyExistsException ⇒
+    catch { case t: FileAlreadyExistsException =>
       logger.debug(t.toString)  // Should rarely happen
     }
     file

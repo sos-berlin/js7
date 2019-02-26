@@ -35,7 +35,7 @@ final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
 
   override def beforeAll() = {
     directoryProvider.agents(0).writeExecutable(ExecutablePath("/SLOW.cmd"), script(60.s))
-    for (a ← directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
+    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(100.ms))
     super.beforeAll()
   }
 
@@ -43,13 +43,13 @@ final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
     master.addOrderBlocking(TestOrder)
     master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
     master.eventWatch.all[OrderEvent] match {
-      case EventSeq.NonEmpty(stampeds) ⇒
+      case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
-        for (orderId ← Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
+        for (orderId <- Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
           assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
         }
         assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
-      case o ⇒
+      case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
   }
@@ -84,12 +84,12 @@ object ForkTest {
     WorkflowPath("/DUPLICATE") % "INITIAL",
     Vector(
       Execute(WorkflowJob(AAgentRefPath, ExecutablePath("/SLOW.cmd")))))
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, payload = Payload(Map("VARIABLE" → "VALUE")))
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, payload = Payload(Map("VARIABLE" -> "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
 
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Payload(Map("VARIABLE" → "VALUE"))),
+    TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Payload(Map("VARIABLE" -> "VALUE"))),
 
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(

@@ -21,7 +21,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
   override protected def provideAgentClientCertificate = false
 
   "Login" in {
-    masterApi.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
+    masterApi.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
   }
 
   "Run a job" in {

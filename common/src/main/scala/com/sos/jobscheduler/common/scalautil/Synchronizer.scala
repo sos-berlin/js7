@@ -15,7 +15,7 @@ final class Synchronizer(what: String)
   private val synchronizeLock = new ReentrantLock  // No fairness
 
   /** Blocking synchronization with some debug messages logged. */
-  def synchronize[A](body: ⇒ A): A =
+  def synchronize[A](body: => A): A =
     try {
       ignoreException { logger.trace(s"Start synchronize '$what': wait for lock (${synchronizeLock.getQueueLength} in queue)") }
       if (!synchronizeLock.tryLock()) {
@@ -38,9 +38,9 @@ object Synchronizer {
   private val LogAfter = 100.milliseconds
   private val logger = Logger(getClass)
 
-  private def ignoreException(body: ⇒ Unit) =
+  private def ignoreException(body: => Unit) =
     try body
     catch {
-      case _: Throwable ⇒
+      case _: Throwable =>
     }
 }

@@ -44,7 +44,7 @@ private class TestAgentActorProvider extends HasCloser {
 object TestAgentActorProvider {
   private val MasterUserId = UserId.Anonymous
 
-  def provide[A](body: TestAgentActorProvider ⇒ A): A =
+  def provide[A](body: TestAgentActorProvider => A): A =
     autoClosing(new TestAgentActorProvider)(body)
 
   private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {

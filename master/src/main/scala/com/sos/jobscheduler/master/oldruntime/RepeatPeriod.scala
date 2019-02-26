@@ -16,7 +16,7 @@ extends Period
   require(begin >= StartOfDay, s"RepeatPeriod.begin should be >= ${ExtendedLocalTime.StartOfDay}: $begin")
   require(end <= ExtendedLocalTime.EndOfDay, s"RepeatPeriod.end should be <= ${ExtendedLocalTime.EndOfDay}: $end")
   require(begin.toNanoOfDay <= end.toNanoOfDay, s"RepeatPeriod.begin should not be after end: begin=$begin end=$end")
-  //for (o ← repeat ++ absoluteRepeat) require(o.toMillis > 0, s"repeat should be positive")
+  //for (o <- repeat ++ absoluteRepeat) require(o.toMillis > 0, s"repeat should be positive")
   //require(repeat.isEmpty || absoluteRepeat.isEmpty, s"Only one of attributes repeat and absolute_repeat is possible")
 
   override def absoluteRepeatOption = Some(absoluteRepeat)

@@ -56,7 +56,7 @@ object TestMasterAgent
 
   def main(args: Array[String]): Unit = {
     lazy val directory =
-      temporaryDirectory / "TestMasterAgent" sideEffect { directory ⇒
+      temporaryDirectory / "TestMasterAgent" sideEffect { directory =>
         println(s"Using -directory=$directory")
         if (!Files.exists(directory))
           createDirectory(directory)
@@ -65,18 +65,18 @@ object TestMasterAgent
           deleteDirectoryContentRecursively(directory)
         }
       }
-    val conf = Conf.parse(args, () ⇒ directory)
+    val conf = Conf.parse(args, () => directory)
     println(s"${conf.agentCount * conf.workflowLength} jobs/agent, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     try run(conf)
     finally Log4j.shutdown()
   }
 
   private def run(conf: Conf): Unit = {
-    autoClosing(new DirectoryProvider(conf.agentRefPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env ⇒
+    autoClosing(new DirectoryProvider(conf.agentRefPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
       env.master.config / "master.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n"
       env.agents foreach { _.config / "agent.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n" }
-      withCloser { implicit closer ⇒
-        for (agentRefPath ← conf.agentRefPaths) {
+      withCloser { implicit closer =>
+        for (agentRefPath <- conf.agentRefPaths) {
           TestExecutablePath.toFile(env.agentToTree(agentRefPath).config / "executables").writeExecutable(
               if (isWindows) s"""
                  |@echo off
@@ -96,7 +96,7 @@ object TestMasterAgent
                  |""".stripMargin)
         }
 
-        for (i ← 1 to conf.orderGeneratorCount) {
+        for (i <- 1 to conf.orderGeneratorCount) {
           createDirectory(env.master.config / "order-generators")
           (env.master.config / "order-generators" / s"test-$i.order.xml").xml =
             <order job_chain={TestWorkflowPath.string}>
@@ -109,11 +109,11 @@ object TestMasterAgent
             </order>
         }
 
-        env.runAgents() { agents ⇒
-          env.runMaster() { master ⇒
+        env.runAgents() { agents =>
+          env.runMaster() { master =>
             JavaShutdownHook.add("TestMasterAgent") {
               print('\n')
-              (for (agent ← agents) yield {
+              (for (agent <- agents) yield {
                 agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
                 val r = agent.terminated
                 agent.close()
@@ -136,12 +136,12 @@ object TestMasterAgent
                 var lastLineLength = 0
 
                 def receive = {
-                  case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) ⇒
+                  case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) =>
                     added += 1
-                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) ⇒
+                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) =>
                     lastDuration = Some(now - Instant.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
-                  case "PRINT" ⇒
+                  case "PRINT" =>
                     if (finished > printedFinished) {
                       val duration = lastDuration.fold("-")(_.pretty)
                       val delta = finished - printedFinished
@@ -149,8 +149,8 @@ object TestMasterAgent
                       val notFinished = added - finished
                       val throughput = stopwatch.itemsPerSecondString(finished, "orders")
                       val cpu = getOperatingSystemMXBean match {
-                        case mx: com.sun.management.OperatingSystemMXBean ⇒ f"  ${(mx.getSystemCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
-                        case _ ⇒ ""
+                        case mx: com.sun.management.OperatingSystemMXBean => f"  ${(mx.getSystemCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
+                        case _ => ""
                       }
                       val line = f"$duration%-7s Δ$delta%-3d $diff%-12s  [$notFinished]  $throughput$cpu"
                       print("\r" + " " * lastLineLength + "\r" + line)
@@ -165,7 +165,7 @@ object TestMasterAgent
             })
             master.terminated await 365 * 24.h
             master.close()
-            for (agent ← agents) agent.executeCommand(AgentCommand.Terminate())
+            for (agent <- agents) agent.executeCommand(AgentCommand.Terminate())
           }
         }
       }
@@ -175,14 +175,14 @@ object TestMasterAgent
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentRefPath: AgentRefPath) =
     WorkflowJob(agentRefPath, TestExecutablePath,
-      Map("JOB-VARIABLE" → s"VALUE-${agentRefPath.withoutStartingSlash}"),
+      Map("JOB-VARIABLE" -> s"VALUE-${agentRefPath.withoutStartingSlash}"),
       taskLimit = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(TestWorkflowPath,
       Execute(testJob(conf, conf.agentRefPaths.head)),
       Fork(
-        for ((agentRefPath, pathName) ← conf.agentRefPaths.toVector zip PathNames) yield
+        for ((agentRefPath, pathName) <- conf.agentRefPaths.toVector zip PathNames) yield
           Fork.Branch(
             pathName,
             Workflow(
@@ -208,12 +208,12 @@ object TestMasterAgent
     require(period > 0.s)
     require(orderGeneratorCount >= 1)
 
-    val agentRefPaths: Seq[AgentRefPath] = for (i ← 1 to agentCount) yield AgentRefPath(s"/AGENT-$i")
+    val agentRefPaths: Seq[AgentRefPath] = for (i <- 1 to agentCount) yield AgentRefPath(s"/AGENT-$i")
   }
 
   private object Conf {
-    def parse(args: collection.Seq[String], directory: () ⇒ Path): Conf =
-      CommandLineArguments.parse(args) { a: CommandLineArguments ⇒
+    def parse(args: collection.Seq[String], directory: () => Path): Conf =
+      CommandLineArguments.parse(args) { a: CommandLineArguments =>
         val agentCount = a.as[Int]("-agents=", 1)
         require(agentCount > 0)
         val conf = Conf(
@@ -222,7 +222,7 @@ object TestMasterAgent
           workflowLength = a.as[Int]("-jobs-per-agent=", 1),
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[Duration]("-job-duration=", 0.s),
-          stdoutSize = a.as("-stdout-size=", StdoutRowSize)(o ⇒ DecimalPrefixes.toInt(o)),
+          stdoutSize = a.as("-stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o)),
           period = a.as[Duration]("-period=", 1.s),
           orderGeneratorCount = a.as[Int]("-orders=", 1))
         if (a.boolean("-?") || a.boolean("-help") || a.boolean("--help")) {

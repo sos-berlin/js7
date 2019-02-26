@@ -71,23 +71,23 @@ object Subtype {
 
   private def of[A](cls: Class[_], typeName: String, encoder: ObjectEncoder[A], decoder: Decoder[A]) = {
     import scala.language.existentials
-    val typeField = TypeFieldName → Json.fromString(typeName)
-    val myNameToDecoder = Map(typeName → decoder)
-    val myNameClass = typeName → cls.asInstanceOf[Class[_ <: A]]
+    val typeField = TypeFieldName -> Json.fromString(typeName)
+    val myNameToDecoder = Map(typeName -> decoder)
+    val myNameClass = typeName -> cls.asInstanceOf[Class[_ <: A]]
     val myNameToClass = Map(myNameClass)
     new Subtype[A](
       classToEncoder = encoder match {
-        case encoder: TypedJsonCodec[A] ⇒ encoder.classToEncoder
-        case _ ⇒ Map(cls → encoder.mapJsonObject(o ⇒ typeField +: o))
+        case encoder: TypedJsonCodec[A] => encoder.classToEncoder
+        case _ => Map(cls -> encoder.mapJsonObject(o => typeField +: o))
       },
       nameToDecoder = decoder match {
-        case decoder: TypedJsonCodec[A] ⇒ decoder.nameToDecoder
-        case _ ⇒ myNameToDecoder
+        case decoder: TypedJsonCodec[A] => decoder.nameToDecoder
+        case _ => myNameToDecoder
       },
       nameToClass = {
         decoder match {
-          case decoder: TypedJsonCodec[A] ⇒ decoder.nameToClass + myNameClass
-          case _ ⇒ myNameToClass
+          case decoder: TypedJsonCodec[A] => decoder.nameToClass + myNameClass
+          case _ => myNameToClass
         }
       })
   }

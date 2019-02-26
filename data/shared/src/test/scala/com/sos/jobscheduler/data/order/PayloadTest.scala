@@ -10,7 +10,7 @@ import org.scalatest.FreeSpec
 final class PayloadTest extends FreeSpec {
 
   "Payload" in {
-    testJson(Payload(Map("VAR" → "VALUE")), json"""
+    testJson(Payload(Map("VAR" -> "VALUE")), json"""
       {
         "variables": {
           "VAR": "VALUE"

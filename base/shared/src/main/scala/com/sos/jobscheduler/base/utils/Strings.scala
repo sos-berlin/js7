@@ -28,7 +28,7 @@ object Strings {
       if (underlying contains from) {
         val chars = new Array[Char](underlying.length)
         underlying.getChars(0, underlying.length, chars, 0)
-        for (i ← chars.indices) if (chars(i) == from) chars(i) = to
+        for (i <- chars.indices) if (chars(i) == from) chars(i) = to
         new String(chars)
       } else
         underlying

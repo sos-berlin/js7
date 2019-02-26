@@ -37,9 +37,9 @@ final class JavaJsonCodecsTest extends FreeSpec {
       run("ISO string  ")(StringInstantEncoder, InstantDecoder)
 
       def run(what: String)(implicit instantJsonCodec: Encoder[Instant], decoder: Decoder[Instant]) = {
-        for (i ← 1 to 100000) Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up
+        for (i <- 1 to 100000) Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up
         val t = System.currentTimeMillis
-        for (i ← 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
+        for (i <- 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
         val duration = System.currentTimeMillis - t
         info(s"Instant as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
       }
@@ -53,7 +53,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
       "No second fraction" in {
         val t = "2015-06-09T12:22:33Z"
         val a = A(Instant.parse(t))
-        val j = Json.obj("instant" → Json.fromString(t))
+        val j = Json.obj("instant" -> Json.fromString(t))
         assert(a.asJson == j)
         assert(a == j.as[A].orThrow)
       }
@@ -61,7 +61,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
       "With milliseconds" in {
         val t = "2015-06-09T12:22:33.987Z"
         val a = A(Instant.parse(t))
-        val j = Json.obj("instant" → Json.fromString(t))
+        val j = Json.obj("instant" -> Json.fromString(t))
         assert(a.instant.getNano == 987000000)
         assert(a.asJson == j)
         assert(a == j.as[A].orThrow)
@@ -70,7 +70,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
       "With microseconds" in {
         val t = "2015-06-09T12:22:33.987654Z"
         val a = A(Instant.parse(t))
-        val j = Json.obj("instant" → Json.fromString(t))
+        val j = Json.obj("instant" -> Json.fromString(t))
         assert(a.instant.getNano == 987654000)
         assert(a.asJson == j)
         assert(a == j.as[A].orThrow)
@@ -79,7 +79,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
       "With nanoseconds" in {
         val t = "2015-06-09T12:22:33.987654321Z"
         val a = A(Instant.parse(t))
-        val j = Json.obj("instant" → Json.fromString(t))
+        val j = Json.obj("instant" -> Json.fromString(t))
         assert(a.instant.getNano == 987654321)
         assert(a.asJson == j)
         assert(a == j.as[A].orThrow)
@@ -118,8 +118,8 @@ final class JavaJsonCodecsTest extends FreeSpec {
       //"Ignoring more precision than milliseconds" in {
       //  assert(Json.fromBigDecimal(BigDecimal("0.987654321")).as[Instant].orThrow == Instant.ofEpochMilli(0))
       //  assert(Json.fromBigDecimal(BigDecimal("0.9")).as[Instant].orThrow == Instant.ofEpochMilli(0))
-      //  //intercept[ArithmeticException] { Json.obj("instant" → Json.fromInt(BigDecimal("0.0000009"))).as[A].orThrow }
-      //  //intercept[ArithmeticException] { Json.obj("instant" → Json.fromInt(BigDecimal("0.1"))).as[A].orThrow }  // No more precision than milliseconds
+      //  //intercept[ArithmeticException] { Json.obj("instant" -> Json.fromInt(BigDecimal("0.0000009"))).as[A].orThrow }
+      //  //intercept[ArithmeticException] { Json.obj("instant" -> Json.fromInt(BigDecimal("0.1"))).as[A].orThrow }  // No more precision than milliseconds
       //}
 
       def check(instant: Instant, epochMilli: Long): Unit = {
@@ -136,32 +136,32 @@ final class JavaJsonCodecsTest extends FreeSpec {
 
     "Seconds" in {
       val a = A(Duration.ofSeconds(3))
-      val j = Json.obj("duration" → Json.fromInt(3))
+      val j = Json.obj("duration" -> Json.fromInt(3))
       assert(a.asJson == j)
       assert(a == j.as[A].orThrow)
     }
 
     "Nanoseconds" in {
       val a = A(Duration.ofNanos(123456789))
-      val j = Json.obj("duration" → Json.fromDoubleOrNull(0.123456789))
+      val j = Json.obj("duration" -> Json.fromDoubleOrNull(0.123456789))
       assert(a.asJson == j)
       assert(a == j.as[A].orThrow)
     }
 
     "Invalid syntax" in {
-      intercept[DateTimeParseException] { Json.obj("duration" → Json.fromString("1X")).as[A].orThrow }
+      intercept[DateTimeParseException] { Json.obj("duration" -> Json.fromString("1X")).as[A].orThrow }
     }
 
     "Numeric" in {
       def check(bigDecimal: BigDecimal, duration: Duration) = {
-        val json = Json.obj("duration" → Json.fromBigDecimal(bigDecimal))
+        val json = Json.obj("duration" -> Json.fromBigDecimal(bigDecimal))
         assert(json.as[A].orThrow.duration == duration)
         assert(A(duration).asJson == json)
       }
       check(123, Duration.ofSeconds(123))
       check(123.987654321, Duration.ofSeconds(123, 987654321))
       check(BigDecimal("111222333444555666.987654321"), Duration.ofSeconds(111222333444555666L, 987654321))
-      intercept[ArithmeticException] { Json.obj("duration" → Json.fromBigDecimal(BigDecimal("0.0000000009"))).as[A].orThrow }
+      intercept[ArithmeticException] { Json.obj("duration" -> Json.fromBigDecimal(BigDecimal("0.0000000009"))).as[A].orThrow }
     }
   }
 }

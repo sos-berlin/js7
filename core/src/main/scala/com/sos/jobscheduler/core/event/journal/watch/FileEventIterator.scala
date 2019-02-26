@@ -22,7 +22,7 @@ private[watch] class FileEventIterator[E <: Event](
   journalMeta: JournalMeta[E],
   val journalFile: Path,
   tornEventId: EventId,
-  flushedLength: () ⇒ Long)
+  flushedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
   private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)

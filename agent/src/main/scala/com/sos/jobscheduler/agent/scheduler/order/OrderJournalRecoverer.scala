@@ -25,65 +25,65 @@ extends JournalRecoverer[Event] {
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
   protected def recoverSnapshot = {
-    case workflow: Workflow ⇒
+    case workflow: Workflow =>
       workflowRegister.recover(workflow)
 
-    case order: Order[Order.State] ⇒
-      idToOrder.insert(order.id → order)
+    case order: Order[Order.State] =>
+      idToOrder.insert(order.id -> order)
   }
 
   override protected def onAllSnapshotRecovered() = {
     val (added, removed) = followUpRecoveredSnapshots(workflowRegister.idToWorkflow.checked, idToOrder.toMap)
-    idToOrder ++= added.map(o ⇒ o.id → o)
+    idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed
   }
 
   protected def recoverEvent = {
-    case Stamped(_, _, KeyedEvent(_: NoKey, event: WorkflowEvent.WorkflowAttached)) ⇒
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: WorkflowEvent.WorkflowAttached)) =>
       workflowRegister.handleEvent(NoKey <-: event)
 
-    case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+    case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       handleEvent(orderId, event)
 
-    case Stamped(_, _, KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster)) ⇒
+    case Stamped(_, _, KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster)) =>
   }
 
   private def handleEvent(orderId: OrderId, event: OrderEvent) =
     event match {
-      case event: OrderEvent.OrderAttached ⇒
-        idToOrder.insert(orderId → Order.fromOrderAttached(orderId, event))
+      case event: OrderEvent.OrderAttached =>
+        idToOrder.insert(orderId -> Order.fromOrderAttached(orderId, event))
 
-      case OrderEvent.OrderDetached ⇒
+      case OrderEvent.OrderDetached =>
         idToOrder -= orderId
 
-      case event: OrderEvent ⇒
+      case event: OrderEvent =>
         // See also OrderActor#update
         event match {
-          case event: OrderCoreEvent ⇒
+          case event: OrderCoreEvent =>
             handleForkJoinEvent(orderId, event)
             idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
-          case _: OrderStdWritten ⇒
+          case _: OrderStdWritten =>
             // OrderStdWritten is not handled (but forwarded to Master)
         }
     }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with MasterJournalRecoverer
     event match {
-      case event: OrderForked ⇒
-        for (childOrder ← idToOrder(orderId).newForkedOrders(event)) {
-          idToOrder.insert(childOrder.id → childOrder)
+      case event: OrderForked =>
+        for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {
+          idToOrder.insert(childOrder.id -> childOrder)
         }
 
-      case event: OrderJoined ⇒
+      case event: OrderJoined =>
         idToOrder(orderId).state match {
-          case forked: Order.Forked ⇒
+          case forked: Order.Forked =>
             idToOrder --= forked.childOrderIds
 
-          case state ⇒
+          case state =>
             sys.error(s"Event $event recovered, but $orderId is in state $state")
         }
 
-      case _ ⇒
+      case _ =>
     }
 
   def state = AgentState(lastRecoveredEventId, idToOrder.toMap, workflowRegister.workflows toKeyedMap (_.id))

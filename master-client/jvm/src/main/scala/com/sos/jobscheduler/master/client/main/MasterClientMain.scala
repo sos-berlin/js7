@@ -28,25 +28,25 @@ object MasterClientMain {
       Log4j.shutdown()
       sys.runtime.exit(rc)
     }
-    catch { case NonFatal(t) ⇒
+    catch { case NonFatal(t) =>
       println(s"ERROR: $t")
       logger.error(t.toString, t)
       Log4j.shutdown()
       sys.runtime.exit(1)
     }
 
-  def run(args: Seq[String], print: String ⇒ Unit): Int = {
+  def run(args: Seq[String], print: String => Unit): Int = {
     val (masterUri, configDir, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
-    autoClosing(new AkkaHttpMasterTextApi(masterUri, print, configDir)) { textApi ⇒
+    autoClosing(new AkkaHttpMasterTextApi(masterUri, print, configDir)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
         if (textApi.checkIsResponding()) 0 else 1
       else {
         operations foreach {
-          case StringCommand(command) ⇒ textApi.executeCommand(command)
-          case StdinCommand ⇒ textApi.executeCommand(io.Source.stdin.mkString)
-          case Get(uri) ⇒ textApi.getApi(uri)
+          case StringCommand(command) => textApi.executeCommand(command)
+          case StdinCommand => textApi.executeCommand(io.Source.stdin.mkString)
+          case Get(uri) => textApi.getApi(uri)
         }
         0
       }
@@ -54,14 +54,14 @@ object MasterClientMain {
   }
 
   private def parseArgs(args: Seq[String]): (Uri, Option[Path], Path, Vector[Operation]) =
-    CommandLineArguments.parse(args) { arguments ⇒
+    CommandLineArguments.parse(args) { arguments =>
       val masterUri = Uri(arguments.keylessValue(0))
       val configDirectory = arguments.optionAs[Path]("-config-directory=")
       val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
-        case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
-        case "-" ⇒ StdinCommand
-        case command ⇒ StringCommand(command)
+        case url if url.startsWith("?") || url.startsWith("/") => Get(url)
+        case "-" => StdinCommand
+        case command => StringCommand(command)
       }
       if ((operations count { _ == StdinCommand }) > 1) throw new IllegalArgumentException("Stdin ('-') can only be read once")
       (masterUri, configDirectory, dataDirectory, operations)

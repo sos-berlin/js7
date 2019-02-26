@@ -30,7 +30,7 @@ object MapDiff {
 
   def diff[K, V](from: Map[K, V], to: Map[K, V]): MapDiff[K, V] =
     MapDiff(
-      changed = to filter { case (k, v) ⇒ from.get(k) forall v.!= },
+      changed = to filter { case (k, v) => from.get(k) forall v.!= },
       deleted = from.keySet -- to.keySet)
 
   implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]

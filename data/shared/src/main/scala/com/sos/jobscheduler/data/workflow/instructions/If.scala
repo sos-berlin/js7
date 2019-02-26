@@ -29,14 +29,14 @@ extends Instruction
 
   override def workflow(branchId: BranchId) =
     branchId match {
-      case Then ⇒ Valid(thenWorkflow)
-      case Else ⇒ elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
-      case _ ⇒ super.workflow(branchId)
+      case Then => Valid(thenWorkflow)
+      case Else => elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
+      case _ => super.workflow(branchId)
     }
 
   override def branchWorkflows = (Then -> thenWorkflow) :: elseWorkflow.map(Else -> _).toList
 
-  override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w ⇒ s" else $w")
+  override def toString = s"if ($predicate) $thenWorkflow" + elseWorkflow.fold("")(w => s" else $w")
 }
 
 object If {

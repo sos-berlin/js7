@@ -25,22 +25,22 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
   def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[FatEvent]]]) = {
     if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"Duplicate stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
     stamped.value match {
-      case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
+      case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         handleOrderEvent(stamped.copy(value = orderId <-: event))
 
-      case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
+      case KeyedEvent(_: NoKey, event: RepoEvent) =>
         val updatedConverter = copy(
           eventId = stamped.eventId,
           repo = repo.applyEvent(event).orThrow)
         (updatedConverter, None)
 
-      case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) ⇒
-        (this, toMasterAgentFatEvent(event) map (e ⇒ stamped.copy(value = agentRefPath <-: e)))
+      case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) =>
+        (this, toMasterAgentFatEvent(event) map (e => stamped.copy(value = agentRefPath <-: e)))
 
-      case KeyedEvent(_: NoKey, event: MasterEvent) ⇒
-        (this, toMasterFatEvent(event) map (e ⇒ stamped.copy(value = NoKey <-: e)))
+      case KeyedEvent(_: NoKey, event: MasterEvent) =>
+        (this, toMasterFatEvent(event) map (e => stamped.copy(value = NoKey <-: e)))
 
-      case _ ⇒
+      case _ =>
         (this, None)
     }
   }
@@ -48,74 +48,74 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): (FatState, Option[Stamped[KeyedEvent[OrderFatEvent]]]) = {
     val Stamped(eventId, timestamp, KeyedEvent(orderId, event)) = stamped
     val order = event match {
-      case event: OrderAdded ⇒ Order.fromOrderAdded(orderId, event)
-      case event: OrderCoreEvent ⇒ idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
-      case _ ⇒ idToOrder(orderId)
+      case event: OrderAdded => Order.fromOrderAdded(orderId, event)
+      case event: OrderCoreEvent => idToOrder(orderId).update(event).orThrow  // 🔥 ProblemException
+      case _ => idToOrder(orderId)
     }
     val updatedFatState = event match {
-      case _: OrderAdded      ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
-      case _: OrderFinished   ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder - order.id)
-      case event: OrderForked ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) ++ (order.newForkedOrders(event) :+ order).map(o ⇒ o.id → o))
-      case _: OrderJoined     ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order) -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
-      case _: OrderCoreEvent  ⇒ copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id → order))
-      case _                  ⇒ copy(eventId = stamped.eventId)
+      case _: OrderAdded      => copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id -> order))
+      case _: OrderFinished   => copy(eventId = stamped.eventId, idToOrder = idToOrder - order.id)
+      case event: OrderForked => copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id -> order) ++ (order.newForkedOrders(event) :+ order).map(o => o.id -> o))
+      case _: OrderJoined     => copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id -> order) -- idToOrder(order.id).castState[Order.Forked].state.childOrderIds)
+      case _: OrderCoreEvent  => copy(eventId = stamped.eventId, idToOrder = idToOrder + (order.id -> order))
+      case _                  => copy(eventId = stamped.eventId)
     }
-    val fatEvents = toOrderFatEvent(order, event) map (e ⇒ Stamped(eventId, timestamp, order.id <-: e))
+    val fatEvents = toOrderFatEvent(order, event) map (e => Stamped(eventId, timestamp, order.id <-: e))
     (updatedFatState, fatEvents)
   }
 
   private def toOrderFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
     event match {
-      case added: OrderAdded ⇒
+      case added: OrderAdded =>
         Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledFor, order.variables))
 
-      case _: OrderProcessingStarted ⇒
+      case _: OrderProcessingStarted =>
         val jobName = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedExecute(order.position)).orThrow match {
-          case named: Execute.Named ⇒ Some(named.name)
-          case _ ⇒ None
+          case named: Execute.Named => Some(named.name)
+          case _ => None
         }
-        val agentRef = order.attached.flatMap(a ⇒ repo.pathTo[AgentRef](a)).orThrow
+        val agentRef = order.attached.flatMap(a => repo.pathTo[AgentRef](a)).orThrow
         Some(OrderProcessingStartedFat(order.workflowPosition, agentRef.path, agentRef.uri, jobName, order.variables))
 
-      case OrderStdWritten(stdoutOrStderr, chunk) ⇒
+      case OrderStdWritten(stdoutOrStderr, chunk) =>
         Some(OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk))
 
-      case event: OrderProcessed ⇒
+      case event: OrderProcessed =>
         Some(OrderProcessedFat(event.outcome, order.variables))
 
-      case OrderFinished | OrderCanceled/*TODO OrderCanceledFat ?*/ ⇒
+      case OrderFinished | OrderCanceled/*TODO OrderCanceledFat ?*/ =>
         Some(OrderFinishedFat(order.workflowPosition))
 
-      case OrderForked(children) ⇒
+      case OrderForked(children) =>
         Some(OrderForkedFat(
           order.workflowId /: order.position,
-          for (ch ← children) yield
+          for (ch <- children) yield
             OrderForkedFat.Child(ch.branchId, ch.orderId, ch.variablesDiff applyTo order.variables)))
 
-      case OrderJoined(variablesDiff, outcome) ⇒
+      case OrderJoined(variablesDiff, outcome) =>
         Some(OrderJoinedFat(
           childOrderIds = idToOrder(order.id).ifState[Order.Forked] map (_.state.childOrderIds) getOrElse Nil/*failure*/,
           variables = variablesDiff applyTo order.variables, outcome))
 
-      case _ ⇒
+      case _ =>
         None
     }
 
   private def toMasterFatEvent(event: MasterEvent): Option[MasterFatEvent] =
     event match {
-      case MasterEvent.MasterReady(masterId, timezone) ⇒
+      case MasterEvent.MasterReady(masterId, timezone) =>
         Some(MasterReadyFat(masterId, timezone))
 
-      case _ ⇒
+      case _ =>
         None
     }
 
   private def toMasterAgentFatEvent(event: MasterAgentEvent): Option[AgentFatEvent] =
     event match {
-      case MasterAgentEvent.AgentReady(zoneId) ⇒
+      case MasterAgentEvent.AgentReady(zoneId) =>
         Some(AgentFatEvent.AgentReadyFat(zoneId))
 
-      case _ ⇒
+      case _ =>
         None
     }
 }

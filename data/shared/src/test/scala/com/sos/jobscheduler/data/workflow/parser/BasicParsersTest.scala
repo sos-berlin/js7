@@ -53,20 +53,20 @@ final class BasicParsersTest extends FreeSpec {
   }
 
   "keyValues" - {
-    val parser = keyValueMap(Map("string" → quotedString, "number" → int))
+    val parser = keyValueMap(Map("string" -> quotedString, "number" -> int))
 
     "Duplicate keys" in {
       assert(parser.checkedParse("""string="A", string="B"""") == Invalid(Problem("""Duplicate keywords: string:1:23 ...""""")))
     }
 
     "Valid" in {
-      val parser = keyValueMap(Map("string" → quotedString, "number" → int))
-      assert(parser.checkedParse("""string="STRING", number=7""") == Valid(KeyToValue(Map("string" → "STRING", "number" → 7))))
+      val parser = keyValueMap(Map("string" -> quotedString, "number" -> int))
+      assert(parser.checkedParse("""string="STRING", number=7""") == Valid(KeyToValue(Map("string" -> "STRING", "number" -> 7))))
     }
   }
 
   "KeyToValue" - {
-    val keyToValue = KeyToValue(Map("string" → "STRING", "string2" → "STRING2", "number" → 7))
+    val keyToValue = KeyToValue(Map("string" -> "STRING", "string2" -> "STRING2", "number" -> 7))
 
     // checkedParse("") in following tests due to Parser.flatMap
 
@@ -85,8 +85,8 @@ final class BasicParsersTest extends FreeSpec {
 
     "oneOf" in {
       assert(keyToValue.oneOf[String](Set("string", "string2")).checkedParse("") == Invalid(Problem("""Contradicting keywords: string; string2:1:1 ...""""")))
-      assert(keyToValue.oneOf[String](Set("string", "x")).checkedParse("") == Valid("string" → "STRING"))
-      assert(keyToValue.oneOf[String](Set("string2", "x")).checkedParse("") == Valid("string2" → "STRING2"))
+      assert(keyToValue.oneOf[String](Set("string", "x")).checkedParse("") == Valid("string" -> "STRING"))
+      assert(keyToValue.oneOf[String](Set("string2", "x")).checkedParse("") == Valid("string2" -> "STRING2"))
       assert(keyToValue.oneOf[String](Set("y", "x")).checkedParse("") == Invalid(Problem("""Missing one of the keywords: y, x:1:1 ...""""")))
     }
 
@@ -99,8 +99,8 @@ final class BasicParsersTest extends FreeSpec {
 
     "noneOrOneOf" in {
       assert(keyToValue.noneOrOneOf[String](Set("string", "string2")).checkedParse("") == Invalid(Problem("""Contradicting keywords: string; string2:1:1 ...""""")))
-      assert(keyToValue.noneOrOneOf[String](Set("string", "x")).checkedParse("") == Valid(Some("string" → "STRING")))
-      assert(keyToValue.noneOrOneOf[String](Set("string2", "x")).checkedParse("") == Valid(Some("string2" → "STRING2")))
+      assert(keyToValue.noneOrOneOf[String](Set("string", "x")).checkedParse("") == Valid(Some("string" -> "STRING")))
+      assert(keyToValue.noneOrOneOf[String](Set("string2", "x")).checkedParse("") == Valid(Some("string2" -> "STRING2")))
       assert(keyToValue.noneOrOneOf[String](Set("y", "x")).checkedParse("") == Valid(None))
     }
   }

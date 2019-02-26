@@ -27,10 +27,10 @@ object ProviderConfiguration
   private lazy val DefaultConfigResource = JavaResource("com/sos/jobscheduler/provider/configuration/provider.conf")
 
   def fromCommandLine(args: Seq[String], addConfig: Config = ConfigFactory.empty): ProviderConfiguration =
-    CommandLineArguments.parse(args) { a ⇒
+    CommandLineArguments.parse(args) { a =>
       val configDir = a.as[Path]("-config-directory=").toAbsolutePath
       val config = ConfigFactory.parseMap(Map(
-          "jobscheduler.config-directory" → configDir.toString
+          "jobscheduler.config-directory" -> configDir.toString
         ).asJava)
         .withFallback(ConfigFactory.systemProperties)
         .withFallback(addConfig)

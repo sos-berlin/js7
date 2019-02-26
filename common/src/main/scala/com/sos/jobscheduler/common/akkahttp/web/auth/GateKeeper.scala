@@ -38,14 +38,14 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
 
   private val credentialRejectionHandler = RejectionHandler.newBuilder()
     .handle {
-      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) ⇒
+      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsRejected, challenge) =>
         logger.warn(s"HTTP request with invalid authentication rejected - delaying response for ${invalidAuthenticationDelay.pretty}")
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           complete(
             Task.pure(Unauthorized).delayExecution(invalidAuthenticationDelay).runToFuture)
         }
 
-      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) ⇒
+      case AuthenticationFailedRejection(AuthenticationFailedRejection.CredentialsMissing, challenge) =>
         // Handling of this case too avoids Akka-streams message "Substream Source cannot be materialized more than once"
         respondWithHeader(`WWW-Authenticate`(challenge)) {
           complete {
@@ -61,9 +61,9 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   val authenticate: Directive1[U] =
     new Directive1[U] {
-      def tapply(inner: Tuple1[U] ⇒ Route) =
+      def tapply(inner: Tuple1[U] => Route) =
         seal {
-          httpAuthenticate { httpUser ⇒
+          httpAuthenticate { httpUser =>
             inner(Tuple1(httpUser))
           }
         }
@@ -72,9 +72,9 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   private val httpAuthenticate: Directive1[U] =
     new Directive1[U] {
-      def tapply(inner: Tuple1[U] ⇒ Route) =
+      def tapply(inner: Tuple1[U] => Route) =
         handleRejections(credentialRejectionHandler) {
-          authenticateBasic(realm, authenticator).apply { user ⇒
+          authenticateBasic(realm, authenticator).apply { user =>
             inner(Tuple1(user))
           }
         }
@@ -83,13 +83,13 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   def authorize(user: U, requiredPermissions: Set[Permission]): Directive1[U] =
     new Directive1[U] {
-      def tapply(inner: Tuple1[U] ⇒ Route) =
+      def tapply(inner: Tuple1[U] => Route) =
         seal {
-          extractRequest { request ⇒
+          extractRequest { request =>
             allowedUser(user, request, requiredPermissions) match {
-              case Some(authorizedUser) ⇒
+              case Some(authorizedUser) =>
                 inner(Tuple1(authorizedUser))
-              case None ⇒
+              case None =>
                 if (user.isAnonymous)
                   reject(credentialsMissing)  // Let a browser show its authentication dialog
                 else
@@ -106,18 +106,18 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
     */
   private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] =
     ifPublic(request.method) match {
-      case Some(reason) ⇒
+      case Some(reason) =>
         if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
         val empoweredUser = U.addPermissions(user, reason match {
-          case IsPublic | LoopbackIsPublic ⇒ configuraton.publicPermissions
-          case GetIsPublic                 ⇒ configuraton.publicGetPermissions
+          case IsPublic | LoopbackIsPublic => configuraton.publicPermissions
+          case GetIsPublic                 => configuraton.publicGetPermissions
         })
         if (empoweredUser.grantedPermissions != user.grantedPermissions) {
           logger.debug(s"Granting user '${empoweredUser.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
         }
         Some(empoweredUser)
 
-      case None ⇒
+      case None =>
         isPermitted(user, requiredPermissions, request.method) ? user
     }
 
@@ -177,12 +177,12 @@ object GateKeeper {
     loopbackIsPublic: Boolean = false,
     /** HTTP GET is allowed for Anonymous */
     getIsPublic: Boolean = false,
-    idToUser: UserId ⇒ Option[U])
+    idToUser: UserId => Option[U])
 
   object Configuration {
     def fromConfig[U <: User](
       config: Config,
-      toUser: (UserId, HashedPassword, Set[Permission]) ⇒ U,
+      toUser: (UserId, HashedPassword, Set[Permission]) => U,
       toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
     =
       Configuration[U](

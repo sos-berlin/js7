@@ -11,7 +11,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final case class HashedPassword(hashed: SecretString, hasher: String ⇒ String)
+final case class HashedPassword(hashed: SecretString, hasher: String => String)
 {
   def equalsClearText(clear: SecretString) = timingAttackSecureEqual(hashed.string, hasher(clear.string))
 
@@ -28,7 +28,7 @@ object HashedPassword
 {
   private val RehashSaltLength = 20
   /** No clear-text password matches this unknown password. */
-  val MatchesNothing = HashedPassword(SecretString("MatchesNothing"), _ ⇒ "")
+  val MatchesNothing = HashedPassword(SecretString("MatchesNothing"), _ => "")
   private val Empty = HashedPassword(SecretString(""), identity)
 
   /** The empty clear-text password, differently hashed at each invocation. */

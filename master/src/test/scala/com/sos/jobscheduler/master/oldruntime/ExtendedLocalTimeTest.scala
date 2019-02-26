@@ -20,7 +20,7 @@ final class ExtendedLocalTimeTest extends FreeSpec {
       intercept[IllegalArgumentException] { ExtendedLocalTime.fromString("0:00:60") }
     }
 
-    for ((string, normalized, nano) ← Array(
+    for ((string, normalized, nano) <- Array(
       ("0:00"     ,  "0:00:00", 0L),
       ("000:00:00",  "0:00:00", 0L),
       ("12:00"    , "12:00:00", LocalTime.of(12,  0,  0).toNanoOfDay),

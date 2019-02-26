@@ -13,7 +13,7 @@ import org.scalatest.FreeSpec
 final class JournalFilesTest extends FreeSpec
 {
   "listJournalFiles, currentFile" in {
-    withTemporaryDirectory("JournalHistoryTest-") { dir ⇒
+    withTemporaryDirectory("JournalHistoryTest-") { dir =>
       (dir / "test--0.journal").contentString = "TEST-CONTENT"
       touch(dir / "test--2000.journal")
       touch(dir / "test--1000.journal")

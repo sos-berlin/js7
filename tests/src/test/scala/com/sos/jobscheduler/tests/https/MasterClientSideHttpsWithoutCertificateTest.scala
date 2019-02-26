@@ -23,7 +23,7 @@ final class MasterClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 
   "Login" in {
     val exception = intercept[Exception] {
-      masterApi.login(Some(UserId("TEST-USER") → SecretString("TEST-PASSWORD"))) await 99.s
+      masterApi.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
     }
     assert(exception.toString == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
            exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")

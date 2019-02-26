@@ -24,9 +24,9 @@ import org.scalatest.FreeSpec
 final class JournalReaderTest extends FreeSpec with TestJournalMixin {
 
   "Journal file without snapshots or events" in {
-    withTestActor() { (_, _ ) ⇒ }
+    withTestActor() { (_, _ ) => }
     val file = currentFile
-    autoClosing(new JournalReader(journalMeta, file)) { journalReader ⇒
+    autoClosing(new JournalReader(journalMeta, file)) { journalReader =>
       assert(journalReader.nextSnapshots().toList == Nil)
       assert(journalReader.nextEvents().toList == Nil)
       assert(journalReader.eventId == EventId.BeforeFirst)
@@ -37,12 +37,12 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   "Journal file with snapshot section only" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer ⇒
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
-    autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+    autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.nextSnapshots().toList == Nil)
       assert(journalReader.nextEvents().toList == Nil)
       assert(journalReader.eventId == EventId.BeforeFirst)
@@ -53,17 +53,17 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   "Journal file with open event section" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer ⇒
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
-    autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0)) { writer ⇒
+    autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0)) { writer =>
       writer.beginEventSection()
       writer.writeEvents(Stamped(1001, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
     }
-    autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+    autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.tornEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.nextSnapshots().toList == Nil)
@@ -74,13 +74,13 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
   }
 
   "Journal file with snapshot and events" in {
-    withTestActor() { (actorSystem, actor) ⇒
-      for ((key, cmd) ← testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
+    withTestActor() { (actorSystem, actor) =>
+      for ((key, cmd) <- testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")) await 99.s
       execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")) await 99.s
     }
-    autoClosing(new JournalReader(journalMeta, currentFile)) { journalReader ⇒
+    autoClosing(new JournalReader(journalMeta, currentFile)) { journalReader =>
       assert(journalReader.nextSnapshots().toSet == Set(
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C","(C.Add)")))
@@ -102,7 +102,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
     "Committed transaction" in {
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0, withoutSnapshots = true)) { writer ⇒
+      autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0, withoutSnapshots = true)) { writer =>
         writer.writeHeader(JournalHeader(eventId = EventId.BeforeFirst, totalEventCount = 0))
         writer.beginEventSection()
         writer.writeEvents(first :: Nil)
@@ -110,12 +110,12 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
         writer.writeEvents(last :: Nil)
         writer.endEventSection(sync = false)
       }
-      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.nextEvents().toList == first :: ta ::: last :: Nil)
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
       }
-      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.nextEvent() == Some(first))
         assert(journalReader.eventId == 1000)
         assert(journalReader.nextEvent() == Some(ta(0)))
@@ -135,7 +135,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
     "Uncommitted transaction" in {
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(new FileJsonWriter(file)) { writer ⇒
+      autoClosing(new FileJsonWriter(file)) { writer =>
         import journalMeta.eventJsonCodec
         def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(ByteString(encoder(a).compactPrint))
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
@@ -148,7 +148,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin {
         writeEvent(ta(1))
         writeEvent(ta(2))
       }
-      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader ⇒
+      autoClosing(new JournalReader(journalMeta, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.nextEvents().toList == first :: Nil)  // Uncommitted transaction is not read
         assert(journalReader.eventId == 1000)
         assert(journalReader.totalEventCount == 1)

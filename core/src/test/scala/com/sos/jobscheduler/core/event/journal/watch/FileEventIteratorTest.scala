@@ -20,18 +20,18 @@ import org.scalatest.Matchers._
 final class FileEventIteratorTest extends FreeSpec
 {
   "FileEventIterator" in {
-    FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir ⇒
+    FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
       val journalFile = journalMeta.file(after = After)
       writeJournal[TestEvent](journalMeta, after = After, TestEvents)
 
-      val iterator = new FileEventIterator[TestEvent](journalMeta, journalFile, tornEventId = After, () ⇒ Files.size(journalFile))
+      val iterator = new FileEventIterator[TestEvent](journalMeta, journalFile, tornEventId = After, () => Files.size(journalFile))
       iterator.firstEventPosition  // Must be called before reading
       iterator.next()
       val firstPos = PositionAnd(iterator.firstEventPosition, After)
       val secondPos = PositionAnd(iterator.position, TestEvents(0).eventId)
 
-      for (_ ← 1 to 3) {
+      for (_ <- 1 to 3) {
         iterator.seek(firstPos)
         assert(iterator.next() == TestEvents(0))
         assert(iterator.next() == TestEvents(1))

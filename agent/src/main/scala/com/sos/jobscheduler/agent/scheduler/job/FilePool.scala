@@ -20,11 +20,11 @@ final class FilePool(jobKey: JobKey, workflowJob: WorkflowJob) extends AutoClose
 
   def get(): FileSet = {
     val fileSet = free match {
-      case head :: tail ⇒
+      case head :: tail =>
         free = tail
         head.clear()
         head
-      case Nil ⇒
+      case Nil =>
         if (used.size >= taskLimit) throw new IllegalStateException(s"Job '$jobKey': FilePool.get tried to exceed taskLimit=$taskLimit")
         val fileSet = FileSet(new ShellReturnValuesProvider)
         logger.debug(s"Job '$jobKey': Using file ${fileSet.shellReturnValuesProvider.file} for order variables")

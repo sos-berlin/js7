@@ -37,21 +37,21 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
   protected def fileBased = workflow :: Nil
 
   "jobscheduler.webserver.auth.public = true" in {
-    runMyTest(isPublic = true) { (master, _) ⇒
+    runMyTest(isPublic = true) { (master, _) =>
       master.addOrder(FreshOrder(orderId, workflow.path)).runSyncUnsafe(99.seconds).orThrow
       master.eventWatch.await[OrderFinished](_.key == orderId)
     }
   }
 
   "jobscheduler.webserver.auth.public = false" in {
-    runMyTest(isPublic = false) { (master, agentPort) ⇒
+    runMyTest(isPublic = false) { (master, agentPort) =>
       assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.message
         == s"HTTP 401 Unauthorized: http://127.0.0.1:$agentPort/agent/api/command: The resource requires authentication, which was not supplied with the request")
     }
   }
 
-  private def runMyTest(isPublic: Boolean)(body: (RunningMaster, Int) ⇒ Unit): Unit = {
-    withTemporaryDirectory("MasterAgentWithoutAuthenticationTest-") { dir ⇒
+  private def runMyTest(isPublic: Boolean)(body: (RunningMaster, Int) => Unit): Unit = {
+    withTemporaryDirectory("MasterAgentWithoutAuthenticationTest-") { dir =>
       createDirectories(dir / "master/config/private")
       createDirectories(dir / "master/data/state")
       createDirectories(dir / "agent/config/private")

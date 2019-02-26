@@ -20,8 +20,8 @@ final class TaskSynchronizer[A](limit: Int = Int.MaxValue)(implicit scheduler: S
 
   def run(task: Task[A]): Future[Option[A]] = {
     requireNonNull(task)
-    promiseFuture[Option[A]] { promise ⇒
-      val ok = queue.offer(promise → task)
+    promiseFuture[Option[A]] { promise =>
+      val ok = queue.offer(promise -> task)
       if (!ok) {
         promise.success(None)
       } else {
@@ -33,11 +33,11 @@ final class TaskSynchronizer[A](limit: Int = Int.MaxValue)(implicit scheduler: S
   private def runNext(): Unit =
     if (!isExecuting.getAndSet(true)) {
       queue.poll() match {
-        case null ⇒
+        case null =>
           isExecuting := false
 
-        case (promise, task) ⇒
-          task.runAsync { outcome ⇒
+        case (promise, task) =>
+          task.runAsync { outcome =>
             isExecuting := false
             runNext()
             promise.complete(outcome.toTry map Some.apply)

@@ -23,8 +23,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournalMixin {
 
   "First run" in {
-    withTestActor() { (actorSystem, actor) ⇒
-      for ((key, cmd) ← testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
+    withTestActor() { (actorSystem, actor) =>
+      for ((key, cmd) <- testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
       assert(journalAggregates.isEmpty)
       assert(journalKeyedEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
@@ -36,7 +36,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   }
 
   "Second run, recovering from journal, then taking snapshot" in {
-    withTestActor() { (actorSystem, actor) ⇒
+    withTestActor() { (actorSystem, actor) =>
       assert(journalAggregates.isEmpty)
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
@@ -65,7 +65,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   }
 
   "Third run, recovering from journal, no events" in {
-    withTestActor() { (_, actor) ⇒
+    withTestActor() { (_, actor) =>
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"))
@@ -74,12 +74,12 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   }
 
   "After adding no events, journal file is reused (rewritten) because of unchanged after-EventId" in {
-    withTestActor() { (_, _) ⇒ }
+    withTestActor() { (_, _) => }
     assert(journalFileNames.length == 4)  // Unchanged
   }
 
   "acceptEarly" in {
-    withTestActor() { (actorSystem, actor) ⇒
+    withTestActor() { (actorSystem, actor) =>
       def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
 
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A")) await 99.s
@@ -101,27 +101,27 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   "Massive parallel" - {
     def run(n: Int, eventBufferSize: Int): Unit = {
       listJournalFiles(journalMeta.fileBase) map (_.file) foreach delete
-      withTestActor(ConfigFactory.parseString(s"""jobscheduler.journal.event-buffer-size = $eventBufferSize""")) { (_, actor) ⇒
-        val prefixes = for (i ← 1 to n) yield i.toString
+      withTestActor(ConfigFactory.parseString(s"""jobscheduler.journal.event-buffer-size = $eventBufferSize""")) { (_, actor) =>
+        val prefixes = for (i <- 1 to n) yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"
-        (for (p ← prefixes) yield {
+        (for (p <- prefixes) yield {
           val (key, cmd) = testCommands(p).head
           simpleExecute(actor, key, cmd)
         }) await 99.s
         // Start executing remaining commands ...
-        val executed = for (p ← prefixes) yield blockingThreadFuture { for ((key, cmd) ← testCommands(p).tail) simpleExecute(actor, key, cmd) await 99.s }
+        val executed = for (p <- prefixes) yield blockingThreadFuture { for ((key, cmd) <- testCommands(p).tail) simpleExecute(actor, key, cmd) await 99.s }
         // ... while disturbing form a different Actor to test persistAsync()
         // DisturbAndRespond responds with String, not Done. See TestActor
-        val disturbed = for (p ← prefixes) yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
+        val disturbed = for (p <- prefixes) yield simpleExecute(actor, s"$p-A", TestAggregateActor.Command.DisturbAndRespond)
         (executed ++ disturbed) await 99.s
         info(s"$n actors, event-buffer-size=$eventBufferSize " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedEvents groupBy { _.key.split("-").head }
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
-        for (p ← prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
+        for (p <- prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
-          prefixes.flatMap(p ⇒ Set(
+          prefixes.flatMap(p => Set(
             TestAggregate(s"$p-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
             TestAggregate(s"$p-C", "(C.Add)"))
           ).toSet
@@ -129,7 +129,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
       assert(journalFileNames.length == 1)
     }
 
-    for ((n, eventBufferSize) ← Array(1000 → 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 → 300, 100 → 100, 100 → 30, 100 → 10) else Nil)) {
+    for ((n, eventBufferSize) <- Array(1000 -> 1000) ++ (if (sys.props.contains("test.speed")) Array(1000 -> 300, 100 -> 100, 100 -> 30, 100 -> 10) else Nil)) {
       s"$n actors, event-buffer-size=$eventBufferSize" in {
         run(n = n, eventBufferSize = eventBufferSize)
       }
@@ -139,19 +139,19 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
   if (sys.props contains "test.speed")
   "Speed test" in {
     deleteIfExists(journalMeta.fileBase)
-    val keys = for (i ← 1 to 100000) yield s"TEST-$i"
-    withTestActor() { (_, actor) ⇒
+    val keys = for (i <- 1 to 100000) yield s"TEST-$i"
+    withTestActor() { (_, actor) =>
       val stopwatch = new Stopwatch
-      (for (key ← keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
-        (for (key ← keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-a"))) ++
-        (for (key ← keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b"))) await 999.s
+      (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Add(s"CONTENT-FOR-$key"))) ++
+        (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-a"))) ++
+        (for (key <- keys) yield actor ? TestActor.Input.Forward(key, TestAggregateActor.Command.Append(s"-b"))) await 999.s
       info("Stored    " + stopwatch.itemsPerSecondString(3 * keys.size, "events"))
     }
     val stopwatch = new Stopwatch
-    withTestActor() { (_, actor) ⇒
+    withTestActor() { (_, actor) =>
       (actor ? TestActor.Input.WaitUntilReady) await 999.s
       info("Recovered " + stopwatch.itemsPerSecondString(keys.size, "objects"))  // Including initial snapshots
-      assertResult((for (key ← keys) yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet) {
+      assertResult((for (key <- keys) yield TestAggregate(key, s"CONTENT-FOR-$key-a-b")).toSet) {
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet
       }
     }
