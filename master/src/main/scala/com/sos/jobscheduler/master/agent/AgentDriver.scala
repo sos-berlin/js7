@@ -46,6 +46,7 @@ with ReceiveLoggingActor.WithStash {
   private val config = masterConfiguration.config
   private val batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size")
   private val batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration
+  private val EventLimit        = config.getInt     ("jobscheduler.master.agent-driver.event-fetch-limit")
   private val eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration
   private val eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration
   private val keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration
@@ -361,7 +362,6 @@ with ReceiveLoggingActor.WithStash {
 
 private[master] object AgentDriver
 {
-  private val EventLimit = 1000  // OrderStdWritten may be up to 10000 characters (30000 UTF-8 characters), so memory usage may be 30MB
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
 
   def props(agentId: AgentId, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
