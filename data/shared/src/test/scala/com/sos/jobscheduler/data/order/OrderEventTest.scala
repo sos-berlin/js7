@@ -59,10 +59,6 @@ final class OrderEventTest extends FreeSpec {
           },
           "position": [ 2 ]
         },
-        "outcome": {
-          "TYPE": "Succeeded",
-          "returnCode": 0
-        },
         "state": {
           "TYPE": "Ready"
         },

@@ -11,9 +11,9 @@ import org.scalatest.FreeSpec
 final class BranchPathTest extends FreeSpec
 {
   "JSON" in {
-    testJson(Nil: BranchPath                    , json"""[]""")
-    testJson(Segment(1, "BRANCH") :: Nil         , json"""[ 1, "BRANCH" ]""")
-    testJson(Segment(1, 2) :: Nil                , json"""[ 1, 2 ]""")
+    testJson(Nil: BranchPath                      , json"""[]""")
+    testJson(Segment(1, "BRANCH") :: Nil          , json"""[ 1, "BRANCH" ]""")
+    testJson(Segment(1, 2) :: Nil                 , json"""[ 1, 2 ]""")
     testJson(Segment(1, 2) :: Segment(3, 4) :: Nil, json"""[ 1, 2, 3, 4 ]""")
 
     assert("""[ 1 ]""".parseJsonOrThrow.as[BranchPath].isLeft/*failed*/)

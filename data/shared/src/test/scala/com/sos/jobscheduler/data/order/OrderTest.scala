@@ -97,7 +97,7 @@ final class OrderTest extends FreeSpec
 
     "State" - {
       "Fresh scheduled" in {
-        check(Fresh(Some(Timestamp.parse("2017-11-15T12:33:44.789Z"))),
+        testJson[State](Fresh(Some(Timestamp.parse("2017-11-15T12:33:44.789Z"))),
           json"""{
             "TYPE": "Fresh",
             "scheduledFor": 1510749224789
@@ -105,42 +105,42 @@ final class OrderTest extends FreeSpec
       }
 
       "Fresh immediately" in {
-        check(Fresh(),
+        testJson[State](Fresh(),
           json"""{
             "TYPE": "Fresh"
           }""")
       }
 
       "Ready" in {
-        check(Ready,
+        testJson[State](Ready,
           json"""{
             "TYPE": "Ready"
           }""")
       }
 
       "Processing" in {
-        check(Processing,
+        testJson[State](Processing,
           json"""{
             "TYPE": "Processing"
           }""")
       }
 
       "Processed" in {
-        check(Processed,
+        testJson[State](Processed,
           json"""{
             "TYPE": "Processed"
           }""")
       }
 
       "Stopped" in {
-        check(Stopped,
+        testJson[State](Stopped,
           json"""{
             "TYPE": "Stopped"
           }""")
       }
 
       "Forked" in {
-        check(Forked(List(
+        testJson[State](Forked(List(
           Forked.Child(BranchId("A"), OrderId("A/1"), MapDiff(Map("K" → "V"))),
           Forked.Child(BranchId("B"), OrderId("B/1")))),
           json"""{
@@ -166,7 +166,7 @@ final class OrderTest extends FreeSpec
       }
 
       "Offering" in {
-        check(Offering(Timestamp.ofEpochMilli(123)),
+        testJson[State](Offering(Timestamp.ofEpochMilli(123)),
           json"""{
             "TYPE": "Offering",
             "until": 123
@@ -174,14 +174,14 @@ final class OrderTest extends FreeSpec
       }
 
       "Finished" in {
-        check(Finished,
+        testJson[State](Finished,
           json"""{
             "TYPE": "Finished"
           }""")
       }
 
       "Broken" in {
-        check(Broken(Problem("PROBLEM")),
+        testJson[State](Broken(Problem("PROBLEM")),
           json"""{
             "TYPE": "Broken",
             "problem": {
@@ -189,28 +189,24 @@ final class OrderTest extends FreeSpec
             }
           }""")
       }
-
-      def check(o: State, json: Json) = testJson(o, json)
     }
 
     "AttachedState" - {
       "Attached" in {
-        check(Attached(AgentRefPath("/AGENT")),
-          """{
+        testJson[AttachedState](Attached(AgentRefPath("/AGENT")),
+          json"""{
             "TYPE": "Attached",
             "agentRefPath": "/AGENT"
           }""")
       }
 
       "Detaching" in {
-        check(Detaching(AgentRefPath("/AGENT")),
-          """{
+        testJson[AttachedState](Detaching(AgentRefPath("/AGENT")),
+          json"""{
             "TYPE": "Detaching",
             "agentRefPath": "/AGENT"
           }""")
       }
-
-      def check(o: AttachedState, j: String) = testJson(o, j)
     }
   }
 
