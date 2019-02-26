@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
-import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
+import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_, try_}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, NumericConstant, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Retry, TryInstruction}
@@ -305,7 +305,7 @@ final class WorkflowTest extends FreeSpec {
     assert(w.anonymousJobKey(w.id /: (Position(0) / Else % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(0) / Else % 0))))
     assert(w.anonymousJobKey(w.id /: (Position(1) / Try_ % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
     // anonymousJobKey normalizes the retry-index of a Retry Position to 0.
-    assert(w.anonymousJobKey(w.id /: (Position(1) / 1    % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
+    assert(w.anonymousJobKey(w.id /: (Position(1) / try_(1)    % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
   }
 
   "isDefinedAt, instruction" in {
