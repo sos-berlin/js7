@@ -99,6 +99,12 @@ object Checked
         case Valid(a) ⇒  Some(a)
       }
 
+    def onProblemHandle[B >: A](f: Problem => B): B =
+      underlying match {
+        case Invalid(problem) => f(problem)
+        case Valid(a) => a
+      }
+
     def toEitherThrowable: Either[Throwable, A] =
       underlying match {
         case Invalid(problem) ⇒ Left(problem.throwable)

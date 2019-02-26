@@ -123,6 +123,13 @@ final class CheckedTest extends FreeSpec
     assert(flag)
   }
 
+  "onProblemHandle" in {
+    assert(Valid(1).onProblemHandle(_ ⇒ throw new NotImplementedError) == 1)
+    var flag = false
+    assert(Problem("X").invalid[Int].onProblemHandle { _ ⇒ flag = true; 7 } == 7)
+    assert(flag)
+  }
+
   "traverse" in {
     def validate(i: Int): Checked[String] = if ((i % 2) == 0) Valid(i.toString) else Invalid(Problem(s"odd $i"))
     assert(List(1, 2, 3).traverse(validate) == Invalid(Problem.multiple("odd 1", "odd 3")))
