@@ -43,7 +43,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
 
   private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, AgentRefReader))
 
-  "readFileBased with syntax errors and a alien file" in {
+  "readFileBased with syntax errors and an alien file" in {
       assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
         Invalid(Problem.Multiple(Set(
           Problem("""Problem with 'Workflow:/D' (txt) ["define":1:1 ..."ERROR"]"""),

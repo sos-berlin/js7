@@ -56,7 +56,7 @@ private[graphql] object MasterGraphqlSchema
     "Pattern", "Regular expression pattern")
   private implicit val OrderIdType         = genericStringType[OrderId]("Identifies the Order in JobScheduler")
   private implicit val WorkflowPathType    = genericStringType[WorkflowPath]("Path of Workflow (String)")
-  private implicit val AgentRefPathType       = genericStringType[AgentRefPath]("Path of Agent (String)")
+  private implicit val AgentRefPathType    = genericStringType[AgentRefPath]("Path of Agent (String)")
   private implicit val ExecutablePathType  = genericStringType[ExecutablePath]("Path of an executable (String)")
   private implicit val WorkflowJobNameType = genericStringType[WorkflowJob.Name]("Job name (String)")
   private implicit val VersionIdType       = genericStringType[VersionId]("Version identifier (String)")

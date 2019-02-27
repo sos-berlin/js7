@@ -230,7 +230,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       }
     }
 
-    "/event?v=XXX&after=0, buildId updated" in {
+    "/event?v=XXX&after=0, buildId changed" in {
       Get(s"/event?v=XXX&after=0") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         assert(response.entity.contentType == ContentType(`text/event-stream`))

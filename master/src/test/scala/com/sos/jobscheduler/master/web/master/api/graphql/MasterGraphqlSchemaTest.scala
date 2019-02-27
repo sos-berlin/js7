@@ -146,9 +146,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "name": "JOB"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Fresh"
@@ -172,9 +172,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attaching",
                 "agentRefPath": "/AGENT"
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Fresh"
@@ -198,9 +198,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attached",
                 "agentRefPath": "/AGENT"
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Fresh"
@@ -219,9 +219,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "Fork"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Ready"
@@ -252,9 +252,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attached",
                 "agentRefPath": "/AGENT"
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Processing"
@@ -363,9 +363,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Forked"
@@ -384,9 +384,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Offering"
@@ -404,9 +404,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Awaiting"
@@ -425,9 +425,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Finished"
@@ -445,9 +445,9 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome" : {
-                "TYPE" : "Succeeded",
-                "returnCode" : 0
+              "outcome": {
+                "TYPE": "Succeeded",
+                "returnCode": 0
               },
               "state": {
                 "TYPE": "Broken"

@@ -221,9 +221,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         ]
       }""")
 
-    testGets("master/api/workflow/FOLDER/WORKFLOW-2" ::
-             "master/api/workflow//FOLDER/WORKFLOW-2" ::
-             "master/api/workflow/%2FFOLDER%2FWORKFLOW-2" :: Nil,
+    testGets("master/api/workflow/FOLDER/WORKFLOW-2"::
+             "master/api/workflow//FOLDER/WORKFLOW-2"::
+             "master/api/workflow/%2FFOLDER%2FWORKFLOW-2":: Nil,
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
@@ -428,23 +428,23 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId": 1003,
           "TYPE": "FileBasedAdded",
-          "path" : "AgentRef:/AGENT",
-          "signed" : {
-            "string" : "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
-            "signature" : {
-              "TYPE" : "Silly",
-              "string" : "MY-SILLY-SIGNATURE"
+          "path": "AgentRef:/AGENT",
+          "signed": {
+            "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
+            "signature": {
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
-          "eventId" : 1004,
-          "TYPE" : "FileBasedAdded",
-          "path" : "AgentRef:/FOLDER/AGENT-A",
-          "signed" : {
-            "string" : "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
-            "signature" : {
-              "TYPE" : "Silly",
-              "string" : "MY-SILLY-SIGNATURE"
+          "eventId": 1004,
+          "TYPE": "FileBasedAdded",
+          "path": "AgentRef:/FOLDER/AGENT-A",
+          "signed": {
+            "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
+            "signature": {
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
@@ -459,23 +459,23 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }, {
           "eventId": 1007,
           "TYPE": "FileBasedAdded",
-          "path" : "Workflow:/WORKFLOW",
-          "signed" : {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
-            "signature" : {
-              "TYPE" : "Silly",
-              "string" : "MY-SILLY-SIGNATURE"
+          "path": "Workflow:/WORKFLOW",
+          "signed": {
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
+            "signature": {
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
           "eventId": 1008,
           "TYPE": "FileBasedAdded",
-          "path" : "Workflow:/FOLDER/WORKFLOW-2",
-          "signed" : {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
-            "signature" : {
-              "TYPE" : "Silly",
-              "string" : "MY-SILLY-SIGNATURE"
+          "path": "Workflow:/FOLDER/WORKFLOW-2",
+          "signed": {
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
+            "signature": {
+              "TYPE": "Silly",
+              "string": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
