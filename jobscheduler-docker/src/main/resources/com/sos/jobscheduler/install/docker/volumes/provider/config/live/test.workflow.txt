@@ -9,11 +9,15 @@ define workflow {
       job TEST1, arguments={"hello": "გამარჯობა!"};
     },
     "🍋" {
-      job TEST1, arguments={"hello": "やあ"};
-      job TEST2;
+      try execute executable="/fail", agent="agent-1", taskLimit=10, arguments={"hello": "やあ"};
+      catch
+        if (retryCount < 3) {
+          job SLEEP, arguments={"hello": "WILL TRY AGAIN"};
+          retry;
+        } else
+          job SLEEP, arguments={"hello": "LAST JOB FAILED"};
     });
 
-  job TEST2, arguments={"testArgument": "🍊"};
   job TEST1, arguments={"hello": "مرحبًا"};
   job TEST2;
 
@@ -55,5 +59,9 @@ define workflow {
         "testArgument": "☘",
         "other": "other value"
       };
+  }
+
+  define job SLEEP {
+    execute executable="/sleep", agent="agent-1", taskLimit=10;
   }
 }

@@ -31,7 +31,7 @@ object CirceJsonTesterTest
   private val a = A(true, Int.MaxValue, Long.MinValue, 1.23456789e33, "STRING", Some(1), None, List(1, 2, 3), Set("a", "b"))
 
   @JsonCodec
-  private final case class A(
+  final case class A(
     boole: Boolean,
     int: Int,
     long: Long,

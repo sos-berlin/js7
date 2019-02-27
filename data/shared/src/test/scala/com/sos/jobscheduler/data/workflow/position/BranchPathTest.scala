@@ -22,7 +22,7 @@ final class BranchPathTest extends FreeSpec
 
   "BranchPath and Position" in {
     assert(Nil % 1 == Position(1))
-    assert((Segment(1, 2) :: Nil) % 3 == Position(1, 2, 3))
+    assert((Segment(1, 2) :: Nil) % 3 == Position(1) / 2 % 3)
   }
 
   "PositionAndBranchId" in {
@@ -38,5 +38,15 @@ final class BranchPathTest extends FreeSpec
     Segment(1, 2) :: Segment(3, 4) :: Nil match {
       case BranchPath.PositionAndBranchId(Position(Segment(InstructionNr(1), BranchId.Indexed(2)) :: Nil, InstructionNr(3)), BranchId.Indexed(4)) =>
     }
+  }
+
+  "normalize" in {
+    assert(BranchPath.normalize(Position(0) / "X") == (Position(0) / "X"))
+    assert(BranchPath.normalize(Position(0) / 0) == (Position(0) / 0))
+    assert(BranchPath.normalize(Position(0) / "try") == (Position(0) / "try"))
+    assert(BranchPath.normalize(Position(0) / "try+1") == (Position(0) / "try"))
+    assert(BranchPath.normalize(Position(0) / "try+123") == (Position(0) / "try"))
+    assert(BranchPath.normalize(Position(0) / "catch") == (Position(0) / "catch"))
+    assert(BranchPath.normalize(Position(0) / "catch+123") == (Position(0) / "catch"))
   }
 }

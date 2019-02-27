@@ -109,7 +109,7 @@ final class OrderEventSourceTest extends FreeSpec
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(0, "🥕", 1)),
+      orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
       orderId / "🥕" <-: OrderTransferredToMaster))
 
@@ -118,7 +118,7 @@ final class OrderEventSourceTest extends FreeSpec
     assert(process.run(orderId / "🍋") == List(
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(0, "🍋", 1)),
+      orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
       orderId / "🍋" <-: OrderTransferredToMaster,
       orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
@@ -133,7 +133,7 @@ final class OrderEventSourceTest extends FreeSpec
       orderId / "🥕" <-: OrderTransferredToAgent(TestAgentRefPath),
       orderId / "🥕" <-: OrderProcessingStarted,
       orderId / "🥕" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🥕" <-: OrderMoved(Position(1, "🥕", 1)),
+      orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
       orderId / "🥕" <-: OrderTransferredToMaster))
 
@@ -144,7 +144,7 @@ final class OrderEventSourceTest extends FreeSpec
       orderId / "🍋" <-: OrderTransferredToAgent(TestAgentRefPath),
       orderId / "🍋" <-: OrderProcessingStarted,
       orderId / "🍋" <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      orderId / "🍋" <-: OrderMoved(Position(1, "🍋", 1)),
+      orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
       orderId / "🍋" <-: OrderTransferredToMaster,
       orderId <-: OrderJoined(MapDiff.empty, Outcome.succeeded)))
@@ -201,7 +201,7 @@ final class OrderEventSourceTest extends FreeSpec
 
     "In forked order" in {
       val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1, "🥕", 1)) == Valid(Position(1, "🥕", 1)))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1) / "fork+🥕" % 1) == Valid(Position(1) / "fork+🥕" % 1))
     }
   }
 

@@ -13,7 +13,8 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
+import com.sos.jobscheduler.data.workflow.instructions.Fork
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -141,8 +142,8 @@ final class OrderTest extends FreeSpec
 
       "Forked" in {
         testJson[State](Forked(List(
-          Forked.Child(BranchId("A"), OrderId("A/1"), MapDiff(Map("K" -> "V"))),
-          Forked.Child(BranchId("B"), OrderId("B/1")))),
+          Forked.Child(Fork.Branch.Id("A"), OrderId("A/1"), MapDiff(Map("K" -> "V"))),
+          Forked.Child(Fork.Branch.Id("B"), OrderId("B/1")))),
           json"""{
             "TYPE": "Forked",
               "children": [

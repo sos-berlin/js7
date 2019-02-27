@@ -59,43 +59,33 @@ final class TryInstructionTest extends FreeSpec
       Position(7) / Catch_ % 1 -> ImplicitEnd))
   }
 
-  "normalizeBranchId" in {
-    assert(try_.normalizeBranchId("X") == BranchId("X"))  // error, should be Try_ or Catch_. We don't care here
-    assert(try_.normalizeBranchId(0) == BranchId(0))      // error, should be Try_ or Catch_. We don't care here
-    assert(try_.normalizeBranchId("try") == Try_)
-    assert(try_.normalizeBranchId("try-1") == Try_)
-    assert(try_.normalizeBranchId("try-123") == Try_)
-    assert(try_.normalizeBranchId("catch") == Catch_)
-    assert(try_.normalizeBranchId("catch-123") == Catch_)
-  }
-
   "toCatchBranchId" in {
     assert(try_.toCatchBranchId("X") == None)
     assert(try_.toCatchBranchId(Try_) == Some(Catch_))
-    assert(try_.toCatchBranchId("try-1") == Some(BranchId("catch-1")))
-    assert(try_.toCatchBranchId("try-123") == Some(BranchId("catch-123")))
+    assert(try_.toCatchBranchId("try+1") == Some(BranchId("catch+1")))
+    assert(try_.toCatchBranchId("try+123") == Some(BranchId("catch+123")))
     assert(try_.toCatchBranchId(Catch_) == None)
-    assert(try_.toCatchBranchId("catch-1") == None)
+    assert(try_.toCatchBranchId("catch+1") == None)
   }
 
   "toRetryIndex" in {
     assert(toRetryIndex("X") == Invalid(Problem("Invalid BranchId for Try instruction: X")))
     assert(toRetryIndex(0) == Invalid(Problem("Invalid BranchId for Try instruction: 0")))
     assert(toRetryIndex("try") == Valid(0))
-    assert(toRetryIndex("try-1") == Valid(1))
-    assert(toRetryIndex("try-123") == Valid(123))
+    assert(toRetryIndex("try+1") == Valid(1))
+    assert(toRetryIndex("try+123") == Valid(123))
     assert(toRetryIndex("catch") == Valid(0))
-    assert(toRetryIndex("catch-123") == Valid(123))
+    assert(toRetryIndex("catch+123") == Valid(123))
   }
 
   "nextTryBranchId" in {
     assert(nextTryBranchId("X") == Invalid(Problem("Invalid BranchId for nextTryBranchId: X")))
     assert(nextTryBranchId(0) == Invalid(Problem("Invalid BranchId for nextTryBranchId: 0")))
     assert(nextTryBranchId("try") == Valid(None))
-    assert(nextTryBranchId("try-1") == Valid(None))
-    assert(nextTryBranchId("try-2") == Valid(None))
-    assert(nextTryBranchId("catch") == Valid(Some(BranchId("try-1"))))
-    assert(nextTryBranchId("catch-1") == Valid(Some(BranchId("try-2"))))
-    assert(nextTryBranchId("catch-123") == Valid(Some(BranchId("try-124"))))
+    assert(nextTryBranchId("try+1") == Valid(None))
+    assert(nextTryBranchId("try+2") == Valid(None))
+    assert(nextTryBranchId("catch") == Valid(Some(BranchId("try+1"))))
+    assert(nextTryBranchId("catch+1") == Valid(Some(BranchId("try+2"))))
+    assert(nextTryBranchId("catch+123") == Valid(Some(BranchId("try+124"))))
   }
 }

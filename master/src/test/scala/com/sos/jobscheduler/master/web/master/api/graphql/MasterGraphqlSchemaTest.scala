@@ -238,7 +238,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "path": "/A-WORKFLOW",
                   "versionId": "1"
                 },
-                "position": [ 1, "BRANCH", 0 ],
+                "position": [ 1, "fork+BRANCH", 0 ],
                 "instruction": {
                 "TYPE": "Execute.Anonymous",
                   "job": {
@@ -503,7 +503,7 @@ object MasterGraphqlSchemaTest
         Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefPath))),
         Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = attached),
         Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready, attachedState = attached),
-        Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(1, "BRANCH", 0), Order.Processing,
+        Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: (Position(1) / "fork+BRANCH" % 0), Order.Processing,
           attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
           parent = Some(OrderId("PARENT")),
           payload = Payload(Map("KEY" -> "VALUE", "X" -> "XX"))),

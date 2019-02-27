@@ -100,19 +100,8 @@ extends FileBased
   def lastNr: InstructionNr =
     instructions.length - 1
 
-  def anonymousJobKey(workflowPosition: WorkflowPosition): Checked[JobKey.Anonymous] =
-    for (pos <- normalizePosition(workflowPosition.position)) yield
-      JobKey.Anonymous(workflowPosition.workflowId /: pos)
-
-  private def normalizePosition(position: Position): Checked[Position] =
-    position.branchPath.headOption match {
-      case Some(BranchPath.Segment(nr, branchId)) =>
-        val instr = instruction(nr)
-        val tail = position.branchPath.tail % position.nr
-        for (pos <- instr.workflow(branchId).flatMap(_.normalizePosition(tail)))
-          yield nr / instr.normalizeBranchId(branchId) % pos
-      case _ => Valid(position)
-    }
+  def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
+    JobKey.Anonymous(workflowPosition.normalized)
 
   private[workflow] def flattenedWorkflows: Map[BranchPath, Workflow] =
     flattenedWorkflowsOf(Nil).toMap

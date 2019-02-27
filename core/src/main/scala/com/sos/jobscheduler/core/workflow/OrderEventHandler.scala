@@ -40,7 +40,7 @@ final class OrderEventHandler(
         for {
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.checkedExecute(previousOrder.position) flatMap {
-            case _: Execute.Anonymous => workflow.anonymousJobKey(previousOrder.workflowPosition)
+            case _: Execute.Anonymous => Valid(workflow.anonymousJobKey(previousOrder.workflowPosition))
             case o: Execute.Named     => workflow.jobKey(previousOrder.position.branchPath, o.name)
           }
         } yield

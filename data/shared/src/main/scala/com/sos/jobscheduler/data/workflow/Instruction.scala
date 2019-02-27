@@ -19,7 +19,7 @@ trait Instruction
 
   def workflows: Seq[Workflow] = branchWorkflows map (_._2)
 
-  protected def branchWorkflows: Seq[(BranchId, Workflow)] = Nil
+  def branchWorkflows: Seq[(BranchId, Workflow)] = Nil
 
   final def flattenedWorkflows(parent: Position): Seq[(BranchPath, Workflow)] =
     branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedWorkflowsOf(parent / branchId) }
@@ -29,8 +29,6 @@ trait Instruction
 
   def workflow(branchId: BranchId): Checked[Workflow] =
     Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")
-
-  def normalizeBranchId(branchId: BranchId) = branchId
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
 

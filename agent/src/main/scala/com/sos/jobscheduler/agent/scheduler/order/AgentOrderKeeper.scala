@@ -418,7 +418,7 @@ extends MainJournalingActor[Event] with Stash {
         orderEntry.instruction match {
           case execute: Execute =>
             val checkedJobKey = execute match {
-              case _: Execute.Anonymous => orderEntry.workflow.anonymousJobKey(orderEntry.order.workflowPosition)
+              case _: Execute.Anonymous => Valid(orderEntry.workflow.anonymousJobKey(orderEntry.order.workflowPosition))
               case o: Execute.Named     => orderEntry.workflow.jobKey(orderEntry.order.position.branchPath, o.name)  // defaultArguments are extracted later
             }
             for (jobEntry <- checkedJobKey flatMap jobRegister.checked onProblem (p => logger.error(p))){

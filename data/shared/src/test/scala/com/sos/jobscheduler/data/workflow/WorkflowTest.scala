@@ -163,8 +163,8 @@ final class WorkflowTest extends FreeSpec {
 
   "workflowOption" in {
     assert(TestWorkflow.nestedWorkflow(Nil) == Valid(TestWorkflow))
-    assert(TestWorkflow.nestedWorkflow(Position(2) / "🥕") == Valid(
-      TestWorkflow.instruction(2).asInstanceOf[Fork].workflow(BranchId("🥕")).orThrow))
+    assert(TestWorkflow.nestedWorkflow(Position(2) / "fork+🥕") == Valid(
+      TestWorkflow.instruction(2).asInstanceOf[Fork].workflow(BranchId("fork+🥕")).orThrow))
   }
 
   "reduce" in {
@@ -205,8 +205,8 @@ final class WorkflowTest extends FreeSpec {
       Nil -> TestWorkflow,
       (Position(1) / Then) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
       (Position(1) / Else) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,
-      (Position(2) / "🥕") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
-      (Position(2) / "🍋") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
+      (Position(2) / "fork+🥕") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(0).workflow,
+      (Position(2) / "fork+🍋") -> TestWorkflow.instruction(Position(2)).asInstanceOf[Fork].branches(1).workflow,
     ))
   }
 
@@ -220,12 +220,12 @@ final class WorkflowTest extends FreeSpec {
       (Position(1) / Else % 0, TestWorkflow.instruction(1).asInstanceOf[If].elseWorkflow.get.instructions(0)),
       (Position(1) / Else % 1, ImplicitEnd),
       (Position(2), TestWorkflow.instruction(2)),
-      (Position(2) / "🥕" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(0)),
-      (Position(2) / "🥕" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(1)),
-      (Position(2) / "🥕" % 2, ImplicitEnd),
-      (Position(2) / "🍋" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(0)),
-      (Position(2) / "🍋" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(1)),
-      (Position(2) / "🍋" % 2, ImplicitEnd),
+      (Position(2) / "fork+🥕" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(0)),
+      (Position(2) / "fork+🥕" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(1)),
+      (Position(2) / "fork+🥕" % 2, ImplicitEnd),
+      (Position(2) / "fork+🍋" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(0)),
+      (Position(2) / "fork+🍋" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(1)),
+      (Position(2) / "fork+🍋" % 2, ImplicitEnd),
       (Position(3), BExecute),
       (Position(4), ImplicitEnd)))
   }
@@ -283,8 +283,8 @@ final class WorkflowTest extends FreeSpec {
       JobKey(TestWorkflow.id /: Position(0)) -> AExecute.job,
       JobKey(WorkflowBranchPath(TestWorkflow.id, Position(1) / Then), BJobName) -> B1Job,
       JobKey(TestWorkflow.id /: (Position(1) / Else % 0)) -> BExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🥕" % 0)) -> AExecute.job,
-      JobKey(TestWorkflow.id /: (Position(2) /  "🍋" % 0)) -> BExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) / "fork+🥕" % 0)) -> AExecute.job,
+      JobKey(TestWorkflow.id /: (Position(2) / "fork+🍋" % 0)) -> BExecute.job,
       JobKey(TestWorkflow.id /: Position(3)) -> BExecute.job,
       JobKey(TestWorkflow.id, AJobName) -> AJob,
       JobKey(TestWorkflow.id, BJobName) -> BJob))
@@ -300,12 +300,12 @@ final class WorkflowTest extends FreeSpec {
         TryInstruction(             // :1
           Workflow.of(Fail),        // :1/Try:0
           Workflow.of(Fail))))      // :1/1:0
-    assert(w.anonymousJobKey(w.id /: Position(99)) == Valid(JobKey.Anonymous(w.id /: Position(99))))
-    assert(w.anonymousJobKey(w.id /: (Position(0) / Then % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(0) / Then % 0))))
-    assert(w.anonymousJobKey(w.id /: (Position(0) / Else % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(0) / Else % 0))))
-    assert(w.anonymousJobKey(w.id /: (Position(1) / Try_ % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
+    assert(w.anonymousJobKey(w.id /: Position(99)) == JobKey.Anonymous(w.id /: Position(99)))
+    assert(w.anonymousJobKey(w.id /: (Position(0) / Then % 0)) == JobKey.Anonymous(w.id /: (Position(0) / Then % 0)))
+    assert(w.anonymousJobKey(w.id /: (Position(0) / Else % 0)) == JobKey.Anonymous(w.id /: (Position(0) / Else % 0)))
+    assert(w.anonymousJobKey(w.id /: (Position(1) / Try_ % 0)) == JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0)))
     // anonymousJobKey normalizes the retry-index of a Retry Position to 0.
-    assert(w.anonymousJobKey(w.id /: (Position(1) / try_(1)    % 0)) == Valid(JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0))))
+    assert(w.anonymousJobKey(w.id /: (Position(1) / try_(1)    % 0)) == JobKey.Anonymous(w.id /: (Position(1) / Try_ % 0)))
   }
 
   "isDefinedAt, instruction" in {
@@ -316,12 +316,12 @@ final class WorkflowTest extends FreeSpec {
       Position(1) / Then % 1 -> Execute.Named(BJobName),
       Position(1) / Else % 0 -> BExecute,
       Position(2) -> TestWorkflow.instruction(2),
-      Position(2) / "🥕" % 0 -> AExecute,
-      Position(2) / "🥕" % 1 -> Execute.Named(AJobName),
-      Position(2) / "🥕" % 2 -> ImplicitEnd,
-      Position(2) / "🍋" % 0 -> BExecute,
-      Position(2) / "🍋" % 1 -> Execute.Named(BJobName),
-      Position(2) / "🍋" % 2 -> ImplicitEnd,
+      Position(2) / "fork+🥕" % 0 -> AExecute,
+      Position(2) / "fork+🥕" % 1 -> Execute.Named(AJobName),
+      Position(2) / "fork+🥕" % 2 -> ImplicitEnd,
+      Position(2) / "fork+🍋" % 0 -> BExecute,
+      Position(2) / "fork+🍋" % 1 -> Execute.Named(BJobName),
+      Position(2) / "fork+🍋" % 2 -> ImplicitEnd,
       Position(3) -> BExecute,
       Position(4) -> ImplicitEnd)
 
@@ -329,8 +329,8 @@ final class WorkflowTest extends FreeSpec {
       assert(TestWorkflow isDefinedAt address)
       assert(TestWorkflow.instruction(address) == instruction, s" - $address")
     }
-    assert(!TestWorkflow.isDefinedAt(Position(0) / "🥕" % 0))
-    assert(!TestWorkflow.isDefinedAt(Position(0) / "🥕" % 3))
+    assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 0))
+    assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 3))
     assert(!TestWorkflow.isDefinedAt(Position(999)))
   }
 

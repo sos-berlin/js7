@@ -37,7 +37,7 @@ final case class Order[+S <: Order.State](
     for (child <- event.children) yield
       Order(
         child.orderId,
-        workflowPosition.copy(position = workflowPosition.position / child.branchId % InstructionNr.First),
+        workflowPosition.copy(position = workflowPosition.position / child.branchId.toBranchId % InstructionNr.First),
         Ready,
         Outcome.succeeded,
         attachedState,

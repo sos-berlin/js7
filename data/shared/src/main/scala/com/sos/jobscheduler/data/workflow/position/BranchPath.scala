@@ -26,6 +26,12 @@ object BranchPath
       Segment(nr, BranchId.Indexed(index))
   }
 
+  def normalize(branchPath: BranchPath): BranchPath =
+    branchPath match {
+      case Nil => Nil
+      case Segment(nr, branchId) :: tail => nr / branchId.normalized :: normalize(tail)
+    }
+
   private[position] def decodeSegments(pairs: Iterator[List[Json]]): Decoder.Result[BranchPath] = {
     var left: Option[Left[DecodingFailure, Nothing]] = None
     val b = mutable.ListBuffer[Segment]()

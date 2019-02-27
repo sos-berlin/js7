@@ -14,7 +14,8 @@ import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.WorkflowId
-import com.sos.jobscheduler.data.workflow.position.{BranchId, Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.instructions.Fork
+import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -117,7 +118,7 @@ object OrderEvent {
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
     @JsonCodec
-    final case class Child(branchId: BranchId.Named, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
+    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
   }
 
   final case class OrderJoined(variablesDiff: MapDiff[String, String], outcome: Outcome)  // TODO Das gleiche wie OrderProcessed ?

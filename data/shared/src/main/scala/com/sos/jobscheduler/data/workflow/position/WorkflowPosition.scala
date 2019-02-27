@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow.position
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import io.circe.generic.JsonCodec
 import scala.language.implicitConversions
@@ -10,6 +11,8 @@ import scala.language.implicitConversions
 @JsonCodec
 final case class WorkflowPosition(workflowId: WorkflowId, position: Position)
 {
+  lazy val normalized = reuseIfEqual(this, workflowId /: position.normalized)
+
   override def toString = s"$workflowId$position"
 }
 

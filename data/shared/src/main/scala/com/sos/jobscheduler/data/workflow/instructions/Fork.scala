@@ -4,12 +4,13 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.workflow.instructions.Fork._
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
-import io.circe.generic.JsonCodec
 import scala.collection.immutable.IndexedSeq
 import scala.language.implicitConversions
 
@@ -43,20 +44,27 @@ extends Instruction
   //def startAgents: Set[AgentRefPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
-  override def workflow(branchId: BranchId) =
-    branches.collectFirst({ case fj: Fork.Branch if fj.id == branchId => fj.workflow })
-      .fold(super.workflow(branchId))(Valid.apply)
+  override def workflow(branchId: BranchId) = {
+    branchId match {
+      case BranchId.Named(name) if name startsWith BranchPrefix =>
+        val id = Branch.Id(name drop BranchPrefix.length)
+        branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
+          .fold(super.workflow(branchId))(Valid.apply)
+      case _ =>
+        super.workflow(branchId)
+    }
+  }
 
-  override def branchWorkflows = branches map (b => b.id -> b.workflow)
+  override def branchWorkflows = branches map (b => b.id.toBranchId -> b.workflow)
 
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
 }
 
 object Fork {
-  implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
+  private val BranchPrefix = "fork+"
 
   def of(idAndWorkflows: (String, Workflow)*) =
-    new Fork(idAndWorkflows.map { case (id, workflow) => Branch(id, workflow) } .toVector)
+    new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
     if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto]  || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
@@ -64,10 +72,21 @@ object Fork {
     else
       Valid(branch)
 
-  @JsonCodec
-  final case class Branch(id: BranchId.Named, workflow: Workflow)
+  final case class Branch(id: Branch.Id, workflow: Workflow)
   object Branch {
-    implicit def fromPair(pair: (BranchId.Named, Workflow)): Branch =
+    implicit def fromPair(pair: (Id, Workflow)): Branch =
       new Branch(pair._1, pair._2)
+
+    /** Branch.Id("x").string == BranchId("fork+x") */
+    final case class Id(string: String) extends GenericString {
+      def toBranchId = BranchId(BranchPrefix + string)
+    }
+    object Id extends GenericString.Checked_[Id] {
+      implicit def unchecked(string: String) = new Id(string)
+    }
+
+    implicit val jsonCodec = deriveCodec[Branch]
   }
+
+  implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
 }

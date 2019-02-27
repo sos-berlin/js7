@@ -11,6 +11,8 @@ import scala.language.implicitConversions
   */
 sealed trait BranchId {
   private[position] def toSimpleType: Any
+
+  def normalized: BranchId
 }
 
 object BranchId
@@ -19,6 +21,11 @@ object BranchId
   implicit def apply(index: Int): Indexed = Indexed(index)
 
   final case class Named(string: String) extends BranchId {
+    def normalized =
+      if (string startsWith "try+") "try"
+      else if (string startsWith "catch+") "catch"
+      else this
+
     private[position] def toSimpleType: String = string
     override def toString = string
   }
@@ -28,6 +35,7 @@ object BranchId
   }
 
   final case class Indexed(number: Int) extends BranchId {
+    def normalized = this
     private[position] def toSimpleType: Int = number
     override def toString = number.toString
   }

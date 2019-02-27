@@ -34,13 +34,6 @@ extends Instruction
 
   override def branchWorkflows = (Try_ -> tryWorkflow) :: (Catch_ -> catchWorkflow) :: Nil
 
-  override def normalizeBranchId(branchId: BranchId) =
-    branchId match {
-      case TryBranchId(_) => Try_
-      case CatchBranchId(_) => Catch_
-      case _ => super.normalizeBranchId(branchId)
-    }
-
   override def toCatchBranchId(branchId: BranchId) =
     branchId match {
       case TryBranchId(i) => Some(catch_(i))
@@ -72,17 +65,17 @@ object TryInstruction
   def try_(retry: Int) = {
     require(retry >= 0)
     if (retry == 0) Try_
-    else BranchId(Try_.string + "-" + retry)
+    else BranchId(Try_.string + "+" + retry)
   }
 
   def catch_(retry: Int) = {
     require(retry >= 0)
     if (retry == 0) Catch_
-    else BranchId(Catch_.string + "-" + retry)
+    else BranchId(Catch_.string + "+" + retry)
   }
 
   private object TryBranchId {
-    private val NamePattern = """try-([0-9]+)""".r
+    private val NamePattern = """try\+([0-9]+)""".r
 
     def unapply(branchId: BranchId): Option[Int] = branchId match {
       case Try_ => Some(0)
@@ -94,7 +87,7 @@ object TryInstruction
   }
 
   private object CatchBranchId {
-    private val NamePattern = """catch-([0-9]+)""".r
+    private val NamePattern = """catch\+([0-9]+)""".r
 
     def unapply(branchId: BranchId): Option[Int] = branchId match {
       case Catch_ => Some(0)

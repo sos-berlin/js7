@@ -55,22 +55,22 @@ final class ForkTest extends FreeSpec {
   }
 
   "workflow" in {
-    assert(fork.workflow("A") == Valid(fork.branches(0).workflow))
-    assert(fork.workflow("B") == Valid(fork.branches(1).workflow))
+    assert(fork.workflow("fork+A") == Valid(fork.branches(0).workflow))
+    assert(fork.workflow("fork+B") == Valid(fork.branches(1).workflow))
     assert(fork.workflow(1).isInvalid)
   }
 
   "flattenedWorkflows" in {
     assert(fork.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / "A") -> fork.branches(0).workflow) ::
-      ((Position(7) / "B") -> fork.branches(1).workflow) :: Nil)
+      ((Position(7) / "fork+A") -> fork.branches(0).workflow) ::
+      ((Position(7) / "fork+B") -> fork.branches(1).workflow) :: Nil)
   }
 
   "flattenedInstructions" in {
     assert(fork.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
-      Position(7, "A", 0) -> fork.branches(0).workflow.instructions(0),
-      Position(7, "A", 1) -> ImplicitEnd,
-      Position(7, "B", 0) -> fork.branches(1).workflow.instructions(0),
-      Position(7, "B", 1) -> ImplicitEnd))
+      Position(7) / "fork+A" % 0 -> fork.branches(0).workflow.instructions(0),
+      Position(7) / "fork+A" % 1 -> ImplicitEnd,
+      Position(7) / "fork+B" % 0 -> fork.branches(1).workflow.instructions(0),
+      Position(7) / "fork+B" % 1 -> ImplicitEnd))
   }
 }

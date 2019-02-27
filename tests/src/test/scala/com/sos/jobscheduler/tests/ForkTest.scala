@@ -100,7 +100,7 @@ object ForkTest {
       XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(0, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(0, "🍋", 1)),
+      XOrderId <-: OrderMoved(Position(0) / "fork+🥕" % 1),            YOrderId <-: OrderMoved(Position(0) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
@@ -115,7 +115,7 @@ object ForkTest {
       XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(1, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(1, "🍋", 1)),
+      XOrderId <-: OrderMoved(Position(1) / "fork+🥕" % 1),            YOrderId <-: OrderMoved(Position(1) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
@@ -141,7 +141,7 @@ object ForkTest {
       XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(3, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(3, "🍋", 1)),
+      XOrderId <-: OrderMoved(Position(3) / "fork+🥕" % 1),            YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 1),
 
                                                                        YOrderId <-: OrderDetachable,
                                                                        YOrderId <-: OrderTransferredToMaster,
@@ -151,7 +151,7 @@ object ForkTest {
                                                                        YOrderId <-: OrderProcessingStarted,
                                                                        YOrderId <-: OrderStdoutWritten(StdoutOutput),
                                                                        YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-                                                                       YOrderId <-: OrderMoved(Position(3, "🍋", 2)),
+                                                                       YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 2),
 
       XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,
@@ -166,7 +166,7 @@ object ForkTest {
       XOrderId <-: OrderProcessingStarted,                             YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                   YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),   YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
-      XOrderId <-: OrderMoved(Position(4, "🥕", 1)),                   YOrderId <-: OrderMoved(Position(4, "🍋", 1)),
+      XOrderId <-: OrderMoved(Position(4) / "fork+🥕" % 1),            YOrderId <-: OrderMoved(Position(4) / "fork+🍋" % 1),
 
       XOrderId <-: OrderDetachable,                                    YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                           YOrderId <-: OrderTransferredToMaster,

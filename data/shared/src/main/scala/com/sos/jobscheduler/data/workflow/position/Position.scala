@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow.position
 
 import cats.syntax.show.toShow
+import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
 import io.circe.syntax.EncoderOps
@@ -20,13 +21,15 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   def dropChild: Option[Position] =
     splitBranchAndNr map (_._1)
 
-  def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] = {
+  def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
     for (last <- branchPath.lastOption) yield
       (Position(branchPath.init, last.nr), branchPath.last.branchId, nr)
-  }
 
   def increment: Position =
     copy(nr = nr + 1)
+
+  lazy val normalized: Position =
+    reuseIfEqual(this, BranchPath.normalize(branchPath) % nr)
 
   def asSeq: IndexedSeq[Any] =
     branchPath.toVector.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number
@@ -44,9 +47,6 @@ object Position
 
   def apply(nr: Int): Position =
     Position(Nil, nr)
-
-  def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int): Position =
-    Position(Segment(parentInstructionNr, branchId) :: Nil, nr)
 
   implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
 

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+echo "$SCHEDULER_PARAM_HELLO"
+sleep 1

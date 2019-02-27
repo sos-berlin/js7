@@ -14,7 +14,7 @@ final class JobKeyTest extends FreeSpec
 {
   "JSON" - {
     "JobKey.Anonymous" in {
-      testJson[JobKey](JobKey.Anonymous((WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1, 2, 3)),
+      testJson[JobKey](JobKey.Anonymous((WorkflowPath("/WORKFLOW") % "VERSION") /: (Position(1) / 2 % 3)),
         json"""{
           "workflowId": {
             "path": "/WORKFLOW",

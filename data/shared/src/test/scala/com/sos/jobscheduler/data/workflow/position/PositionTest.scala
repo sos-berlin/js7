@@ -61,7 +61,7 @@ final class PositionTest extends FreeSpec {
 
   "Fork" in {
     val a = Position(1) / "A" % 2
-    assert(a == Position(1, "A", 2))
+    assert(a == Position(1) / "A" % 2)
     assert(a == Position(BranchPath.Segment(InstructionNr(1), "A") :: Nil, InstructionNr(2)))
     assert(a.dropChild == Position(1).some)
     assert((a / "B" % 3).dropChild == a.some)
