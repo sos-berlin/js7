@@ -29,7 +29,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
 {
-  import configuraton.{idToUser, realm}
+  import configuraton.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
@@ -55,8 +55,12 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
     }
     .result()
 
-  def authenticateUser(userAndPassword: UserAndPassword): Option[U] =
+  def authenticateUser(userAndPassword: UserAndPassword): Option[U] = {
+    if (!userAndPassword.userId.isAnonymous) ifPublic foreach { reason =>
+      logger.warn(s"User '${userAndPassword.userId.string}' logs in in despite $reason")
+    }
     authenticator.authenticate(userAndPassword)
+  }
 
   /** Continues with authenticated user or `Anonymous`, or completes with Unauthorized or Forbidden. */
   val authenticate: Directive1[U] =
@@ -107,7 +111,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
   private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] =
     ifPublic(request.method) match {
       case Some(reason) =>
-        if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
+        //??? if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
         val empoweredUser = U.addPermissions(user, reason match {
           case IsPublic | LoopbackIsPublic => configuraton.publicPermissions
           case GetIsPublic                 => configuraton.publicGetPermissions
@@ -121,17 +125,16 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
         isPermitted(user, requiredPermissions, request.method) ? user
     }
 
-  private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] = {
-    import configuraton.{getIsPublic, isPublic, loopbackIsPublic}
+  private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] =
+    ifPublic orElse ((getIsPublic && isGet(method)) ? GetIsPublic)
+
+  private[auth] def ifPublic: Option[AuthorizationReason] =
     if (isPublic)
       Some(IsPublic)
     else if (isLoopback && loopbackIsPublic)
       Some(LoopbackIsPublic)
-    else if (getIsPublic && isGet(method))
-      Some(GetIsPublic)
     else
       None
-  }
 
   private def isPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Boolean =
     user.hasPermissions(requiredPermissions) && (
@@ -152,7 +155,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
     else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE OR VIA HTTP METHODS GET OR HEAD IS PUBLIC (loopback-is-public = true, get-is-public = true) "
     else if (configuraton.loopbackIsPublic)
-      " - ACCESS OVER LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
+      " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
     else if (configuraton.getIsPublic)
       " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
     else
