@@ -25,9 +25,13 @@ object JobKey
 
   def forTest(name: String) = Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
-  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey
+  final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
+    override def toString = s"JobKey($workflowPosition)"
+  }
 
-  final case class Named(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) extends JobKey
+  final case class Named(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) extends JobKey {
+    override def toString = s"JobKey($workflowBranchPath:${name.string})"
+  }
 
   implicit val jsonEncoder: ObjectEncoder[JobKey] = {
     case Anonymous(WorkflowPosition(workflowId, position)) =>

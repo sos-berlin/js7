@@ -37,7 +37,10 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   private[workflow] def asJsonArray: Vector[Json] =
     branchPath.asJsonArray :+ nr.asJson
 
-  override def toString = InstructionNr.Prefix + branchPath.show + nr.number
+  override def toString = branchPath match {
+    case Nil => nr.number.toString
+    case _ => branchPath.show + nr
+  }
 }
 
 object Position

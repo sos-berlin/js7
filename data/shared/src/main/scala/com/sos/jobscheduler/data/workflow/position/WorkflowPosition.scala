@@ -13,7 +13,7 @@ final case class WorkflowPosition(workflowId: WorkflowId, position: Position)
 {
   lazy val normalized = reuseIfEqual(this, workflowId /: position.normalized)
 
-  override def toString = s"$workflowId$position"
+  override def toString = s"${workflowId.toSimpleString}:$position"
 }
 
 object WorkflowPosition

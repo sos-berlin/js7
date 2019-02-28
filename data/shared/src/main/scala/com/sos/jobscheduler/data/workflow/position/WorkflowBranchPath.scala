@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow.position
 
+import cats.syntax.show._
 import com.sos.jobscheduler.data.workflow.WorkflowId
 import scala.language.implicitConversions
 
@@ -10,6 +11,8 @@ final case class WorkflowBranchPath(workflowId: WorkflowId, branchPath: BranchPa
 {
   def /(nr: InstructionNr): WorkflowPosition =
     WorkflowPosition(workflowId, branchPath % nr)
+
+  override def toString = s"${workflowId.toSimpleString}${branchPath.show}"
 }
 
 object WorkflowBranchPath

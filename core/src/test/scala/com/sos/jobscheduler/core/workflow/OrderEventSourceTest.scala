@@ -47,7 +47,7 @@ final class OrderEventSourceTest extends FreeSpec
     val workflow = Workflow.of(TestWorkflowId,
       executeScript,                                  // 0
       If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
-        Workflow.of(executeScript)),                  // 1,0,0
+        Workflow.of(executeScript)),                  // 1/0:0
       executeScript)                                  // 2
 
     "then branch executed" in {
@@ -78,8 +78,8 @@ final class OrderEventSourceTest extends FreeSpec
     val workflow = Workflow.of(TestWorkflowId,
       executeScript,                                        // 0
       If(Equal(OrderReturnCode, NumericConstant(0)),        // 1
-        thenWorkflow = Workflow.of(executeScript),          // 1,0,0
-        elseWorkflow = Some(Workflow.of(executeScript))),   // 1,1,0
+        thenWorkflow = Workflow.of(executeScript),          // 1/0:0
+        elseWorkflow = Some(Workflow.of(executeScript))),   // 1/1:0
       executeScript)                                        // 2
 
     "then branch executed" in {
@@ -187,10 +187,10 @@ final class OrderEventSourceTest extends FreeSpec
         "B" @: Goto("A"),           // 1
         "C" @: IfNonZeroReturnCodeGoto("A"))   // 2
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: :1 B: goto A --> :0 A: goto B")))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: :0 A: goto B --> :1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 1 B: goto A --> 0 A: goto B")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(3)))
-      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: :0 A: goto B --> :1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
     }
 
     "Job, Fork" in {

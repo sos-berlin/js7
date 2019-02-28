@@ -258,11 +258,17 @@ object Order {
       Subtype(deriveCodec[Detaching]))
   }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath
+  final case class Attaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
+    override def toString = s"Attaching(${agentRefPath.string})"
+  }
   /** Order is attached to an Agent. */
-  final case class Attached(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath
+  final case class Attached(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
+    override def toString = s"Attached(${agentRefPath.string})"
+  }
   /** Order is going to be detached from Agent. */
-  final case class Detaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath
+  final case class Detaching(agentRefPath: AgentRefPath) extends AttachedState.HasAgentRefPath {
+    override def toString = s"Detaching(${agentRefPath.string})"
+  }
 
   sealed trait State
 

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow.position
 
+import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -38,6 +39,12 @@ final class BranchPathTest extends FreeSpec
     Segment(1, 2) :: Segment(3, 4) :: Nil match {
       case BranchPath.PositionAndBranchId(Position(Segment(InstructionNr(1), BranchId.Indexed(2)) :: Nil, InstructionNr(3)), BranchId.Indexed(4)) =>
     }
+  }
+
+  "show" in {
+    assert(List.empty[Segment].show == "")
+    assert((Segment(1, 2) :: Nil).show == "1/2")
+    assert((Segment(1, 2) :: Segment(3, "BRANCH") :: Nil).show == "1/2:3/BRANCH")
   }
 
   "normalize" in {
