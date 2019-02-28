@@ -13,11 +13,13 @@ import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
 import com.sos.jobscheduler.common.akkahttp.web.session.{Session => Session_}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.duration.Duration
 
 /**
   * @author Joacim Zschimmer
@@ -90,10 +92,14 @@ trait RouteProvider extends ExceptionHandling
 
   protected def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
     (if (statusCode == Unauthorized) respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
-      logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
+      val delay =
+        if (problem == InvalidLoginProblem) {
+          logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
+          gateKeeper.invalidAuthenticationDelay
+        } else Duration.Zero
       complete {
         Task.pure(statusCode -> problem)
-          .delayExecution(gateKeeper.invalidAuthenticationDelay)
+          .delayExecution(delay)
           .runToFuture
       }
     }

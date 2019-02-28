@@ -30,8 +30,8 @@ trait SessionRoute extends RouteProvider {
             entity(as[SessionCommand]) { command =>
               val token = sessionOption map (_.sessionToken)
               onSuccess(execute(command, httpUser, token).runToFuture) {
-                case Invalid(InvalidLoginProblem) =>
-                  completeUnauthenticatedLogin(Unauthorized, InvalidLoginProblem)
+                case Invalid(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
+                  completeUnauthenticatedLogin(Unauthorized, problem)
 
                 case checked =>
                   complete(checked)
@@ -61,7 +61,7 @@ trait SessionRoute extends RouteProvider {
         if (!httpUser.id.isAnonymous)
           Invalid(Problem("Both command Login and HTTP header authentication?"))
         else if (userAndPassword.userId.isAnonymous)
-          Invalid(InvalidLoginProblem)  // Anonymous is used only if there is no authentication at all
+          Invalid(AnonymousLoginProblem)
         else
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
@@ -71,5 +71,6 @@ trait SessionRoute extends RouteProvider {
 }
 
 object SessionRoute {
-  private object InvalidLoginProblem extends Problem.Eager("Login: unknown user or invalid password")
+  object InvalidLoginProblem extends Problem.Eager("Login: unknown user or invalid password")
+  private object AnonymousLoginProblem extends Problem.Eager("Login: user and password required")
 }

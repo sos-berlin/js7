@@ -85,11 +85,9 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
     }
 
     "Unknown session header is rejected" in {
-      val t = now
       Get("/sessionOption") ~> addHeader(SessionToken.HeaderName, "UNKNOWN") ~> route ~> check {
         assert(status == Forbidden)
       }
-      assert(now - t >= gateKeeper.invalidAuthenticationDelay)
     }
 
     "Known SessionToken" in {

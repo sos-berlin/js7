@@ -125,6 +125,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
         logger.debug(t.toStringWithCauses)
         count += 1
       }
+      val t = now
       val whenLoggedIn = api.loginUntilReachable(Some(UserId("INVALID") -> SecretString("INVALID")),
         Iterator.continually(10.milliseconds), onError).runToFuture
       sleep(200.ms)
@@ -133,6 +134,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
         whenLoggedIn await 99.s
       }
       assert(exception.status == Unauthorized)
+      assert(now - t >= invalidAuthenticationDelay)
       assert(count >= 3)
       requireAccessIsUnauthorizedOrPublic(api)
     }
@@ -154,7 +156,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized" in {
+  "Login without credentials and with wrong Authorization header is rejected with 401 Unauthorized and delayed" in {
     withSessionApi(Authorization(BasicHttpCredentials("A-USER", "")) :: Nil) { api =>
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
@@ -168,7 +170,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "Login without credentials and with Anonymous Authorization header is rejected" in {
+  "Login without credentials and with Anonymous Authorization header is rejected and delayed" in {
     withSessionApi(Authorization(BasicHttpCredentials(UserId.Anonymous.string, "")) :: Nil) { api =>
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
@@ -204,20 +206,18 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   "Login as 'Anonymous' is rejected" in {
     withSessionApi() { api =>
-      val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
         api.login(Some(UserId.Anonymous -> SecretString(""))) await 99.s
       }
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
-      assert(now - t >= invalidAuthenticationDelay)
 
       requireAccessIsUnauthorizedOrPublic(api)  // public=true allows access
     }
   }
 
-  "Login with invalid credentials is rejected with 403 Unauthorized" in {
+  "Login with invalid credentials is rejected with 403 Unauthorized and delayed" in {
     withSessionApi() { api =>
       val t = now
       val exception = intercept[AkkaHttpClient.HttpException] {
