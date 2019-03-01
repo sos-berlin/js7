@@ -1,13 +1,14 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound}
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, NotFound, OK}
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
@@ -18,7 +19,9 @@ import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute._
+import io.circe.Json
 import monix.execution.Scheduler
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -33,17 +36,31 @@ trait OrderRoute extends MasterRouteProvider
     authorizedUser(ValidUserPermission) { _ =>
       post {
         pathEnd {
-          entity(as[FreshOrder]) { order =>
-            extractUri { uri =>
-              respondWithHeader(Location(uri + "/" + order.id.string)) {
-                completeTask(
-                  orderApi.addOrder(order).map[ToResponseMarshallable] {
-                  case Invalid(problem) => problem
-                  case Valid(false) => Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
-                  case Valid(true) => Created
-                })
+          entity(as[Json]) { json =>
+            if (json.isArray)
+              json.as[Seq[FreshOrder]] match {
+                case Left(failure) => complete(BadRequest -> failure.getMessage)
+                case Right(orders) =>
+                  completeTask(
+                    orderApi.addOrders(orders)
+                      .map[ToResponseMarshallable](_.map((_: Completed) => OK)))
               }
-            }
+            else
+              json.as[FreshOrder] match {
+                case Left(failure) => complete(BadRequest -> failure.getMessage)
+                case Right(order) =>
+                  extractUri { uri =>
+                    onSuccess(orderApi.addOrder(order).runToFuture) {
+                      case Invalid(problem) => complete(problem)
+                      case Valid(isNoDuplicate) =>
+                        respondWithHeader(Location(uri + "/" + order.id.string)) {
+                          complete(
+                            if (isNoDuplicate) Created
+                            else Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added"))
+                        }
+                    }
+                  }
+              }
           }
         }
       } ~

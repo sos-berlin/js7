@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.provider
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -30,8 +31,8 @@ trait OrderProvider extends HasCloser
     orderScheduleGenerator.start()
 
   private def addOrders(orders: Seq[FreshOrder]): Task[Unit] =
-    Task.sequence(orders map masterApi.addOrder)  // TODO API: addOrders Webservice akzeptiert Array[FreshOrder]
-      .map((_: Seq[Boolean]) => ())
+    masterApi.addOrders(orders)
+      .map((_: Completed) => ())
 
   onClose {
     orderScheduleGenerator.close()

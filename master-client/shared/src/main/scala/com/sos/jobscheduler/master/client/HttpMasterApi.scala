@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.agent.AgentRef
@@ -37,6 +38,10 @@ trait HttpMasterApi extends MasterApi with SessionApi
 
   final def addOrder(order: FreshOrder): Task[Boolean]  =
     httpClient.postDiscardResponse(uris.order.add, order) map (_ == 201/*Created*/)
+
+  final def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
+    httpClient.postDiscardResponse(uris.order.add, orders)
+      .map((_: Int) => Completed)
 
   final def ordersOverview: Task[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)

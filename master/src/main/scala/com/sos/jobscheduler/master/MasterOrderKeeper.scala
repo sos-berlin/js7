@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master
 
-import akka.Done
 import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
@@ -18,7 +17,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
@@ -202,19 +201,6 @@ with MainJournalingActor[Event]
           case Success(response) => sender ! response
         }
 
-    case Command.AddOrderSchedule(orders) if !terminating =>
-      for (order <- orders) {
-        addOrderWithUncheckedId(order) onComplete {
-          case Failure(t) => logger.error(s"AddOrderSchedule: ${t.toStringWithCauses}", t)
-          case Success(Invalid(problem)) => logger.error(problem withPrefix "AddOrderSchedule:")
-          case Success(Valid(false)) => logger.warn(s"AddOrderSchedule: Discarded duplicate order ${order.id}")
-          case Success(Valid(true)) =>
-        }
-      }
-      deferAsync {
-        sender() ! Done
-      }
-
     case Command.GetRepo =>
       sender() ! Stamped(persistedEventId, repo)
 
@@ -223,6 +209,12 @@ with MainJournalingActor[Event]
         sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
       else
         addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
+
+    case Command.AddOrders(orders) =>
+      if (terminating)
+        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+      else
+        addOrders(orders).pipeTo(sender())
 
     case Command.GetOrder(orderId) =>
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -470,6 +462,22 @@ with MainJournalingActor[Event]
     }
   }
 
+  private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[Completed]] =
+    freshOrders.toVector.traverse[Checked, FreshOrder](order => order.id.checkedNameSyntax.map(_ => order))
+      .flatMap(_
+        .filterNot(o => orderRegister.contains(o.id))  // Ignore known orders
+        .map(_.toOrder(repo.versionId))
+        .traverse[Checked, (Order[Order.Fresh], Workflow)](order => repo.idTo[Workflow](order.workflowId).map(order -> _))
+        .map { ordersAndWorkflows =>
+          val events = for ((order, workflow) <- ordersAndWorkflows) yield
+            order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.payload)
+          persistMultiple(events) { stamped =>
+            for (o <- stamped) handleOrderEvent(o)
+            Completed
+          }
+        })
+      .evert
+
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
     handleOrderEvent(stamped.value.key, stamped.value.event)
 
@@ -606,9 +614,9 @@ private[master] object MasterOrderKeeper {
   sealed trait Command
   object Command {
     final case class Execute(command: MasterCommand, meta: CommandMeta)
-    final case class AddOrderSchedule(orders: Seq[FreshOrder]) extends Command
     final case object GetRepo extends Command
     final case class AddOrder(order: FreshOrder) extends Command
+    final case class AddOrders(order: Seq[FreshOrder]) extends Command
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command

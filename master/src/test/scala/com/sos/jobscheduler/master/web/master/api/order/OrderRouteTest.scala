@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import cats.data.Validated.Valid
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -31,6 +32,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {
     def addOrder(order: FreshOrder) = Task(Valid(order.id != DuplicateOrderId))
+    def addOrders(orders: Seq[FreshOrder]) = Task(Valid(Completed))
     def order(orderId: OrderId) = Task(TestOrders.get(orderId))
     def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
     def orderCount = Task(TestOrders.values.size)
@@ -88,8 +90,15 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
 
   "POST duplicate order" in {
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW"))
-    Post(s"/master/api/order", order) ~> route ~> check {
+    Post("/master/api/order", order) ~> route ~> check {
       assert(status == Conflict)  // Duplicate order
+    }
+  }
+
+  "POST multiple orders" in {
+    val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW")) :: Nil
+    Post("/master/api/order", orders) ~> route ~> check {
+      assert(status == OK)
     }
   }
 }

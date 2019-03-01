@@ -54,7 +54,6 @@ object StandardMarshallers
       // HTTP client sees only: The request's encoding is corrupt: The connection closed with error: Connection reset by peer
     }
 
-
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(
       stringMarshaller[Problem](`text/plain`, _.toString),

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
+import cats.data.Validated.Valid
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -372,6 +373,54 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         assert(response.status.intValue == 409/*Conflict*/)
         assert(response.header[Location] == Some(Location(s"$uri/master/api/order/ORDER-ID")))
         response.entity.discardBytes()
+      }
+
+      "Bad OrderId" in {
+        val order = json"""{
+          "id": "A/B",
+          "workflowPath": "/WORKFLOW"
+        }"""
+
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val response = httpClient.post_[Json](s"$uri/master/api/order", order, headers) await 99.s
+        assert(response.status.intValue == 400/*BadRequest*/)
+        assert(response.utf8StringFuture.await(9.seconds).parseJsonCheckedAs[Problem]
+          == Valid(Problem("OrderId must not contain reserved characters /")))
+        assert(response.header[Location].isEmpty)
+      }
+
+      "Multiple" in {
+        val orders = json"""
+          [
+            {
+              "id": "ORDER-ID",
+              "workflowPath": "/WORKFLOW"
+            }, {
+              "id": "ORDER-ID",
+              "workflowPath": "/WORKFLOW"
+            }
+          ]"""
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val response = httpClient.post_[Json](s"$uri/master/api/order", orders, headers) await 99.s
+        assert(response.status == OK)  // Duplicates are silently ignored
+        assert(response.header[Location].isEmpty)
+        response.entity.discardBytes()
+      }
+
+      "Multiple with bad OrderId" in {
+        val orders = json"""
+          [
+            {
+              "id": "A/B",
+              "workflowPath": "/WORKFLOW"
+            }
+          ]"""
+        val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val response = httpClient.post_[Json](s"$uri/master/api/order", orders, headers) await 99.s
+        assert(response.status.intValue == 400/*BadRequest*/)
+        assert(response.header[Location].isEmpty)
+        assert(response.utf8StringFuture.await(9.seconds).parseJsonCheckedAs[Problem]
+          == Valid(Problem("OrderId must not contain reserved characters /")))
       }
     }
 

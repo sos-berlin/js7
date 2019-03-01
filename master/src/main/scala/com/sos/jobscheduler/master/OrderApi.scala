@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
@@ -27,5 +28,7 @@ trait OrderApi {
 object OrderApi {
   trait WithCommands extends OrderApi {
     def addOrder(order: FreshOrder): Task[Checked[Boolean]]
+
+    def addOrders(orders: Seq[FreshOrder]): Task[Checked[Completed]]
   }
 }
