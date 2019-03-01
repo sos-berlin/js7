@@ -50,7 +50,7 @@ final class TryExecutorTest extends FreeSpec
 }
 
 object TryExecutorTest {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(), Outcome.Succeeded(ReturnCode(1)))
   private val TryJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
   private val CatchJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))

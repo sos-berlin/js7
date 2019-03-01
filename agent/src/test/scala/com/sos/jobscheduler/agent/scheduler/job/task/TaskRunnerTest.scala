@@ -54,7 +54,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
-        WorkflowPath("/JOBCHAIN") % "VERSION",
+        WorkflowPath("/JOBCHAIN") ~ "VERSION",
         Order.Processing,
         payload = Payload(Map("a" -> "A")))
       val taskRunner = newTaskRunner(taskConfiguration)

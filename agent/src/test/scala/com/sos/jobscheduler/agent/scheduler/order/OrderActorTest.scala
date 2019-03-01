@@ -111,7 +111,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
 private object OrderActorTest {
   private val TestVersion = VersionId("VERSION")
-  private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/WORKFLOW") % TestVersion, Order.Ready)
+  private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/WORKFLOW") ~ TestVersion, Order.Ready)
   private val DummyJobKey = JobKey.Named(WorkflowPath.NoId, WorkflowJob.Name("test"))
   private val TestAgentRefPath = AgentRefPath("/TEST-AGENT")
   private val TestPosition = Position(777)

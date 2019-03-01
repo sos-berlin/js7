@@ -33,7 +33,7 @@ final class AwaitOrderExecutorTest extends FreeSpec {
 }
 
 object AwaitOrderExecutorTest {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   val OfferingOrderId = OrderId("OFFERED")
   val offeringOrder = Order(OfferingOrderId, TestWorkflowId, Order.Ready)
   val OfferedOrderId = OrderId("OFFERED")

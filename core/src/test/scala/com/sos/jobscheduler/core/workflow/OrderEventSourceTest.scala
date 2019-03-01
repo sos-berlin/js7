@@ -369,7 +369,7 @@ final class OrderEventSourceTest extends FreeSpec
 }
 
 object OrderEventSourceTest {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val succeededOrderId = OrderId("SUCCESS")

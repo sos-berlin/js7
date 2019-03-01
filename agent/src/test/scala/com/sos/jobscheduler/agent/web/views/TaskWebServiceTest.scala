@@ -117,7 +117,7 @@ private object TaskWebServiceTest {
   private val TestTaskOverviews = List(testTaskOverview(TestAgentTaskId))
 
   private def testTaskOverview(id: AgentTaskId) = TaskOverview(
-    JobKey(WorkflowPath("/WORKFLOW") % "VERSION", WorkflowJob.Name("JOB")),
+    JobKey(WorkflowPath("/WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB")),
     TestAgentTaskId,
     pid = Some(Pid(123)),
     Instant.parse("2015-06-10T12:00:00Z").toTimestamp)

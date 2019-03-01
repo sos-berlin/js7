@@ -81,6 +81,6 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
 
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
-  private val TestWorkflow = ForkTestSetting.TestWorkflow.withId(WorkflowPath("/PATH/WORKFLOW") % "VERSION")
+  private val TestWorkflow = ForkTestSetting.TestWorkflow.withId(WorkflowPath("/PATH/WORKFLOW") ~ "VERSION")
   private val pathToWorkflow = Map(TestWorkflow.path -> TestWorkflow)
 }

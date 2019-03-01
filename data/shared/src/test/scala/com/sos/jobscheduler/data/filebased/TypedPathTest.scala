@@ -29,8 +29,8 @@ final class TypedPathTest extends FreeSpec {
   }
 
   "%" in {
-    assert(APath("/PATH") % "VERSION"            == FileBasedId(APath("/PATH"), VersionId("VERSION")))
-    assert(APath("/PATH") % VersionId("VERSION") == FileBasedId(APath("/PATH"), VersionId("VERSION")))
+    assert(APath("/PATH") ~ "VERSION"            == FileBasedId(APath("/PATH"), VersionId("VERSION")))
+    assert(APath("/PATH") ~ VersionId("VERSION") == FileBasedId(APath("/PATH"), VersionId("VERSION")))
   }
 
   "validate" in {
@@ -121,7 +121,7 @@ final class TypedPathTest extends FreeSpec {
   "Anonymous" in {
     assert(APath.Anonymous == APath.unchecked("/?/anonymous"))
     assert(APath.Anonymous.officialSyntaxChecked == Invalid(Problem("Internal path is not allowed here: A:/?/anonymous")))
-    assert(APath.NoId == APath.unchecked("/?/anonymous") % VersionId.unchecked("⊥"))
+    assert(APath.NoId == APath.unchecked("/?/anonymous") ~ VersionId.unchecked("⊥"))
   }
 
   "name etc." in {

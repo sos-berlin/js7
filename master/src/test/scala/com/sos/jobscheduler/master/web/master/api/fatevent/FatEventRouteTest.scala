@@ -247,9 +247,9 @@ object FatEventRouteTest
   private val logger = Logger(getClass)
   private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
   private val TestVersionId = VersionId("VERSION")
-  private val TestAgentRefId = AgentRefPath("/AGENT") % TestVersionId
+  private val TestAgentRefId = AgentRefPath("/AGENT") ~ TestVersionId
   private val TestWorkflow = Workflow.of(
-    WorkflowPath("/test") % TestVersionId,
+    WorkflowPath("/test") ~ TestVersionId,
     Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
   private val InitialEvents =
     Stamped(EventId(1), NoKey <-: VersionAdded(TestVersionId)) ::

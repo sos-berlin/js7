@@ -49,7 +49,7 @@ final class MasterRepoTest extends FreeSpec {
         provider.runMaster() { master =>
           // V2
           // Previously defined workflow is still known
-          runOrder(master, BWorkflowPath % V2, OrderId("B-AGAIN"))
+          runOrder(master, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
 
           // V4 - Add and use a new workflow
           addWorkflowAndRunOrder(master, V4, CWorkflowPath, OrderId("C"))
@@ -59,7 +59,7 @@ final class MasterRepoTest extends FreeSpec {
 
           // Delete workflow
           provider.updateRepo(master, V6, delete = CWorkflowPath :: Nil)
-          assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
+          assert(Try { runOrder(master, CWorkflowPath ~ V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
@@ -67,8 +67,8 @@ final class MasterRepoTest extends FreeSpec {
             Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3
-          runOrder(master, AWorkflowPath % V3, OrderId("A-3"))
-          runOrder(master, BWorkflowPath % V2, OrderId("B-2"))
+          runOrder(master, AWorkflowPath ~ V3, OrderId("A-3"))
+          runOrder(master, BWorkflowPath ~ V2, OrderId("B-2"))
         }
       }
 
@@ -89,7 +89,7 @@ final class MasterRepoTest extends FreeSpec {
         // Add Workflow
         provider.updateRepo(master, versionId, workflow.withId(path) :: Nil)
         master.addOrderBlocking(order)
-        awaitOrder(master, order.id, path % versionId)
+        awaitOrder(master, order.id, path ~ versionId)
       }
 
       def runOrder(master: RunningMaster, workflowId: WorkflowId, orderId: OrderId): Unit = {

@@ -70,8 +70,8 @@ final class RecoveryTest extends FreeSpec {
           assert(master.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
-              NoKey <-: FileBasedAdded(AgentRefPaths(0), sign(AgentRef(AgentRefPaths(0) % "INITIAL", directoryProvider.agents(0).localUri.toString))),
-              NoKey <-: FileBasedAdded(AgentRefPaths(1), sign(AgentRef(AgentRefPaths(1) % "INITIAL", directoryProvider.agents(1).localUri.toString))),
+              NoKey <-: FileBasedAdded(AgentRefPaths(0), sign(AgentRef(AgentRefPaths(0) ~ "INITIAL", directoryProvider.agents(0).localUri.toString))),
+              NoKey <-: FileBasedAdded(AgentRefPaths(1), sign(AgentRef(AgentRefPaths(1) ~ "INITIAL", directoryProvider.agents(1).localUri.toString))),
               NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow)),
               NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
             .sortBy(_.toString))
@@ -146,7 +146,7 @@ private object RecoveryTest {
   private val AgentRefPaths = AgentRefPath("/agent-111") :: AgentRefPath("/agent-222") :: Nil
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
-  private val TestWorkflow = Workflow(WorkflowPath("/test") % "INITIAL",
+  private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob.Name("TEST-0")),
       Execute(WorkflowJob.Name("TEST-0")),
@@ -157,7 +157,7 @@ private object RecoveryTest {
       WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentRefPaths(0), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(0).name}")),
       WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentRefPaths(1), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(1).name}"))))
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "INITIAL", Execute(WorkflowJob(AgentRefPaths(0), TestExecutablePath)))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentRefPaths(0), TestExecutablePath)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(

@@ -30,7 +30,7 @@ final class OrderTest extends FreeSpec
 {
   private val testOrder = Order(
     OrderId("ID"),
-    WorkflowPath("/WORKFLOW") % "VERSION",
+    WorkflowPath("/WORKFLOW") ~ "VERSION",
     Ready,
     payload = Payload(Map(
       "var1" -> "value1",
@@ -71,7 +71,7 @@ final class OrderTest extends FreeSpec
 
       "cancel" in {
         check(
-          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") % "VERSION", Fresh(), cancel = Some(CancelMode.NotStarted)),
+          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Fresh(), cancel = Some(CancelMode.NotStarted)),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -213,7 +213,7 @@ final class OrderTest extends FreeSpec
 
   "Order transitions: event to state" - {
     val orderId = OrderId("ID")
-    val workflowId = WorkflowPath("/WORKFLOW") % "VERSION"
+    val workflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
     val agentRefPath = AgentRefPath("/AGENT")
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
@@ -421,7 +421,7 @@ final class OrderTest extends FreeSpec
     }
 
     "isAttaching" in {
-      val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Ready,
+      val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Ready,
         attachedState = Some(Detaching(AgentRefPath("/AGENT"))))
       assert(order.detaching == Valid(AgentRefPath("/AGENT")))
 
@@ -440,7 +440,7 @@ final class OrderTest extends FreeSpec
   }
 
   if (sys.props contains "test.speed") "Speed" in {
-    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Ready,
+    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(1), Ready,
       attachedState = Some(Attached(AgentRefPath("/AGENT"))))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])

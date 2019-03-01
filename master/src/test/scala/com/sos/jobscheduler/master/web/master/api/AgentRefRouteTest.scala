@@ -80,6 +80,6 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
 
 object AgentRefRouteTest {
   private val AgentUri = "/api/agent"
-  private val TestAgent = AgentRef(AgentRefPath("/PATH/AGENT") % "VERSION", "https://localhost:65535")
+  private val TestAgent = AgentRef(AgentRefPath("/PATH/AGENT") ~ "VERSION", "https://localhost:65535")
   private val pathToAgent = Map(TestAgent.path -> TestAgent)
 }

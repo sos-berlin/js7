@@ -27,7 +27,7 @@ final class RepoTest extends FreeSpec
   "empty" in {
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Invalid(Problem("No such 'version UNKNOWN'")))
 
-    assert(emptyRepo.idTo[AFileBased](APath("/UNKNOWN-PATH") % "UNKNOWN-VERSION") ==
+    assert(emptyRepo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
     assert(emptyRepo.applyEvent(FileBasedAdded(a1.path, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED")))) ==
@@ -39,10 +39,10 @@ final class RepoTest extends FreeSpec
     assert(repo.historyBefore(v("INITIAL")) == Valid(Nil))
     assert(repo.historyBefore(v("UNKNOWN")) == Invalid(Problem("No such 'version UNKNOWN'")))
 
-    assert(repo.idTo[AFileBased](APath("/UNKNOWN") % "INITIAL") ==
+    assert(repo.idTo[AFileBased](APath("/UNKNOWN") ~ "INITIAL") ==
       Invalid(Problem("No such key 'A:/UNKNOWN'")))
 
-    assert(repo.idTo[AFileBased](APath("/UNKNOWN-PATH") % "UNKNOWN-VERSION") ==
+    assert(repo.idTo[AFileBased](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
@@ -50,15 +50,15 @@ final class RepoTest extends FreeSpec
   }
 
   "Event input" in {
-    assert(testRepo.idTo[AFileBased](APath("/A") % "4") == Invalid(Problem("No such 'version 4'")))
-    assert(testRepo.idTo[AFileBased](APath("/X") % V1) == Invalid(Problem("No such key 'A:/X'")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") % V1) == Invalid(Problem("No such 'B:/Bx 1'")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") % V3) == Invalid(Problem("Has been deleted: B:/Bx 3")))
-    assert(testRepo.idTo[AFileBased](APath("/A") % V1) == Valid(a1))
-    assert(testRepo.idTo[AFileBased](APath("/A") % V2) == Valid(a2))
-    assert(testRepo.idTo[AFileBased](APath("/A") % V3) == Valid(a3))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") % V2) == Valid(bx2))
-    assert(testRepo.idTo[BFileBased](BPath("/By") % V3) == Valid(by2))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ "4") == Invalid(Problem("No such 'version 4'")))
+    assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Invalid(Problem("No such key 'A:/X'")))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Invalid(Problem("No such 'B:/Bx 1'")))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Invalid(Problem("Has been deleted: B:/Bx 3")))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ V1) == Valid(a1))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ V2) == Valid(a2))
+    assert(testRepo.idTo[AFileBased](APath("/A") ~ V3) == Valid(a3))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V2) == Valid(bx2))
+    assert(testRepo.idTo[BFileBased](BPath("/By") ~ V3) == Valid(by2))
   }
 
   "Event output" in {
@@ -75,10 +75,10 @@ final class RepoTest extends FreeSpec
   }
 
   "pathToCurrentId" in {
-    assert(testRepo.pathToCurrentId(APath("/A")) == Valid(APath("/A") % V3))
+    assert(testRepo.pathToCurrentId(APath("/A")) == Valid(APath("/A") ~ V3))
     assert(testRepo.pathToCurrentId(BPath("/A")) == Invalid(Problem("No such key 'B:/A'")))
     assert(testRepo.pathToCurrentId(BPath("/Bx")) == Invalid(Problem("Has been deleted: B:/Bx")))
-    assert(testRepo.pathToCurrentId(BPath("/By")) == Valid(BPath("/By") % V2))
+    assert(testRepo.pathToCurrentId(BPath("/By")) == Valid(BPath("/By") ~ V2))
     assert(testRepo.pathToCurrentId(APath("/X")) == Invalid(Problem("No such key 'A:/X'")))
   }
 
@@ -156,7 +156,7 @@ final class RepoTest extends FreeSpec
       assert(events == VersionAdded(V2) :: FileBasedDeleted(b1.path) :: FileBasedChanged(a2.path, sign(a2)) :: FileBasedAdded(bx2.path, sign(bx2)) :: Nil)
 
       repo = repo.applyEvents(events).orThrow
-      assert(repo == Repo(V2 :: V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path % V2) :: Changed(toSigned(bx2)) :: Nil, fileBasedVerifier))
+      assert(repo == Repo(V2 :: V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil, fileBasedVerifier))
 
       assert(repo.applyEvents(events) == Invalid(Problem("Duplicate VersionId '2'")))
     }
@@ -178,12 +178,12 @@ object RepoTest {
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")
-  private val a1 = AFileBased(APath("/A") % V1, "A-1")
-  private val a2 = AFileBased(APath("/A") % V2, "A-2")
-  private val b1 = BFileBased(BPath("/B") % V1, "B-1")
-  private val bx2 = BFileBased(BPath("/Bx") % V2, "Ba-2")
-  private val by2 = BFileBased(BPath("/By") % V2, "Bb-2")
-  private val a3 = AFileBased(APath("/A") % V3, "A-3")
+  private val a1 = AFileBased(APath("/A") ~ V1, "A-1")
+  private val a2 = AFileBased(APath("/A") ~ V2, "A-2")
+  private val b1 = BFileBased(BPath("/B") ~ V1, "B-1")
+  private val bx2 = BFileBased(BPath("/Bx") ~ V2, "Ba-2")
+  private val by2 = BFileBased(BPath("/By") ~ V2, "Bb-2")
+  private val a3 = AFileBased(APath("/A") ~ V3, "A-3")
 
   private implicit val fileBasedJsonCodec = TypedJsonCodec[FileBased](
     Subtype[AFileBased],

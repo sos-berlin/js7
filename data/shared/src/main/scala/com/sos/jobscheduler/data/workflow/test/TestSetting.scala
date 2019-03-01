@@ -23,7 +23,7 @@ private[jobscheduler] object TestSetting {
   val TestExecutablePaths = Vector(AExecute.job.executablePath, BExecute.job.executablePath)
 
   val SimpleTestWorkflow = Workflow.of(
-    WorkflowPath("/WORKFLOW") % "VERSION",
+    WorkflowPath("/WORKFLOW") ~ "VERSION",
     AExecute,
     BExecute)
 

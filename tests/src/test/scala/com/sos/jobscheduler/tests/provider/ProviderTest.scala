@@ -123,10 +123,10 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       v1Timestamp
       provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
-        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1)))))
+        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
+        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))))
     }
 
     "Duplicate VersionId" in {
@@ -156,11 +156,11 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
-        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
-        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
-        (CWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
+        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
+        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+        (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
+        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
+        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))
     }
 
     "Delete a Workflow" in {
@@ -168,12 +168,12 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(repo.versions == V3 :: V2 :: V1 :: Nil)
       assert(repo.idToSignedFileBased == Map(
-        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
-        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
-        (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
-        (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
-        (BWorkflowPath % V3) -> None,
-        (CWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath % V2)))))
+        (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
+        (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
+        (AWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2))),
+        (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
+        (BWorkflowPath ~ V3) -> None,
+        (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))
     }
 
     "closeTask" in {
@@ -197,7 +197,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       val events = master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: FileBasedAdded(path, sign(TestWorkflow withId path % versionId))))
+        .map(path => NoKey <-: FileBasedAdded(path, sign(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
@@ -214,7 +214,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       writeWorkflowFile(CWorkflowPath)
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedAdded(CWorkflowPath, sign(TestWorkflow withId CWorkflowPath % versionId))))
+        Vector(NoKey <-: FileBasedAdded(CWorkflowPath, sign(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
@@ -223,7 +223,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: FileBasedChanged(CWorkflowPath, sign(ChangedWorkflow withId CWorkflowPath % versionId))))
+        Vector(NoKey <-: FileBasedChanged(CWorkflowPath, sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {

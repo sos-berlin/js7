@@ -15,7 +15,7 @@ import org.scalatest.FreeSpec
 final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
 
   "parse" in {
-    val id = ScheduledOrderGeneratorPath("/TEST") % "VERSION"
+    val id = ScheduledOrderGeneratorPath("/TEST") ~ "VERSION"
     val timeZone = ZoneId.of("Europe/Berlin")
     val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(id,
       <order job_chain="/JOBCHAIN">

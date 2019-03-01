@@ -71,7 +71,7 @@ object IfTest {
      |  }
      |  execute executable="/TEST$sh", agent="AGENT";    // :2
      |}""".stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", script).orThrow
 
   private val ExpectedEvents = Map(
     ReturnCode(0) -> Vector(

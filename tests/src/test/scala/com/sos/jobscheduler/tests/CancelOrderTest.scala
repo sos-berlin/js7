@@ -122,10 +122,10 @@ object CancelOrderTest {
   private val TestExecutablePath = ExecutablePath("/executable.cmd")
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val SingleJobWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") % "INITIAL",
+    WorkflowPath("/SINGLE") ~ "INITIAL",
     Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
   private val TwoJobsWorkflow = Workflow.of(
-    WorkflowPath("/TWO") % "INITIAL",
+    WorkflowPath("/TWO") ~ "INITIAL",
     Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)),
     Execute(WorkflowJob(TestAgentRefPath, TestExecutablePath)))
 }

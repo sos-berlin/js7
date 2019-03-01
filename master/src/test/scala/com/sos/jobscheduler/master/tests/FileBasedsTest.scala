@@ -27,9 +27,9 @@ final class FileBasedsTest extends FreeSpec
       assert(diffFileBaseds(Nil, Nil).isEmpty)
     }
 
-    lazy val a = AgentRef(AgentRefPath("/A") % "1", "http://a")
-    lazy val b = AgentRef(AgentRefPath("/B") % "1", "http://b")
-    lazy val c = AgentRef(AgentRefPath("/C") % "1", "http://c")
+    lazy val a = AgentRef(AgentRefPath("/A") ~ "1", "http://a")
+    lazy val b = AgentRef(AgentRefPath("/B") ~ "1", "http://b")
+    lazy val c = AgentRef(AgentRefPath("/C") ~ "1", "http://c")
 
     "different order" in {
       assert(

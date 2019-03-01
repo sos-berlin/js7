@@ -21,7 +21,7 @@ final case class FreshOrder(
 
   def toOrder(versionId: VersionId): Order[Order.Fresh] = {
     val firstPosition = Position(0)
-    Order(id, WorkflowPosition(workflowPath % versionId, firstPosition), Order.Fresh(scheduledFor), payload = payload)
+    Order(id, WorkflowPosition(workflowPath ~ versionId, firstPosition), Order.Fresh(scheduledFor), payload = payload)
   }
 }
 

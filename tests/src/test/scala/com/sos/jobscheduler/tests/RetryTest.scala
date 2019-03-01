@@ -49,7 +49,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
     val versionId = updateRepo(change = workflow :: Nil)
 
     val expectedEvents = Vector(
-      OrderAdded(workflow.path % versionId),
+      OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / Try_ % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
@@ -93,7 +93,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
     val versionId = updateRepo(change = workflow :: Nil)
 
     val expectedEvents = Vector(
-      OrderAdded(workflow.path % versionId),
+      OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),

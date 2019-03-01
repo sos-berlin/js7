@@ -111,6 +111,6 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
 object GraphqlRouteTest {
   private val TestOrders: Map[OrderId, Order[Order.State]] =
     Vector(
-      Order(OrderId("1"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(None))
+      Order(OrderId("1"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), Order.Fresh(None))
     ).toKeyedMap(_.id)
 }

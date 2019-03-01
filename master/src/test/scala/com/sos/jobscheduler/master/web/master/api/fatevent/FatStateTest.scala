@@ -131,7 +131,7 @@ object FatStateTest
 {
   private val versionId = VersionId("1")
   private val orderId = OrderId("ORDER")
-  private val agentRef = AgentRef(AgentRefPath("/AGENT") % versionId, "https://0.0.0.0/")
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") % versionId,
+  private val agentRef = AgentRef(AgentRefPath("/AGENT") ~ versionId, "https://0.0.0.0/")
+  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
     Execute.Anonymous(WorkflowJob(agentRef.path, ExecutablePath("/EXECUTABLE"))))
 }

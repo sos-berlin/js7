@@ -81,7 +81,7 @@ final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
 
 object ForkTest {
   private val DuplicateWorkflow = Workflow(
-    WorkflowPath("/DUPLICATE") % "INITIAL",
+    WorkflowPath("/DUPLICATE") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(AAgentRefPath, ExecutablePath("/SLOW.cmd")))))
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, payload = Payload(Map("VARIABLE" -> "VALUE")))

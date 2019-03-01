@@ -157,8 +157,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 
 object OfferAndAwaitOrderTest {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val JoiningWorkflowId = WorkflowPath("/A") % "INITIAL"
-  private val PublishingWorkflowId = WorkflowPath("/B") % "INITIAL"
+  private val JoiningWorkflowId = WorkflowPath("/A") ~ "INITIAL"
+  private val PublishingWorkflowId = WorkflowPath("/B") ~ "INITIAL"
 
   private val OfferedOrderId = OrderId("🔵")
   private val JoinBefore1Order = FreshOrder(OrderId("🥕"), JoiningWorkflowId.path)

@@ -20,7 +20,7 @@ final class OrderFatEventTest extends FreeSpec {
   "OrderAddedFat" in {
     testJson[OrderFatEvent](
       OrderAddedFat(
-        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(0),
         Some(Timestamp.ofEpochMilli(111)),
         Map("VARIABLE" -> "VALUE")),
       json"""{
@@ -42,7 +42,7 @@ final class OrderFatEventTest extends FreeSpec {
   "OrderForkedFat" in {
     testJson[OrderFatEvent](
       OrderForkedFat(
-        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(0),
         List(
           OrderForkedFat.Child("A", OrderId("ORDER-ID/A"), Map("KEY" -> "VALUE")),
           OrderForkedFat.Child("B", OrderId("ORDER-ID/B"), Map.empty))),
@@ -97,7 +97,7 @@ final class OrderFatEventTest extends FreeSpec {
   "OrderFinishedFat" in {
     testJson[OrderFatEvent](
       OrderFinishedFat(
-        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(99)),
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99)),
       json"""{
         "TYPE": "OrderFinishedFat",
         "workflowPosition": {
@@ -114,7 +114,7 @@ final class OrderFatEventTest extends FreeSpec {
   "OrderProcessingStartedFat" in {
     testJson[OrderFatEvent](
       OrderProcessingStartedFat(
-        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(0),
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(0),
         AgentRefPath("/AGENT"),
         "https://agent-1",
         Some(WorkflowJob.Name("JOB")),

@@ -92,7 +92,7 @@ final class CommandQueueTest extends FreeSpec {
 object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val TestWorkflow = Workflow.of(WorkflowPath("/A") % "VERSION",
+  private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
     Execute(WorkflowJob(TestAgentRefPath, ExecutablePath("/EXECUTABLE"))))
   private val fileBasedSigner = new FileBasedSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = fileBasedSigner.toSigned(TestWorkflow)

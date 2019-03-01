@@ -185,7 +185,7 @@ object FatEventsTest
   private val AAgentRefPath = AgentRefPath("/AGENT-A")
   private val BAgentRefPath = AgentRefPath("/AGENT-B")
   private val TestExecutablePath = ExecutablePath(s"/TEST$sh")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "INITIAL"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId, s"""
      |define workflow {
      |  execute executable="/TEST$sh", agent="AGENT-A";

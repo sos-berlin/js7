@@ -83,11 +83,16 @@ object TypedPath {
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
+  implicit final class ImplicitTypedPath[P <: TypedPath](private val underlying: P) extends AnyVal {
+    def ~(version: String): FileBasedId[P] = this ~ VersionId(version)
+    def ~(v: VersionId): FileBasedId[P] = FileBasedId(underlying, v)
+  }
+
   abstract class Companion[P <: TypedPath: ClassTag] extends GenericString.Checked_[P]
   {
     final val NameOrdering: Ordering[P] = Ordering by { _.name }
     final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
-    final lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
+    final lazy val NoId: FileBasedId[P] = Anonymous ~ VersionId.Anonymous
 
     def isEmptyAllowed = false
     def isSingleSlashAllowed = false
@@ -146,11 +151,6 @@ object TypedPath {
 
     override final implicit val jsonDecoder: Decoder[P] =
       _.as[String] flatMap (o => checked(o).toDecoderResult)
-  }
-
-  implicit final class ImplicitTypedPath[P <: TypedPath](private val underlying: P) extends AnyVal {
-    def %(version: String): FileBasedId[P] = %(VersionId(version))
-    def %(v: VersionId): FileBasedId[P] = FileBasedId(underlying, v)
   }
 
   def fileToString(file: Path): String =

@@ -41,7 +41,7 @@ final class InstructionContextTest extends FreeSpec
 }
 
 object InstructionContextTest {
-  private val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW") % "VERSION", Vector(
+  private val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW") ~ "VERSION", Vector(
     Fail,
     TryInstruction(
       Workflow.of(Fail),

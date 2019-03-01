@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifie
 import com.sos.jobscheduler.core.filebased.FileBasedVerifierTest._
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.crypt.{Signed, SignedString, SignerId}
-import com.sos.jobscheduler.data.filebased.{FileBased, VersionId}
+import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import io.circe.syntax.EncoderOps
@@ -44,7 +44,7 @@ object FileBasedVerifierTest
 {
   private val workflow = {
     val workflowScript = """define workflow { execute executable="/SCRIPT.cmd", agent="/AGENT"; }"""
-    WorkflowParser.parse(WorkflowPath("/WORKFLOW") % VersionId("1.0"), workflowScript).orThrow
+    WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 
   private val signerIds = SignerId("FileBasedVerifierTest") :: Nil

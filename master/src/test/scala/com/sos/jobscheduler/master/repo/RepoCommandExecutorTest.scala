@@ -28,8 +28,8 @@ final class RepoCommandExecutorTest extends FreeSpec
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
-  private val agentRef1 = AgentRef(AgentRefPath("/AGENT") % v1, "https://example.com")
-  private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") % v2, Vector(Fail(None)))
+  private val agentRef1 = AgentRef(AgentRefPath("/AGENT") ~ v1, "https://example.com")
+  private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") ~ v2, Vector(Fail(None)))
   private val workflow3 = workflow2 withVersion v3
   private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
 
@@ -64,9 +64,9 @@ final class RepoCommandExecutorTest extends FreeSpec
     repo = executeReplace(ReplaceRepo(v3, fileBasedSigner.sign(workflow3) :: Nil))
     assert(repo.idToSignedFileBased == Map(
       agentRef1.id -> Some(fileBasedSigner.toSigned(agentRef1)),
-      agentRef1.path % v3 -> None,
+      agentRef1.path ~ v3 -> None,
       workflow2.id -> Some(fileBasedSigner.toSigned(workflow2)),
-      workflow2.path % v3 -> None,
+      workflow2.path ~ v3 -> None,
       workflow3.id -> Some(fileBasedSigner.toSigned(workflow3))))
   }
 

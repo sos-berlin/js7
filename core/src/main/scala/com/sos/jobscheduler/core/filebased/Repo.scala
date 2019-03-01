@@ -143,7 +143,7 @@ final case class Repo private(
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[Signed[FileBased]]): Repo = {
     val version = versions.head
-    copy(idToSignedFileBased = idToSignedFileBased + ((path % version) -> fileBasedOption))
+    copy(idToSignedFileBased = idToSignedFileBased + ((path ~ version) -> fileBasedOption))
   }
 
   def pathToCurrentId[P <: TypedPath](path: P): Checked[FileBasedId[P]] =

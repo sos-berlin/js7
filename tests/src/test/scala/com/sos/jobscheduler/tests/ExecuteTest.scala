@@ -79,7 +79,7 @@ object ExecuteTest {
         execute executable="/SCRIPT-5.cmd", agent="AGENT", arguments={"return_code": "99"}, successReturnCodes=[5];
       }
     }"""
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "INITIAL", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", script).orThrow
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),

@@ -67,5 +67,5 @@ final class FailTest extends FreeSpec
 
 object FailTest {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "INITIAL"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

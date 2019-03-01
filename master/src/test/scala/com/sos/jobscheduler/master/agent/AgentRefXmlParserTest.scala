@@ -12,7 +12,7 @@ final class AgentRefXmlParserTest extends FreeSpec {
 
   "AgentRefXmlParser" in {
     val xml = <agent uri="http://localhost"/>
-    val id = AgentRefPath("/FOLDER/AGENT") % "VERSION"
+    val id = AgentRefPath("/FOLDER/AGENT") ~ "VERSION"
     assert(AgentRefXmlParser.parseXml(id, xml) == Valid(AgentRef(id, uri = "http://localhost")))
   }
 }

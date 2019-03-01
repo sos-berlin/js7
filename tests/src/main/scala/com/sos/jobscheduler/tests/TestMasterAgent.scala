@@ -176,7 +176,7 @@ object TestMasterAgent
           Fork.Branch(
             pathName,
             Workflow(
-              WorkflowPath("/TestMasterAgent") % "1",
+              WorkflowPath("/TestMasterAgent") ~ "1",
               Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentRefPath, TestExecutablePath)) }))),
       If(Or(Equal(OrderReturnCode, NumericConstant(0)), Equal(OrderReturnCode, NumericConstant(0))),
         thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))),

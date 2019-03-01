@@ -133,7 +133,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
 private object TaskRegisterTest {
   private class TestTask(val id: AgentTaskId) extends BaseAgentTask {
 
-    val jobKey = JobKey(WorkflowPath("/WORKFLOW") % "VERSION", WorkflowJob.Name("JOB"))
+    val jobKey = JobKey(WorkflowPath("/WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB"))
     val pidOption = Some(Pid(123))
     val overview = TaskOverview(jobKey, id, pidOption, now.toTimestamp)
     val terminatedPromise = Promise[Completed]()

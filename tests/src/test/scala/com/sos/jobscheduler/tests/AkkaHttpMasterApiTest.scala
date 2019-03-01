@@ -65,7 +65,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProviderForScal
 
 private object AkkaHttpMasterApiTest
 {
-  private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") % "INITIAL",
+  private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(AgentRefPath("/MISSING"), ExecutablePath("/MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

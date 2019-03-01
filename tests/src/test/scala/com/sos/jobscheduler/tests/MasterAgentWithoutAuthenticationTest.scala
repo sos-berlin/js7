@@ -83,7 +83,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
         "-data-directory=" + dir / "master/data" ::
         "-http-port=" + masterPort :: Nil)
 
-      val agentRef = AgentRef(agentRefPath % versionId, s"http://127.0.0.1:$agentPort")
+      val agentRef = AgentRef(agentRefPath ~ versionId, s"http://127.0.0.1:$agentPort")
       val agent = RunningAgent(agentConfiguration) await 99.seconds
       val master = RunningMaster(masterConfiguration) await 99.seconds
 
@@ -103,7 +103,7 @@ object MasterAgentWithoutAuthenticationTest
   private val versionId = VersionId("INITIAL")
   private val agentRefPath = AgentRefPath("/AGENT")
   private val executablePath = ExecutablePath("/EXECUTABLE.cmd")
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") % versionId,
+  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
     Execute(WorkflowJob(agentRefPath, executablePath)))
   private val orderId = OrderId("🔵")
 }

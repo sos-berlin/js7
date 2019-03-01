@@ -186,7 +186,7 @@ final class WorkflowTest extends FreeSpec {
       (END @: ExplicitEnd)      -> true,
       (B   @: job)              -> true,
       (()  @: Goto(C))          -> true)
-    val id = WorkflowPath("/WORKFLOW") % "VERSION"
+    val id = WorkflowPath("/WORKFLOW") ~ "VERSION"
     val a = Workflow(id, instructions map (_._1))
     assert(a.reduce == Workflow(id, instructions collect { case (s, true) => s }))
   }
@@ -292,7 +292,7 @@ final class WorkflowTest extends FreeSpec {
 
   "anonymousJobKey" in {
     val w = Workflow(
-      WorkflowPath("/TEST") % "VERSION",
+      WorkflowPath("/TEST") ~ "VERSION",
       Vector(
         If(BooleanConstant(true),   // :0
           Workflow.of(Fail),        // :0/then:0
@@ -338,7 +338,7 @@ final class WorkflowTest extends FreeSpec {
     assert(TestWorkflow.findCatchPosition(Position(1) / Catch_ % 0).isEmpty)
 
     val tryWorkflow = Workflow(
-      WorkflowPath("/TEST") % "VERSION",
+      WorkflowPath("/TEST") ~ "VERSION",
       Vector(
         TryInstruction(                               // :0
           tryWorkflow = Workflow.of(AExecute),        // :0/0:0
@@ -386,7 +386,7 @@ final class WorkflowTest extends FreeSpec {
 private object WorkflowTest
 {
   private val TestWorkflow = Workflow(
-    WorkflowPath("/TEST") % "VERSION",
+    WorkflowPath("/TEST") ~ "VERSION",
     Vector(
       AExecute,
       If(Equal(OrderReturnCode, NumericConstant(1)),

@@ -151,25 +151,25 @@ object UpdateRepoTest
     }"""
 
   private val V1 = VersionId("1")
-  private val workflow1 = WorkflowParser.parse(TestWorkflowPath % V1, script1).orThrow
+  private val workflow1 = WorkflowParser.parse(TestWorkflowPath ~ V1, script1).orThrow
 
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
       execute executable="/SCRIPT2.cmd", agent="/AGENT";
     }"""
-  private val workflow2 = WorkflowParser.parse(TestWorkflowPath % V2, script2).orThrow
+  private val workflow2 = WorkflowParser.parse(TestWorkflowPath ~ V2, script2).orThrow
 
   private val V3 = VersionId("3")
 
   private val V4 = VersionId("4")
-  private val workflow4 = WorkflowParser.parse(TestWorkflowPath % V4, script2).orThrow
-  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") % V4, script2).orThrow
+  private val workflow4 = WorkflowParser.parse(TestWorkflowPath ~ V4, script2).orThrow
+  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V4, script2).orThrow
 
   private val V5 = VersionId("5")
   private val script5 = """
     define workflow {
       execute executable="/SCRIPT4.cmd", agent="/AGENT";
     }"""
-  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") % V5, script5).orThrow
+  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V5, script5).orThrow
 }

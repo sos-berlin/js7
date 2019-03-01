@@ -492,6 +492,12 @@ final class MasterGraphqlSchemaTest extends FreeSpec
 
 object MasterGraphqlSchemaTest
 {
+  private def bigContext(n: Int): QueryContext = new TestContext {
+    private val order = Order(OrderId("?"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z"))))
+    override val idToOrder = (1 to n).map(i => order.copy(id = OrderId(s"$i"))) toKeyedMap (_.id)
+  }
+  private object TestContext extends TestContext
+
   private trait TestContext extends QueryContext {
     def executionContext = ExecutionContext.global
     private val agentRefPath = AgentRefPath("/AGENT")
@@ -499,23 +505,23 @@ object MasterGraphqlSchemaTest
     private val attached = Some(Order.Attached(agentRefPath))
 
     protected val idToOrder = Vector[Order[Order.State]](
-        Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh),
-        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefPath))),
-        Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), fresh, attachedState = attached),
-        Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(1), Order.Ready, attachedState = attached),
-        Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") % "1") /: (Position(1) / "fork+BRANCH" % 0), Order.Processing,
+        Order(OrderId("11"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh),
+        Order(OrderId("12"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh, attachedState = Some(Order.Attaching(agentRefPath))),
+        Order(OrderId("13"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: Position(0), fresh, attachedState = attached),
+        Order(OrderId("14"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(1), Order.Ready, attachedState = attached),
+        Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: (Position(1) / "fork+BRANCH" % 0), Order.Processing,
           attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
           parent = Some(OrderId("PARENT")),
           payload = Payload(Map("KEY" -> "VALUE", "X" -> "XX"))),
-        Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),
-        Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Failed(ReturnCode(8))),
-        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Stopped  , Outcome.Disrupted(Problem("MESSAGE"))),
-        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Processed, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)),
-        Order(OrderId("20"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
-        Order(OrderId("21"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Offering(Timestamp.parse("2018-04-16T11:22:33Z"))),
-        Order(OrderId("22"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
-        Order(OrderId("23"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Finished),
-        Order(OrderId("24"), (WorkflowPath("/B-WORKFLOW") % "1") /: Position(2), Order.Broken(Problem("PROBLEM")))
+        Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),
+        Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Failed(ReturnCode(8))),
+        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Stopped  , Outcome.Disrupted(Problem("MESSAGE"))),
+        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)),
+        Order(OrderId("20"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
+        Order(OrderId("21"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Offering(Timestamp.parse("2018-04-16T11:22:33Z"))),
+        Order(OrderId("22"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),
+        Order(OrderId("23"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Finished),
+        Order(OrderId("24"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Broken(Problem("PROBLEM")))
       ).toKeyedMap(_.id)
 
     def order(orderId: OrderId) = Future.successful(idToOrder.get(orderId))
@@ -535,11 +541,5 @@ object MasterGraphqlSchemaTest
             Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ => Problem(s"No such ''$id'")
     })
-  }
-  private object TestContext extends TestContext
-
-  private def bigContext(n: Int): QueryContext = new TestContext {
-    private val order = Order(OrderId("?"), (WorkflowPath("/A-WORKFLOW") % "1") /: Position(0), Order.Fresh(Some(Timestamp.parse("2018-04-16T11:22:33Z"))))
-    override val idToOrder = (1 to n).map(i => order.copy(id = OrderId(s"$i"))) toKeyedMap (_.id)
   }
 }

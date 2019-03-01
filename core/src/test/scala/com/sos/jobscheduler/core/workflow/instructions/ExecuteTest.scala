@@ -44,7 +44,7 @@ final class ExecuteTest extends FreeSpec {
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = Order(orderId, (WorkflowPath("/WORKFLOW") % "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed, outcome = outcome)
+    val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed, outcome = outcome)
     ExecuteExecutor.toEvent(orderContext, order, executeAnonymous)
   }
 }
