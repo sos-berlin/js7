@@ -90,8 +90,7 @@ with MainJournalingActor[Event]
     "Journal"))
   private var hasRecovered = false
   private var repo = Repo(MasterFileBaseds.jsonCodec)
-  private val updateRepoCommandExecutor = new UpdateRepoCommandExecutor(masterConfiguration,
-    new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
+  private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
   private object orderRegister extends mutable.HashMap[OrderId, OrderEntry] {
     def checked(orderId: OrderId) = get(orderId).toChecked(UnknownOrderProblem(orderId))
@@ -348,14 +347,14 @@ with MainJournalingActor[Event]
 
       case cmd: MasterCommand.ReplaceRepo =>
         intelliJuseImport(catsStdInstancesForFuture)  // For traverse
-        updateRepoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
+        repoCommandExecutor.replaceRepoCommandToEvents(repo, cmd, commandMeta)
           .flatMap(readConfiguration)
           .traverse((_: SyncIO[Future[Completed]])
             .unsafeRunSync()  // Persist events!
             .map(_ => MasterCommand.Response.Accepted))
 
       case cmd: MasterCommand.UpdateRepo =>
-        updateRepoCommandExecutor.commandToEvents(repo, cmd, commandMeta)
+        repoCommandExecutor.updateRepoCommandToEvents(repo, cmd, commandMeta)
           .flatMap(readConfiguration)
           .traverse((_: SyncIO[Future[Completed]])
             .unsafeRunSync()  // Persist events!

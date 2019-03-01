@@ -8,16 +8,19 @@ import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.crypt.{Signed, SignedString}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent}
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.repo.UpdateRepoCommandExecutor._
+import com.sos.jobscheduler.master.repo.RepoCommandExecutor._
 import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, fileBasedVerifier: FileBasedVerifier[FileBased])
+final class RepoCommandExecutor(fileBasedVerifier: FileBasedVerifier[FileBased])
 {
+  // ReplaceRepo and UpdateRepo may detect equal objects and optimize the FileBasedChanged away,
+  // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
+  // Signatures refering different signer keys must be kept to allow the operator to delete old signer keys.
+
   def replaceRepoCommandToEvents(repo: Repo, replaceRepo: MasterCommand.ReplaceRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap { _ =>
@@ -30,7 +33,7 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, 
           events
       }
 
-  def commandToEvents(repo: Repo, updateRepo: MasterCommand.UpdateRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
+  def updateRepoCommandToEvents(repo: Repo, updateRepo: MasterCommand.UpdateRepo, meta: CommandMeta): Checked[Seq[RepoEvent]] =
     meta.user.checkPermission(UpdateRepoPermission)
       .flatMap { _ =>
         val MasterCommand.UpdateRepo(versionId, changedObjects, deletedPaths) = updateRepo
@@ -48,6 +51,6 @@ final class UpdateRepoCommandExecutor(masterConfiguration: MasterConfiguration, 
     }
 }
 
-object UpdateRepoCommandExecutor {
+object RepoCommandExecutor {
   private val logger = Logger(getClass)
 }

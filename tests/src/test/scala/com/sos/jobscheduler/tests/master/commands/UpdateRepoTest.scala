@@ -60,7 +60,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
   "User requires permission 'UpdateRepo'" in {
     master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
     assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
-      Invalid(Problem("User does not have the required permission 'UpdateRepo'")))
+      Invalid(Problem("User 'without-permission' does not have the required permission 'UpdateRepo'")))
 
     master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
   }

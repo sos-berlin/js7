@@ -16,7 +16,7 @@ trait User
 
   final def checkPermission(requiredPermission: Permission): Checked[Unit] =
     if (!hasPermission(requiredPermission))
-      Invalid(Problem(s"User does not have the required permission '${requiredPermission.name}'"))
+      Invalid(Problem(s"User '${id.string}' does not have the required permission '${requiredPermission.name}'"))
     else
       Checked.unit
 
