@@ -35,7 +35,7 @@ final class OrderActor private(orderId: OrderId, protected val journalActor: Act
 extends KeyedJournalingActor[OrderEvent]
 {
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
-  import conf.{charBufferSize, stdoutDelay}
+  import conf.{charBufferSize, stdoutCommitDelay}
 
   private var order: Order[Order.State] = null
   private var stdouterr: StdouterrToEvent = null
@@ -261,12 +261,12 @@ extends KeyedJournalingActor[OrderEvent]
   }
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
-    if (stdoutDelay.isZero)  // slow
+    if (stdoutCommitDelay.isZero)  // slow
       persist(OrderStdWritten(t)(chunk)) { _ =>
         Accepted
       }
     else
-      persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutDelay)
+      persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
       // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
   private def update(event: OrderEvent) = {
@@ -335,10 +335,10 @@ private[order] object OrderActor
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
   }
 
-  final case class Conf(stdoutDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf)
+  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf)
   object Conf {
     def apply(config: Config) = new Conf(
-      stdoutDelay = config.getDuration("jobscheduler.order.stdout-stderr.sync-delay").toFiniteDuration,
+      stdoutCommitDelay = config.getDuration("jobscheduler.order.stdout-stderr.commit-delay").toFiniteDuration,
       charBufferSize = config.getInt  ("jobscheduler.order.stdout-stderr.char-buffer-size"),
       stdouterrToEventConf = StdouterrToEvent.Conf(config))
   }
