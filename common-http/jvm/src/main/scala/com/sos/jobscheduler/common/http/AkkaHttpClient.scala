@@ -147,7 +147,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri) match {
       case Valid(uri) => body(request.copy(uri = uri))
-      case Invalid(problem) => Task.fromTry(Failure(problem.throwable))
+      case Invalid(problem) => Task.raiseError(problem.throwable)
     }
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
