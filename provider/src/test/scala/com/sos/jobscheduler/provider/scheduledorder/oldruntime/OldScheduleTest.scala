@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.oldruntime
+package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.master.oldruntime.OldSchedule.EveryDay
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
 import org.scalatest.FreeSpec
 

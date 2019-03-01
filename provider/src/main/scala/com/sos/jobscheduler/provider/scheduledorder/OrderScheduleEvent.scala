@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.scheduledorder
+package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp

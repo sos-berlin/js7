@@ -81,13 +81,17 @@ extends AutoCloseable
     remainingMillis <= 0 || {
       logger.trace(s"$directory: poll ${timeout.pretty} ...")
       val watchKey = watchService.poll(remainingMillis, MILLISECONDS)
-      logger.trace(s"$directory: poll watchKey=$watchKey")
-      watchKey != null && {
+      if (watchKey == null) {
+        logger.trace(s"$directory: poll timed out")
+        false
+      } else {
         try {
-          val events = watchKey.pollEvents()
-          logger.whenTraceEnabled { events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }}
-        }
-        finally watchKey.reset()
+          logger.whenTraceEnabled {
+            val events = watchKey.pollEvents()
+            if (events.isEmpty) logger.trace(s"$directory: poll returned no events")
+            else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
+          }
+        } finally watchKey.reset()
         true
       }
     }

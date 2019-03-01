@@ -5,7 +5,6 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
@@ -23,7 +22,6 @@ import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import java.nio.file.Files.{createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
@@ -62,7 +60,7 @@ object TestDockerExample
     }
     provide("master/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.txt")
-    provide("master/config/order-generators/test.order.xml")
+    provide("provider/config/order-generators/test.order.xml")
     provide("agent-1/config/private/private.conf")
     provide("agent-1/config/executables/test")
     provide("agent-2/config/private/private.conf")
@@ -77,7 +75,7 @@ object TestDockerExample
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentRefPath))
         ) map { _.closeWithCloser } await 99.s
-        env.file(agentRefPath, SourceType.Json) := AgentRef(AgentRefPath.NoId, uri = agent.localUri.toString)
+        //env.file(agentRefPath, SourceType.Json) := AgentRef(AgentRefPath.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestDockerExample") {
@@ -93,7 +91,7 @@ object TestDockerExample
       } .closeWithCloser
 
       val master = RunningMaster(injector) await 99.s
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
+      //??? master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
       for (agent <- agents) agent.executeCommand(AgentCommand.Terminate())

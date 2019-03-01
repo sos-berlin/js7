@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.scheduledorder
+package com.sos.jobscheduler.provider.scheduledorder
 
 import akka.util.ByteString
 import cats.data.Validated.Invalid

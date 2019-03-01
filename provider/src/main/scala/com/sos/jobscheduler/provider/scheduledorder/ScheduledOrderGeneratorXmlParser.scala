@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.scheduledorder
+package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.problem.Checked
@@ -7,7 +7,7 @@ import com.sos.jobscheduler.core.common.VariablesXmlParser
 import com.sos.jobscheduler.data.filebased.FileBasedId
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.oldruntime.{OldSchedule, OldScheduleXmlParser}
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser}
 import java.time.ZoneId
 import javax.xml.transform.Source
 

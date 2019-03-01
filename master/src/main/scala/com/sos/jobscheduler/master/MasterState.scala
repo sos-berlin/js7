@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.master
 
-import cats.syntax.option.none
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.event.EventBasedState
 import com.sos.jobscheduler.core.filebased.Repo
@@ -13,7 +11,6 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.agent.AgentEventId
-import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEndedAt
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
@@ -24,8 +21,7 @@ final case class MasterState(
   eventId: EventId,
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]],
-  agentToEventId: Map[AgentRefPath, EventId],
-  orderScheduleEndedAt: Option[Timestamp])
+  agentToEventId: Map[AgentRefPath, EventId])
 extends EventBasedState
 {
   def toSnapshots: Seq[Any] =
@@ -40,7 +36,6 @@ object MasterState
     var repo = Repo(MasterFileBaseds.jsonCodec)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
     val agentToEventId = mutable.Map[AgentRefPath, EventId]()
-    var orderScheduleEndedAt = none[Timestamp]
 
     snapshotObjects foreach {
       case order: Order[Order.State] =>
@@ -51,10 +46,7 @@ object MasterState
 
       case event: RepoEvent =>
         repo = repo.applyEvent(event).orThrow
-
-      case OrderScheduleEndedAt(timestamp) =>
-        orderScheduleEndedAt = Some(timestamp)
     }
-    MasterState(eventId, repo, idToOrder.toMap, agentToEventId.toMap, orderScheduleEndedAt)
+    MasterState(eventId, repo, idToOrder.toMap, agentToEventId.toMap)
   }
 }

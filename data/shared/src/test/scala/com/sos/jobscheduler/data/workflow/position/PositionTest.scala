@@ -59,6 +59,11 @@ final class PositionTest extends FreeSpec {
     //  Position(BranchPath.Segment(1, 2) :: BranchPath.Segment(3, 4) :: Nil, 5))
   }
 
+  "toString" in {
+    assert(Position(0).toString == "0")
+    assert((Position(0) / "BRANCH" % 1).toString == "0/BRANCH:1")
+  }
+
   "Fork" in {
     val a = Position(1) / "A" % 2
     assert(a == Position(1) / "A" % 2)

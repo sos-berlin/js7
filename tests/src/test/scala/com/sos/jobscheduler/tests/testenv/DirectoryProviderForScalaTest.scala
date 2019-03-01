@@ -32,6 +32,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def agentRefPaths: Seq[AgentRefPath]
   protected def agentHttps = false
+  protected def suppressRepoInitialization = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(agentRefPaths,
     fileBased = fileBased,
@@ -39,7 +40,8 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
     signer = signer,
-    testName = Some(getClass.getSimpleName))
+    testName = Some(getClass.getSimpleName),
+    suppressRepo = suppressRepoInitialization)
 
   protected def agentConfig: Config = ConfigFactory.empty
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s

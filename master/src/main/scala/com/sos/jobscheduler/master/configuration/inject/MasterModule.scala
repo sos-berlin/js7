@@ -25,7 +25,6 @@ import com.sos.jobscheduler.master.agent.AgentEventId
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
-import com.sos.jobscheduler.master.scheduledorder.OrderScheduleEndedAt
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -113,7 +112,6 @@ object MasterModule {
       Subtype[RepoEvent],  // These events describe complete objects
       Subtype[AgentRef],
       Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
-      Subtype[OrderScheduleEndedAt],
       Subtype[Order[Order.State]])
 
   private val simplePermssions = List(UpdateRepoPermission)

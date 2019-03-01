@@ -4,7 +4,8 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
-import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -17,8 +18,6 @@ import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -29,21 +28,20 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork, If}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
-import java.time.Instant.now
-import java.time.{Duration, Instant}
+import java.time.Duration
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -96,19 +94,6 @@ object TestMasterAgent
                  |""".stripMargin)
         }
 
-        for (i <- 1 to conf.orderGeneratorCount) {
-          createDirectory(env.master.config / "order-generators")
-          (env.master.config / "order-generators" / s"test-$i.order.xml").xml =
-            <order job_chain={TestWorkflowPath.string}>
-              <params>
-                <param name="VARIABLE" value={i.toString}/>
-              </params>
-              <run_time>
-                <period absolute_repeat={(conf.period plusNanos 999999999).getSeconds.toString}/>
-              </run_time>
-            </order>
-        }
-
         env.runAgents() { agents =>
           env.runMaster() { master =>
             JavaShutdownHook.add("TestMasterAgent") {
@@ -124,7 +109,12 @@ object TestMasterAgent
             } .closeWithCloser
 
             val startTime = now
-            master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration)).await(99.s).orThrow
+            Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period.toFiniteDuration) {
+              for (i <- 1 to conf.orderGeneratorCount) {
+                val at = Timestamp.now
+                master.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at))).runAsyncAndForget  // No error checking
+              }
+            }
             master.injector.instance[ActorSystem].actorOf(Props {
               new Actor {
                 master.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
@@ -132,14 +122,14 @@ object TestMasterAgent
                 context.system.scheduler.schedule(0.seconds, 1.second, self, "PRINT")
                 val stopwatch = new Stopwatch
                 var added, finished, printedFinished = 0
-                var lastDuration: Option[Duration] = None
+                var lastDuration: Option[FiniteDuration] = None
                 var lastLineLength = 0
 
                 def receive = {
                   case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) =>
                     added += 1
                   case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) =>
-                    lastDuration = Some(now - Instant.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
+                    lastDuration = Some(now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>
                     if (finished > printedFinished) {

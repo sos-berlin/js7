@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Seq
-import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -81,9 +80,6 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  /** Test only. */
-  final case class ScheduleOrdersEvery(every: FiniteDuration) extends MasterCommand
-
   /** Shut down the Master properly. */
   case object Terminate extends MasterCommand {
     type Response = Response.Accepted
@@ -132,7 +128,6 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(IssueTestEvent),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
-    Subtype(deriveCodec[ScheduleOrdersEvery]),
     Subtype(TakeSnapshot),
     Subtype(Terminate))
 }

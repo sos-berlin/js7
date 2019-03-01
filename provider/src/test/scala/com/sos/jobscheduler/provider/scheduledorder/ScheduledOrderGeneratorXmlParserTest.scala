@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.master.scheduledorder
+package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.oldruntime.OldSchedule.EveryDay
-import com.sos.jobscheduler.master.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}
 import java.time.ZoneId
 import org.scalatest.FreeSpec
 

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.oldruntime
+package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.LocalTime

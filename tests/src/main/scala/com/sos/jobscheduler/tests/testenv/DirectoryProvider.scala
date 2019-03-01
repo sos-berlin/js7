@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
-import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
@@ -34,9 +34,8 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider._
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.file.Files.{createDirectory, createTempDirectory, setPosixFilePermissions}
+import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 import java.time.Duration
 import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
@@ -61,7 +60,8 @@ final class DirectoryProvider(
   masterClientCertificate: Option[JavaResource] = None,
   signer: MessageSigner = defaultSigner,
   testName: Option[String] = None,
-  useDirectory: Option[Path] = None)
+  useDirectory: Option[Path] = None,
+  suppressRepo: Boolean = false)
 extends HasCloser {
 
   val directory = useDirectory getOrElse (createTempDirectory("test-") withCloser deleteDirectoryRecursively)
@@ -77,7 +77,7 @@ extends HasCloser {
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentFileBased: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
+  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentRefPath, uri = a.conf.localUri.toString)
   private val filebasedHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
@@ -151,13 +151,15 @@ extends HasCloser {
       RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster =>
-      val myFileBased = agentFileBased ++ fileBased
-      if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
-        // startMaster may be called several times. We configure only once.
-        runningMaster.executeCommandAsSystemUser(ReplaceRepo(
-          Vinitial,
-          (agentFileBased ++ fileBased) map (_ withVersion Vinitial) map fileBasedSigner.sign)
-        ).await(99.s).orThrow
+      if (!suppressRepo) {
+        val myFileBased = agentRefs ++ fileBased
+        if (!filebasedHasBeenAdded.getAndSet(true) && myFileBased.nonEmpty) {
+          // startMaster may be called several times. We configure only once.
+          runningMaster.executeCommandAsSystemUser(ReplaceRepo(
+            Vinitial,
+            myFileBased map (_ withVersion Vinitial) map fileBasedSigner.sign)
+          ).await(99.s).orThrow
+        }
       }
       runningMaster
     }
@@ -210,11 +212,6 @@ object DirectoryProvider
   sealed trait Tree {
     val directory: Path
     lazy val config = directory / "config"
-    lazy val orderGenerators = {
-      val dir = config / "order-generators"
-      createDirectory(dir)
-      dir
-    }
     lazy val data = directory / "data"
 
     private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
@@ -271,11 +268,8 @@ object DirectoryProvider
       }
     }
 
-    def writeExecutable(path: ExecutablePath, string: String): Unit = {
-      val file = path.toFile(executables)
-      file := string
-      if (isUnix) setPosixFilePermissions(file, PosixFilePermissions.fromString("rwx------"))
-    }
+    def writeExecutable(path: ExecutablePath, string: String): Unit =
+      path.toFile(executables).writeExecutable(string)
   }
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"

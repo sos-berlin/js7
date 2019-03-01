@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.master
 
-import cats.syntax.option._
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -20,7 +18,6 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
-import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleEndedAt, OrderScheduleEvent}
 import scala.collection.mutable
 
 /**
@@ -32,7 +29,6 @@ extends JournalRecoverer[Event]
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val agentToEventId = mutable.Map[AgentRefPath, EventId]()
-  private var orderScheduleEndedAt = none[Timestamp]
 
   protected def recoverSnapshot = {
     case order: Order[Order.State] =>
@@ -43,9 +39,6 @@ extends JournalRecoverer[Event]
 
     case event: RepoEvent =>
       repo = repo.applyEvent(event).orThrow
-
-    case OrderScheduleEndedAt(timestamp) =>
-      orderScheduleEndedAt = Some(timestamp)
   }
 
   override protected def onAllSnapshotRecovered() = {
@@ -58,8 +51,6 @@ extends JournalRecoverer[Event]
     case Stamped(_, _, keyedEvent) =>
       keyedEvent match {
         case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) =>
-        case KeyedEvent(_: NoKey, OrderScheduleEvent.GeneratedUntil(instant)) =>
-          orderScheduleEndedAt = Some(instant)
 
         case KeyedEvent(_: NoKey, event: RepoEvent) =>
           repo = repo.applyEvent(event).orThrow
@@ -109,5 +100,5 @@ extends JournalRecoverer[Event]
     }
 
   def masterState: Option[MasterState] =
-    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.toMap, agentToEventId.toMap, orderScheduleEndedAt)
+    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.toMap, agentToEventId.toMap)
 }

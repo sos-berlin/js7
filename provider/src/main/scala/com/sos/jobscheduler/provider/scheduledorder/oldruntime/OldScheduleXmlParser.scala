@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.oldruntime
+package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.common.time.ScalaTime._
-import java.time._
+import com.sos.jobscheduler.common.time.ScalaTime.bigDecimalToDuration
+import java.time.{DayOfWeek, LocalTime, ZoneId}
 import javax.xml.stream.XMLEventReader
 
 object OldScheduleXmlParser{

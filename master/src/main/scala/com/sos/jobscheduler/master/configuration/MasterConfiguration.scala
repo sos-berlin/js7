@@ -38,8 +38,6 @@ extends CommonConfiguration
 
   def fileBasedDirectory: Path = configDirectory / "live"
 
-  def orderGeneratorsDirectory: Path = configDirectory / "order-generators"
-
   def stateDirectory: Path = dataDirectory / "state"
 }
 

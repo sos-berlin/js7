@@ -5,7 +5,7 @@ home="$(cd "$(dirname -- "$0")"/../bin/.. && pwd || kill $$)"
 
 mkdir -p volumes/{master,provider,agent-1,agent-2}/config/private
 mkdir -p volumes/{master,provider,agent-1,agent-2}/data/{logs,state}
-mkdir -p volumes/provider/config/live
+mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent*/config/executables
 
 cp -Rn "$home"/volumes . || true

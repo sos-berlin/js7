@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.master.oldruntime
+package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.master.oldruntime.ExtendedLocalTime._
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.ExtendedLocalTime._
 import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.language.implicitConversions
 

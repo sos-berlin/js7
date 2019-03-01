@@ -13,14 +13,18 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
 import com.sos.jobscheduler.core.filebased.{FileBasedReader, Repo, TypedPaths}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
+import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.provider.Provider
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
@@ -29,7 +33,7 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectories, delete}
-import java.nio.file.Paths
+import java.nio.file.{Files, Paths}
 import java.util.concurrent._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -40,17 +44,19 @@ import scala.concurrent.duration._
   */
 final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentRefPaths = Nil
+  override protected def suppressRepoInitialization = true
+  protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = Nil
-
+  private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
   override protected val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
-  //Regenerated PGP signatures are not comparable ?
+  //Regenerated PGP signatures are not comparable:
   //private lazy val privateKeyPassword = SecretString(Random.nextString(10))
   //val signer = PgpSigner(generateSecretKey(SignerId("TEST"), privateKeyPassword, keySize = 1024/*fast for test*/), privateKeyPassword).orThrow
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"
+  private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
   private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(
     "-config-directory=" + providerDirectory / "config" ::
     "-master-uri=" + master.localUri :: Nil,
@@ -62,6 +68,12 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
   override def beforeAll() = {
     createDirectories(providerDirectory / "config" / "private")
     createDirectories(live)
+    createDirectories(orderGeneratorsDir)
+
+    providerDirectory / "config" / "provider.conf" :=
+      """jobscheduler.provider.add-orders-every = 0.1s
+        |jobscheduler.provider.add-orders-earlier = 0.1s
+        |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := signer.privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
       s"""jobscheduler.provider.sign-with = Silly
@@ -81,6 +93,8 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
         |  }
         |}
       """.stripMargin
+
+    directoryProvider.agents.head.writeExecutable(ExecutablePath("/EXECUTABLE"), ":")
 
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")
@@ -102,12 +116,15 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       assert(repo.idToSignedFileBased.isEmpty)
     }
 
-    "Write two workflows" in {
-      writeFile(AWorkflowPath)
-      writeFile(BWorkflowPath)
+    "Write AgentRef and two workflows" in {
+      live.resolve(agentRef.path.toFile(SourceType.Json)) := agentRef
+      writeWorkflowFile(AWorkflowPath)
+      writeWorkflowFile(BWorkflowPath)
       v1Timestamp
       provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
+        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
+        (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
         (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
         (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1)))))
     }
@@ -118,8 +135,8 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 
     "An unknown and some invalid files" in {
       sleep(v1Timestamp + 1.1.seconds - now)  // File system timestamps may have only a one second precision
-      writeFile(AWorkflowPath)
-      writeFile(CWorkflowPath)
+      writeWorkflowFile(AWorkflowPath)
+      writeWorkflowFile(CWorkflowPath)
       (live / "UNKNOWN.tmp") := "?"
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
       (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
@@ -139,6 +156,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateMasterConfiguration(V2.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
+        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
         (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
         (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
@@ -150,6 +168,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       provider.updateMasterConfiguration(V3.some).await(99.seconds).orThrow
       assert(repo.versions == V3 :: V2 :: V1 :: Nil)
       assert(repo.idToSignedFileBased == Map(
+        (agentRef.path % V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V1))),
         (AWorkflowPath % V2) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath % V2))),
         (BWorkflowPath % V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath % V1))),
@@ -159,6 +178,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 
     "closeTask" in {
       provider.closeTask await 99.s
+      provider.close()
     }
   }
 
@@ -168,19 +188,19 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       .foreach { _ => }
     var lastEventId = EventId.BeforeFirst
 
-    // Observer does not call replaceMasterConfiguration because MasterOrderKeeper does not support change of Agents !!!
-    "Initial observation with file added" in {
+    "Initial observation with a workflow and an agentRef added" in {
       lastEventId = master.eventWatch.lastAddedEventId
-      writeFile(BWorkflowPath)
+      writeWorkflowFile(BWorkflowPath)
+      live.resolve(agentRefPath.toFile(SourceType.Json)) := AgentRef(agentRefPath, uri = agent.localUri.toString)
 
       whenObserved
-      val events = master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
+      val events = master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
         .map(path => NoKey <-: FileBasedAdded(path, sign(TestWorkflow withId path % versionId))))
     }
 
-    "Delete a file" in {
+    "Delete a workflow" in {
       whenObserved
       lastEventId = master.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
@@ -188,16 +208,16 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
         Vector(NoKey <-: FileBasedDeleted(CWorkflowPath)))
     }
 
-    "Add a file" in {
+    "Add a workflow" in {
       assert(!whenObserved.isCompleted)
       lastEventId = master.eventWatch.lastAddedEventId
-      writeFile(CWorkflowPath)
+      writeWorkflowFile(CWorkflowPath)
       val versionId = master.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(master.eventWatch.await[FileBasedEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: FileBasedAdded(CWorkflowPath, sign(TestWorkflow withId CWorkflowPath % versionId))))
     }
 
-    "Change a file" in {
+    "Change a workflow" in {
       assert(!whenObserved.isCompleted)
       lastEventId = master.eventWatch.lastAddedEventId
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
@@ -206,7 +226,37 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
         Vector(NoKey <-: FileBasedChanged(CWorkflowPath, sign(ChangedWorkflow withId CWorkflowPath % versionId))))
     }
 
-    "cancel" in {
+    "Add an order generator" in {
+      lastEventId = master.eventWatch.lastAddedEventId
+      (orderGeneratorsDir / "test.order.xml").xml =
+        <order job_chain="/A">
+          <run_time>
+            <period absolute_repeat="1"/>
+          </run_time>
+        </order>
+      master.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
+      lastEventId = master.eventWatch.lastAddedEventId
+      master.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
+    }
+
+    "Replace an order generator" in {
+      (orderGeneratorsDir / "test.order.xml").xml =
+        <order job_chain="/B">
+          <run_time>
+            <period absolute_repeat="1"/>
+          </run_time>
+        </order>
+      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
+      lastEventId = master.eventWatch.lastAddedEventId
+      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
+    }
+
+    "Delete an order generator" in {
+      Files.delete(orderGeneratorsDir / "test.order.xml")
+      master.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
+    }
+
+    "Cancel" in {
       assert(!whenObserved.isCompleted)
       assert(!whenObserved.isCompleted)
       whenObserved.cancel()
@@ -218,7 +268,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
 
   private def repo: Repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
 
-  private def writeFile(workflowPath: WorkflowPath): Unit =
+  private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson
 }
 
@@ -227,10 +277,11 @@ object ProviderTest
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
   private val testConfig = ConfigFactory.parseString(
-    s"""jobscheduler.provider.file-watch.minimum-silence = 50ms
-       |jobscheduler.provider.file-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
+    s"""jobscheduler.provider.directory-watch.minimum-silence = 50ms
+       |jobscheduler.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
        |""".stripMargin)
 
+  private val agentRefPath = AgentRefPath("/AGENT")
   private val AWorkflowPath = WorkflowPath("/A")
   private val BWorkflowPath = WorkflowPath("/B")
   private val CWorkflowPath = WorkflowPath("/C")

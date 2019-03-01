@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.scheduledorder
+package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 

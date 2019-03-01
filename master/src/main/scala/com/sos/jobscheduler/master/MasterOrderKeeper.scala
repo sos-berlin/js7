@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master
 
 import akka.Done
-import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
+import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.SyncIO
@@ -23,18 +23,17 @@ import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdClock
-import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
-import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo, TypedSourceReader}
+import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
@@ -58,9 +57,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
-import com.sos.jobscheduler.master.repo.UpdateRepoCommandExecutor
-import com.sos.jobscheduler.master.scheduledorder.{OrderScheduleGenerator, ScheduledOrderGenerator, ScheduledOrderGeneratorReader}
-import java.nio.file.Files
+import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
@@ -101,9 +98,6 @@ with MainJournalingActor[Event]
   }
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
-  private val orderScheduleGenerator = actorOf(
-    Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, masterConfiguration)},
-    "OrderScheduleGenerator")
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private var terminating = false
   private var terminateRespondedAt: Option[Timestamp] = None
@@ -151,8 +145,7 @@ with MainJournalingActor[Event]
       persistedEventId,
       repo,
       orderRegister.mapValues(_.order).uniqueToMap,
-      agentRegister.values.map(entry => entry.agentRefPath -> entry.lastAgentEventId).uniqueToMap,
-      orderScheduleEndedAt = None)
+      agentRegister.values.map(entry => entry.agentRefPath -> entry.lastAgentEventId).uniqueToMap)
     .toSnapshots)
 
   private def recover() = {
@@ -170,15 +163,9 @@ with MainJournalingActor[Event]
       for (order <- masterState.idToOrder.values) {
         orderRegister.insert(order.id -> OrderEntry(order))
       }
-      for (at <- masterState.orderScheduleEndedAt) {
-        orderScheduleGenerator ! OrderScheduleGenerator.Input.Recover(at)
-      }
       persistedEventId = masterState.eventId
     }
-    recoverer.startJournalAndFinishRecovery(
-      journalActor = journalActor,
-      RecoveredJournalingActors(Map(OrderScheduleGenerator.Key -> orderScheduleGenerator)),
-      Some(eventWatch))
+    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, journalingObserver = Some(eventWatch))
   }
 
   def receive = {
@@ -190,7 +177,6 @@ with MainJournalingActor[Event]
         afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
       }
-      readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ =>
         self ! Internal.Ready
       )
@@ -315,7 +301,6 @@ with MainJournalingActor[Event]
     case JournalActor.Output.SnapshotTaken =>
       if (terminating) {
         // TODO termination wie in AgentOrderKeeper, dabei AgentDriver ordentlich beenden
-        orderScheduleGenerator ! PoisonPill
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
@@ -375,10 +360,6 @@ with MainJournalingActor[Event]
           .traverse((_: SyncIO[Future[Completed]])
             .unsafeRunSync()  // Persist events!
             .map(_ => MasterCommand.Response.Accepted))
-
-      case MasterCommand.ScheduleOrdersEvery(every) =>
-        orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
-        Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop | MasterCommand.NoOperation | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
         Future.successful(Invalid(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
@@ -457,23 +438,6 @@ with MainJournalingActor[Event]
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.path -> entry)
     entry
-  }
-
-  /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */
-  private def readScheduledOrderGeneratorConfiguration(): Checked[SyncIO[Unit]] = {
-    val dir = masterConfiguration.orderGeneratorsDirectory
-    if (!Files.exists(dir))
-      Valid(SyncIO.unit)
-    else {
-      val typedSourceReader = new TypedSourceReader(dir, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone) :: Nil)
-      typedSourceReader.readFileBaseds(DirectoryReader.entries(dir).map(_.file))
-        .map(orderGenerators =>
-          SyncIO {
-            orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(
-              orderGenerators collect { case o: ScheduledOrderGenerator => o })
-          }
-        )
-    }
   }
 
   private def addOrder(order: FreshOrder): Future[Checked[Boolean]] =

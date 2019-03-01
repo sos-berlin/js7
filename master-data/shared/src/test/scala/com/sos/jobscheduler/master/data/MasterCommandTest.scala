@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import scala.concurrent.duration._
 
 final class MasterCommandTest extends FreeSpec {
 
@@ -168,15 +167,6 @@ final class MasterCommandTest extends FreeSpec {
       json"""{
         "TYPE": "IssueTestEvent"
       }""")
-  }
-
-  "ScheduleOrdersEvery" in {
-    testJson[MasterCommand](
-      ScheduleOrdersEvery(12345.millis),
-      json"""{
-        "TYPE": "ScheduleOrdersEvery",
-        "every": 12.345
-       }""")
   }
 
   "TakeSnapshot" in {

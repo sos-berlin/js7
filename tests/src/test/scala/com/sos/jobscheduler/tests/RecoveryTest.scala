@@ -3,7 +3,6 @@ package com.sos.jobscheduler.tests
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -11,8 +10,6 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleA
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
@@ -31,13 +28,11 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.tests.RecoveryTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import java.nio.file.Path
-import java.time.Instant
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -54,6 +49,8 @@ final class RecoveryTest extends FreeSpec {
 
   "test" in {
     for (_ <- if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
+      val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), TestWorkflow.path)
+      val Seq(order1, order2, order3) = orders
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
         AgentRefPaths,
@@ -63,7 +60,6 @@ final class RecoveryTest extends FreeSpec {
       autoClosing(directoryProvider) { _ =>
         for (agent <- directoryProvider.agentToTree.values)
           agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
-        (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider) { master =>
           if (lastEventId == EventId.BeforeFirst) {
@@ -80,33 +76,33 @@ final class RecoveryTest extends FreeSpec {
               NoKey <-: FileBasedAdded(QuickWorkflow.path, sign(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ =>
+            master.addOrderBlocking(order1)
             master.addOrderBlocking(QuickOrder)
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            master.addOrderBlocking(order2)
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
           assert((readEvents(directoryProvider.agents(0).data / "state/agent--0.journal") map { case Stamped(_, _, keyedEvent) => keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded(MasterId("Master")/*see default master.conf*/))))
+
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflow.path.string))
+            lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
+            master.addOrderBlocking(order3)
           }
         }
 
         for (i <- 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
-          sys.runtime.gc()  // For a clean memory view
+          //sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
             runMaster(directoryProvider) { master =>
-              val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflow.path.string).last.value.key
+              val orderId = master.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id).last.value.key
               val orderStampeds = master.eventWatch.await[Event](_.key == orderId)
               withClue(s"$orderId") {
-                try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
-                    case o @ OrderAdded(_, Some(_), _) => o.copy(scheduledFor = Some(SomeTimestamp))
-                    case o => o
-                  }).toVector
-                  == ExpectedOrderEvents)
+                try assert(deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator).toVector == ExpectedOrderEvents)
                 catch { case NonFatal(t) =>
                   logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
                   throw t
@@ -121,7 +117,6 @@ final class RecoveryTest extends FreeSpec {
 
   private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster => Unit): Unit =
     directoryProvider.runMaster() { master =>
-      master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration)).await(99.s).orThrow
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
       // Kill Master ActorSystem
@@ -151,8 +146,6 @@ private object RecoveryTest {
   private val AgentRefPaths = AgentRefPath("/agent-111") :: AgentRefPath("/agent-222") :: Nil
   private val TestExecutablePath = ExecutablePath("/TEST.cmd")
 
-  private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
-
   private val TestWorkflow = Workflow(WorkflowPath("/test") % "INITIAL",
     Vector(
       Execute(WorkflowJob.Name("TEST-0")),
@@ -163,16 +156,12 @@ private object RecoveryTest {
     Map(
       WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentRefPaths(0), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(0).name}")),
       WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentRefPaths(1), TestExecutablePath, Map("var1" -> s"VALUE-${AgentRefPaths(1).name}"))))
-  private val TestOrderGeneratorElem =
-    <order job_chain={TestWorkflow.path.string}>
-      <run_time><period absolute_repeat="3"/></run_time>
-    </order>
 
   private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "INITIAL", Execute(WorkflowJob(AgentRefPaths(0), TestExecutablePath)))
-  private val QuickOrder = FreshOrder(OrderId("FAST-ORDER"), QuickWorkflow.id.path)
+  private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(
-    OrderAdded(TestWorkflow.id, Some(SomeTimestamp), Payload(Map())),
+    OrderAdded(TestWorkflow.id, None, Payload(Map())),
     OrderAttachable(AgentRefPaths(0)),
     OrderTransferredToAgent(AgentRefPaths(0)),
     OrderStarted,

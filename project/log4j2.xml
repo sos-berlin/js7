@@ -24,5 +24,6 @@
     </root>
     <logger level="debug" name="jobscheduler"/>
     <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
+    <logger level="trace" name="jobscheduler.provider"/>
   </loggers>
 </configuration>

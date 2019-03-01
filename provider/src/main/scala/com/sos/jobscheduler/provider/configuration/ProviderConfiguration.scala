@@ -20,6 +20,7 @@ final case class ProviderConfiguration(
   config: Config = ConfigFactory.empty)
 {
   val liveDirectory = configDirectory / "live"
+  val orderGeneratorsDirectory = configDirectory / "order-generators"
 }
 
 object ProviderConfiguration

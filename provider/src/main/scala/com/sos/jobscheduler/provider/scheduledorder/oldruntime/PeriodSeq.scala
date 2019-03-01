@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.master.oldruntime
+package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
-import com.sos.jobscheduler.master.oldruntime.PeriodSeq._
+import com.sos.jobscheduler.provider.scheduledorder.oldruntime.PeriodSeq._
 import java.time._
 import scala.collection.immutable
 import scala.language.implicitConversions

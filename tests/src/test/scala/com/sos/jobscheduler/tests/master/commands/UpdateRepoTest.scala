@@ -102,15 +102,15 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
       val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
       assert(repo.versions == V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
       assert(repo.currentFileBaseds.toSet
-        == Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentFileBased.map(_ withVersion Vinitial))
+        == Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial))
     }
 
     // Now replace: delete one workflow and change the other
-    executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentFileBased.map(_ withVersion V5)*/ map sign)).orThrow
+    executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
     val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
     assert(repo.versions == V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
     assert(repo.currentFileBaseds.toSet
-      == Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentFileBased.map(_ withVersion V5))
+      == Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5))
 
     val orderId = OrderId("⭕️")
     master.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))

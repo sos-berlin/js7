@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.{HasCloser, IOExecutor, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
@@ -44,28 +44,29 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: ProviderConfiguration)(implicit scheduler: Scheduler)
-extends AutoCloseable with Observing
+final class Provider(val fileBasedSigner: FileBasedSigner[FileBased], val conf: ProviderConfiguration)(implicit val s: Scheduler)
+extends HasCloser with Observing
 {
-  private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
-  protected val api = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
+  protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
+
   private val userAndPassword: Option[UserAndPassword] = for {
       userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
   private val firstRetryLoginDurations = conf.config.getDurationList("jobscheduler.provider.master.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
+  private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
-
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
-  def close() = closeTask.runAsyncAndForget
+  protected def scheduler = s
 
   def closeTask: Task[Completed] =
-    api.logout()
-      .guarantee(Task(api.close()))
+    masterApi.logout()
+      .guarantee(Task(masterApi.close()))
+      .memoize
 
-  // TODO MasterOrderKeeper does not support change of Agents yet
+  // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
   private def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
@@ -73,7 +74,7 @@ extends AutoCloseable with Observing
       checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries map (_.file))
       response <- checkedCommand
         .traverse(o => AkkaHttpClient.liftProblem(
-          api.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
+          masterApi.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
       if (response.isValid) {
@@ -84,7 +85,7 @@ extends AutoCloseable with Observing
 
   /** Compares the directory with the Master's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  def initialUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  def initiallyUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       currentEntries = readDirectory
@@ -118,18 +119,21 @@ extends AutoCloseable with Observing
         .map(_.flatten)
     } yield {
       if (response.isValid) {
-        if (!lastEntries.compareAndSet(last, currentEntries))
-          throw new ConcurrentModificationException("Provider has been concurrently used")
+        if (!lastEntries.compareAndSet(last, currentEntries)) {
+          val t = new ConcurrentModificationException("Provider has been concurrently used")
+          logger.debug(t.toString)
+          throw t
+        }
       }
       response
     }
 
   private lazy val loginUntilReachable: Task[Unit] =
     Task {
-      if (api.hasSession)
+      if (masterApi.hasSession)
         Task.unit
       else
-        api.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ => ())
+        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ => ())
     }.flatten
 
 
@@ -138,15 +142,16 @@ extends AutoCloseable with Observing
       Task(Checked.completed)
     else
       AkkaHttpClient.liftProblem(
-        api.executeCommand(updateRepo) map ((_: MasterCommand.Response) => Completed))
+        masterApi.executeCommand(updateRepo) map ((_: MasterCommand.Response) => Completed))
 
   private def masterFileBased: Task[Seq[FileBased]] =
     for {
-      stampedAgents <- api.agents
-      stampedWorkflows <- api.workflows
+      stampedAgents <- masterApi.agents
+      stampedWorkflows <- masterApi.workflows
     } yield stampedAgents.value ++ stampedWorkflows.value
 
-  private def readDirectory = DirectoryReader.entries(conf.liveDirectory).toVector
+  private def readDirectory =
+    DirectoryReader.entries(conf.liveDirectory).toVector
 
   private def toUpdateRepoCommand(versionId: VersionId, diff: PathSeqDiff): Checked[UpdateRepo] = {
     val checkedChanged = typedSourceReader.readFileBaseds(diff.added ++ diff.changed)

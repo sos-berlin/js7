@@ -1,15 +1,11 @@
 package com.sos.jobscheduler.master
 
-import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.JavaMainSupport.{runMain, withShutdownHooks}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand
 import monix.execution.Scheduler
 import scala.concurrent.duration.Duration
 
@@ -19,7 +15,6 @@ import scala.concurrent.duration.Duration
   * @author Joacim Zschimmer
   */
 object MasterMain {
-  private val OrderScheduleDuration = 1 * 60.s
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
@@ -28,13 +23,7 @@ object MasterMain {
       val masterConfiguration = MasterConfiguration.fromCommandLine(args.toVector)
       autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master =>
         import master.scheduler
-        withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master)) {
-          master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration))
-            .runAsync {  // On recovery, executeCommand will delay execution until Agents are started
-              case Left(t) => logger.error(t.toStringWithCauses, t)
-              case Right(Invalid(problem)) => logger.error(problem.toString)
-              case Right(Valid(_)) =>
-            }
+        withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master, _)) {
           master.terminated.awaitInfinite
         }
       }
@@ -44,7 +33,7 @@ object MasterMain {
     }
   }
 
-  private def onJavaShutdown(master: RunningMaster)(timeout: Duration)(implicit s: Scheduler): Unit = {
+  private def onJavaShutdown(master: RunningMaster, timeout: Duration)(implicit s: Scheduler): Unit = {
     logger.warn("Trying to terminate Master due to Java shutdown")
     master.terminate().runToFuture await timeout
     master.close()
