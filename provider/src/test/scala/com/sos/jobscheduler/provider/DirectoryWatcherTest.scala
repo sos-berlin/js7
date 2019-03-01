@@ -61,7 +61,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
 
   private def testUpdate(body: => Unit): Unit = {
     val delay = 50.milliseconds
-    assert(barrier.getNumberWaiting == 0)
+    //race condition: assert(barrier.getNumberWaiting == 0)
     val t = now
     val future = Future {
       blocking {
