@@ -86,8 +86,8 @@ extends AutoCloseable
         false
       } else {
         try {
+          val events = watchKey.pollEvents()
           logger.whenTraceEnabled {
-            val events = watchKey.pollEvents()
             if (events.isEmpty) logger.trace(s"$directory: poll returned no events")
             else events.asScala foreach { o => logger.trace(s"$directory: ${watchEventShow.show(o)}") }
           }
