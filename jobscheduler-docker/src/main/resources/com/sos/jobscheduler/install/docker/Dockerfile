@@ -13,7 +13,6 @@ FROM openjdk:12
 
 ARG UID
 
-EXPOSE 4444 4445
 CMD "/bin/bash"
 ENV LANG=en_US.UTF-8
 

@@ -87,7 +87,6 @@ with MainJournalingActor[Event]
   protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal"))
-  private var hasRecovered = false
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
@@ -150,7 +149,6 @@ with MainJournalingActor[Event]
     val recoverer = new MasterJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     for (masterState <- recoverer.masterState) {
-      hasRecovered = true
       setRepo(masterState.repo)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
         registerAgent(agentRef)
@@ -170,9 +168,9 @@ with MainJournalingActor[Event]
     case JournalRecoverer.Output.JournalIsReady =>
       agentRegister.values foreach { _.start() }
 
-      if (hasRecovered) {
-        orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
-        afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
+      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
+      afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
+      if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
       }
       persist(MasterEvent.MasterReady(masterConfiguration.masterId, ZoneId.systemDefault.getId))(_ =>
