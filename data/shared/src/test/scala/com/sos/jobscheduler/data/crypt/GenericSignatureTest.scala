@@ -12,6 +12,6 @@ final class GenericSignatureTest extends FreeSpec
   CirceJsonTester.testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE"), json"""
     {
       "TYPE": "SIGNATURE-TYPE",
-      "string": "SIGNATURE"
+      "signatureString": "SIGNATURE"
     }""")
 }

@@ -91,7 +91,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature): PgpSignature = {
     assert(signature.typeName == typeName)
-    PgpSignature(signature.string)
+    PgpSignature(signature.signatureString)
   }
 
   private[pgp] def readMutableSignature(in: Resource[SyncIO, InputStream]): Checked[PGPSignature] =

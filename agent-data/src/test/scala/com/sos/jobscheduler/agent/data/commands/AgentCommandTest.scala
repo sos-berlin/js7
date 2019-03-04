@@ -142,7 +142,7 @@ final class AgentCommandTest extends FreeSpec {
             "string": "{\"TYPE\":\"Workflow\",...}",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }""")

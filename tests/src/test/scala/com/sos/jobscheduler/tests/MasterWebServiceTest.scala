@@ -183,13 +183,13 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "string": "$workflowJson",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }, {
             "string": "$workflow2Json",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         ],
@@ -482,7 +482,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
@@ -493,7 +493,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
@@ -513,7 +513,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/A.sh\",\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }, {
@@ -524,7 +524,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/B.sh\",\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/MISSING.sh\",\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
-              "string": "MY-SILLY-SIGNATURE"
+              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }, {

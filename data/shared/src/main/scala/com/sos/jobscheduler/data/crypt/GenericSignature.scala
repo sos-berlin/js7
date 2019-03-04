@@ -11,12 +11,12 @@ import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 @ConfiguredJsonCodec
 final case class GenericSignature(
   @JsonKey("TYPE") typeName: String,
-  string: String)
+  signatureString: String)
 extends Signature
 {
   def toGenericSignature = this
 
-  override def toString = s"Signature(${string.truncateWithEllipsis(20)})"
+  override def toString = s"Signature(${signatureString.truncateWithEllipsis(20)})"
 }
 
 object GenericSignature {

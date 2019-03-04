@@ -50,6 +50,6 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) = {
     assert(signature.typeName == typeName)
-    SillySignature(signature.string)
+    SillySignature(signature.signatureString)
   }
 }

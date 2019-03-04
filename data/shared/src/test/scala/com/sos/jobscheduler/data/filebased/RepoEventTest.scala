@@ -39,7 +39,7 @@ final class RepoEventTest extends FreeSpec {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
               "TYPE": "PGP",
-              "string": "SIGNATURE"
+              "signatureString": "SIGNATURE"
             }
           }
         }""")
@@ -55,7 +55,7 @@ final class RepoEventTest extends FreeSpec {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
               "TYPE": "PGP",
-              "string": "SIGNATURE"
+              "signatureString": "SIGNATURE"
             }
           }
         }""")
