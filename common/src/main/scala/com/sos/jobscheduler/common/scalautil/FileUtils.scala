@@ -47,7 +47,7 @@ object FileUtils {
     implicit final class RichPath(private val delegate: Path) extends AnyVal
     {
       /** Writes `string` encoded with UTF-8 to file. */
-      def :=(string: CharSequence): Unit =
+      def :=[A <: CharSequence](string: A): Unit =
         contentString = string
 
       def :=(byteString: Array[Byte]): Unit =

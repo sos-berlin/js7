@@ -12,7 +12,7 @@ final class FileSourceTest extends FreeSpec {
 
   "FileSource" in {
     val file = createTempFile("test-", ".tmp")
-    file.contentString = "<test/>"
+    file := "<test/>"
     val source = new FileSource(file)
     assert(scala.io.Source.fromInputStream(source.getInputStream)(UTF_8).getLines().mkString == "<test/>")
     source.close()

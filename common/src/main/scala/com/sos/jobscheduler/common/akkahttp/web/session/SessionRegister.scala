@@ -29,7 +29,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
     for (sessionToken <- login(user, isEternalSession = true)) yield {
       file.delete()
       Files.createFile(file, operatingSystem.secretFileAttributes: _*)
-      file.contentString = sessionToken.secret.string
+      file := sessionToken.secret.string
       logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(Some(user), sessionToken))
       sessionToken

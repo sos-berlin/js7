@@ -45,7 +45,7 @@ final class ProcessesTest extends FreeSpec {
     autoDeleting(newTemporaryShellFile("NAME")) { file =>
       assert(exists(file))
       assert(!(file.toString contains "--"))
-      file.contentString = ShellScript
+      file := ShellScript
       val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava).redirectOutput(PIPE).start()
       val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path

@@ -14,7 +14,7 @@ final class JournalFilesTest extends FreeSpec
 {
   "listJournalFiles, currentFile" in {
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
-      (dir / "test--0.journal").contentString = "TEST-CONTENT"
+      dir / "test--0.journal" := "TEST-CONTENT"
       touch(dir / "test--2000.journal")
       touch(dir / "test--1000.journal")
       touch(dir / "test-30.journal")

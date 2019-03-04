@@ -127,7 +127,7 @@ object RunningAgent {
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
-    (agentConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ => "", _ + "/agent")
+    agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/agent")
 
     val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
     val sessionToken = blocking {

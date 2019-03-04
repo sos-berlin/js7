@@ -52,7 +52,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
   }
 
   "Duplicate FileBased, Workflows are not checked" in {
-    (directory / "A.workflow.txt").contentString = "DUPLICATE"
+    directory / "A.workflow.txt" := "DUPLICATE"
     assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
       Invalid(Problem.Multiple(Set(
         Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}"),

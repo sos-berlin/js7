@@ -14,7 +14,7 @@ final class ShellReturnValuesProvider {
   val file: Path = createTempFile("sos-", ".tmp")
 
   def clear(): Unit = {
-    file.contentString = ""
+    file := ""
   }
 
   def env: (String, String) =

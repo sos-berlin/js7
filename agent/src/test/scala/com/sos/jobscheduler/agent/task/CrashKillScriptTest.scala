@@ -25,7 +25,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
 
   "Overwrites file" in {
     val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
-    file.contentString = "garbage"
+    file := "garbage"
     autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ =>
       assert(size(file) == 0)
     }

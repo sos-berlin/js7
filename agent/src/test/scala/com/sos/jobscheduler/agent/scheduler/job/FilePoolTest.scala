@@ -33,7 +33,7 @@ final class FilePoolTest extends FreeSpec {
   }
 
   "release" in {
-    b.shellReturnValuesProvider.file.contentString = "TEST"
+    b.shellReturnValuesProvider.file := "TEST"
     filePool.release(b)
     val b2 = filePool.get()
     assert(b2 eq b)

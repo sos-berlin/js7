@@ -47,7 +47,7 @@ final class ShellScriptProcessTest extends FreeSpec
     else
       "#! (shebang) is respected" in {
         autoDeleting(newTemporaryShellFile("test-interpreter-")) { interpreter =>
-          interpreter.contentString =
+          interpreter :=
             """#! /bin/sh
               |echo INTERPRETER-START
               |sh "$@"
@@ -63,7 +63,7 @@ final class ShellScriptProcessTest extends FreeSpec
           shellProcess.terminated await 99.s
           shellProcess.close()
           assert(stdFileMap(Stdout).contentString ==
-            """INTERPRETER-START
+             """INTERPRETER-START
               |TEST-SCRIPT
               |INTERPRETER-END
               |""".stripMargin)
@@ -83,7 +83,7 @@ final class ShellScriptProcessTest extends FreeSpec
         val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
         val killScriptOutputFile = createTempFile("test-", ".tmp")
         val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
-        killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
+        killScriptFile := (if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
         closer.onClose {
           waitForCondition(15.s, 1.s) {
             RichProcess.tryDeleteFiles(stdFileMap.values)

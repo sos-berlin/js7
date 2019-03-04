@@ -3,8 +3,8 @@ package com.sos.jobscheduler.master.agent
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
-import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.TypedSourceReader
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
@@ -18,17 +18,17 @@ import scala.collection.mutable
 final class AgentRefReaderTest extends FreeSpec {
 
   "Different AgentRef file formats" in {
-    FileUtils.withTemporaryDirectory("AgentRefReaderTest-") { dir =>
+    withTemporaryDirectory("AgentRefReaderTest-") { dir =>
       val expected = mutable.Buffer[AgentRef]()
 
       // JSON
       val jsonAgent = AgentRef(AgentRefPath("/JSON"), "https://JSON")
-      (dir / "JSON.agent.json").contentString = jsonAgent.asJson.toPrettyString
+      dir / "JSON.agent.json" := jsonAgent.asJson.toPrettyString
       expected += jsonAgent
 
       // YAML
       val yamlAgent = AgentRef(AgentRefPath("/YAML"), "https://JSON")
-      (dir / "YAML.agent.yaml").contentString = yamlAgent.asJson.toYamlString
+      dir / "YAML.agent.yaml" := yamlAgent.asJson.toYamlString
       expected += yamlAgent
 
       // XML

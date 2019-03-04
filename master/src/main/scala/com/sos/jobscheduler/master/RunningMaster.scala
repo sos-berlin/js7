@@ -229,7 +229,7 @@ object RunningMaster {
         .andThen { case _ => closer.close() }  // Close automatically after termination
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
-      (masterConfiguration.stateDirectory / "http-uri").contentString = webServer.localHttpUri.fold(_ => "", _ + "/master")
+      masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
         new RunningMaster(sessionRegister, commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
     }

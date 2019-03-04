@@ -34,7 +34,7 @@ final class ProcessesForkedTest extends FreeSpec {
     val filesAndProcesses = for (i <- 0 until n) yield
       Future {
         val file = newTemporaryShellFile(s"#$i")
-        file.contentString = "exit"
+        file := "exit"
         val process = new ProcessBuilder(s"$file").startRobustly()
         (file, process)
       }
