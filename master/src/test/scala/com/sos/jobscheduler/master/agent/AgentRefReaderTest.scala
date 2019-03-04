@@ -23,12 +23,12 @@ final class AgentRefReaderTest extends FreeSpec {
 
       // JSON
       val jsonAgent = AgentRef(AgentRefPath("/JSON"), "https://JSON")
-      dir / "JSON.agent.json" := jsonAgent.asJson.toPrettyString
+      (dir / "JSON.agentref.json") := jsonAgent.asJson.toPrettyString
       expected += jsonAgent
 
       // YAML
       val yamlAgent = AgentRef(AgentRefPath("/YAML"), "https://JSON")
-      dir / "YAML.agent.yaml" := yamlAgent.asJson.toYamlString
+      (dir / "YAML.agentref.yaml") := yamlAgent.asJson.toYamlString
       expected += yamlAgent
 
       // XML

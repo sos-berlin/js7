@@ -13,8 +13,8 @@ final case class AgentRefPath private(string: String) extends TypedPath {
 object AgentRefPath extends TypedPath.Companion[AgentRefPath]
 {
   val sourceTypeToFilenameExtension = Map(
-    SourceType.Json -> ".agent.json",
-    SourceType.Yaml -> ".agent.yaml",
+    SourceType.Json -> ".agentref.json",
+    SourceType.Yaml -> ".agentref.yaml",
     SourceType.Xml -> ".agent.xml")
 
   protected def unchecked(string: String) = new AgentRefPath(string)

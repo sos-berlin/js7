@@ -31,7 +31,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
     (directory / "C.workflow.txt") := "define workflow { /*EMPTY*/ }"
     (directory / "D.workflow.txt") := "ERROR"
     (directory / "E.workflow.json") := "NO-JSON"
-    (directory / "A.agent.json") := """{ "uri": "http://A" }"""
+    (directory / "A.agentref.json") := """{ "uri": "http://A" }"""
     (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
     (directory / "folder" / "test.alien.json") := ""
   }
