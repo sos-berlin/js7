@@ -39,7 +39,7 @@ final class Evaluator(scope: Scope)
       case Not            (a)    => evalBoolean(a) map (o => !o.bool) map BooleanValue.apply
       case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.bool) o.valid else evalBoolean(b))
       case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.bool) o.valid else evalBoolean(b))
-      case ToBoolean      (a: StringExpression)    => evalString(a) flatMap toBoolean
+      case ToBoolean(a: StringExpression) => evalString(a) flatMap toBoolean
       case _ => Invalid(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
@@ -50,7 +50,7 @@ final class Evaluator(scope: Scope)
     expr match {
       case NumericConstant(o) => NumericValue(o).valid
       case OrderReturnCode => NumericValue(scope.returnCode.number).valid
-      case OrderRetryCount => NumericValue(scope.retryCount).valid
+      case OrderTryCount => NumericValue(scope.tryCount).valid
       case ToNumber(e) => eval(e) flatMap toNumeric
     }
 

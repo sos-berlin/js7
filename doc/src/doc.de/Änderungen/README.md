@@ -148,7 +148,6 @@ Es hat die Felder
 - ```TYPE: "ReplaceRepo"```
 - ```versionId:´``` _"versionId"_
 - ```objects```: \[ _signiertes Objekt_, ... \]
-
   
 Beispiel:  
 ```javascript
@@ -271,14 +270,15 @@ Das Docker-Beispiel startet auch den Provider.
 Eine try-Block kann mit der neuen Anweisung ```retry``` wiederholt werden.
 Die Anweisung kann nur direkt in einem catch-Block, oder in einer if-Anweisung in einem catch-Block gegeben werden.
 
-Die if-Anweisung hat Zugriff auf ```retryCount```, die die Nummer der Wiederholung angibt.
+Die if-Anweisung hat Zugriff auf ```tryCount```, die die Nummer des try-Durchlauf angibt, beginnend mit eins.
+Bei der ersten Wiederholung ist tryCount zwei.
 
 Im folgenden Beispiel wird der Job FAIL-1 dreimal ausgeführt.
 ```
 try {                                              
   job FAIL-1;  
   job OKAY;    
-} catch if (retryCount < 2) retry else fail;       
+} catch if (tryCount < 3) retry else fail;       
 ```
 
 Wiederholung und Abbruch können separat behandelt werden:
@@ -286,7 +286,7 @@ Wiederholung und Abbruch können separat behandelt werden:
 try {
   ...                                              
 } catch { 
-  if (retryCount < 2) {
+  if (tryCount < 3) {
     job beforeRetry; 
     retry; 
   } else {
@@ -305,9 +305,9 @@ try {
     try {                                              
       job FAIL-1;  
       job OKAY;    
-    } catch if (retryCount < 2) retry else fail;       
+    } catch if (tryCount < 3) retry else fail;       
     job OKAY-2;      
-  } catch if (retryCount < 1) retry else fail;
+  } catch if (tryCount < 2) retry else fail;
 } catch job OKAY-3;  
 ```
 Die Jobs im Beispiel werden in folgender Reihenfolge ausgeführt:
@@ -321,7 +321,9 @@ Die Jobs im Beispiel werden in folgender Reihenfolge ausgeführt:
 7. FAIL-1, erste Wiederholung des inneren try-Blocks
 8. FAIL-1, zweite Wiederholung des inneren try-Blockss
 9. OKAY-3  
-              
+                           
+                           
+                           
 ## 2018-12-13
 
 ### Webservice /master/api/fatEvent kann mit 429 "Too Many Requests" antworten

@@ -18,15 +18,15 @@ final class InstructionContextTest extends FreeSpec
     def instruction(workflowPosition: WorkflowPosition) = TestWorkflow.instruction(workflowPosition.position)
   }
 
-  "toRetryCount" in {
-    assert(context.toRetryCount(TestWorkflow.id /: Position(0)) == 0)    // No retry position
-    assert(context.toRetryCount(TestWorkflow.id /: Position(99)) == 0)   // No instruction
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / Try_ % 0)) == 0)
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / try_(1) % 0)) == 1)
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / try_(2) % 0)) == 2)
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / Catch_ % 0)) == 0)
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / catch_(1) % 0)) == 1)
-    assert(context.toRetryCount(TestWorkflow.id /: (Position(1) / catch_(2) % 0)) == 2)
+  "toTryCount" in {
+    assert(context.toTryCount(TestWorkflow.id /: Position(0)) == 0)    // Not in a try/catch
+    assert(context.toTryCount(TestWorkflow.id /: Position(99)) == 0)   // No instruction
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / Try_ % 0)) == 1)
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / try_(1) % 0)) == 2)
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / try_(2) % 0)) == 3)
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / Catch_ % 0)) == 1)
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / catch_(1) % 0)) == 2)
+    assert(context.toTryCount(TestWorkflow.id /: (Position(1) / catch_(2) % 0)) == 3)
   }
 
   "toRetryPosition" in {

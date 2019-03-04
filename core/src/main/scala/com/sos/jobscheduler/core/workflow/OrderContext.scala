@@ -21,7 +21,7 @@ trait OrderContext extends InstructionContext
         case _: Outcome.Disrupted => DisruptedReturnCode
       }
 
-      lazy val retryCount = OrderContext.this.toRetryCount(order.workflowPosition)
+      lazy val tryCount = OrderContext.this.toTryCount(order.workflowPosition)
 
       val variableNameToString = order.variables
     }

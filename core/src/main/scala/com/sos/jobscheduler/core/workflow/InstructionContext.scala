@@ -17,17 +17,18 @@ trait InstructionContext
 {
   def instruction(workflowPosition: WorkflowPosition): Instruction
 
-  final def toRetryCount(workflowPosition: WorkflowPosition): Int =
-    workflowPosition.position.splitBranchAndNr.fold(DefaultRetryCount) { case (parentPos, branchId, _) =>
+  final def toTryCount(workflowPosition: WorkflowPosition): Int =
+    workflowPosition.position.splitBranchAndNr.fold(DefaultTryCount) { case (parentPos, branchId, _) =>
       instruction(workflowPosition.workflowId /: parentPos) match {
         case _: TryInstruction =>
           TryInstruction.toRetryIndex(branchId)
+            .map(_ + 1)  // tryCount -> tryCount
             .onProblemHandle { p =>
-              logger.error(s"toRetryCount($workflowPosition) $p")
-              DefaultRetryCount   // Invalid BranchId
+              logger.error(s"toTryCount($workflowPosition) $p")
+              DefaultTryCount   // Invalid BranchId
             }
         case _ =>
-          toRetryCount(workflowPosition.workflowId /: parentPos)
+          toTryCount(workflowPosition.workflowId /: parentPos)
       }
     }
 
@@ -56,6 +57,6 @@ trait InstructionContext
 
 object InstructionContext {
   private val logger = Logger(getClass)
-  private val DefaultRetryCount = 0
+  private val DefaultTryCount = 0  // Not in a try/catch-bock
   private val NoTryBlockProblem = Problem.pure("Not in a catch-block")
 }

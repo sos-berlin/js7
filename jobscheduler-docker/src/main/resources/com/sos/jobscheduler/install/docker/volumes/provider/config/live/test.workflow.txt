@@ -11,7 +11,7 @@ define workflow {
     "🍋" {
       try execute executable="/fail", agent="agent-1", taskLimit=10, arguments={"hello": "やあ"};
       catch
-        if (retryCount < 3) {
+        if (tryCount < 3) {
           job SLEEP, arguments={"hello": "WILL TRY AGAIN"};
           retry;
         } else
