@@ -82,7 +82,7 @@ final class PositionTest extends FreeSpec {
         InstructionNr(3)))
   }
 
-  "toTryCount" in {
+  "tryCount" in {
     assert(Position(0).tryCount == 0)    // Not in a try/catch
     assert(Position(99).tryCount == 0)   // No instruction
     assert((Position(1) / Try_ % 0).tryCount == 1)
@@ -91,6 +91,17 @@ final class PositionTest extends FreeSpec {
     assert((Position(1) / Catch_ % 0).tryCount == 1)
     assert((Position(1) / catch_(1) % 0).tryCount == 2)
     assert((Position(1) / catch_(2) % 0).tryCount == 3)
+  }
+
+  "catchCount" in {
+    assert(Position(0).tryCount == 0)    // Not in a try/catch
+    assert(Position(99).tryCount == 0)   // No instruction
+    assert((Position(1) / Try_ % 0).catchCount == 0)
+    assert((Position(1) / try_(1) % 0).catchCount == 1)
+    assert((Position(1) / try_(2) % 0).catchCount == 2)
+    assert((Position(1) / Catch_ % 0).catchCount == 1)
+    assert((Position(1) / catch_(1) % 0).catchCount == 2)
+    assert((Position(1) / catch_(2) % 0).catchCount == 3)
   }
 
   "nextRetryPosition" in {
