@@ -322,6 +322,12 @@ Die Jobs im Beispiel werden in folgender Reihenfolge ausgeführt:
 8. FAIL-1, zweite Wiederholung des inneren try-Blockss
 9. OKAY-3  
                            
+
+### Webservice POST /master/api/order akzeptiert Array
+
+Statt eines einzelnen Auftrags können  
+dem Webservice ```POST /master/api/order``` 
+auch mehrere Aufträge in einem Array übergeben werden.
                            
                            
 ## 2018-12-13
