@@ -40,7 +40,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
        |define workflow {
        |  try execute executable="/FAIL-1$sh", agent="AGENT";   // :0/try:0
        |  catch                                                 // :0/catch
-       |    if (tryCount < 2)                                   // :0/catch:0
+       |    if (catchCount < 2)                                 // :0/catch:0
        |      try retry;                                        // :0/catch:0/then:0/try:0
        |      catch {}                                          // :0/catch:0/then:0/catch
        |}""".stripMargin
@@ -83,9 +83,9 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
        |      try {                                               // :0/try:0/try:1
        |        execute executable="/FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCatched
        |        execute executable="/OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
-       |      } catch if (tryCount < 3) retry else fail;          // :0/try:0/try:1/catch:0
+       |      } catch if (catchCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
        |      execute executable="/OKAY$sh", agent="AGENT";       // :0/try:0/try:2
-       |    } catch if (tryCount < 2) retry else fail;
+       |    } catch if (catchCount < 2) retry else fail;
        |  } catch execute executable="/OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow

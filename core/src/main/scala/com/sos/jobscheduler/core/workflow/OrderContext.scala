@@ -25,7 +25,7 @@ trait OrderContext
         case _: Outcome.Disrupted => DisruptedReturnCode
       }
 
-      lazy val tryCount = order.workflowPosition.position.tryCount
+      lazy val catchCount = order.workflowPosition.position.catchCount
 
       val variableNameToString = order.variables
     }

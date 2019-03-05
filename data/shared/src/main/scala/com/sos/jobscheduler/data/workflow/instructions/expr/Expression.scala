@@ -131,9 +131,9 @@ object Expression
     override def toString = "returnCode"
   }
 
-  final case object OrderTryCount extends NumericExpression {
+  final case object OrderCatchCount extends NumericExpression {
     def precedence = Precedence.Factor
-    override def toString = "tryCount"
+    override def toString = "catchCount"
   }
 
   sealed trait Precedence {

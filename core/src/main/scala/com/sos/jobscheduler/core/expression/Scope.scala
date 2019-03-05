@@ -7,6 +7,6 @@ import com.sos.jobscheduler.data.job.ReturnCode
   */
 trait Scope {
   val returnCode: ReturnCode
-  val tryCount: Int
+  val catchCount: Int
   val variableNameToString: PartialFunction[String, String]
 }

@@ -267,18 +267,23 @@ Das Docker-Beispiel startet auch den Provider.
 
 ### Neue Anweisung 'retry'
 
-Eine try-Block kann mit der neuen Anweisung ```retry``` wiederholt werden.
-Die Anweisung kann nur direkt in einem catch-Block, oder in einer if-Anweisung in einem catch-Block gegeben werden.
+Ein try-Block kann mit der neuen Anweisung ```retry``` wiederholt werden.
+Die Anweisung kann direkt in einem catch-Block, oder in einer if-Anweisung in einem catch-Block gegeben werden.
 
-Die if-Anweisung hat Zugriff auf ```tryCount```, die die Nummer des try-Durchlauf angibt, beginnend mit eins.
-Bei der ersten Wiederholung ist tryCount zwei.
+Die if-Anweisung hat Zugriff auf ```catchCount```, das die Nummer des catch-Durchlaufs angibt.
+```catchCount``` ist beim ersten Erreichen des catch-Blocks eins 
+und erhöht sich bei jedem weiteren, 
+wenn mit der Anweisung ```retry``` eine Wiederholung verlasst worden ist.
+Er gibt also die Nummer des angefangenen Fehlers oder die Anzahl der mislungenen Versuche an.
+```catchCount``` gilt im try-Block und im-Catch sowie in den if-Anweisungen darin.
+An allen anderen Stellen ist der Wert null.  
 
-Im folgenden Beispiel wird der Job FAIL-1 dreimal ausgeführt.
+Im folgenden Beispiel wird der Job FAIL zweimal ausgeführt.
 ```
 try {                                              
-  job FAIL-1;  
-  job OKAY;    
-} catch if (tryCount < 3) retry else fail;       
+  job FAIL;  
+  job SKIPPED;    
+} catch if (catchCount < 2) retry else fail;       
 ```
 
 Wiederholung und Abbruch können separat behandelt werden:
@@ -286,7 +291,7 @@ Wiederholung und Abbruch können separat behandelt werden:
 try {
   ...                                              
 } catch { 
-  if (tryCount < 3) {
+  if (catchCount < 2) {
     job beforeRetry; 
     retry; 
   } else {
@@ -301,26 +306,26 @@ Try mit retry kann verschachtelt werden:
 ```
 try {                                                  
   try {                                                
-    job OKAY-1;      
+    job OKAY1;      
     try {                                              
-      job FAIL-1;  
+      job FAIL1;  
       job OKAY;    
-    } catch if (tryCount < 3) retry else fail;       
-    job OKAY-2;      
-  } catch if (tryCount < 2) retry else fail;
-} catch job OKAY-3;  
+    } catch if (catchCount < 3) retry else fail;       
+    job OKAY2;      
+  } catch if (catchCount < 2) retry else fail;
+} catch job OKAY3;  
 ```
 Die Jobs im Beispiel werden in folgender Reihenfolge ausgeführt:
 
-1. OKAY-1
-2. FAIL-1
-3. FAIL-1, erste Wiederholung des inneren try-Blocks
-4. FAIL-1, zweite Wiederholung des inneren try-Blocks
-5. OKAY-1, erste Wiederholung des äußeren try-Blocks
-6. FAIL-1
-7. FAIL-1, erste Wiederholung des inneren try-Blocks
-8. FAIL-1, zweite Wiederholung des inneren try-Blockss
-9. OKAY-3  
+1. OKAY1
+2. FAIL1
+3. FAIL1, erste Wiederholung des inneren try-Blocks
+4. FAIL1, zweite Wiederholung des inneren try-Blocks
+5. OKAY1, erste Wiederholung des äußeren try-Blocks
+6. FAIL1
+7. FAIL1, erste Wiederholung des inneren try-Blocks
+8. FAIL1, zweite Wiederholung des inneren try-Blockss
+9. OKAY3  
                            
 
 ### Webservice POST /master/api/order akzeptiert Array

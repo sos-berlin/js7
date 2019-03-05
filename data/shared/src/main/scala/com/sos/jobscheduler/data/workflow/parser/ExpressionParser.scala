@@ -45,8 +45,8 @@ object ExpressionParser
   private val returnCode = P[OrderReturnCode.type](
     keyword("returnCode") map (_ => OrderReturnCode))
 
-  private val tryCount = P[OrderTryCount.type](
-    keyword("tryCount") map (_ => OrderTryCount))
+  private val catchCount = P[OrderCatchCount.type](
+    keyword("catchCount") map (_ => OrderCatchCount))
 
   private val booleanConstant = trueConstant | falseConstant
 
@@ -67,7 +67,7 @@ object ExpressionParser
       .map { case (name, default) => Variable(name, default) }))
 
   private val factorOnly = P(
-    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | tryCount | dollarVariable | functionCall)
+    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | catchCount | dollarVariable | functionCall)
 
   private val factor = P(
     factorOnly ~ (w ~ "." ~~/ keyword).? flatMap {

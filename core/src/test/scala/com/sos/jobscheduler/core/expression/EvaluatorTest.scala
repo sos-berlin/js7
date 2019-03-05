@@ -21,7 +21,7 @@ final class EvaluatorTest extends FreeSpec
   private val eval = {
     val scope = new Scope {
       val returnCode = ReturnCode(1)
-      val tryCount = 3
+      val catchCount = 3
       val variableNameToString = Map("ASTRING" -> "AA", "ANUMBER" -> "7")
     }
     new Evaluator(scope).eval _
@@ -125,9 +125,9 @@ final class EvaluatorTest extends FreeSpec
   testEval("""returnCode < 1""", false,
     Valid(LessThan(OrderReturnCode, NumericConstant(1))))
 
-  testEval("""tryCount""",
+  testEval("""catchCount""",
     result = 3,
-    Valid(OrderTryCount))
+    Valid(OrderCatchCount))
 
   testEval(""" "" matches "" """,
     result = true,
