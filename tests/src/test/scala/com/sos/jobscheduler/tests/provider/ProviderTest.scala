@@ -144,7 +144,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
         Invalid(Problem.Multiple(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
-          FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got I (line 1, column 1)")),
+          FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("expected json value got 'INVALI...' (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("Attempt to decode value on failed cursor: DownField(instructions)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("C[A]: DownField(instructions)"))))))
     }

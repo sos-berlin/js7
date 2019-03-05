@@ -126,9 +126,12 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
         count += 1
       }
       val t = now
-      val whenLoggedIn = api.loginUntilReachable(Some(UserId("INVALID") -> SecretString("INVALID")),
-        Iterator.continually(10.milliseconds), onError).runToFuture
-      sleep(200.ms)
+      val whenLoggedIn = api.loginUntilReachable(
+        Some(UserId("INVALID") -> SecretString("INVALID")),
+        Iterator.continually(10.milliseconds),
+        onError
+      ).runToFuture
+      sleep(500.ms)
       server.start() await 99.s
       val exception = intercept[AkkaHttpClient.HttpException] {
         whenLoggedIn await 99.s

@@ -47,7 +47,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
       assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
         Invalid(Problem.Multiple(Set(
           Problem("""Problem with 'Workflow:/D' (txt) ["define":1:1 ..."ERROR"]"""),
-          Problem("""Problem with 'Workflow:/E' (JSON) [expected json value got N (line 1, column 1)]"""),
+          Problem("""Problem with 'Workflow:/E' (JSON) [expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }
 

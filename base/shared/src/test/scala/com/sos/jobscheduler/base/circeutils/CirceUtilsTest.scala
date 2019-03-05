@@ -79,7 +79,7 @@ final class CirceUtilsTest extends FreeSpec {
 
   "parseJsonChecked" in {
     assert("7".parseJsonChecked == Valid(Json.fromInt(7)))
-    assert("x".parseJsonChecked == Invalid(Problem("expected json value got x (line 1, column 1)")))
+    assert("x".parseJsonChecked == Invalid(Problem("expected json value got 'x' (line 1, column 1)")))
   }
 
   "parseJsonOrThrow" in {
