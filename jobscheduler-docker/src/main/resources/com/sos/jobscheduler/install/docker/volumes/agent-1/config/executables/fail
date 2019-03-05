@@ -2,5 +2,5 @@
 set -e
 
 echo "$SCHEDULER_PARAM_HELLO - exit 1"
-sleep 1
+sleep 1.5
 exit 1
