@@ -1,11 +1,16 @@
 package com.sos.jobscheduler.data.workflow.position
 
+import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show.toShow
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.workflow.WorkflowId
+import com.sos.jobscheduler.data.workflow.position.BranchId.nextTryBranchId
 import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
+import com.sos.jobscheduler.data.workflow.position.Position._
 import io.circe.syntax.EncoderOps
 import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
+import scala.annotation.tailrec
 import scala.collection.immutable.IndexedSeq
 
 /**
@@ -31,6 +36,35 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   lazy val normalized: Position =
     reuseIfEqual(this, BranchPath.normalize(branchPath) % nr)
 
+  /** Returns 0 if not in a try/catch-block. */
+  lazy val tryCount: Int = calculateTryCount
+
+  @tailrec
+  private def calculateTryCount: Int =
+    splitBranchAndNr match {
+      case Some((_, TryCatchBranchId(retry), _)) => retry + 1
+      case Some((parentPos, BranchId.Then | BranchId.Else, _)) => parentPos.calculateTryCount
+      case _ => NoTryCount
+    }
+
+  def nextRetryPosition: Checked[Position] =
+    nextRetryBranchPath.map(_ % 0)
+
+  @tailrec
+  private def nextRetryBranchPath: Checked[BranchPath] =
+    splitBranchAndNr match {
+      case None => Invalid(NoTryBlockProblem)
+      case Some((parent, branchId @ TryCatchBranchId(_), _)) =>
+        nextTryBranchId(branchId) match {
+          case Valid(None) => parent.nextRetryBranchPath
+          case Valid(Some(tryBranchId)) => Valid(parent / tryBranchId)
+          case o @ Invalid(_) => o
+        }
+      case Some((parent, BranchId.Then | BranchId.Else, _)) =>
+        parent.nextRetryBranchPath
+      case _ => Invalid(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
+    }
+
   def asSeq: IndexedSeq[Any] =
     branchPath.toVector.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number
 
@@ -45,6 +79,9 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
 object Position
 {
+  private val NoTryCount = 0
+  private val NoTryBlockProblem = Problem.pure("Not in a catch-block")
+
   def apply(nr: InstructionNr): Position =
     Position(Nil, nr)
 

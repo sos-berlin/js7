@@ -7,9 +7,9 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.Try_
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
+import com.sos.jobscheduler.data.workflow.position.BranchId.Try_
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -33,7 +33,7 @@ final class TryExecutorTest extends FreeSpec
     }
 
     "catch" in {
-      testJson(Position(7) / TryInstruction.Catch_ % 0,
+      testJson(Position(7) / BranchId.Catch_ % 0,
         json"""[ 7, "catch", 0 ]""")
     }
   }

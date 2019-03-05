@@ -20,7 +20,7 @@ object RetryExecutor extends EventInstructionExecutor
 
   def toEvent(context: OrderContext, order: Order[Order.State], retry: Retry): Option[KeyedEvent[OrderActorEvent]] =
   {
-    context.toRetryPosition(order.workflowPosition)
+    order.workflowPosition.position.nextRetryPosition
       match {
         case Invalid(problem) => logger.error(problem); None
         case Valid(pos) => Some(order.id <-: OrderRetrying(pos))

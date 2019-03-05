@@ -4,12 +4,16 @@ import com.sos.jobscheduler.core.expression.Scope
 import com.sos.jobscheduler.core.workflow.OrderContext._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.Instruction
+import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 
 /**
   * @author Joacim Zschimmer
   */
-trait OrderContext extends InstructionContext
+trait OrderContext
 {
+  def instruction(workflowPosition: WorkflowPosition): Instruction
+
   def idToOrder: PartialFunction[OrderId, Order[Order.State]]
 
   def childOrderEnded(order: Order[Order.State]): Boolean
@@ -21,7 +25,7 @@ trait OrderContext extends InstructionContext
         case _: Outcome.Disrupted => DisruptedReturnCode
       }
 
-      lazy val tryCount = OrderContext.this.toTryCount(order.workflowPosition)
+      lazy val tryCount = order.workflowPosition.position.tryCount
 
       val variableNameToString = order.variables
     }

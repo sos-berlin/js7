@@ -1,13 +1,12 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_, nextTryBranchId, toRetryIndex}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -66,26 +65,5 @@ final class TryInstructionTest extends FreeSpec
     assert(try_.toCatchBranchId("try+123") == Some(BranchId("catch+123")))
     assert(try_.toCatchBranchId(Catch_) == None)
     assert(try_.toCatchBranchId("catch+1") == None)
-  }
-
-  "toRetryIndex" in {
-    assert(toRetryIndex("X") == Invalid(Problem("Invalid BranchId for Try instruction: X")))
-    assert(toRetryIndex(0) == Invalid(Problem("Invalid BranchId for Try instruction: 0")))
-    assert(toRetryIndex("try") == Valid(0))
-    assert(toRetryIndex("try+1") == Valid(1))
-    assert(toRetryIndex("try+123") == Valid(123))
-    assert(toRetryIndex("catch") == Valid(0))
-    assert(toRetryIndex("catch+123") == Valid(123))
-  }
-
-  "nextTryBranchId" in {
-    assert(nextTryBranchId("X") == Invalid(Problem("Invalid BranchId for nextTryBranchId: X")))
-    assert(nextTryBranchId(0) == Invalid(Problem("Invalid BranchId for nextTryBranchId: 0")))
-    assert(nextTryBranchId("try") == Valid(None))
-    assert(nextTryBranchId("try+1") == Valid(None))
-    assert(nextTryBranchId("try+2") == Valid(None))
-    assert(nextTryBranchId("catch") == Valid(Some(BranchId("try+1"))))
-    assert(nextTryBranchId("catch+1") == Valid(Some(BranchId("try+2"))))
-    assert(nextTryBranchId("catch+123") == Valid(Some(BranchId("try+124"))))
   }
 }

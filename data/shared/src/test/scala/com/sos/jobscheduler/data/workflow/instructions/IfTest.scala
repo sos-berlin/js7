@@ -4,10 +4,10 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson

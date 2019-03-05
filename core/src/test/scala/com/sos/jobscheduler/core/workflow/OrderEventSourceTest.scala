@@ -16,12 +16,11 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
-import com.sos.jobscheduler.data.workflow.instructions.TryInstruction.{Catch_, Try_}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then, Try_}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}

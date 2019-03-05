@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.workflow.instructions.If
-import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.Position
 
 /**

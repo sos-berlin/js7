@@ -11,8 +11,8 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.data.workflow.instructions.If.{Else, Then}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.IfTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
