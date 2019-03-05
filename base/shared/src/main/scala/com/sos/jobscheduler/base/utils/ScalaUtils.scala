@@ -105,10 +105,11 @@ object ScalaUtils
     def toSimplifiedString: String = {
       val msg = delegate.getMessage
       if (msg != null && msg != "" && (
+          delegate.isInstanceOf[ProblemException] ||
           delegate.getClass == classOf[IllegalArgumentException] ||
           delegate.getClass == classOf[RuntimeException] ||
           delegate.isInstanceOf[PublicException] ||
-          delegate.isInstanceOf[ProblemException]))
+          delegate.getClass.getName == "scala.scalajs.js.JavaScriptException"))
         msg
       else
         delegate match {
