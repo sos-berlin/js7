@@ -146,7 +146,7 @@ Da kann jeder die Kommandos geben.
 Das Kommando ersetzt die vorhandenen Agentenverweise und Workflows.
 Es hat die Felder
 - ```TYPE: "ReplaceRepo"```
-- ```versionId:´``` _"versionId"_
+- ```versionId:``` _"versionId"_
 - ```objects```: \[ _signiertes Objekt_, ... \]
   
 Beispiel:  
