@@ -36,6 +36,8 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   final def max(o: A) = if (this > o) this else o
 
+  final def roundToNextSecond: A = copy((toEpochMilli + 999)/ 1000 * 1000)
+
   def copy(epochMilli: Long): A
 
   override def toString = toIsoString
