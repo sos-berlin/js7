@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta

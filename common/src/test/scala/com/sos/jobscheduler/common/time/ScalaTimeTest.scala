@@ -4,9 +4,10 @@ import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
+import java.util.concurrent.TimeUnit.{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, SECONDS}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.concurrent.duration.{DurationInt, DurationLong}
+import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 
 final class ScalaTimeTest extends FreeSpec {
 

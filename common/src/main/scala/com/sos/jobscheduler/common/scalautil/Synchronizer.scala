@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.Synchronizer._
-import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.locks.ReentrantLock
 import scala.concurrent.blocking

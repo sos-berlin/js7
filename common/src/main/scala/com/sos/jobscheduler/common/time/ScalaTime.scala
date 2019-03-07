@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.NANOSECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
@@ -231,12 +231,12 @@ object ScalaTime {
   }
 
   def javaToConcurrentFiniteDuration(o: Duration): FiniteDuration = {
-    if ((o compareTo Duration.ofNanos(Long.MaxValue)) > 0) FiniteDuration(Long.MaxValue, TimeUnit.NANOSECONDS)
+    if ((o compareTo Duration.ofNanos(Long.MaxValue)) > 0) FiniteDuration(Long.MaxValue, NANOSECONDS)
     else simpleJavaToConcurrentFiniteDuration(o)
   }
 
   private def simpleJavaToConcurrentFiniteDuration(o: Duration): FiniteDuration =
-    new FiniteDuration(o.toNanos, TimeUnit.NANOSECONDS).toCoarsest
+    new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest
 
   @tailrec
   def sleepUntil(until: Instant): Unit = {
@@ -286,11 +286,11 @@ object ScalaTime {
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit final class RichFiniteDuration(private val underlying: FiniteDuration) extends AnyVal {
+  implicit final class JavaFiniteDuration(private val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
   }
 
-  implicit final class RichConcurrentDuration(private val underlying: ScalaDuration) extends AnyVal {
+  implicit final class JavaConcurrentDuration(private val underlying: ScalaDuration) extends AnyVal {
     def pretty: String =
       underlying match {
         case o: FiniteDuration => o.toJavaDuration.pretty
