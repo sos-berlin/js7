@@ -105,10 +105,10 @@ final class PositionTest extends FreeSpec {
   }
 
   "nextRetryBranchPath" in {
-    assert(Position(0).nextRetryBranchPath == Invalid(Problem("Not in a catch-block")))
-    assert(Position(99).nextRetryBranchPath == Invalid(Problem("Not in a catch-block")))
-    assert((Position(1) / Try_ % 0).nextRetryBranchPath == Invalid(Problem("Not in a catch-block")))
-    assert((Position(1) / try_(1) % 0).nextRetryBranchPath == Invalid(Problem("Not in a catch-block")))
+    assert(Position(0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
+    assert(Position(99).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / Try_ % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / try_(1) % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
     assert((Position(1) / Catch_ % 0).nextRetryBranchPath == Valid(Position(1) / try_(1)))
     assert((Position(1) / catch_(1) % 0).nextRetryBranchPath == Valid(Position(1) / try_(2)))
     assert((Position(1) / catch_(2) % 0).nextRetryBranchPath == Valid(Position(1) / try_(3)))

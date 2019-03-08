@@ -49,10 +49,10 @@ final class OrderEventSource(
           Valid(Some(order.id <-: event))
         case None =>
           InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-            case Some(oId <-: (moved: OrderMoved)) =>
+            case Valid(Some(oId <-: (moved: OrderMoved))) =>
               applyMoveInstructions(oId, moved) map Some.apply
 
-            case Some(oId <-: OrderFailed(outcome)) =>  // OrderFailed is used internally only
+            case Valid(Some(oId <-: OrderFailed(outcome))) =>  // OrderFailed is used internally only
               assert(oId == orderId)
               catchPosition(orderId) match {
                 case None => Valid(Some(oId <-: OrderStopped(outcome)))
@@ -61,7 +61,7 @@ final class OrderEventSource(
                     .flatMap(pos => Valid(Some(oId <-: OrderCatched(outcome, pos))))
               }
 
-            case o => Valid(o)
+            case o => o
           }
       })
 

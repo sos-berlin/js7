@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -19,27 +20,28 @@ object ForkExecutor extends EventInstructionExecutor
 
   private val logger = Logger(getClass)
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Fork): Option[KeyedEvent[OrderActorEvent]] =
-    order.ifState[Order.Fresh].map(order =>
-      order.id <-: OrderStarted)
-    .orElse(
-      order.ifState[Order.Ready].map(order =>
-        checkOrderForked(context,
-          order.id <-: OrderForked(
-            for (branch <- instruction.branches) yield
-              OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))))
-    .orElse(
-      order.ifState[Order.Forked].flatMap(order =>
-        //orderEntry.instruction match {
-        //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
-        if (order.isAttached)
-          Some(order.id <-: OrderDetachable)  //
-        else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
-          Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
-        else
-          None))
-    .orElse(
-      ifProcessedThenOrderMoved(order, context))
+  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Fork) =
+    Valid(
+      order.ifState[Order.Fresh].map(order =>
+        order.id <-: OrderStarted)
+      .orElse(
+        order.ifState[Order.Ready].map(order =>
+          checkOrderForked(context,
+            order.id <-: OrderForked(
+              for (branch <- instruction.branches) yield
+                OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))))
+      .orElse(
+        order.ifState[Order.Forked].flatMap(order =>
+          //orderEntry.instruction match {
+          //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
+          if (order.isAttached)
+            Some(order.id <-: OrderDetachable)  //
+          else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
+            Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
+          else
+            None))
+      .orElse(
+        ifProcessedThenOrderMoved(order, context)))
 
   private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
     val duplicates = orderForked.event.children map (_.orderId) flatMap (o => context.idToOrder.lift(o))
@@ -47,7 +49,7 @@ object ForkExecutor extends EventInstructionExecutor
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
       logger.error(problem.toString)
-      orderForked.key <-: OrderBroken(problem)
+      orderForked.key <-: OrderBroken(problem)  // TODO Invalidate whole toEvent with order.key <-: OrderBroken
     } else
       orderForked
   }

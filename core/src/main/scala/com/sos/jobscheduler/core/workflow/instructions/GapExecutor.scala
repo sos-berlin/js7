@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import com.sos.jobscheduler.common.scalautil.Logger
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.workflow.OrderContext
-import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.workflow.instructions.Gap
 
 /**
@@ -14,13 +14,9 @@ object GapExecutor extends EventInstructionExecutor {
 
   type Instr = Gap
 
-  val logger = Logger(getClass)
-
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Gap): Option[KeyedEvent[OrderActorEvent]] =
-    if (order.isAttached)
-      Some(order.id <-: OrderDetachable)
-    else {
-      logger.error(s"Instruction Gap but order is not attached to an agent: $order")
-      None
-    }
+  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Gap) =
+    if (!order.isAttached)
+      Invalid(Problem.pure(s"Instruction Gap but order is not attached to an agent: $order"))
+    else
+      Valid(Some(order.id <-: OrderDetachable))
 }
