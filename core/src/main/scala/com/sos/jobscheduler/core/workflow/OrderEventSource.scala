@@ -129,27 +129,28 @@ final class OrderEventSource(
   @tailrec
   private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
-      case Some(position) =>
+      case o @ Invalid(_) => o
+      case Valid(Some(position)) =>
         if (visited contains position)
           Invalid(Problem(s"${order.id} is in a workflow loop: " +
             visited.reverse.map(pos => pos + " " +
               idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
-      case None => Valid(Some(order.position))
+      case Valid(None) => Valid(Some(order.position))
     }
 
-  private def applySingleMoveInstruction(order: Order[Order.State]): Option[Position] =
-    idToWorkflow(order.workflowId).toOption flatMap { workflow =>
+  private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
+    idToWorkflow(order.workflowId) flatMap { workflow =>
       workflow.instruction(order.position) match {
         case Goto(label) =>
-          workflow.labelToPosition(order.position.branchPath, label)
+          workflow.labelToPosition(order.position.branchPath, label) map Some.apply
 
         case IfNonZeroReturnCodeGoto(label) =>
           if (order.outcome.isFailed)
-            workflow.labelToPosition(order.position.branchPath, label)
+            workflow.labelToPosition(order.position.branchPath, label) map Some.apply
           else
-            Some(order.position.increment)
+            Valid(Some(order.position.increment))
 
         case instr: Instruction =>
           InstructionExecutor.nextPosition(context, order, instr)
@@ -163,7 +164,7 @@ final class OrderEventSource(
         //        None
         //    })
 
-        case _ => None
+        case _ => Valid(None)
       }
   }
 

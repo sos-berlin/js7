@@ -1,6 +1,9 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -28,40 +31,40 @@ final class IfExecutorTest extends FreeSpec {
 
   "JSON" - {
     "then" in {
-      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))),
+      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))).orThrow,
         json"""[ 7, "then", 0 ]""")
     }
 
     "else" in {
-      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))),
+      testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))).orThrow,
         json"""[ 7, "else", 0 ]""")
     }
   }
 
   "If true" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))) ==
-      Some(Position(7) / Then % 0))
+      Valid(Some(Position(7) / Then % 0)))
   }
 
   "If false" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))) ==
-      Some(Position(7) / Else % 0))
+      Valid(Some(Position(7) / Else % 0)))
   }
 
   "If false, no else branch" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThen(BooleanConstant(false))) ==
-      Some(Position(8)))
+      Valid(Some(Position(8))))
   }
 
   "Variable comparison" in {
     val expr = Equal(Variable(StringConstant("A")), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Some(Position(7) / Then % 0))
-    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Some(Position(7) / Else % 0))
+    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Then % 0)))
+    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Else % 0)))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == None) // TODO == Invalid(Problem("Not a valid number: X"))
+    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Invalid(Problem("Not a valid number: X")))
   }
 }
 

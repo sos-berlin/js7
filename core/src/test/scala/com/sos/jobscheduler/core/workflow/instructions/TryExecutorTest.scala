@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.TryExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -29,7 +30,7 @@ final class TryExecutorTest extends FreeSpec
 
   "JSON" - {
     "try" in {
-      testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction),
+      testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction).orThrow,
         json"""[ 7, "try", 0 ]""")
     }
 
@@ -41,7 +42,7 @@ final class TryExecutorTest extends FreeSpec
 
   "nextPosition" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
-      Some(Position(7) / Try_ % 0))
+      Valid(Some(Position(7) / Try_ % 0)))
   }
 
   "toEvent" in {

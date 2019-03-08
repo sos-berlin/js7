@@ -10,7 +10,6 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished, OrderMoved}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Fork}
-import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer
@@ -49,14 +48,15 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
         }
     }
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End): Option[Position] =
-    for {
-      returnPosition <- order.position.dropChild
-      next <- instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
-        case ForkExecutor => None
-        case _: PositionInstructionExecutor => Some(returnPosition.increment)  // Check this first for TryInstruction !!!
-        case _: EventInstructionExecutor => Some(returnPosition)
-        case _ => None
-      }
-    } yield next
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End) =
+    Valid(
+      for {
+        returnPosition <- order.position.dropChild
+        next <- instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
+          case ForkExecutor => None
+          case _: PositionInstructionExecutor => Some(returnPosition.increment)  // Check this first for TryInstruction !!!
+          case _: EventInstructionExecutor => Some(returnPosition)
+          case _ => None
+        }
+      } yield next)
 }

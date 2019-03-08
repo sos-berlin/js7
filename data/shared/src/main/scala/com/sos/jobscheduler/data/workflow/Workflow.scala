@@ -88,10 +88,10 @@ extends FileBased
         instr.workflows flatMap (_.checkRetry(false))
     }
 
-  def labelToPosition(branchPath: BranchPath, label: Label): Option[Position] =
+  def labelToPosition(branchPath: BranchPath, label: Label): Checked[Position] =
     for {
-      workflow <- nestedWorkflow(branchPath).toOption
-      nr <- workflow.labelToNumber.get(label)
+      workflow <- nestedWorkflow(branchPath)
+      nr <- workflow.labelToNumber.get(label).toChecked(Problem(s"Unknown label '$label'"))
     } yield branchPath % nr
 
   def lastWorkflowPosition: WorkflowPosition =

@@ -23,7 +23,7 @@ trait EventInstructionExecutor extends InstructionExecutor {
 }
 
 trait PositionInstructionExecutor extends InstructionExecutor {
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instr): Option[Position]
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instr): Checked[Option[Position]]
 }
 
 object InstructionExecutor
@@ -42,10 +42,10 @@ object InstructionExecutor
       case _: Retry => new RetryExecutor(() => now)
     }
 
-  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Option[Position] =
+  def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Checked[Option[Position]] =
     instructionToExecutor(instruction) match {
       case exec: PositionInstructionExecutor => exec.nextPosition(context, order, instruction.asInstanceOf[exec.Instr])
-      case _ => None
+      case _ => Valid(None)
     }
 
   def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]] =

@@ -125,9 +125,10 @@ final class WorkflowTest extends FreeSpec {
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
       "B" @: ExplicitEnd)
-    assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
-    assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
-    assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Some(Position(1) / Then % 0))
+    assert(workflow.labelToPosition(Nil, Label("A")) == Valid(Position(0)))
+    assert(workflow.labelToPosition(Nil, Label("B")) == Valid(Position(2)))
+    assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
+    assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Valid(Position(1) / Then % 0))
   }
 
   "Duplicate labels" in {
