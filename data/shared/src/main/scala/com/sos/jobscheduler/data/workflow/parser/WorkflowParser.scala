@@ -14,8 +14,9 @@ import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpress
 import com.sos.jobscheduler.data.workflow.parser.Parsers.ops._
 import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.all._
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.SECONDS
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -151,12 +152,17 @@ object WorkflowParser
 
     private val retryInstruction = P[Retry](
       (keyword("retry") ~~/ instructionTerminator)
-        .map(_ => Retry()))
+        .map(_ => Retry))
 
     private val tryInstruction = P[TryInstruction](
-      (keyword("try") ~~/ curlyWorkflowOrInstruction ~~/ keyword("catch") ~~/ curlyWorkflowOrInstruction ~~/ instructionTerminator.?)
-        map { case (try_, catch_) =>
-          TryInstruction(try_, catch_)
+      (keyword("try") ~~/
+        inParentheses(keyValue("retryDelays", bracketCommaSeq(int))).? ~~/
+        curlyWorkflowOrInstruction
+        ~~/ keyword("catch") ~~/
+        curlyWorkflowOrInstruction ~~/
+        instructionTerminator.?
+      ) .map { case (delays, try_, catch_) =>
+          TryInstruction(try_, catch_, delays.getOrElse(Nil).toVector.map(FiniteDuration(_, TimeUnit.SECONDS)))
         })
 
     private val ifNonZeroReturnCodeGotoInstruction = P[IfNonZeroReturnCodeGoto](

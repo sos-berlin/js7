@@ -10,8 +10,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -140,6 +140,14 @@ final class OrderTest extends FreeSpec
           }""")
       }
 
+      "DelayedAfterError" in {
+        testJson[State](DelayedAfterError(Timestamp("2019-03-07T12:00:00Z")),
+          json"""{
+            "TYPE": "DelayedAfterError",
+            "until": 1551960000000
+          }""")
+      }
+
       "Forked" in {
         testJson[State](Forked(List(
           Forked.Child(Fork.Branch.Id("A"), OrderId("A/1"), MapDiff(Map("K" -> "V"))),
@@ -230,6 +238,7 @@ final class OrderTest extends FreeSpec
       OrderStopped(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderRetrying(Position(1)),
+      OrderAwoke,
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
       OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
@@ -310,6 +319,15 @@ final class OrderTest extends FreeSpec
         })
     }
 
+    "DelayedAfterError" - {
+      checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
+        cancelationMarkingAllowed[DelayedAfterError] orElse {
+          case (OrderAwoke    , `attached`) => _.isInstanceOf[Order.Ready]
+          case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]
+          case (_: OrderBroken, _         ) => _.isInstanceOf[Broken]
+        })
+    }
+
     "Broken" - {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
         detachingAllowed[Broken] orElse
@@ -372,7 +390,7 @@ final class OrderTest extends FreeSpec
       (implicit pos: source.Position)
     : Unit =
       for (event <- allEvents) s"$event" - {
-        for (a <- None :: attached :: detaching :: Nil) s"$a" in {
+        for (a <- None :: attached :: detaching :: Nil) s"${a getOrElse "Master"}" in {
           val updated = order.copy(attachedState = a).update(event)
           val maybeState = updated.map(_.state)
           val maybePredicate = toPredicate.lift((event, a))
@@ -381,8 +399,8 @@ final class OrderTest extends FreeSpec
               assert(predicate(state), s"- for  ${order.state} $a -> $event -> $state")
             case (Valid(state), None) =>
               fail(s"Missing test case for ${order.state} $a -> $event -> $state")
-            case (Invalid(_), Some(_)) =>
-              fail(s"Non-matching test case for ${order.state} $a -> $event -> ?")
+            case (Invalid(problem), Some(_)) =>
+              fail(s"Non-matching test case for ${order.state} $a -> $event -> ?  $problem")
             case (Invalid(_), None) =>
           }
         }

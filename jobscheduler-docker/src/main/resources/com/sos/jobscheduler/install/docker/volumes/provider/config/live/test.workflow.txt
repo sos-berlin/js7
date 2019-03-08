@@ -7,18 +7,21 @@ define workflow {
     "🥕" {
       job TEST1, arguments={"hello": "Здравей!"};
       job TEST1, arguments={"hello": "გამარჯობა!"};
+      job TEST1, arguments={"hello": "مرحبًا"};
+      job TEST1, arguments={"hello": "やあ!"};
     },
     "🍋" {
-      try execute executable="/fail", agent="agent-1", taskLimit=10, arguments={"hello": "やあ"};
-      catch
+      try (retryDelays=[0, 1]) {
+        execute executable="/fail", agent="agent-1", taskLimit=10, arguments={"hello": "やあ"};
+      } catch {
         if (catchCount < 3) {
           job SLEEP, arguments={"hello": "WILL TRY AGAIN"};
           retry;
         } else
           job SLEEP, arguments={"hello": "LAST JOB FAILED"};
+      }
     });
 
-  job TEST1, arguments={"hello": "مرحبًا"};
   job TEST2;
 
   // Fork with all jobs at same (current) Agent
@@ -32,7 +35,7 @@ define workflow {
       job TEST1;
     });
 
-  // Fork with one branch at current Agent, the other branch at the other Agent.
+  // Fork with one branch on current Agent, the other branch on the other Agent.
   fork(
     "🥕" {
       job TEST1;
@@ -42,12 +45,6 @@ define workflow {
       job TEST2;
       job TEST2;
     });
-
-  if (returnCode == 0 || returnCode == 1) {
-    job TEST1;
-  } else {
-    job TEST2;
-  };
 
   define job TEST1 {
     execute executable="/test", agent="agent-1", taskLimit=30, arguments={"hello": "Hello"};

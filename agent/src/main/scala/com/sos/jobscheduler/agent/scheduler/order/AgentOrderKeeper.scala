@@ -238,7 +238,7 @@ extends MainJournalingActor[Event] with Stash {
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId =>
-      onOrderFreshOrReady(orderRegister(orderId))
+      proceedWithOrder(orderId)
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
@@ -362,8 +362,8 @@ extends MainJournalingActor[Event] with Stash {
       name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
-    val orderEntry = orderRegister(order.id)
     val checkedFollowUps = orderProcessor.handleEvent(order.id <-: event)
+    orderRegister(order.id).order = order
     for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {
       followUps foreach {
         case FollowUp.Processed(jobKey) =>
@@ -385,19 +385,17 @@ extends MainJournalingActor[Event] with Stash {
           sys.error(s"Unexpected FollowUp: $o")  // Only Master handles this
       }
     }
-    orderEntry.order = order
   }
 
   private def proceedWithOrder(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
     val order = orderEntry.order
     if (order.isAttached) {
-      order.state match {
-        case Order.Fresh(Some(scheduledFor)) if now < scheduledFor =>
-          orderEntry.at(scheduledFor) {  // TODO Schedule only the next order ?
+      order.state.maybeDelayedUntil match {
+        case Some(until) if now < until =>
+          orderEntry.at(until) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }
-
         case _ =>
           orderProcessor.nextEvent(order.id).onProblem(p => logger.error(p)).flatten match {
             case Some(KeyedEvent(orderId_, event)) =>

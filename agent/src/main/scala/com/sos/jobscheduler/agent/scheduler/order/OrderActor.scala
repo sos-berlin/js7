@@ -95,15 +95,20 @@ extends KeyedJournalingActor[OrderEvent]
       }
   }
 
-  private def fresh = freshOrReady
+  private def fresh = startable
 
   private def ready: Receive =
-    freshOrReady orElse {
+    startable orElse {
       case command: Command =>
         executeOtherCommand(command)
     }
 
-  private def freshOrReady: Receive =
+  private def delayedAfterError: Receive =
+    startable orElse {
+      case command: Command => executeOtherCommand(command)
+    }
+
+  private def startable: Receive =
     receiveEvent orElse {
       case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) =>
         assert(stdouterr == null)
@@ -235,6 +240,7 @@ extends KeyedJournalingActor[OrderEvent]
         case _: Order.Ready      => become("ready")(ready)
         case _: Order.Processing => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
         case _: Order.Processed  => become("processed")(processed)
+        case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
         case _: Order.Offering   => become("offering")(offering)
         case _: Order.Forked     => become("forked")(forked)
         case _: Order.Stopped    => become("stopped")(stoppedOrBroken)

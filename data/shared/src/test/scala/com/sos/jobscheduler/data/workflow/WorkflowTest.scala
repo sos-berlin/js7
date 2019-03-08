@@ -247,26 +247,26 @@ final class WorkflowTest extends FreeSpec {
 
     "retry is not allowed outside a catch block" - {
       "simple case" in {
-        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
+        assert(Workflow.of(Retry).completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
       }
     }
 
     "in try" in {
-      assert(Workflow.of(TryInstruction(Workflow.of(Retry()), Workflow.empty)).completelyChecked
+      assert(Workflow.of(TryInstruction(Workflow.of(Retry), Workflow.empty)).completelyChecked
         == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
     }
 
     "in catch" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isValid)
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry))).completelyChecked.isValid)
     }
 
     "'if' in catch" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry())))))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry)))))
         .completelyChecked.isValid)
     }
 
     "'fork' is a barrier" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry())))))))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry)))))))
         .completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
     }
   }

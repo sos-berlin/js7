@@ -163,6 +163,35 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
+  "OrderCatched" in {
+    check(OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)), json"""
+      {
+        "TYPE": "OrderCatched",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1
+        },
+        "movedTo": [ 1 ]
+      }""")
+  }
+
+  "OrderRetrying" in {
+    check(OrderRetrying(Position(1)), json"""
+      {
+        "TYPE": "OrderRetrying",
+        "movedTo": [ 1 ]
+      }""")
+  }
+
+  "OrderRetrying(delayedUntil)" in {
+    check(OrderRetrying(Position(1), Some(Timestamp("2019-03-04T12:00:00Z"))), json"""
+      {
+        "TYPE": "OrderRetrying",
+        "movedTo": [ 1 ],
+        "delayedUntil": 1551700800000
+      }""")
+  }
+
   "OrderForked" in {
     check(OrderForked(List(
       OrderForked.Child("A", OrderId("A/1"), MapDiff(Map("CHANGED" -> "x"))),

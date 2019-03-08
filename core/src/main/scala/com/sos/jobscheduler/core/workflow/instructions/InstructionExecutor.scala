@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
@@ -36,7 +37,7 @@ object InstructionExecutor
       case _: If => IfExecutor
       case _: TryInstruction => TryExecutor
       case _: Offer => OfferExecutor
-      case _: Retry => RetryExecutor
+      case _: Retry => new RetryExecutor(() => now)
     }
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Option[Position] =

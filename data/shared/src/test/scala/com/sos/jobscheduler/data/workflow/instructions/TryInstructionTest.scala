@@ -11,6 +11,8 @@ import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
+import scala.collection.immutable.Seq
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -21,21 +23,43 @@ final class TryInstructionTest extends FreeSpec
     tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")))),
     catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/CATCH")))))
 
-  "JSON" in {
-    testJson[Instruction.Labeled](try_,
-      json"""{
-        "TYPE": "Try",
-        "try": {
-          "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/TRY", "taskLimit": 1 }}
-          ]
-        },
-        "catch": {
-          "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/CATCH", "taskLimit": 1 }}
-          ]
-        }
-      }""")
+  "JSON" - {
+    "with defaults" in {
+      testJson[Instruction.Labeled](try_,
+        json"""{
+          "TYPE": "Try",
+          "try": {
+            "instructions": [
+              { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/TRY", "taskLimit": 1 }}
+            ]
+          },
+          "catch": {
+            "instructions": [
+              { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/CATCH", "taskLimit": 1 }}
+            ]
+          }
+        }""")
+    }
+
+    "complete" in {
+      testJson[Instruction.Labeled](
+        TryInstruction(
+          tryWorkflow = Workflow.of(Fail(None)),
+          catchWorkflow = Workflow.empty,
+          retryDelays = 100.milliseconds :: 1.minute :: Nil),
+        json"""{
+          "TYPE": "Try",
+          "try": {
+            "instructions": [
+              { "TYPE": "Fail" }
+            ]
+          },
+          "catch": {
+            "instructions": []
+          },
+         "retryDelays": [ 0.1, 60 ]
+        }""")
+    }
   }
 
   "workflow" in {
@@ -65,5 +89,17 @@ final class TryInstructionTest extends FreeSpec
     assert(try_.toCatchBranchId("try+123") == Some(BranchId("catch+123")))
     assert(try_.toCatchBranchId(Catch_) == None)
     assert(try_.toCatchBranchId("catch+1") == None)
+  }
+
+  "retryCount" in {
+    def t(delays: Seq[FiniteDuration]) = TryInstruction(Workflow.empty, Workflow.empty, delays)
+    assert(t(Nil).retryDelay(1) == 0.seconds)
+    assert(t(Nil).retryDelay(2) == 0.seconds)
+    assert(t(Nil).retryDelay(3) == 0.seconds)
+    assert(t(1.second :: Nil).retryDelay(1) == 1.seconds)
+    assert(t(1.second :: Nil).retryDelay(2) == 1.seconds)
+    assert(t(1.second :: 2.seconds :: Nil).retryDelay(1) == 1.seconds)
+    assert(t(1.second :: 2.seconds :: Nil).retryDelay(2) == 2.seconds)
+    assert(t(1.second :: 2.seconds :: Nil).retryDelay(3) == 2.seconds)
   }
 }

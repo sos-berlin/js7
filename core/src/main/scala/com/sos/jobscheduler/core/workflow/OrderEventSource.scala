@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -43,6 +43,7 @@ final class OrderEventSource(
 
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     idToOrder.checked(orderId) flatMap (order =>
+      awokeEvent(order) orElse
       canceledEvent(order) match {
         case Some(event) =>
           Valid(Some(order.id <-: event))
@@ -54,7 +55,7 @@ final class OrderEventSource(
             case Some(oId <-: OrderFailed(outcome)) =>  // OrderFailed is used internally only
               assert(oId == orderId)
               catchPosition(orderId) match {
-                case None      => Valid(Some(oId <-: OrderStopped(outcome)))
+                case None => Valid(Some(oId <-: OrderStopped(outcome)))
                 case Some(pos) =>
                   applyMoveInstructions(order.withPosition(pos))
                     .flatMap(pos => Valid(Some(oId <-: OrderCatched(outcome, pos))))
@@ -70,6 +71,10 @@ final class OrderEventSource(
       workflow <- idToWorkflow(order.workflowId).toOption
       position <- workflow.findCatchPosition(order.position)
     } yield position
+
+  private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
+    order.ifState[Order.DelayedAfterError]
+      .map(_ => OrderAwoke)  // AgentOrderKeeper has already checked time
 
   /** Returns `Some(OrderDetachable | OrderCanceled)` iff order is marked as cancelable and order is in a cancelable state. */
   private def canceledEvent(order: Order[Order.State]): Option[OrderActorEvent] =

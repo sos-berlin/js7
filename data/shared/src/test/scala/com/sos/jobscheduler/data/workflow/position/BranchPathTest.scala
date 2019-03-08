@@ -41,6 +41,23 @@ final class BranchPathTest extends FreeSpec
     }
   }
 
+  "Operator %" in {
+    assert(Segment(1, 2) :: Nil == Position(1) / 2)
+    assert(Segment(1, 2) :: Segment(3, 4) :: Nil == Position(1) / 2 % 3 / 4)
+  }
+
+  "dropChild" in {
+    intercept[IllegalStateException] { Nil.dropChild }
+    assert((Position(1) / 2).dropChild == Nil)
+    assert((Position(1) / 2 % 3 / 4).dropChild == Position(1) / 2)
+  }
+
+  "parent" in {
+    assert(Nil.parent.isEmpty)
+    assert((Position(1) / 2).parent == Some(Position(1)))
+    assert((Position(1) / 2 % 3 / 4).parent == Some(Position(1) / 2 % 3))
+  }
+
   "show" in {
     assert(List.empty[Segment].show == "")
     assert((Segment(1, 2) :: Nil).show == "1/2")

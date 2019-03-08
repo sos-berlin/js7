@@ -141,8 +141,11 @@ object OrderEvent {
 
   final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent
 
-  final case class OrderRetrying(to: Position)
+  final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
   extends OrderActorEvent
+
+  sealed trait OrderAwoke extends OrderActorEvent
+  case object OrderAwoke extends OrderAwoke
 
   final case class OrderBroken(problem: Problem) extends OrderActorEvent
 
@@ -192,6 +195,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderStopped]),
     Subtype(deriveCodec[OrderCatched]),
     Subtype(deriveCodec[OrderRetrying]),
+    Subtype(OrderAwoke),
     Subtype(deriveCodec[OrderMoved]),
     Subtype(deriveCodec[OrderForked]),
     Subtype(deriveCodec[OrderJoined]),

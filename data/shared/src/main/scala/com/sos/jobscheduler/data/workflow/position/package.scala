@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.Show
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import io.circe.syntax.EncoderOps
 import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
 
@@ -17,6 +18,9 @@ package object position
 
     def %(parent: BranchPath.Segment): BranchPath =
       segments ::: parent :: Nil
+
+    def parent: Option[Position] =
+      segments.nonEmpty ? (segments.init % segments.last.nr)
 
     def dropChild: BranchPath = {
       if (segments.isEmpty) throw new IllegalStateException("dropChild on empty BranchPath ?")

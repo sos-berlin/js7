@@ -95,9 +95,14 @@ final case class Order[+S <: Order.State](
             workflowPosition = workflowPosition.copy(position = movedTo),
             outcome = outcome_))
 
-      case OrderRetrying(to) =>
+      case OrderRetrying(to, maybeDelayUntil) =>
         check(isState[Ready] && (isDetached || isAttached),
-          withPosition(to))
+          maybeDelayUntil.fold[Order[State]](this/*Ready*/)(o => copy(state = DelayedAfterError(o)))
+            .withPosition(to))
+
+      case OrderAwoke =>
+        check(isState[DelayedAfterError] && isAttached,
+          copy(state = Ready))
 
       case OrderForked(children) =>
         check(isState[Ready] && (isDetached || isAttached),
@@ -166,7 +171,7 @@ final case class Order[+S <: Order.State](
           copy(cancel = Some(mode)))
 
       case OrderCanceled =>
-        check((isState[FreshOrReady] || isState[Stopped] || isState[Broken]) && isDetached,
+        check((isState[FreshOrReady] || isState[Stopped] || isState[DelayedAfterError] || isState[Broken]) && isDetached,
           copy(state = Canceled))
     }
   }
@@ -270,12 +275,20 @@ object Order {
     override def toString = s"Detaching(${agentRefPath.string})"
   }
 
-  sealed trait State
+  sealed trait State {
+    def maybeDelayedUntil: Option[Timestamp] = None
+  }
 
   sealed trait FreshOrReady extends State
 
+  sealed trait DelayedUntil {
+    def delayedUntil: Timestamp
+  }
+
   @JsonCodec
-  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends FreshOrReady
+  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends FreshOrReady {
+    override def maybeDelayedUntil = scheduledFor
+  }
   object Fresh {
     val StartImmediately = Fresh(None)
   }
@@ -284,6 +297,11 @@ object Order {
 
   sealed trait Ready extends Started with FreshOrReady
   case object Ready extends Ready
+
+  @JsonCodec
+  final case class DelayedAfterError(until: Timestamp) extends Started {
+    override def maybeDelayedUntil = Some(until)
+  }
 
   sealed trait Stopped extends Started
   case object Stopped extends Stopped
@@ -327,6 +345,7 @@ object Order {
     Subtype[FreshOrReady],
     Subtype(Processing),
     Subtype(Processed),
+    Subtype[DelayedAfterError],
     Subtype(Stopped),
     Subtype[Forked],
     Subtype[Offering],

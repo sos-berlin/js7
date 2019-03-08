@@ -16,7 +16,7 @@ private[workflow] object TryCatchBranchId
   }
 }
 
-private[workflow] object TryBranchId
+object TryBranchId
 {
   private val NamePattern = """try\+([0-9]+)""".r
 

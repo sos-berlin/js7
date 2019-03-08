@@ -12,7 +12,7 @@ import org.scalatest.FreeSpec
 final class RetryTest extends FreeSpec
 {
   "JSON" in {
-    testJson[Instruction.Labeled](Retry(),
+    testJson[Instruction.Labeled](Retry,
       json"""{
         "TYPE": "Retry"
       }""")

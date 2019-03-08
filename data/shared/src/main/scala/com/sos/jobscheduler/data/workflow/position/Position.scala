@@ -60,11 +60,8 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
       case _ => 0  // Not in a try/catch
     }
 
-  def nextRetryPosition: Checked[Position] =
-    nextRetryBranchPath.map(_ % 0)
-
   @tailrec
-  private def nextRetryBranchPath: Checked[BranchPath] =
+  def nextRetryBranchPath: Checked[BranchPath] =
     splitBranchAndNr match {
       case None => Invalid(NoTryBlockProblem)
       case Some((parent, branchId @ TryCatchBranchId(_), _)) =>

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.Show
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
+import com.sos.jobscheduler.base.time.Times._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import io.circe.syntax.EncoderOps
@@ -124,8 +125,14 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case TryInstruction(tryWorkflow, catchWorkflow) =>
-          sb ++= "try {\n"
+        case TryInstruction(tryWorkflow, catchWorkflow, retryDelays) =>
+          sb ++= "try "
+          if (retryDelays.nonEmpty) {
+            sb ++= "(retryDelays="
+            sb ++= retryDelays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")
+            sb ++= ") "
+          }
+          sb ++= "{\n"
           appendWorkflowContent(sb, nesting + 1, tryWorkflow)
           indent(nesting)
           sb ++= "} catch {\n"
@@ -133,13 +140,8 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case Retry() =>
+        case Retry =>
           sb ++= "retry"
-          //delays.size match {
-          //  case 0 =>
-          //  case 1 => sb.append(", delay=").append(delays.head.toString)
-          //  case _ => sb.append(", delay=").append(delays.map(_.toString).mkString("[", ", ", "]"))
-          //}
           sb ++= "\n"
 
         case Offer(orderId, timeout) =>

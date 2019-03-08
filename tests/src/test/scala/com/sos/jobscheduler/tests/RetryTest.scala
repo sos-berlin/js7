@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -25,6 +25,8 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
+
+  import master.eventWatch
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
@@ -69,7 +71,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderFinished)
 
     val orderId = OrderId("🔺")
-    val afterEventId = master.eventWatch.lastAddedEventId
+    val afterEventId = eventWatch.lastAddedEventId
     master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
   }
@@ -153,14 +155,34 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderFinished)
 
     val orderId = OrderId("🔷")
-    val afterEventId = master.eventWatch.lastAddedEventId
+    val afterEventId = eventWatch.lastAddedEventId
     master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
   }
 
+  "retryDelay" in {
+    val workflowNotation = s"""
+       |define workflow {
+       |  try (retryDelays=[1, 0]) execute executable="/FAIL-1$sh", agent="AGENT";
+       |  catch if (catchCount < 4) retry else fail;
+       |}""".stripMargin
+    val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
+    updateRepo(change = workflow :: Nil)
+
+    val orderId = OrderId("⭕")
+    val afterEventId = eventWatch.lastAddedEventId
+    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    eventWatch.await[OrderStopped](_.key == orderId, after = afterEventId)
+
+    val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
+    assert(stamped(1).timestamp - stamped(0).timestamp > 1.second)     // First retry after a second
+    assert(stamped(2).timestamp - stamped(1).timestamp < 0.5.second)   // Following retries immediately (0 seconds)
+    assert(stamped(3).timestamp - stamped(2).timestamp < 0.5.second)
+  }
+
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit = {
-    master.eventWatch.await[E](_.key == orderId, after = after)
-    master.eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match {
+    eventWatch.await[E](_.key == orderId, after = after)
+    eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match {
       case EventSeq.NonEmpty(stampeds) =>
         val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
         assert(events == expected)

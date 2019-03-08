@@ -257,6 +257,20 @@ final class WorkflowParserTest extends FreeSpec {
     )
   }
 
+  "try with retryDelays" in {
+    check("""
+      define workflow {
+        try (retryDelays=[1, 2, 3]) fail;
+        catch {}
+      }""".stripMargin,
+      Workflow(WorkflowPath.NoId, Vector(
+        TryInstruction(
+          Workflow.of(Fail),
+          Workflow.empty,
+          1.second :: 2.seconds :: 3.seconds :: Nil)))
+    )
+  }
+
   "retry" - {
     "no delay" in {
       check("""
@@ -270,7 +284,7 @@ final class WorkflowParserTest extends FreeSpec {
         Workflow.of(
           TryInstruction(
             Workflow.of(Fail),
-            Workflow.of(Retry()))))
+            Workflow.of(Retry))))
     }
   }
 
