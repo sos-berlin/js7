@@ -1,6 +1,6 @@
 # Änderungen
-              
-## 2019-03-04
+
+## 2019-03-08
 
 ### Klasse `Agent` heißt jetzt `AgentRef` 
 
@@ -327,6 +327,15 @@ Die Jobs im Beispiel werden in folgender Reihenfolge ausgeführt:
 8. FAIL1, zweite Wiederholung des inneren try-Blockss
 9. OKAY3  
                            
+#### Verzögerung
+
+```
+try (retryDelays=[10, 20, 30]) {                                              
+  job FAIL;  
+} catch if (catchCount < 2) retry else fail;       
+```
+
+Die erste Wiederholung wird 10s, die zweite 20s und für alle weiteren 30s verzögert.
 
 ### Webservice POST /master/api/order akzeptiert Array
 
