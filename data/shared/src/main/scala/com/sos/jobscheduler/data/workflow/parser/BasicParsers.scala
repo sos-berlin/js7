@@ -4,11 +4,11 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import fastparse.all._
-import fastparse.core
+import fastparse.NoWhitespace._
+import fastparse._
 import scala.reflect.ClassTag
 
 /**
@@ -16,186 +16,156 @@ import scala.reflect.ClassTag
   */
 private[parser] object BasicParsers
 {
-  object ops {
-    implicit final class RichParserApi[T](private val underlying: Parser[T]) extends AnyVal {
-      /**
-       * Parses using this followed by whitespace `w` and the parser `p`
-       */
-      def ~~[V, R](p: Parser[V])(implicit ev: core.Implicits.Sequencer[T, V, R]): Parser[R] =
-        underlying ~ w ~ p
+  private def inlineCommentUntilStar[_: P] = P(CharsWhile(_ != '*', 0) ~ P("*"))
 
-      /**
-       * Parses using this followed by whitespace `w` (cuts here) and the parser `p`
-       */
-      def ~~/[V, R](p: Parser[V])(implicit ev: core.Implicits.Sequencer[T, V, R]): Parser[R] =
-        underlying ~ w ~/ p
-    }
+  private def inlineComment[_: P] = P {
+    P("/*") ~ inlineCommentUntilStar ~ (!"/" ~ inlineCommentUntilStar).rep ~ P("/")
   }
-
-  import ops.RichParserApi
-
-  private val inlineComment = {
-    val untilStar = P(CharsWhile(_ != '*', min = 0) ~ "*")
-    P("/*" ~ untilStar ~ (!"/" ~ untilStar).rep ~ "/")
-  }
-  private val lineEndComment = P("//" ~ CharsWhile(_ != '\n'))
-  private val comment = P(inlineComment | lineEndComment)
+  private def lineEndComment[_: P] = P("//" ~ CharsWhile(_ != '\n'))
+  private def comment[_: P] = P(inlineComment | lineEndComment)
   /** Optional whitespace including line ends */
-  val w = P((CharsWhileIn(" \t\r\n") | comment).rep)
+  def w[_: P] = P((CharsWhileIn(" \t\r\n") | comment).rep)
   /** Optional horizontal whitespace */
-  val h = P((CharsWhileIn(" \t") | comment).rep)
-  val comma = w ~ "," ~ w
-  //val newline = P(h ~ "\r".? ~ "\n" ~ w)
-  //val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
-  val int = P[Int](("-".? ~ CharsWhile(c => c >= '0' && c <= '9')).! map (_.toInt))
-  val identifierEnd = &(CharPred(c => !isIdentifierPart(c))) | End
-  val identifier = P[String]((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).! ~ identifierEnd)
-  val quotedString = P[String] {
-    val singleQuoted = P("'" ~/
-      (CharsWhile(ch => ch != '\'' && ch >= ' ', min = 0).! ~ "'").opaque(
-        "Single-quoted (') string is not properly terminated or contains a non-printable character"))
-    val doubleQuoted = P("\"" ~/
-      (CharsWhile(ch => ch != '"' && ch >= ' ' && ch != '\\', min = 0).! ~ "\"").opaque(
-        "Double-quoted (\") string is not properly terminated or contains a non-printable character or backslash (\\)"))
-      .flatMap {
-        case o if o contains '$' => invalid("Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes (')")
-        case o => valid(o)
-      }
-    singleQuoted | doubleQuoted
-  }
-  //val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
+  def h[_: P] = P((CharsWhileIn(" \t") | comment).rep)
+  def comma[_: P] = P(w ~ "," ~ w)
+  //def newline[_: P] = P(h ~ "\r".? ~ "\n" ~ w)
+  //def commaOrNewLine[_: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
+  def int[_: P] = P[Int](("-".? ~ digits).! map (_.toInt))
+  private def digits[_: P] = P(CharsWhile(c => c >= '0' && c <= '9'))
+  def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
+  def identifier[_: P] = P[String](
+    (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
+      identifierEnd)
 
-  val pathString = P[String](quotedString)
+  def quotedString[_: P] = P[String](
+    singleQuoted | doubleQuoted)
 
-  def keyword = identifier
+  private def singleQuoted[_: P] = P[String](
+    "'" ~/
+      CharsWhile(ch => ch != '\'' && ch >= ' ', 0).! ~
+      "'".opaque("properly terminated single-quoted (') string without non-printable characters"))
 
-  def keyword(name: String) = P[Unit](name ~ identifierEnd)
+  private def doubleQuoted[_: P] = P[String](
+    ("\"" ~/
+      CharsWhile(ch => ch != '"' && ch >= ' ' && ch != '\\', 0).! ~
+      "\"".opaque("""properly terminated double-quoted (") string without non-printable character nor backslash (\)""")
+    ).flatMap {
+      case o if o contains '$' =>
+        invalid("double-quoted string without variable interpolation via '$' (consider using single quotes ('))")
+      case o => valid(o)
+    })
 
-  def path[A <: TypedPath: TypedPath.Companion] = P[A](
+  def pathString[_: P] = P[String](quotedString)
+
+  def keyword[_: P] = P(identifier)
+
+  def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
+
+  def path[A <: TypedPath: TypedPath.Companion](implicit ctx: P[_]) = P[A](
     pathString map (p => FolderPath.Root.resolve[A](p)))
 
-  def keyValueMap[A](keyParsers: Map[String, P[A]]): P[KeyToValue[A]] =
-    keyValues(keyParsers)
-      .flatMap(kvs =>
-        kvs.duplicateKeys(_._1) match {
-          case Some(dups) => Fail.opaque("Duplicate keywords: " + dups.keys.mkString(", "))
-          case None       => PassWith(KeyToValue(kvs.toMap))
-        })
+  def keyValues[A](keyValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](
+    commaSequence(keyValueParser).flatMap(keyValues =>
+      keyValues.duplicateKeys(_._1) match {
+        case Some(dups) => Fail.opaque("unique keywords (duplicates: " + dups.keys.mkString(", ") + ")")
+        case None => Pass(KeyToValue(keyValues.toMap))
+      }))
+
+  def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
+    keyValue(name, parser, identity[A])
+
+  def keyValue[A, B](name: String, parser: => P[A], toValue: A => B)(implicit ctx: P[_]): P[(String, B)] =
+    specificKeyValue(name, parser).map(o => name -> toValue(o))
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
-    def apply[A1 <: A](key: String, default: => A1): P[A1] =
-      PassWith(keyToValue.get(key).fold(default)(_.asInstanceOf[A1]))
+    def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =
+      Pass(keyToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
-    def apply[A1 <: A](key: String): P[A1] =
+    def apply[A1 <: A: ClassTag](key: String)(implicit ctx: P[_]): P[A1] =
       keyToValue.get(key) match {
-        case None    => Fail.opaque(s"Missing required argument '$key='")
-        case Some(o) => PassWith(o.asInstanceOf[A1])
+        case None => Fail.opaque(s"keyword $key=")
+        case Some(o) =>
+          if (!implicitClass[A1].isAssignableFrom(o.getClass))
+            Fail.opaque(s"keyword $key=<${implicitClass[A1].simpleScalaName}>, not $key=<${o.getClass.simpleScalaName}>")
+          else
+            Pass(o.asInstanceOf[A1])
       }
 
-    def get[A1 <: A](key: String): P[Option[A1]] =
-      PassWith(keyToValue.get(key) map (_.asInstanceOf[A1]))
+    def get[A1 <: A](key: String)(implicit ctx: P[_]): P[Option[A1]] =
+      Pass(keyToValue.get(key) map (_.asInstanceOf[A1]))
 
-    def noneOrOneOf[A1 <: A](keys: Set[String]): P[Option[(String, A1)]] = {
+    def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[Option[(String, A1)]] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
-        case 0 => PassWith(None)
-        case 1 => PassWith(Some(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1]))
-        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
-      }
-    }
-
-    def oneOf[A1 <: A](keys: Set[String]): P[(String, A1)] = {
-      val intersection = keyToValue.keySet & keys
-      intersection.size match {
-        case 0 => Fail.opaque("Missing one of the keywords: " + keys.mkString(", "))
-        case 1 => PassWith(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1])
-        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
+        case 0 => Pass(None)
+        case 1 => Pass(Some(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1]))
+        case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
 
-    def oneOfOr[A1 <: A](keys: Set[String], default: A1): P[A1] = {
+    def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[(String, A1)] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
-        case 0 => PassWith(default)
-        case 1 => PassWith(keyToValue(intersection.head).asInstanceOf[A1])
-        case _ => Fail.opaque(s"Contradicting keywords: ${intersection.mkString("; ")}")
+        case 0 => Fail.opaque("keywords " + keys.map(_ + "=").mkString(", "))
+        case 1 => Pass(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1])
+        case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
+      }
+    }
+
+    def oneOfOr[A1 <: A](keys: Set[String], default: A1)(implicit ctx: P[_]): P[A1] = {
+      val intersection = keyToValue.keySet & keys
+      intersection.size match {
+        case 0 => Pass(default)
+        case 1 => Pass(keyToValue(intersection.head).asInstanceOf[A1])
+        case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
       }
     }
   }
 
-  def keyValues[A](keyParsers: Map[String, P[A]]): P[Seq[(String, A)]] =
-    comma0Seq(
-      keyParsers
-        .map { case (k, p) => keyValue(k, p) map k.-> }
-        .reduce((a, b) => a | b))
+  def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]): P[V] =
+    P(keyword(name) ~ w ~ "=" ~ w ~/ valueParser)
 
-  def keyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
-    P(P(name) ~~ "=" ~~/ valueParser)
+  def curly[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
+    h ~ "{" ~ w ~/ parser ~ w ~ "}")
 
-  def curly[A](parser: Parser[A]): Parser[A] =
-    P(h ~ "{" ~~/ parser ~~ "}")
+  def inParentheses[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
+    h ~ "(" ~ w ~/ parser ~ w ~ ")")
 
-  def inParentheses[A](parser: Parser[A]): Parser[A] =
-    P(h ~ "(" ~~/ parser ~~ ")")
+  def bracketCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+    "[" ~ w ~/ commaSequence(parser) ~ w ~ "]")
 
-  //def parenthesizedCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-  //  P("(") ~~/
-  //    (P(")").map(_ => Nil) | commaSeq(parser) ~~ ")")
+  def commaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+    nonEmptyCommaSequence(parser).? map (_ getOrElse Nil))
 
-  def bracketCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-    P("[") ~~/
-      (P("]").map(_ => Nil) | commaSeq(parser) ~~ "]")
-
-  def comma0Seq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-    commaSeq(parser).? map (_ getOrElse Nil)
-
-  def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-    P(parser ~ (comma ~ parser).rep ~ w) map {
+  def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+    parser ~ (comma ~/ parser).rep ~ w map {
       case (head, tail) => head +: tail
-    }
+    })
 
-  def leftRecurse[A, O](operand: P[A], operator: P[O])(operation: (A, O, A) => P[A]): P[A] = {
-    operand ~/ (w ~ operator ~~/ operand).rep(min = 0) flatMap {
-      case (head, tail) =>
-        def loop(left: A, tail: List[(O, A)]): P[A] =
-          tail match {
-            case Nil =>
-              valid(left)
-            case (op, right) :: tl =>
-              operation(left, op, right) flatMap (a => loop(a, tl))
-          }
-        loop(head, tail.toList)
-    }
-  }
-
-  def newInstance[A: ClassTag](name: String): A =
-    loadClass[A](name).newInstance()
-
-  def loadClass[A: ClassTag](name: String): Class[A] = {
-    val c = Class.forName(name, false, Thread.currentThread.getContextClassLoader).asInstanceOf[Class[A]]
-    require(implicitClass[A] isAssignableFrom c, s"Class $name does not implement ${implicitClass[A].getName}")
-    c
-  }
-
-  def valid[A](a: A): Parser[A] = CheckedParser(Valid(a))
-
-  def invalid(message: String): Parser[Nothing] = CheckedParser(Problem.pure(message))
-
-  final case class CheckedParser[T](checked: Checked[T]) extends core.Parser[T, Char, String]{
-    def parseRec(cfg: core.ParseCtx[Char, String], index: Int) =
-      checked match {
-        case Valid(elem) => success(cfg.success, elem, index, Set.empty, false)
-        case Invalid(problem) =>
-          val failure = fail(cfg.failure, index)
-          failure.lastParser = ProblemParser(problem)
-          failure
+  def leftRecurse[A, O](operand: => P[A], operator: => P[O])(operation: (A, O, A) => P[A])(implicit ctx: P[_]): P[A] = {
+    // Separate function variable to work around a crash (fastparse 2.1.0)
+    def more(implicit ctx: P[_]) = (w ~ operator ~ w ~/ operand).rep(0)
+    (operand ~ more)
+      .flatMap {
+        case (head, tail) =>
+          def loop(left: A, tail: List[(O, A)]): P[A] =
+            tail match {
+              case Nil =>
+                valid(left)
+              case (op, right) :: tl =>
+                operation(left, op, right) flatMap (a => loop(a, tl))
+            }
+          loop(head, tail.toList)
       }
-
-    override val toString = "CheckedParser"
   }
 
-  final case class ProblemParser(problem: Problem) extends core.Parser[Nothing, Char, String] {
-    def parseRec(cfg: core.ParseCtx[Char, String], index: Int) = throw new NotImplementedError(s"ProblemParser($toString)")
-    override def toString = problem.toString
-  }
+  def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Valid(a))
+
+  def invalid[_: P](message: String): P[Nothing] = checkedToP(Problem.pure(message))
+
+  def checkedToP[A](checked: Checked[A])(implicit ctx: P[_]): P[A] =
+    checked match {
+      case Valid(a) => Pass(a)
+      case Invalid(problem) => Fail.opaque(problem.toString)
+    }
 }

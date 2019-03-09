@@ -7,8 +7,9 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
-import com.sos.jobscheduler.data.workflow.parser.Parsers.ops.RichParser
-import fastparse.all._
+import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
+import fastparse.NoWhitespace._
+import fastparse._
 import org.scalactic.source
 import org.scalatest.FreeSpec
 import org.scalatest.prop.PropertyChecks._
@@ -41,10 +42,10 @@ final class EvaluatorTest extends FreeSpec
     Valid(StringConstant("")))
 
   testSyntaxError(""" "\\" """,
-    """Double-quoted (") string is not properly terminated or contains a non-printable character or backslash (\):1:2 ..."\\\\\""""")
+    """Expected properly terminated double-quoted (") string without non-printable character nor backslash (\):1:2, found "\\\\\""""")
 
   testSyntaxError(""" "$var" """,
-    """Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes ('):1:7 ...""""")
+    """Expected double-quoted string without variable interpolation via '$' (consider using single quotes (')):1:7, found """"")
 
   testEval(""" "x" """,
     result = "x",
@@ -247,11 +248,11 @@ final class EvaluatorTest extends FreeSpec
       Valid(BooleanValue(true)))
   }
 
-  private val completeExpression = ExpressionParser.expression ~ End
+  private def completeExpression[_: P] = ExpressionParser.expression ~ End
 
   private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
     registerTest(s"$exprString - should fail") {
-      assert(completeExpression.checkedParse(exprString.trim) == Invalid(Problem(problem)))
+      assert(checkedParse(exprString.trim, completeExpression(_)) == Invalid(Problem(problem)))
     }
 
   private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit pos: source.Position): Unit =
@@ -265,9 +266,9 @@ final class EvaluatorTest extends FreeSpec
 
   private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit pos: source.Position): Unit =
     registerTest(exprString) {
-      assert(completeExpression.checkedParse(exprString.trim) == expression)
+      assert(checkedParse(exprString.trim, completeExpression(_)) == expression)
       for (e <- expression) {
-        assert(completeExpression.checkedParse(e.toString) == expression, " *** toString ***")
+        assert(checkedParse(e.toString, completeExpression(_)) == expression, " *** toString ***")
         assert(eval(e) == result)
       }
     }

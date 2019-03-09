@@ -13,7 +13,7 @@ object Dependencies
   val log4jVersion = "2.11.2"
   val catsVersion = "1.6.0"
   val catsEffectVersion = "1.2.0"
-  val fastparseVersion = "1.0.0"
+  val fastparseVersion = "2.1.0"
   val kittensVersion = "1.2.0"
   val circeVersion = "0.11.1"
   val scalaTestVersion = "3.0.5"

@@ -32,7 +32,8 @@ final class WorkflowParserTest extends FreeSpec {
           job A;
         }
       }"""
-    assert(WorkflowParser.parse(source) == Invalid(Problem("""Unknown job 'A':6:8 ...""""")))  // TODO Wrong position in error message, should be 4:12
+    assert(WorkflowParser.parse(source)
+      == Invalid(Problem("""Expected known job name ('A' is unknown):6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
   }
 
   "Execute anonymous" in {
@@ -108,7 +109,7 @@ final class WorkflowParserTest extends FreeSpec {
           execute executable="/my/executable", agent="/AGENT"
         }
       }""")
-      == Invalid(Problem("""Duplicate job definitions: DUPLICATE:10:8 ...""""")))
+      == Invalid(Problem("""Expected unique job definitions (duplicates: DUPLICATE):10:8, found """"")))
   }
 
   "Single instruction with relative job path" in {

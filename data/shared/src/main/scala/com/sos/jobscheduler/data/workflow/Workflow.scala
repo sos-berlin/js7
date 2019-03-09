@@ -205,7 +205,7 @@ extends FileBased
       case Some(job) => Valid(job)
       case None =>
         outer match {
-          case None => Invalid(Problem(s"Unknown job '$name'"))
+          case None => Invalid(Problem(s"known job name ('$name' is unknown)"))
           case Some(o) => o.findJob(name)
         }
     }
@@ -221,7 +221,7 @@ extends FileBased
       else
         workflowBranchPath.branchPath match {
           case Nil =>
-            Invalid(Problem(s"Unknown job '$name'"))
+            Invalid(Problem(s"known job name ('$name' is unknown)"))
           case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })

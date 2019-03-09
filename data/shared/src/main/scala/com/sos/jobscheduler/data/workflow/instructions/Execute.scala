@@ -36,7 +36,7 @@ object Execute
   }
 
   final case class Anonymous(job: WorkflowJob) extends Execute {
-    override def toString = s"execute '${job.executablePath}'"
+    override def toString = s"execute executable='${job.executablePath}', agent='${job.agentRefPath.string}'"
   }
 
   implicit val jsonCodec = TypedJsonCodec[Execute](

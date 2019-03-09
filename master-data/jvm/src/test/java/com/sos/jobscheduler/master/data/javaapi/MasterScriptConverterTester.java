@@ -41,7 +41,7 @@ final class MasterScriptConverterTester
         assert checkedJson.isInvalid();
         Optional<Problem> optionalProblem = checkedJson.problem();
         assert optionalProblem.isPresent();
-        assertEqual(optionalProblem.get().toString(), "\"define\":1:1 ...\"ERROR\"");
+        assertEqual(optionalProblem.get().toString(), "Expected \"define\":1:1, found \"ERROR\"");
     }
 
     private static void assertEqual(String string, String expected) {

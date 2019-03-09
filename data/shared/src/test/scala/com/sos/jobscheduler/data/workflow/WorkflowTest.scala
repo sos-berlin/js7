@@ -238,7 +238,7 @@ final class WorkflowTest extends FreeSpec {
           Workflow.of(
             Execute.Named(AJobName/*undefined*/)))))
     "Unknown job" in {
-      assert(wrongWorkflow.completelyChecked == Invalid(Problem("Unknown job 'A'")))
+      assert(wrongWorkflow.completelyChecked == Invalid(Problem("known job name ('A' is unknown)")))
     }
 
     "Known job" in {

@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.data.folder
 
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.util.UUID.randomUUID
 
@@ -20,8 +22,18 @@ final case class FolderPath private(string: String) extends TypedPath {
     *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
     * </ul>
    */
-  def resolve[P <: TypedPath: TypedPath.Companion](path: String) =
-    implicitly[TypedPath.Companion[P]].apply(absoluteString(this, path))
+  def resolve[P <: TypedPath: TypedPath.Companion](path: String): P =
+    checkedResolve[P](path).orThrow
+
+  /**
+    * Resolves the given path agains this FolderPath.
+    * <ul>
+    *   <li>An absolute `path` starting with "/" is used as given.
+    *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
+    * </ul>
+   */
+  def checkedResolve[P <: TypedPath: TypedPath.Companion](path: String): Checked[P] =
+    implicitly[TypedPath.Companion[P]].checked(absoluteString(this, path))
 
   def isParentOf(path: TypedPath): Boolean =
     path != FolderPath.Root && this == parentOf(path)

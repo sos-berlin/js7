@@ -2,7 +2,8 @@ package com.sos.jobscheduler.data.workflow.instructions.expr
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
-import com.sos.jobscheduler.data.workflow.parser.Parsers.ops._
+import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
+import fastparse.NoWhitespace._
 import io.circe.{Decoder, Encoder, Json}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
@@ -17,7 +18,7 @@ object Expression
   object BooleanExpression {
     implicit val jsonEncoder: Encoder[BooleanExpression] = expr => Json.fromString(expr.toString)
     implicit val jsonDecoder: Decoder[BooleanExpression] =
-      _.as[String] flatMap (string => ExpressionParser.booleanExpression.checkedParse(string).toDecoderResult)
+      _.as[String] flatMap (string => checkedParse(string, ExpressionParser.booleanExpression(_)).toDecoderResult)
   }
   sealed trait NumericExpression extends Expression
   sealed trait StringExpression extends Expression

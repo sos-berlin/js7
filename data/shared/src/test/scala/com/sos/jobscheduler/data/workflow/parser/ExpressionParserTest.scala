@@ -4,35 +4,36 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser._
-import com.sos.jobscheduler.data.workflow.parser.Parsers.ops._
-import fastparse.all.Parsed
+import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
+import fastparse.NoWhitespace._
+import fastparse.{Parsed, _}
 import org.scalactic.source
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExpressionParserTest extends FreeSpec {
-
+final class ExpressionParserTest extends FreeSpec
+{
   // See also EvaluatorTest
 
   "Variable" - {
     "$ with impossible names" in {
-      assert(dollarVariable.parse("$var/1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(dollarVariable.parse("$var.1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(dollarVariable.parse("$var-1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(dollarVariable.parse("$var_1") == Parsed.Success(Variable(StringConstant("var_1")), 6))
+      assert(parse("$var/1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(parse("$var.1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(parse("$var-1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(parse("$var_1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var_1")), 6))
     }
 
     "$ with possible names" in {
-      assert(dollarVariable.checkedParse("$var") == Valid(Variable(StringConstant("var"))))
-      assert(dollarVariable.checkedParse("$gå") == Valid(Variable(StringConstant("gå"))))
-      assert(dollarVariable.checkedParse("$été") == Valid(Variable(StringConstant("été"))))
+      assert(checkedParse("$var", dollarVariable(_)) == Valid(Variable(StringConstant("var"))))
+      assert(checkedParse("$gå", dollarVariable(_)) == Valid(Variable(StringConstant("gå"))))
+      assert(checkedParse("$été", dollarVariable(_)) == Valid(Variable(StringConstant("été"))))
     }
 
     "variable()" in {
-      assert(functionCall.checkedParse("""variable("gå")""") == Valid(Variable(StringConstant("gå"))))
-      assert(functionCall.checkedParse("""variable ( "gå" )""") == Valid(Variable(StringConstant("gå"))))
+      assert(checkedParse("""variable("gå")""", variableFunctionCall(_)) == Valid(Variable(StringConstant("gå"))))
+      assert(checkedParse("""variable ( "gå" )""", variableFunctionCall(_)) == Valid(Variable(StringConstant("gå"))))
     }
   }
 
@@ -50,12 +51,12 @@ final class ExpressionParserTest extends FreeSpec {
   testStringExpression(""" "ö" """.trim, StringConstant("ö"))
 
   "Invalid strings" in {
-    assert(stringExpression.checkedParse(""" "\" """.trim).isInvalid)
-    assert(stringExpression.checkedParse(""" "\\" """.trim).isInvalid)
+    assert(checkedParse(""" "\" """.trim, stringExpression(_)).isInvalid)
+    assert(checkedParse(""" "\\" """.trim, stringExpression(_)).isInvalid)
   }
 
   testError(""""1" < 1""",
-    """Types are not comparable: '1' < 1:1:8 ...""""")
+    """Expected comparable types: '1' < 1:1:8, found """"")
 
   testBooleanExpression("returnCode != 7", NotEqual(OrderReturnCode, NumericConstant(7)))
   testBooleanExpression("returnCode > 7", GreaterThan(OrderReturnCode, NumericConstant(7)))
@@ -92,7 +93,7 @@ final class ExpressionParserTest extends FreeSpec {
       ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
   testError("""returnCode in [0, 3, 50] || $result == "1"""",
-    """Operator || requires Boolean operands: [0, 3, 50] || $result == '1':1:43 ...""""")
+    """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:43, found """"")
 
   testBooleanExpression("""(returnCode in [0, 3, 50]) || $result == "1"""",
     Or(
@@ -124,39 +125,34 @@ final class ExpressionParserTest extends FreeSpec {
       StringConstant("A.*")))
 
   "Unknown numeric function" in {
-    import fastparse.all._
-    val parser = numericExpression ~ End
-    assert(parser.checkedParse(""""123".toNumber""") == Valid(ToNumber(StringConstant("123"))))
-    assert(parser.checkedParse(""""123".UNKNOWN""") == Invalid(Problem("""Unknown function: .UNKNOWN:1:14 ...""""")))
+    def parser[_: P] = numericExpression ~ End
+    assert(checkedParse(""""123".toNumber""", parser(_)) == Valid(ToNumber(StringConstant("123"))))
+    assert(checkedParse(""""123".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
   }
 
   "Unknown boolean function" in {
-    import fastparse.all._
-    val parser = booleanExpression ~ End
-    assert(parser.checkedParse(""""true".toBoolean""") == Valid(ToBoolean(StringConstant("true"))))
-    assert(parser.checkedParse(""""true".UNKNOWN""") == Invalid(Problem("""Unknown function: .UNKNOWN:1:15 ...""""")))
+    def parser[_: P] = booleanExpression ~ End
+    assert(checkedParse(""""true".toBoolean""", parser(_)) == Valid(ToBoolean(StringConstant("true"))))
+    assert(checkedParse(""""true".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      import fastparse.all._
-      val parser = booleanExpression ~ End
-      assert(parser.checkedParse(exprString) == Valid(expr))
-      assert(parser.checkedParse(expr.toString) == Valid(expr), " - toString")
+      def parser[_: P] = booleanExpression ~ End
+      assert(checkedParse(exprString, parser(_)) == Valid(expr))
+      assert(checkedParse(expr.toString, parser(_)) == Valid(expr), " - toString")
     }
 
   private def testStringExpression(exprString: String, expr: StringExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      import fastparse.all._
-      val parser = stringExpression ~ End
-      assert(parser.checkedParse(exprString) == Valid(expr))
-      assert(parser.checkedParse(expr.toString) == Valid(expr))
+      def parser[_: P] = stringExpression ~ End
+      assert(checkedParse(exprString, parser(_)) == Valid(expr))
+      assert(checkedParse(expr.toString, parser(_)) == Valid(expr))
     }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     registerTest(exprString + " - should fail") {
-      import fastparse.all._
-      val parser = stringExpression ~ End
-      assert(parser.checkedParse(exprString) == Invalid(Problem(errorMessage)))
+      def parser[_: P] = stringExpression ~ End
+      assert(checkedParse(exprString, parser(_)) == Invalid(Problem(errorMessage)))
     }
 }
