@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -20,8 +21,9 @@ final class ForkTest extends FreeSpec {
   private val fork = Fork.of(
     "A" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
     "B" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))
+    .copy(sourcePos = Some(SourcePos(1, 2)))
 
-  "JSON" in {
+  "JSON" - {
     testJson[Instruction.Labeled](
       fork,
       json"""{
@@ -42,7 +44,8 @@ final class ForkTest extends FreeSpec {
               ]
             }
           }
-        ]
+        ],
+        "sourcePos": [ 1, 2 ]
       }""")
   }
 
@@ -69,8 +72,8 @@ final class ForkTest extends FreeSpec {
   "flattenedInstructions" in {
     assert(fork.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
       Position(7) / "fork+A" % 0 -> fork.branches(0).workflow.instructions(0),
-      Position(7) / "fork+A" % 1 -> ImplicitEnd,
+      Position(7) / "fork+A" % 1 -> ImplicitEnd(),
       Position(7) / "fork+B" % 0 -> fork.branches(1).workflow.instructions(0),
-      Position(7) / "fork+B" % 1 -> ImplicitEnd))
+      Position(7) / "fork+B" % 1 -> ImplicitEnd()))
   }
 }

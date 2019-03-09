@@ -124,7 +124,7 @@ final class WorkflowTest extends FreeSpec {
       If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
-      "B" @: ExplicitEnd)
+      "B" @: ExplicitEnd())
     assert(workflow.labelToPosition(Nil, Label("A")) == Valid(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Valid(Position(2)))
     assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
@@ -183,7 +183,7 @@ final class WorkflowTest extends FreeSpec {
       (()  @: Goto(D))          -> false,  // reducible
       (D   @: job)              -> true,
       (()  @: Goto(END))        -> false,  // reducible
-      (END @: ExplicitEnd)      -> true,
+      (END @: ExplicitEnd())      -> true,
       (B   @: job)              -> true,
       (()  @: Goto(C))          -> true)
     val id = WorkflowPath("/WORKFLOW") ~ "VERSION"
@@ -197,7 +197,7 @@ final class WorkflowTest extends FreeSpec {
       (InstructionNr(1), TestWorkflow.instruction(1)),
       (InstructionNr(2), TestWorkflow.instruction(2)),
       (InstructionNr(3), BExecute),
-      (InstructionNr(4), ImplicitEnd)))
+      (InstructionNr(4), ImplicitEnd())))
   }
 
   "flattendWorkflows" in {
@@ -216,18 +216,18 @@ final class WorkflowTest extends FreeSpec {
       (Position(1), TestWorkflow.instruction(1)),
       (Position(1) / Then % 0, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(0)),
       (Position(1) / Then % 1, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(1)),
-      (Position(1) / Then % 2, ImplicitEnd),
+      (Position(1) / Then % 2, ImplicitEnd()),
       (Position(1) / Else % 0, TestWorkflow.instruction(1).asInstanceOf[If].elseWorkflow.get.instructions(0)),
-      (Position(1) / Else % 1, ImplicitEnd),
+      (Position(1) / Else % 1, ImplicitEnd()),
       (Position(2), TestWorkflow.instruction(2)),
       (Position(2) / "fork+🥕" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(0)),
       (Position(2) / "fork+🥕" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(0).workflow.instructions(1)),
-      (Position(2) / "fork+🥕" % 2, ImplicitEnd),
+      (Position(2) / "fork+🥕" % 2, ImplicitEnd()),
       (Position(2) / "fork+🍋" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(0)),
       (Position(2) / "fork+🍋" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(1)),
-      (Position(2) / "fork+🍋" % 2, ImplicitEnd),
+      (Position(2) / "fork+🍋" % 2, ImplicitEnd()),
       (Position(3), BExecute),
-      (Position(4), ImplicitEnd)))
+      (Position(4), ImplicitEnd())))
   }
 
   "completelyChecked in {" - {
@@ -248,26 +248,26 @@ final class WorkflowTest extends FreeSpec {
 
     "retry is not allowed outside a catch block" - {
       "simple case" in {
-        assert(Workflow.of(Retry).completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
+        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
       }
     }
 
     "in try" in {
-      assert(Workflow.of(TryInstruction(Workflow.of(Retry), Workflow.empty)).completelyChecked
+      assert(Workflow.of(TryInstruction(Workflow.of(Retry()), Workflow.empty)).completelyChecked
         == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
     }
 
     "in catch" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry))).completelyChecked.isValid)
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isValid)
     }
 
     "'if' in catch" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry)))))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry())))))
         .completelyChecked.isValid)
     }
 
     "'fork' is a barrier" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry)))))))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry())))))))
         .completelyChecked == Invalid(Problem("Statement 'retry' is possible only in a catch block")))
     }
   }
@@ -294,12 +294,12 @@ final class WorkflowTest extends FreeSpec {
     val w = Workflow(
       WorkflowPath("/TEST") ~ "VERSION",
       Vector(
-        If(BooleanConstant(true),   // :0
-          Workflow.of(Fail),        // :0/then:0
-          Some(Workflow.of(Fail))), // :0/else:0
-        TryInstruction(             // :1
-          Workflow.of(Fail),        // :1/Try:0
-          Workflow.of(Fail))))      // :1/1:0
+        If(BooleanConstant(true),     // :0
+          Workflow.of(Fail()),        // :0/then:0
+          Some(Workflow.of(Fail()))), // :0/else:0
+        TryInstruction(               // :1
+          Workflow.of(Fail()),        // :1/Try:0
+          Workflow.of(Fail()))))      // :1/1:0
     assert(w.anonymousJobKey(w.id /: Position(99)) == JobKey.Anonymous(w.id /: Position(99)))
     assert(w.anonymousJobKey(w.id /: (Position(0) / Then % 0)) == JobKey.Anonymous(w.id /: (Position(0) / Then % 0)))
     assert(w.anonymousJobKey(w.id /: (Position(0) / Else % 0)) == JobKey.Anonymous(w.id /: (Position(0) / Else % 0)))
@@ -318,12 +318,12 @@ final class WorkflowTest extends FreeSpec {
       Position(2) -> TestWorkflow.instruction(2),
       Position(2) / "fork+🥕" % 0 -> AExecute,
       Position(2) / "fork+🥕" % 1 -> Execute.Named(AJobName),
-      Position(2) / "fork+🥕" % 2 -> ImplicitEnd,
+      Position(2) / "fork+🥕" % 2 -> ImplicitEnd(),
       Position(2) / "fork+🍋" % 0 -> BExecute,
       Position(2) / "fork+🍋" % 1 -> Execute.Named(BJobName),
-      Position(2) / "fork+🍋" % 2 -> ImplicitEnd,
+      Position(2) / "fork+🍋" % 2 -> ImplicitEnd(),
       Position(3) -> BExecute,
-      Position(4) -> ImplicitEnd)
+      Position(4) -> ImplicitEnd())
 
     for ((address, instruction) <- addressToInstruction) {
       assert(TestWorkflow isDefinedAt address)

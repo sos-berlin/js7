@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.position._
 import io.circe.syntax.EncoderOps
@@ -14,6 +15,10 @@ import scala.language.implicitConversions
   */
 trait Instruction
 {
+  def sourcePos: Option[SourcePos]
+
+  def withoutSourcePos: Instruction
+
   def adopt(workflow: Workflow): Instruction =
     this
 

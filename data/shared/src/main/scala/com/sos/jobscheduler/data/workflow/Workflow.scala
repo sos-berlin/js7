@@ -137,7 +137,7 @@ extends FileBased
     copy(rawLabeledInstructions =
       rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
         case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(labels, _)) if labels contains jmp.to => Nil
-        case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo), _ @: Goto(to)) if errorTo == to => Nil
+        case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
         case Seq(a, _) => a :: Nil
         case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?
       }.toVector ++
@@ -263,21 +263,28 @@ extends FileBased
         instruction(nr)
 
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
-        instruction(nr).workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+        instruction(nr).workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap()
     }
 
   def instruction(nr: InstructionNr): Instruction =
     if (instructions.indices contains nr.number)
       instructions(nr.number)
     else
-      Gap
+      Gap()
 
   def labeledInstruction(position: Position): Instruction.Labeled =
     nestedWorkflow(position.branchPath).orThrow
       .labeledInstructions.get(position.nr.number)
       .getOrElse(throw new IllegalArgumentException(s"Unknown workflow position $position"))
 
-  def withoutSource = copy(source = None)
+  def withoutSource: Workflow =
+    copy(source = None).withoutSourcePos
+
+  def withoutSourcePos: Workflow = reuseIfEqual(this,
+    copy(rawLabeledInstructions = rawLabeledInstructions
+      .map(labeled => labeled.copy(
+        instruction = labeled.instruction.withoutSourcePos)))
+  )
 
   override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") +
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
@@ -290,15 +297,6 @@ object Workflow extends FileBased.Companion[Workflow] {
   implicit val fileBasedsOverview = WorkflowsOverview
   val typedPathCompanion = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
-
-  /** Test only. */
-  def single(
-    labeledInstruction: Instruction.Labeled,
-    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
-    source: Option[String] = None,
-    outer: Option[Workflow] = None)
-  : Workflow =
-    anonymous(Vector(labeledInstruction), nameToJob, source, outer)
 
   def anonymous(
     labeledInstructions: IndexedSeq[Instruction.Labeled],
@@ -329,7 +327,7 @@ object Workflow extends FileBased.Companion[Workflow] {
   : Checked[Workflow] =
     new Workflow(
       id,
-      labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd),
+      labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       source,
       outer)
@@ -345,7 +343,7 @@ object Workflow extends FileBased.Companion[Workflow] {
   : Checked[Workflow] =
     new Workflow(
       id,
-      labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd),
+      labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       source,
       outer)
@@ -369,7 +367,7 @@ object Workflow extends FileBased.Companion[Workflow] {
     case Workflow(id, instructions, namedJobs, source, _) =>
       id.asJsonObject ++
         JsonObject(
-          "instructions" -> instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
+          "instructions" -> instructions.reverse.dropWhile(_.instruction == ImplicitEnd()).reverse.asJson,
           "jobs" -> emptyToNone(namedJobs).asJson,
           "source" -> source.asJson)
   }

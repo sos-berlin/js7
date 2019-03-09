@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Fork._
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -17,7 +18,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Fork(branches: IndexedSeq[Fork.Branch])
+final case class Fork(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
   locally {
@@ -26,6 +27,10 @@ extends Instruction
   }
 
   for (idAndScript <- branches) Fork.validateBranch(idAndScript).valueOr(throw _)
+
+  def withoutSourcePos = copy(
+    sourcePos = None,
+    branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
 
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))

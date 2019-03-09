@@ -40,11 +40,11 @@ object Workflows {
           case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentRefPath =>
             o
 
-          case o @ _ @: (_: Fail |  _: End | _: IfNonZeroReturnCodeGoto | _: Goto | _: Retry)  =>
+          case o @ _ @: (_: Fail |  _: End | _: IfNonZeroReturnCodeGoto | _: Goto | _: Retry) =>
             o
 
-          case Labeled(labels, _) =>
-            Labeled(labels, Gap)
+          case Labeled(labels, instruction) =>
+            Labeled(labels, Gap(instruction.sourcePos))
         }))
   }
 }

@@ -22,13 +22,13 @@ final class WorkflowsTest extends FreeSpec {
         /*1*/ Fork.of(
           "🥕" -> Workflow.of(AExecute),
           "🍋" -> Workflow.of(AExecute)),
-        /*2*/ Gap,
+        /*2*/ Gap(),
         /*3*/ Fork.of(
-          "🥕" -> Workflow.of(Gap),
-          "🍋" -> Workflow.of(AExecute, Gap)),
+          "🥕" -> Workflow.of(Gap()),
+          "🍋" -> Workflow.of(AExecute, Gap())),
         /*4*/ Fork.of(
           "🥕" -> Workflow.of(AExecute),
-          "🍋" -> Workflow.of(Gap))),
+          "🍋" -> Workflow.of(Gap()))),
       Map(
         AJobName -> AJob,
         BJobName -> BJob), // TODO May be deleted, too
@@ -39,14 +39,14 @@ final class WorkflowsTest extends FreeSpec {
     assert(TestWorkflow.reduceForAgent(BAgentRefPath) == Workflow(
       WorkflowPath("/WORKFLOW") ~ "INITIAL" ,
       Vector(
-        /*0*/ Gap,
-        /*1*/ Gap,
+        /*0*/ Gap(),
+        /*1*/ Gap(),
         /*2*/ BExecute,
         /*3*/ Fork.of(
           "🥕" -> Workflow.of(BExecute),
-          "🍋" -> Workflow.of(Gap, BExecute)),
+          "🍋" -> Workflow.of(Gap(), BExecute)),
         /*4*/ Fork.of(
-          "🥕" -> Workflow.of(Gap),
+          "🥕" -> Workflow.of(Gap()),
           "🍋" -> Workflow.of(BExecute))),
       Map(
         AJobName -> AJob,  // TODO May be deleted, too

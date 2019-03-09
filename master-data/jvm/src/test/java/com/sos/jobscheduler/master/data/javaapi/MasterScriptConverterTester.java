@@ -16,7 +16,10 @@ final class MasterScriptConverterTester
         "}\n";
     private static final String WorkflowJson =
         "{" +
-            "\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/EXECUTABLE\",\"taskLimit\":1}}]," +
+            "\"instructions\":[" +
+                "{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/EXECUTABLE\",\"taskLimit\":1},\"sourcePos\":[20,68]}," +
+                "{\"TYPE\":\"ImplicitEnd\",\"sourcePos\":[70,71]}" +
+            "]," +
             "\"source\":\"define workflow {\\n  execute executable=\\\"/EXECUTABLE\\\", agent=\\\"/AGENT\\\";\\n}\\n\"" +
         "}";
 

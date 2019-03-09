@@ -53,27 +53,27 @@ object WorkflowPrinter {
       }
     }
 
-    for (labelled <- workflow.labeledInstructions if labelled.instruction != ImplicitEnd) {
+    for (labelled <- workflow.labeledInstructions if !labelled.instruction.isInstanceOf[ImplicitEnd]) {
       indent(nesting)
       for (label <- labelled.labels) {
         sb ++= label.string
         sb ++= ": "
       }
       labelled.instruction match {
-        case AwaitOrder(orderId) =>
+        case AwaitOrder(orderId, _) =>
           sb ++= "await orderId="
           appendQuoted(orderId.string)
           sb ++= ";\n"
 
-        case ExplicitEnd =>
+        case ExplicitEnd(_) =>
           sb ++= "end;\n"
 
-        case Execute.Anonymous(workflowExecutable) =>
+        case Execute.Anonymous(workflowExecutable, _) =>
           sb ++= "execute "
           appendWorkflowExecutable(workflowExecutable)
           sb ++= ";\n"
 
-        case Execute.Named(name, arguments) =>
+        case Execute.Named(name, arguments, _) =>
           sb ++= "job "
           sb ++= name.string
           if (arguments.nonEmpty) {
@@ -82,7 +82,7 @@ object WorkflowPrinter {
           }
           sb ++= ";\n"
 
-        case Fork(branches) =>
+        case Fork(branches, _) =>
           def appendBranch(branch: Fork.Branch) = {
             indent(nesting + 1)
             appendQuoted(branch.id.string)
@@ -100,21 +100,21 @@ object WorkflowPrinter {
           appendBranch(branches.last)
           sb ++= ");\n"
 
-        case Gap =>
+        case Gap(_) =>
           sb ++= "/*gap*/\n"
 
-        case Goto(label) =>
+        case Goto(label, _) =>
           sb ++= "goto "++= label.string ++= ";\n"
 
-        case Fail(maybeReturnCode) =>
+        case Fail(maybeReturnCode, _) =>
           sb ++= "fail"
           for (o <- maybeReturnCode) sb ++= " returnCode=" ++= o.number.toString
           sb ++= ";\n"
 
-        case IfNonZeroReturnCodeGoto(label) =>
+        case IfNonZeroReturnCodeGoto(label, _) =>
           sb ++= "ifNonZeroReturnCodeGoto " ++= label.string ++= ";\n"
 
-        case If(predicate, thenWorkflow, elseWorkflowOption) =>
+        case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
           sb ++= "if (" ++= predicate.toString ++= ") {\n"
           appendWorkflowContent(sb, nesting + 1, thenWorkflow)
           for (els <- elseWorkflowOption) {
@@ -125,7 +125,7 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case TryInstruction(tryWorkflow, catchWorkflow, retryDelays) =>
+        case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, _) =>
           sb ++= "try "
           if (retryDelays.nonEmpty) {
             sb ++= "(retryDelays="
@@ -140,11 +140,11 @@ object WorkflowPrinter {
           indent(nesting)
           sb ++= "}\n"
 
-        case Retry =>
+        case Retry(_) =>
           sb ++= "retry"
           sb ++= "\n"
 
-        case Offer(orderId, timeout) =>
+        case Offer(orderId, timeout, _) =>
           sb ++= s"offer orderId="
           appendQuoted(orderId.string)
           sb ++= ", timeout="

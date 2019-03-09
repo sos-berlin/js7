@@ -124,9 +124,9 @@ object FileBasedsTest {
   private[tests] val V1 = VersionId("1")
 
   private[tests] val AWorkflow = Workflow.of(WorkflowPath("/A"))
-  private[tests] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd))
+  private[tests] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd()))
   private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "define workflow { /*EMPTY*/ }").orThrow
-  private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd))
+  private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd()))
   private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))
   private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D"), "define workflow { CHANGED-D-END: end; }").orThrow
   private[tests] val AAgent = AgentRef(AgentRefPath("/A"), "http://A")

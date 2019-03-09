@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.syntax.EncoderOps
@@ -17,9 +18,15 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 final case class TryInstruction(
   tryWorkflow: Workflow,
   catchWorkflow: Workflow,
-  retryDelays: Seq[FiniteDuration] = Nil)
+  retryDelays: Seq[FiniteDuration] = Nil,
+  sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
+  def withoutSourcePos = copy(
+    sourcePos = None,
+    tryWorkflow = tryWorkflow.withoutSourcePos,
+    catchWorkflow = catchWorkflow.withoutSourcePos)
+
   override def adopt(outer: Workflow) = copy(
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
@@ -62,12 +69,14 @@ object TryInstruction
     o => JsonObject(
       "try" -> o.tryWorkflow.asJson,
       "catch" -> o.catchWorkflow.asJson,
-      "retryDelays" -> (o.retryDelays.nonEmpty ? o.retryDelays).asJson)
+      "retryDelays" -> (o.retryDelays.nonEmpty ? o.retryDelays).asJson,
+      "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[TryInstruction] =
     c => for {
       try_ <- c.get[Workflow]("try")
       catch_ <- c.get[Workflow]("catch")
       delays <- c.get[Option[Seq[FiniteDuration]]]("retryDelays") map (_ getOrElse Nil)
-    } yield TryInstruction(try_, catch_, delays)
+      sourcePos <- c.get[Option[SourcePos]]("sourcePos")
+    } yield TryInstruction(try_, catch_, delays, sourcePos)
 }

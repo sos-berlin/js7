@@ -1,13 +1,17 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Retry extends Instruction
-
-case object Retry extends Retry
+@JsonCodec
+final case class Retry(sourcePos: Option[SourcePos] = None)
+extends Instruction
 {
+  def withoutSourcePos = copy(sourcePos = None)
+
   override def toString = "retry"
 }

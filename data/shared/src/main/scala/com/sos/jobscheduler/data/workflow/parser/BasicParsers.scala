@@ -75,7 +75,7 @@ private[parser] object BasicParsers
     keyValue(name, parser, identity[A])
 
   def keyValue[A, B](name: String, parser: => P[A], toValue: A => B)(implicit ctx: P[_]): P[(String, B)] =
-    specificKeyValue(name, parser).map(o => name -> toValue(o))
+    w ~ specificKeyValue(name, parser).map(o => name -> toValue(o))
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
     def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =
@@ -138,7 +138,7 @@ private[parser] object BasicParsers
     nonEmptyCommaSequence(parser).? map (_ getOrElse Nil))
 
   def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
-    parser ~ (comma ~/ parser).rep ~ w map {
+    parser ~ (comma ~/ parser).rep map {
       case (head, tail) => head +: tail
     })
 

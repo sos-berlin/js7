@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.{Instruction, Label}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -15,10 +16,11 @@ final class GotoTest extends FreeSpec {
 
   "JSON" in {
     testJson[Instruction.Labeled](
-      Goto(Label("A")),
+      Goto(Label("A"), Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "Goto",
-        "to": "A"
+        "to": "A",
+        "sourcePos": [ 1, 2 ]
       }""")
   }
 }

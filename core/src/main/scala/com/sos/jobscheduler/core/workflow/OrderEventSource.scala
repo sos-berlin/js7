@@ -143,10 +143,10 @@ final class OrderEventSource(
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
     idToWorkflow(order.workflowId) flatMap { workflow =>
       workflow.instruction(order.position) match {
-        case Goto(label) =>
+        case Goto(label, _) =>
           workflow.labelToPosition(order.position.branchPath, label) map Some.apply
 
-        case IfNonZeroReturnCodeGoto(label) =>
+        case IfNonZeroReturnCodeGoto(label, _) =>
           if (order.outcome.isFailed)
             workflow.labelToPosition(order.position.branchPath, label) map Some.apply
           else

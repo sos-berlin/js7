@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -15,7 +16,7 @@ import org.scalatest.FreeSpec
 final class ExecuteTest extends FreeSpec
 {
   "JSON" - {
-    "Named" in {
+    "Named with defaults" in {
       CirceJsonTester.testJson[Instruction.Labeled](
         Execute.Named(WorkflowJob.Name("EXECUTABLE")),
         json"""{
@@ -24,19 +25,20 @@ final class ExecuteTest extends FreeSpec
         }""")
     }
 
-    "Named with defaultArguments" in {
+    "Named complete" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" -> "VALUE")),
+        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" -> "VALUE"), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Named",
           "name": "EXECUTABLE",
           "defaultArguments": {
             "ARG": "VALUE"
-          }
+          },
+          "sourcePos": [ 1, 2 ]
         }""")
     }
 
-    "Anonymous" in {
+    "Anonymous with defaults" in {
       CirceJsonTester.testJson[Instruction.Labeled](
         Execute(
           WorkflowJob(
@@ -52,13 +54,14 @@ final class ExecuteTest extends FreeSpec
         }""")
     }
 
-    "Anonymous with defaultArguments" in {
+    "Anonymous complete" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute(
+        Execute.Anonymous(
           WorkflowJob(
             AgentRefPath("/AGENT"),
             ExecutablePath("/EXECUTABLE"),
-            Map("ARG" -> "VALUE"))),
+            Map("ARG" -> "VALUE")),
+          Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
@@ -68,7 +71,8 @@ final class ExecuteTest extends FreeSpec
             "defaultArguments": {
               "ARG": "VALUE"
             }
-          }
+          },
+          "sourcePos": [ 1, 2 ]
         }""")
     }
   }

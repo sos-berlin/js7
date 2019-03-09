@@ -5,10 +5,11 @@ import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -24,7 +25,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"))))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script")),
+            sourcePos(20, 67)),
+          ImplicitEnd(sourcePos(69, 70)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT";
         |}
@@ -36,7 +39,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"))))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE")),
+            sourcePos(20, 95)),
+          ImplicitEnd(sourcePos(97, 98)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"};
         |}
@@ -48,7 +53,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1))))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
+            sourcePos(20, 122)),
+          ImplicitEnd(sourcePos(124, 125)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
         |}
@@ -60,7 +67,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.NoFailure)))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.NoFailure),
+            sourcePos(20, 118)),
+          ImplicitEnd(sourcePos(120, 121)))),
       """define workflow {
         |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
         |}
@@ -72,8 +81,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob.Name("A")),
-          Execute(WorkflowJob.Name("B"))),
+          Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(20, 25)),
+          Execute.Named(WorkflowJob.Name("B"), sourcePos = sourcePos(29, 34)),
+          ImplicitEnd(sourcePos(236, 237))),
         Map(
           WorkflowJob.Name("A") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/a-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
           WorkflowJob.Name("B") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/b-script")))),
@@ -96,7 +106,9 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
+          "A" @: Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")),
+            sourcePos(23, 71)),
+          ImplicitEnd(sourcePos(73, 74)))),
       """define workflow {
         |  A: execute executable="/EXECUTABLE", agent="/AGENT";
         |}
@@ -112,7 +124,12 @@ final class WorkflowPrinterTest extends FreeSpec {
             Or(
               In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
               Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
-            Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
+            Workflow.of(
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")),
+                sourcePos(73, 121)),
+              ImplicitEnd(sourcePos(125, 126))),
+            sourcePos = sourcePos(20, 66)),
+          ImplicitEnd(sourcePos(127, 128)))),
       """define workflow {
         |  if ((returnCode in [1, 2]) || $KEY == 'VALUE') {
         |    execute executable="/EXECUTABLE", agent="/AGENT";
@@ -128,10 +145,21 @@ final class WorkflowPrinterTest extends FreeSpec {
         Vector(
           If(Equal(OrderReturnCode, NumericConstant(-1)),
             Workflow.of(
-              Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A-THEN"))),
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A-THEN")),
+                sourcePos(48, 92)),
               If(BooleanConstant(true),
-                Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-THEN")))),
-                Some(Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-ELSE")))))))))),
+                Workflow.of(
+                  Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-THEN")),
+                    sourcePos(116, 160)),
+                  ImplicitEnd(sourcePos(166, 167))),
+                Some(Workflow.of(
+                  Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B-ELSE")),
+                    sourcePos(181, 225)),
+                  ImplicitEnd(sourcePos(231, 232)))),
+                sourcePos(98, 107)),
+              ImplicitEnd(sourcePos(235, 236))),
+            sourcePos = sourcePos(20, 41)),
+          ImplicitEnd(sourcePos(237, 238)))),
       """define workflow {
         |  if (returnCode == -1) {
         |    execute executable="/A-THEN", agent="/AGENT";
@@ -148,9 +176,18 @@ final class WorkflowPrinterTest extends FreeSpec {
   "fork" in {
     check(
       Workflow.of(
-        Fork(Vector(
-          Fork.Branch("🥕", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))))),
-          Fork.Branch("🍋", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))))),
+        Fork(
+          Vector(
+            Fork.Branch("🥕", Workflow.of(
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")),
+                sourcePos(43+1, 82+1)),
+              ImplicitEnd(sourcePos(88+1, 89+1)))),
+            Fork.Branch("🍋", Workflow.of(
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")),
+                sourcePos(107+2, 146+2)),
+              ImplicitEnd(sourcePos(152+2, 153+2))))),
+          sourcePos(20, 24)),
+        ImplicitEnd(sourcePos(156+2, 157+2))),
       """define workflow {
         |  fork (
         |    "🥕" {
@@ -165,7 +202,9 @@ final class WorkflowPrinterTest extends FreeSpec {
 
   "offer" in {
     check(
-      Workflow(WorkflowPath.NoId, Vector(Offer(OrderId("OFFERED"), 60.seconds))),
+      Workflow(WorkflowPath.NoId, Vector(
+        Offer(OrderId("OFFERED"), 60.seconds, sourcePos(20, 55)),
+        ImplicitEnd(sourcePos(57, 58)))),
       """define workflow {
         |  offer orderId="OFFERED", timeout=60;
         |}
@@ -174,7 +213,9 @@ final class WorkflowPrinterTest extends FreeSpec {
 
   "await" in {
     check(
-      Workflow(WorkflowPath.NoId, Vector(AwaitOrder(OrderId("OFFERED")))),
+      Workflow(WorkflowPath.NoId, Vector(
+        AwaitOrder(OrderId("OFFERED"), sourcePos(20, 43)),
+        ImplicitEnd(sourcePos(45, 46)))),
       """define workflow {
         |  await orderId="OFFERED";
         |}
@@ -186,14 +227,14 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))),
-          IfNonZeroReturnCodeGoto(Label("FAILURE")),
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B"))),
-          Goto(Label("END")),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")), sourcePos(20, 59)),
+          IfNonZeroReturnCodeGoto(Label("FAILURE"), sourcePos(63, 94)),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")), sourcePos(98, 137)),
+          Goto(Label("END"), sourcePos(141, 149)),
           "FAILURE" @:
-          Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/OnFailure"))),
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/OnFailure")), sourcePos(162, 209)),
           "END" @:
-          ExplicitEnd)),
+          ExplicitEnd(sourcePos(218, 221)))),
       """define workflow {
         |  execute executable="/A", agent="/AGENT";
         |  ifNonZeroReturnCodeGoto FAILURE;
@@ -204,6 +245,8 @@ final class WorkflowPrinterTest extends FreeSpec {
         |}
         |""".stripMargin)
   }
+
+  private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
 
   private def check(workflow: Workflow, source: String): Unit = {
     assert(workflow.show == source)

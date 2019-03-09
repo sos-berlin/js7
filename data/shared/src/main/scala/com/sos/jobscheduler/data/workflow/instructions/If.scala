@@ -4,6 +4,7 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.BooleanExpression
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -19,9 +20,15 @@ final case class If(
   @JsonKey("then")
   thenWorkflow: Workflow,
   @JsonKey("else")
-  elseWorkflow: Option[Workflow] = None)
+  elseWorkflow: Option[Workflow] = None,
+  sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
+  def withoutSourcePos = copy(
+    sourcePos = None,
+    thenWorkflow = thenWorkflow.withoutSourcePos,
+    elseWorkflow = elseWorkflow.map(_.withoutSourcePos))
+
   override def adopt(outer: Workflow) = copy(
     thenWorkflow = thenWorkflow.copy(outer = Some(outer)),
     elseWorkflow = elseWorkflow.map(_.copy(outer = Some(outer))))

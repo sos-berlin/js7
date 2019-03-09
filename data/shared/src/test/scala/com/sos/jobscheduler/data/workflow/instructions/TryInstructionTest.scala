@@ -4,6 +4,7 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Try_}
@@ -46,7 +47,8 @@ final class TryInstructionTest extends FreeSpec
         TryInstruction(
           tryWorkflow = Workflow.of(Fail(None)),
           catchWorkflow = Workflow.empty,
-          retryDelays = 100.milliseconds :: 1.minute :: Nil),
+          retryDelays = 100.milliseconds :: 1.minute :: Nil,
+          Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Try",
           "try": {
@@ -57,7 +59,8 @@ final class TryInstructionTest extends FreeSpec
           "catch": {
             "instructions": []
           },
-         "retryDelays": [ 0.1, 60 ]
+         "retryDelays": [ 0.1, 60 ],
+         "sourcePos": [ 1, 2 ]
         }""")
     }
   }
@@ -77,9 +80,9 @@ final class TryInstructionTest extends FreeSpec
   "flattenedInstructions" in {
     assert(try_.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
       Position(7) / Try_ % 0 -> try_.tryWorkflow.instructions(0),
-      Position(7) / Try_ % 1 -> ImplicitEnd,
+      Position(7) / Try_ % 1 -> ImplicitEnd(),
       Position(7) / Catch_ % 0 -> try_.catchWorkflow.instructions(0),
-      Position(7) / Catch_ % 1 -> ImplicitEnd))
+      Position(7) / Catch_ % 1 -> ImplicitEnd()))
   }
 
   "toCatchBranchId" in {
