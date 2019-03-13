@@ -34,7 +34,12 @@ final case class Workflow private(
 extends FileBased
 {
   override def equals(o: Any) = o match {
-    case o: Workflow => id == o.id && rawLabeledInstructions == o.rawLabeledInstructions && nameToJob == o.nameToJob && source == o.source  // Ignore outer ???
+    case o: Workflow =>
+      id == o.id &&
+      rawLabeledInstructions == o.rawLabeledInstructions &&
+      nameToJob == o.nameToJob &&
+      source == o.source
+      // Ignore `outer`
     case _ => false
   }
 
@@ -81,7 +86,7 @@ extends FileBased
       case instr: TryInstruction =>
         Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case _: Retry =>
-        !inCatch thenList Invalid(Problem("Statement 'retry' is possible only in a catch block"))
+        !inCatch thenList Invalid(Problem("Statement 'retry' is allowed only in a catch block"))
       case instr: If =>
         instr.workflows flatMap (_.checkRetry(inCatch))
       case instr =>

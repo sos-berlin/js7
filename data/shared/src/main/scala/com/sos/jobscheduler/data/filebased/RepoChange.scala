@@ -31,12 +31,12 @@ object RepoChange
 
   final case class Added(fileBased: FileBased) extends AddedOrChanged {
     require(!fileBased.id.path.isAnonymous, "Added event requires a path")
-    require(!fileBased.id.versionId.isAnonymous, s"VersionId must not be anonymous in $toString")
+    //require(!fileBased.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 
   final case class Updated(fileBased: FileBased) extends AddedOrChanged {
     require(!fileBased.id.path.isAnonymous, "FileChangedChanged event requires a path")
-    require(!fileBased.id.versionId.isAnonymous, s"VersionId must not be anonymous in $toString")
+    //require(!fileBased.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 
   final case class Deleted(path: TypedPath) extends Change {

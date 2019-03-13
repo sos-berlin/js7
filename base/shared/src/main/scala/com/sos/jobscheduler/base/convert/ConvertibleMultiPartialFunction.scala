@@ -31,7 +31,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
       case _ => throwNotUnique(key)
     }
 
-  private def throwNotUnique(key: K) = throw new IllegalArgumentException(s"For ${renderKey(key)}, only one value is possible")
+  private def throwNotUnique(key: K) = throw new IllegalArgumentException(s"For ${renderKey(key)}, only one value is allowed")
 
   def seqAs[W](key: K)(implicit convert: As[V, W]): immutable.Seq[W] =
     lift(key) match {
