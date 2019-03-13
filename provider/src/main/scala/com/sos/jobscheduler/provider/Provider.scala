@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.provider
 
-import cats.data.Validated.Valid
+import cats.data.Validated.{Invalid, Valid}
 import cats.instances.vector._
 import cats.syntax.apply._
+import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.convert.As._
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
@@ -37,7 +38,6 @@ import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
-import scala.compat.Platform.ConcurrentModificationException
 import scala.concurrent.duration._
 
 // Test in com.sos.jobscheduler.tests.provider.ProviderTest
@@ -66,12 +66,16 @@ extends HasCloser with Observing
       .guarantee(Task(masterApi.close()))
       .memoize
 
+  protected val relogin: Task[Unit] =
+    masterApi.logout().onErrorHandle(_ => ()) >>
+      masterApi.login(userAndPassword)
+
   // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
   private def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       currentEntries = readDirectory
-      checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries map (_.file))
+      checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries.map(_.file))
       response <- checkedCommand
         .traverse(o => AkkaHttpClient.liftProblem(
           masterApi.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
@@ -85,48 +89,57 @@ extends HasCloser with Observing
 
   /** Compares the directory with the Master's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  def initiallyUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
+  def initiallyUpdateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
+    val localEntries = readDirectory
     for {
       _ <- loginUntilReachable
-      currentEntries = readDirectory
-      master <- masterFileBased
-      checked <- typedSourceReader.readFileBaseds(currentEntries map (_.file))
-        .map { fileBased =>
-          val v = versionId getOrElse newVersionId()
-          val diff = FileBaseds.Diff.fromRepoChanges(
-            diffFileBaseds(fileBased map (_ withVersion v), master, ignoreVersion = true))
-          MasterCommand.UpdateRepo(
-            v,
-            (diff.updated ++ diff.added) map fileBasedSigner.sign,
-            diff.deleted)
-        }
+      checkedDiff <- masterDiff(localEntries)
+      checkedCompleted <- checkedDiff
         .traverse(execute(versionId, _))
         .map(_.flatten)
     } yield {
-      if (checked.isValid) {
-        lastEntries := currentEntries
+      for (_ <- checkedCompleted) {
+        lastEntries := localEntries
       }
-      checked
+      checkedCompleted
     }
+  }
+
+  def testMasterDiff = masterDiff(readDirectory)
+
+  /** Compares the directory with the Master's repo and sends the difference.
+    * Parses each file, so it may take some time for a big configuration directory. */
+  private def masterDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
+    for {
+      _ <- loginUntilReachable
+      pair <- Task.parZip2(readLocalFileBased(localEntries.map(_.file)), fetchMasterFileBasedSeq)
+      (checkedLocalFileBasedSeq, masterFileBasedSeq) = pair
+    } yield
+      checkedLocalFileBasedSeq.map(o => fileBasedDiff(o, masterFileBasedSeq))
+
+  private def readLocalFileBased(files: Seq[Path]) =
+    Task { typedSourceReader.readFileBaseds(files) }
+
+  private def fileBasedDiff(aSeq: Seq[FileBased], bSeq: Seq[FileBased]): FileBaseds.Diff[TypedPath, FileBased] =
+    FileBaseds.Diff.fromRepoChanges(diffFileBaseds(aSeq, bSeq, ignoreVersion = true))
 
   def updateMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       last = lastEntries.get
       currentEntries = readDirectory
-      response <- toUpdateRepoCommand(versionId getOrElse newVersionId(), PathSeqDiffer.diff(currentEntries, last))
-        .traverse(execute(versionId, _))
+      checkedCompleted <- toFileBasedDiff(PathSeqDiffer.diff(currentEntries, last))
+        .traverse(
+          execute(versionId, _))
         .map(_.flatten)
-    } yield {
-      if (response.isValid) {
+    } yield
+      checkedCompleted flatMap (completed =>
         if (!lastEntries.compareAndSet(last, currentEntries)) {
-          val t = new ConcurrentModificationException("Provider has been concurrently used")
-          logger.debug(t.toString)
-          throw t
-        }
-      }
-      response
-    }
+          val problem = Problem.pure("Provider has been concurrently used")
+          logger.debug(problem.toString)
+          Invalid(problem)
+        } else
+          Valid(completed))
 
   private lazy val loginUntilReachable: Task[Unit] =
     Task {
@@ -136,29 +149,45 @@ extends HasCloser with Observing
         masterApi.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ => ())
     }.flatten
 
-
-  private def execute(versionId: Option[VersionId], updateRepo: UpdateRepo): Task[Checked[Completed.type]] =
-    if (updateRepo.isEmpty && versionId.isEmpty)
+  private def execute(versionId: Option[VersionId], diff: FileBaseds.Diff[TypedPath, FileBased]): Task[Checked[Completed.type]] =
+    if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
-    else
+    else {
+      val v = versionId getOrElse newVersionId()
+      logUpdate(v, diff)
       AkkaHttpClient.liftProblem(
-        masterApi.executeCommand(updateRepo) map ((_: MasterCommand.Response) => Completed))
+        masterApi.executeCommand(toUpdateRepo(v, diff)) map ((_: MasterCommand.Response) => Completed))
+    }
 
-  private def masterFileBased: Task[Seq[FileBased]] =
+  private def logUpdate(versionId: VersionId, diff: FileBaseds.Diff[TypedPath, FileBased]): Unit = {
+    logger.info(s"Version ${versionId.string}")
+    for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
+    for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
+    for (o <- diff.updated.map(_.path).sorted) logger.info(s"Update ${o.pretty}")
+  }
+
+  private def toUpdateRepo(versionId: VersionId, diff: FileBaseds.Diff[TypedPath, FileBased]) =
+    UpdateRepo(
+      versionId,
+      change = diff.added ++ diff.updated map (_ withVersion versionId) map fileBasedSigner.sign,
+      delete = diff.deleted)
+
+  private def fetchMasterFileBasedSeq: Task[Seq[FileBased]] =
     for {
       stampedAgents <- masterApi.agents
       stampedWorkflows <- masterApi.workflows
     } yield stampedAgents.value ++ stampedWorkflows.value
 
-  private def readDirectory =
+  private def readDirectory: Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toUpdateRepoCommand(versionId: VersionId, diff: PathSeqDiff): Checked[UpdateRepo] = {
-    val checkedChanged = typedSourceReader.readFileBaseds(diff.added ++ diff.changed)
+  private def toFileBasedDiff(diff: PathSeqDiff): Checked[FileBaseds.Diff[TypedPath, FileBased]] = {
+    val checkedAdded = typedSourceReader.readFileBaseds(diff.added)
+    val checkedChanged = typedSourceReader.readFileBaseds(diff.changed)
     val checkedDeleted: Checked[Vector[TypedPath]] =
       diff.deleted.toVector
         .traverse(path => TypedPaths.fileToTypedPath(typedPathCompanions, conf.liveDirectory, path))
-    (checkedChanged, checkedDeleted) mapN ((chg, del) => UpdateRepo(versionId, chg map (o => fileBasedSigner.sign(o withVersion versionId)), del))
+    (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => FileBaseds.Diff(add, chg, del))
   }
 
   private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] =

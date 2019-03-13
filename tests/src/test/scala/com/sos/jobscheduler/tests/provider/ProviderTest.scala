@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
-import com.sos.jobscheduler.core.filebased.{FileBasedReader, Repo, TypedPaths}
+import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, Repo, TypedPaths}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -25,6 +25,7 @@ import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedC
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.provider.Provider
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
@@ -50,9 +51,6 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
   override protected val signer = SillySigner.checked("SILLY".getBytes(UTF_8), privateKeyPassword).orThrow
-  //Regenerated PGP signatures are not comparable:
-  //private lazy val privateKeyPassword = SecretString(Random.nextString(10))
-  //val signer = PgpSigner(generateSecretKey(SignerId("TEST"), privateKeyPassword, keySize = 1024/*fast for test*/), privateKeyPassword).orThrow
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"
@@ -116,17 +114,24 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       assert(repo.idToSignedFileBased.isEmpty)
     }
 
-    "Write AgentRef and two workflows" in {
+    "Start with one AgentRef and two workflows" in {
       live.resolve(agentRef.path.toFile(SourceType.Json)) := agentRef
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
       v1Timestamp
-      provider.updateMasterConfiguration(V1.some).await(99.seconds).orThrow
+
+      // `initiallyUpdateMasterConfiguration` will send this diff to the Master
+      assert(provider.testMasterDiff.await(99.seconds).orThrow == FileBaseds.Diff(
+        added = agentRef :: TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
+
+      provider.initiallyUpdateMasterConfiguration(V1.some).await(99.seconds).orThrow
       assert(master.fileBasedApi.stampedRepo.await(99.seconds).value.idToSignedFileBased == Map(
         (agentRef.path ~ V1) -> Some(toSigned(agentRef withVersion V1)),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
         (AWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))),
         (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1)))))
+
+      assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
     }
 
     "Duplicate VersionId" in {
@@ -174,6 +179,21 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
         (BWorkflowPath ~ V1) -> Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))),
         (BWorkflowPath ~ V3) -> None,
         (CWorkflowPath ~ V2) -> Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2)))))
+    }
+
+    "Workflow notation (including a try-instruction)" in {
+      val notation =
+        """define workflow {
+             try fail;
+             catch {}
+           }"""
+      val workflowPath = WorkflowPath("/NOTATION")
+      val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
+      live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
+
+      assert(provider.testMasterDiff.await(99.seconds).orThrow == FileBaseds.Diff(added = workflow :: Nil))
+      provider.updateMasterConfiguration(V4.some).await(99.seconds).orThrow
+      assert(provider.testMasterDiff.await(99.seconds).orThrow.isEmpty)
     }
 
     "closeTask" in {
@@ -289,6 +309,7 @@ object ProviderTest
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")
+  private val V4 = VersionId("4")
 
   private val TestWorkflowJson = json"""
     {

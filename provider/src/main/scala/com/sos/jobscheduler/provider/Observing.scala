@@ -57,10 +57,9 @@ private[provider] trait Observing extends OrderProvider {
     body
       .map(_.toTry).dematerialize  // Collapse Invalid and Failed
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.error(s"Transfer failed: ${throwable.toStringWithCauses}")
-        logger.debug(s"Transfer failed: ${throwable.toStringWithCauses}", throwable)
-        masterApi.logout().onErrorHandle(_ => ()) >>
-          retry(()).delayExecution(errorWaitDuration)
+        logger.error(throwable.toStringWithCauses)
+        logger.debug(throwable.toStringWithCauses, throwable)
+        relogin >> retry(()).delayExecution(errorWaitDuration)
       }
 }
 

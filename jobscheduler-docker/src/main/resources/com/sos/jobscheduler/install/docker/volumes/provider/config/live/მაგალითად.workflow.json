@@ -1,0 +1,23 @@
+{
+  "instructions": [
+    {
+      "TYPE": "Execute.Named",
+      "name": "JOB-1"
+    }, {
+      "TYPE": "Execute.Named",
+      "name": "JOB-2"
+    }
+  ],
+  "jobs": {
+    "JOB-1": {
+      "agentRefPath": "/agent-1",
+      "executablePath": "/test",
+      "taskLimit": 3
+    },
+    "JOB-2": {
+      "agentRefPath": "/agent-2",
+      "executablePath": "/test",
+      "taskLimit": 3
+    }
+  }
+}
