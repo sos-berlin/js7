@@ -1,6 +1,17 @@
 # Änderungen
 
-## 2019-03-08
+## 2019-03-14
+
+### Geändertes JSON für Aufruf eines Jobs
+
+Das Feld ```name``` heißt jetzt ```jobName```:
+
+```
+{
+  "TYPE": "Execute.Named",
+  "jobName": "JOB"
+}
+```
 
 ### Klasse `Agent` heißt jetzt `AgentRef` 
 

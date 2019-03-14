@@ -85,7 +85,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
           instruction {
             TYPE
             ... on Execute_Named {
-              name
+              jobName
             }
             ... on Execute_Anonymous {
               job {
@@ -143,7 +143,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "position": [ 0 ],
                 "instruction": {
                   "TYPE": "Execute.Named",
-                  "name": "JOB"
+                  "jobName": "JOB"
                 }
               },
               "outcome": {
@@ -165,7 +165,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "position": [ 0 ],
                 "instruction": {
                   "TYPE": "Execute.Named",
-                  "name": "JOB"
+                  "jobName": "JOB"
                 }
               },
               "attachedState": {
@@ -191,7 +191,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "position": [ 0 ],
                 "instruction": {
                   "TYPE": "Execute.Named",
-                  "name": "JOB"
+                  "jobName": "JOB"
                 }
               },
               "attachedState": {

@@ -80,7 +80,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
                 "path": "/WORKFLOW",
                 "versionId": "VERSION"
               },
-              "name": "JOB"
+              "jobName": "JOB"
             }
           }
         ]""")
@@ -100,7 +100,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
               "path": "/WORKFLOW",
               "versionId": "VERSION"
             },
-            "name": "JOB"
+            "jobName": "JOB"
           }
         }""")
     }

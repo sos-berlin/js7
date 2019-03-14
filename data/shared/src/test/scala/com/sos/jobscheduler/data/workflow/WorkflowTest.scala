@@ -31,7 +31,7 @@ final class WorkflowTest extends FreeSpec {
           "instructions": [
             {
               "TYPE": "Execute.Named",
-              "name": "JOB"
+              "jobName": "JOB"
             }
           ],
           "jobs": {
@@ -56,8 +56,8 @@ final class WorkflowTest extends FreeSpec {
               "predicate": "returnCode == 1",
               "then": {
                 "instructions": [
-                  { "TYPE": "Execute.Named", "name": "A" },
-                  { "TYPE": "Execute.Named", "name": "B" }
+                  { "TYPE": "Execute.Named", "jobName": "A" },
+                  { "TYPE": "Execute.Named", "jobName": "B" }
                 ],
                 "jobs": {
                   "B": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3 , "defaultArguments": { "JOB_B1": "B1-VALUE" }}}
@@ -75,7 +75,7 @@ final class WorkflowTest extends FreeSpec {
                   "workflow": {
                     "instructions": [
                       { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/A.cmd", "taskLimit": 3, "defaultArguments": { "JOB_A": "A-VALUE" }}},
-                      { "TYPE": "Execute.Named", "name": "A" }
+                      { "TYPE": "Execute.Named", "jobName": "A" }
                     ]
                   }
                 }, {
@@ -83,7 +83,7 @@ final class WorkflowTest extends FreeSpec {
                   "workflow": {
                     "instructions": [
                       { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B.cmd", "taskLimit": 3, "defaultArguments": { "JOB_B": "B-VALUE" }}},
-                      { "TYPE": "Execute.Named", "name": "B" }
+                      { "TYPE": "Execute.Named", "jobName": "B" }
                     ]
                   }
                 }

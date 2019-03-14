@@ -18,19 +18,19 @@ final class ExecuteTest extends FreeSpec
   "JSON" - {
     "Named with defaults" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("EXECUTABLE")),
+        Execute.Named(WorkflowJob.Name("JOB")),
         json"""{
           "TYPE": "Execute.Named",
-          "name": "EXECUTABLE"
+          "jobName": "JOB"
         }""")
     }
 
     "Named complete" in {
       CirceJsonTester.testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("EXECUTABLE"), Map("ARG" -> "VALUE"), Some(SourcePos(1, 2))),
+        Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> "VALUE"), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Named",
-          "name": "EXECUTABLE",
+          "jobName": "JOB",
           "defaultArguments": {
             "ARG": "VALUE"
           },

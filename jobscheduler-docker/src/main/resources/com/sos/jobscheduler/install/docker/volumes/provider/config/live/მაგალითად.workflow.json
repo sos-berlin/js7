@@ -2,10 +2,10 @@
   "instructions": [
     {
       "TYPE": "Execute.Named",
-      "name": "JOB-1"
+      "jobName": "JOB-1"
     }, {
       "TYPE": "Execute.Named",
-      "name": "JOB-2"
+      "jobName": "JOB-2"
     }
   ],
   "jobs": {

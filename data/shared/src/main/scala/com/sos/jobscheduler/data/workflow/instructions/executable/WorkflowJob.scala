@@ -76,7 +76,7 @@ object WorkflowJob
   implicit val jsonEncoder: ObjectEncoder[WorkflowJob] = workflowJob =>
     JsonObject.fromIterable(
       //(workflowJob.jobKey match {
-      //  case JobKey.Named(_, name) => ("name" -> name.asJson) :: Nil
+      //  case JobKey.Named(_, jobName) => ("jobName" -> jobName.asJson) :: Nil
       //  case _ => Nil
       //}) :::
       ("agentRefPath" -> workflowJob.agentRefPath.asJson) ::
@@ -87,7 +87,7 @@ object WorkflowJob
       Nil)
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
-      //name <- cursor.get[Option[Name]]("name") map (_ getOrElse Name.Anonymous)
+      //jobName <- cursor.get[Option[Name]]("jobName") map (_ getOrElse Name.Anonymous)
       executablePath <- cursor.get[ExecutablePath]("executablePath")
       agentRefPath <- cursor.get[AgentRefPath]("agentRefPath")
       arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)

@@ -31,12 +31,12 @@ object Execute
   object Named {
     implicit val jsonEncoder: ObjectEncoder[Named] = named =>
       JsonObject.fromIterable(
-        ("name" -> named.name.asJson) ::
+        ("jobName" -> named.name.asJson) ::
         named.defaultArguments.nonEmpty.thenList("defaultArguments" -> named.defaultArguments.asJson) :::
         named.sourcePos.toList.map(o => "sourcePos" -> o.asJson))
     implicit val jsonDecoder: Decoder[Named] = cursor =>
       for {
-        name <- cursor.get[WorkflowJob.Name]("name")
+        name <- cursor.get[WorkflowJob.Name]("jobName")
         arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       } yield Named(name, arguments, sourcePos)

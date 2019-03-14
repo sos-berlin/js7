@@ -188,7 +188,7 @@ private[graphql] object MasterGraphqlSchema
       "Workflow instruction Execute (anonymous)",
       interfaces[QueryContext, Execute.Named](InstructionType),
       fields[QueryContext, Execute.Named](
-        Field("name", WorkflowJobNameType, resolve = _.value.name))),
+        Field("jobName", WorkflowJobNameType, resolve = _.value.name))),
     ObjectType[QueryContext, Offer](
       "Offer",
       "Workflow instruction Offer",

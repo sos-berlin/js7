@@ -12,6 +12,11 @@ import io.circe.{Decoder, JsonObject, ObjectEncoder}
   * @author Joacim Zschimmer
   */
 sealed trait JobKey
+{
+  def keyName: String
+
+  override def toString = s"JobKey($keyName)"
+}
 
 object JobKey
 {
@@ -26,11 +31,11 @@ object JobKey
   def forTest(name: String) = Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
   final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
-    override def toString = s"JobKey($workflowPosition)"
+    def keyName = workflowPosition.toString
   }
 
-  final case class Named(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name) extends JobKey {
-    override def toString = s"JobKey($workflowBranchPath:${name.string})"
+  final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name) extends JobKey {
+    def keyName = s"$workflowBranchPath:${jobName.string}"
   }
 
   implicit val jsonEncoder: ObjectEncoder[JobKey] = {
@@ -43,7 +48,7 @@ object JobKey
       JsonObject(
         "workflowId" -> workflowId.asJson,
         "branchPath" -> (branchPath.nonEmpty ? branchPath).asJson,
-        "name" -> name.asJson)
+        "jobName" -> name.asJson)
   }
 
   implicit val jsonDecoder: Decoder[JobKey] =
@@ -53,7 +58,7 @@ object JobKey
         .orElse(
           for {
             branchPath <- c.get[Option[BranchPath]]("branchPath") map (_ getOrElse Nil)
-            name <- c.get[WorkflowJob.Name]("name")
+            name <- c.get[WorkflowJob.Name]("jobName")
           } yield Named(WorkflowBranchPath(workflowId, branchPath), name))
     } yield jobKey
 }
