@@ -99,6 +99,8 @@ extends CommonConfiguration
 
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
+
+  lazy val scriptInjectionAllowed = config.getBoolean("jobscheduler.agent.task.script-injection-allowed")
 }
 
 object AgentConfiguration {

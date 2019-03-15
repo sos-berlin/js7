@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
@@ -29,7 +29,7 @@ final class WorkflowPrinterTest extends FreeSpec {
             sourcePos(20, 67)),
           ImplicitEnd(sourcePos(69, 70)))),
       """define workflow {
-        |  execute executable="/my-script", agent="/AGENT";
+        |  execute agent="/AGENT", executable="/my-script";
         |}
         |""".stripMargin)
   }
@@ -43,21 +43,23 @@ final class WorkflowPrinterTest extends FreeSpec {
             sourcePos(20, 95)),
           ImplicitEnd(sourcePos(97, 98)))),
       """define workflow {
-        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"};
+        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, executable="/my-script";
         |}
         |""".stripMargin)
   }
 
-  "execute successReturnCodes=()" in {
+  "execute successReturnCodes=(), script" in {
     check(
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
-            sourcePos(20, 122)),
-          ImplicitEnd(sourcePos(124, 125)))),
+          // FIXME quotes at string start or end does not work!
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\n'''LINE 2''' "), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
+            sourcePos(20, 134)),
+          ImplicitEnd(sourcePos(136, 137)))),
       """define workflow {
-        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1];
+        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=''''LINE 1
+        |'''LINE 2''' '''';
         |}
         |""".stripMargin)
   }
@@ -71,7 +73,7 @@ final class WorkflowPrinterTest extends FreeSpec {
             sourcePos(20, 118)),
           ImplicitEnd(sourcePos(120, 121)))),
       """define workflow {
-        |  execute executable="/my-script", agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[];
+        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, failureReturnCodes=[], executable="/my-script";
         |}
         |""".stripMargin)
   }
@@ -92,10 +94,10 @@ final class WorkflowPrinterTest extends FreeSpec {
         |  job B;
         |
         |  define job A {
-        |    execute executable="/a-script", agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1]
+        |    execute agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="/a-script"
         |  }
         |  define job B {
-        |    execute executable="/b-script", agent="/AGENT"
+        |    execute agent="/AGENT", executable="/b-script"
         |  }
         |}
         |""".stripMargin)
@@ -110,7 +112,7 @@ final class WorkflowPrinterTest extends FreeSpec {
             sourcePos(23, 71)),
           ImplicitEnd(sourcePos(73, 74)))),
       """define workflow {
-        |  A: execute executable="/EXECUTABLE", agent="/AGENT";
+        |  A: execute agent="/AGENT", executable="/EXECUTABLE";
         |}
         |""".stripMargin)
   }
@@ -132,7 +134,7 @@ final class WorkflowPrinterTest extends FreeSpec {
           ImplicitEnd(sourcePos(127, 128)))),
       """define workflow {
         |  if ((returnCode in [1, 2]) || $KEY == 'VALUE') {
-        |    execute executable="/EXECUTABLE", agent="/AGENT";
+        |    execute agent="/AGENT", executable="/EXECUTABLE";
         |  }
         |}
         |""".stripMargin)
@@ -162,11 +164,11 @@ final class WorkflowPrinterTest extends FreeSpec {
           ImplicitEnd(sourcePos(237, 238)))),
       """define workflow {
         |  if (returnCode == -1) {
-        |    execute executable="/A-THEN", agent="/AGENT";
+        |    execute agent="/AGENT", executable="/A-THEN";
         |    if (true) {
-        |      execute executable="/B-THEN", agent="/AGENT";
+        |      execute agent="/AGENT", executable="/B-THEN";
         |    } else {
-        |      execute executable="/B-ELSE", agent="/AGENT";
+        |      execute agent="/AGENT", executable="/B-ELSE";
         |    }
         |  }
         |}
@@ -191,10 +193,10 @@ final class WorkflowPrinterTest extends FreeSpec {
       """define workflow {
         |  fork (
         |    "🥕" {
-        |      execute executable="/A", agent="/AGENT";
+        |      execute agent="/AGENT", executable="/A";
         |    },
         |    "🍋" {
-        |      execute executable="/B", agent="/AGENT";
+        |      execute agent="/AGENT", executable="/B";
         |    });
         |}
         |""".stripMargin)
@@ -236,11 +238,11 @@ final class WorkflowPrinterTest extends FreeSpec {
           "END" @:
           ExplicitEnd(sourcePos(218, 221)))),
       """define workflow {
-        |  execute executable="/A", agent="/AGENT";
+        |  execute agent="/AGENT", executable="/A";
         |  ifNonZeroReturnCodeGoto FAILURE;
-        |  execute executable="/B", agent="/AGENT";
+        |  execute agent="/AGENT", executable="/B";
         |  goto END;
-        |  FAILURE: execute executable="/OnFailure", agent="/AGENT";
+        |  FAILURE: execute agent="/AGENT", executable="/OnFailure";
         |  END: end;
         |}
         |""".stripMargin)

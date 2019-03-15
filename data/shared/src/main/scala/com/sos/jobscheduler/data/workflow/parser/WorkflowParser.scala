@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.parser
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
@@ -91,18 +91,19 @@ object WorkflowParser
       for {
         kv <- keyValues(
           keyValue("executable", quotedString, ExecutablePath.apply) |
+          keyValue("script", quotedString, ExecutableScript.apply) |
           keyValue("agent", path[AgentRefPath]) |
           keyValue("arguments", arguments) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int))
         agentRefPath <- kv[AgentRefPath]("agent")
-        executablePath <- kv[ExecutablePath]("executable")
+        executable <- kv.oneOf[Executable]("executable", "script").map(_._2)
         arguments <- kv[Arguments]("arguments", Arguments.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
       } yield
-        WorkflowJob(agentRefPath, executablePath, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit))
+        WorkflowJob(agentRefPath, executable, arguments.toMap, returnCodeMeaning, taskLimit = taskLimit))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
       (Index ~ keyword("execute") ~ w ~ anonymousWorkflowExecutable ~ hardEnd)

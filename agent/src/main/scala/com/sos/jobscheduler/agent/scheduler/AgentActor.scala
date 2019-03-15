@@ -213,11 +213,10 @@ extends MainJournalingActor[AgentEvent] {
           masterId,
           journalFileBase = stateDirectory / s"master-$masterId",
           signatureVerifier,
-          executableDirectory = agentConfiguration.executableDirectory,
           newTaskRunner,
           askTimeout = akkaAskTimeout,
           keyedEventBus,
-          agentConfiguration.config)
+          agentConfiguration)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
     masterToOrderKeeper.insert(masterId -> actor)

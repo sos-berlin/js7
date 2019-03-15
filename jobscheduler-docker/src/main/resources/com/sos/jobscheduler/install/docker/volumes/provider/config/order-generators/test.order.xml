@@ -9,25 +9,25 @@
   <run_time>
     <weekdays>
       <day day="monday">
-        <period begin="00:00:01" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:01" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="tuesday">
-        <period begin="00:00:02" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:02" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="wednesday">
-        <period begin="00:00:03" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:03" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="thursday">
-        <period begin="00:00:04" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:04" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="friday">
-        <period begin="00:00:05" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:05" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="saturday">
-        <period begin="00:00:06" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:06" end="24:00" absolute_repeat="30"/>
       </day>
       <day day="sunday">
-        <period begin="00:00:07" end="24:00" absolute_repeat="10"/>
+        <period begin="00:00:07" end="24:00" absolute_repeat="30"/>
       </day>
     </weekdays>
   </run_time>

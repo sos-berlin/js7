@@ -47,7 +47,7 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def toString = s"execute executable='${job.executablePath}', agent='${job.agentRefPath.string}'"
+    override def toString = s"execute (${job.argumentsString})"
   }
 
   implicit val jsonCodec = TypedJsonCodec[Execute](

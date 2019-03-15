@@ -125,7 +125,7 @@ extends FileBased
       case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
     }
 
-  private[workflow] def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
+  def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
     flattenedInstructions(Nil)
 
   private[workflow] def flattenedInstructions(branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =

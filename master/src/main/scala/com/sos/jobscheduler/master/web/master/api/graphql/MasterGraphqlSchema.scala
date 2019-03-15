@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, Instructions, Offer, TryInstruction}
@@ -127,7 +127,14 @@ private[graphql] object MasterGraphqlSchema
     "Job",
     fields[QueryContext, WorkflowJob](
       Field("agentRefPath", AgentRefPathType, resolve = _.value.agentRefPath),
-      Field("executablePath", ExecutablePathType, resolve = _.value.executablePath),
+      Field("executablePath", OptionType(ExecutablePathType), resolve = _.value.executable match {
+        case o: ExecutablePath => Some(o)
+        case _ => None
+      }),
+      Field("executableScript", OptionType(StringType), resolve = _.value.executable match {
+        case ExecutableScript(o) => Some(o)
+        case _ => None
+      }),
       Field("taskLimit", IntType, resolve = _.value.taskLimit)))
 
   private implicit val InstructionType = InterfaceType[QueryContext, Instruction](

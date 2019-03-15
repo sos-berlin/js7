@@ -51,8 +51,8 @@ final class OrderAgentTest extends FreeSpec {
            |""".stripMargin
 
       val jobDir = directory / "config" / "executables"
-      AExecute.job.executablePath.toFile(jobDir).writeExecutable(TestScript)
-      BExecute.job.executablePath.toFile(jobDir).writeExecutable(TestScript)
+      AExecutablePath.toFile(jobDir).writeExecutable(TestScript)
+      BExecutablePath.toFile(jobDir).writeExecutable(TestScript)
 
       val agentConf = AgentConfiguration.forTest(directory)
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
@@ -92,8 +92,8 @@ final class OrderAgentTest extends FreeSpec {
     val n = testSpeed.toInt
     provideAgentDirectory { directory =>
       val executableDir = directory / "config" / "executables"
-      AExecute.job.executablePath.toFile(executableDir).writeExecutable(TestScript)
-      BExecute.job.executablePath.toFile(executableDir).writeExecutable(TestScript)
+      AExecutablePath.toFile(executableDir).writeExecutable(TestScript)
+      BExecutablePath.toFile(executableDir).writeExecutable(TestScript)
       val agentConf = AgentConfiguration.forTest(directory, ConfigFactory.parseString("""
          |jobscheduler.journal.sync = on
          |jobscheduler.journal.delay = 0ms

@@ -33,14 +33,34 @@ final class ForkTest extends FreeSpec {
             "id": "A",
             "workflow": {
               "instructions": [
-                { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/A", "taskLimit": 1 }}
+                {
+                  "TYPE": "Execute.Anonymous",
+                  "job": {
+                    "agentRefPath": "/AGENT",
+                    "executable": {
+                      "TYPE": "ExecutablePath",
+                      "path": "/A"
+                    },
+                    "taskLimit": 1
+                  }
+                }
               ]
             }
           }, {
             "id": "B",
             "workflow": {
               "instructions": [
-                { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/B", "taskLimit": 1 }}
+                {
+                  "TYPE": "Execute.Anonymous",
+                  "job": {
+                    "agentRefPath": "/AGENT",
+                    "executable": {
+                      "TYPE": "ExecutablePath",
+                      "path": "/B"
+                    },
+                    "taskLimit": 1
+                  }
+                }
               ]
             }
           }

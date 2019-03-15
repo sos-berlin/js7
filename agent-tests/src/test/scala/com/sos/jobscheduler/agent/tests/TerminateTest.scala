@@ -36,8 +36,8 @@ final class TerminateTest extends FreeSpec with AgentTester {
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
-    AExecute.job.executablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
-    BExecute.job.executablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
+    AExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
+    BExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
     super.beforeAll()
   }
 

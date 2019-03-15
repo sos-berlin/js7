@@ -10,8 +10,9 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-final class ShellReturnValuesProvider {
-  val file: Path = createTempFile("sos-", ".tmp")
+final class ShellReturnValuesProvider(temporaryDirectory: Path)
+{
+  val file: Path = createTempFile(temporaryDirectory, "returnValues-", ".tmp")
 
   def clear(): Unit = {
     file := ""

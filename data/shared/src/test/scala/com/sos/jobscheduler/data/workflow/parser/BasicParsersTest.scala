@@ -35,49 +35,92 @@ final class BasicParsersTest extends FreeSpec
     assert(checkedParse("1name", identifier(_)).isInvalid/*TODO error message?*/)
   }
 
-  "quotedString" in {
-    assert(checkedParse(""""abc"""", quotedString(_)) == Valid("abc"))
-    assert(checkedParse("'abc'", quotedString(_)) == Valid("abc"))
-  }
-
   "String in single-quotes" - {
-    "Single-quote itself cannot be used" in {
+    "Empty single-quote string is not allowed" in {
+      assert(checkedParse("''", quotedString(_)) ==
+        Invalid(Problem("Expected properly terminated ''-quoted string without non-printable characters (except \\r or \\n):1:3, found \"\"")))
+    }
+
+    "Backquote + single-quote cannot be used" in {
       assert(checkedParse("""'\''""", quotedString(_)) == Invalid(Problem("""Expected end-of-input:1:4, found "'"""")))
+    }
+
+    "Newline \\n (multi-line) is allowed" in {
+      assert(checkedParse("'\n'", quotedString(_)) == Valid("\n"))
+    }
+
+    "Multi-line" in {
+      val s =
+        """test '
+          |  first line
+          |    indented line
+          |  third line
+          |fourth line
+          |'""".stripMargin
+      def p[_: P] = keyword("test") ~ w ~ quotedString
+      assert(checkedParse(s, p(_)) == Valid(
+         """
+           |  first line
+           |    indented line
+           |  third line
+           |fourth line
+           |""".stripMargin))
+    }
+
+    "Multiple quoted" in {
+      assert(checkedParse("''abc''", quotedString(_)) == Valid("abc"))
+      assert(checkedParse("''ab'c''", quotedString(_)) == Valid("ab'c"))
+      assert(checkedParse("''ab'c'd''", quotedString(_)) == Valid("ab'c'd"))
+      assert(checkedParse("'''ab''c'd'''", quotedString(_)) == Valid("ab''c'd"))
+      assert(checkedParse("''''ab'''c'''d''''", quotedString(_)) == Valid("ab'''c'''d"))
+      assert(checkedParse("'''''abc'''''", quotedString(_)) == Valid("abc"))
+      assert(checkedParse("''''''abc''''''", quotedString(_)).isInvalid) // == Invalid(Problem("More than 5 '-quotes are not supported")))
+    }
+
+    "Delimiter at start or end" in {
+      // FIXME quotes at string start or end does not work!
+      pending
+    }
+
+    "CF+LF is normalized to LF" in {
+      assert(checkedParse("'AAA\r\nBBB\r\n'", quotedString(_)) == Valid("AAA\nBBB\n"))
     }
 
     "Control character is not allowed" in {
       assert(checkedParse("'\t'", quotedString(_)) == Invalid(Problem(
-        """Expected properly terminated single-quoted (') string without non-printable characters:1:2, found "\t'"""")))
-      assert(checkedParse("'\n'", quotedString(_)) == Invalid(Problem(
-        """Expected properly terminated single-quoted (') string without non-printable characters:1:2, found "\n'"""")))
+        """Expected properly terminated '-quoted string without non-printable characters (except \r or \n):1:2, found "\t'"""")))
     }
 
     "Valid" in {
-      assert(checkedParse("""''""", quotedString(_)) == Valid(""))
-      assert(checkedParse("""'x'""", quotedString(_)) == Valid("x"))
-      assert(checkedParse("""'ö'""", quotedString(_)) == Valid("ö"))
+      assert(checkedParse("'abc'", quotedString(_)) == Valid("abc"))
+      assert(checkedParse("'ö'", quotedString(_)) == Valid("ö"))
       assert(checkedParse("""'x\n'""", quotedString(_)) == Valid("""x\n"""))
       assert(checkedParse("""'x$y'""", quotedString(_)) == Valid("x$y"))
     }
   }
 
   "String in double-quotes" - {
-    "Backslash is not supported" in {
-      // TODO Backslash in string
-      assert(checkedParse(""""x\n"""", quotedString(_)) == Invalid(Problem(
-        """Expected properly terminated double-quoted (") string without non-printable character nor backslash (\):1:3, found "\\n\""""")))
+    "Unknown backslash combination" in {
+      assert(checkedParse(""""x\x"""", quotedString(_)) == Invalid(Problem(
+        """Expected blackslash (\) and one of the following characters: [\"nt]:1:5, found "\""""")))
     }
 
     "String interpolation is not supported" in {
       // TODO String interpolation
       assert(checkedParse(""""x$variable"""", quotedString(_)) == Invalid(Problem(
-        """Expected double-quoted string without variable interpolation via '$' (consider using single quotes (')):1:13, found """"")))
+        """Expected "-quoted string without variable interpolation via '$' (reserved syntax, consider using single quotes (')):1:13, found """"")))
     }
 
     "Valid" in {
       assert(checkedParse("""""""", quotedString(_)) == Valid(""))
       assert(checkedParse(""""x"""", quotedString(_)) == Valid("x"))
       assert(checkedParse(""""ö"""", quotedString(_)) == Valid("ö"))
+      assert(checkedParse(""""abc"""", quotedString(_)) == Valid("abc"))
+      assert(checkedParse(""""ab\"c"""", quotedString(_)) == Valid("""ab"c"""))
+      assert(checkedParse(""""ab\\c"""", quotedString(_)) == Valid("""ab\c"""))
+      assert(checkedParse(""""ab\nc"""", quotedString(_)) == Valid("ab\nc"))
+      assert(checkedParse(""""ab\tc"""", quotedString(_)) == Valid("ab\tc"))
+      assert(checkedParse(""""ab\n\"\\c"""", quotedString(_)) == Valid("ab\n\"\\c"))
     }
   }
 

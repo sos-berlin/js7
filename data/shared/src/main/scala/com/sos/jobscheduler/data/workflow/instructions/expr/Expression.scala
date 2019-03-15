@@ -107,7 +107,8 @@ object Expression
     if (string contains '"') throw new IllegalArgumentException("Quoted not allowed in String")  // TODO Escape quote and non-printable chars
     def precedence = Precedence.Factor
     override def toString =
-      if (string contains '\'')
+      if (string.isEmpty) "\"\""
+      else if (string contains '\'')
         '"' + string + '"'
       else
         '\'' + string + '\''

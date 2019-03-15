@@ -5,6 +5,9 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 
 /** `start` and `end` are character positions starting with 0. */
 final case class SourcePos(start: Int, end: Int)
+{
+  require(start <= end, s"Invalid SourcePos($start, $end)")
+}
 
 object SourcePos
 {

@@ -16,7 +16,17 @@ final class MasterJsonValidatorTester {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson(
             "{" +
                 "\"instructions\": [" +
-                    "{ \"TYPE\": \"Execute.Anonymous\", \"job\": { \"agentRefPath\": \"/AGENT\", \"executablePath\": \"/JOB\", \"taskLimit\": 1 }}" +
+                    "{ " +
+                        "\"TYPE\": \"Execute.Anonymous\"," +
+                        "\"job\": { " +
+                            "\"agentRefPath\": \"/AGENT\"," +
+                            "\"executable\": {" +
+                                "\"TYPE\": \"ExecutablePath\"," +
+                                "\"path\": \"/JOB\"" +
+                            "}, " +
+                            "\"taskLimit\": 1" +
+                        "}" +
+                    "}" +
                 "]" +
             "}");
         assert maybeProblem.equals(Optional.empty()) : maybeProblem.toString();
@@ -40,7 +50,10 @@ final class MasterJsonValidatorTester {
                 "\"TYPE\": \"Execute.Anonymous\"," +
                 "\"job\": {" +
                     "\"agentRefPath\": \"/AGENT\"," +
-                    "\"executablePath\": \"/EXECUTABLE\"," +
+                    "\"executable\": {" +
+                        "\"TYPE\": \"ExecutablePath\"," +
+                        "\"path\": \"/EXECUTABLE\"" +
+                    "}," +
                     "\"taskLimit\": 1" +
                 "}" +
             "}");

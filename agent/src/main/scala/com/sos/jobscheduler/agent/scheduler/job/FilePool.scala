@@ -3,7 +3,6 @@ package com.sos.jobscheduler.agent.scheduler.job
 import com.sos.jobscheduler.agent.scheduler.job.FilePool._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFiles
 import java.nio.file.Path
 import scala.collection.mutable
@@ -11,9 +10,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class FilePool(jobKey: JobKey, workflowJob: WorkflowJob) extends AutoCloseable {
-
-  import workflowJob.taskLimit
+private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) extends AutoCloseable {
 
   private var free = List[FileSet]()
   private val used = mutable.Set[FileSet]()
@@ -25,9 +22,8 @@ final class FilePool(jobKey: JobKey, workflowJob: WorkflowJob) extends AutoClose
         head.clear()
         head
       case Nil =>
-        if (used.size >= taskLimit) throw new IllegalStateException(s"Job '$jobKey': FilePool.get tried to exceed taskLimit=$taskLimit")
-        val fileSet = FileSet(new ShellReturnValuesProvider)
-        logger.debug(s"Job '$jobKey': Using file ${fileSet.shellReturnValuesProvider.file} for order variables")
+        val fileSet = FileSet(new ShellReturnValuesProvider(temporaryDirectory))
+        logger.debug(s"Job '${jobKey.keyName}': Using file ${fileSet.shellReturnValuesProvider.file} for order variables")
         fileSet
     }
     used += fileSet
@@ -36,18 +32,18 @@ final class FilePool(jobKey: JobKey, workflowJob: WorkflowJob) extends AutoClose
 
   def release(fileSet: FileSet): Unit = {
     val removed = used.remove(fileSet)
-    require(removed, s"Job '$jobKey': Releasing unknown FileSet")
+    require(removed, s"Job '${jobKey.keyName}': Releasing unknown FileSet")
     free = fileSet :: free
   }
 
   def close() = {
     if (used.nonEmpty) {
-      logger.debug(s"Job '$jobKey': Closing while files are in use: $used")
+      logger.debug(s"Job '${jobKey.keyName}': Closing while files are in use: $used")
     }
     tryDeleteFiles((free ++ used) flatMap { _.files })
   }
 
-  override def toString = s"FilePool(Job '$jobKey' ${used.size} used and ${free.size} free file sets)"
+  override def toString = s"FilePool(Job '${jobKey.keyName}' ${used.size} used and ${free.size} free file sets)"
 }
 
 private[job] object FilePool {

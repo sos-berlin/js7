@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
 import com.sos.jobscheduler.data.order.Outcome
 import com.sos.jobscheduler.data.workflow.instructions.ReturnCodeMeaning
@@ -20,7 +20,7 @@ import io.circe.{Decoder, JsonObject, ObjectEncoder}
   */
 final case class WorkflowJob private(
   agentRefPath: AgentRefPath,
-  executablePath: ExecutablePath,
+  executable: Executable,
   defaultArguments: Map[String, String],
   returnCodeMeaning: ReturnCodeMeaning,
   taskLimit: Int)
@@ -31,13 +31,18 @@ final case class WorkflowJob private(
   def isExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     this.agentRefPath == agentRefPath
 
-  override def toString = s"Job(agent=${agentRefPath.string}, executable=${executablePath.string}" + (
-    returnCodeMeaning match {
+  override def toString = s"Job($argumentsString)"
+
+  def argumentsString = s"agent=${agentRefPath.string}, " +
+    (executable match {
+      case ExecutablePath(o) => s"executablePath=$o"
+      case ExecutableScript(o) => s"script=$o"
+    }) +
+    (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""
       case ReturnCodeMeaning.Success(returnCodes) => s", successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
       case ReturnCodeMeaning.Failure(returnCodes) => s", failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
-    }) +
-    ")"
+    })
 }
 
 object WorkflowJob
@@ -46,15 +51,15 @@ object WorkflowJob
 
   def apply(
     agentRefPath: AgentRefPath,
-    executablePath: ExecutablePath,
+    executable: Executable,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit): WorkflowJob
-  = checked(agentRefPath, executablePath, defaultArguments, returnCodeMeaning, taskLimit).orThrow
+  = checked(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit).orThrow
 
   def checked(
     agentRefPath: AgentRefPath,
-    executablePath: ExecutablePath,
+    executable: Executable,
     defaultArguments: Map[String, String] = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit): Checked[WorkflowJob]
@@ -62,7 +67,7 @@ object WorkflowJob
     if (agentRefPath.isAnonymous)
       Problem.pure("Anonymous AgentRef in Job?")
     else
-      Valid(new WorkflowJob(agentRefPath, executablePath, defaultArguments, returnCodeMeaning, taskLimit))
+      Valid(new WorkflowJob(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit))
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -80,7 +85,7 @@ object WorkflowJob
       //  case _ => Nil
       //}) :::
       ("agentRefPath" -> workflowJob.agentRefPath.asJson) ::
-      ("executablePath" -> workflowJob.executablePath.asJson) ::
+      ("executable" -> workflowJob.executable.asJson) ::
       workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
       (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
       ("taskLimit" -> workflowJob.taskLimit.asJson) ::
@@ -88,11 +93,11 @@ object WorkflowJob
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
       //jobName <- cursor.get[Option[Name]]("jobName") map (_ getOrElse Name.Anonymous)
-      executablePath <- cursor.get[ExecutablePath]("executablePath")
+      executable <- cursor.get[Executable]("executable")
       agentRefPath <- cursor.get[AgentRefPath]("agentRefPath")
       arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
-      job <- checked(agentRefPath, executablePath, arguments, rc, taskLimit).toDecoderResult
+      job <- checked(agentRefPath, executable, arguments, rc, taskLimit).toDecoderResult
     } yield job
 }

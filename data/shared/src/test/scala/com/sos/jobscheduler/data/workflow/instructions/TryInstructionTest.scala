@@ -31,12 +31,32 @@ final class TryInstructionTest extends FreeSpec
           "TYPE": "Try",
           "try": {
             "instructions": [
-              { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/TRY", "taskLimit": 1 }}
+              {
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentRefPath": "/AGENT",
+                  "executable": {
+                    "TYPE": "ExecutablePath",
+                    "path": "/TRY"
+                  },
+                  "taskLimit": 1
+                }
+              }
             ]
           },
           "catch": {
             "instructions": [
-              { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/CATCH", "taskLimit": 1 }}
+              {
+                "TYPE": "Execute.Anonymous",
+                "job": {
+                  "agentRefPath": "/AGENT",
+                  "executable": {
+                    "TYPE": "ExecutablePath",
+                    "path": "/CATCH"
+                  },
+                  "taskLimit": 1
+                }
+              }
             ]
           }
         }""")

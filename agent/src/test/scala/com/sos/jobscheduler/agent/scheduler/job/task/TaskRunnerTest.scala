@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
@@ -49,7 +50,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
     val shellFile = executablePath.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val shellReturnValuesProvider = new ShellReturnValuesProvider
+    val shellReturnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory)
     val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath, Map("var1" -> "VALUE1")), shellFile, shellReturnValuesProvider)
     info(measureTime(10, "TaskRunner") {
       val order = Order(

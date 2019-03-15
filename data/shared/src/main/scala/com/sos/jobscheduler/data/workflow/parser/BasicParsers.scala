@@ -38,21 +38,60 @@ private[parser] object BasicParsers
       identifierEnd)
 
   def quotedString[_: P] = P[String](
-    singleQuoted | doubleQuoted)
+    doubleQuoted | singleQuoted)
 
   private def singleQuoted[_: P] = P[String](
-    "'" ~/
-      CharsWhile(ch => ch != '\'' && ch >= ' ', 0).! ~
-      "'".opaque("properly terminated single-quoted (') string without non-printable characters"))
+    //singleQuotedTooLong(6) |
+      singleQuotedN(5) |
+      singleQuotedN(4) |
+      singleQuotedN(3) |
+      singleQuotedN(2) |
+      singleQuoted1)
+
+  private def singleQuoted1[_: P] = P[String](
+    ("'" ~~/
+      singleQuotedContent ~~
+      "'".opaque("properly terminated '-quoted string without non-printable characters (except \\r or \\n)"))
+    .map(_.replace("\r\n", "\n")))
+
+  private def singleQuotedN[_: P](n: Int) = P[String](
+    (("'" * n) ~~/
+      singleQuotedContent ~~
+      ("'".rep(min = 1, max = n - 1).! ~~ !"'" ~~ singleQuotedContent).rep ~~
+      ("'" * n).opaque(s"properly terminated ${"'" * n}-quoted string without non-printable characters (except \\r or \\n)"))
+    .map { case (head, pairs) =>
+      (head + pairs.map { case (a, b) => a + b }.mkString).replace("\r\n", "\n") })
+
+  private def singleQuotedContent[_: P] = P[String](
+    CharsWhile(ch => ch != '\'' && (ch >= ' ' || ch == '\r' || ch == '\n'), /*min=*/0).!)
+
+  //private def singleQuotedTooLong[_: P](n: Int) = P[String](
+  //  P("'" * n).flatMap(_ => invalid(s"More than ${n - 1} '-quotes are not supported")))
 
   private def doubleQuoted[_: P] = P[String](
-    ("\"" ~/
-      CharsWhile(ch => ch != '"' && ch >= ' ' && ch != '\\', 0).! ~
-      "\"".opaque("""properly terminated double-quoted (") string without non-printable character nor backslash (\)""")
+    ("\"" ~~/
+      doubleQuotedContent ~~
+      "\"".opaque("""properly terminated "-quoted string""")
     ).flatMap {
       case o if o contains '$' =>
-        invalid("double-quoted string without variable interpolation via '$' (consider using single quotes ('))")
+        invalid("\"-quoted string without variable interpolation via '$' (reserved syntax, consider using single quotes ('))")
       case o => valid(o)
+    })
+
+  private def doubleQuotedContent[_: P] = P[String](
+    (doubleQuotedContentPart ~~/ ("\\" ~~/ escapedChar ~~ doubleQuotedContentPart).rep(0))
+      .map { case (a, pairs) => a + pairs.map(o => o._1 + o._2).mkString })
+
+  private def doubleQuotedContentPart[_: P] = P[String](
+    CharsWhile(ch => ch != '"' && ch != '\\' && ch >= ' ', 0).!)
+
+  private def escapedChar[_: P] = P[String](
+    SingleChar.!.flatMap {
+      case "\\" => valid("\\")
+      case "\"" => valid("\"")
+      case "n" => valid("\n")
+      case "t" => valid("\t")
+      case _ => invalid("""blackslash (\) and one of the following characters: [\"nt]""")
     })
 
   def pathString[_: P] = P[String](quotedString)
@@ -103,6 +142,9 @@ private[parser] object BasicParsers
       }
     }
 
+    def oneOf[A1 <: A](keys: String*)(implicit ctx: P[_]): P[(String, A1)] =
+      oneOf[A1](keys.toSet)
+
     def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[(String, A1)] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
@@ -144,7 +186,7 @@ private[parser] object BasicParsers
 
   def leftRecurse[A, O](operand: => P[A], operator: => P[O])(operation: (A, O, A) => P[A])(implicit ctx: P[_]): P[A] = {
     // Separate function variable to work around a crash (fastparse 2.1.0)
-    def more(implicit ctx: P[_]) = (w ~ operator ~ w ~/ operand).rep(0)
+    def more(implicit ctx: P[_]) = (w ~ operator ~ w ~/ operand).rep
     (operand ~ more)
       .flatMap {
         case (head, tail) =>

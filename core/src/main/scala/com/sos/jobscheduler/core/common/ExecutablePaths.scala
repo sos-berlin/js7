@@ -12,6 +12,6 @@ object ExecutablePaths
   implicit final class RichExecutablePath(private val underlying: ExecutablePath) extends AnyVal
   {
       def toFile(directory: Path): Path =
-        directory / underlying.string.stripPrefix("/")
+        directory / underlying.path.stripPrefix("/")
   }
 }

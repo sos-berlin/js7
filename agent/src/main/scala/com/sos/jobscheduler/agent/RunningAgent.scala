@@ -113,6 +113,8 @@ object RunningAgent {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]
+
+    if (agentConfiguration.scriptInjectionAllowed) logger.info("SCRIPT INJECTION IS ALLOWED")
     StartUp.logStartUp(agentConfiguration.configDirectory, Some(agentConfiguration.dataDirectory))
 
     val actorSystem = injector.instance[ActorSystem]

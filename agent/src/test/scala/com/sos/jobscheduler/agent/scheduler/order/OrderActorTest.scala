@@ -164,7 +164,10 @@ private object OrderActorTest {
       "Journal")
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = watch(actorOf(
-      JobActor.props(jobKey, workflowJob, taskRunnerFactory, executableDirectory = dir / "config" / "executables")))
+      JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,
+        temporaryDirectory = dir / "data" / "tmp",
+        executablesDirectory = dir / "config" / "executables",
+        scriptInjectionAllowed = false))))
     private val orderActor = actorOf(
       OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config)),
       s"Order-${TestOrder.id.string}")

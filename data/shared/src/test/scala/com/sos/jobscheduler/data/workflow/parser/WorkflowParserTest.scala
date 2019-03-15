@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
@@ -67,6 +67,31 @@ final class WorkflowParserTest extends FreeSpec {
         ImplicitEnd(sourcePos(120, 121))))
   }
 
+  "Execute script with \\n" in {
+    check(
+      """define workflow { execute script="LINE 1\nLINE 2\nLINE 3", agent="/AGENT"; }""",
+      Workflow.of(
+        Execute.Anonymous(
+          WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\nLINE 2\nLINE 3")),
+          sourcePos(18, 73)),
+        ImplicitEnd(sourcePos(75, 76))))
+  }
+
+  "Execute script with multi-line string" in {
+    check(
+"""define workflow {
+  execute agent="/AGENT", script='LINE 1
+    LINE 2
+    LINE 3
+    ';
+}""".stripMargin,
+      Workflow.of(
+        Execute.Anonymous(
+          WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\n    LINE 2\n    LINE 3\n    ")),
+          sourcePos(20, 86)),
+        ImplicitEnd(sourcePos(88, 89))))
+  }
+
   "Execute named" in {
     check("""
       define workflow {
@@ -80,7 +105,7 @@ final class WorkflowParserTest extends FreeSpec {
           execute executable="/my/executable", agent="/AGENT"
         }
         define job C {
-          execute executable="/my/executable", agent="/AGENT"
+          execute script="SCRIPT", agent="/AGENT"
         }
       }""",
       Workflow(
@@ -89,7 +114,7 @@ final class WorkflowParserTest extends FreeSpec {
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
           Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> "VALUE"), sourcePos(48, 85)),
           Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(95, 100)),
-          ImplicitEnd(sourcePos(424, 425))),
+          ImplicitEnd(sourcePos(412, 413))),
         Map(
           WorkflowJob.Name("A") ->
             WorkflowJob(
@@ -103,7 +128,7 @@ final class WorkflowParserTest extends FreeSpec {
           WorkflowJob.Name("C") ->
             WorkflowJob(
               AgentRefPath("/AGENT"),
-              ExecutablePath("/my/executable")))))
+              ExecutableScript("SCRIPT")))))
   }
 
   "Execute named with duplicate jobs" in {

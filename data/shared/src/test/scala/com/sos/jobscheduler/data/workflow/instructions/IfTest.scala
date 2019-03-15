@@ -32,12 +32,32 @@ final class IfTest extends FreeSpec
         "predicate": "returnCode >= 3",
         "then": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/THEN", "taskLimit": 1 }}
+            {
+              "TYPE": "Execute.Anonymous",
+              "job": {
+                "agentRefPath": "/AGENT",
+                "executable": {
+                  "TYPE": "ExecutablePath",
+                  "path": "/THEN"
+                },
+                "taskLimit": 1
+              }
+            }
           ]
         },
         "else": {
           "instructions": [
-            { "TYPE": "Execute.Anonymous", "job": { "agentRefPath": "/AGENT", "executablePath": "/ELSE", "taskLimit": 1 }}
+            {
+              "TYPE": "Execute.Anonymous",
+              "job":  {
+                "agentRefPath": "/AGENT",
+                "executable": {
+                  "TYPE": "ExecutablePath",
+                  "path": "/ELSE"
+                },
+                "taskLimit": 1
+              }
+            }
           ]
         },
         "sourcePos": [ 1, 2 ]

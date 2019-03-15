@@ -41,7 +41,6 @@ final class ExpressionParserTest extends FreeSpec
   testBooleanExpression("false", BooleanConstant(false))
   testBooleanExpression("(false)", BooleanConstant(false))
 
-  testStringExpression("''", StringConstant(""))
   testStringExpression("'x'", StringConstant("x"))
   testStringExpression("'ö'", StringConstant("ö"))
   testStringExpression("""'a\x'""", StringConstant("""a\x"""))
@@ -51,8 +50,9 @@ final class ExpressionParserTest extends FreeSpec
   testStringExpression(""" "ö" """.trim, StringConstant("ö"))
 
   "Invalid strings" in {
+    assert(checkedParse("''", stringExpression(_)).isInvalid)
     assert(checkedParse(""" "\" """.trim, stringExpression(_)).isInvalid)
-    assert(checkedParse(""" "\\" """.trim, stringExpression(_)).isInvalid)
+    assert(checkedParse(" \"\t\" ".trim, stringExpression(_)).isInvalid)
   }
 
   testError(""""1" < 1""",

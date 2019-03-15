@@ -3,9 +3,11 @@ package com.sos.jobscheduler.data.workflow
 import cats.Show
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.time.Times._
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import io.circe.syntax.EncoderOps
+import scala.annotation.tailrec
 
 /**
   * @author Joacim Zschimmer
@@ -24,19 +26,31 @@ object WorkflowPrinter {
   }
 
   private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String = {
-    def appendQuoted(string: String) = sb.append('"').append(string.replace("\"", "\\\"")).append('"')
+    def appendQuoted(string: String) =
+      if (!string.contains('\n') && !string.contains('$'))
+        sb.append('"').append(string).append('"')
+      else {
+        @tailrec def q(quote: String): Unit =
+          if (string contains quote) q(quote + "'")
+          else sb.append(quote).append(string).append(quote)
+        if (!string.contains('\'')) sb.append('\'').append(string).append('\'')
+        else q("''")
+      }
+
     def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
 
-    def appendWorkflowExecutable(workflowExecutable: WorkflowJob): Unit = {
-      sb ++= "executable="
-      appendQuoted(workflowExecutable.executablePath.string)
-      sb ++= ", agent="
-      appendQuoted(workflowExecutable.agentRefPath.string)
-      if (workflowExecutable.defaultArguments.nonEmpty) {
-        sb ++= ", arguments="
-        sb ++= workflowExecutable.defaultArguments.asJson.pretty(JsonPrinter)
+    def appendWorkflowExecutable(job: WorkflowJob): Unit = {
+      sb ++= "agent="
+      appendQuoted(job.agentRefPath.string)
+      if (job.taskLimit != WorkflowJob.DefaultTaskLimit) {
+        sb ++= ", taskLimit="
+        sb.append(job.taskLimit)
       }
-      workflowExecutable.returnCodeMeaning match {
+      if (job.defaultArguments.nonEmpty) {
+        sb ++= ", arguments="
+        sb ++= job.defaultArguments.asJson.pretty(JsonPrinter)
+      }
+      job.returnCodeMeaning match {
         case ReturnCodeMeaning.Default =>
         case ReturnCodeMeaning.Success(returnCodes) =>
           sb ++= ", successReturnCodes=["
@@ -47,9 +61,13 @@ object WorkflowPrinter {
           sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
           sb += ']'
       }
-      if (workflowExecutable.taskLimit != WorkflowJob.DefaultTaskLimit) {
-        sb ++= ", taskLimit="
-        sb.append(workflowExecutable.taskLimit)
+      job.executable match {
+        case ExecutablePath(path) =>
+          sb ++= ", executable="
+          appendQuoted(path)
+        case ExecutableScript(script) =>
+          sb ++= ", script="
+          appendQuoted(script)  // At last, because the script may have multiple lines
       }
     }
 

@@ -41,19 +41,16 @@ final class EvaluatorTest extends FreeSpec
     result = "",
     Valid(StringConstant("")))
 
-  testSyntaxError(""" "\\" """,
-    """Expected properly terminated double-quoted (") string without non-printable character nor backslash (\):1:2, found "\\\\\""""")
+  testEval( """ "\\" """,
+    result = "\\",
+    Valid(StringConstant("\\")))
 
   testSyntaxError(""" "$var" """,
-    """Expected double-quoted string without variable interpolation via '$' (consider using single quotes (')):1:7, found """"")
+    """Expected "-quoted string without variable interpolation via '$' (reserved syntax, consider using single quotes (')):1:7, found """"")
 
   testEval(""" "x" """,
     result = "x",
     Valid(StringConstant("x")))
-
-  testEval(""" '' """,
-    result = "",
-    Valid(StringConstant("")))
 
   testEval(""" 'a\x' """,
     result = "a\\x",

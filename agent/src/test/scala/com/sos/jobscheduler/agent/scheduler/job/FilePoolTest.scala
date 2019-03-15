@@ -1,18 +1,17 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
-import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
+import com.sos.jobscheduler.data.job.JobKey
 import java.nio.file.Files.exists
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FilePoolTest extends FreeSpec {
-
-  private val filePool = new FilePool(JobKey.forTest, WorkflowJob(AgentRefPath("/TEST"), executablePath = ExecutablePath("/TEST"), taskLimit = 3))
+final class FilePoolTest extends FreeSpec
+{
+  private val filePool = new FilePool(JobKey.forTest, temporaryDirectory)
   private var a: FilePool.FileSet = null
   private var b: FilePool.FileSet = null
   private var c: FilePool.FileSet = null
@@ -26,11 +25,11 @@ final class FilePoolTest extends FreeSpec {
     assert(b != c)
   }
 
-  "underflow" in {
-    intercept[IllegalStateException] {
-      filePool.get()
-    }
-  }
+  //"underflow" in {
+  //  intercept[IllegalStateException] {
+  //    filePool.get()
+  //  }
+  //}
 
   "release" in {
     b.shellReturnValuesProvider.file := "TEST"

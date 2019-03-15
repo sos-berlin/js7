@@ -3,12 +3,34 @@ package com.sos.jobscheduler.data.job
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import org.scalatest.FreeSpec
+import com.sos.jobscheduler.tester.CirceJsonTester._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecutablePathTest extends FreeSpec
+final class ExecutableTest extends FreeSpec
 {
+  "JSON" - {
+    "ExecutablePath" in {
+      testJson[Executable](ExecutablePath("/EXECUTABLE"), json"""
+        {
+          "TYPE": "ExecutablePath",
+          "path": "/EXECUTABLE"
+        }
+      """)
+    }
+
+    "ExecutableScript" in {
+      testJson[Executable](ExecutableScript("SCRIPT"), json"""
+        {
+          "TYPE": "ExecutableScript",
+          "script": "SCRIPT"
+        }
+      """)
+    }
+  }
+
   "Invalid ExecutablePath" in {
     assert(ExecutablePath.checked("")             == Invalid(Problem("Executable path must not be empty")))
     assert(ExecutablePath.checked("/")            == Invalid(Problem("Invalid executable path: /")))

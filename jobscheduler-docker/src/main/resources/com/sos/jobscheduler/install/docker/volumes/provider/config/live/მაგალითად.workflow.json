@@ -11,12 +11,18 @@
   "jobs": {
     "JOB-1": {
       "agentRefPath": "/agent-1",
-      "executablePath": "/test",
+      "executable": {
+        "TYPE": "ExecutablePath",
+        "path": "/test"
+      },
       "taskLimit": 3
     },
     "JOB-2": {
       "agentRefPath": "/agent-2",
-      "executablePath": "/test",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "#!/usr/bin/env bash\nset -e\n\necho \"はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT\"\nsleep 2\nexit\n"
+      },
       "taskLimit": 3
     }
   }

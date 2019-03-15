@@ -1,13 +1,15 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -20,11 +22,30 @@ import org.scalatest.FreeSpec
 
 final class ExecuteTest extends FreeSpec
 {
+  "Executing an own script is not allowed" in {
+    val workflowNotation = """
+      define workflow {
+        execute agent="AGENT", script=":";
+      }"""
+    val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
+
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = workflow :: Nil)) { directoryProvider =>
+      directoryProvider.run { (master, _) =>
+        val orderId = OrderId("❌")
+        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        val stampedSeq = master.eventWatch.await[OrderStopped](_.key == orderId)
+        assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem
+          == Problem.pure("Agent does not allow script jobs"))
+      }
+    }
+  }
+
   "Execute" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
       for (a <- directoryProvider.agents) {
+        a.config / "agent.conf" ++= "jobscheduler.agent.task.script-injection-allowed = on\n"
         for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
-        for (o <- Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd", "/SCRIPT-4.cmd", "/SCRIPT-5.cmd"))
+        for (o <- Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd"))
           a.writeExecutable(ExecutablePath(o),
             if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE")
       }
@@ -48,9 +69,10 @@ final class ExecuteTest extends FreeSpec
   }
 }
 
-object ExecuteTest {
+object ExecuteTest
+{
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val script = """
+  private val workflowNotation = """
     define workflow {
       execute executable="/SCRIPT-0a.cmd", agent="AGENT";
       execute executable="/SCRIPT-1.cmd", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
@@ -61,25 +83,25 @@ object ExecuteTest {
         job bJob;  // returnCode=3
         job cJob;  // returnCode=4
         define job bJob {
-          execute executable="/SCRIPT-3.cmd", agent="AGENT", arguments={"return_code": "3"}, successReturnCodes=[3];
+          execute agent="AGENT", executable="/SCRIPT-3.cmd", arguments={"return_code": "3"}, successReturnCodes=[3];
         }
         define job cJob {
-          execute executable="/SCRIPT-4.cmd", agent="AGENT", arguments={"return_code": "4"}, successReturnCodes=[4];
+          execute agent="AGENT", script=":\nexit 4", arguments={"return_code": "4"}, successReturnCodes=[4];
         }
       };
       job dJob, arguments={"return_code": "5"};
 
       define job aJob {
-        execute executable="/SCRIPT-0b.cmd", agent="AGENT";
+        execute agent="AGENT", executable="/SCRIPT-0b.cmd";
       }
       define job bJob {
-        execute executable="/SCRIPT-2.cmd", agent="AGENT", arguments={"return_code": "2"}, successReturnCodes=[2];
+        execute agent="AGENT", executable="/SCRIPT-2.cmd", arguments={"return_code": "2"}, successReturnCodes=[2];
       }
       define job dJob {
-        execute executable="/SCRIPT-5.cmd", agent="AGENT", arguments={"return_code": "99"}, successReturnCodes=[5];
+        execute agent="AGENT", script="exit 5", successReturnCodes=[5];
       }
     }"""
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL",  workflowNotation).orThrow
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflow.id, None),

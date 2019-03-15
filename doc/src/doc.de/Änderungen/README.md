@@ -1,5 +1,53 @@
 # Änderungen
 
+## 2019-03-14 (2)
+
+### JSON für Execute und Job-Definition geändert
+
+Das Feld ```executablePath: "/EXECUTABLE"``` habe ich ersetzt durch
+
+```
+"executable": {
+  "TYPE": "ExecutablePath",
+  "path": "/EXECUTABLE"
+}
+```
+
+Ein Workflow mit direktem Aufruf eines Skript und mit Definition eines Jobs sieht also so aus:
+
+```
+{
+  "instructions": [ 
+    {
+      "TYPE": "Execute.Anonymous",
+      "job": {
+        "agentRefPath": "/AGENT",
+        "executable": {
+          "TYPE": "ExecutablePath",
+          "path": "/EXECUTABLE"
+        },
+        "taskLimit": 1
+      }
+    },
+    ...  
+  ],
+  "jobs": {
+    "MYJOB": {
+      "agentRefPath": "/AGENT",
+      "executable": {
+        "TYPE": "ExecutablePath",
+        "path": "/EXECUTABLE"
+      },
+      "taskLimit": 1
+    }
+  }
+}
+```
+
+### Skript im Job
+
+TODO
+
 ## 2019-03-14
 
 ### Geändertes JSON für Aufruf eines Jobs

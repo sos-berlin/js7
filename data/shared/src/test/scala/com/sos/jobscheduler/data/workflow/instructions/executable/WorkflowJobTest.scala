@@ -20,7 +20,10 @@ final class WorkflowJobTest extends FreeSpec {
         ExecutablePath("/EXECUTABLE")),
       json"""{
         "agentRefPath": "/AGENT",
-        "executablePath": "/EXECUTABLE",
+        "executable": {
+          "TYPE": "ExecutablePath",
+          "path":  "/EXECUTABLE"
+        },
         "taskLimit": 1
       }""")
   }

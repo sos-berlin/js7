@@ -12,15 +12,26 @@ final class MasterScriptConverterTester
     private static final MasterScriptConverter MasterScriptConverter = new MasterScriptConverter();
     private static final String WorkflowScript =
         "define workflow {\n" +
-        "  execute executable=\"/EXECUTABLE\", agent=\"/AGENT\";\n" +
+        "  execute agent=\"/AGENT\", executable=\"/EXECUTABLE\";\n" +
         "}\n";
     private static final String WorkflowJson =
         "{" +
             "\"instructions\":[" +
-                "{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executablePath\":\"/EXECUTABLE\",\"taskLimit\":1},\"sourcePos\":[20,68]}," +
+                "{" +
+                    "\"TYPE\":\"Execute.Anonymous\"," +
+                    "\"job\":{" +
+                        "\"agentRefPath\":\"/AGENT\"," +
+                        "\"executable\":{" +
+                            "\"TYPE\":\"ExecutablePath\"," +
+                            "\"path\":\"/EXECUTABLE\"" +
+                        "}," +
+                        "\"taskLimit\":1" +
+                    "}," +
+                    "\"sourcePos\":[20,68]" +
+                "}," +
                 "{\"TYPE\":\"ImplicitEnd\",\"sourcePos\":[70,71]}" +
             "]," +
-            "\"source\":\"define workflow {\\n  execute executable=\\\"/EXECUTABLE\\\", agent=\\\"/AGENT\\\";\\n}\\n\"" +
+            "\"source\":\"define workflow {\\n  execute agent=\\\"/AGENT\\\", executable=\\\"/EXECUTABLE\\\";\\n}\\n\"" +
         "}";
 
     private MasterScriptConverterTester() {}

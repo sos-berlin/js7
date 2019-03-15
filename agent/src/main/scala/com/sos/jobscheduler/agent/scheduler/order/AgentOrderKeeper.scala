@@ -4,6 +4,7 @@ import akka.actor.{DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
@@ -45,7 +46,6 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.ZoneId
 import monix.execution.{Cancelable, Scheduler}
@@ -61,11 +61,10 @@ final class AgentOrderKeeper(
   masterId: MasterId,
   journalFileBase: Path,
   signatureVerifier: SignatureVerifier,
-  executableDirectory: Path,
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
   keyedEventBus: StampedKeyedEventBus,
-  config: Config)(
+  conf: AgentConfiguration)(
   implicit scheduler: Scheduler)
 extends MainJournalingActor[Event] with Stash {
 
@@ -75,13 +74,13 @@ extends MainJournalingActor[Event] with Stash {
 
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
-  private val eventWatch = new JournalEventWatch(journalMeta, config)
+  private val eventWatch = new JournalEventWatch(journalMeta, conf.config)
   protected val journalActor = watch(actorOf(
-    JournalActor.props(journalMeta, config, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, conf.config, keyedEventBus, scheduler),
     "Journal"))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
-  private val orderActorConf = OrderActor.Conf(config)
+  private val orderActorConf = OrderActor.Conf(conf.config)
   private val orderRegister = new OrderRegister(scheduler)
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
@@ -336,7 +335,8 @@ extends MainJournalingActor[Event] with Stash {
   private def startJobActors(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       val jobActor = watch(actorOf(
-        JobActor.props(jobKey, job, newTaskRunner, executableDirectory = executableDirectory)
+        JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
+          executablesDirectory = conf.executableDirectory, scriptInjectionAllowed = conf.scriptInjectionAllowed))
         /*TODO name actor?*/))
       jobRegister.insert(jobKey, jobActor)
     }

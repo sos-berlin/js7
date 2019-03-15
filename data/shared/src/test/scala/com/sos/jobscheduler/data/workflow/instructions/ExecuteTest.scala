@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.job.ExecutablePath
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -48,7 +48,10 @@ final class ExecuteTest extends FreeSpec
           "TYPE": "Execute.Anonymous",
           "job": {
             "agentRefPath": "/AGENT",
-            "executablePath": "/EXECUTABLE",
+            "executable": {
+              "TYPE": "ExecutablePath",
+              "path": "/EXECUTABLE"
+            },
             "taskLimit": 1
           }
         }""")
@@ -59,14 +62,17 @@ final class ExecuteTest extends FreeSpec
         Execute.Anonymous(
           WorkflowJob(
             AgentRefPath("/AGENT"),
-            ExecutablePath("/EXECUTABLE"),
+            ExecutableScript("SCRIPT"),
             Map("ARG" -> "VALUE")),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
             "agentRefPath": "/AGENT",
-            "executablePath": "/EXECUTABLE",
+            "executable": {
+              "TYPE": "ExecutableScript",
+              "script": "SCRIPT"
+            },
             "taskLimit": 1,
             "defaultArguments": {
               "ARG": "VALUE"
