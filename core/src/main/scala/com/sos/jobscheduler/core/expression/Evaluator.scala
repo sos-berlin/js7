@@ -64,6 +64,8 @@ final class Evaluator(scope: Scope)
           scope.variableNameToString.lift(name.string) map StringConstant.apply orElse default
             toChecked Problem(s"No such variable: ${name.string}")
             flatMap evalString)
+
+      case StripMargin(a) => evalString(a) map (o => StringValue(o.string.stripMargin))
     }
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =

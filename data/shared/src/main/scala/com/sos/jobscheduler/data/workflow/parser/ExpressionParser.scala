@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow.parser
 
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression
 import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
@@ -74,8 +75,9 @@ object ExpressionParser
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
       case (o, None) => valid(o)
       case (o, Some("toNumber")) => valid(ToNumber(o))
-      case (o, Some("toBoolean")) => valid(ToBoolean(o))
-      case (_, Some(f)) => invalid(s"known function: .$f")
+      case (o: StringExpression, Some("toBoolean")) => valid(ToBoolean(o))
+      case (o: StringExpression, Some("stripMargin")) => valid(StripMargin(o))
+      case (o, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 
   private def not[_: P]: P[Expression] = P(

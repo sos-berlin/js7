@@ -128,6 +128,11 @@ object Expression
     def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
   }
 
+  final case class StripMargin(expression: StringExpression) extends StringExpression {
+    def precedence = Precedence.Factor
+    override def toString = Precedence.inParentheses(expression, precedence) + ".stripMargin"
+  }
+
   final case object OrderReturnCode extends NumericExpression {
     def precedence = Precedence.Factor
     override def toString = "returnCode"

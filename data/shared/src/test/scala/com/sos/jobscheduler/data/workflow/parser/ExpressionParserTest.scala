@@ -119,6 +119,9 @@ final class ExpressionParserTest extends FreeSpec
           OrderReturnCode,
           NumericConstant(0)))))
 
+  testStringExpression("'STRING'.stripMargin",
+    StripMargin(StringConstant("STRING")))
+
   testBooleanExpression("""$result matches 'A.*'""",
     Matches(
       Variable(StringConstant("result")),

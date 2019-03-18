@@ -100,6 +100,18 @@ final class EvaluatorTest extends FreeSpec
     result = false,
     Valid(ToBoolean(StringConstant("false"))))
 
+  locally {
+    val longString =
+       """LINE 1
+         |LINE 2
+          LINE 3
+         |"""
+    testEval(
+      s"'$longString'.stripMargin",
+      result = longString.stripMargin,
+      Valid(StripMargin(StringConstant(longString))))
+  }
+
   testEval("""returnCode""",
     result = 1,
     Valid(OrderReturnCode))
