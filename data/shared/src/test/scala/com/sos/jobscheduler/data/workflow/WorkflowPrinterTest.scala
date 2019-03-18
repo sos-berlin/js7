@@ -3,12 +3,12 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{BooleanConstant, Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import org.scalatest.FreeSpec
@@ -48,18 +48,38 @@ final class WorkflowPrinterTest extends FreeSpec {
         |""".stripMargin)
   }
 
+  "Newline in string (not string expression)" in {
+    check(
+      Workflow(
+        WorkflowPath.NoId,
+        Vector(
+          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my-script"), Map("KEY\n\"$" -> "VALUE")),
+            sourcePos(20, 101)),
+          ImplicitEnd(sourcePos(103, 104)))),
+      """define workflow {
+        |  execute agent="/AGENT", arguments={"KEY\n\"\$": "VALUE"}, executable="/my-script";
+        |}
+        |""".stripMargin)
+  }
+
   "execute successReturnCodes=(), script" in {
     check(
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          // FIXME quotes at string start or end does not work!
-          Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\n'''LINE 2''' "), Map("KEY" -> "VALUE"), ReturnCodeMeaning.Success.of(0, 1)),
-            sourcePos(20, 134)),
-          ImplicitEnd(sourcePos(136, 137)))),
+          Execute.Anonymous(
+            WorkflowJob(AgentRefPath("/AGENT"),
+              ExecutableScript("LINE 1\nLINE 2\n'''LINE 3'''\n"),
+              Map("KEY" -> "VALUE"),
+              ReturnCodeMeaning.Success.of(0, 1)),
+            sourcePos(20, 166)),
+          ImplicitEnd(sourcePos(168, 169)))),
       """define workflow {
-        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=''''LINE 1
-        |'''LINE 2''' '''';
+        |  execute agent="/AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
+        |''''LINE 1
+        |   |LINE 2
+        |   |'''LINE 3'''
+        |   |''''.stripMargin;
         |}
         |""".stripMargin)
   }

@@ -7,10 +7,10 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}

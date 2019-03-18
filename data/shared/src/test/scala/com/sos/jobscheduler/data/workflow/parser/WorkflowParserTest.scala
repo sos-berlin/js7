@@ -4,12 +4,12 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
@@ -80,16 +80,17 @@ final class WorkflowParserTest extends FreeSpec {
   "Execute script with multi-line string" in {
     check(
 """define workflow {
-  execute agent="/AGENT", script='LINE 1
-    LINE 2
-    LINE 3
-    ';
-}""".stripMargin,
+  execute agent="/AGENT", script=
+   'LINE 1
+   |LINE 2
+   |LINE 3
+   |'.stripMargin;
+}""",
       Workflow.of(
         Execute.Anonymous(
-          WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\n    LINE 2\n    LINE 3\n    ")),
-          sourcePos(20, 86)),
-        ImplicitEnd(sourcePos(88, 89))))
+          WorkflowJob(AgentRefPath("/AGENT"), ExecutableScript("LINE 1\nLINE 2\nLINE 3\n")),
+          sourcePos(20, 102)),
+        ImplicitEnd(sourcePos(104, 105))))
   }
 
   "Execute named" in {

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow.parser
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
+import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser._
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._

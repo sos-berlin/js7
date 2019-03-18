@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.workflow.instructions.expr
+package com.sos.jobscheduler.data.expression
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
@@ -104,7 +104,6 @@ object Expression
   }
 
   final case class StringConstant(string: String) extends StringExpression {
-    if (string contains '"') throw new IllegalArgumentException("Quoted not allowed in String")  // TODO Escape quote and non-printable chars
     def precedence = Precedence.Factor
     override def toString =
       if (string.isEmpty) "\"\""

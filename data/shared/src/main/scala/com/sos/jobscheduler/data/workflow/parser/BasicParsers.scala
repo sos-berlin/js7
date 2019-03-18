@@ -69,21 +69,16 @@ private[parser] object BasicParsers
   //  P("'" * n).flatMap(_ => invalid(s"More than ${n - 1} '-quotes are not supported")))
 
   private def doubleQuoted[_: P] = P[String](
-    ("\"" ~~/
+    "\"" ~~/
       doubleQuotedContent ~~
-      "\"".opaque("""properly terminated "-quoted string""")
-    ).flatMap {
-      case o if o contains '$' =>
-        invalid("\"-quoted string without variable interpolation via '$' (reserved syntax, consider using single quotes ('))")
-      case o => valid(o)
-    })
+      "\"".opaque("""properly terminated "-quoted string"""))
 
   private def doubleQuotedContent[_: P] = P[String](
     (doubleQuotedContentPart ~~/ ("\\" ~~/ escapedChar ~~ doubleQuotedContentPart).rep(0))
       .map { case (a, pairs) => a + pairs.map(o => o._1 + o._2).mkString })
 
   private def doubleQuotedContentPart[_: P] = P[String](
-    CharsWhile(ch => ch != '"' && ch != '\\' && ch >= ' ', 0).!)
+    CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$'/*reserved for interpolation*/ && ch >= ' ', 0).!)
 
   private def escapedChar[_: P] = P[String](
     SingleChar.!.flatMap {
@@ -91,6 +86,7 @@ private[parser] object BasicParsers
       case "\"" => valid("\"")
       case "n" => valid("\n")
       case "t" => valid("\t")
+      case "$" => valid("$")
       case _ => invalid("""blackslash (\) and one of the following characters: [\"nt]""")
     })
 
@@ -111,10 +107,10 @@ private[parser] object BasicParsers
       }))
 
   def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
-    keyValue(name, parser, identity[A])
+    keyValueConvert(name, parser)(Valid.apply[A])
 
-  def keyValue[A, B](name: String, parser: => P[A], toValue: A => B)(implicit ctx: P[_]): P[(String, B)] =
-    w ~ specificKeyValue(name, parser).map(o => name -> toValue(o))
+  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]): P[(String, B)] =
+    w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o)).map(name.->))
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
     def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =

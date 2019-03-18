@@ -1,8 +1,11 @@
 package com.sos.jobscheduler.data.workflow.parser
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.Evaluator
 import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
@@ -10,7 +13,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.booleanExpression
+import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanExpression, constantExpression}
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.NoWhitespace._
@@ -90,8 +93,9 @@ object WorkflowParser
     private def anonymousWorkflowExecutable[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
-          keyValue("executable", quotedString, ExecutablePath.apply) |
-          keyValue("script", quotedString, ExecutableScript.apply) |
+          keyValueConvert("executable", quotedString)(o => Valid(ExecutablePath(o))) |
+          keyValueConvert("script", constantExpression)(o =>
+            Evaluator.Constant.eval(o).flatMap(_.asString).map(v => ExecutableScript(v.string))) |
           keyValue("agent", path[AgentRefPath]) |
           keyValue("arguments", arguments) |
           keyValue("successReturnCodes", successReturnCodes) |
@@ -206,7 +210,7 @@ object WorkflowParser
         curly(executeInstruction ~ w ~ instructionTerminator).map(_.job) ~/
         w)
 
-    def whole[_: P] = P(w ~/ workflowDefinition ~ w ~/ End)
+    def whole[_: P] = P[Workflow](w ~/ workflowDefinition ~ w ~/ End)
   }
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))

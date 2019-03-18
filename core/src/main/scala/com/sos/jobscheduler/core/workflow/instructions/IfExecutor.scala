@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.core.expression.Evaluator
 import com.sos.jobscheduler.core.workflow.OrderContext
+import com.sos.jobscheduler.data.expression.Evaluator
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.workflow.instructions.If

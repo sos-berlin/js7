@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
+import com.sos.jobscheduler.data.expression.Expression
+import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import fastparse.NoWhitespace._
 import fastparse._
@@ -12,6 +11,9 @@ import fastparse._
   */
 object ExpressionParser
 {
+  def constantExpression[_: P]: P[Expression] =
+    expression
+
   def expression[_: P]: P[Expression] =
     P(wordOperation)
 

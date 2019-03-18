@@ -62,7 +62,8 @@ set -e
 
 echo "はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT"
 sleep 2
-exit'';
+exit
+'';
   }
 
   define job SLEEP {

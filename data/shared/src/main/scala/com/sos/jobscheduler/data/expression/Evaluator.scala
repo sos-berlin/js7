@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.core.expression
+package com.sos.jobscheduler.data.expression
 
-import cats.data.Validated.Invalid
+import cats.data.Validated.{Invalid, Valid}
 import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.traverse._
@@ -8,9 +8,8 @@ import cats.syntax.validated._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.core.expression.Evaluator._
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
+import com.sos.jobscheduler.data.expression.Evaluator._
+import com.sos.jobscheduler.data.expression.Expression._
 
 /**
   * @author Joacim Zschimmer
@@ -49,8 +48,8 @@ final class Evaluator(scope: Scope)
   def evalNumeric(expr: NumericExpression): Checked[NumericValue] =
     expr match {
       case NumericConstant(o) => NumericValue(o).valid
-      case OrderReturnCode => NumericValue(scope.returnCode.number).valid
-      case OrderCatchCount => NumericValue(scope.catchCount).valid
+      case OrderReturnCode => scope.symbolToValue("returnCode").flatMap(_.asNumeric)
+      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
       case ToNumber(e) => eval(e) flatMap toNumeric
     }
 
@@ -60,10 +59,14 @@ final class Evaluator(scope: Scope)
         StringValue(o).valid
 
       case Variable(stringExpr, default) =>
-        evalString(stringExpr) flatMap (name =>
-          scope.variableNameToString.lift(name.string) map StringConstant.apply orElse default
-            toChecked Problem(s"No such variable: ${name.string}")
-            flatMap evalString)
+        for {
+          stringValue <- evalString(stringExpr)
+          name = stringValue.string
+          maybeValue <- scope.variableNameToString(name)
+          value <- maybeValue.map(StringConstant.apply).orElse(default)
+            .toChecked(Problem(s"No such variable: $name"))
+            .flatMap(evalString)
+        } yield value
 
       case StripMargin(a) => evalString(a) map (o => StringValue(o.string.stripMargin))
     }
@@ -123,10 +126,15 @@ final class Evaluator(scope: Scope)
 
 object Evaluator
 {
+  val Constant = new Evaluator(Scope.Constant)
+
   def evalBoolean(scope: Scope, expression: BooleanExpression): Checked[Boolean] =
     new Evaluator(scope).evalBoolean(expression) map (_.bool)
 
-  sealed trait Value
+  sealed trait Value {
+    def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
+    def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))
+  }
 
   final case class BooleanValue(bool: Boolean) extends Value
   object BooleanValue {
@@ -134,7 +142,9 @@ object Evaluator
     val False = BooleanValue(false)
   }
 
-  final case class NumericValue(number: BigDecimal) extends Value
+  final case class NumericValue(number: BigDecimal) extends Value {
+    override def asNumeric = Valid(this)
+  }
   object NumericValue {
     def fromString(number: String): Checked[NumericValue] =
       try
@@ -142,5 +152,7 @@ object Evaluator
       catch { case e: NumberFormatException => Problem(e.getMessage)}
   }
 
-  final case class StringValue(string: String) extends Value
+  final case class StringValue(string: String) extends Value {
+    override def asString = Valid(this)
+  }
 }

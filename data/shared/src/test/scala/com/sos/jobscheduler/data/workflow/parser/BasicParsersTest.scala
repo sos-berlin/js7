@@ -107,8 +107,10 @@ final class BasicParsersTest extends FreeSpec
 
     "String interpolation is not supported" in {
       // TODO String interpolation
+      assert(checkedParse(""""$variable"""", quotedString(_)) == Invalid(Problem(
+        """Expected properly terminated "-quoted string:1:2, found "$variable\""""")))
       assert(checkedParse(""""x$variable"""", quotedString(_)) == Invalid(Problem(
-        """Expected "-quoted string without variable interpolation via '$' (reserved syntax, consider using single quotes (')):1:13, found """"")))
+        """Expected properly terminated "-quoted string:1:3, found "$variable\""""")))
     }
 
     "Valid" in {

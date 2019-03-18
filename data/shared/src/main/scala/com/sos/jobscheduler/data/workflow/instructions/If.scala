@@ -4,8 +4,8 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.expression.Expression.BooleanExpression
 import com.sos.jobscheduler.data.source.SourcePos
-import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.BooleanExpression
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
