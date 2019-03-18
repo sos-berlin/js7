@@ -146,7 +146,11 @@ extends HasCloser with Observing
       if (masterApi.hasSession)
         Task.unit
       else
-        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable).map(_ => ())
+        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable)
+          .map { _ =>
+            logger.info("Logged in at Master")
+            ()
+          }
     }.flatten
 
   private def execute(versionId: Option[VersionId], diff: FileBaseds.Diff[TypedPath, FileBased]): Task[Checked[Completed.type]] =
