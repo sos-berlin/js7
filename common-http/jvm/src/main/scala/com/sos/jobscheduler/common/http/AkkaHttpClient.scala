@@ -92,7 +92,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
     for {
-      entity <- Task.deferFutureAction(implicit scheduler => Marshal(data).to[RequestEntity])
+      entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
       response <- sendReceive(
         HttpRequest(POST, uri, headers, entity),
         suppressSessionToken = suppressSessionToken,
