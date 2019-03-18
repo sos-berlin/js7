@@ -294,14 +294,12 @@ final class WorkflowParserTest extends FreeSpec {
   "fork" in {
     check(
       """define workflow {
-           fork(
-             "🥕" {
+           fork {
+             "🥕": {
                execute executable="/a", agent="/agent-a";
              },
-             "🍋" {
-               execute executable="/b", agent="/agent-b";
-             }
-           );
+             "🍋": execute executable="/b", agent="/agent-b";
+           }
          }""",
       Workflow.of(
         Fork(
@@ -309,15 +307,14 @@ final class WorkflowParserTest extends FreeSpec {
             Fork.Branch("🥕", Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/agent-a"), ExecutablePath("/a")),
-                sourcePos(69+1, 110+1)),
-              ImplicitEnd(sourcePos(125+1, 126+1)))),
+                sourcePos(71+1, 112+1)),
+              ImplicitEnd(sourcePos(127+1, 128+1)))),
             Fork.Branch("🍋", Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/agent-b"), ExecutablePath("/b")),
-                sourcePos(162+2, 203+2)),
-              ImplicitEnd(sourcePos(218+2, 219+2))))),
+                sourcePos(148+2, 189+2))))),
             sourcePos(29, 33)),
-        ImplicitEnd(sourcePos(243+2, 244+2))))
+        ImplicitEnd(sourcePos(213+2, 214+2))))
   }
 
   "offer" in {

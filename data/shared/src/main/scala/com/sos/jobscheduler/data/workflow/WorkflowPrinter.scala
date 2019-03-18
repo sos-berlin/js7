@@ -121,19 +121,21 @@ object WorkflowPrinter
           def appendBranch(branch: Fork.Branch) = {
             indent(nesting + 1)
             appendQuoted(branch.id.string)
-            sb ++= " {\n"
+            sb ++= ": {\n"
             appendWorkflowContent(sb, nesting + 2, branch.workflow)
             indent(nesting + 1)
             sb += '}'
           }
 
-          sb ++= "fork (\n"
+          sb ++= "fork {\n"
           for (b <- branches.take(branches.length - 1)) {
             appendBranch(b)
             sb.append(",\n")
           }
           appendBranch(branches.last)
-          sb ++= ");\n"
+          sb += '\n'
+          indent(nesting)
+          sb ++= "};\n"
 
         case Gap(_) =>
           sb ++= "/*gap*/\n"

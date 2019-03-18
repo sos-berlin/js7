@@ -1,5 +1,23 @@
 # Änderungen
 
+## 2018-03-18
+
+### Syntax für fork-Anweisung geändert
+
+- Geschweifte statt runde Klammern
+- Doppelpunkt nach der Branch-ID
+
+```
+fork {
+  "🥕": {
+    job carrot;
+  },
+  "🍋": {
+    job lemon;
+  }
+}
+'''
+
 ## 2019-03-14 (2)
 
 ### JSON für Execute und Job-Definition geändert

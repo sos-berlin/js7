@@ -131,11 +131,11 @@ object WorkflowParser
         })
 
     private def forkInstruction[_: P] = P[Fork]{
-      def orderSuffix = P(quotedString map (o => Fork.Branch.Id(o)))
+      def branchId = P(quotedString map (o => Fork.Branch.Id(o)))
       def forkBranch = P[Fork.Branch](
-        (orderSuffix ~ w ~ curlyWorkflowOrInstruction)
+        (branchId ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
           map Fork.Branch.fromPair)
-      (Index ~ keyword("fork") ~ Index ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator)
+      (Index ~ keyword("fork") ~ Index ~ w ~ curly(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator.?)
         .map { case (start, end, (branch, more)) => Fork(Vector(branch) ++ more, sourcePos(start, end)) }
     }
 

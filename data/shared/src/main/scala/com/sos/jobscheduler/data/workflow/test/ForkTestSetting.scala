@@ -25,19 +25,23 @@ object ForkTestSetting {
   val TestWorkflowSource = """
    |define workflow {
    |  // First instruction is a fork: Event OrderStarted here
-   |  fork(
-   |    "🥕" { job A },
-   |    "🍋" { job A });
-   |  fork(
-   |    "🥕" { job A },
-   |    "🍋" { job A });
+   |  fork {
+   |    "🥕": { job A },
+   |    "🍋": { job A }
+   |  };
+   |  fork {
+   |    "🥕": { job A },
+   |    "🍋": { job A }
+   |  };
    |  job B;
-   |  fork(
-   |    "🥕" { job B },
-   |    "🍋" { job A; job B });
-   |  fork(
-   |    "🥕" { job A },
-   |    "🍋" { job B });
+   |  fork {
+   |    "🥕": { job B },
+   |    "🍋": { job A; job B }
+   |  };
+   |  fork {
+   |    "🥕": { job A },
+   |    "🍋": { job B }
+   |  };
    |
    |  define job A {
    |    execute executable="/executable.cmd", agent="AGENT-A"

@@ -189,15 +189,16 @@ object FatEventsTest
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId, s"""
      |define workflow {
      |  execute executable="/TEST$sh", agent="AGENT-A";
-     |  fork(
-     |    "🥕" {
+     |  fork {
+     |    "🥕": {
      |      execute executable="/TEST$sh", agent="AGENT-A";
      |      execute executable="/TEST$sh", agent="AGENT-A";
      |    },
-     |    "🍋" {
+     |    "🍋": {
      |      execute executable="/TEST$sh", agent="AGENT-A";
      |      execute executable="/TEST$sh", agent="AGENT-B";
-     |    });
+     |    }
+     |  }
      |  execute executable="/TEST$sh", agent="AGENT-A";
      |}
      """.stripMargin.trim).orThrow
