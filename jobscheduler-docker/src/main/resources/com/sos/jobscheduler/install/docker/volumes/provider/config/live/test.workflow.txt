@@ -12,7 +12,7 @@ define workflow {
       try (retryDelays=[0, 1]) {
         execute agent="agent-1", taskLimit=10, arguments={"hello": "やあ"}, executable="/fail";
       } catch {
-        if (catchCount < 3) {
+        if (catchCount < 5) {
           job SLEEP, arguments={"hello": "Will try again ⭕️"};
           retry;
         } else
@@ -48,7 +48,7 @@ define workflow {
   define job TEST2 {
     execute agent="agent-2", taskLimit=10,
       arguments={
-        "testArgument": "☘",
+        "testArgument": "☘️",
         "other": "other value"
       },
       script =
