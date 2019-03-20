@@ -17,7 +17,8 @@ final class MasterClientSideHttpsWithoutCertificateTest extends HttpsTestBase
     val exception = intercept[Exception] {
       masterApi.overview await 99.s
     }
-    assert(exception.toString == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
+    assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||
+           exception.toString == "javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown]" ||  // Since Java 11
            exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
   }
 
@@ -25,7 +26,7 @@ final class MasterClientSideHttpsWithoutCertificateTest extends HttpsTestBase
     val exception = intercept[Exception] {
       masterApi.login(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))) await 99.s
     }
-    assert(exception.toString == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
+    assert(exception.isInstanceOf[javax.net.ssl.SSLException] && exception.getMessage == "Received fatal alert: certificate_unknown" ||
            exception.toString == "akka.stream.StreamTcpException: The connection closed with error: Connection reset by peer")
   }
 }
