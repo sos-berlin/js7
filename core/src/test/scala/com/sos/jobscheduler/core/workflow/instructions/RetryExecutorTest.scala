@@ -7,7 +7,7 @@ import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.RetryExecutorTest._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.OrderRetrying
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -50,7 +50,8 @@ object RetryExecutorTest
   private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
 
   private def toEvent(position: Position, delays: Seq[FiniteDuration] = Nil) = {
-    val order = Order(orderId, workflowId /: position, Order.Fresh(), Outcome.Succeeded(ReturnCode(1)))
+    val order = Order(orderId, workflowId /: position, Order.Fresh(),
+      historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
     val context = new OrderContext {
       def idToOrder = Map(order.id -> order)
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError

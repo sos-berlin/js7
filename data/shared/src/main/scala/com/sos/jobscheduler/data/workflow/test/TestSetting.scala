@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -10,8 +10,8 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 /**
   * For tests only.
   */
-private[jobscheduler] object TestSetting {
-
+private[jobscheduler] object TestSetting
+{
   val TestAgentRefPath = AgentRefPath("/AGENT")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
@@ -29,5 +29,5 @@ private[jobscheduler] object TestSetting {
     AExecute,
     BExecute)
 
-  val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("VARIABLE" -> "VALUE")))
+  val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.id, Order.Ready, Map("KEY" -> "VALUE"))
 }

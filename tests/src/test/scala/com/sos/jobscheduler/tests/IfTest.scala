@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -9,7 +8,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
@@ -75,51 +74,51 @@ object IfTest {
 
   private val ExpectedEvents = Map(
     ReturnCode(0) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "0"))),
+      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "0")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(2)),
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(1) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "1"))),
+      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(1))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(2)),
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(2) ->  Vector(
-      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" -> "2"))),
+      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "2")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
+      OrderProcessed(Outcome.Failed(ReturnCode(2))),
       OrderStopped(Outcome.Failed(ReturnCode(2)))))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
-    FreshOrder(orderId, TestWorkflow.id.path, payload = Payload(Map("RETURN_CODE" -> returnCode.number.toString)))
+    FreshOrder(orderId, TestWorkflow.id.path, arguments = Map("RETURN_CODE" -> returnCode.number.toString))
 }

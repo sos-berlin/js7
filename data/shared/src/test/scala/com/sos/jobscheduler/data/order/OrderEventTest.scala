@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
@@ -23,14 +22,14 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Payload(Map("VAR" -> "VALUE"))), json"""
+    check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> "VALUE")), json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
           "path": "/WORKFLOW",
           "versionId": "VERSION"
         },
-        "variables": {
+        "arguments": {
           "VAR": "VALUE"
         }
       }""")
@@ -48,10 +47,15 @@ final class OrderEventTest extends FreeSpec {
   "OrderAttached" in {
     check(
       OrderAttached(
+        Map("KEY" -> "VALUE"),
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2), Order.Ready,
-        Outcome.succeeded, Some(OrderId("PARENT")), AgentRefPath("/AGENT"), Payload(Map("VAR" -> "VALUE"))),
+        HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
+        Some(OrderId("PARENT")), AgentRefPath("/AGENT")),
       json"""{
         "TYPE": "OrderAttached",
+        "arguments": {
+          "KEY": "VALUE"
+        },
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",
@@ -62,17 +66,17 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE": "Ready"
         },
-        "outcome": {
-          "TYPE": "Succeeded",
-          "returnCode": 0
-        },
-        "parent": "PARENT",
-        "agentRefPath":"/AGENT",
-        "payload": {
-          "variables": {
-            "VAR": "VALUE"
+        "historicOutcomes": [
+          {
+            "position": [123],
+            "outcome": {
+              "TYPE": "Succeeded",
+              "returnCode": 0
+            }
           }
-        }
+        ],
+        "parent": "PARENT",
+        "agentRefPath":"/AGENT"
       }""")
   }
 
@@ -120,18 +124,15 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(changed = Map("VAR" -> "VALUE"), deleted = Set("REMOVED")), Outcome.Succeeded(ReturnCode(0))), json"""
+    check(OrderProcessed(Outcome.Succeeded(Map("KEY" -> "VALUE"))), json"""
       {
         "TYPE": "OrderProcessed",
-        "variablesDiff": {
-          "changed": {
-            "VAR": "VALUE"
-          },
-          "deleted": ["REMOVED"]
-        },
         "outcome": {
           "TYPE": "Succeeded",
-          "returnCode": 0
+          "returnCode": 0,
+          "keyValues": {
+            "KEY": "VALUE"
+          }
         }
       }""")
   }
@@ -194,38 +195,26 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderForked" in {
     check(OrderForked(List(
-      OrderForked.Child("A", OrderId("A/1"), MapDiff(Map("CHANGED" -> "x"))),
+      OrderForked.Child("A", OrderId("A/1")),
       OrderForked.Child("B", OrderId("B/1")))), json"""
       {
         "TYPE": "OrderForked",
         "children": [
           {
             "branchId": "A",
-            "orderId": "A/1",
-            "variablesDiff": {
-              "changed": { "CHANGED": "x" },
-              "deleted": []
-            }
+            "orderId": "A/1"
           }, {
             "branchId": "B",
-            "orderId": "B/1",
-            "variablesDiff": {
-              "changed": {},
-              "deleted": []
-            }
+            "orderId": "B/1"
           }
         ]
       }""")
   }
 
   "OrderJoined" in {
-    check(OrderJoined(MapDiff.empty, Outcome.succeeded), json"""
+    check(OrderJoined(Outcome.succeeded), json"""
       {
         "TYPE": "OrderJoined",
-        "variablesDiff": {
-          "changed": {},
-          "deleted": []
-        },
         "outcome": {
           "TYPE": "Succeeded",
           "returnCode": 0
@@ -301,7 +290,7 @@ final class OrderEventTest extends FreeSpec {
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val event = Stamped(12345678, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", payload = Payload(Map("VAR" -> "VALUE")))))
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", arguments = Map("KEY" -> "VALUE"))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ <- 1 to 10) {

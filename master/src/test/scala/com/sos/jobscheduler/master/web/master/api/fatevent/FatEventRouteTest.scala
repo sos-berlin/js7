@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -24,7 +23,7 @@ import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -136,7 +135,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     "/fatEvent?after=180, intermediate event added" in {
       eventWatch.addStamped(Stamped(EventId(190), OrderId("10") <-: OrderStarted))
       eventWatch.addStamped(Stamped(EventId(191), OrderId("10") <-: OrderProcessingStarted))
-      eventWatch.addStamped(Stamped(EventId(192), OrderId("10") <-: OrderProcessed(MapDiff.empty, Outcome.succeeded)))
+      eventWatch.addStamped(Stamped(EventId(192), OrderId("10") <-: OrderProcessed(Outcome.succeeded)))
       eventWatch.addStamped(Stamped(EventId(193), OrderId("10") <-: OrderMoved(Position(1))))
 
       assert(getFatEventSeq("/fatEvent?after=180") == EventSeq.NonEmpty(List(
@@ -258,7 +257,7 @@ object FatEventRouteTest
 
   private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
     (1 to 18).map(i =>
-      Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Payload.empty)) ::     // Yields OrderFatEvent
+      Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Map.empty)) ::     // Yields OrderFatEvent
       Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
       Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId.path)) ::  // No FatEvent
       Nil)

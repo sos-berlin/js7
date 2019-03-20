@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.workflow
 
 import cats.data.Validated.Valid
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.core.workflow.OrderContext._
 import com.sos.jobscheduler.data.expression.Evaluator.NumericValue
 import com.sos.jobscheduler.data.expression.Scope
@@ -20,23 +21,26 @@ trait OrderContext
 
   def childOrderEnded(order: Order[Order.State]): Boolean
 
-  final def makeScope(order: Order[Order.State]): Scope =
+  final def makeScope(order: Order[Order.State]): Scope = {
     new Scope {
-      private lazy val returnCode = Valid(
-        order.outcome match {
-          case Outcome.Undisrupted(rc, _) => NumericValue(rc.number)
-          case _: Outcome.Disrupted => NumericValue(DisruptedReturnCode.number)
-        })
+      private lazy val returnCodeValue: Checked[NumericValue] = {
+        val returnCode = order.lastOutcome match {
+          case o: Outcome.Undisrupted => o.returnCode
+          case _: Outcome.Disrupted => DisruptedReturnCode
+        }
+        Valid(NumericValue(returnCode.number))
+      }
 
       private lazy val catchCount = Valid(NumericValue(order.workflowPosition.position.catchCount))
 
       val symbolToValue = {
-        case "returnCode" => returnCode
+        case "returnCode" => returnCodeValue
         case "catchCount" => catchCount
       }
 
-      val variableNameToString = name => Valid(order.variables.get(name))
+      val variableNameToString = name => Valid(order.keyValues.get(name))
     }
+  }
 }
 
 object OrderContext {

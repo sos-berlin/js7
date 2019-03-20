@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
 import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger, SetOnce}
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -64,9 +63,7 @@ extends TaskRunner {
 
   def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[TaskStepEnded] =
     for (returnCode <- runProcess(order, defaultArguments, stdChannels)) yield
-      TaskStepSucceeded(
-        MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
-        returnCode)
+      TaskStepSucceeded(fetchReturnValuesThenDeleteFile(), returnCode)
 
   private def runProcess(order: Order[Order.Processing], defaultArguments: Map[String, String], stdChannels: StdChannels): Future[ReturnCode] =
     for {
@@ -97,7 +94,7 @@ extends TaskRunner {
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {
       val env = {
-        val params = conf.workflowJob.defaultArguments ++ defaultArguments ++ order.variables
+        val params = conf.workflowJob.defaultArguments ++ defaultArguments ++ order.keyValues
         val paramEnv = params map { case (k, v) => (variablePrefix + k.toUpperCase) -> v }
         paramEnv + returnValuesProvider.env
       }

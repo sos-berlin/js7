@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -81,14 +80,14 @@ final class TryTest extends FreeSpec
           OrderTransferredToAgent(TestAgentRefPath),
           OrderStarted,
           OrderProcessingStarted,
-          OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(0) / Try_ % 1 / Then % 0),
           OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0) / Catch_ % 0),
           OrderProcessingStarted,
-          OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),
           OrderProcessingStarted,
-          OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(2)),
           OrderDetachable,
           OrderTransferredToMaster,
@@ -133,15 +132,15 @@ object TryTest {
 
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+    OrderProcessed(Outcome.Failed(ReturnCode(1))),
     OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Catch_ % 0),
 
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
+    OrderProcessed(Outcome.Failed(ReturnCode(2))),
     OrderCatched(Outcome.Failed(ReturnCode(2)), Position(1)),  // Empty catch-block, so Order is moved to outer block
 
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.succeeded),
+    OrderProcessed(Outcome.succeeded),
     OrderMoved(Position(2)),
 
     OrderDetachable,
@@ -166,10 +165,10 @@ object TryTest {
 
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+    OrderProcessed(Outcome.Failed(ReturnCode(1))),
     OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0),
 
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
+    OrderProcessed(Outcome.Failed(ReturnCode(2))),
     OrderStopped(Outcome.Failed(ReturnCode(2))))
 }

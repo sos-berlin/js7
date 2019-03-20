@@ -27,10 +27,10 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   workflowPosition: WorkflowPosition,
   state: S,
-  outcome: Outcome = Outcome.succeeded,
+  arguments: Map[String, String] = Map.empty,
+  historicOutcomes: Seq[HistoricOutcome] = Nil,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
-  payload: Payload = Payload.empty,
   cancel: Option[CancelMode] = None)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
@@ -39,10 +39,10 @@ final case class Order[+S <: Order.State](
         child.orderId,
         workflowPosition.copy(position = workflowPosition.position / child.branchId.toBranchId % InstructionNr.First),
         Ready,
-        Outcome.succeeded,
+        arguments,
+        historicOutcomes,
         attachedState,
-        parent = Some(id),
-        Payload(child.variablesDiff.applyTo(payload.variables)))
+        parent = Some(id))
 
   def newPublishedOrder(event: OrderOffered): Order[Offering] = copy(
     event.orderId,
@@ -74,26 +74,27 @@ final case class Order[+S <: Order.State](
         check(isState[Ready] && isAttached,
           copy(state = Processing))
 
-      case OrderProcessed(diff, outcome_) =>
+      case OrderProcessed(outcome_) =>
         check(isState[Processing] && isAttached,
           copy(
             state = Processed,
-            outcome = outcome_,
-            payload = Payload(diff.applyTo(payload.variables))))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderFailed(_) =>
         inapplicable
 
       case OrderStopped(outcome_) =>
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
-          copy(state = Stopped, outcome = outcome_))
+          copy(
+            state = Stopped,
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderCatched(outcome_, movedTo) =>
         check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
-            outcome = outcome_))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderRetrying(to, maybeDelayUntil) =>
         check(isState[Ready] && (isDetached || isAttached),
@@ -108,18 +109,17 @@ final case class Order[+S <: Order.State](
         check(isState[Ready] && (isDetached || isAttached),
           copy(state = Forked(children)))
 
-      case OrderJoined(variablesDiff, outcome_) =>
+      case OrderJoined(outcome_) =>
         check((isState[Forked] || isState[Awaiting]) && isDetached,
           copy(
             state = Processed,
-            outcome = outcome_,
-            payload = Payload(variablesDiff applyTo variables)))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case _: OrderOffered =>
         check(isState[Ready] && isDetached,
           copy(
             state = Processed,
-            outcome = Outcome.succeeded))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, Outcome.succeeded)))
 
       case OrderAwaiting(orderId) =>
         check(isState[Ready] && isDetached,
@@ -182,7 +182,12 @@ final case class Order[+S <: Order.State](
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
 
-  def variables = payload.variables
+  def lastOutcome: Outcome =
+    historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
+
+  def keyValues: Map[String, String] = historicOutcomes
+    .collect { case HistoricOutcome(_, o: Outcome.Undisrupted) => o.keyValues }
+    .fold(arguments)((a, b) => a ++ b)
 
   def isStarted = isState[Started]
 
@@ -246,11 +251,12 @@ final case class Order[+S <: Order.State](
 }
 
 object Order {
-  def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
-    Order(id, event.workflowId, Fresh(event.scheduledFor), payload = event.payload)
+  def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] = {
+    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments)
+  }
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[FreshOrReady] =
-    Order(id, event.workflowPosition, event.state, event.outcome, Some(Attached(event.agentRefPath)), payload = event.payload)
+    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentRefPath)))
 
   sealed trait AttachedState
   object AttachedState {
@@ -356,27 +362,27 @@ object Order {
 
   implicit val jsonEncoder: ObjectEncoder[Order[State]] = order =>
     JsonObject(
-      "id" ->  order.id.asJson,
+      "id" -> order.id.asJson,
+      "arguments" -> (order.arguments.nonEmpty ? order.arguments).asJson,
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
-      "payload" -> order.payload.asJson,
-      "outcome" -> ((order.outcome != Outcome.succeeded) ? order.outcome).asJson,
+      "historicOutcomes" -> order.historicOutcomes.asJson,
       "cancel" -> order.cancel.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
       id <- cursor.get[OrderId]("id")
+      arguments <- cursor.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
-      payload <- cursor.get[Payload]("payload")
-      outcome <- cursor.get[Option[Outcome]]("outcome") map (_ getOrElse Outcome.succeeded)
+      historicOutcomes <- cursor.get[Seq[HistoricOutcome]]("historicOutcomes")
       cancel <- cursor.get[Option[CancelMode]]("cancel")
     } yield
-      Order(id, workflowPosition, state, outcome, attachedState, parent, payload, cancel)
+      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, cancel)
 
   implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor =>

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.tests
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.problems.{CancelStartedOrderProblem, UnknownOrderProblem}
@@ -67,7 +66,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderTransferredToMaster,
@@ -96,7 +95,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelationMarked(CancelMode.FreshOrStarted),
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderTransferredToMaster,

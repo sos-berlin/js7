@@ -5,7 +5,6 @@ import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
@@ -32,9 +31,10 @@ final class OrderTest extends FreeSpec
     OrderId("ID"),
     WorkflowPath("/WORKFLOW") ~ "VERSION",
     Ready,
-    payload = Payload(Map(
-      "var1" -> "value1",
-      "var2" -> "value2")))
+    arguments = Map(
+      "key1" -> "value1",
+      "key2" -> "value2"),
+    HistoricOutcome(Position(123), Outcome.Succeeded(ReturnCode(0))) :: Nil)
 
   "JSON" - {
     "Order" - {
@@ -55,17 +55,24 @@ final class OrderTest extends FreeSpec
             "state": {
               "TYPE": "Ready"
             },
+            "arguments": {
+              "key1": "value1",
+              "key2": "value2"
+            },
+            "historicOutcomes": [
+              {
+                "position": [ 123 ],
+                "outcome": {
+                  "TYPE": "Succeeded",
+                  "returnCode": 0
+                }
+              }
+            ],
             "attachedState": {
               "TYPE": "Attached",
               "agentRefPath":"/AGENT"
             },
-            "parent": "PARENT",
-            "payload": {
-              "variables": {
-                "var1": "value1",
-                "var2": "value2"
-              }
-            }
+            "parent": "PARENT"
           }""")
       }
 
@@ -84,9 +91,7 @@ final class OrderTest extends FreeSpec
             "state": {
               "TYPE": "Fresh"
             },
-            "payload": {
-              "variables": {}
-            },
+            "historicOutcomes": [],
             "cancel": {
               "TYPE": "NotStarted"
             }
@@ -150,25 +155,17 @@ final class OrderTest extends FreeSpec
 
       "Forked" in {
         testJson[State](Forked(List(
-          Forked.Child(Fork.Branch.Id("A"), OrderId("A/1"), MapDiff(Map("K" -> "V"))),
+          Forked.Child(Fork.Branch.Id("A"), OrderId("A/1")),
           Forked.Child(Fork.Branch.Id("B"), OrderId("B/1")))),
           json"""{
             "TYPE": "Forked",
               "children": [
                 {
                   "branchId": "A",
-                  "orderId": "A/1",
-                  "variablesDiff": {
-                    "changed": { "K": "V" },
-                    "deleted": []
-                  }
+                  "orderId": "A/1"
                 }, {
                   "branchId": "B",
-                  "orderId": "B/1",
-                  "variablesDiff": {
-                    "changed": {},
-                    "deleted": []
-                  }
+                  "orderId": "B/1"
                 }
               ]
             }""")
@@ -227,21 +224,21 @@ final class OrderTest extends FreeSpec
       OrderAdded(workflowId),
 
       OrderAttachable(agentRefPath),
-      OrderAttached(workflowId /: Position(0), Fresh(), Outcome.succeeded, None, agentRefPath, Payload.empty),
+      OrderAttached(Map.empty, workflowId /: Position(0), Fresh(), Nil, None, agentRefPath),
       OrderTransferredToAgent(agentRefPath),
 
       OrderStarted,
       OrderProcessingStarted,
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
-      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderStopped(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),
       OrderRetrying(Position(1)),
       OrderAwoke,
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId / "BRANCH") :: Nil),
-      OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderJoined(Outcome.Succeeded(ReturnCode(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
       OrderFinished,
@@ -301,7 +298,8 @@ final class OrderTest extends FreeSpec
     }
 
     "Processed" - {
-      checkAllEvents(Order(orderId, workflowId, Processed, Outcome.Succeeded(ReturnCode(0))),
+      checkAllEvents(Order(orderId, workflowId, Processed,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
         cancelationMarkingAllowed[Processed] orElse {
           case (_: OrderMoved  , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderStopped, `attached`             ) => _.isInstanceOf[Stopped]
@@ -311,7 +309,8 @@ final class OrderTest extends FreeSpec
     }
 
     "Stopped" - {
-      checkAllEvents(Order(orderId, workflowId, Stopped, outcome = Outcome.Failed(ReturnCode(1))),
+      checkAllEvents(Order(orderId, workflowId, Stopped,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
         detachingAllowed[Stopped] orElse
         cancelationMarkingAllowed[Stopped] orElse {
           case (OrderCanceled , `detached`) => _.isInstanceOf[Order.Canceled]

@@ -12,7 +12,7 @@ import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule
 final case class ScheduledOrderGenerator(
   id: FileBasedId[ScheduledOrderGeneratorPath],
   workflowPath: WorkflowPath,
-  variables: Map[String, String],
+  arguments: Map[String, String],
   schedule: OldSchedule)
 extends FileBased
 {

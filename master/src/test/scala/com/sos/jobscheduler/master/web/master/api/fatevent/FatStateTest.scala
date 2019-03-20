@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.web.master.api.fatevent
 
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBasedVerifier, Repo}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
@@ -79,7 +78,7 @@ final class FatStateTest extends FreeSpec
   }
 
   "OrderProcessed" in {
-    check(orderId <-: OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(7))),
+    check(orderId <-: OrderProcessed(Outcome.Succeeded(ReturnCode(7))),
       Some(orderId <-: OrderProcessedFat(Outcome.Succeeded(ReturnCode(7)), Map.empty)))
   }
 
@@ -89,7 +88,7 @@ final class FatStateTest extends FreeSpec
   }
 
   "OrderForked" in {
-    check(orderId <-: OrderForked(OrderForked.Child("A", orderId / "A", MapDiff.empty) :: OrderForked.Child("B", orderId / "B", MapDiff.empty) :: Nil),
+    check(orderId <-: OrderForked(OrderForked.Child("A", orderId / "A") :: OrderForked.Child("B", orderId / "B") :: Nil),
       Some(orderId <-: OrderForkedFat(workflow.id /: Position(1), OrderForkedFat.Child("A", orderId / "A", Map.empty) :: OrderForkedFat.Child("B", orderId / "B", Map.empty) :: Nil)))
   }
 
@@ -104,8 +103,8 @@ final class FatStateTest extends FreeSpec
   }
 
   "OrderJoined" in {
-    check(orderId <-: OrderJoined(MapDiff.empty, Outcome.Succeeded(ReturnCode(8))),
-      Some(orderId <-: OrderJoinedFat(orderId / "A" :: orderId / "B" :: Nil, Map.empty, Outcome.Succeeded(ReturnCode(8)))))
+    check(orderId <-: OrderJoined(Outcome.Succeeded(ReturnCode(8))),
+      Some(orderId <-: OrderJoinedFat(orderId / "A" :: orderId / "B" :: Nil, Outcome.Succeeded(ReturnCode(8)))))
   }
 
   "OrderMoved (2)" in {

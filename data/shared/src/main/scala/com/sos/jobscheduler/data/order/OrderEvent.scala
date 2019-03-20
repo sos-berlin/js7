@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -33,7 +32,7 @@ object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
 
-  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, payload: Payload = Payload.empty)
+  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: Map[String, String] = Map.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
     //type State = FreshOrReady
@@ -43,18 +42,18 @@ object OrderEvent {
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,
-        "variables" -> ((o.payload != Payload.empty) ? o.payload.variables).asJson)
+        "arguments" -> (o.arguments.nonEmpty ? o.arguments).asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-        payload <- c.get[Option[Map[String, String]]]("variables") map (_ map Payload.apply getOrElse Payload.empty)
-      } yield OrderAdded(workflowId, scheduledFor, payload)
+        arguments <- c.get[Option[Map[String, String]]]("arguments") map (_ getOrElse Map.empty)
+      } yield OrderAdded(workflowId, scheduledFor, arguments)
   }
 
-  final case class OrderAttached(workflowPosition: WorkflowPosition, state: FreshOrReady, outcome: Outcome,
-    parent: Option[OrderId], agentRefPath: AgentRefPath,  payload: Payload)
+  final case class OrderAttached(arguments: Map[String, String], workflowPosition: WorkflowPosition, state: FreshOrReady, historicOutcomes: Seq[HistoricOutcome],
+    parent: Option[OrderId], agentRefPath: AgentRefPath)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
     //type State = FreshOrReady
@@ -111,17 +110,17 @@ object OrderEvent {
     override def toString = super.toString
   }
 
-  final case class OrderProcessed(variablesDiff: MapDiff[String, String], outcome: Outcome) extends OrderCoreEvent {
+  final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent {
     //type State = Processed
   }
 
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
     @JsonCodec
-    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
+    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId)
   }
 
-  final case class OrderJoined(variablesDiff: MapDiff[String, String], outcome: Outcome)  // TODO Das gleiche wie OrderProcessed ?
+  final case class OrderJoined(outcome: Outcome)
   extends OrderActorEvent
 
   final case class OrderOffered(orderId: OrderId, until: Timestamp)

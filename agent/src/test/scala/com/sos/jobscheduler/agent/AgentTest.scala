@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Regis
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.base.auth.SimpleUser
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -21,7 +20,7 @@ import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
@@ -66,7 +65,7 @@ final class AgentTest extends FreeSpec with AgentTester
               == Valid(AgentCommand.Response.Accepted))
             val eventWatch = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
-            assert(orderProcessed.variablesDiff == MapDiff(Map("WORKDIR" -> workingDirectory.toString)))
+            assert(orderProcessed.outcome == Outcome.Succeeded(Map("WORKDIR" -> workingDirectory.toString)))
             agent.terminate() await 99.s
           }
         }

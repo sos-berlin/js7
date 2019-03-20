@@ -14,7 +14,6 @@ import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -34,7 +33,7 @@ import com.sos.jobscheduler.data.event.{EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -116,9 +115,9 @@ private object OrderActorTest {
   private val TestAgentRefPath = AgentRefPath("/TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.workflowPosition, Order.Ready, Outcome.succeeded, None, AgentRefPath("/TEST-AGENT"), Payload.empty),
+    OrderAttached(TestOrder.arguments, TestOrder.workflowPosition, Order.Ready, TestOrder.historicOutcomes, None, AgentRefPath("/TEST-AGENT")),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff(Map("result" -> "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "TEST-RESULT-FROM-JOB"))),
     OrderMoved(TestPosition),
     OrderDetachable,
     OrderDetached)

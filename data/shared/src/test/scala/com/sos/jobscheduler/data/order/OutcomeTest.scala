@@ -21,18 +21,18 @@ final class OutcomeTest extends FreeSpec {
   }
 
   "Undisrupted" in {
-    assert(Undisrupted(ReturnCode(1), true) == Outcome.Succeeded(ReturnCode(1)))
-    assert(Undisrupted(ReturnCode(1), false) == Outcome.Failed(ReturnCode(1)))
-    assert(Outcome.Succeeded(ReturnCode(1)) match {
-      case Outcome.Undisrupted(ReturnCode(1), true) => true
+    assert(Undisrupted(true, ReturnCode(1), Map("K" -> "V")) == Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")))
+    assert(Undisrupted(false, ReturnCode(1), Map("K" -> "V")) == Outcome.Failed(ReturnCode(1), Map("K" -> "V")))
+    assert(Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")) match {
+      case Outcome.Undisrupted(true, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
       case _ => false
     })
-    assert(Outcome.Failed(ReturnCode(1)) match {
-      case Outcome.Undisrupted(ReturnCode(1), false) => true
+    assert(Outcome.Failed(ReturnCode(1), Map("K" -> "V")) match {
+      case Outcome.Undisrupted(false, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
       case _ => false
     })
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
-      case Outcome.Undisrupted(_, _) => false
+      case _: Outcome.Undisrupted => false
       case _ => true
     })
   }
@@ -76,5 +76,16 @@ final class OutcomeTest extends FreeSpec {
           }
         }""")
     }
+  }
+
+  "Constant pool for memory reuse" in {
+    assert(Outcome.Succeeded(Map.empty[String, String]) eq Outcome.Succeeded(ReturnCode(0)))
+    assert(Outcome.Succeeded(Map.empty[String, String]) eq Outcome.Undisrupted(true, ReturnCode(0)))
+    for (i <- 0 to 255) {
+      assert(Outcome.Succeeded(ReturnCode(i)) eq Outcome.Succeeded(ReturnCode(i)))
+      assert(Outcome.Succeeded(ReturnCode(i)) eq Outcome.Undisrupted(true, ReturnCode(i)))
+      assert(Outcome.Failed(ReturnCode(i)) eq Outcome.Undisrupted(false, ReturnCode(i)))
+    }
+    assert(Outcome.Succeeded(ReturnCode(1234)) ne Outcome.Succeeded(ReturnCode(1234)))  // Not in constant pool
   }
 }

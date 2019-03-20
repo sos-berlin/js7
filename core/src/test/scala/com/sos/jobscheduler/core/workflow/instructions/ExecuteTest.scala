@@ -2,13 +2,12 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderFailed, OrderMoved, OrderProcessed}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
@@ -31,10 +30,10 @@ final class ExecuteTest extends FreeSpec {
   }
 
   "toOrderProcessed" in {
-    val variablesDiff = MapDiff(Map("a" -> "A"))
-    assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(0)) == OrderProcessed(variablesDiff, Outcome.Succeeded(ReturnCode(0))))
-    assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(1)) == OrderProcessed(variablesDiff, Outcome.Failed(ReturnCode(1))))
-    assert(executeAnonymous.job.toOrderProcessed(variablesDiff, ReturnCode(3)) == OrderProcessed(variablesDiff, Outcome.Succeeded(ReturnCode(3))))
+    val keyValues = Map("a" -> "A")
+    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(0), keyValues) == OrderProcessed(Outcome.Succeeded(keyValues)))
+    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(1), keyValues) == OrderProcessed(Outcome.Failed(ReturnCode(1), keyValues)))
+    assert(executeAnonymous.job.toOrderProcessed(ReturnCode(3), keyValues) == OrderProcessed(Outcome.Succeeded(ReturnCode(3), keyValues)))
   }
 
   "toEvent" in {
@@ -45,7 +44,8 @@ final class ExecuteTest extends FreeSpec {
   }
 
   private def toEvent(outcome: Outcome): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed, outcome = outcome)
+    val order = Order(orderId, (WorkflowPath("/WORKFLOW") ~ "VERSION" ) /: (Position(1) / 2 % 3), Order.Processed,
+      historicOutcomes = HistoricOutcome(Position(1) / 2 % 2, outcome) :: Nil)
     ExecuteExecutor.toEvent(orderContext, order, executeAnonymous).orThrow
   }
 }

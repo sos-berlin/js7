@@ -1,5 +1,34 @@
 # Änderungen
 
+## 2018-03-19
+
+### Zugriff auf vorherige Ergnisse vorheriger Auftragsschritte
+
+#### Umbennungen
+
+Das Feld ```argument``` enthält die ursprünglichen Parameter des Auftrags, 
+wie sie mit dem Auftrag eingespeist worden sind.
+
+- Webservice ```POST master/api/order``` (```FreshOrder```):
+- ```OrderAddedFat``` und  ```OrderForkedFat```
+- ```OrderProcessingStartedFat```, ```OrderProcessedFat```, ```OrderJoinedFat```
+- GraphQL
+
+In GraphQL heißt das Feld ```outcome``` jetzt ```lastOutcome```.
+
+
+```json
+{
+  "id": "ORDER-ID",
+  "workflowPath": "/WORKFLOW",
+  "scheduledFor": 1488888000000,
+  "arguments": {
+    "KEY": "VALUE"
+  }
+}
+```
+
+
 ## 2018-03-18
 
 ### Syntax für fork-Anweisung geändert
@@ -24,7 +53,7 @@ fork {
 
 Das Feld ```executablePath: "/EXECUTABLE"``` habe ich ersetzt durch
 
-```
+```json
 "executable": {
   "TYPE": "ExecutablePath",
   "path": "/EXECUTABLE"
@@ -33,7 +62,7 @@ Das Feld ```executablePath: "/EXECUTABLE"``` habe ich ersetzt durch
 
 Ein Workflow mit direktem Aufruf eines Skript und mit Definition eines Jobs sieht also so aus:
 
-```
+```json
 {
   "instructions": [ 
     {
@@ -72,7 +101,7 @@ TODO
 
 Das Feld ```name``` heißt jetzt ```jobName```:
 
-```
+```json
 {
   "TYPE": "Execute.Named",
   "jobName": "JOB"

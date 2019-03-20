@@ -22,7 +22,7 @@ object ExecuteExecutor extends EventInstructionExecutor
       //.orElse(
         order.ifState[Order.Processed].map(order =>
           order.id <-: (
-            order.outcome match {
+            order.lastOutcome match {
               case Outcome.Disrupted(JobSchedulerRestarted) =>
                 OrderMoved(order.position) // Repeat
 

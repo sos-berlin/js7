@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderJoined, OrderStarted}
@@ -27,7 +26,7 @@ object AwaitOrderExecutor extends EventInstructionExecutor
             order <- order.ifState[Order.Awaiting]
             _ <- context.idToOrder.lift(instruction.orderId) flatMap (_.ifState[Order.Offering])
           } yield
-            order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
+            order.id <-: OrderJoined(Outcome.succeeded))
       .orElse(
         ifProcessedThenOrderMoved(order, context)))
 }

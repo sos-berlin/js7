@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.master.OrderApi
@@ -82,7 +82,7 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" -> "VALUE")))
+    val order = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE"))
     Post(s"/master/api/order", order) ~> route ~> check {
       assert(status == Created)  // New order
     }

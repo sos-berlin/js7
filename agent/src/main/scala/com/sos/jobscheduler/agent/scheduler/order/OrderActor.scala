@@ -10,7 +10,6 @@ import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import com.sos.jobscheduler.base.generic.{Accepted, Completed}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -59,7 +58,7 @@ extends KeyedJournalingActor[OrderEvent]
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
     order.state match {
-      case Order.Processing => handleEvent(OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome))
+      case Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
       case _ => becomeAsStateOf(order, force = true)
     }
     logger.debug(s"Recovered $order")
@@ -83,9 +82,9 @@ extends KeyedJournalingActor[OrderEvent]
 
     case command: Command =>
       command match {
-        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, outcome, Some(Order.Attached(agentRefPath)), parent, payload, cancelationMarked/*???*/)) =>
+        case Command.Attach(attached @ Order(`orderId`, workflowPosition, state: Order.FreshOrReady, arguments, historicOutcomes, Some(Order.Attached(agentRefPath)), parent, cancelationMarked/*???*/)) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttached(workflowPosition, state, outcome, parent, agentRefPath, payload)) { event =>
+          persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { event =>
             update(event)
             sender() ! Completed
           }
@@ -151,11 +150,11 @@ extends KeyedJournalingActor[OrderEvent]
 
       case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded) =>
         val event = taskStepEnded match {
-          case TaskStepSucceeded(variablesDiff, returnCode) =>
-            job.toOrderProcessed(variablesDiff, returnCode)
+          case TaskStepSucceeded(keyValues, returnCode) =>
+            job.toOrderProcessed(returnCode, keyValues)
 
           case TaskStepFailed(problem) =>
-            OrderProcessed(MapDiff.empty, Outcome.Disrupted(problem))
+            OrderProcessed(Outcome.Disrupted(problem))
         }
         finishProcessing(event, stdoutStderrStatistics)
         context.unwatch(jobActor)
@@ -165,8 +164,7 @@ extends KeyedJournalingActor[OrderEvent]
         // JobActor has killed process. Job may be restarted after recovery.
         val problem = Problem.pure(s"Job Actor for '$jobKey' terminated unexpectedly")
         logger.error(problem.toString)
-        val bad = Outcome.Disrupted(problem)
-        finishProcessing(OrderProcessed(MapDiff.empty, bad), stdoutStderrStatistics)
+        finishProcessing(OrderProcessed(Outcome.Disrupted(problem)), stdoutStderrStatistics)
 
       case command: Command =>
         executeOtherCommand(command)

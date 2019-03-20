@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.workflow.instructions.IfExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
@@ -70,10 +70,10 @@ final class IfExecutorTest extends FreeSpec {
 
 object IfExecutorTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
-  private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed, outcome = Outcome.Succeeded(ReturnCode(1)),
-    payload = Payload(Map("A" -> "AA")))
-  private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed, outcome = Outcome.Succeeded(ReturnCode(1)),
-    payload = Payload(Map("A" -> "XX")))
+  private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1), Map("A" -> "AA"))) :: Nil)
+  private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1), Map("A" -> "XX"))) :: Nil)
   private val ThenJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))
   private val ElseJob = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")))
 

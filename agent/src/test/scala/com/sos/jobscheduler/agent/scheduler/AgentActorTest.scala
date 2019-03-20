@@ -15,7 +15,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
@@ -54,10 +55,11 @@ final class AgentActorTest extends FreeSpec {
             orderId,
             SimpleTestWorkflow.lastWorkflowPosition,
             Order.Ready,
-            Outcome.succeeded,
-            Some(Order.Detaching(TestAgentRefPath)),
-            payload = TestOrder.payload.copy(
-              variables = TestOrder.payload.variables + ("result" -> "TEST-RESULT-B-VALUE"))
+            Map("KEY" -> "VALUE"),
+            historicOutcomes = TestOrder.historicOutcomes :+
+              HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) :+
+              HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> "TEST-RESULT-B-VALUE"))),
+            Some(Order.Detaching(TestAgentRefPath))
           )).toSet)
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s

@@ -452,7 +452,7 @@ with MainJournalingActor[Event]
         repo.idTo[Workflow](order.workflowId) match {
           case Invalid(problem) => Future.successful(Invalid(problem))
           case Valid(workflow) =>
-            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.payload)) { stamped =>
+            persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { stamped =>
               handleOrderEvent(stamped)
               Valid(true)
             }
@@ -468,7 +468,7 @@ with MainJournalingActor[Event]
         .traverse[Checked, (Order[Order.Fresh], Workflow)](order => repo.idTo[Workflow](order.workflowId).map(order -> _))
         .map { ordersAndWorkflows =>
           val events = for ((order, workflow) <- ordersAndWorkflows) yield
-            order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.payload)
+            order.id <-: OrderAdded(workflow.id/*reuse*/, order.state.scheduledFor, order.arguments)
           persistMultiple(events) { stamped =>
             for (o <- stamped) handleOrderEvent(o)
             Completed

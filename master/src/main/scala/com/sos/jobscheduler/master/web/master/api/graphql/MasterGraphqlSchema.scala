@@ -316,9 +316,9 @@ private[graphql] object MasterGraphqlSchema
       Field("workflowPath", WorkflowPathType, resolve = _.value.workflowId.path),
       Field("attachedState", OptionType(OrderAttachedStateType), resolve = _.value.attachedState,
         description = "Order is attaching to, attached to, or detaching from an Agent"),
-      Field("outcome", OutcomeType, resolve = _.value.outcome),
+      Field("lastOutcome", OutcomeType, resolve = _.value.lastOutcome),
       Field("state", OrderStateType, resolve = _.value.state),
-      Field("variables", OptionType(StringStringMapType), resolve = ctx => ctx.value.payload.variables.nonEmpty ? ctx.value.payload.variables),
+      Field("arguments", OptionType(StringStringMapType), resolve = ctx => ctx.value.arguments.nonEmpty ? ctx.value.arguments),
       Field("scheduledFor", OptionType(LongType), resolve = _.value.state match {
         case o: Order.Fresh => o.scheduledFor map (_.toEpochMilli)
         case _ => None

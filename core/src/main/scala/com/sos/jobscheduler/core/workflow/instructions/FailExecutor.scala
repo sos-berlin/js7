@@ -25,7 +25,7 @@ object FailExecutor extends EventInstructionExecutor {
               case Some(returnCode) =>
                 Outcome.Failed(returnCode)
               case None =>
-                order.outcome match {
+                order.lastOutcome match {
                   case o: Outcome.NotSucceeded => o
                   case _ => Outcome.Failed(ReturnCode(-1))  // ???
               }

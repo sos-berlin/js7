@@ -6,7 +6,6 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.Closer
@@ -19,9 +18,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey, ReturnCode}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
+import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.taskserver.task.process.{RichProcess, StdChannels}
 import java.io.Writer
 import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
@@ -57,13 +57,13 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll with TestAgen
         OrderId("TEST"),
         WorkflowPath("/JOBCHAIN") ~ "VERSION",
         Order.Processing,
-        payload = Payload(Map("a" -> "A")))
+        historicOutcomes = HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> "A"))) :: Nil)
       val taskRunner = newTaskRunner(taskConfiguration)
       val stdoutWriter = new TestStdoutStderrWriter
       val stderrWriter = new TestStdoutStderrWriter
       val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
       val ended = taskRunner.processOrder(order, Map.empty, stdChannels) andThen { case _ => taskRunner.terminate() } await 30.s
-      assert(ended == TaskStepSucceeded(MapDiff(Map("result" -> "TEST-RESULT-VALUE1")), ReturnCode(0)))
+      assert(ended == TaskStepSucceeded(Map("result" -> "TEST-RESULT-VALUE1"), ReturnCode(0)))
       val nl = System.lineSeparator
       assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
       assert(stderrWriter.string == s"THIS IS STDERR$nl")

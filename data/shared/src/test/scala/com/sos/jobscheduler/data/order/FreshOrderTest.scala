@@ -13,19 +13,19 @@ final class FreshOrderTest extends FreeSpec
 {
   "JSON" in {
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledFor = None, Payload.empty),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledFor = None, Map.empty),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW"
       }""")
 
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Payload(Map("KEY" -> "VALUE"))),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")), Map("KEY" -> "VALUE")),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW",
         "scheduledFor": 1488888000000,
-        "variables": {
+        "arguments": {
           "KEY": "VALUE"
         }
       }""")

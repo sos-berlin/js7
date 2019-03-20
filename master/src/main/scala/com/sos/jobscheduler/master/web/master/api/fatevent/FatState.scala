@@ -67,7 +67,7 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
   private def toOrderFatEvent(order: Order[Order.State], event: OrderEvent): Option[OrderFatEvent] =
     event match {
       case added: OrderAdded =>
-        Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledFor, order.variables))
+        Some(OrderAddedFat(added.workflowId /: Position(0), added.scheduledFor, order.keyValues))
 
       case _: OrderProcessingStarted =>
         val jobName = repo.idTo[Workflow](order.workflowId).flatMap(_.checkedExecute(order.position)).orThrow match {
@@ -75,13 +75,13 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
           case _ => None
         }
         val agentRef = order.attached.flatMap(a => repo.pathTo[AgentRef](a)).orThrow
-        Some(OrderProcessingStartedFat(order.workflowPosition, agentRef.path, agentRef.uri, jobName, order.variables))
+        Some(OrderProcessingStartedFat(order.workflowPosition, agentRef.path, agentRef.uri, jobName, order.keyValues))
 
       case OrderStdWritten(stdoutOrStderr, chunk) =>
         Some(OrderStdWrittenFat(order.id, stdoutOrStderr)(chunk))
 
       case event: OrderProcessed =>
-        Some(OrderProcessedFat(event.outcome, order.variables))
+        Some(OrderProcessedFat(event.outcome, order.keyValues))
 
       case OrderFinished | OrderCanceled/*TODO OrderCanceledFat ?*/ =>
         Some(OrderFinishedFat(order.workflowPosition))
@@ -90,12 +90,12 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
         Some(OrderForkedFat(
           order.workflowId /: order.position,
           for (ch <- children) yield
-            OrderForkedFat.Child(ch.branchId, ch.orderId, ch.variablesDiff applyTo order.variables)))
+            OrderForkedFat.Child(ch.branchId, ch.orderId, order.arguments)))
 
-      case OrderJoined(variablesDiff, outcome) =>
+      case OrderJoined(outcome) =>
         Some(OrderJoinedFat(
           childOrderIds = idToOrder(order.id).ifState[Order.Forked] map (_.state.childOrderIds) getOrElse Nil/*failure*/,
-          variables = variablesDiff applyTo order.variables, outcome))
+          outcome))
 
       case _ =>
         None

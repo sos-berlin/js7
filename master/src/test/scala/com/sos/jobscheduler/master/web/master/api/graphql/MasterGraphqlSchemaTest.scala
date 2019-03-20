@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, Fork}
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -104,7 +104,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
           TYPE
         }
         scheduledFor
-        outcome {
+        lastOutcome {
           ...Outcome
         }
         childOrderIds
@@ -112,7 +112,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
         problem {
           message
         }
-        variables
+        arguments
       }
     }
 
@@ -146,7 +146,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "jobName": "JOB"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -172,7 +172,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attaching",
                 "agentRefPath": "/AGENT"
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -198,7 +198,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attached",
                 "agentRefPath": "/AGENT"
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -219,7 +219,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "Fork"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -252,14 +252,14 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                 "TYPE": "Attached",
                 "agentRefPath": "/AGENT"
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
               "state": {
                 "TYPE": "Processing"
               },
-              "variables": {
+              "arguments": {
                 "KEY": "VALUE",
                 "X": "XX"
               }
@@ -276,7 +276,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 7
               },
@@ -296,7 +296,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Failed",
                 "returnCode": 8
               },
@@ -316,7 +316,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Disrupted",
                 "reason": {
                   "TYPE": "Other",
@@ -341,7 +341,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Disrupted",
                 "reason": {
                   "TYPE": "JobSchedulerRestarted"
@@ -363,7 +363,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -384,7 +384,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -404,7 +404,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -425,7 +425,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -445,7 +445,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
                   "TYPE": "ImplicitEnd"
                 }
               },
-              "outcome": {
+              "lastOutcome": {
                 "TYPE": "Succeeded",
                 "returnCode": 0
               },
@@ -512,11 +512,15 @@ object MasterGraphqlSchemaTest
         Order(OrderId("15"), (WorkflowPath("/A-WORKFLOW") ~ "1") /: (Position(1) / "fork+BRANCH" % 0), Order.Processing,
           attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))),
           parent = Some(OrderId("PARENT")),
-          payload = Payload(Map("KEY" -> "VALUE", "X" -> "XX"))),
-        Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Succeeded(ReturnCode(7))),
-        Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Failed(ReturnCode(8))),
-        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Stopped  , Outcome.Disrupted(Problem("MESSAGE"))),
-        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)),
+          arguments = Map("KEY" -> "VALUE", "X" -> "XX")),
+        Order(OrderId("16"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(7))) :: Nil),
+        Order(OrderId("17"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(8))) :: Nil),
+        Order(OrderId("18"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Stopped  ,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Problem("MESSAGE"))) :: Nil),
+        Order(OrderId("19"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Processed,
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil),
         Order(OrderId("20"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Forked(Order.Forked.Child("A", OrderId("A/1")) :: Order.Forked.Child("B", OrderId("B/1")) :: Nil)),
         Order(OrderId("21"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Offering(Timestamp.parse("2018-04-16T11:22:33Z"))),
         Order(OrderId("22"), (WorkflowPath("/B-WORKFLOW") ~ "1") /: Position(2), Order.Awaiting(OrderId("OFFERED"))),

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.tests
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
@@ -22,7 +21,7 @@ import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -161,21 +160,21 @@ private object RecoveryTest {
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(
-    OrderAdded(TestWorkflow.id, None, Payload(Map())),
+    OrderAdded(TestWorkflow.id, None, Map.empty),
     OrderAttachable(AgentRefPaths(0)),
     OrderTransferredToAgent(AgentRefPaths(0)),
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-111"))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
@@ -183,11 +182,11 @@ private object RecoveryTest {
     OrderTransferredToAgent(AgentRefPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map(), Set()), Outcome.succeeded),
+    OrderProcessed(Outcome.Succeeded(Map("result" -> "SCRIPT-VARIABLE-VALUE-agent-222"))),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderTransferredToMaster,
@@ -198,7 +197,7 @@ private object RecoveryTest {
     val result = mutable.Buffer[Event]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(_, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) =>
+        case OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) =>
           while (result.last != OrderEvent.OrderProcessingStarted) {
             result.remove(result.size - 1)
           }

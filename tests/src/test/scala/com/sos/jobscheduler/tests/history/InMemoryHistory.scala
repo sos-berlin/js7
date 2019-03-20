@@ -41,7 +41,7 @@ final class InMemoryHistory {
         for (child <- children) {
           idToOrderEntry.get(child.orderId) match {
             case None =>
-              idToOrderEntry(child.orderId) = OrderEntry(child.orderId, Some(orderId), child.variables, OrderEntry.Cause.Forked, Some(workflowPosition), None)
+              idToOrderEntry(child.orderId) = OrderEntry(child.orderId, Some(orderId), child.arguments, OrderEntry.Cause.Forked, Some(workflowPosition), None)
 
             case Some(existing) =>
               idToOrderEntry(child.orderId) = existing.copy(
@@ -53,7 +53,7 @@ final class InMemoryHistory {
           }
         }
 
-      case OrderJoinedFat(childOrderIds, variables, outcome) =>
+      case OrderJoinedFat(childOrderIds, outcome) =>
         for (id <- childOrderIds) {
           idToOrderEntry(id) = idToOrderEntry(id).copy(finishedAt = Some(timestamp))
         }

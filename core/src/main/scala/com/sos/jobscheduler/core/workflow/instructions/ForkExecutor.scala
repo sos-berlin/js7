@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
@@ -29,7 +28,7 @@ object ForkExecutor extends EventInstructionExecutor
           checkOrderForked(context,
             order.id <-: OrderForked(
               for (branch <- instruction.branches) yield
-                OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))))
+                OrderForked.Child(branch.id, order.id / branch.id.string)))))
       .orElse(
         order.ifState[Order.Forked].flatMap(order =>
           //orderEntry.instruction match {
@@ -37,7 +36,7 @@ object ForkExecutor extends EventInstructionExecutor
           if (order.isAttached)
             Some(order.id <-: OrderDetachable)  //
           else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
-            Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
+            Some(order.id <-: OrderJoined(Outcome.succeeded))
           else
             None))
       .orElse(

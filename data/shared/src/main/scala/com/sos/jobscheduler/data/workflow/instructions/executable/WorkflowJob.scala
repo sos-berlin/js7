@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
@@ -25,8 +24,8 @@ final case class WorkflowJob private(
   returnCodeMeaning: ReturnCodeMeaning,
   taskLimit: Int)
 {
-  def toOrderProcessed(variablesDiff: MapDiff[String, String], returnCode: ReturnCode) =
-    OrderProcessed(variablesDiff, Outcome.Undisrupted(returnCode, success = returnCodeMeaning.isSuccess(returnCode)))
+  def toOrderProcessed(returnCode: ReturnCode, keyValues: Map[String, String]) =
+    OrderProcessed(Outcome.Undisrupted(success = returnCodeMeaning.isSuccess(returnCode), returnCode, keyValues))
 
   def isExecutableOnAgent(agentRefPath: AgentRefPath): Boolean =
     this.agentRefPath == agentRefPath

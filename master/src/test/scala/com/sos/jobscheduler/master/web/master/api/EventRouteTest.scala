@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
@@ -249,5 +249,5 @@ object EventRouteTest
 {
   private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
-      OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Payload.empty))
+      OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Map.empty))
 }

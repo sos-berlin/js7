@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
@@ -58,7 +58,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
           orderId,
           SimpleTestWorkflow.id,
           Order.Ready,
-          payload = Payload(Map("a" -> "A"))),
+          Map("a" -> "A")),
         TestAgentRefPath,
         fileBasedSigner.sign(SimpleTestWorkflow)))
     ) await 99.s

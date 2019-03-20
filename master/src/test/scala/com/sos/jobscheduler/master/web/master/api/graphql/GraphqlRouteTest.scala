@@ -66,9 +66,9 @@ final class GraphqlRouteTest extends FreeSpec with RouteTester with GraphqlRoute
         |
         |  "Order is attaching to, attached to, or detaching from an Agent"
         |  attachedState: Order_AttachedState
-        |  outcome: Outcome!
+        |  lastOutcome: Outcome!
         |  state: OrderState!
-        |  variables: StringMap
+        |  arguments: StringMap
         |  scheduledFor: Long
         |  childOrderIds: [OrderId!]
         |  offeredOrderId: OrderId

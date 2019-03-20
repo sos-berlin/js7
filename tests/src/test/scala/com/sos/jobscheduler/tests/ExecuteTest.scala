@@ -2,7 +2,6 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -109,28 +108,28 @@ object ExecuteTest
     OrderTransferredToAgent(TestAgentRefPath),
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(1))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(2))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(2))),
     OrderMoved(Position(4) / Then % 0),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
     OrderMoved(Position(4) / Then % 1),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(3))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
     OrderMoved(Position(4) / Then % 2),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(4))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(4))),
     OrderMoved(Position(5)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(5))),
+    OrderProcessed(Outcome.Succeeded(ReturnCode(5))),
     OrderMoved(Position(6)),
     OrderDetachable,
     OrderTransferredToMaster,

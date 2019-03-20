@@ -113,22 +113,13 @@ final class AgentCommandTest extends FreeSpec {
           Order(
             OrderId("ORDER-ID"),
             SimpleTestWorkflow.id /: Position(3),
-            Order.Ready),
+            Order.Ready,
+            Map("KEY" -> "VALUE")),
           AgentRefPath("/AGENT"),
           SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
         json"""{
           "TYPE": "AttachOrder",
           "order": {
-            "state": {
-              "TYPE": "Ready"
-            },
-            "payload": {
-              "variables": {}
-            },
-            "attachedState": {
-              "TYPE": "Attached",
-              "agentRefPath": "/AGENT"
-            },
             "id": "ORDER-ID",
             "workflowPosition": {
               "workflowId": {
@@ -136,7 +127,18 @@ final class AgentCommandTest extends FreeSpec {
                 "versionId": "VERSION"
                 },
               "position": [ 3 ]
-            }
+            },
+            "state": {
+              "TYPE": "Ready"
+            },
+            "arguments": {
+              "KEY": "VALUE"
+            },
+            "attachedState": {
+              "TYPE": "Attached",
+              "agentRefPath": "/AGENT"
+            },
+            "historicOutcomes": []
           },
           "signedWorkflow": {
             "string": "{\"TYPE\":\"Workflow\",...}",

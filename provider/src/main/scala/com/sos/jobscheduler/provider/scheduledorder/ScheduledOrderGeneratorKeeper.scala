@@ -3,7 +3,7 @@ package com.sos.jobscheduler.provider.scheduledorder
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.time.ScalaTime.RichInstant
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval
 import scala.collection.immutable.{Iterable, Seq}
@@ -25,7 +25,7 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
         toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,
         Some(instant.toTimestamp),
-        Payload(orderGenerator.variables)))
+        orderGenerator.arguments))
     .toVector.sortBy { _.scheduledFor }
 }
 

@@ -572,10 +572,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "eventId": 1014,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
-          "variablesDiff": {
-            "changed": {},
-            "deleted": []
-          },
           "outcome": {
             "TYPE": "Succeeded",
             "returnCode": 0

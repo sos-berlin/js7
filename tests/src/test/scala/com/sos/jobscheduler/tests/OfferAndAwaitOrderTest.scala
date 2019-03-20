@@ -2,7 +2,6 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -52,7 +51,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderTransferredToAgent(TestAgentRefPath),
               OrderStarted,
               OrderProcessingStarted,
-              OrderProcessed(MapDiff.empty, Outcome.succeeded),
+              OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(1)),
               OrderDetachable,
               OrderTransferredToMaster,
@@ -61,7 +60,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
               OrderAttachable(TestAgentRefPath),
               OrderTransferredToAgent(TestAgentRefPath),
               OrderProcessingStarted,
-              OrderProcessed(MapDiff.empty, Outcome.succeeded),
+              OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(3)),
               OrderDetachable,
               OrderTransferredToMaster,
@@ -72,17 +71,17 @@ final class OfferAndAwaitOrderTest extends FreeSpec
             OrderTransferredToAgent(TestAgentRefPath),
             OrderStarted,
             OrderProcessingStarted,
-            OrderProcessed(MapDiff.empty, Outcome.succeeded),
+            OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(1)),
             OrderDetachable,
             OrderTransferredToMaster,
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
-            OrderJoined(MapDiff.empty, Outcome.succeeded),
+            OrderJoined(Outcome.succeeded),
             OrderMoved(Position(2)),
             OrderAttachable(TestAgentRefPath),
             OrderTransferredToAgent(TestAgentRefPath),
             OrderProcessingStarted,
-            OrderProcessed(MapDiff.empty, Outcome.succeeded),
+            OrderProcessed(Outcome.succeeded),
             OrderMoved(Position(3)),
             OrderDetachable,
             OrderTransferredToMaster,
@@ -118,7 +117,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
             OrderAdded(JoiningWorkflowId),
             OrderStarted,
             OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
-            OrderJoined(MapDiff.empty, Outcome.succeeded),
+            OrderJoined(Outcome.succeeded),
             OrderMoved(Position(1)),
             OrderFinished))
       }

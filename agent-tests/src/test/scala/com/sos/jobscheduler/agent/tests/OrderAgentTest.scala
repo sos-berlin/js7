@@ -27,7 +27,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
@@ -65,7 +65,7 @@ final class OrderAgentTest extends FreeSpec {
           agentClient.login(Some(TestUserAndPassword)) await 99.s
           agentClient.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" -> "X")))
+          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
 
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
             agentClient.commandExecute(AttachOrder(order, TestAgentRefPath, signedWorkflow)).await(99.s)
@@ -110,8 +110,9 @@ final class OrderAgentTest extends FreeSpec {
           assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Valid(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready, Outcome.succeeded,
-              Some(Order.Attached(AgentRefPath("/AGENT"))), payload = Payload(Map("x" -> "X")))
+            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
+              Map("x" -> "X"),
+              attachedState = Some(Order.Attached(AgentRefPath("/AGENT"))))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(orders map { AttachOrder(_, SignedSimpleWorkflow) })) await 99.s
@@ -155,5 +156,8 @@ private object OrderAgentTest {
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedState = Some(Order.Detaching(TestAgentRefPath)),
-      payload = Payload(Map("x" -> "X", "result" -> "TEST-RESULT-B-VALUE")))
+      arguments = Map("x" -> "X"),
+      historicOutcomes =
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map("result" -> "TEST-RESULT-"))) ::
+        HistoricOutcome(Position(1), Outcome.Succeeded(Map("result" -> "TEST-RESULT-B-VALUE"))) :: Nil)
 }

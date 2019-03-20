@@ -21,7 +21,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.Outcome.Succeeded
-import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -100,32 +100,32 @@ final class FatEventsTest extends FreeSpec
         val bAgentUri = runningAgents(1).localUri.toString
         assert(fatEvents.toSet == Set(
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId),
-          OrderId("🔺") <-: OrderAddedFat(TestWorkflowId, None, Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺") <-: OrderAddedFat(TestWorkflowId, None, Map("KEY" -> "VALUE")),
           AAgentRefPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
           BAgentRefPath <-: AgentReadyFat(ZoneId.systemDefault.getId),
-          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentRefPath, aAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId, AAgentRefPath, aAgentUri, jobName = None, Map("KEY" -> "VALUE")),
           OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)),Map("KEY" -> "VALUE")),
           OrderId("🔺") <-: OrderForkedFat(
             TestWorkflowId /: Position(1),Vector(
-              OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("VARIABLE" -> "VALUE")),
-              OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("VARIABLE" -> "VALUE")))),
-          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🥕" % 0), AAgentRefPath, aAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🍋" % 0), AAgentRefPath, aAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
+              OrderForkedFat.Child("🥕",OrderId("🔺/🥕"), Map("KEY" -> "VALUE")),
+              OrderForkedFat.Child("🍋",OrderId("🔺/🍋"), Map("KEY" -> "VALUE")))),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🥕" % 0), AAgentRefPath, aAgentUri, jobName = None, Map("KEY" -> "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🍋" % 0), AAgentRefPath, aAgentUri, jobName = None, Map("KEY" -> "VALUE")),
           OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🥕" % 1), AAgentRefPath, aAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🍋" % 1), BAgentRefPath, bAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("KEY" -> "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("KEY" -> "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🥕" % 1), AAgentRefPath, aAgentUri, jobName = None, Map("KEY" -> "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessingStartedFat(TestWorkflowId /: (Position(1) / "fork+🍋" % 1), BAgentRefPath, bAgentUri, jobName = None, Map("KEY" -> "VALUE")),
           OrderId("🔺/🥕") <-: OrderStdoutWrittenFat(StdoutOutput),
           OrderId("🔺/🍋") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" -> "VALUE")),
-          OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Map("VARIABLE" -> "VALUE"), Succeeded(ReturnCode(0))),
-          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentRefPath, aAgentUri, jobName = None, Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺/🥕") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("KEY" -> "VALUE")),
+          OrderId("🔺/🍋") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("KEY" -> "VALUE")),
+          OrderId("🔺") <-: OrderJoinedFat(Vector(OrderId("🔺/🥕"), OrderId("🔺/🍋")), Succeeded(ReturnCode(0))),
+          OrderId("🔺") <-: OrderProcessingStartedFat(TestWorkflowId /: Position(2), AAgentRefPath, aAgentUri, jobName = None, Map("KEY" -> "VALUE")),
           OrderId("🔺") <-: OrderStdoutWrittenFat(StdoutOutput),
-          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("VARIABLE" -> "VALUE")),
+          OrderId("🔺") <-: OrderProcessedFat(Succeeded(ReturnCode(0)), Map("KEY" -> "VALUE")),
           OrderId("🔺") <-: OrderFinishedFat(TestWorkflowId /: Position(3)),
           NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))
 
@@ -203,25 +203,25 @@ object FatEventsTest
      |}
      """.stripMargin.trim).orThrow
 
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, payload = Payload(Map("VARIABLE" -> "VALUE")))
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflowId.path, arguments = Map("KEY" -> "VALUE"))
   private val TestTimestamp = Timestamp.Epoch
 
   private def expectedOrderEntries(agentUris: IndexedSeq[String]) = {
     implicit def toSome[A](a: A): Option[A] = Some(a)
     Vector(
       OrderEntry(
-        TestOrder.id, None, Map("VARIABLE" -> "VALUE"), OrderEntry.Cause.Added, TestWorkflowId /: Position(0), None, TestTimestamp, finishedAt = TestTimestamp, TestWorkflowId /: Position(3),
+        TestOrder.id, None, Map("KEY" -> "VALUE"), OrderEntry.Cause.Added, TestWorkflowId /: Position(0), None, TestTimestamp, finishedAt = TestTimestamp, TestWorkflowId /: Position(3),
         Vector(
-          OrderStepEntry(TestOrder.id, TestWorkflowId /: Position(0), agentUri = agentUris(0), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"),
-          OrderStepEntry(OrderId("🔺"), TestWorkflowId /: Position(2), agentUris(0), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"))),
-      OrderEntry(OrderId("🔺/🥕"), OrderId("🔺"), Map("VARIABLE" -> "VALUE"), OrderEntry.Cause.Forked, TestWorkflowId /: (Position(1) / "fork+🥕" % 0), None, TestTimestamp, finishedAt = Some(TestTimestamp), None,
+          OrderStepEntry(TestOrder.id, TestWorkflowId /: Position(0), agentUri = agentUris(0), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"),
+          OrderStepEntry(OrderId("🔺"), TestWorkflowId /: Position(2), agentUris(0), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"))),
+      OrderEntry(OrderId("🔺/🥕"), OrderId("🔺"), Map("KEY" -> "VALUE"), OrderEntry.Cause.Forked, TestWorkflowId /: (Position(1) / "fork+🥕" % 0), None, TestTimestamp, finishedAt = Some(TestTimestamp), None,
         steps = Vector(
-          OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: (Position(1) / "fork+🥕" % 0), agentUris(0), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"),
-          OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: (Position(1) / "fork+🥕" % 1), agentUris(0), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"))),
-      OrderEntry(OrderId("🔺/🍋"), OrderId("🔺"), Map("VARIABLE" -> "VALUE"), OrderEntry.Cause.Forked, TestWorkflowId /: (Position(1) / "fork+🍋" % 0), None, TestTimestamp, finishedAt = Some(TestTimestamp), None,
+          OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: (Position(1) / "fork+🥕" % 0), agentUris(0), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"),
+          OrderStepEntry(OrderId("🔺/🥕"), TestWorkflowId /: (Position(1) / "fork+🥕" % 1), agentUris(0), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"))),
+      OrderEntry(OrderId("🔺/🍋"), OrderId("🔺"), Map("KEY" -> "VALUE"), OrderEntry.Cause.Forked, TestWorkflowId /: (Position(1) / "fork+🍋" % 0), None, TestTimestamp, finishedAt = Some(TestTimestamp), None,
         steps = Vector(
-          OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: (Position(1) / "fork+🍋" % 0), agentUris(0), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"),
-          OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: (Position(1) / "fork+🍋" % 1), agentUris(1), jobName = None, Map("VARIABLE" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("VARIABLE" -> "VALUE"), s"stdout: $StdoutOutput"))))
+          OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: (Position(1) / "fork+🍋" % 0), agentUris(0), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"),
+          OrderStepEntry(OrderId("🔺/🍋"), TestWorkflowId /: (Position(1) / "fork+🍋" % 1), agentUris(1), jobName = None, Map("KEY" -> "VALUE"), TestTimestamp, TestTimestamp, ReturnCode(0), Map("KEY" -> "VALUE"), s"stdout: $StdoutOutput"))))
     }
 
   private def normalizeTimestampsInEntry(entry: OrderEntry): OrderEntry =

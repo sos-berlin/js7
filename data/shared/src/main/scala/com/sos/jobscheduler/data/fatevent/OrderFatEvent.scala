@@ -26,16 +26,16 @@ object OrderFatEvent
   final case class OrderAddedFat(
     workflowPosition: WorkflowPosition,
     scheduledFor: Option[Timestamp],
-    variables: Map[String, String])
+    arguments: Map[String, String])
   extends OrderFatEvent
 
   final case class OrderForkedFat(workflowPosition: WorkflowPosition, children: Seq[OrderForkedFat.Child]) extends OrderFatEvent
   object OrderForkedFat {
     @JsonCodec
-    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId, variables: Map[String, String])
+    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId, arguments: Map[String, String])
   }
 
-  final case class OrderJoinedFat(childOrderIds: Seq[OrderId], variables: Map[String, String], outcome: Outcome)
+  final case class OrderJoinedFat(childOrderIds: Seq[OrderId], outcome: Outcome)
   extends OrderFatEvent
 
   final case class OrderFinishedFat(
@@ -47,12 +47,12 @@ object OrderFatEvent
     agentRefPath: AgentRefPath,
     agentUri: String,
     jobName: Option[WorkflowJob.Name],
-    variables: Map[String, String])
+    keyValues: Map[String, String])
   extends OrderFatEvent
 
   final case class OrderProcessedFat(
     outcome: Outcome,
-    variables: Map[String, String])
+    keyValues: Map[String, String])
   extends OrderFatEvent
 
   sealed trait OrderStdWrittenFat extends OrderFatEvent {

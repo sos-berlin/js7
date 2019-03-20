@@ -16,7 +16,7 @@ import scala.collection.immutable.Seq
 final case class OrderEntry(
   orderId: OrderId,
   parent: Option[OrderId] = None,
-  variables: Map[String, String],
+  keyValues: Map[String, String],
   cause: Cause,
   startWorkflowPosition: Option[WorkflowPosition] = None,
   scheduledFor: Option[Timestamp] = None,
@@ -25,13 +25,13 @@ final case class OrderEntry(
   endWorkflowPosition: Option[WorkflowPosition] = None,
   steps: Seq[OrderStepEntry] = Vector.empty)
 {
-  def updateLastStep(endedAt: Timestamp, outcome: Outcome, variables: Map[String, String]): OrderEntry = {
+  def updateLastStep(endedAt: Timestamp, outcome: Outcome, keyValues: Map[String, String]): OrderEntry = {
     val lastStep = steps.last
     copy(steps = steps.take(steps.size - 1) :+
       lastStep.copy(
         endedAt = Some(endedAt),
         returnCode = Some(outcome) collect { case o: Undisrupted => o.returnCode },
-        endVariables = Some(variables)))
+        endVariables = Some(keyValues)))
   }
 
   def addToLog(outErr: StdoutOrStderr, chunk: String): OrderEntry =

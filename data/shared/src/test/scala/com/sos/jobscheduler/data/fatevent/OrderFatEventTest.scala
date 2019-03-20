@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
-import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -22,7 +21,7 @@ final class OrderFatEventTest extends FreeSpec {
       OrderAddedFat(
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(0),
         Some(Timestamp.ofEpochMilli(111)),
-        Map("VARIABLE" -> "VALUE")),
+        Map("KEY" -> "VALUE")),
       json"""{
         "TYPE": "OrderAddedFat",
         "workflowPosition": {
@@ -33,8 +32,8 @@ final class OrderFatEventTest extends FreeSpec {
           "position": [ 0 ]
         },
         "scheduledFor": 111,
-        "variables": {
-          "VARIABLE": "VALUE"
+        "arguments": {
+          "KEY": "VALUE"
         }
       }""")
   }
@@ -60,13 +59,13 @@ final class OrderFatEventTest extends FreeSpec {
           {
             "branchId": "A",
             "orderId": "ORDER-ID/A",
-            "variables": {
+            "arguments": {
               "KEY": "VALUE"
             }
           }, {
             "branchId": "B",
             "orderId": "ORDER-ID/B",
-            "variables": {}
+            "arguments": {}
           }
         ]
       }""")
@@ -76,7 +75,8 @@ final class OrderFatEventTest extends FreeSpec {
     testJson[OrderFatEvent](
       OrderJoinedFat(
         OrderId("A/1") :: OrderId("B/1") :: Nil,
-        Map("KEY" -> "VALUE"), Outcome.Undisrupted(ReturnCode(0), success = true)),
+        Outcome.Succeeded(Map("KEY" -> "VALUE")),
+        ),
       json"""
       {
         "TYPE": "OrderJoinedFat",
@@ -86,10 +86,10 @@ final class OrderFatEventTest extends FreeSpec {
         ],
         "outcome": {
           "TYPE": "Succeeded",
-          "returnCode": 0
-        },
-        "variables": {
-          "KEY": "VALUE"
+          "returnCode": 0,
+          "keyValues": {
+            "KEY": "VALUE"
+          }
         }
       }""")
   }
@@ -131,7 +131,7 @@ final class OrderFatEventTest extends FreeSpec {
         "agentRefPath": "/AGENT",
         "agentUri": "https://agent-1",
         "jobName": "JOB",
-        "variables": {
+        "keyValues": {
           "KEY": "VALUE"
         }
       }"""
@@ -149,7 +149,7 @@ final class OrderFatEventTest extends FreeSpec {
           "TYPE": "Succeeded",
           "returnCode": 0
         },
-        "variables": {
+        "keyValues": {
           "KEY": "VALUE"
         }
       }"""

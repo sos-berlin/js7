@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -57,13 +56,13 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderStarted,
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0 / Then % 0 / Try_ % 0),
 
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(1)),   // Retry limit reached
 
       OrderDetachable,
@@ -101,23 +100,23 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderStarted,
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(0) / Try_ % 0 / Try_ % 1 / Try_ % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / Catch_ % 0 / Then % 0),
 
       OrderRetrying(Position(0) / Try_ % 0 / Try_ % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / catch_(1) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / Try_ % 0 / Try_ % 1 / try_(2) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / catch_(2) % 0 / Else % 0),   // Retry limit reached
 
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Catch_ % 0 / Then % 0),
@@ -125,21 +124,21 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(0))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
       OrderMoved(Position(0) / Try_ % 0 / try_(1) % 1 / Try_ % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / Catch_ % 0 / Then % 0),
       OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(1))),
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),  // Retry limit reached
 
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / catch_(1) % 0 / Else % 0),  // Retry limit reached
@@ -147,7 +146,7 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
       OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0),
 
       OrderProcessingStarted,
-      OrderProcessed(MapDiff.empty, Outcome.succeeded),
+      OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
 
       OrderDetachable,
