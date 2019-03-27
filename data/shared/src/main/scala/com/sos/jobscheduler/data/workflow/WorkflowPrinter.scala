@@ -164,9 +164,9 @@ object WorkflowPrinter
 
         case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, _) =>
           sb ++= "try "
-          if (retryDelays.nonEmpty) {
+          for (delays <- retryDelays) {
             sb ++= "(retryDelays="
-            sb ++= retryDelays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")
+            sb ++= delays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")
             sb ++= ") "
           }
           sb ++= "{\n"

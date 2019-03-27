@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.Valid
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.Expression.BooleanConstant
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -66,8 +67,8 @@ final class TryInstructionTest extends FreeSpec
       testJson[Instruction.Labeled](
         TryInstruction(
           tryWorkflow = Workflow.of(Fail(None)),
-          catchWorkflow = Workflow.empty,
-          retryDelays = 100.milliseconds :: 1.minute :: Nil,
+          catchWorkflow = Workflow.of(Retry()),
+          retryDelays = Some(Vector(100.milliseconds, 1.minute)),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Try",
@@ -77,11 +78,67 @@ final class TryInstructionTest extends FreeSpec
             ]
           },
           "catch": {
-            "instructions": []
+            "instructions": [
+              { "TYPE": "Retry" }
+            ]
           },
          "retryDelays": [ 0.1, 60 ],
          "sourcePos": [ 1, 2 ]
         }""")
+    }
+  }
+
+  "retryDelays require a retry instruction" - {
+    "no retry" in {
+      assert(
+        TryInstruction.checked(
+          Workflow.empty,
+          Workflow.empty,
+          Some(1.second :: Nil))
+        == Invalid(TryInstruction.MissingRetryProblem))
+    }
+
+    "retry nested in if-then-try is okay" in {
+      val Valid(try_) = TryInstruction.checked(
+        Workflow.empty,
+        Workflow.of(
+          If(BooleanConstant(true),
+            Workflow.of(
+              If(BooleanConstant(true),
+                Workflow.of(
+                  TryInstruction(
+                    Workflow.of(Retry()),  // This retry belongs to the outer catch-block
+                    Workflow.empty)))))),
+        Some(1.second :: Nil))
+      assert(try_.isRetry)
+    }
+
+    "retry nested in if-else is okay" in {
+      val Valid(try_) = TryInstruction.checked(
+        Workflow.empty,
+        Workflow.of(
+          If(BooleanConstant(true),
+            Workflow.empty,
+            Some(Workflow.of(
+              If(BooleanConstant(true),
+                Workflow.empty,
+                Some(Workflow.of(Retry()))))))),
+        Some(1.second :: Nil))
+      assert(try_.isRetry)
+    }
+
+    "retry in try is not okay" in {
+      val Valid(try_) = TryInstruction.checked(
+        Workflow.empty,
+        Workflow.of(
+          If(BooleanConstant(true),
+            Workflow.empty,
+            Some(Workflow.of(
+              If(BooleanConstant(true),
+                Workflow.empty,
+                Some(Workflow.of(Retry()))))))),
+        Some(1.second :: Nil))
+      assert(try_.isRetry)
     }
   }
 
@@ -115,14 +172,16 @@ final class TryInstructionTest extends FreeSpec
   }
 
   "retryCount" in {
-    def t(delays: Seq[FiniteDuration]) = TryInstruction(Workflow.empty, Workflow.empty, delays)
-    assert(t(Nil).retryDelay(1) == 0.seconds)
-    assert(t(Nil).retryDelay(2) == 0.seconds)
-    assert(t(Nil).retryDelay(3) == 0.seconds)
-    assert(t(1.second :: Nil).retryDelay(1) == 1.seconds)
-    assert(t(1.second :: Nil).retryDelay(2) == 1.seconds)
-    assert(t(1.second :: 2.seconds :: Nil).retryDelay(1) == 1.seconds)
-    assert(t(1.second :: 2.seconds :: Nil).retryDelay(2) == 2.seconds)
-    assert(t(1.second :: 2.seconds :: Nil).retryDelay(3) == 2.seconds)
+    def t(delays: Option[Seq[FiniteDuration]]) = TryInstruction(Workflow.empty, Workflow.empty, delays.map(_.toVector))
+    assert(t(None).retryDelay(1) == 0.seconds)
+    assert(t(None).retryDelay(2) == 0.seconds)
+    assert(t(Some(Nil)).retryDelay(1) == 0.seconds)
+    assert(t(Some(Nil)).retryDelay(2) == 0.seconds)
+    assert(t(Some(Nil)).retryDelay(3) == 0.seconds)
+    assert(t(Some(1.second :: Nil)).retryDelay(1) == 1.seconds)
+    assert(t(Some(1.second :: Nil)).retryDelay(2) == 1.seconds)
+    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(1) == 1.seconds)
+    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(2) == 2.seconds)
+    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(3) == 2.seconds)
   }
 }

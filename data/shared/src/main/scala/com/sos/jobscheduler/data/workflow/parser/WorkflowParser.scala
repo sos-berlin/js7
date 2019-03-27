@@ -169,13 +169,15 @@ object WorkflowParser
       (Index ~ keyword("try") ~
         (w ~ inParentheses(specificKeyValue("retryDelays", bracketCommaSequence(int)))).? ~
         Index ~
-        w ~/curlyWorkflowOrInstruction ~ w ~/
+        w ~/ curlyWorkflowOrInstruction ~ w ~/
         keyword("catch") ~ w ~/
         curlyWorkflowOrInstruction ~
         w ~/ instructionTerminator.?
-      ).map { case (start, delays, end, try_, catch_) =>
-          TryInstruction(try_, catch_, delays.getOrElse(Nil).toVector.map(FiniteDuration(_, TimeUnit.SECONDS)),
-            sourcePos(start, end))
+      ) .flatMap { case (start, delays, end, try_, catch_) =>
+          checkedToP(
+            TryInstruction.checked(try_, catch_,
+              delays.map(_.toVector.map(FiniteDuration(_, TimeUnit.SECONDS))),
+              sourcePos(start, end)))
         })
 
     private def ifNonZeroReturnCodeGotoInstruction[_: P] = P[IfNonZeroReturnCodeGoto](

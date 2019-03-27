@@ -83,12 +83,12 @@ extends FileBased
 
   private def checkRetry(inCatch: Boolean): Seq[Checked[Unit]] =
     instructions flatMap {
-      case instr: TryInstruction =>
-        Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case _: Retry =>
         !inCatch thenList Invalid(Problem("Statement 'retry' is allowed only in a catch block"))
       case instr: If =>
         instr.workflows flatMap (_.checkRetry(inCatch))
+      case instr: TryInstruction =>
+        Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case instr =>
         instr.workflows flatMap (_.checkRetry(false))
     }

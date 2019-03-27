@@ -56,7 +56,7 @@ object RetryExecutorTest
       def idToOrder = Map(order.id -> order)
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def instruction(position: WorkflowPosition) =
-        if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = delays)
+        if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap()
     }
     new RetryExecutor(() => now).toEvent(context, order, Retry())

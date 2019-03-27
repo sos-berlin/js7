@@ -331,48 +331,58 @@ final class WorkflowParserTest extends FreeSpec {
         ImplicitEnd(sourcePos(45, 46)))))
   }
 
-  "try" in {
-    check("""
-      define workflow {
-        try {
-          execute executable="/TRY", agent="/AGENT";
-        } catch {
-          execute executable="/CATCH", agent="/AGENT";
-        }
-      }""",
-      Workflow(WorkflowPath.NoId, Vector(
-        TryInstruction(
-          Workflow.of(
-            Execute.Anonymous(
-              WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")),
-              sourcePos(49, 90)),
-            ImplicitEnd(sourcePos(100, 101))),
-          Workflow.of(
-            Execute.Anonymous(
-              WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/CATCH")),
-              sourcePos(120, 163)),
-            ImplicitEnd(sourcePos(173, 174))),
-          sourcePos = sourcePos(33, 36)),
-        ImplicitEnd(sourcePos(181, 182))))
-    )
-  }
+  "try" - {
+    "try" in {
+      check("""
+        define workflow {
+          try {
+            execute executable="/TRY", agent="/AGENT";
+          } catch {
+            execute executable="/CATCH", agent="/AGENT";
+          }
+        }""",
+        Workflow(WorkflowPath.NoId, Vector(
+          TryInstruction(
+            Workflow.of(
+              Execute.Anonymous(
+                WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TRY")),
+                sourcePos(55, 96)),
+              ImplicitEnd(sourcePos(108, 109))),
+            Workflow.of(
+              Execute.Anonymous(
+                WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/CATCH")),
+                sourcePos(130, 173)),
+              ImplicitEnd(sourcePos(185, 186))),
+            sourcePos = sourcePos(37, 40)),
+          ImplicitEnd(sourcePos(195, 196))))
+      )
+    }
 
-  "try with retryDelays" in {
-    check("""
-      define workflow {
-        try (retryDelays=[1, 2, 3]) fail;
-        catch {}
-      }""",
-      Workflow(WorkflowPath.NoId, Vector(
-        TryInstruction(
-          Workflow.of(
-            Fail(sourcePos = sourcePos(61, 65))),
-          Workflow.of(
-            ImplicitEnd(sourcePos(82, 83))),
-          1.second :: 2.seconds :: 3.seconds :: Nil,
-          sourcePos(33, 60)),
-        ImplicitEnd(sourcePos(90, 91))))
-    )
+    "try with retryDelays" in {
+      check("""
+        define workflow {
+          try (retryDelays=[1, 2, 3]) fail;
+          catch retry;
+        }""",
+        Workflow(WorkflowPath.NoId, Vector(
+          TryInstruction(
+            Workflow.of(
+              Fail(sourcePos = sourcePos(65, 69))),
+            Workflow.of(
+              Retry(sourcePos(87, 92))),
+            Some(Vector(1.second, 2.seconds, 3.seconds)),
+            sourcePos(37, 64)),
+          ImplicitEnd(sourcePos(102, 103)))))
+    }
+
+    "try with retryDelays but retry is missing" in {
+      assert(WorkflowParser.parse("""
+        define workflow {
+          try (retryDelays=[1, 2, 3]) fail;
+          catch {}
+        }""") ==
+        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays:5:9, found "}"""")))
+    }
   }
 
   "retry" - {
