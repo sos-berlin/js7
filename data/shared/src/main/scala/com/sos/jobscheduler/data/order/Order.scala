@@ -57,7 +57,7 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Invalid(Problem(
-      s"Order '${id.string}' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: " + event))
+      s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: " + event))
 
     def check[A](okay: Boolean, updated: A) =
       if (okay) Valid(updated) else inapplicable

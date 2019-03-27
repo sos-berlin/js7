@@ -453,7 +453,7 @@ final class OrderTest extends FreeSpec
 
   "Error message when updated failed" in {
     assert(testOrder.update(OrderDetachable) ==
-      Invalid(Problem("Order 'ID' in state 'Ready' (on Master) has received an inapplicable event: OrderDetachable")))
+      Invalid(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready' (on Master) has received an inapplicable event: OrderDetachable")))
   }
 
   if (sys.props contains "test.speed") "Speed" in {
