@@ -6,7 +6,6 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
@@ -162,19 +161,19 @@ private object OrderActorTest {
       JournalActor.props(journalMeta, config, new StampedKeyedEventBus, Scheduler.global),
       "Journal")
     private val eventWatch = new JournalEventWatch(journalMeta, config)
-    private val jobActor = watch(actorOf(
+    private val jobActor = actorOf(
       JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,
         temporaryDirectory = dir / "data" / "tmp",
-        executablesDirectory = dir / "config" / "executables",
-        scriptInjectionAllowed = false))))
-    private val orderActor = actorOf(
+        executablesDirectory = (dir / "config" / "executables").toRealPath(),
+        scriptInjectionAllowed = false)))
+    private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, journalActor = journalActor, OrderActor.Conf(config)),
-      s"Order-${TestOrder.id.string}")
+      s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
     private val stdoutStderr = (for (t <- StdoutOrStderr.values) yield t -> new StringBuilder).toMap
-    private var jobActorTerminated = false
+    private var orderActorTerminated = false
 
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
     eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Duration.Inf)) foreach self.!
@@ -207,15 +206,15 @@ private object OrderActorTest {
 
     private def detaching: Receive = receiveOrderEvent orElse {
       case "DETACHED" =>
-        jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))
-        become(terminatingJobActor)
+        orderActor ! OrderActor.Input.Terminate(sigkillProcessesAfter = Some(0.seconds))
+        become(terminating)
 
       case JobActor.Output.ReadyForOrder =>  // Ready for next order
     }
 
-    private def terminatingJobActor: Receive = receiveOrderEvent orElse {
-      case Terminated(`jobActor`) =>
-        jobActorTerminated = true
+    private def terminating: Receive = receiveOrderEvent orElse {
+      case Terminated(`orderActor`) =>
+        orderActorTerminated = true
         checkTermination()
     }
 
@@ -254,7 +253,7 @@ private object OrderActorTest {
       }
 
     private def checkTermination(): Unit = {
-      if (jobActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
+      if (orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
         terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, now - started))
         context.stop(self)

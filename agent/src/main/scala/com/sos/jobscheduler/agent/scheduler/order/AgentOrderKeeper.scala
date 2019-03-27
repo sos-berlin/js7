@@ -85,19 +85,19 @@ extends MainJournalingActor[Event] with Stash {
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
   private object termination {
-    private var _terminating = false
+    private var terminateCommand: Option[AgentCommand.Terminate] = None
     private var snapshotTaken = false
     private var stillTerminatingSchedule: Option[Cancelable] = None
     private var terminatingOrders = false
+    private var terminatingJobs = false
     private var terminatingJournal = false
 
-    def terminating = _terminating
+    def terminating = terminateCommand.isDefined
 
     def start(terminate: AgentCommand.Terminate): Unit =
-      if (!_terminating) {
-        _terminating = true
+      if (!terminating) {
+        terminateCommand = Some(terminate)
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-        for (a <- jobRegister.values) a.actor ! terminate
         stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillTerminating
         })
@@ -109,27 +109,34 @@ extends MainJournalingActor[Event] with Stash {
     }
 
     def onStillTerminating() =
-      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs")
+      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs" +
+        (if (!snapshotTaken) ", and the snapshot" else ""))
 
     def onSnapshotTaken(): Unit =
-      if (_terminating) {
+      if (terminating) {
         snapshotTaken = true
         continue()
       }
 
     def continue() =
-      if (_terminating) {
-        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs")
-        if (snapshotTaken && jobRegister.isEmpty) {
-          if (orderRegister.nonEmpty && !terminatingOrders) {
+      for (terminate <- terminateCommand) {
+        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs ${if (snapshotTaken) ", snapshot taken" else ""}")
+        if (snapshotTaken) {
+          if (!terminatingOrders) {
             terminatingOrders = true
             for (o <- orderRegister.values if !o.detaching) {
-              o.actor ! OrderActor.Input.Terminate
+              o.actor ! OrderActor.Input.Terminate(terminate.sigtermProcesses, terminate.sigkillProcessesAfter)
             }
-          } else
-          if (orderRegister.isEmpty && !terminatingJournal) {
-            terminatingJournal = true
-            journalActor ! JournalActor.Input.Terminate
+          }
+          if (orderRegister.isEmpty) {
+            if (!terminatingJobs) {
+              terminatingJobs = true
+              for (a <- jobRegister.values) a.actor ! JobActor.Input.Terminate()
+            }
+            if (jobRegister.isEmpty && !terminatingJournal) {
+              terminatingJournal = true
+              journalActor ! JournalActor.Input.Terminate
+            }
           }
         }
       }
@@ -469,7 +476,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def removeOrder(orderId: OrderId): Unit = {
     for (orderEntry <- orderRegister.get(orderId)) {
-      orderEntry.actor ! OrderActor.Input.Terminate
+      orderEntry.actor ! OrderActor.Input.Terminate()
       //context.unwatch(orderEntry.actor)
       orderRegister.remove(orderId)
     }

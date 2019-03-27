@@ -130,7 +130,7 @@ extends KeyedJournalingActor[OrderEvent]
               stderrWriter = stderrWriter))
         }
 
-      case Input.Terminate =>
+      case Input.Terminate(_, _) =>
         context.stop(self)
     }
 
@@ -139,7 +139,7 @@ extends KeyedJournalingActor[OrderEvent]
       case command: Command =>
         executeOtherCommand(command)
 
-      case Input.Terminate =>
+      case Input.Terminate(_, _) =>
         context.stop(self)
     }
 
@@ -160,17 +160,21 @@ extends KeyedJournalingActor[OrderEvent]
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) =>
-        // May occur when ActorSystem suddenly terminates (fatal Throwable or Java shutdown hook <-- ActorSystem registered itself)
-        // JobActor has killed process. Job may be restarted after recovery.
-        val problem = Problem.pure(s"Job Actor for '$jobKey' terminated unexpectedly")
-        logger.error(problem.toString)
-        finishProcessing(OrderProcessed(Outcome.Disrupted(problem)), stdoutStderrStatistics)
+        // May occur when JobActor is terminated while receiving JobActor.Command.ProcessOrder
+        if (!terminating) {
+          val problem = Problem.pure(s"Job Actor for '$jobKey' terminated unexpectedly")
+          logger.error(problem.toString)
+          finishProcessing(OrderProcessed(Outcome.Disrupted(problem)), stdoutStderrStatistics)
+        } else {
+          context.stop(self)
+        }
 
       case command: Command =>
         executeOtherCommand(command)
 
-      case Input.Terminate =>
+      case Input.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
         terminating = true
+        jobActor ! JobActor.Input.KillProcess(orderId, sigtermProcesses, sigkillProcessesAfter)
     }
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () => Option[String]): Unit = {
@@ -182,7 +186,7 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def processed: Receive =
     receiveEvent orElse {
-      case Input.Terminate =>
+      case Input.Terminate(_, _) =>
         context.stop(self)
 
       case command: Command =>
@@ -191,7 +195,7 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def forked: Receive =
     receiveEvent orElse {
-      case Input.Terminate =>
+      case Input.Terminate(_, _) =>
         context.stop(self)
 
       case command: Command =>
@@ -200,6 +204,9 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def offering: Receive =
     receiveEvent orElse {
+      case Input.Terminate(_, _) =>
+        context.stop(self)
+
       case command: Command =>
         executeOtherCommand(command)
     }
@@ -251,7 +258,7 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def detaching: Receive =
     receiveEvent orElse {
-      case Input.Terminate =>
+      case Input.Terminate(_, _) =>
         context.stop(self)
 
       case cmd: Command =>
@@ -331,7 +338,10 @@ private[order] object OrderActor
     final case class AddOffering(order: Order[Order.Offering]) extends Input
     final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: Map[String, String])
       extends Input
-    final case object Terminate extends Input with DeadLetterSuppression
+    final case class Terminate(
+      sigtermProcesses: Boolean = false,
+      sigkillProcessesAfter: Option[FiniteDuration] = None)
+    extends Input with DeadLetterSuppression
   }
 
   object Output {
@@ -343,7 +353,7 @@ private[order] object OrderActor
   object Conf {
     def apply(config: Config) = new Conf(
       stdoutCommitDelay = config.getDuration("jobscheduler.order.stdout-stderr.commit-delay").toFiniteDuration,
-      charBufferSize = config.getInt  ("jobscheduler.order.stdout-stderr.char-buffer-size"),
+      charBufferSize    = config.getInt     ("jobscheduler.order.stdout-stderr.char-buffer-size"),
       stdouterrToEventConf = StdouterrToEvent.Conf(config))
   }
 }

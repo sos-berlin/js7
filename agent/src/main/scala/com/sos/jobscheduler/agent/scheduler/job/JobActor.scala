@@ -3,7 +3,6 @@ package com.sos.jobscheduler.agent.scheduler.job
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -26,6 +25,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import monix.execution.Scheduler
 import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -36,7 +36,7 @@ extends Actor with Stash {
   import conf.{executablesDirectory, jobKey, newTaskRunner, temporaryDirectory, workflowJob}
 
   private val logger = Logger.withPrefix[JobActor](jobKey.keyName)
-  private val orderToTask = mutable.Map[OrderId, Entry]()
+  private val orderToTask = mutable.Map[OrderId, Task]()
   private var waitingForNextOrder = false
   private var terminating = false
   private lazy val filePool = new FilePool(jobKey, temporaryDirectory)
@@ -44,10 +44,10 @@ extends Actor with Stash {
   private val checkedExecutable: Checked[Executable] = workflowJob.executable match {
     case path: ExecutablePath =>
       val file = path.toFile(executablesDirectory)
-      if (exists(file)) {
-        logger.warn(s"Executable '$path' is not accessible")
+      if (!exists(file)) {
+        logger.warn(s"Executable '$file' is not accessible")
       } else if (isUnix && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true)) {
-        logger.warn(s"Executable '$path' is not user executable")
+        logger.warn(s"Executable '$file' is not user executable")
       }
       Valid(Executable(file, path.string, false))
 
@@ -102,7 +102,7 @@ extends Actor with Stash {
                     s"Executable directory '${conf.executablesDirectory}' does not contain file '$executableFile' ")
                   val fileSet = filePool.get()
                   val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-                  orderToTask.insert(cmd.order.id -> Entry(fileSet, taskRunner))
+                  orderToTask.insert(cmd.order.id -> Task(fileSet, taskRunner))
                   val sender = this.sender()
                   taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
                     .andThen { case _ => taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
@@ -121,23 +121,35 @@ extends Actor with Stash {
       continueTermination()
       handleIfReadyForOrder()
 
-    case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
+    case Input.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
       logger.debug("Terminate")
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)
       }
-      sigkillProcessesAfter match {
-        case Some(duration) if taskCount > 0 =>
-          scheduler.scheduleOnce(duration) {
-            self ! Internal.KillAll
-          }
-        case _ =>
+      for (duration <- sigkillProcessesAfter if taskCount > 0) {
+        scheduler.scheduleOnce(duration) {
+          self ! Internal.KillAll
+        }
       }
       continueTermination()
 
+    case Input.KillProcess(orderId, sigtermProcesses, sigkillProcessesAfter) =>
+      logger.debug(s"KillProcess $orderId")
+      if (sigtermProcesses) {
+        killOrder(orderId, SIGTERM)
+      }
+      for (duration <- sigkillProcessesAfter if taskCount > 0) {
+        scheduler.scheduleOnce(duration) {
+          self ! Internal.KillOrder(orderId)
+        }
+      }
+
     case Internal.KillAll =>
       killAll(SIGKILL)
+
+    case Internal.KillOrder(orderId) =>
+      killOrder(orderId, SIGKILL)
   }
 
   private def handleIfReadyForOrder() =
@@ -157,10 +169,15 @@ extends Actor with Stash {
   private def killAll(signal: ProcessSignal): Unit =
     if (orderToTask.nonEmpty) {
       logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
-      for ((orderId, t) <- orderToTask) {
-        logger.warn(s"Kill $signal ${t.taskRunner.asBaseAgentTask.id} processing $orderId")
-        t.taskRunner.kill(signal)
+      for (orderId <- orderToTask.keys.toVector/*copy*/) {
+        killOrder(orderId, signal)
       }
+    }
+
+  private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
+    for (task <- orderToTask.get(orderId)) {
+      logger.warn(s"Kill $signal ${task.taskRunner.asBaseAgentTask.id} processing $orderId")
+      task.taskRunner.kill(signal)
     }
 
   private def continueTermination(): Unit =
@@ -201,7 +218,13 @@ object JobActor
 
   object Input {
     case object OrderAvailable extends Command
-    case object Terminate
+    final case class Terminate(
+      sigtermProcesses: Boolean = false,
+      sigkillProcessesAfter: Option[FiniteDuration] = None)
+    final case class KillProcess(
+      orderId: OrderId,
+      sigtermProcesses: Boolean = false,
+      sigkillProcessesAfter: Option[FiniteDuration] = None)
   }
 
   object Output {
@@ -211,11 +234,12 @@ object JobActor
   private object Internal {
     final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll extends DeadLetterSuppression
+    final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
   }
 
   private case class Executable(file: Path, name: String, isTemporary: Boolean) {
     override def toString = name
   }
 
-  private case class Entry(fileSet: FilePool.FileSet, taskRunner: TaskRunner)
+  private case class Task(fileSet: FilePool.FileSet, taskRunner: TaskRunner)
 }
