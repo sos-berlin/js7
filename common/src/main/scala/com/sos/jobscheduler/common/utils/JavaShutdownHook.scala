@@ -12,9 +12,9 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
   private val hook = new Thread {
     setName(name)
     override def run() = {
-      logger.trace(s"Shutdown hook '$name' starts")
+      logger.debug(s"Shutdown hook '$name' starts")
       onShutdown()
-      logger.trace(s"Shutdown hook '$name' ends")  // May not be logged if log4j has been shutdown
+      logger.debug(s"Shutdown hook '$name' ends")  // May not be logged if log4j has been shutdown
     }
   }
 
