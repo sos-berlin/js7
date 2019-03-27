@@ -27,6 +27,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
@@ -138,6 +139,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
       }
       assert(exception.status == Unauthorized)
       assert(now - t >= invalidAuthenticationDelay)
+      waitForCondition(2.seconds, 100.milliseconds)(count >= 3)
       assert(count >= 3)
       requireAccessIsUnauthorizedOrPublic(api)
     }
