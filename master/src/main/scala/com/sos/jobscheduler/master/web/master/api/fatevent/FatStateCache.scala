@@ -54,7 +54,7 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
     val state = autoClosing(snapshotObjects) { _ =>
       MasterState.fromIterable(eventId, snapshotObjects)
     }
-    FatState(state.eventId, state.repo, state.idToOrder)
+    FatState(state.eventId, state.repo, state.orders.map(o => o.id -> o).toMap)
   }
 
   final class Accessor(initialFatState: FatState, after: EventId)

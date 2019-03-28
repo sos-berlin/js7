@@ -33,4 +33,6 @@ trait MasterApi {
   def workflows: Task[Stamped[Seq[Workflow]]]
 
   def agents: Task[Stamped[Seq[AgentRef]]]
+
+  def snapshot: Task[Stamped[Seq[Any]]]
 }

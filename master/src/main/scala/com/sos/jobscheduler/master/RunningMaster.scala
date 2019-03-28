@@ -223,12 +223,13 @@ object RunningMaster {
       }
       val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
+      val masterState = getMasterState(orderKeeper, masterConfiguration.akkaAskTimeout)
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
         .andThen { case _ => closer.close() }  // Close automatically after termination
 
-      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor)
+      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor, masterState)
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
         new RunningMaster(sessionRegister, commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
@@ -286,5 +287,11 @@ object RunningMaster {
     def orderCount =
       Task.deferFuture(
         (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int])
+  }
+
+  private def getMasterState(orderKeeper: ActorRef, akkaAskTimeout: Timeout): Task[MasterState] = {
+    implicit def t = akkaAskTimeout
+    Task.deferFuture(
+      (orderKeeper ? MasterOrderKeeper.Command.GetState).mapTo[MasterState])
   }
 }

@@ -50,9 +50,10 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
-import com.sos.jobscheduler.master.agent.{AgentDriver, AgentEventIdEvent}
+import com.sos.jobscheduler.master.agent.AgentDriver
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
@@ -137,13 +138,13 @@ with MainJournalingActor[Event]
     logger.debug("Stopped")
   }
 
-  protected def snapshots = Future.successful(
-    MasterState(
-      persistedEventId,
-      repo,
-      orderRegister.mapValues(_.order).uniqueToMap,
-      agentRegister.values.map(entry => entry.agentRefPath -> entry.lastAgentEventId).uniqueToMap)
-    .toSnapshots)
+  protected def snapshots = Future.successful(masterState.toSnapshots)
+
+  private def masterState = MasterState(
+    persistedEventId,
+    repo,
+    orderRegister.values.map(_.order).toImmutableSeq,
+    agentRegister.values.map(entry => entry.agentRefPath -> entry.lastAgentEventId).uniqueToMap)
 
   private def recover() = {
     val recoverer = new MasterJournalRecoverer(journalMeta)
@@ -156,7 +157,7 @@ with MainJournalingActor[Event]
       for ((agentRefPath, eventId) <- masterState.agentToEventId) {
         agentRegister(agentRefPath).lastAgentEventId = eventId
       }
-      for (order <- masterState.idToOrder.values) {
+      for (order <- masterState.orders) {
         orderRegister.insert(order.id -> OrderEntry(order))
       }
       persistedEventId = masterState.eventId
@@ -222,6 +223,9 @@ with MainJournalingActor[Event]
 
     case Command.GetOrderCount =>
       sender() ! (orderRegister.size: Int)
+
+    case Command.GetState =>
+      sender() ! masterState
 
     case AgentDriver.Output.EventsFromAgent(stampeds) =>
       val agentEntry = agentRegister(sender())
@@ -618,6 +622,7 @@ private[master] object MasterOrderKeeper {
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
+    final case object GetState extends Command
   }
 
   sealed trait Reponse

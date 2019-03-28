@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.agent.{AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.data.agent.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
@@ -100,5 +100,5 @@ extends JournalRecoverer[Event]
     }
 
   def masterState: Option[MasterState] =
-    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.toMap, agentToEventId.toMap)
+    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.values.toImmutableSeq, agentToEventId.toMap)
 }

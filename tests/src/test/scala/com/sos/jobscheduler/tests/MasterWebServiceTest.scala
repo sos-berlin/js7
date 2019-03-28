@@ -473,6 +473,63 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     master.eventWatch.await[OrderFinished]()  // Needed for test /master/api/events
   }
 
+  "/master/api/snapshot/ (only JSON)" in {
+    val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
+    val snapshots = httpClient.get[Json](s"$uri/master/api/snapshot/", headers) await 99.s
+    assert(snapshots.asObject.get("eventId") == Some(1000022.asJson))
+    val shortenedArray = Json.fromValues(snapshots.asObject.get("array").get.asArray.get
+      .filterNot(o => o.asObject.get("TYPE").contains("AgentEventId".asJson)))  // Delete AgentEventId in `array` (for easy comparison)
+    assert(shortenedArray == json"""[
+      {
+        "TYPE": "VersionAdded",
+        "versionId": "INITIAL"
+      }, {
+        "TYPE": "FileBasedAdded",
+        "path": "AgentRef:/AGENT",
+        "signed": {
+          "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/AGENT\",\"versionId\":\"INITIAL\",\"uri\":\"$agent1Uri\"}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "MY-SILLY-SIGNATURE"
+          }
+        }
+      }, {
+        "TYPE": "FileBasedAdded",
+        "path": "AgentRef:/FOLDER/AGENT-A",
+        "signed": {
+          "string": "{\"TYPE\":\"AgentRef\",\"path\":\"/FOLDER/AGENT-A\",\"versionId\":\"INITIAL\",\"uri\":\"$agent2Uri\"}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "MY-SILLY-SIGNATURE"
+          }
+        }
+      }, {
+        "TYPE": "VersionAdded",
+        "versionId": "VERSION-1"
+      }, {
+        "TYPE": "FileBasedAdded",
+        "path": "Workflow:/FOLDER/WORKFLOW-2",
+        "signed": {
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B.sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING.sh\"},\"taskLimit\":1}}]}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "MY-SILLY-SIGNATURE"
+          }
+        }
+      }, {
+        "TYPE": "FileBasedAdded",
+        "path": "Workflow:/WORKFLOW",
+        "signed": {
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A.sh\"},\"taskLimit\":1}}]}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "MY-SILLY-SIGNATURE"
+          }
+        }
+      }
+    ]""")   // Any orders would be added to `array`.
+  }
+
   "/master/api/event (only JSON)" in {
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
     val events = httpClient.get[Json](s"$uri/master/api/event?after=0", headers) await 99.s
@@ -525,7 +582,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A.sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A.sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -536,7 +593,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
-            "string" : "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B.sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING.sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B.sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING.sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"

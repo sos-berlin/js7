@@ -60,6 +60,11 @@ final class MasterUris private(masterUri: String) {
       api("/" + encodePath("agent", ""), "return" -> encodeClass[A])
   }
 
+  object snapshot {
+    val list: String =
+      api("/" + encodePath("snapshot", ""))
+  }
+
   def api(query: (String, String)*): String =
     api("", query: _*)
 

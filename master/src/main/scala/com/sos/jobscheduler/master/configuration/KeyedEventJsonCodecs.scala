@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.configuration
 
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
-import com.sos.jobscheduler.master.agent.AgentEventIdEvent
+import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
 
 /**

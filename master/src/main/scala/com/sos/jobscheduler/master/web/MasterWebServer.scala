@@ -14,13 +14,14 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.master.OrderApi
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.web.MasterWebServer._
+import com.sos.jobscheduler.master.{MasterState, OrderApi}
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
+import monix.eval.Task
 import monix.execution.Scheduler
 
 /**
@@ -33,6 +34,7 @@ final class MasterWebServer private(
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
+  masterState: Task[MasterState],
   implicit protected val actorSystem: ActorSystem,
   protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
@@ -58,6 +60,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val orderApi = MasterWebServer.this.orderApi
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
+      protected def masterState = MasterWebServer.this.masterState
 
       logger.info(gateKeeper.boundMessage(binding))
     }
@@ -75,8 +78,11 @@ object MasterWebServer {
     actorSystem: ActorSystem,
     scheduler: Scheduler)
   {
-    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands, commandExecutor: MasterCommandExecutor): MasterWebServer =
+    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
+      commandExecutor: MasterCommandExecutor, masterState: Task[MasterState])
+    : MasterWebServer =
       new MasterWebServer(masterConfiguration, gateKeeperConfiguration, injector,
-        fileBasedApi, orderApi, commandExecutor, actorSystem, scheduler)
+        fileBasedApi, orderApi, commandExecutor, masterState,
+        actorSystem, scheduler)
   }
 }

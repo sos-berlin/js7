@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission}
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -16,15 +15,11 @@ import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.system.ThreadPools
-import com.sos.jobscheduler.data.agent.AgentRef
 import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.master.MasterFileBaseds._
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.master.agent.AgentEventId
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
+import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -106,14 +101,6 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
 
 object MasterModule {
   private val logger = Logger(getClass)
-
-  private val SnapshotJsonCodec =
-    TypedJsonCodec[Any](
-      Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[AgentRef],
-      Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
-      Subtype[Order[Order.State]])
-
   private val simplePermssions = List(UpdateRepoPermission)
   private val stringToPermission = simplePermssions toKeyedMap (_.name)
 }

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.agent
+package com.sos.jobscheduler.master.data.agent
 
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.EventId

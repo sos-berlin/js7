@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
-import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
+import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
 import io.circe.{Decoder, ObjectEncoder}
 import monix.eval.Task
 import scala.collection.immutable.Seq
@@ -66,6 +66,11 @@ trait HttpMasterApi extends MasterApi with SessionApi
 
   final def agents: Task[Stamped[Seq[AgentRef]]] =
     httpClient.get[Stamped[Seq[AgentRef]]](uris.agent.list[AgentRef])
+
+  final def snapshot: Task[Stamped[Seq[Any]]] = {
+    implicit val x = MasterSnapshots.SnapshotJsonCodec
+    httpClient.get[Stamped[Seq[Any]]](uris.snapshot.list)
+  }
 }
 
 object HttpMasterApi {

@@ -75,4 +75,10 @@ final class MasterUrisTest extends FreeSpec {
       assert(masterUris.agent.list[AgentRef] == "http://example.com/master/api/agent/?return=AgentRef")
     }
   }
+
+  "snapshot" - {
+    "list" in {
+      assert(masterUris.snapshot.list == "http://example.com/master/api/snapshot/")
+    }
+  }
 }

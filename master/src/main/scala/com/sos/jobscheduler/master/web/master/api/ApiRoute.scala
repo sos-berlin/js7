@@ -27,6 +27,7 @@ with OrderRoute
 with WorkflowRoute
 with AgentRefRoute
 with AgentProxyRoute
+with SnapshotRoute
 with SessionRoute
 {
   final val apiRoute: Route =
@@ -43,6 +44,7 @@ with SessionRoute
         case "workflow"    => workflowRoute
         case "agent"       => agentRefRoute
         case "agent-proxy" => agentProxyRoute
+        case "snapshot"    => snapshotRoute
         case "graphql"     => graphqlRoute
         case _ => complete(NotFound)
       }
