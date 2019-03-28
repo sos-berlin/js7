@@ -99,7 +99,7 @@ extends TaskRunner {
         paramEnv + returnValuesProvider.env
       }
       val processConfiguration = ProcessConfiguration(
-        stdFileMap = Map(),
+        stdFileMap = Map.empty,
         encoding = AgentConfiguration.FileEncoding,
         workingDirectory = Some(agentConfiguration.jobWorkingDirectory),
         additionalEnvironment = env,

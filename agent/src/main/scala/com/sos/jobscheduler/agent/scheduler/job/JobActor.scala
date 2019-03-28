@@ -25,6 +25,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import monix.execution.Scheduler
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
@@ -100,19 +101,14 @@ extends Actor with Stash {
                   assert(taskCount < workflowJob.taskLimit, "Task limit exceeded")
                   assert(executable.isTemporary || executableFile.startsWith(conf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)),
                     s"Executable directory '${conf.executablesDirectory}' does not contain file '$executableFile' ")
-                  val fileSet = filePool.get()
-                  val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
-                  orderToTask.insert(cmd.order.id -> Task(fileSet, taskRunner))
                   val sender = this.sender()
-                  taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
-                    .andThen { case _ => taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
+                  processOrder(cmd, executableFile)
                     .onComplete { triedStepEnded =>
                       self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
                     }
-                  waitingForNextOrder = false
                   handleIfReadyForOrder()
               }
-            }
+        }
 
     case Internal.TaskFinished(order, triedStepEnded) =>
       filePool.release(orderToTask(order.id).fileSet)
@@ -152,7 +148,17 @@ extends Actor with Stash {
       killOrder(orderId, SIGKILL)
   }
 
-  private def handleIfReadyForOrder() =
+  private def processOrder(cmd: Command.ProcessOrder, executableFile: Path): Future[TaskStepEnded] = {
+    val fileSet = filePool.get()
+    val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, executableFile, fileSet.shellReturnValuesProvider))
+    orderToTask.insert(cmd.order.id -> Task(fileSet, taskRunner))
+    val whenEnded = taskRunner.processOrder(cmd.order, cmd.defaultArguments, cmd.stdChannels)
+      .andThen { case _ => taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
+    waitingForNextOrder = false
+    whenEnded
+  }
+
+  private def handleIfReadyForOrder(): Unit =
     if (!waitingForNextOrder && !terminating && taskCount < workflowJob.taskLimit) {
       context.parent ! Output.ReadyForOrder
       waitingForNextOrder = true
