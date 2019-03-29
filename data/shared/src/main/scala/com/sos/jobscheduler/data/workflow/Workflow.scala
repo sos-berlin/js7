@@ -51,7 +51,7 @@ extends FileBased
   val labeledInstructions = rawLabeledInstructions map (o => o.copy(instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
-    numberedInstructions.flatMap { case (nr, Instruction.Labeled(labels, _)) => labels map (_ -> nr) }
+    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _)) => maybeLabel map (_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: FileBasedId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
@@ -141,7 +141,7 @@ extends FileBased
   private[workflow] def reduce: Workflow =
     copy(rawLabeledInstructions =
       rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
-        case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(labels, _)) if labels contains jmp.to => Nil
+        case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(maybeLabel, _)) if maybeLabel contains jmp.to => Nil
         case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
         case Seq(a, _) => a :: Nil
         case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?

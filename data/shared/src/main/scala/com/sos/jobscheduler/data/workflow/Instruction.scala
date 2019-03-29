@@ -37,10 +37,10 @@ trait Instruction
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
 
-  final def @:(labels: Seq[Label]) = Labeled(labels, this)
-  final def @:(label: Label) = Labeled(label :: Nil, this)
-  final def @:(label: String) = Labeled(Label(label) :: Nil, this)
-  final def @:(unit: Unit) = Labeled(Nil, this)
+  final def @:(maybeLabel: Option[Label]) = Labeled(maybeLabel, this)
+  final def @:(label: Label) = Labeled(Some(label), this)
+  final def @:(label: String) = Labeled(Some(Label(label)), this)
+  final def @:(unit: Unit) = Labeled(None, this)
 }
 
 trait JumpInstruction extends Instruction {
@@ -51,27 +51,27 @@ object Instruction {
   val @: = Labeled
 
   implicit def toLabeled(instruction: Instruction): Labeled =
-    Labeled(Nil, instruction)
+    Labeled(None, instruction)
 
-  final case class Labeled(labels: Seq[Label], instruction: Instruction) {
-    override def toString = labelsString + instruction
+  final case class Labeled(maybeLabel: Option[Label], instruction: Instruction) {
+    override def toString = labelString + instruction
 
-    def labelsString = labels.map(o => s"$o: ").mkString
+    def labelString = maybeLabel.map(o => s"$o: ").mkString
   }
   object Labeled {
     implicit def jsonEncoder(implicit instrEncoder: ObjectEncoder[Instruction]): ObjectEncoder[Labeled] = {
-      case Labeled(Seq(), instruction) =>
+      case Labeled(None, instruction) =>
         instruction.asJsonObject
-      case Labeled(labels, instruction) =>
-        ("labels" -> labels.asJson) +: instruction.asJsonObject
+      case Labeled(maybeLabel, instruction) =>
+        ("label" -> maybeLabel.asJson) +: instruction.asJsonObject
     }
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =
       cursor => for {
         instruction <- cursor.as[Instruction]
-        labels <- cursor.get[Json]("labels") match {
-          case Right(json) => json.as[Seq[Label]]
-          case Left(_) => Right(Nil)
+        labels <- cursor.get[Json]("label") match {
+          case Right(json) => json.as[Option[Label]]
+          case Left(_) => Right(None)
         }
       } yield Labeled(labels, instruction)
   }

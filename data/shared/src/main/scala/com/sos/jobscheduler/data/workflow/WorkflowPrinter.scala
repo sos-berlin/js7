@@ -90,7 +90,7 @@ object WorkflowPrinter
 
     for (labelled <- workflow.labeledInstructions if !labelled.instruction.isInstanceOf[ImplicitEnd]) {
       indent(nesting)
-      for (label <- labelled.labels) {
+      for (label <- labelled.maybeLabel) {
         sb ++= label.string
         sb ++= ": "
       }

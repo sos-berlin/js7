@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.parser
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Evaluator
 import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
@@ -203,8 +203,8 @@ object WorkflowParser
         offerInstruction)
 
     private def labeledInstruction[_: P] = P[Labeled](
-      (labelDef.rep ~ instruction)
-        map { case (labels, instruction_) => Labeled(labels.toImmutableSeq, instruction_)})
+      (labelDef.? ~ instruction)
+        map { case (maybeLabel, instruction_) => Labeled(maybeLabel, instruction_)})
 
     private def jobDefinition[_: P] = P[(WorkflowJob.Name, WorkflowJob)](
       keyword("define") ~ w ~/ keyword("job") ~ w ~/

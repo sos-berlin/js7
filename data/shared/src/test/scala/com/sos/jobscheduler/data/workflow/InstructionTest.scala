@@ -10,10 +10,10 @@ import org.scalatest.FreeSpec
 final class InstructionTest extends FreeSpec {
 
   "@:" in {
-    assert("LABEL" @: ExplicitEnd() == Instruction.Labeled(Label("LABEL") :: Nil, ExplicitEnd()))
-    assert(() @: ExplicitEnd() == Instruction.Labeled(Nil, ExplicitEnd()))
+    assert("LABEL" @: ExplicitEnd() == Instruction.Labeled(Some("LABEL"), ExplicitEnd()))
+    assert(() @: ExplicitEnd() == Instruction.Labeled(None, ExplicitEnd()))
     "LABEL" @: ExplicitEnd() match {
-      case (Label("LABEL") :: Nil) @: (_: ExplicitEnd) => // ok
+      case Some(Label("LABEL")) @: (_: ExplicitEnd) => // ok
       case _ => fail()
     }
   }

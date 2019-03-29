@@ -17,8 +17,8 @@ final class InstructionsTest extends FreeSpec {
       testJson[Labeled](
         "A" @: ExplicitEnd(),
         json"""{
-          "TYPE": "End",
-          "labels": [ "A" ]
+          "label": "A",
+          "TYPE": "End"
         }""")
     }
 
