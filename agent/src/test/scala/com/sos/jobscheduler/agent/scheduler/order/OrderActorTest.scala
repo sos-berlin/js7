@@ -206,7 +206,6 @@ private object OrderActorTest {
 
     private def detaching: Receive = receiveOrderEvent orElse {
       case "DETACHED" =>
-        orderActor ! OrderActor.Input.Terminate(sigkillProcessesAfter = Some(0.seconds))
         become(terminating)
 
       case JobActor.Output.ReadyForOrder =>  // Ready for next order
