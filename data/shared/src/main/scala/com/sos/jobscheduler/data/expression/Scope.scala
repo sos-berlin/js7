@@ -10,14 +10,14 @@ trait Scope
 {
   val symbolToValue: String => Checked[Evaluator.Value]
 
-  val variableNameToString: String => Checked[Option[String]]
+  val findValue: ValueSearch => Checked[Option[String]]
 }
 
 object Scope
 {
   object Constant extends Scope {
     val symbolToValue = _ => Invalid(ConstantExpressionRequiredProblem)
-    val variableNameToString = _ => Invalid(ConstantExpressionRequiredProblem)
+    val findValue = _ => Invalid(ConstantExpressionRequiredProblem)
   }
 
   case object ConstantExpressionRequiredProblem extends Problem.ArgumentlessCoded

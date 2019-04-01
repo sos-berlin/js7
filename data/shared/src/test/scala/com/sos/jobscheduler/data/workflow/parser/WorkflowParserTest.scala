@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
+import com.sos.jobscheduler.data.expression.Expression.{Equal, In, ListExpression, NamedValue, NumericConstant, Or, OrderReturnCode, StringConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
@@ -197,7 +197,7 @@ final class WorkflowParserTest extends FreeSpec {
           If(
             Or(
               In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
+              Equal(NamedValue(NamedValue.LastOccurred, StringConstant("KEY")), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")),

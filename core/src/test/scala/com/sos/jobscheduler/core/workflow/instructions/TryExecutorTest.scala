@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.BranchId.Try_
 import com.sos.jobscheduler.data.workflow.position._
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -26,6 +26,7 @@ final class TryExecutorTest extends FreeSpec
     def idToOrder = Map(AOrder.id -> AOrder)
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
+    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
   "JSON" - {

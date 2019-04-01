@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, If}
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -27,6 +27,7 @@ final class IfExecutorTest extends FreeSpec {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder)
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def instruction(position: WorkflowPosition) = throw new NotImplementedError
+    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
   "JSON" - {
@@ -56,8 +57,8 @@ final class IfExecutorTest extends FreeSpec {
       Valid(Some(Position(8))))
   }
 
-  "Variable comparison" in {
-    val expr = Equal(Variable(StringConstant("A")), StringConstant("AA"))
+  "Naned value comparison" in {
+    val expr = Equal(NamedValue(NamedValue.LastOccurred, StringConstant("A")), StringConstant("AA"))
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Then % 0)))
     assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Else % 0)))
   }

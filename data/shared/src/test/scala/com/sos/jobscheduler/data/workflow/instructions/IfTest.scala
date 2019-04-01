@@ -70,7 +70,7 @@ final class IfTest extends FreeSpec
     assert(if_.workflow("A").isInvalid)
   }
 
-  "flattenedWorkflows" in {
+  "flattenedBranchToWorkflow" in {
     assert(if_.flattenedWorkflows(Position(7)) ==
       ((Position(7) / Then) -> if_.thenWorkflow) ::
       ((Position(7) / Else) -> if_.elseWorkflow.get) :: Nil)

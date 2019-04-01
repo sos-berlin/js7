@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, NumericConstant, OrderReturnCode}
+import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -204,20 +205,59 @@ final class WorkflowTest extends FreeSpec {
     }
   }
 
-  "labelToPosition" in {
+  "positionMatchesSearch" in {
+    val workflow = Workflow(WorkflowPath.NoId, Vector(
+      "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
+      If(Equal(OrderReturnCode, NumericConstant(1)),
+        thenWorkflow = Workflow.of(
+          "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))),
+      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))
+      .completelyChecked.orThrow
+    assert(workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("A")))
+    assert(!workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("B")))
+    assert(!workflow.positionMatchesSearch(Position(1), PositionSearch.ByLabel("B")))
+    assert(!workflow.positionMatchesSearch(Position(99), PositionSearch.ByLabel("A")))
+    assert(workflow.positionMatchesSearch(Position(0), PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB-A"))))
+    assert(!workflow.positionMatchesSearch(Position(0), PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB-X"))))
+    assert(workflow.positionMatchesSearch(Position(1) / Then % 0, PositionSearch.ByLabel(Label("B"))))
+    assert(!workflow.positionMatchesSearch(Position(1) / Then % 0, PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB-X"))))
+  }
+
+  "labelToPosition of a branch" in {
     val workflow = Workflow.of(
       "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
       If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))),
-      "B" @: ExplicitEnd())
+          "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
+      .completelyChecked.orThrow
     assert(workflow.labelToPosition(Nil, Label("A")) == Valid(Position(0)))
-    assert(workflow.labelToPosition(Nil, Label("B")) == Valid(Position(2)))
     assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
     assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Valid(Position(1) / Then % 0))
   }
 
+  "labelToPosition of whole workflow" in {
+    val workflow = Workflow.of(
+      "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
+      If(Equal(OrderReturnCode, NumericConstant(1)),
+        thenWorkflow = Workflow.of(
+          "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
+      .completelyChecked.orThrow
+    assert(workflow.labelToPosition(Label("A")) == Valid(Position(0)))
+    assert(workflow.labelToPosition(Label("B")) == Valid(Position(1) / Then % 0))
+    assert(workflow.labelToPosition(Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
+  }
+
   "Duplicate labels" in {
+    assert(Workflow.of(
+      "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
+      If(Equal(OrderReturnCode, NumericConstant(1)),
+        thenWorkflow = Workflow.of(
+          "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
+      .completelyChecked ==
+      Invalid(Problem("Label 'DUPLICATE' is duplicate at positions 0, 1/then:0")))
+  }
+
+  "Duplicate label in nested workflow" in {
     assert(intercept[RuntimeException] {
       Workflow.of(
         "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
@@ -287,7 +327,7 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "flattendWorkflows" in {
-    assert(TestWorkflow.flattenedWorkflows == Map(
+    assert(TestWorkflow.flattenedBranchToWorkflow == Map(
       Nil -> TestWorkflow,
       (Position(1) / Then) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].thenWorkflow,
       (Position(1) / Else) -> TestWorkflow.instruction(Position(1)).asInstanceOf[If].elseWorkflow.get,

@@ -10,6 +10,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.expression.Evaluator._
 import com.sos.jobscheduler.data.expression.Expression._
+import com.sos.jobscheduler.data.workflow.Label
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 
 /**
   * @author Joacim Zschimmer
@@ -58,13 +60,23 @@ final class Evaluator(scope: Scope)
       case StringConstant(o) =>
         StringValue(o).valid
 
-      case Variable(stringExpr, default) =>
+      case NamedValue(where, stringExpr, default) =>
         for {
           stringValue <- evalString(stringExpr)
           name = stringValue.string
-          maybeValue <- scope.variableNameToString(name)
+          w = where match {
+            case NamedValue.Argument => ValueSearch.Argument
+            case NamedValue.LastOccurred => ValueSearch.LastOccurred
+            case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
+            case NamedValue.ByWorkflowJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
+          }
+          maybeValue <- scope.findValue(ValueSearch(w, name))
           value <- maybeValue.map(StringConstant.apply).orElse(default)
-            .toChecked(Problem(s"No such variable: $name"))
+            .toChecked(Problem(where match {
+              case NamedValue.LastOccurred => s"No such named value: $name"
+              case NamedValue.ByLabel(Label(label)) => s"Workflow instruction at label $label did not return a key '$name'"
+              case NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a key '$name'"
+            }))
             .flatMap(evalString)
         } yield value
 

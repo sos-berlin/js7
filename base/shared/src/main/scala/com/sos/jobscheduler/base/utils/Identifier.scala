@@ -18,6 +18,7 @@ object Identifier
     else
       Problem(s"Invalid character or character combination in identifier '$string'")
 
+  // TODO Rething syntax and match with ExpressionParser
   /**
     * Like a Java identifier with minus character.
     * Minus character is not allowed as last or first character.

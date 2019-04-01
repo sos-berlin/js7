@@ -8,10 +8,10 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderFailed, OrderMoved, OrderProcessed}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.FreeSpec
 
 /**
@@ -27,6 +27,7 @@ final class ExecuteTest extends FreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToOrder = throw new NotImplementedError
     def instruction(workflowPosition: WorkflowPosition) = throw new NotImplementedError
+    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
   "toOrderProcessed" in {

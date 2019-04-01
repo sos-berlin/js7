@@ -29,6 +29,7 @@ final class OrderEventSource(
     def idToOrder                                   = OrderEventSource.this.idToOrder
     def childOrderEnded(order: Order[Order.State])  = OrderEventSource.this.childOrderEnded(order)
     def instruction(position: WorkflowPosition)     = OrderEventSource.this.instruction(position)
+    def idToWorkflow(id: WorkflowId)                = OrderEventSource.this.idToWorkflow(id)
   }
 
   private def childOrderEnded(order: Order[Order.State]): Boolean =

@@ -33,7 +33,7 @@ private[parser] object BasicParsers
   def int[_: P] = P[Int](("-".? ~ digits).! map (_.toInt))
   private def digits[_: P] = P(CharsWhile(c => c >= '0' && c <= '9'))
   def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
-  def identifier[_: P] = P[String](
+  def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
     (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
       identifierEnd)
 

@@ -6,6 +6,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.data.expression.Evaluator.{BooleanValue, NumericValue, StringValue, Value}
 import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.expression.Scope.ConstantExpressionRequiredProblem
+import com.sos.jobscheduler.data.workflow.Label
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
@@ -19,13 +21,20 @@ import org.scalatest.prop.PropertyChecks._
   */
 final class EvaluatorTest extends FreeSpec
 {
-  "Variable expressions" - {
+  "NamedValue expressions" - {
     implicit val evaluator = new Evaluator(
       new Scope {
         private val symbols = Map[String, Value]("returnCode" -> NumericValue(1), "catchCount" -> NumericValue(3))
         val symbolToValue = name => symbols.checked(name)
-        private val variables = Map("ASTRING" -> "AA", "ANUMBER" -> "7")
-        val variableNameToString = name => Valid(variables.get(name))
+
+        val findValue = {
+          case ValueSearch(ValueSearch.LastOccurred, key) =>
+            Valid(Map("ASTRING" -> "AA", "ANUMBER" -> "7").get(key))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), key) =>
+            Valid(Map("KEY" -> "LABEL-VALUE").get(key))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), key) =>
+            Valid(Map("KEY" -> "JOB-VALUE").get(key))
+        }
       })
     val eval = evaluator.eval _
     val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
@@ -67,31 +76,43 @@ final class EvaluatorTest extends FreeSpec
 
     testEval("$ASTRING",
       result = "AA",
-      Valid(Variable(StringConstant("ASTRING"))))
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
+
+    testEval("${ASTRING}",
+      result = "AA",
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
+
+    testEval("${label:LABEL:KEY}",
+      result = "LABEL-VALUE",
+      Valid(NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("KEY"))))
+
+    testEval("${job:JOB:KEY}",
+      result = "JOB-VALUE",
+      Valid(NamedValue(NamedValue.ByWorkflowJob(WorkflowJob.Name("JOB")), StringConstant("KEY"))))
 
     testEval("$UNKNOWN",
-      result = Invalid(Problem("No such variable: UNKNOWN")),
-      Valid(Variable(StringConstant("UNKNOWN"))))
+      result = Invalid(Problem("No such named value: UNKNOWN")),
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"))))
 
     testEval("""variable("ASTRING")""",
       result = "AA",
-      Valid(Variable(StringConstant("ASTRING"))))
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
 
     testEval("""variable("UNKNOWN")""",
-      result = Invalid(Problem("No such variable: UNKNOWN")),
-      Valid(Variable(StringConstant("UNKNOWN"))))
+      result = Invalid(Problem("No such named value: UNKNOWN")),
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"))))
 
     testEval("""variable("UNKNOWN", "DEFAULT")""",
       result = "DEFAULT",
-      Valid(Variable(StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
     testEval("""$ASTRING.toNumber""",
       result = Invalid(Problem("Not a valid number: AA")),
-      Valid(ToNumber(Variable(StringConstant("ASTRING")))))
+      Valid(ToNumber(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING")))))
 
     testEval("""$ANUMBER.toNumber""",
       result = 7,
-      Valid(ToNumber(Variable(StringConstant("ANUMBER")))))
+      Valid(ToNumber(NamedValue(NamedValue.LastOccurred, StringConstant("ANUMBER")))))
 
     testEval(""""true".toBoolean""",
       result = true,
@@ -278,7 +299,7 @@ final class EvaluatorTest extends FreeSpec
       Valid(Equal(NumericConstant(1), NumericConstant(2))))
 
     "Variables cannot be used" in {
-      assert(eval(Variable(StringConstant("VARIABLE"))) == Invalid(ConstantExpressionRequiredProblem))
+      assert(eval(NamedValue(NamedValue.LastOccurred, StringConstant("VARIABLE"))) == Invalid(ConstantExpressionRequiredProblem))
     }
   }
 

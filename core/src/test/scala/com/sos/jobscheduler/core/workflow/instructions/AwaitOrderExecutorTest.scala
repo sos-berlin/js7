@@ -7,9 +7,9 @@ import com.sos.jobscheduler.core.workflow.instructions.AwaitOrderExecutorTest._
 import com.sos.jobscheduler.data.event.<-:
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Offer}
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
@@ -23,6 +23,7 @@ final class AwaitOrderExecutorTest extends FreeSpec {
       def idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder)
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def instruction(position: WorkflowPosition) = throw new NotImplementedError
+      def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     }
     assert(InstructionExecutor.toEvent(AwaitOrder(offeredOrder.id), awaitingOrder, context) ==
       Valid(Some(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))

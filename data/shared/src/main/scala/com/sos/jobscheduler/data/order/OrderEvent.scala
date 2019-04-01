@@ -136,8 +136,10 @@ object OrderEvent {
   /** Only internal. Will be converted to `OrderStopped` or `OrderCatched`. */
   final case class OrderFailed(outcome: Outcome.NotSucceeded) extends OrderActorEvent
 
+  // TODO OrderStopped should not contain key-values. Do we need the outcome?
   final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
 
+  // TODO OrderCatched should not contain key-values
   final case class OrderCatched(outcome: Outcome.NotSucceeded, movedTo: Position) extends OrderActorEvent
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderRetrying
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
@@ -58,6 +58,7 @@ object RetryExecutorTest
       def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap()
+      def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     }
     new RetryExecutor(() => now).toEvent(context, order, Retry())
   }

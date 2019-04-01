@@ -3,6 +3,8 @@ package com.sos.jobscheduler.data.workflow.parser
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.expression.Expression._
+import com.sos.jobscheduler.data.workflow.Label
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser._
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
@@ -17,114 +19,123 @@ final class ExpressionParserTest extends FreeSpec
 {
   // See also EvaluatorTest
 
-  "Variable" - {
+  "NamedValue" - {
     "$ with impossible names" in {
-      assert(parse("$var/1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(parse("$var.1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(parse("$var-1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(parse("$var_1", dollarVariable(_)) == Parsed.Success(Variable(StringConstant("var_1")), 6))
+      assert(parse("$var/1", dollarValueName(_)) == Parsed.Success(NamedValue(NamedValue.LastOccurred, StringConstant("var")), 4))
+      assert(parse("$var.1", dollarValueName(_)) == Parsed.Success(NamedValue(NamedValue.LastOccurred, StringConstant("var")), 4))
+      assert(parse("$var-1", dollarValueName(_)) == Parsed.Success(NamedValue(NamedValue.LastOccurred, StringConstant("var")), 4))
+      assert(parse("$var_1", dollarValueName(_)) == Parsed.Success(NamedValue(NamedValue.LastOccurred, StringConstant("var_1")), 6))
     }
 
-    "$ with possible names" in {
-      assert(checkedParse("$var", dollarVariable(_)) == Valid(Variable(StringConstant("var"))))
-      assert(checkedParse("$gå", dollarVariable(_)) == Valid(Variable(StringConstant("gå"))))
-      assert(checkedParse("$été", dollarVariable(_)) == Valid(Variable(StringConstant("été"))))
-    }
+    testStringExpression("""$key""", NamedValue(NamedValue.LastOccurred, StringConstant("key")))
+    testStringExpression("""$Schlüssel""", NamedValue(NamedValue.LastOccurred, StringConstant("Schlüssel")))
+    testStringExpression("""$clé""", NamedValue(NamedValue.LastOccurred, StringConstant("clé")))
+    testStringExpression("""$A""", NamedValue(NamedValue.LastOccurred, StringConstant("A")))
+    testStringExpression("""${SOME-KEY}""", NamedValue(NamedValue.LastOccurred, StringConstant("SOME-KEY")))
+    testStringExpression("""${arg:SOME-KEY}""", NamedValue(NamedValue.Argument, StringConstant("SOME-KEY")))
+    testStringExpression("""${label:LABEL:SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("SOME-KEY")))
+    testStringExpression("""${job:JOB:SOME-KEY}""", NamedValue(NamedValue.ByWorkflowJob(WorkflowJob.Name("JOB")), StringConstant("SOME-KEY")))
 
     "variable()" in {
-      assert(checkedParse("""variable("gå")""", variableFunctionCall(_)) == Valid(Variable(StringConstant("gå"))))
-      assert(checkedParse("""variable ( "gå" )""", variableFunctionCall(_)) == Valid(Variable(StringConstant("gå"))))
+      assert(checkedParse("""variable("clé")""", variableFunctionCall(_)) == Valid(NamedValue(NamedValue.LastOccurred, StringConstant("clé"))))
+      assert(checkedParse("""variable ( "clé" )""", variableFunctionCall(_)) == Valid(NamedValue(NamedValue.LastOccurred, StringConstant("clé"))))
     }
   }
 
-  testBooleanExpression("true", BooleanConstant(true))
-  testBooleanExpression("false", BooleanConstant(false))
-  testBooleanExpression("(false)", BooleanConstant(false))
+  "Boolean" - {
+    testBooleanExpression("true", BooleanConstant(true))
+    testBooleanExpression("false", BooleanConstant(false))
+    testBooleanExpression("(false)", BooleanConstant(false))
+  }
 
-  testStringExpression("'x'", StringConstant("x"))
-  testStringExpression("'ö'", StringConstant("ö"))
-  testStringExpression("""'a\x'""", StringConstant("""a\x"""))
-  testStringExpression("""'a\\x'""", StringConstant("""a\\x"""))
-  testStringExpression(""" "" """.trim, StringConstant(""))
-  testStringExpression(""" "x" """.trim, StringConstant("x"))
-  testStringExpression(""" "ö" """.trim, StringConstant("ö"))
+  "String" - {
+    testStringExpression("'x'", StringConstant("x"))
+    testStringExpression("'ö'", StringConstant("ö"))
+    testStringExpression("""'a\x'""", StringConstant("""a\x"""))
+    testStringExpression("""'a\\x'""", StringConstant("""a\\x"""))
+    testStringExpression(""" "" """.trim, StringConstant(""))
+    testStringExpression(""" "x" """.trim, StringConstant("x"))
+    testStringExpression(""" "ö" """.trim, StringConstant("ö"))
 
-  "Invalid strings" in {
-    assert(checkedParse("''", stringExpression(_)).isInvalid)
-    assert(checkedParse(""" "\" """.trim, stringExpression(_)).isInvalid)
-    assert(checkedParse(" \"\t\" ".trim, stringExpression(_)).isInvalid)
+    "Invalid strings" in {
+      assert(checkedParse("''", stringExpression(_)).isInvalid)
+      assert(checkedParse(""" "\" """.trim, stringExpression(_)).isInvalid)
+      assert(checkedParse(" \"\t\" ".trim, stringExpression(_)).isInvalid)
+    }
   }
 
   testError(""""1" < 1""",
     """Expected comparable types: '1' < 1:1:8, found """"")
 
-  testBooleanExpression("returnCode != 7", NotEqual(OrderReturnCode, NumericConstant(7)))
-  testBooleanExpression("returnCode > 7", GreaterThan(OrderReturnCode, NumericConstant(7)))
-  testBooleanExpression("""variable("A") == "X"""", Equal(Variable(StringConstant("A")), StringConstant("X")))
-  testBooleanExpression("""$A == "X"""", Equal(Variable(StringConstant("A")), StringConstant("X")))
+  "Comparison" - {
+    testBooleanExpression("returnCode != 7", NotEqual(OrderReturnCode, NumericConstant(7)))
+    testBooleanExpression("returnCode > 7", GreaterThan(OrderReturnCode, NumericConstant(7)))
+    testBooleanExpression("""variable("A") == "X"""", Equal(NamedValue(NamedValue.LastOccurred, StringConstant("A")), StringConstant("X")))
+    testBooleanExpression("""$A == "X"""", Equal(NamedValue(NamedValue.LastOccurred, StringConstant("A")), StringConstant("X")))
 
-  testBooleanExpression("returnCode > 0 && returnCode < 9",
-    And(
-      GreaterThan(OrderReturnCode, NumericConstant(0)),
-      LessThan(OrderReturnCode, NumericConstant(9))))
+    testBooleanExpression("returnCode > 0 && returnCode < 9",
+      And(
+        GreaterThan(OrderReturnCode, NumericConstant(0)),
+        LessThan(OrderReturnCode, NumericConstant(9))))
 
-  testBooleanExpression("returnCode >= 0 && returnCode <= 9",
-    And(
-      GreaterOrEqual(OrderReturnCode, NumericConstant(0)),
-      LessOrEqual(OrderReturnCode, NumericConstant(9))))
-
-  testBooleanExpression("returnCode == 1 || returnCode == 2 || returnCode == 3",
-    Or(
-      Or(
-        Equal(OrderReturnCode, NumericConstant(1)),
-        Equal(OrderReturnCode, NumericConstant(2))),
-      Equal(OrderReturnCode, NumericConstant(3))))
-
-  testBooleanExpression("""returnCode >= 0 && returnCode <= 9 && $result == "OK"""",
-    And(
+    testBooleanExpression("returnCode >= 0 && returnCode <= 9",
       And(
         GreaterOrEqual(OrderReturnCode, NumericConstant(0)),
-        LessOrEqual(OrderReturnCode, NumericConstant(9))),
-      Equal(Variable(StringConstant("result")), StringConstant("OK"))))
+        LessOrEqual(OrderReturnCode, NumericConstant(9))))
 
-  testBooleanExpression("""returnCode in [0, 3, 50]""",
-    In(
-      OrderReturnCode,
-      ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
+    testBooleanExpression("returnCode == 1 || returnCode == 2 || returnCode == 3",
+      Or(
+        Or(
+          Equal(OrderReturnCode, NumericConstant(1)),
+          Equal(OrderReturnCode, NumericConstant(2))),
+        Equal(OrderReturnCode, NumericConstant(3))))
 
-  testError("""returnCode in [0, 3, 50] || $result == "1"""",
-    """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:43, found """"")
+    testBooleanExpression("""returnCode >= 0 && returnCode <= 9 && $result == "OK"""",
+      And(
+        And(
+          GreaterOrEqual(OrderReturnCode, NumericConstant(0)),
+          LessOrEqual(OrderReturnCode, NumericConstant(9))),
+        Equal(NamedValue(NamedValue.LastOccurred, StringConstant("result")), StringConstant("OK"))))
 
-  testBooleanExpression("""(returnCode in [0, 3, 50]) || $result == "1"""",
-    Or(
+    testBooleanExpression("""returnCode in [0, 3, 50]""",
       In(
         OrderReturnCode,
-        ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
-      Equal(
-        Variable(StringConstant("result")),
-        StringConstant("1"))))
+        ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
-  testBooleanExpression("""returnCode==$expected.toNumber||$result=="1"||true&&returnCode>0""",
-    Or(
+    testError("""returnCode in [0, 3, 50] || $result == "1"""",
+      """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:43, found """"")
+
+    testBooleanExpression("""(returnCode in [0, 3, 50]) || $result == "1"""",
       Or(
-        Equal(
+        In(
           OrderReturnCode,
-          ToNumber(Variable(StringConstant("expected")))),
+          ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
         Equal(
-          Variable(StringConstant("result")),
-          StringConstant("1"))),
-      And(
-        BooleanConstant(true),
-        GreaterThan(
-          OrderReturnCode,
-          NumericConstant(0)))))
+          NamedValue(NamedValue.LastOccurred, StringConstant("result")),
+          StringConstant("1"))))
+
+    testBooleanExpression("""returnCode==$expected.toNumber||$result=="1"||true&&returnCode>0""",
+      Or(
+        Or(
+          Equal(
+            OrderReturnCode,
+            ToNumber(NamedValue(NamedValue.LastOccurred, StringConstant("expected")))),
+          Equal(
+            NamedValue(NamedValue.LastOccurred, StringConstant("result")),
+            StringConstant("1"))),
+        And(
+          BooleanConstant(true),
+          GreaterThan(
+            OrderReturnCode,
+            NumericConstant(0)))))
+  }
 
   testStringExpression("'STRING'.stripMargin",
     StripMargin(StringConstant("STRING")))
 
   testBooleanExpression("""$result matches 'A.*'""",
     Matches(
-      Variable(StringConstant("result")),
+      NamedValue(NamedValue.LastOccurred, StringConstant("result")),
       StringConstant("A.*")))
 
   "Unknown numeric function" in {

@@ -2,6 +2,8 @@ package com.sos.jobscheduler.data.workflow.parser
 
 import com.sos.jobscheduler.data.expression.Expression
 import com.sos.jobscheduler.data.expression.Expression._
+import com.sos.jobscheduler.data.workflow.Label
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import fastparse.NoWhitespace._
 import fastparse._
@@ -59,19 +61,28 @@ object ExpressionParser
   private def stringConstant[_: P] = P[StringConstant](quotedString
     .map(StringConstant.apply))
 
-  private[parser] def dollarVariable[_: P] = P[StringExpression] {
-    def simpleName = P[String]((CharPred(Variable.isSimpleNameStart) ~ CharsWhile(Variable.isSimpleNamePart, 0)).!)
-    ("$" ~ simpleName)
-      .map(o => Variable(StringConstant(o)))
+  private[parser] def dollarValueName[_: P] = P[NamedValue] {
+    def simpleName = P[String](
+      (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
+    def nameOnly(p: P[String]) = P[NamedValue](
+      p.map(o => NamedValue(NamedValue.LastOccurred, StringConstant(o))))
+    def arg = P[NamedValue]((P("arg:") ~~/ identifier)
+      .map(key => NamedValue(NamedValue.Argument, StringConstant(key))))
+    def byLabel = P[NamedValue]((P("label:") ~~/ identifier ~~ ":" ~~/ identifier)
+      .map { case (jobName, key) => NamedValue(NamedValue.ByLabel(Label(jobName)), StringConstant(key)) })
+    def byJob = P[NamedValue]((P("job:") ~~/ identifier ~~ ":" ~~/ identifier)
+      .map { case (jobName, key) => NamedValue(NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)), StringConstant(key)) })
+    def curlyName = P[NamedValue](P("{") ~~/ (arg | byLabel | byJob | nameOnly(identifier)) ~~ "}")
+    "$" ~~ (nameOnly(simpleName) | curlyName)
   }
 
   private[parser] def variableFunctionCall[_: P] = P(
     P(keyword("variable") ~ w ~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)
-      .map { case (name, default) => Variable(name, default) }))
+      .map { case (name, default) => NamedValue(NamedValue.LastOccurred, name, default) }))
 
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | catchCount |
-      dollarVariable | variableFunctionCall)
+      dollarValueName | variableFunctionCall)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
@@ -79,7 +90,7 @@ object ExpressionParser
       case (o, Some("toNumber")) => valid(ToNumber(o))
       case (o: StringExpression, Some("toBoolean")) => valid(ToBoolean(o))
       case (o: StringExpression, Some("stripMargin")) => valid(StripMargin(o))
-      case (o, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
+      case (_, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 
   private def not[_: P]: P[Expression] = P(

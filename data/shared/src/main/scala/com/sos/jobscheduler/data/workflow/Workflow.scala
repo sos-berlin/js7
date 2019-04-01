@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, Ri
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, reuseIfEqual}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.Instruction.@:
@@ -69,11 +70,10 @@ extends FileBased
 
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
   def completelyChecked: Checked[Workflow] = {
-    val chk = flattenedWorkflows.map(_._2.checked) ++
-      flattenedInstructions.collect {
-        case (position, _ @: (o: Execute.Named)) => nestedWorkflow(position.branchPath).flatMap(_.findJob(o.name))
-      } ++
-      checkRetry(false)
+    val chk = flattenedWorkflows.map(_.checked) ++
+      checkJobReferences ++
+      checkRetry() ++
+      checkLabels
     val problems = chk collect { case Invalid(problem) => problem }
     if (problems.nonEmpty)
       Invalid(Problem.Multiple(problems))
@@ -81,7 +81,14 @@ extends FileBased
       Valid(this)
   }
 
-  private def checkRetry(inCatch: Boolean): Seq[Checked[Unit]] =
+  private def checkJobReferences: Seq[Checked[Unit]] =
+    flattenedInstructions.collect {
+      case (position, _ @: (o: Execute.Named)) =>
+        nestedWorkflow(position.branchPath)
+          .flatMap(_.findJob(o.name).map(_ => ()))
+    }
+
+  private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
     instructions flatMap {
       case _: Retry =>
         !inCatch thenList Invalid(Problem("Statement 'retry' is allowed only in a catch block"))
@@ -90,14 +97,54 @@ extends FileBased
       case instr: TryInstruction =>
         Vector(instr.tryWorkflow.checkRetry(inCatch), instr.catchWorkflow.checkRetry(true)).flatten
       case instr =>
-        instr.workflows flatMap (_.checkRetry(false))
+        instr.workflows flatMap (_.checkRetry())
     }
+
+  private def checkLabels: collection.Iterable[Checked[Unit]] =
+    flattenedInstructions.collect {
+      case (position, Some(label) @: _) => (label, position)
+    } .groupBy(_._1)
+      .filter(_._2.lengthCompare(1) > 0)
+      .mapValues(_.map(_._2))
+      .map { case (label, positions) =>
+        Invalid(Problem(s"Label '${label.string}' is duplicate at positions " + positions.mkString(", ")))
+      }
+
+  def positionMatchesSearch(position: Position, search: PositionSearch): Boolean =
+    positionMatchesSearchNormalized(position.normalized, search)
+
+  private def positionMatchesSearchNormalized(position: Position, search: PositionSearch): Boolean =
+    search match {
+      case PositionSearch.ByLabel(label) => labelToPosition(label) == Valid(position)
+      case PositionSearch.ByWorkflowJob(jobName) =>
+        instruction(position) match {
+          case execute: Execute.Named => execute.name == jobName
+          case _ => false
+        }
+    }
+
+  //def searchPositions(search: PositionSearch): Checked[Set[Position]] =
+  //  search match {
+  //    case PositionSearch.ByLabel(label) => labelToPosition(label) map (o => Set.apply(o))
+  //    case PositionSearch.ByWorkflowJob(jobName) =>
+  //      val positions = flattenedInstructions flatMap {
+  //        case (position, Labeled(_, execute: Execute.Named)) if execute.name == jobName => Some(position)
+  //        case _ => None
+  //      }
+  //      if (positions.isEmpty) Invalid(Problem(s"Workflow does not execute a job '${jobName.string}'"))
+  //      else Valid(positions.toSet)
+  //  }
 
   def labelToPosition(branchPath: BranchPath, label: Label): Checked[Position] =
     for {
       workflow <- nestedWorkflow(branchPath)
       nr <- workflow.labelToNumber.get(label).toChecked(Problem(s"Unknown label '$label'"))
     } yield branchPath % nr
+
+  def labelToPosition(label: Label): Checked[Position] =
+    flattenedInstructions.find(_._2.maybeLabel contains label)
+      .map(_._1)
+      .toChecked(Problem(s"Unknown label '$label'"))
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -108,7 +155,10 @@ extends FileBased
   def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
     JobKey.Anonymous(workflowPosition.normalized)
 
-  private[workflow] def flattenedWorkflows: Map[BranchPath, Workflow] =
+  private def flattenedWorkflows: Seq[Workflow] =
+    flattenedWorkflowsOf(Nil).map(_._2)
+
+  private[workflow] def flattenedBranchToWorkflow: Map[BranchPath, Workflow] =
     flattenedWorkflowsOf(Nil).toMap
 
   private[workflow] def flattenedWorkflowsOf(parents: BranchPath): List[(BranchPath, Workflow)] =
@@ -232,10 +282,10 @@ extends FileBased
         })
 
   def keyToJob: Map[JobKey, WorkflowJob] =
-    flattenedWorkflows flatMap { case (p, w) =>
-      val workflowBranchPath = WorkflowBranchPath(id, p)
-      val namedJobKeys = w.nameToJob.toVector.map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
-      val anonymousJobKeys = w.numberedInstructions.collect {
+    flattenedBranchToWorkflow flatMap { case (branchPath, workflow) =>
+      val workflowBranchPath = WorkflowBranchPath(id, branchPath)
+      val namedJobKeys = workflow.nameToJob.toVector.map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
+      val anonymousJobKeys = workflow.numberedInstructions.collect {
         case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
       }
       namedJobKeys ++ anonymousJobKeys

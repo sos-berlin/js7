@@ -1,6 +1,9 @@
 package com.sos.jobscheduler.data.expression
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
+import com.sos.jobscheduler.base.utils.Identifier.isIdentifier
+import com.sos.jobscheduler.data.workflow.Label
+import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
@@ -113,18 +116,30 @@ object Expression
         '\'' + string + '\''
   }
 
-  final case class Variable(name: StringExpression, default: Option[StringExpression] = None) extends StringExpression {
+  final case class NamedValue(where: NamedValue.Where, name: StringExpression, default: Option[StringExpression] = None)
+  extends StringExpression {
     def precedence = Precedence.Factor
-    override def toString = (name, default) match {
-      case (StringConstant(nam), None) if Variable.isSimpleName(nam) => "$" + nam
-      case (_, None) => s"variable($name)"
-      case (_, Some(o)) => s"variable($name, $o)"
+    override def toString = (where, name, default) match {
+      case (NamedValue.LastOccurred, StringConstant(key), None) if NamedValue.isSimpleName(key) => "$" + key
+      case (NamedValue.LastOccurred, StringConstant(key), None) if isIdentifier(key) => "${" + key + "}"
+      case (NamedValue.Argument, StringConstant(key), None) if isIdentifier(key) => "${arg:" + key + "}"
+      case (NamedValue.ByLabel(Label(label)), StringConstant(key), None) if isIdentifier(key) => "${label:" + label + ":" + key + "}"
+      case (NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)), StringConstant(key), None) if isIdentifier(key) => "${job:" + jobName + ":" + key + "}"
+      case (NamedValue.LastOccurred, _, None) => s"variable($name)"
+      case (NamedValue.LastOccurred, _, Some(o)) => s"variable($name, $o)"
+      case _ => s"NamedValue($where, $name, $default)"
     }
   }
-  object Variable {
+  object NamedValue {
     def isSimpleName(name: String) = isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
     def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
+
+    sealed trait Where
+    case object LastOccurred extends Where
+    final case class ByLabel(label: Label) extends Where
+    final case class ByWorkflowJob(jobName: WorkflowJob.Name) extends Where
+    case object Argument extends Where
   }
 
   final case class StripMargin(expression: StringExpression) extends StringExpression {

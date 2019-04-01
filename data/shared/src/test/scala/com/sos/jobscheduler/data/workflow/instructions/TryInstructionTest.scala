@@ -148,7 +148,7 @@ final class TryInstructionTest extends FreeSpec
     assert(try_.workflow("A").isInvalid)
   }
 
-  "flattenedWorkflows" in {
+  "flattenedBranchToWorkflow" in {
     assert(try_.flattenedWorkflows(Position(7)) ==
       ((Position(7) / Try_) -> try_.tryWorkflow) ::
       ((Position(7) / Catch_) -> try_.catchWorkflow) :: Nil)

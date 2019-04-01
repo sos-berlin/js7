@@ -3,10 +3,9 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
+import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, ListExpression, NamedValue, NumericConstant, Or, OrderReturnCode, StringConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
@@ -132,7 +131,7 @@ final class WorkflowPrinterTest extends FreeSpec {
           If(
             Or(
               In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
+              Equal(NamedValue(NamedValue.LastOccurred, StringConstant("KEY")), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
       """define workflow {

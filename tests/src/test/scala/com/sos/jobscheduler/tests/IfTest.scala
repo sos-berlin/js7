@@ -23,9 +23,7 @@ final class IfTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST$sh"), ":")
-      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"),
-        if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%"
-        else "exit $SCHEDULER_PARAM_RETURN_CODE")
+      for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (master, _) =>
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {
@@ -54,33 +52,48 @@ final class IfTest extends FreeSpec {
 
 object IfTest {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val script = s"""
+
+  private val jobScript =
+    if (isWindows)
+      """echo JOB-KEY=JOB-RESULT >>%SCHEDULER_RETURN_VALUES%
+        |@exit %SCHEDULER_PARAM_RETURN_CODE%
+        |""".stripMargin
+    else
+      """echo JOB-KEY=JOB-RESULT >>"$SCHEDULER_RETURN_VALUES"
+        |exit $SCHEDULER_PARAM_RETURN_CODE
+        |""".stripMargin
+
+  private val workflowNotation = s"""
      |define workflow {
-     |  if (true) {
-     |    if (true) {
-     |      execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1]; // :0/then:0
+     |  if ($$ARG == "ARG-VALUE") {
+     |    if ($${arg:ARG} == "ARG-VALUE") {
+     |      LABEL: job MYJOB;  // 0/then:0/then:0
      |    }
      |  }
-     |  if (true) {
-     |    if (returnCode == 0) {   // :2
-     |      execute executable="/TEST$sh", agent="AGENT";  // :2/then:0
+     |  if ($$ARG != "X" && $${label:LABEL:JOB-KEY} == "JOB-RESULT" && $${job:MYJOB:JOB-KEY} == "JOB-RESULT") {
+     |    if (returnCode == 0) {
+     |      execute executable="/TEST$sh", agent="AGENT";
      |    } else {
-     |      execute executable="/TEST$sh", agent="AGENT";  // :2/else:0
+     |      execute executable="/TEST$sh", agent="AGENT";
      |    }
      |  }
-     |  execute executable="/TEST$sh", agent="AGENT";    // :2
+     |  execute executable="/TEST$sh", agent="AGENT";
+     |
+     |  define job MYJOB {
+     |    execute executable="/TEST-RC$sh", agent="AGENT", successReturnCodes=[0, 1];
+     |  }
      |}""".stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", script).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
 
   private val ExpectedEvents = Map(
     ReturnCode(0) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "0")),
+      OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "0")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.succeeded),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(0), Map("JOB-KEY" -> "JOB-RESULT"))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
@@ -92,13 +105,13 @@ object IfTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(1) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "1")),
+      OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "1")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(ReturnCode(1))),
+      OrderProcessed(Outcome.Succeeded(ReturnCode(1), Map("JOB-KEY" -> "JOB-RESULT"))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
@@ -110,15 +123,17 @@ object IfTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(2) ->  Vector(
-      OrderAdded(TestWorkflow.id, None, Map("RETURN_CODE" -> "2")),
+      OrderAdded(TestWorkflow.id, None, Map("ARG" -> "ARG-VALUE", "RETURN_CODE" -> "2")),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(2))),
-      OrderStopped(Outcome.Failed(ReturnCode(2)))))
+      OrderProcessed(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT"))),
+      OrderStopped(Outcome.Failed(ReturnCode(2), Map("JOB-KEY" -> "JOB-RESULT")))))    // TODO Key-values in OrderStopped ?
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
-    FreshOrder(orderId, TestWorkflow.id.path, arguments = Map("RETURN_CODE" -> returnCode.number.toString))
+    FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
+      "ARG" -> "ARG-VALUE",
+      "RETURN_CODE" -> returnCode.number.toString))
 }
