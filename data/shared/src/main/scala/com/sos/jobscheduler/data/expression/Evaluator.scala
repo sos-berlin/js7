@@ -20,14 +20,6 @@ final class Evaluator(scope: Scope)
 {
   def eval(expr: Expression): Checked[Value] =
     expr match {
-      case expr: BooleanExpression => evalBoolean(expr)
-      case expr: NumericExpression => evalNumeric(expr)
-      case expr: StringExpression => evalString(expr)
-      case    _: ListExpression => throw new NotImplementedError("eval(ListExpression)")
-    }
-
-  def evalBoolean(expr: BooleanExpression): Checked[BooleanValue] =
-    expr match {
       case BooleanConstant(o)    => BooleanValue(o).valid
       case Equal          (a, b) => anyAnyToBool(a, b)(_ == _)
       case NotEqual       (a, b) => anyAnyToBool(a, b)(_ != _)
@@ -41,47 +33,49 @@ final class Evaluator(scope: Scope)
       case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.bool) o.valid else evalBoolean(b))
       case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.bool) o.valid else evalBoolean(b))
       case ToBoolean(a: StringExpression) => evalString(a) flatMap toBoolean
+      case NumericConstant(o) => NumericValue(o).valid
+      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
+      case ToNumber(e) => eval(e) flatMap toNumeric
+      case StringConstant(o) =>
+        StringValue(o).valid
+
+      case NamedValue(where, what, default) =>
+        val w = where match {
+          case NamedValue.Argument => ValueSearch.Argument
+          case NamedValue.LastOccurred => ValueSearch.LastOccurred
+          case NamedValue.LastOccurredByPrefix(label) => ValueSearch.LastExecuted(PositionSearch.ByPrefix(label))
+          case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
+          case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
+        }
+        what match {
+          case NamedValue.KeyValue(stringExpr) =>
+            for {
+              key <- evalString(stringExpr) map (_.string)
+              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.KeyValue(key)))
+              value <- maybeValue.map(Valid.apply)
+                .getOrElse(
+                  default.map(evalString).toChecked(Problem(where match {
+                    case NamedValue.Argument => s"No such order argument: $key"
+                    case NamedValue.LastOccurred => s"No such named value: $key"
+                    case NamedValue.ByLabel(Label(label)) => s"Workflow instruction at label $label did not return a named value '$key'"
+                    case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a named value '$key'"
+                  })).flatten)
+            } yield value
+
+          case NamedValue.ReturnCode =>
+            for {
+              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.ReturnCode))
+              value <- maybeValue.toChecked(Problem("No returnCode"))
+            } yield value
+        }
+
+      case StripMargin(a) => evalString(a) map (o => StringValue(o.string.stripMargin))
+
       case _ => Invalid(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
   private def evalListExpression(expr: ListExpression): Checked[List[Value]] =
     expr.expressions traverse eval
-
-  def evalNumeric(expr: NumericExpression): Checked[NumericValue] =
-    expr match {
-      case NumericConstant(o) => NumericValue(o).valid
-      case OrderReturnCode => scope.symbolToValue("returnCode").flatMap(_.asNumeric)
-      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
-      case ToNumber(e) => eval(e) flatMap toNumeric
-    }
-
-  def evalString(expr: StringExpression): Checked[StringValue] =
-    expr match {
-      case StringConstant(o) =>
-        StringValue(o).valid
-
-      case NamedValue(where, stringExpr, default) =>
-        for {
-          stringValue <- evalString(stringExpr)
-          name = stringValue.string
-          w = where match {
-            case NamedValue.Argument => ValueSearch.Argument
-            case NamedValue.LastOccurred => ValueSearch.LastOccurred
-            case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
-            case NamedValue.ByWorkflowJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
-          }
-          maybeValue <- scope.findValue(ValueSearch(w, name))
-          value <- maybeValue.map(StringConstant.apply).orElse(default)
-            .toChecked(Problem(where match {
-              case NamedValue.LastOccurred => s"No such named value: $name"
-              case NamedValue.ByLabel(Label(label)) => s"Workflow instruction at label $label did not return a key '$name'"
-              case NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a key '$name'"
-            }))
-            .flatMap(evalString)
-        } yield value
-
-      case StripMargin(a) => evalString(a) map (o => StringValue(o.string.stripMargin))
-    }
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =
     for {
@@ -89,23 +83,15 @@ final class Evaluator(scope: Scope)
       b1 <- eval(b)
     } yield BooleanValue(op(a1, b1))
 
-  private def numNumToBool[A <: NumericExpression, B <: NumericExpression](a: A, b: B)(op: (NumericValue, NumericValue) => Boolean): Checked[BooleanValue] =
+  private def numNumToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (NumericValue, NumericValue) => Boolean): Checked[BooleanValue] =
     for {
       a1 <- evalNumeric(a)
       b1 <- evalNumeric(b)
     } yield BooleanValue(op(a1, b1))
 
-  private def ifBoolean(v: Value): Checked[BooleanValue] =
-    v match {
-      case v: BooleanValue => v.valid
-      case _ => Problem("Boolean value expected")
-    }
-
-  private def ifNumeric(v: Value): Checked[NumericValue] =
-    v match {
-      case v: NumericValue => v.valid
-      case _ => Problem("Numeric value expected")
-    }
+  private def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.asBoolean)
+  private def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.asNumeric)
+  private def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.asString)
 
   private def toNumeric(v: Value): Checked[NumericValue] =
     v match {
@@ -146,9 +132,12 @@ object Evaluator
   sealed trait Value {
     def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
     def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))
+    def asBoolean: Checked[BooleanValue] = Invalid(Problem(s"Boolean value expected instead of: $toString"))
   }
 
-  final case class BooleanValue(bool: Boolean) extends Value
+  final case class BooleanValue(bool: Boolean) extends Value {
+    override def asBoolean = Valid(BooleanValue(bool))
+  }
   object BooleanValue {
     val True = BooleanValue(true)
     val False = BooleanValue(false)

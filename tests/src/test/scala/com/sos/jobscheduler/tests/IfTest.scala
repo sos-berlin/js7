@@ -66,12 +66,12 @@ object IfTest {
   private val workflowNotation = s"""
      |define workflow {
      |  if ($$ARG == "ARG-VALUE") {
-     |    if ($${arg:ARG} == "ARG-VALUE") {
+     |    if (argument("ARG") == "ARG-VALUE") {
      |      LABEL: job MYJOB;  // 0/then:0/then:0
      |    }
      |  }
-     |  if ($$ARG != "X" && $${label:LABEL:JOB-KEY} == "JOB-RESULT" && $${job:MYJOB:JOB-KEY} == "JOB-RESULT") {
-     |    if (returnCode == 0) {
+     |  if ($$ARG != "X" && variable(label=LABEL, key="JOB-KEY") == "JOB-RESULT" && variable(job=MYJOB, "JOB-KEY") == "JOB-RESULT") {
+     |    if (returnCode(label=LABEL) == 0) {
      |      execute executable="/TEST$sh", agent="AGENT";
      |    } else {
      |      execute executable="/TEST$sh", agent="AGENT";

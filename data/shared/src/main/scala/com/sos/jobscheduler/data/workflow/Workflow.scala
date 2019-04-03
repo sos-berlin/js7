@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import com.sos.jobscheduler.data.job.JobKey
-import com.sos.jobscheduler.data.workflow.Instruction.@:
+import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -115,18 +115,34 @@ extends FileBased
 
   private def positionMatchesSearchNormalized(position: Position, search: PositionSearch): Boolean =
     search match {
-      case PositionSearch.ByLabel(label) => labelToPosition(label) == Valid(position)
+      case PositionSearch.ByPrefix(name) =>
+        labelToPosition(Label(name)) == Valid(position) ||
+          positionExecutesJob(position, WorkflowJob.Name(name))
+
+      case PositionSearch.ByLabel(label) =>
+        labelToPosition(label) == Valid(position)
+
       case PositionSearch.ByWorkflowJob(jobName) =>
-        instruction(position) match {
-          case execute: Execute.Named => execute.name == jobName
-          case _ => false
-        }
+        positionExecutesJob(position, jobName)
+    }
+
+  private def positionExecutesJob(position: Position, jobName: WorkflowJob.Name) =
+    instruction(position) match {
+      case execute: Execute.Named => execute.name == jobName
+      case _ => false
     }
 
   //def searchPositions(search: PositionSearch): Checked[Set[Position]] =
   //  search match {
-  //    case PositionSearch.ByLabel(label) => labelToPosition(label) map (o => Set.apply(o))
-  //    case PositionSearch.ByWorkflowJob(jobName) =>
+  //    case PositionSearch.LastOccurredByPrefix(name) =>
+  //      val checkedLabelPositions: Checked[List[Position]] = labelToPosition(Label(name)).map(_ :: Nil)
+  //      val checkedJobPositions = jobNameToPositions(WorkflowJob.Name(name))
+  //      (checkedLabelPositions, checkedJobPositions).mapN((a, b) => (a ++ b).toSet)
+  //
+  //    case PositionSearch.ByLabel(label) =>
+  //      labelToPosition(label) map (o => Set.apply(o))
+  //
+  //    case PositionSearch.LastExecutedJob(jobName) =>
   //      val positions = flattenedInstructions flatMap {
   //        case (position, Labeled(_, execute: Execute.Named)) if execute.name == jobName => Some(position)
   //        case _ => None
@@ -145,6 +161,11 @@ extends FileBased
     flattenedInstructions.find(_._2.maybeLabel contains label)
       .map(_._1)
       .toChecked(Problem(s"Unknown label '$label'"))
+
+  def jobNameToPositions(name: WorkflowJob.Name): Checked[Seq[Position]] =
+    findJob(name).map(_ => flattenedInstructions collect {
+      case (pos, Labeled(_, ex: Execute.Named)) if ex.name == name => pos
+    })
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)

@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.data.workflow.parser
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.data.expression.Expression
 import com.sos.jobscheduler.data.expression.Expression._
-import com.sos.jobscheduler.data.workflow.Label
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
+import com.sos.jobscheduler.data.workflow.parser.BasicParsers.{keyValue, _}
 import fastparse.NoWhitespace._
 import fastparse._
 
@@ -47,9 +47,6 @@ object ExpressionParser
   private def falseConstant[_: P] = P[BooleanConstant](
     keyword("false") map (_ => BooleanConstant(false)))
 
-  private def returnCode[_: P] = P[OrderReturnCode.type](
-    keyword("returnCode") map (_ => OrderReturnCode))
-
   private def catchCount[_: P] = P[OrderCatchCount.type](
     keyword("catchCount") map (_ => OrderCatchCount))
 
@@ -61,28 +58,72 @@ object ExpressionParser
   private def stringConstant[_: P] = P[StringConstant](quotedString
     .map(StringConstant.apply))
 
-  private[parser] def dollarValueName[_: P] = P[NamedValue] {
+  private[parser] def dollarNamedValue[_: P] = P[NamedValue] {
     def simpleName = P[String](
       (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
     def nameOnly(p: P[String]) = P[NamedValue](
-      p.map(o => NamedValue(NamedValue.LastOccurred, StringConstant(o))))
-    def arg = P[NamedValue]((P("arg:") ~~/ identifier)
-      .map(key => NamedValue(NamedValue.Argument, StringConstant(key))))
-    def byLabel = P[NamedValue]((P("label:") ~~/ identifier ~~ ":" ~~/ identifier)
-      .map { case (jobName, key) => NamedValue(NamedValue.ByLabel(Label(jobName)), StringConstant(key)) })
-    def byJob = P[NamedValue]((P("job:") ~~/ identifier ~~ ":" ~~/ identifier)
-      .map { case (jobName, key) => NamedValue(NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)), StringConstant(key)) })
-    def curlyName = P[NamedValue](P("{") ~~/ (arg | byLabel | byJob | nameOnly(identifier)) ~~ "}")
+      p.map(o => NamedValue.last(o)))
+    //def arg = P[NamedValue](("arg::" ~~/ identifier)
+    //  .map(key => NamedValue(NamedValue.Argument, NamedValue.KeyValue(StringConstant(key)))))
+    //def byLabel = P[NamedValue](("label::" ~~/ identifier ~~ "." ~~/ identifier)
+    //  .map { case (jobName, key) => NamedValue(NamedValue.ByLabel(Label(jobName)), NamedValue.KeyValue(StringConstant(key))) })
+    //def byJob = P[NamedValue](("job::" ~~/ identifier ~~ "." ~~/ identifier)
+    //  .map { case (jobName, key) => NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue.KeyValue(StringConstant(key))) })
+    //def byPrefix = P[NamedValue]((identifier ~~ "." ~~/ identifier)
+    //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), NamedValue.KeyValue(StringConstant(key))) })
+    def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
+
     "$" ~~ (nameOnly(simpleName) | curlyName)
   }
 
-  private[parser] def variableFunctionCall[_: P] = P(
-    P(keyword("variable") ~ w ~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)
-      .map { case (name, default) => NamedValue(NamedValue.LastOccurred, name, default) }))
+  //private def namedValue[_: P] = P[NamedValue](
+  //  (where ~ P(keyword("returnCode")))
+  //    .map(where => NamedValue(where, NamedValue.ReturnCode)) |
+  //  (where ~ P(keyword("variable") ~ w ~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)))
+  //    .map { case (where, (name, default)) => NamedValue(where, NamedValue.KeyValue(name), default) })
+  //
+  //private def where[_: P] = P[NamedValue.Where](
+  //  (identifier ~ w ~ "." ~ w).?
+  //    .map(_.fold[NamedValue.Where](NamedValue.LastOccurred)(NamedValue.LastOccurredByPrefix.apply)))
+
+  private def argumentFunctionCall[_: P] = P[NamedValue](
+    keyword("argument") ~ w ~
+      inParentheses(
+        for {
+          kv <- keyValues(keyValue("default", expression) | keyValue("key", expression) | keyValue("", expression))
+          key <- kv.oneOf[StringExpression]("key", "").map(_._2)
+          default <- kv.get[Expression]("default")
+        } yield NamedValue(NamedValue.Argument, NamedValue.KeyValue(key), default)))
+
+  private def variableFunctionCall[_: P] = P[NamedValue](
+    keyword("variable") ~ w ~ inParentheses(
+      for {
+        kv <- keyValues(namedValueKeyValue | keyValue("key", expression) | keyValue("", expression))
+        where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
+        key <- kv.oneOf[StringExpression]("key", "").map(_._2)
+        default <- kv.get[Expression]("default")
+      } yield NamedValue(where, NamedValue.KeyValue(key), default)))
+
+  private def returnCode[_: P] = P[NamedValue] {
+    def withArguments = P[NamedValue](
+      inParentheses(
+        for {
+          kv <- keyValues(namedValueKeyValue)
+          where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
+          default <- kv.get[Expression]("default")
+        } yield NamedValue(where, NamedValue.ReturnCode, default)))
+
+    keyword("returnCode") ~ w ~ withArguments.?.map(_ getOrElse LastReturnCode)
+  }
+
+  private def namedValueKeyValue[_: P] = P[(String, Any)](
+    keyValueConvert("label", identifier)(o => Valid(NamedValue.ByLabel(o))) |
+    keyValueConvert("job", identifier)(o => Valid(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
+    keyValue("default", expression))
 
   private def factorOnly[_: P] = P(
-    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | catchCount |
-      dollarValueName | variableFunctionCall)
+    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | catchCount |
+      argumentFunctionCall | variableFunctionCall | returnCode | dollarNamedValue)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
@@ -106,11 +147,10 @@ object ExpressionParser
     leftRecurse(bFactor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
       case (a, "==", b) => valid(Equal(a, b))
       case (a, "!=", b) => valid(NotEqual(a, b))
-      case (a: NumericExpression, "<=", b: NumericExpression) => valid(LessOrEqual(a, b))
-      case (a: NumericExpression, ">=", b: NumericExpression) => valid(GreaterOrEqual(a, b))
-      case (a: NumericExpression, "<" , b: NumericExpression) => valid(LessThan(a, b))
-      case (a: NumericExpression, ">" , b: NumericExpression) => valid(GreaterThan(a, b))
-      case (a, op: String, b) => invalid(s"comparable types: " + Precedence.toString(a, op, Precedence.Comparison, b))
+      case (a: Expression, "<=", b: Expression) => valid(LessOrEqual(a, b))
+      case (a: Expression, ">=", b: Expression) => valid(GreaterOrEqual(a, b))
+      case (a: Expression, "<" , b: Expression) => valid(LessThan(a, b))
+      case (a: Expression, ">" , b: Expression) => valid(GreaterThan(a, b))
     })
 
   private def and[_: P] = P[Expression](

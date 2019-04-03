@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{Equal, In, ListExpression, NamedValue, NumericConstant, Or, OrderReturnCode, StringConstant}
+import com.sos.jobscheduler.data.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
@@ -196,8 +196,8 @@ final class WorkflowParserTest extends FreeSpec {
         Vector(
           If(
             Or(
-              In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue(NamedValue.LastOccurred, StringConstant("KEY")), StringConstant("VALUE"))),
+              In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+              Equal(NamedValue.last("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")),
@@ -211,7 +211,7 @@ final class WorkflowParserTest extends FreeSpec {
     check("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(OrderReturnCode, NumericConstant(-1)),
+          If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")),
@@ -230,7 +230,7 @@ final class WorkflowParserTest extends FreeSpec {
     check("""define workflow { if (returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(OrderReturnCode, NumericConstant(-1)),
+          If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(Fail(sourcePos = sourcePos(40, 44))),
             sourcePos = sourcePos(18, 39)),
           ImplicitEnd(sourcePos(45, 46)))))
@@ -240,7 +240,7 @@ final class WorkflowParserTest extends FreeSpec {
     check("""define workflow { if (returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(
-          If(Equal(OrderReturnCode, NumericConstant(-1)),
+          If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(Fail(sourcePos = sourcePos(40, 44))),
             Some(Workflow.of(Execute.Anonymous(
               WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE")),
@@ -258,11 +258,11 @@ final class WorkflowParserTest extends FreeSpec {
       Workflow.anonymous(
         Vector(
           If(
-            Equal(OrderReturnCode, NumericConstant(1)),
+            Equal(LastReturnCode, NumericConstant(1)),
             Workflow.of(
               ImplicitEnd(sourcePos(50, 51))),
             sourcePos = sourcePos(28, 48)),
-          If(Equal(OrderReturnCode, NumericConstant(2)),
+          If(Equal(LastReturnCode, NumericConstant(2)),
             Workflow.of(
               ImplicitEnd(sourcePos(84, 85))),
             sourcePos = sourcePos(62, 82)),
@@ -280,11 +280,11 @@ final class WorkflowParserTest extends FreeSpec {
       Workflow.anonymous(
         Vector(
           If(
-            Equal(OrderReturnCode, NumericConstant(1)),
+            Equal(LastReturnCode, NumericConstant(1)),
             Workflow.of(
               ImplicitEnd(sourcePos(61, 62))),
             sourcePos = sourcePos(28, 48)),
-          If(Equal(OrderReturnCode, NumericConstant(2)),
+          If(Equal(LastReturnCode, NumericConstant(2)),
             Workflow.of(
               ImplicitEnd(sourcePos(106, 107))),
             sourcePos = sourcePos(73, 93)),

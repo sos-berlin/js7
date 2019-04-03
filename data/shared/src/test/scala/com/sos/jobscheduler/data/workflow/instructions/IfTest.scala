@@ -20,7 +20,7 @@ import org.scalatest.FreeSpec
 final class IfTest extends FreeSpec
 {
   private val if_ = If(
-    GreaterOrEqual(OrderReturnCode, NumericConstant(3)),
+    GreaterOrEqual(LastReturnCode, NumericConstant(3)),
     thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/THEN")))),
     elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/ELSE"))))),
     Some(SourcePos(1, 2)))

@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.Show
-import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.time.Times._
+import com.sos.jobscheduler.base.utils.Identifier
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
@@ -14,7 +14,6 @@ import scala.annotation.tailrec
 object WorkflowPrinter
 {
   implicit val WorkflowShow: Show[Workflow] = w => print(w)
-  private val JsonPrinter = CompactPrinter.copy(colonRight = " ", objectCommaRight = " ", arrayCommaRight = " ")
 
   def print(workflow: Workflow): String = {
     val sb = new StringBuilder(1000)
@@ -110,7 +109,7 @@ object WorkflowPrinter
 
         case Execute.Named(name, arguments, _) =>
           sb ++= "job "
-          sb ++= name.string
+          sb ++= Identifier(name.string).toString
           if (arguments.nonEmpty) {
             sb ++= ", arguments="
             appendJsonObject(arguments)
@@ -194,7 +193,7 @@ object WorkflowPrinter
     for ((name, job) <- workflow.nameToJob) {
       indent(nesting)
       sb ++= "define job "
-      sb ++= name.string
+      sb ++= Identifier(name.string).toString
       sb ++= " {\n"
       indent(nesting + 1)
       sb ++= "execute "

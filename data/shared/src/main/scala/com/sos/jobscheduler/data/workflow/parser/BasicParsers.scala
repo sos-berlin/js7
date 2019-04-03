@@ -109,8 +109,9 @@ private[parser] object BasicParsers
   def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
     keyValueConvert(name, parser)(Valid.apply[A])
 
-  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]): P[(String, B)] =
+  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]): P[(String, B)] = {
     w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o)).map(name.->))
+  }
 
   final case class KeyToValue[A](keyToValue: Map[String, A]) {
     def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =
@@ -144,6 +145,7 @@ private[parser] object BasicParsers
     def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[(String, A1)] = {
       val intersection = keyToValue.keySet & keys
       intersection.size match {
+        // TODO Better messages for empty key (no keyword, positional argument)
         case 0 => Fail.opaque("keywords " + keys.map(_ + "=").mkString(", "))
         case 1 => Pass(intersection.head -> keyToValue(intersection.head).asInstanceOf[A1])
         case _ => Fail.opaque(s"non-contradicting keywords: ${intersection.mkString("; ")}")
@@ -161,7 +163,7 @@ private[parser] object BasicParsers
   }
 
   def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]): P[V] =
-    P(keyword(name) ~ w ~ "=" ~ w ~/ valueParser)
+    P((if (name.isEmpty) Pass else keyword(name) ~ w ~ "=" ~/ w) ~ valueParser)
 
   def curly[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
     h ~ "{" ~ w ~/ parser ~ w ~ "}")

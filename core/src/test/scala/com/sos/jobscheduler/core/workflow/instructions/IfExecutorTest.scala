@@ -58,7 +58,7 @@ final class IfExecutorTest extends FreeSpec {
   }
 
   "Naned value comparison" in {
-    val expr = Equal(NamedValue(NamedValue.LastOccurred, StringConstant("A")), StringConstant("AA"))
+    val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Then % 0)))
     assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Else % 0)))
   }

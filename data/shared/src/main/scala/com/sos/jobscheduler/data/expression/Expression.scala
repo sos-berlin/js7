@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.expression
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
+import com.sos.jobscheduler.base.utils.Identifier
 import com.sos.jobscheduler.base.utils.Identifier.isIdentifier
+import com.sos.jobscheduler.data.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
 import com.sos.jobscheduler.data.workflow.Label
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
@@ -9,6 +11,7 @@ import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import fastparse.NoWhitespace._
 import io.circe.{Decoder, Encoder, Json}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
@@ -51,22 +54,22 @@ object Expression
     override def toString = toString(a, "!=", b)
   }
 
-  final case class LessOrEqual(a: NumericExpression, b: NumericExpression) extends BooleanExpression {
+  final case class LessOrEqual(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
     override def toString = toString(a, "<=", b)
   }
 
-  final case class GreaterOrEqual(a: NumericExpression, b: NumericExpression) extends BooleanExpression {
+  final case class GreaterOrEqual(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
     override def toString = toString(a, ">=", b)
   }
 
-  final case class LessThan(a: NumericExpression, b: NumericExpression) extends BooleanExpression {
+  final case class LessThan(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
     override def toString = toString(a, "<", b)
   }
 
-  final case class GreaterThan(a: NumericExpression, b: NumericExpression) extends BooleanExpression {
+  final case class GreaterThan(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
     override def toString = toString(a, ">", b)
   }
@@ -116,45 +119,81 @@ object Expression
         '\'' + string + '\''
   }
 
-  final case class NamedValue(where: NamedValue.Where, name: StringExpression, default: Option[StringExpression] = None)
-  extends StringExpression {
+  final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)
+  extends Expression {
+    import NamedValue._
     def precedence = Precedence.Factor
-    override def toString = (where, name, default) match {
-      case (NamedValue.LastOccurred, StringConstant(key), None) if NamedValue.isSimpleName(key) => "$" + key
-      case (NamedValue.LastOccurred, StringConstant(key), None) if isIdentifier(key) => "${" + key + "}"
-      case (NamedValue.Argument, StringConstant(key), None) if isIdentifier(key) => "${arg:" + key + "}"
-      case (NamedValue.ByLabel(Label(label)), StringConstant(key), None) if isIdentifier(key) => "${label:" + label + ":" + key + "}"
-      case (NamedValue.ByWorkflowJob(WorkflowJob.Name(jobName)), StringConstant(key), None) if isIdentifier(key) => "${job:" + jobName + ":" + key + "}"
-      case (NamedValue.LastOccurred, _, None) => s"variable($name)"
-      case (NamedValue.LastOccurred, _, Some(o)) => s"variable($name, $o)"
-      case _ => s"NamedValue($where, $name, $default)"
+    override def toString = (where, what, default) match {
+      case (LastOccurred, KeyValue(StringConstant(key)), None) if isSimpleName(key) => "$" + key
+      case (LastOccurred, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$key}"
+      case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
+      case (LastOccurred, ReturnCode, None) => "returnCode"
+      //case (Argument, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
+      //case (LastOccurredByPrefix(prefix), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
+      //case (ByLabel(Label(label)), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
+      //case (LastExecutedJob(WorkflowJob.Name(jobName)), KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${job::$jobName.$key}"
+      case _ =>
+        val args = mutable.Buffer[String]()
+        what match {
+          case NamedValue.KeyValue(expr) => args += s"key=$expr"
+          case _ =>
+        }
+        where match {
+          case NamedValue.Argument =>
+          case NamedValue.LastOccurred =>
+          case NamedValue.LastOccurredByPrefix(prefix) =>
+            args += "prefix=" + prefix   // Not used
+          case NamedValue.LastExecutedJob(jobName) =>
+            args += "job=" + Identifier(jobName.string).toString
+          case NamedValue.ByLabel(label) =>
+            args += "label=" + Identifier(label.string).toString
+        }
+        for (d <- default) args += "default=" + d.toString
+        (where, what) match {
+          case (NamedValue.Argument, NamedValue.KeyValue(_)) =>
+            s"argument(${args mkString ", "})"
+
+          case (_, NamedValue.KeyValue(_)) =>
+            s"variable(${args mkString ", "})"
+
+          case (_, NamedValue.ReturnCode) =>
+            s"returnCode(${args mkString ", "})"
+        }
     }
   }
   object NamedValue {
+    def last(key: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key))
+    def last(key: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key), Some(default))
+
     def isSimpleName(name: String) = isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
     def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
 
     sealed trait Where
     case object LastOccurred extends Where
+    final case class LastOccurredByPrefix(string: String) extends Where
+    final case class LastExecutedJob(jobName: WorkflowJob.Name) extends Where
     final case class ByLabel(label: Label) extends Where
-    final case class ByWorkflowJob(jobName: WorkflowJob.Name) extends Where
     case object Argument extends Where
+
+    sealed trait What
+    final case class KeyValue(key: StringExpression) extends What
+    object KeyValue {
+      def apply(key: String) = new KeyValue(StringConstant(key))
+    }
+    case object ReturnCode extends What
+  }
+
+  val LastReturnCode: NamedValue = NamedValue(LastOccurred, ReturnCode)
+
+  final case object OrderCatchCount extends NumericExpression {
+    def precedence = Precedence.Factor
+    override def toString = "catchCount"
   }
 
   final case class StripMargin(expression: StringExpression) extends StringExpression {
     def precedence = Precedence.Factor
     override def toString = Precedence.inParentheses(expression, precedence) + ".stripMargin"
-  }
-
-  final case object OrderReturnCode extends NumericExpression {
-    def precedence = Precedence.Factor
-    override def toString = "returnCode"
-  }
-
-  final case object OrderCatchCount extends NumericExpression {
-    def precedence = Precedence.Factor
-    override def toString = "catchCount"
   }
 
   sealed trait Precedence {

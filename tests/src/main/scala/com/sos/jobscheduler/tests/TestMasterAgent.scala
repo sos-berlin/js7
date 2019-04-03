@@ -26,7 +26,7 @@ import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.expression.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
+import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId}
@@ -178,7 +178,7 @@ object TestMasterAgent
             Workflow(
               WorkflowPath("/TestMasterAgent") ~ "1",
               Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentRefPath, TestExecutablePath)) }))),
-      If(Or(Equal(OrderReturnCode, NumericConstant(0)), Equal(OrderReturnCode, NumericConstant(0))),
+      If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),
         thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))),
         elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))))))
 

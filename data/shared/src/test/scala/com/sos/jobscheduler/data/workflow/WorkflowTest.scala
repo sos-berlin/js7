@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, NumericConstant, OrderReturnCode}
+import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
@@ -208,7 +208,7 @@ final class WorkflowTest extends FreeSpec {
   "positionMatchesSearch" in {
     val workflow = Workflow(WorkflowPath.NoId, Vector(
       "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
-      If(Equal(OrderReturnCode, NumericConstant(1)),
+      If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE")))))),
       Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))
@@ -226,7 +226,7 @@ final class WorkflowTest extends FreeSpec {
   "labelToPosition of a branch" in {
     val workflow = Workflow.of(
       "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
-      If(Equal(OrderReturnCode, NumericConstant(1)),
+      If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked.orThrow
@@ -238,7 +238,7 @@ final class WorkflowTest extends FreeSpec {
   "labelToPosition of whole workflow" in {
     val workflow = Workflow.of(
       "A" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
-      If(Equal(OrderReturnCode, NumericConstant(1)),
+      If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked.orThrow
@@ -250,7 +250,7 @@ final class WorkflowTest extends FreeSpec {
   "Duplicate labels" in {
     assert(Workflow.of(
       "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))),
-      If(Equal(OrderReturnCode, NumericConstant(1)),
+      If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked ==
@@ -515,7 +515,7 @@ private object WorkflowTest
     WorkflowPath("/TEST") ~ "VERSION",
     Vector(
       AExecute,
-      If(Equal(OrderReturnCode, NumericConstant(1)),
+      If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.anonymous(
           Vector(
             Execute.Named(AJobName),

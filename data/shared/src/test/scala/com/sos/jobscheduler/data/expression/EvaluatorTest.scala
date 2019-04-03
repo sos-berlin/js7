@@ -24,16 +24,26 @@ final class EvaluatorTest extends FreeSpec
   "NamedValue expressions" - {
     implicit val evaluator = new Evaluator(
       new Scope {
-        private val symbols = Map[String, Value]("returnCode" -> NumericValue(1), "catchCount" -> NumericValue(3))
+        private val symbols = Map[String, Value]("catchCount" -> NumericValue(3))
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, key) =>
-            Valid(Map("ASTRING" -> "AA", "ANUMBER" -> "7").get(key))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), key) =>
-            Valid(Map("KEY" -> "LABEL-VALUE").get(key))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), key) =>
-            Valid(Map("KEY" -> "JOB-VALUE").get(key))
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.KeyValue(key)) =>
+            Valid(Map("ASTRING" -> "AA", "ANUMBER" -> "7").get(key) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.KeyValue(key)) =>
+            Valid(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.KeyValue(key)) =>
+            Valid(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.KeyValue(key)) =>
+            Valid(Map("KEY" -> "JOB-VALUE").get(key) map StringValue.apply)
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
+            Valid(Some(NumericValue(1)))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.ReturnCode) =>
+            Valid(Some(NumericValue(2)))
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.ReturnCode) =>
+            Valid(Some(NumericValue(3)))
+          case ValueSearch(ValueSearch.Argument, ValueSearch.KeyValue(key)) =>
+            Valid(Map("ARG" -> "ARG-VALUE").get(key) map StringValue.apply)
         }
       })
     val eval = evaluator.eval _
@@ -76,43 +86,79 @@ final class EvaluatorTest extends FreeSpec
 
     testEval("$ASTRING",
       result = "AA",
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
+      Valid(NamedValue.last("ASTRING")))
 
     testEval("${ASTRING}",
       result = "AA",
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
+      Valid(NamedValue.last("ASTRING")))
 
-    testEval("${label:LABEL:KEY}",
-      result = "LABEL-VALUE",
-      Valid(NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("KEY"))))
-
-    testEval("${job:JOB:KEY}",
-      result = "JOB-VALUE",
-      Valid(NamedValue(NamedValue.ByWorkflowJob(WorkflowJob.Name("JOB")), StringConstant("KEY"))))
+    //testEval("${label::LABEL.KEY}",
+    //  result = "LABEL-VALUE",
+    //  Valid(NamedValue(NamedValue.ByLabel(Label("LABEL")), NamedValue.KeyValue(StringConstant("KEY")))))
+    //
+    //testEval("${job::JOB.KEY}",
+    //  result = "JOB-VALUE",
+    //  Valid(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue(StringConstant("KEY")))))
 
     testEval("$UNKNOWN",
       result = Invalid(Problem("No such named value: UNKNOWN")),
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"))))
+      Valid(NamedValue.last("UNKNOWN")))
 
     testEval("""variable("ASTRING")""",
       result = "AA",
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING"))))
+      Valid(NamedValue.last("ASTRING")))
+
+    testEval("""variable(key="ASTRING")""",
+      result = "AA",
+      Valid(NamedValue.last("ASTRING")))
 
     testEval("""variable("UNKNOWN")""",
       result = Invalid(Problem("No such named value: UNKNOWN")),
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"))))
+      Valid(NamedValue.last("UNKNOWN")))
 
-    testEval("""variable("UNKNOWN", "DEFAULT")""",
+    testEval("""variable("UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
-      Valid(NamedValue(NamedValue.LastOccurred, StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      Valid(NamedValue.last("UNKNOWN", StringConstant("DEFAULT"))))
+
+    testEval("""variable(job=JOB, key="UNKNOWN", default="DEFAULT")""",
+      result = "DEFAULT",
+      Valid(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+
+    testEval("""variable(label=LABEL, key="UNKNOWN", default="DEFAULT")""",
+      result = "DEFAULT",
+      Valid(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+
+    testEval("""argument("ARG")""",
+      result = "ARG-VALUE",
+      Valid(NamedValue(NamedValue.Argument, NamedValue.KeyValue("ARG"))))
+
+    testEval("""argument(key="ARG")""",
+      result = "ARG-VALUE",
+      Valid(NamedValue(NamedValue.Argument, NamedValue.KeyValue("ARG"))))
+
+    testEval("""argument("UNKNOWN", default="DEFAULT")""",
+      result = "DEFAULT",
+      Valid(NamedValue(NamedValue.Argument, NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+
+    testEval("""returnCode""",
+      result = 1,
+      Valid(LastReturnCode))
+
+    testEval("""returnCode(label=LABEL)""",
+      result = 2,
+      Valid(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.ReturnCode)))
+
+    testEval("""returnCode(job=JOB)""",
+      result = 3,
+      Valid(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.ReturnCode)))
 
     testEval("""$ASTRING.toNumber""",
       result = Invalid(Problem("Not a valid number: AA")),
-      Valid(ToNumber(NamedValue(NamedValue.LastOccurred, StringConstant("ASTRING")))))
+      Valid(ToNumber(NamedValue.last("ASTRING"))))
 
     testEval("""$ANUMBER.toNumber""",
       result = 7,
-      Valid(ToNumber(NamedValue(NamedValue.LastOccurred, StringConstant("ANUMBER")))))
+      Valid(ToNumber(NamedValue.last("ANUMBER"))))
 
     testEval(""""true".toBoolean""",
       result = true,
@@ -134,28 +180,24 @@ final class EvaluatorTest extends FreeSpec
         Valid(StripMargin(StringConstant(longString))))
     }
 
-    testEval("""returnCode""",
-      result = 1,
-      Valid(OrderReturnCode))
-
     testEval("""returnCode == 0""",
       result = false,
-      Valid(Equal(OrderReturnCode, NumericConstant(0))))
+      Valid(Equal(LastReturnCode, NumericConstant(0))))
 
     testEval("""returnCode >= 1""",
       result = true,
-      Valid(GreaterOrEqual(OrderReturnCode, NumericConstant(1))))
+      Valid(GreaterOrEqual(LastReturnCode, NumericConstant(1))))
 
     testEval("""returnCode <= 1""",
       result = true,
-      Valid(LessOrEqual(OrderReturnCode, NumericConstant(1))))
+      Valid(LessOrEqual(LastReturnCode, NumericConstant(1))))
 
     testEval("""returnCode > 1""",
       result = false,
-      Valid(GreaterThan(OrderReturnCode, NumericConstant(1))))
+      Valid(GreaterThan(LastReturnCode, NumericConstant(1))))
 
     testEval("""returnCode < 1""", false,
-      Valid(LessThan(OrderReturnCode, NumericConstant(1))))
+      Valid(LessThan(LastReturnCode, NumericConstant(1))))
 
     testEval("""catchCount""",
       result = 3,
@@ -202,14 +244,14 @@ final class EvaluatorTest extends FreeSpec
       Valid(
         And(
           And(
-            GreaterOrEqual(OrderReturnCode, NumericConstant(1)),
-            Not(LessOrEqual(OrderReturnCode, NumericConstant(9)))),
-          NotEqual(OrderReturnCode, NumericConstant(1)))))
+            GreaterOrEqual(LastReturnCode, NumericConstant(1)),
+            Not(LessOrEqual(LastReturnCode, NumericConstant(9)))),
+          NotEqual(LastReturnCode, NumericConstant(1)))))
 
     testEval("returnCode in [1, 2, 3]",
       result = true,
       Valid(
-        In(OrderReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
+        In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
 
     "Equal" in {
       forAll((a: Int, b: Int) => assert(
@@ -299,7 +341,7 @@ final class EvaluatorTest extends FreeSpec
       Valid(Equal(NumericConstant(1), NumericConstant(2))))
 
     "Variables cannot be used" in {
-      assert(eval(NamedValue(NamedValue.LastOccurred, StringConstant("VARIABLE"))) == Invalid(ConstantExpressionRequiredProblem))
+      assert(eval(NamedValue.last("VARIABLE")) == Invalid(ConstantExpressionRequiredProblem))
     }
   }
 

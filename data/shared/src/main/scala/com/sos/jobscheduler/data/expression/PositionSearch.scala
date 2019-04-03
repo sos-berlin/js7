@@ -7,10 +7,13 @@ sealed trait PositionSearch
 
 object PositionSearch
 {
+  final case class ByPrefix(name: String)
+  extends PositionSearch
+
   final case class ByWorkflowJob(jobName: WorkflowJob.Name)
   extends PositionSearch
   {
-    override def toString = s"ByWorkflowJob(${jobName.string})"
+    override def toString = s"LastExecutedJob(${jobName.string})"
   }
 
   final case class ByLabel(label: Label)

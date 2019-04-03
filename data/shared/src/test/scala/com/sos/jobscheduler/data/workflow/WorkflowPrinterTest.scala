@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, ListExpression, NamedValue, NumericConstant, Or, OrderReturnCode, StringConstant}
+import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
@@ -130,8 +130,8 @@ final class WorkflowPrinterTest extends FreeSpec {
         Vector(
           If(
             Or(
-              In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue(NamedValue.LastOccurred, StringConstant("KEY")), StringConstant("VALUE"))),
+              In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+              Equal(NamedValue.last("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))),
       """define workflow {
@@ -147,7 +147,7 @@ final class WorkflowPrinterTest extends FreeSpec {
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          If(Equal(OrderReturnCode, NumericConstant(-1)),
+          If(Equal(LastReturnCode, NumericConstant(-1)),
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A-THEN"))),
               If(BooleanConstant(true),

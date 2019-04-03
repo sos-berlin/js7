@@ -12,7 +12,7 @@ import com.sos.jobscheduler.core.workflow.OrderEventSourceTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.expression.Expression.{Equal, NumericConstant, OrderReturnCode}
+import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
@@ -44,7 +44,7 @@ final class OrderEventSourceTest extends FreeSpec
   "if" - {
     val workflow = Workflow.of(TestWorkflowId,
       executeScript,                                  // 0
-      If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
+      If(Equal(LastReturnCode, NumericConstant(0)),  // 1
         Workflow.of(executeScript)),                  // 1/0:0
       executeScript)                                  // 2
 
@@ -75,7 +75,7 @@ final class OrderEventSourceTest extends FreeSpec
   "if returnCode else" - {
     val workflow = Workflow.of(TestWorkflowId,
       executeScript,                                        // 0
-      If(Equal(OrderReturnCode, NumericConstant(0)),        // 1
+      If(Equal(LastReturnCode, NumericConstant(0)),        // 1
         thenWorkflow = Workflow.of(executeScript),          // 1/0:0
         elseWorkflow = Some(Workflow.of(executeScript))),   // 1/1:0
       executeScript)                                        // 2

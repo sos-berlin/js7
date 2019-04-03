@@ -10,7 +10,7 @@ trait Scope
 {
   val symbolToValue: String => Checked[Evaluator.Value]
 
-  val findValue: ValueSearch => Checked[Option[String]]
+  val findValue: ValueSearch => Checked[Option[Evaluator.Value]]
 }
 
 object Scope
