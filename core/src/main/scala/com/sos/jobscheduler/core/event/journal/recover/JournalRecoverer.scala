@@ -16,7 +16,6 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Files
-import scala.concurrent.blocking
 
 /**
   * @author Joacim Zschimmer
@@ -39,17 +38,15 @@ trait JournalRecoverer[E <: Event] {
   final def recoverAll(): Unit =
     for (file <- journalFileOption) {
       logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
-      //blocking {  // May take a long time
-        // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
-        autoClosing(new JournalReader(journalMeta, file)) { journalReader =>
-          recoverSnapshots(journalReader)
-          onAllSnapshotRecovered()
-          recoverEvents(journalReader)
-          _lastEventId = journalReader.eventId
-          _totalEventCount = journalReader.totalEventCount
-          logStatistics()
-        }
-      //}
+      // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
+      autoClosing(new JournalReader(journalMeta, file)) { journalReader =>
+        recoverSnapshots(journalReader)
+        onAllSnapshotRecovered()
+        recoverEvents(journalReader)
+        _lastEventId = journalReader.eventId
+        _totalEventCount = journalReader.totalEventCount
+        logStatistics()
+      }
     }
 
   private def recoverSnapshots(journalReader: JournalReader[E]): Unit =

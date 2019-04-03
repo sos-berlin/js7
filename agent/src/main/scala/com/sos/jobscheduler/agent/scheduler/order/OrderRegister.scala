@@ -17,7 +17,7 @@ import monix.execution.{Cancelable, Scheduler}
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class OrderRegister(scheduler: Scheduler) extends ActorRegister[OrderId, OrderEntry](_.actor) {
+private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
   def recover(order: Order[Order.State], workflow: Workflow, actor: ActorRef): OrderEntry = {
     val orderEntry = new OrderEntry(order, workflow, actor)

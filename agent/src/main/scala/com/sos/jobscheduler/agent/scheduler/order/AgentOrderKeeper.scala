@@ -81,7 +81,7 @@ extends MainJournalingActor[Event] with Stash {
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config)
-  private val orderRegister = new OrderRegister(scheduler)
+  private val orderRegister = new OrderRegister
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
   private object termination {
