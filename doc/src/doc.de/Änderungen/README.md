@@ -298,7 +298,7 @@ Beispiel:
       "string": "{\"TYPE\": \"Workflow\", ...}",
       "signature": {
         "TYPE": "PGP",
-        "string": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
+        "signatureString": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
       }
     }
   ],
