@@ -9,8 +9,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped, StoppedWhileFresh}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Failed, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped, StoppedWhileFresh}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -248,6 +248,7 @@ final class OrderTest extends FreeSpec
       OrderJoined(Outcome.Succeeded(ReturnCode(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
+      OrderFailed(Outcome.Failed(ReturnCode(1))),
       OrderFinished,
 
       OrderCancelationMarked(CancelMode.NotStarted),
@@ -288,6 +289,7 @@ final class OrderTest extends FreeSpec
           case (_: OrderForked           , `detached` | `attached`) => _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) => _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) => _.isInstanceOf[Awaiting]
+          case (_: OrderFailed           , `detached`             ) => _.isInstanceOf[Failed]     // Fail instruction
           case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]     // Fail instruction
           case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]   // Fail instruction
           case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]

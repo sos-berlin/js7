@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.expression.Expression.StringConstant
-import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
@@ -12,25 +10,22 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class FailTest extends FreeSpec
+final class FinishTest extends FreeSpec
 {
   "JSON" - {
     "with defaults" in {
       testJson[Instruction.Labeled](
-        Fail(None),
+        Finish(None),
         json"""{
-          "TYPE": "Fail"
+          "TYPE": "Finish"
         }""")
     }
 
     "complete" in {
       testJson[Instruction.Labeled](
-        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), uncatchable = true, Some(SourcePos(1, 2))),
+        Finish(Some(SourcePos(1, 2))),
         json"""{
-          "TYPE": "Fail",
-          "errorMessage": "'ERROR'",
-          "returnCode": 7,
-          "uncatchable": true,
+          "TYPE": "Finish",
           "sourcePos": [ 1, 2 ]
         }""")
     }

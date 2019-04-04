@@ -679,6 +679,7 @@ private[master] object MasterOrderKeeper {
         case event: OrderCoreEvent =>
           _order.update(event) match {
             case Invalid(problem) => logger.error(problem.toString)  // TODO Invalid event stored and ignored. Should we validate the event before persisting?
+              // TODO Mark order as unuseable (and try OrderBroken). No further actions on this order to avoid loop!
             case Valid(o) => _order = o
           }
       }

@@ -82,7 +82,7 @@ final class TryTest extends FreeSpec
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(0) / Try_ % 1 / Then % 0),
-          OrderCatched(Outcome.Failed(ReturnCode(-1)), Position(0) / Catch_ % 0),
+          OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / Catch_ % 0),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
           OrderMoved(Position(1)),

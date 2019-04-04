@@ -39,12 +39,6 @@ object Outcome
       else
         Failed(returnCode, keyValues)
 
-    def unapply(undisrupted: Undisrupted): Some[(Option[String], ReturnCode, Map[String, String])] =
-      Some(undisrupted match {
-        case Succeeded(returnCode, keyValues) => (None, returnCode, keyValues)
-        case Failed(errorMessage, returnCode, keyValues) => (Some(errorMessage), returnCode, keyValues)
-      })
-
     private[Outcome] sealed trait Companion[A <: Undisrupted] {
       protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): A
 
@@ -91,10 +85,10 @@ object Outcome
     val DefaultErrorMessage = "Order step failed"
 
     def apply(errorMessage: String, returnCode: ReturnCode): Failed =
-      new Failed(errorMessage, returnCode, Map.empty)
+      Failed(errorMessage, returnCode, Map.empty)
 
     protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
-      new Failed(DefaultErrorMessage, returnCode, keyValues)
+      Failed(DefaultErrorMessage, returnCode, keyValues)
 
     implicit val jsonEncoder: ObjectEncoder[Failed] =
       o => JsonObject.fromIterable(

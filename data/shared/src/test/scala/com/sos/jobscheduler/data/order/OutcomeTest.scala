@@ -23,14 +23,6 @@ final class OutcomeTest extends FreeSpec {
   "Undisrupted" in {
     assert(Undisrupted(true, ReturnCode(1), Map("K" -> "V")) == Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")))
     assert(Undisrupted(false, ReturnCode(1), Map("K" -> "V")) == Outcome.Failed(ReturnCode(1), Map("K" -> "V")))
-    assert(Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")) match {
-      case Outcome.Undisrupted(None, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
-      case _ => false
-    })
-    assert(Outcome.Failed(ReturnCode(2), Map("K" -> "V")) match {
-      case Outcome.Undisrupted(Some("Order step failed"), ReturnCode(2), kv) if kv == Map("K" -> "V") => true
-      case _ => false
-    })
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
       case _: Outcome.Undisrupted => false
       case _ => true

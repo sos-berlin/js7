@@ -5,24 +5,24 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.tests.FailTest._
+import com.sos.jobscheduler.tests.FailUncatchableTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.reflect.ClassTag
 
-final class FailTest extends FreeSpec
+final class FailUncatchableTest extends FreeSpec
 {
   "fail" in {
-    runUntil[OrderStopped]("""
+    runUntil[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
-      |  fail;
+      |  fail (uncatchable=true);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
@@ -32,14 +32,16 @@ final class FailTest extends FreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(3)))))
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderFailed(Outcome.Failed(ReturnCode(3)))))
   }
 
-  "fail (returnCode=7)" in {
-    runUntil[OrderStopped]("""
+  "fail (uncatchable=true, returnCode=7)" in {
+    runUntil[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
-      |  fail (returnCode=7);
+      |  fail (uncatchable=true, returnCode=7);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
@@ -49,18 +51,28 @@ final class FailTest extends FreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(7)))))
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderFailed(Outcome.Failed(ReturnCode(7)))))
   }
 
-  "fail (returnCode=7, error='ERROR')" in {
-    runUntil[OrderStopped]("""
+  "fail (uncatchable=true, returnCode=7, error='ERROR')" in {
+    runUntil[OrderFailed]("""
       |define workflow {
-      |  fail (returnCode=7, error='ERROR');
+      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  fail (uncatchable=true, returnCode=7, error='TEST-ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
+        OrderAttachable(TestAgentRefPath),
+        OrderTransferredToAgent(TestAgentRefPath),
         OrderStarted,
-        OrderStopped(Outcome.Failed("ERROR", ReturnCode(7)))))
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderMoved(Position(1)),
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderFailed(Outcome.Failed("TEST-ERROR", ReturnCode(7)))))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
@@ -71,7 +83,7 @@ final class FailTest extends FreeSpec
   private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
-      directoryProvider.run { (master, _) =>
+        directoryProvider.run { (master, _) =>
         val orderId = OrderId("🔺")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         master.eventWatch.await[E](_.key == orderId)
@@ -90,7 +102,8 @@ final class FailTest extends FreeSpec
   }
 }
 
-object FailTest {
+object FailUncatchableTest
+{
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

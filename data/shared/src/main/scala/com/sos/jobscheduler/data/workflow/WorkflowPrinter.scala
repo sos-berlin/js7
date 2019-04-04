@@ -3,9 +3,10 @@ package com.sos.jobscheduler.data.workflow
 import cats.Show
 import com.sos.jobscheduler.base.time.Times._
 import com.sos.jobscheduler.base.utils.Identifier
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -116,6 +117,20 @@ object WorkflowPrinter
           }
           sb ++= ";\n"
 
+        case Fail(maybeErrorMessage, maybeReturnCode, uncatchable, _) =>
+          sb ++= "fail"
+          if (maybeErrorMessage.isDefined || maybeReturnCode.isDefined) {
+            sb ++= (
+              (uncatchable ? "uncatchable=true") ++
+              maybeErrorMessage.map(o => "error=" + o.toString) ++
+              maybeReturnCode.map(o => "returnCode=" + o.number.toString)
+              ).mkString(" (", ", ", ")")
+          }
+          sb ++= ";\n"
+
+        case Finish(_) =>
+          sb ++= "finish;\n"
+
         case Fork(branches, _) =>
           def appendBranch(branch: Fork.Branch) = {
             indent(nesting + 1)
@@ -141,16 +156,6 @@ object WorkflowPrinter
 
         case Goto(label, _) =>
           sb ++= "goto "++= label.string ++= ";\n"
-
-        case Fail(maybeErrorMessage, maybeReturnCode, _) =>
-          sb ++= "fail"
-          if (maybeErrorMessage.isDefined || maybeReturnCode.isDefined) {
-            sb ++= (
-              maybeErrorMessage.map(o => "error=" + o.toString) ++
-              maybeReturnCode.map(o => "returnCode=" + o.number.toString)
-              ).mkString(" (", ", ", ")")
-          }
-          sb ++= ";\n"
 
         case IfNonZeroReturnCodeGoto(label, _) =>
           sb ++= "ifNonZeroReturnCodeGoto " ++= label.string ++= ";\n"

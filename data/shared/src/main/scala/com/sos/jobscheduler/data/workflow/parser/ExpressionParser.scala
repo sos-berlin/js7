@@ -50,7 +50,7 @@ object ExpressionParser
   private def catchCount[_: P] = P[OrderCatchCount.type](
     keyword("catchCount") map (_ => OrderCatchCount))
 
-  private def booleanConstant[_: P] = P(trueConstant | falseConstant)
+  def booleanConstant[_: P] = P(trueConstant | falseConstant)
 
   private def numericConstant[_: P] = P[NumericConstant](int
     .map(o => NumericConstant(o)))

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.workflow.Instruction
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Fork, Gap, If, Offer, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, Offer, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.Position
 
 /**
@@ -34,6 +34,7 @@ object InstructionExecutor
       case _: End => EndExecutor
       case _: Execute => ExecuteExecutor
       case _: Fail => FailExecutor
+      case _: Finish => FinishExecutor
       case _: Fork => ForkExecutor
       case _: Gap => GapExecutor
       case _: If => IfExecutor

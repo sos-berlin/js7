@@ -13,6 +13,7 @@ object Instructions
     Subtype[Execute],
     Subtype.named[ExplicitEnd]("End"),
     Subtype[ImplicitEnd],  // Serialized for easier external use of Workflow
+    Subtype[Finish],
     Subtype[Fail],
     Subtype(Fork.jsonCodec),
     Subtype[Offer],

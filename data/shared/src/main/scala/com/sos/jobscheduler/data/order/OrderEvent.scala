@@ -133,8 +133,12 @@ object OrderEvent {
     //type State = Ready.type
   }
 
+  final case class OrderFailed(outcome: Outcome.NotSucceeded)
+  extends OrderActorEvent
+
   /** Only internal. Will be converted to `OrderStopped` or `OrderCatched`. */
-  final case class OrderFailed(outcome: Outcome.NotSucceeded) extends OrderActorEvent
+  final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded)
+  extends OrderActorEvent
 
   // TODO OrderStopped should not contain key-values. Do we need the outcome?
   final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
@@ -203,6 +207,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderFinished),
+    Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderCancelationMarked]),
     Subtype(OrderCanceled),
     Subtype(deriveCodec[OrderTransferredToAgent]),

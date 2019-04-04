@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.workflow.OrderContext
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailed, OrderMoved}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved}
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -30,6 +30,6 @@ object ExecuteExecutor extends EventInstructionExecutor
                 OrderMoved(order.position.increment)
 
               case failed: Outcome.NotSucceeded =>
-                OrderFailed(failed)
+                OrderFailedCatchable(failed)
             })))
 }

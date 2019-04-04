@@ -57,7 +57,7 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Invalid(Problem(
-      s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: " + event))
+      s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: $event"))
 
     def check[A](okay: Boolean, updated: A) =
       if (okay) Valid(updated) else inapplicable
@@ -80,7 +80,13 @@ final case class Order[+S <: Order.State](
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
-      case OrderFailed(_) =>
+      case OrderFailed(outcome_) =>
+        check(isState[Ready] && isDetached,
+          copy(
+            state = Failed(outcome_),
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+
+      case OrderFailedCatchable(_) =>
         inapplicable
 
       case OrderStopped(outcome_) =>
@@ -348,6 +354,9 @@ object Order {
   @JsonCodec
   final case class Awaiting(offeredOrderId: OrderId) extends Started
 
+  @JsonCodec
+  final case class Failed(outcome: Outcome.NotSucceeded) extends Finished
+
   sealed trait Finished extends Started
   case object Finished extends Finished
 
@@ -368,6 +377,7 @@ object Order {
     Subtype[Forked],
     Subtype[Offering],
     Subtype[Awaiting],
+    Subtype[Failed],
     Subtype(Finished),
     Subtype(Canceled),
     Subtype[Broken])

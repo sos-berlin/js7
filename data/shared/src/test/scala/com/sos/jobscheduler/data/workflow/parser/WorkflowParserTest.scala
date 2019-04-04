@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -415,13 +415,25 @@ final class WorkflowParserTest extends FreeSpec {
         fail (returnCode=7);
         fail (error="ERROR");
         fail (error="ERROR", returnCode=7);
+        fail (uncatchable=true, error="ERROR", returnCode=7);
       }""",
       Workflow(WorkflowPath.NoId, Vector(
-        Fail(None, None, sourcePos(33, 37)),
-        Fail(None, Some(ReturnCode(7)), sourcePos(47, 66)),
-        Fail(Some(StringConstant("ERROR")), None, sourcePos(76, 96)),
-        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), sourcePos(106, 140)),
-        ImplicitEnd(sourcePos(148, 149)))))
+        Fail(None, None, sourcePos = sourcePos(33, 37)),
+        Fail(None, Some(ReturnCode(7)), sourcePos = sourcePos(47, 66)),
+        Fail(Some(StringConstant("ERROR")), None, sourcePos = sourcePos(76, 96)),
+        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), sourcePos = sourcePos(106, 140)),
+        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), uncatchable = true, sourcePos(150, 202)),
+        ImplicitEnd(sourcePos = sourcePos(210, 211)))))
+  }
+
+  "finish" in {
+    check("""
+      define workflow {
+        finish;
+      }""",
+      Workflow(WorkflowPath.NoId, Vector(
+        Finish(sourcePos(33, 39)),
+        ImplicitEnd(sourcePos = sourcePos(47, 48)))))
   }
 
   "onError and goto" in {

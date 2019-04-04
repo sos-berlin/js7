@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
@@ -54,7 +54,7 @@ final class OrderEventSource(
             case Valid(Some(oId <-: (moved: OrderMoved))) =>
               applyMoveInstructions(oId, moved) map Some.apply
 
-            case Valid(Some(oId <-: OrderFailed(outcome))) =>  // OrderFailed is used internally only
+            case Valid(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
               assert(oId == orderId)
               catchPosition(orderId) match {
                 case None => Valid(Some(oId <-: OrderStopped(outcome)))

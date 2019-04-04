@@ -5,23 +5,24 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.tests.FailTest._
+import com.sos.jobscheduler.tests.FinishTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.reflect.ClassTag
 
-final class FailTest extends FreeSpec
+final class FinishTest extends FreeSpec
 {
-  "fail" in {
-    runUntil[OrderStopped]("""
+  "finish" in {
+    runUntil[OrderFinished]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+      |  finish;
       |  fail;
       |}""".stripMargin,
       Vector(
@@ -32,35 +33,9 @@ final class FailTest extends FreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
         OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(3)))))
-  }
-
-  "fail (returnCode=7)" in {
-    runUntil[OrderStopped]("""
-      |define workflow {
-      |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
-      |  fail (returnCode=7);
-      |}""".stripMargin,
-      Vector(
-        OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentRefPath),
-        OrderTransferredToAgent(TestAgentRefPath),
-        OrderStarted,
-        OrderProcessingStarted,
-        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
-        OrderMoved(Position(1)),
-        OrderStopped(Outcome.Failed(ReturnCode(7)))))
-  }
-
-  "fail (returnCode=7, error='ERROR')" in {
-    runUntil[OrderStopped]("""
-      |define workflow {
-      |  fail (returnCode=7, error='ERROR');
-      |}""".stripMargin,
-      Vector(
-        OrderAdded(TestWorkflowId),
-        OrderStarted,
-        OrderStopped(Outcome.Failed("ERROR", ReturnCode(7)))))
+        OrderDetachable,
+        OrderTransferredToMaster,
+        OrderFinished))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
@@ -90,7 +65,7 @@ final class FailTest extends FreeSpec
   }
 }
 
-object FailTest {
+object FinishTest {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }
