@@ -26,8 +26,15 @@ object Expression
     implicit val jsonDecoder: Decoder[BooleanExpression] =
       _.as[String] flatMap (string => checkedParse(string, ExpressionParser.booleanExpression(_)).toDecoderResult)
   }
+
   sealed trait NumericExpression extends Expression
+
   sealed trait StringExpression extends Expression
+  object StringExpression {
+    implicit val jsonEncoder: Encoder[StringExpression] = expr => Json.fromString(expr.toString)
+    implicit val jsonDecoder: Decoder[StringExpression] =
+      _.as[String] flatMap (string => checkedParse(string, ExpressionParser.stringExpression(_)).toDecoderResult)
+  }
 
   final case class Not(a: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Factor

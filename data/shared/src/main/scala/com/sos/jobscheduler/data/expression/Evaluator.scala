@@ -129,6 +129,9 @@ object Evaluator
   def evalBoolean(scope: Scope, expression: BooleanExpression): Checked[Boolean] =
     new Evaluator(scope).evalBoolean(expression) map (_.bool)
 
+  def evalString(scope: Scope, expression: StringExpression): Checked[String] =
+    new Evaluator(scope).evalString(expression) map (_.string)
+
   sealed trait Value {
     def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
     def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))

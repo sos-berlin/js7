@@ -28,10 +28,10 @@ final class FailTest extends FreeSpec
         OrderStopped(Outcome.Failed(ReturnCode(-1)))))
   }
 
-  "fail returnCode=7" in {
+  "fail (returnCode=7)" in {
     runUntil[OrderStopped]("""
       |define workflow {
-      |  fail returnCode=7;
+      |  fail (returnCode=7);
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
@@ -39,8 +39,19 @@ final class FailTest extends FreeSpec
         OrderStopped(Outcome.Failed(ReturnCode(7)))))
   }
 
+  "fail (returnCode=7, error='ERROR')" in {
+    runUntil[OrderStopped]("""
+      |define workflow {
+      |  fail (returnCode=7, error='ERROR');
+      |}""".stripMargin,
+      Vector(
+        OrderAdded(TestWorkflowId),
+        OrderStarted,
+        OrderStopped(Outcome.Failed("ERROR", ReturnCode(7)))))
+  }
+
   private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
-    runUntil(
+    runUntil[E](
       WorkflowParser.parse(TestWorkflowId, notation).orThrow,
       expectedEvents)
 

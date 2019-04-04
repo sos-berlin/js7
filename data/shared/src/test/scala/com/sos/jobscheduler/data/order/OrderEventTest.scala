@@ -143,7 +143,8 @@ final class OrderEventTest extends FreeSpec {
         "TYPE": "OrderStopped",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1
+          "returnCode": 1,
+          "errorMessage": "Order step failed"
         }
       }""")
   }
@@ -170,7 +171,8 @@ final class OrderEventTest extends FreeSpec {
         "TYPE": "OrderCatched",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1
+          "returnCode": 1,
+          "errorMessage": "Order step failed"
         },
         "movedTo": [ 1 ]
       }""")

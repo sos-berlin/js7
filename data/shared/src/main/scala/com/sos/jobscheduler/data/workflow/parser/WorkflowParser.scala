@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Evaluator
+import com.sos.jobscheduler.data.expression.Expression.StringExpression
 import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
@@ -13,7 +14,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanExpression, constantExpression}
+import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanExpression, constantExpression, stringExpression}
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.NoWhitespace._
@@ -124,10 +125,18 @@ object WorkflowParser
         })
 
     private def failInstruction[_: P] = P[FailInstr](
-      (Index ~ keyword("fail") ~ keyValues(keyValue("returnCode", returnCode)) ~ hardEnd)
-        .flatMap { case (start, keyToValue, end) =>
-          for (returnCode <- keyToValue.get[ReturnCode]("returnCode")) yield
-            FailInstr(returnCode, sourcePos(start, end))
+      (Index ~ keyword("fail") ~
+        inParentheses(keyValues(
+          keyValue("returnCode", returnCode) |
+          keyValue("error", stringExpression)
+        )).? ~
+        hardEnd)
+        .flatMap { case (start, maybeKeyToValue, end) =>
+          val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
+          for {
+            returnCode <- keyToValue.get[ReturnCode]("returnCode")
+            errorMessage <- keyToValue.get[StringExpression]("error")
+          } yield FailInstr(errorMessage, returnCode, sourcePos(start, end))
         })
 
     private def forkInstruction[_: P] = P[Fork]{

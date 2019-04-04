@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.data.expression.Expression.StringConstant
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
@@ -24,9 +25,10 @@ final class FailTest extends FreeSpec
 
     "complete" in {
       testJson[Instruction.Labeled](
-        Fail(Some(ReturnCode(7)), Some(SourcePos(1, 2))),
+        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Fail",
+          "errorMessage": "'ERROR'",
           "returnCode":  7,
           "sourcePos": [ 1, 2 ]
         }""")

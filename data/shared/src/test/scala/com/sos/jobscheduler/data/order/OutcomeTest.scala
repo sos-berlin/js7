@@ -24,11 +24,11 @@ final class OutcomeTest extends FreeSpec {
     assert(Undisrupted(true, ReturnCode(1), Map("K" -> "V")) == Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")))
     assert(Undisrupted(false, ReturnCode(1), Map("K" -> "V")) == Outcome.Failed(ReturnCode(1), Map("K" -> "V")))
     assert(Outcome.Succeeded(ReturnCode(1), Map("K" -> "V")) match {
-      case Outcome.Undisrupted(true, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
+      case Outcome.Undisrupted(None, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
       case _ => false
     })
-    assert(Outcome.Failed(ReturnCode(1), Map("K" -> "V")) match {
-      case Outcome.Undisrupted(false, ReturnCode(1), kv) if kv == Map("K" -> "V") => true
+    assert(Outcome.Failed(ReturnCode(2), Map("K" -> "V")) match {
+      case Outcome.Undisrupted(Some("Order step failed"), ReturnCode(2), kv) if kv == Map("K" -> "V") => true
       case _ => false
     })
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
@@ -46,11 +46,35 @@ final class OutcomeTest extends FreeSpec {
         }""")
     }
 
+    "Succeeded with keyValues" in {
+      testJson[Outcome](Outcome.Succeeded(ReturnCode(0), Map("KEY" -> "VALUE")), json"""
+        {
+          "TYPE": "Succeeded",
+          "keyValues": {
+            "KEY": "VALUE"
+          },
+          "returnCode": 0
+        }""")
+    }
+
     "Failed" in {
-      testJson[Outcome](Outcome.Failed(ReturnCode(1)), json"""
+      testJson[Outcome](Outcome.Failed("ERROR", ReturnCode(1)), json"""
         {
           "TYPE": "Failed",
+          "errorMessage": "ERROR",
           "returnCode": 1
+        }""")
+    }
+
+    "Failed with keyValues" in {
+      testJson[Outcome](Outcome.Failed("ERROR", ReturnCode(1), Map("KEY" -> "VALUE")), json"""
+        {
+          "TYPE": "Failed",
+          "errorMessage": "ERROR",
+          "returnCode": 1,
+          "keyValues": {
+            "KEY": "VALUE"
+          }
         }""")
     }
 

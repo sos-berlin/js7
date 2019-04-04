@@ -142,9 +142,14 @@ object WorkflowPrinter
         case Goto(label, _) =>
           sb ++= "goto "++= label.string ++= ";\n"
 
-        case Fail(maybeReturnCode, _) =>
+        case Fail(maybeErrorMessage, maybeReturnCode, _) =>
           sb ++= "fail"
-          for (o <- maybeReturnCode) sb ++= " returnCode=" ++= o.number.toString
+          if (maybeErrorMessage.isDefined || maybeReturnCode.isDefined) {
+            sb ++= (
+              maybeErrorMessage.map(o => "error=" + o.toString) ++
+              maybeReturnCode.map(o => "returnCode=" + o.number.toString)
+              ).mkString(" (", ", ", ")")
+          }
           sb ++= ";\n"
 
         case IfNonZeroReturnCodeGoto(label, _) =>

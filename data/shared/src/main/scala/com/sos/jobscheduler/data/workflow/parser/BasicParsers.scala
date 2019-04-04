@@ -161,6 +161,9 @@ private[parser] object BasicParsers
       }
     }
   }
+  object KeyToValue {
+    val empty = KeyToValue[Any](Map.empty)
+  }
 
   def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]): P[V] =
     P((if (name.isEmpty) Pass else keyword(name) ~ w ~ "=" ~/ w) ~ valueParser)

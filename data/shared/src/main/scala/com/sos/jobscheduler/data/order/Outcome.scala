@@ -30,23 +30,26 @@ object Outcome
   }
 
   object Undisrupted {
-    def apply(success: Boolean, returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty): Undisrupted =
+    def apply(success: Boolean, returnCode: ReturnCode): Undisrupted =
+      apply(success, returnCode, Map.empty)
+
+    def apply(success: Boolean, returnCode: ReturnCode, keyValues: Map[String, String]): Undisrupted =
       if (success)
         Succeeded(returnCode, keyValues)
       else
         Failed(returnCode, keyValues)
 
-    def unapply(undisrupted: Undisrupted): Some[(Boolean, ReturnCode, Map[String, String])] =
+    def unapply(undisrupted: Undisrupted): Some[(Option[String], ReturnCode, Map[String, String])] =
       Some(undisrupted match {
-        case Succeeded(returnCode, keyValues) => (true, returnCode, keyValues)
-        case Failed(returnCode, keyValues) => (false, returnCode, keyValues)
+        case Succeeded(returnCode, keyValues) => (None, returnCode, keyValues)
+        case Failed(errorMessage, returnCode, keyValues) => (Some(errorMessage), returnCode, keyValues)
       })
 
     private[Outcome] sealed trait Companion[A <: Undisrupted] {
-      def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): A
+      protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): A
 
       // re-use memory for usual values.
-      private val usualValues: Vector[A] = (0 to 255).map(i => newInstance(ReturnCode(i), Map.empty)).toVector
+      private lazy val usualValues: Vector[A] = (0 to 255).map(i => newInstance(ReturnCode(i), Map.empty)).toVector
 
       def apply(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty): A =
         if (keyValues.isEmpty && usualValues.indices.contains(returnCode.number))
@@ -63,7 +66,7 @@ object Outcome
   {
     def apply(keyValues: Map[String, String]): Succeeded = apply(ReturnCode.Success, keyValues)
 
-    def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Succeeded =
+    protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Succeeded =
       new Succeeded(returnCode, keyValues)
 
     implicit val jsonEncoder: ObjectEncoder[Succeeded] =
@@ -78,26 +81,33 @@ object Outcome
       } yield Succeeded(returnCode, keyValues)
   }
 
-  final case class Failed(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty)
+  final case class Failed(errorMessage: String, returnCode: ReturnCode, keyValues: Map[String, String])
   extends Undisrupted with NotSucceeded
   {
     def isSucceeded = false
   }
   object Failed extends Undisrupted.Companion[Failed]
   {
-    def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
-      new Failed(returnCode, keyValues)
+    val DefaultErrorMessage = "Order step failed"
+
+    def apply(errorMessage: String, returnCode: ReturnCode): Failed =
+      new Failed(errorMessage, returnCode, Map.empty)
+
+    protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
+      new Failed(DefaultErrorMessage, returnCode, keyValues)
 
     implicit val jsonEncoder: ObjectEncoder[Failed] =
       o => JsonObject.fromIterable(
+        ("errorMessage" -> o.errorMessage.asJson) ::
         ("returnCode" -> o.returnCode.asJson) ::
-          o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
+        o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
+        errorMessage <- c.get[String]("errorMessage")
         returnCode <- c.get[ReturnCode]("returnCode")
         keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
-      } yield Failed(returnCode, keyValues)
+      } yield Failed(errorMessage, returnCode, keyValues)
   }
 
   /** No response from job - some other error has occurred. */

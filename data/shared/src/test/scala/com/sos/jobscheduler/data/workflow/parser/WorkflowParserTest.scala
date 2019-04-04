@@ -411,13 +411,17 @@ final class WorkflowParserTest extends FreeSpec {
   "fail" in {
     check("""
       define workflow {
-        fail returnCode=7;
         fail;
+        fail (returnCode=7);
+        fail (error="ERROR");
+        fail (error="ERROR", returnCode=7);
       }""",
       Workflow(WorkflowPath.NoId, Vector(
-        Fail(Some(ReturnCode(7)), sourcePos(33, 50)),
-        Fail(None, sourcePos(60, 64)),
-        ImplicitEnd(sourcePos(72, 73)))))
+        Fail(None, None, sourcePos(33, 37)),
+        Fail(None, Some(ReturnCode(7)), sourcePos(47, 66)),
+        Fail(Some(StringConstant("ERROR")), None, sourcePos(76, 96)),
+        Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), sourcePos(106, 140)),
+        ImplicitEnd(sourcePos(148, 149)))))
   }
 
   "onError and goto" in {
