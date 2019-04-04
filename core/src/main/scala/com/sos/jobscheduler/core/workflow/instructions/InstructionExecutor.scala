@@ -44,7 +44,7 @@ object InstructionExecutor
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Checked[Option[Position]] =
     instructionToExecutor(instruction) match {
-      case exec: PositionInstructionExecutor => exec.nextPosition(context, order, instruction.asInstanceOf[exec.Instr])
+      case executor: PositionInstructionExecutor => executor.nextPosition(context, order, instruction.asInstanceOf[executor.Instr])
       case _ => Valid(None)
     }
 

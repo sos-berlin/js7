@@ -20,8 +20,8 @@ final class OrderProcessor(
   private val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder)
   private val eventSource = new OrderEventSource(idToWorkflow, idToOrder)
 
-  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    eventSource.nextEvent(orderId) mapProblem (_ withPrefix s"Problem with '$orderId':")
+  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] =
+    eventSource.nextEvent(orderId)
 
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
     eventSource.cancel(orderId, mode, isAgent = isAgent)

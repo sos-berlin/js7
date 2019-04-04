@@ -84,9 +84,9 @@ final case class Order[+S <: Order.State](
         inapplicable
 
       case OrderStopped(outcome_) =>
-        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
+        check(isOrderStoppedApplicable,
           copy(
-            state = Stopped,
+            state = if (isState[Fresh]) StoppedWhileFresh else Stopped,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderCatched(outcome_, movedTo) =>
@@ -152,18 +152,21 @@ final case class Order[+S <: Order.State](
       case OrderDetachable =>
         attachedState match {
           case Some(Attached(agentRefPath))
-            if isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken] =>
+            if isState[Fresh] || isState[Ready] || isState[Forked] ||
+               isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken] =>
               Valid(copy(attachedState = Some(Detaching(agentRefPath))))
           case _ =>
             inapplicable
         }
 
       case OrderDetached =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
+                              isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderTransferredToMaster =>
-        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] || isState[Stopped] || isState[Broken]),
+        check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
+                              isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderCancelationMarked(mode) =>
@@ -171,10 +174,15 @@ final case class Order[+S <: Order.State](
           copy(cancel = Some(mode)))
 
       case OrderCanceled =>
-        check((isState[FreshOrReady] || isState[Stopped] || isState[DelayedAfterError] || isState[Broken]) && isDetached,
+        check((isState[FreshOrReady] || isState[DelayedAfterError] || isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken])
+            && isDetached,
           copy(state = Canceled))
     }
   }
+
+  def isOrderStoppedApplicable =
+    isState[FreshOrReady] && (isDetached || isAttached)  ||
+    isState[Processed] && isAttached
 
   def withInstructionNr(to: InstructionNr): Order[S] =
     withPosition(position.copy(nr = to))
@@ -309,6 +317,9 @@ object Order {
     override def maybeDelayedUntil = Some(until)
   }
 
+  sealed trait StoppedWhileFresh extends Started
+  case object StoppedWhileFresh extends StoppedWhileFresh
+
   sealed trait Stopped extends Started
   case object Stopped extends Stopped
 
@@ -352,6 +363,7 @@ object Order {
     Subtype(Processing),
     Subtype(Processed),
     Subtype[DelayedAfterError],
+    Subtype(StoppedWhileFresh),
     Subtype(Stopped),
     Subtype[Forked],
     Subtype[Offering],

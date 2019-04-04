@@ -43,7 +43,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.master.MasterFileBaseds
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderBroken, OrderCancelationMarked, OrderCoreEvent, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -158,7 +158,7 @@ with MainJournalingActor[Event]
         agentRegister(agentRefPath).lastAgentEventId = eventId
       }
       for (order <- masterState.orders) {
-        orderRegister.insert(order.id -> OrderEntry(order))
+        orderRegister.insert(order.id -> new OrderEntry(order))
       }
       persistedEventId = masterState.eventId
     }
@@ -521,7 +521,7 @@ with MainJournalingActor[Event]
   }
 
   private def registerOrderAndProceed(order: Order[Order.State]): Unit = {
-    val entry = OrderEntry(order)
+    val entry = new OrderEntry(order)
     orderRegister.insert(order.id -> entry)
     proceedWithOrder(entry)
   }
@@ -569,7 +569,12 @@ with MainJournalingActor[Event]
     // When recovering, proceedWithOrderOnMaster may issue the same event multiple times,
     // for example OrderJoined for each parent and child order.
     // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
-    for (keyedEvent <- orderProcessor.nextEvent(order.id).onProblem(p => logger.error(p)).flatten) {
+    for (keyedEvent <- orderProcessor.nextEvent(order.id)) {
+      keyedEvent match {
+        case KeyedEvent(orderId, OrderBroken(problem)) =>
+          logger.error(s"Order ${orderId.string} is broken: $problem")
+        case _ =>
+      }
       afterProceedEvents.persistAndHandleLater(keyedEvent)
     }
   }
@@ -660,8 +665,10 @@ private[master] object MasterOrderKeeper {
       actor ! AgentDriver.Input.Reconnect(uri = agentRef.uri)
   }
 
-  private case class OrderEntry(var order: Order[Order.State])
+  private class OrderEntry(private var _order: Order[Order.State])
   {
+    def order = _order
+
     var cancelationMarkedOnAgent = false
 
     def orderId = order.id
@@ -669,7 +676,11 @@ private[master] object MasterOrderKeeper {
     def update(event: OrderEvent): Unit =
       event match {
         case _: OrderStdWritten =>
-        case event: OrderCoreEvent => order = order.update(event).orThrow  // 🔥 ProblemException
+        case event: OrderCoreEvent =>
+          _order.update(event) match {
+            case Invalid(problem) => logger.error(problem.toString)  // TODO Invalid event stored and ignored. Should we validate the event before persisting?
+            case Valid(o) => _order = o
+          }
       }
   }
 }

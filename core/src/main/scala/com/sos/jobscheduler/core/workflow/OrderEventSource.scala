@@ -10,8 +10,8 @@ import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStarte
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderMoved, OrderStopped}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailed, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -42,8 +42,9 @@ final class OrderEventSource(
       case _ => false
     }
 
-  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    idToOrder.checked(orderId) flatMap (order =>
+  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
+    val order = idToOrder(orderId)
+    val maybeEvent =
       awokeEvent(order) orElse
       canceledEvent(order) match {
         case Some(event) =>
@@ -64,7 +65,21 @@ final class OrderEventSource(
 
             case o => o
           }
-      })
+      }
+    invalidToEvent(order, maybeEvent)
+  }
+
+  private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
+  : Option[KeyedEvent[OrderActorEvent]] =
+    checkedEvent match {
+      case Invalid(problem) if order.isOrderStoppedApplicable =>
+        Some(order.id <-: OrderStopped(Outcome.Disrupted(problem)))
+
+      case Invalid(problem) =>
+        Some(order.id <-: OrderBroken(problem))
+
+      case Valid(o) => o
+    }
 
   private def catchPosition(orderId: OrderId): Option[Position] =
     for {
@@ -111,7 +126,11 @@ final class OrderEventSource(
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
     (order.isState[Order.Fresh] ||
-      (mode == CancelMode.FreshOrStarted && (order.isState[Order.Ready] || order.isState[Order.Stopped] || order.isState[Order.Broken]))
+      (mode == CancelMode.FreshOrStarted && (
+        order.isState[Order.Ready] ||
+        order.isState[Order.StoppedWhileFresh] ||
+        order.isState[Order.Stopped] ||
+        order.isState[Order.Broken]))
     ) &&
       (order.isDetached || order.isAttached) &&
       order.parent.isEmpty &&

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.expression.Evaluator
@@ -16,7 +17,11 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
   type Instr = If
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: If) =
-    nextPosition(context, order, instruction) map (_ map (o => order.id <-: OrderMoved(o)))
+    if (order.isState[Order.Broken] || order.isState[Order.StoppedWhileFresh] || order.isState[Order.Stopped])
+      Valid(None)
+    else
+      nextPosition(context, order, instruction)
+        .map(_ map (o => order.id <-: OrderMoved(o)))
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))

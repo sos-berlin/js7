@@ -40,7 +40,7 @@ import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderStarted}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderStarted}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
@@ -404,7 +404,10 @@ extends MainJournalingActor[Event] with Stash {
             self ! Internal.Due(orderId)
           }
         case _ =>
-          orderProcessor.nextEvent(order.id).onProblem(p => logger.error(p)).flatten match {
+          orderProcessor.nextEvent(order.id) match {
+            case Some(KeyedEvent(orderId, OrderBroken(problem))) =>
+              logger.error(s"Order ${orderId.string} is broken: $problem")
+
             case Some(KeyedEvent(orderId_, event)) =>
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
 
