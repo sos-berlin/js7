@@ -30,7 +30,7 @@ final class IfExecutorTest extends FreeSpec {
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
   }
 
-  "JSON" - {
+  "JSON BranchId" - {
     "then" in {
       testJson(IfExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))).orThrow,
         json"""[ 7, "then", 0 ]""")

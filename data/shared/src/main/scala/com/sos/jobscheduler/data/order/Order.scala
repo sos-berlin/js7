@@ -86,6 +86,12 @@ final case class Order[+S <: Order.State](
             state = Failed(outcome_),
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
+      case OrderFailedInFork(outcome_) =>
+        check(isState[Ready] && (isDetached || isAttached),
+          copy(
+            state = FailedInFork(outcome_),
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+
       case OrderFailedCatchable(_) =>
         inapplicable
 
@@ -144,8 +150,8 @@ final case class Order[+S <: Order.State](
           })
 
       case OrderBroken(message) =>
-        // No state check ???
-        Valid(copy(state = Broken(message)))
+        check(!isDeleted,
+          copy(state = Broken(message)))
 
       case OrderAttachable(agentRefPath) =>
         check(isDetached && (isState[Fresh] || isState[Ready] || isState[Forked]),
@@ -159,7 +165,7 @@ final case class Order[+S <: Order.State](
         attachedState match {
           case Some(Attached(agentRefPath))
             if isState[Fresh] || isState[Ready] || isState[Forked] ||
-               isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken] =>
+               isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken] =>
               Valid(copy(attachedState = Some(Detaching(agentRefPath))))
           case _ =>
             inapplicable
@@ -167,12 +173,12 @@ final case class Order[+S <: Order.State](
 
       case OrderDetached =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
-                              isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken]),
+                              isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderTransferredToMaster =>
         check(isDetaching && (isState[Fresh] || isState[Ready] || isState[Forked] ||
-                              isState[StoppedWhileFresh] || isState[Stopped] || isState[Broken]),
+                              isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken]),
           copy(attachedState = None))
 
       case OrderCancelationMarked(mode) =>
@@ -184,6 +190,11 @@ final case class Order[+S <: Order.State](
             && isDetached,
           copy(state = Canceled))
     }
+  }
+
+  def isDeleted = state match {
+    case _: Finished | _: Canceled | _: Failed => true
+    case _ => false
   }
 
   def isOrderStoppedApplicable =
@@ -357,6 +368,9 @@ object Order {
   @JsonCodec
   final case class Failed(outcome: Outcome.NotSucceeded) extends Finished
 
+  @JsonCodec
+  final case class FailedInFork(outcome: Outcome.NotSucceeded) extends Finished
+
   sealed trait Finished extends Started
   case object Finished extends Finished
 
@@ -378,6 +392,7 @@ object Order {
     Subtype[Offering],
     Subtype[Awaiting],
     Subtype[Failed],
+    Subtype[FailedInFork],
     Subtype(Finished),
     Subtype(Canceled),
     Subtype[Broken])

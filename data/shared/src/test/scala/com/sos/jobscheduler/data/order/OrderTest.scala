@@ -9,8 +9,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Failed, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped, StoppedWhileFresh}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, DelayedAfterError, Detaching, Failed, FailedInFork, Finished, Forked, Fresh, FreshOrReady, Offering, Processed, Processing, Ready, State, Stopped, StoppedWhileFresh}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -249,6 +249,7 @@ final class OrderTest extends FreeSpec
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
       OrderFailed(Outcome.Failed(ReturnCode(1))),
+      OrderFailedInFork(Outcome.Failed(ReturnCode(1))),
       OrderFinished,
 
       OrderCancelationMarked(CancelMode.NotStarted),
@@ -290,8 +291,9 @@ final class OrderTest extends FreeSpec
           case (_: OrderOffered          , `detached`             ) => _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) => _.isInstanceOf[Awaiting]
           case (_: OrderFailed           , `detached`             ) => _.isInstanceOf[Failed]     // Fail instruction
-          case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]     // Fail instruction
-          case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]   // Fail instruction
+          case (_: OrderFailedInFork     , `detached` | `attached`) => _.isInstanceOf[FailedInFork] // Fail instruction
+          case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]      // Fail instruction
+          case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]    // Fail instruction
           case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderFinished         , `detached`             ) => _.isInstanceOf[Finished]
           case (OrderCanceled            , `detached`             ) => _.isInstanceOf[Order.Canceled]
@@ -338,6 +340,18 @@ final class OrderTest extends FreeSpec
         })
     }
 
+    "Failed" - {
+      checkAllEvents(Order(orderId, workflowId, Failed(Outcome.Failed(ReturnCode(1))),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        PartialFunction.empty)
+    }
+
+    "FailedInFork" - {
+      checkAllEvents(Order(orderId, workflowId, FailedInFork(Outcome.Failed(ReturnCode(1))),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode(1))) :: Nil),
+        detachingAllowed[FailedInFork])
+    }
+
     "DelayedAfterError" - {
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         cancelationMarkingAllowed[DelayedAfterError] orElse {
@@ -382,9 +396,8 @@ final class OrderTest extends FreeSpec
     }
 
     "Finished" - {
-      checkAllEvents(Order(orderId, workflowId, Finished), {
-        case (_: OrderBroken, _) => _.isInstanceOf[Broken]
-      })
+      checkAllEvents(Order(orderId, workflowId, Finished),
+        PartialFunction.empty)
     }
 
     type ToPredicate = PartialFunction[(OrderEvent, Option[AttachedState]), State => Boolean]

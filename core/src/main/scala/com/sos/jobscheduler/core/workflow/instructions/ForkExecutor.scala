@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
@@ -19,26 +19,17 @@ object ForkExecutor extends EventInstructionExecutor
 
   private val logger = Logger(getClass)
 
-  def toEvent(context: OrderContext, order: Order[Order.State], instruction: Fork) =
-    Valid(
+  def toEvent(context: OrderContext, order: Order[Order.State], fork: Fork) =
+    Checked(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
       .orElse(
         order.ifState[Order.Ready].map(order =>
           checkOrderForked(context,
             order.id <-: OrderForked(
-              for (branch <- instruction.branches) yield
+              for (branch <- fork.branches) yield
                 OrderForked.Child(branch.id, order.id / branch.id.string)))))
-      .orElse(
-        order.ifState[Order.Forked].flatMap(order =>
-          //orderEntry.instruction match {
-          //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
-          if (order.isAttached)
-            Some(order.id <-: OrderDetachable)  //
-          else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
-            Some(order.id <-: OrderJoined(Outcome.succeeded))
-          else
-            None))
+      .orElse(toJoined(context, order))
       .orElse(
         ifProcessedThenOrderMoved(order, context)))
 
@@ -52,4 +43,26 @@ object ForkExecutor extends EventInstructionExecutor
     } else
       orderForked
   }
+
+  private def toJoined(context: OrderContext, order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
+    order.ifState[Order.Forked].flatMap(order =>
+      //orderEntry.fork match {
+      //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
+      if (order.isAttached)
+        Some(order.id <-: OrderDetachable)
+      else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
+        Some(order.id <-: OrderJoined(Outcome.succeeded))
+      else
+        None)
+
+  private[instructions] def tryJoinChildOrder(context: OrderContext, childOrder: Order[Order.State], fork: Fork)
+  : Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    //if (childOrder.attached forall fork.isJoinableOnAgent)
+    Valid(
+      if (childOrder.isAttached)
+        Some(childOrder.id <-: OrderDetachable)
+      else
+        childOrder.parent
+          .flatMap(context.idToOrder.lift)
+          .flatMap(parentOrder => toJoined(context, parentOrder)))
 }

@@ -35,10 +35,11 @@ final class OrderEventSource(
   private def childOrderEnded(order: Order[Order.State]): Boolean =
     order.parent flatMap idToOrder.lift match {
       case Some(parentOrder) =>
-        instruction(order.workflowPosition).isInstanceOf[End] &&
+        lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
           order.state == Order.Ready &&
-          order.position.dropChild.contains(parentOrder.position) &&
-          order.attachedState == parentOrder.attachedState
+          order.position.dropChild.contains(parentOrder.position)
+        order.attachedState == parentOrder.attachedState &&
+          (endReached || order.isState[Order.FailedInFork])
       case _ => false
     }
 

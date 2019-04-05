@@ -143,8 +143,19 @@ final class OrderEventTest extends FreeSpec {
         "TYPE": "OrderStopped",
         "outcome": {
           "TYPE": "Failed",
+          "returnCode": 1
+        }
+      }""")
+  }
+
+  "OrderStopped(Failed) complete" in {
+    check(OrderStopped(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderStopped",
+        "outcome": {
+          "TYPE": "Failed",
           "returnCode": 1,
-          "errorMessage": "Order step failed"
+          "errorMessage": "ERROR"
         }
       }""")
   }
@@ -171,10 +182,68 @@ final class OrderEventTest extends FreeSpec {
         "TYPE": "OrderCatched",
         "outcome": {
           "TYPE": "Failed",
-          "returnCode": 1,
-          "errorMessage": "Order step failed"
+          "returnCode": 1
         },
         "movedTo": [ 1 ]
+      }""")
+  }
+
+  "OrderCatched complete" in {
+    check(OrderCatched(Outcome.Failed(Some("FAILED"), ReturnCode(1)), Position(1)), json"""
+      {
+        "TYPE": "OrderCatched",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1,
+          "errorMessage": "FAILED"
+        },
+        "movedTo": [ 1 ]
+      }""")
+  }
+
+  "OrderFailed" in {
+    check(OrderFailed(Outcome.Failed(ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderFailed",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1
+        }
+      }""")
+  }
+
+  "OrderFailed complete" in {
+    check(OrderFailed(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderFailed",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1,
+          "errorMessage": "ERROR"
+        }
+      }""")
+  }
+
+  "OrderFailedInFork" in {
+    check(OrderFailedInFork(Outcome.Failed(ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderFailedInFork",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1
+        }
+      }""")
+  }
+
+  "OrderFailedInFork complete" in {
+    check(OrderFailedInFork(Outcome.Failed(Some("ERROR"), ReturnCode(1))), json"""
+      {
+        "TYPE": "OrderFailedInFork",
+        "outcome": {
+          "TYPE": "Failed",
+          "returnCode": 1,
+          "errorMessage": "ERROR"
+        }
       }""")
   }
 

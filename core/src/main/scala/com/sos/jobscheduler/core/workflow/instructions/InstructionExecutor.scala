@@ -18,11 +18,13 @@ trait InstructionExecutor {
   type Instr <: Instruction
 }
 
-trait EventInstructionExecutor extends InstructionExecutor {
+trait EventInstructionExecutor extends InstructionExecutor
+{
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Instr): Checked[Option[KeyedEvent[OrderActorEvent]]]
 }
 
-trait PositionInstructionExecutor extends InstructionExecutor {
+trait PositionInstructionExecutor extends InstructionExecutor
+{
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instr): Checked[Option[Position]]
 }
 

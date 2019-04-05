@@ -75,6 +75,8 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
       case _ => Invalid(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
     }
 
+  def isInFork = branchPath exists (_.branchId.isFork)
+
   def asSeq: IndexedSeq[Any] =
     branchPath.toVector.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number
 

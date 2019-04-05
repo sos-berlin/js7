@@ -29,9 +29,9 @@ final class Evaluator(scope: Scope)
       case GreaterOrEqual (a, b) => numNumToBool(a, b)(_.number >= _.number)
       case In(a, set: ListExpression) => eval(a).map2(evalListExpression(set))((a1, set1) => BooleanValue(set1 contains a1))
       case Matches(a: StringExpression, b: StringExpression) => evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
-      case Not            (a)    => evalBoolean(a) map (o => !o.bool) map BooleanValue.apply
-      case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.bool) o.valid else evalBoolean(b))
-      case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.bool) o.valid else evalBoolean(b))
+      case Not            (a)    => evalBoolean(a) map (o => !o.booleanValue) map BooleanValue.apply
+      case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.booleanValue) o.valid else evalBoolean(b))
+      case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.booleanValue) o.valid else evalBoolean(b))
       case ToBoolean(a: StringExpression) => evalString(a) flatMap toBoolean
       case NumericConstant(o) => NumericValue(o).valid
       case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
@@ -89,9 +89,9 @@ final class Evaluator(scope: Scope)
       b1 <- evalNumeric(b)
     } yield BooleanValue(op(a1, b1))
 
-  private def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.asBoolean)
-  private def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.asNumeric)
-  private def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.asString)
+  private[expression] def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.asBoolean)
+  private[expression] def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.asNumeric)
+  private[expression] def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.asString)
 
   private def toNumeric(v: Value): Checked[NumericValue] =
     v match {
@@ -126,20 +126,14 @@ object Evaluator
 {
   val Constant = new Evaluator(Scope.Constant)
 
-  def evalBoolean(scope: Scope, expression: BooleanExpression): Checked[Boolean] =
-    new Evaluator(scope).evalBoolean(expression) map (_.bool)
-
-  def evalString(scope: Scope, expression: StringExpression): Checked[String] =
-    new Evaluator(scope).evalString(expression) map (_.string)
-
   sealed trait Value {
     def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
     def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))
     def asBoolean: Checked[BooleanValue] = Invalid(Problem(s"Boolean value expected instead of: $toString"))
   }
 
-  final case class BooleanValue(bool: Boolean) extends Value {
-    override def asBoolean = Valid(BooleanValue(bool))
+  final case class BooleanValue(booleanValue: Boolean) extends Value {
+    override def asBoolean = Valid(BooleanValue(booleanValue))
   }
   object BooleanValue {
     val True = BooleanValue(true)

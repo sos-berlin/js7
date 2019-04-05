@@ -2,24 +2,27 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.time.ScalaTime.JavaFiniteDuration
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.tests.FailUncatchableTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 final class FailUncatchableTest extends FreeSpec
 {
   "fail" in {
-    runUntil[OrderFailed]("""
+    checkEvents[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true);
@@ -38,7 +41,7 @@ final class FailUncatchableTest extends FreeSpec
   }
 
   "fail (uncatchable=true, returnCode=7)" in {
-    runUntil[OrderFailed]("""
+    checkEvents[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true, returnCode=7);
@@ -57,7 +60,7 @@ final class FailUncatchableTest extends FreeSpec
   }
 
   "fail (uncatchable=true, returnCode=7, error='ERROR')" in {
-    runUntil[OrderFailed]("""
+    checkEvents[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
       |  fail (uncatchable=true, returnCode=7, error='TEST-ERROR');
@@ -72,38 +75,126 @@ final class FailUncatchableTest extends FreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderTransferredToMaster,
-        OrderFailed(Outcome.Failed("TEST-ERROR", ReturnCode(7)))))
+        OrderFailed(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(7)))))
   }
 
-  private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
-    runUntil[E](
-      WorkflowParser.parse(TestWorkflowId, notation).orThrow,
-      expectedEvents)
+  "fail in fork, fail first" in {
+    val events = runUntil[OrderFinished]("""
+     |define workflow {
+     |  fork {
+     |    "🥕": {
+     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |      fail (uncatchable=true, error="TEST-ERROR");
+     |    },
+     |    "🍋": {
+     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |    }
+     |  }
+     |}""".stripMargin)
 
-  private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
+    assert(events.filter(_.key == orderId).map(_.event) ==
+      Vector(
+        OrderAdded(TestWorkflowId),
+        OrderStarted,
+        OrderForked(Vector(
+          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
+          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderFinished))
+
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+      Vector(
+        OrderAttachable(TestAgentRefPath),
+        OrderTransferredToAgent(TestAgentRefPath),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(3))),
+        OrderDetachable,
+        OrderTransferredToMaster))
+
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+      Vector(
+        OrderAttachable(TestAgentRefPath),
+        OrderTransferredToAgent(TestAgentRefPath),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(0) / "fork+🍋" % 1),
+        OrderDetachable,
+        OrderTransferredToMaster))
+  }
+
+  "fail in fork, succeed first" in {
+    val events = runUntil[OrderFinished]("""
+     |define workflow {
+     |  fork {
+     |    "🥕": {
+     |      execute agent="/AGENT", executable="/sleep.cmd";
+     |      fail (uncatchable=true, error="TEST-ERROR");
+     |    },
+     |    "🍋": {
+     |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
+     |    }
+     |  }
+     |}""".stripMargin)
+
+    assert(events.filter(_.key == orderId).map(_.event) ==
+      Vector(
+        OrderAdded(TestWorkflowId),
+        OrderStarted,
+        OrderForked(Vector(
+          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
+          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderFinished))
+
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
+      Vector(
+        OrderAttachable(TestAgentRefPath),
+        OrderTransferredToAgent(TestAgentRefPath),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+        OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderFailedInFork(Outcome.Failed(Some("TEST-ERROR"), ReturnCode(0))),
+        OrderDetachable,
+        OrderTransferredToMaster))
+
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
+      Vector(
+        OrderAttachable(TestAgentRefPath),
+        OrderTransferredToAgent(TestAgentRefPath),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(ReturnCode(3))),
+        OrderMoved(Position(0) / "fork+🍋" % 1),
+        OrderDetachable,
+        OrderTransferredToMaster))
+  }
+
+  private def checkEvents[E <: OrderEvent: ClassTag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
+    assert(runUntil[E](workflowNotation).map(_.event) == expectedEvents)
+
+  private def runUntil[E <: OrderEvent: ClassTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
+    val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
-        directoryProvider.run { (master, _) =>
-        val orderId = OrderId("🔺")
+      directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.milliseconds.toJavaDuration))
+      directoryProvider.run { (master, _) =>
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         master.eventWatch.await[E](_.key == orderId)
-        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], expectedEvents)
+        master.eventWatch.all[OrderEvent] match {
+          case EventSeq.NonEmpty(stampeds) => stampeds.map(_.value).filterNot(_.event.isInstanceOf[OrderStdWritten]).toVector
+          case o => fail(s"Unexpected EventSeq received: $o")
+        }
       }
-    }
-
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit = {
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.filter(_.value.key == orderId).map(_.value.event).toVector
-        assert(events == expected)
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
     }
   }
 }
 
 object FailUncatchableTest
 {
+  private val orderId = OrderId("🔺")
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
 }

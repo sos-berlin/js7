@@ -15,6 +15,8 @@ sealed trait BranchId {
   private[position] def toSimpleType: Any
 
   def normalized: BranchId
+
+  def isFork: Boolean
 }
 
 object BranchId
@@ -23,6 +25,7 @@ object BranchId
   val Else = BranchId("else")
   val Try_ = BranchId("try")
   val Catch_ = BranchId("catch")
+  val ForkPrefix = "fork+"
 
   implicit def apply(branchId: String): Named = Named(branchId)
   implicit def apply(index: Int): Indexed = Indexed(index)
@@ -46,11 +49,15 @@ object BranchId
       case _ => Invalid(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
     }
 
+  def fork(branch: String) = BranchId(ForkPrefix + branch)
+
   final case class Named(string: String) extends BranchId {
     def normalized =
       if (string startsWith "try+") "try"
       else if (string startsWith "catch+") "catch"
       else this
+
+    def isFork = string startsWith ForkPrefix
 
     private[position] def toSimpleType: String = string
     override def toString = string
@@ -63,6 +70,7 @@ object BranchId
   final case class Indexed(number: Int) extends BranchId {
     def normalized = this
     private[position] def toSimpleType: Int = number
+    def isFork = false
     override def toString = number.toString
   }
   object Indexed {

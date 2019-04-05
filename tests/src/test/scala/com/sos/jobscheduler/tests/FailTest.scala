@@ -60,7 +60,7 @@ final class FailTest extends FreeSpec
       Vector(
         OrderAdded(TestWorkflowId),
         OrderStarted,
-        OrderStopped(Outcome.Failed("ERROR", ReturnCode(7)))))
+        OrderStopped(Outcome.Failed(Some("ERROR"), ReturnCode(7)))))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =

@@ -3,7 +3,6 @@ package com.sos.jobscheduler.core.workflow.instructions
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.workflow.OrderContext
-import com.sos.jobscheduler.data.expression.Evaluator
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.workflow.instructions.If
@@ -25,7 +24,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: If) = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
-    Evaluator.evalBoolean(context.makeScope(order), instruction.predicate)
+    context.makeScope(order).evalBoolean(instruction.predicate)
       .map {
         case true => Some(Then)
         case false => instruction.elseWorkflow.isDefined ? Else

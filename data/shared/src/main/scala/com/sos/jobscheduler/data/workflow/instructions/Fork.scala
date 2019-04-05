@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.source.SourcePos
@@ -26,7 +26,7 @@ extends Instruction
     if (dups.nonEmpty) throw Problem(s"Non-unique branch IDs in fork: ${dups.mkString(", ")}").throwable  // To Fork.checked(..): Checked[Fork]
   }
 
-  for (idAndScript <- branches) Fork.validateBranch(idAndScript).valueOr(throw _)
+  for (idAndScript <- branches) Fork.validateBranch(idAndScript).orThrow
 
   def withoutSourcePos = copy(
     sourcePos = None,
@@ -51,8 +51,8 @@ extends Instruction
 
   override def workflow(branchId: BranchId) = {
     branchId match {
-      case BranchId.Named(name) if name startsWith BranchPrefix =>
-        val id = Branch.Id(name drop BranchPrefix.length)
+      case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
+        val id = Branch.Id(name drop BranchId.ForkPrefix.length)
         branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
           .fold(super.workflow(branchId))(Valid.apply)
       case _ =>
@@ -65,15 +65,14 @@ extends Instruction
   override def toString = s"Fork(${branches.map(_.id).mkString(",")})"
 }
 
-object Fork {
-  private val BranchPrefix = "fork+"
-
+object Fork
+{
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
-  private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
-    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto]  || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
-      Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
+  private def validateBranch(branch: Branch): Checked[Branch] =
+    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto] || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
+      Invalid(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
     else
       Valid(branch)
 
@@ -84,7 +83,7 @@ object Fork {
 
     /** Branch.Id("x").string == BranchId("fork+x") */
     final case class Id(string: String) extends GenericString {
-      def toBranchId = BranchId(BranchPrefix + string)
+      def toBranchId = BranchId.fork(string)
     }
     object Id extends GenericString.Checked_[Id] {
       implicit def unchecked(string: String) = new Id(string)

@@ -136,6 +136,9 @@ object OrderEvent {
   final case class OrderFailed(outcome: Outcome.NotSucceeded)
   extends OrderActorEvent
 
+  final case class OrderFailedInFork(outcome: Outcome.NotSucceeded)
+  extends OrderActorEvent
+
   /** Only internal. Will be converted to `OrderStopped` or `OrderCatched`. */
   final case class OrderFailedCatchable(outcome: Outcome.NotSucceeded)
   extends OrderActorEvent
@@ -208,6 +211,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderFinished),
     Subtype(deriveCodec[OrderFailed]),
+    Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancelationMarked]),
     Subtype(OrderCanceled),
     Subtype(deriveCodec[OrderTransferredToAgent]),

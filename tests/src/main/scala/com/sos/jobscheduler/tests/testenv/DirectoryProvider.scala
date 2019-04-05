@@ -110,16 +110,17 @@ extends HasCloser {
 
   val sign: FileBased => SignedString = fileBasedSigner.sign
 
-  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) => Unit): Unit =
+  def run[A](body: (RunningMaster, IndexedSeq[RunningAgent]) => A): A =
     runAgents()(agents =>
       runMaster()(master =>
         body(master, agents)))
 
-  def runMaster()(body: RunningMaster => Unit): Unit = {
+  def runMaster[A]()(body: RunningMaster => A): A = {
     val runningMaster = startMaster() await 99.s
     try {
-      body(runningMaster)
+      val a = body(runningMaster)
       runningMaster.terminate() await 99.s
+      a
     }
     catch { case NonFatal(t) =>
       try runningMaster.terminate() await 99.s
@@ -164,10 +165,11 @@ extends HasCloser {
       runningMaster
     }
 
-  def runAgents()(body: IndexedSeq[RunningAgent] => Unit): Unit =
+  def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents =>
-      body(agents)
+      val a = body(agents)
       agents map (_.terminate()) await 99.s
+      a
     }
 
   def startAgents(config: Config = ConfigFactory.empty): Future[Seq[RunningAgent]] =
@@ -274,7 +276,7 @@ object DirectoryProvider
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
-  final def script(duration: Duration, resultVariable: Option[String] = None) =
+  final def script(duration: Duration, resultVariable: Option[String] = None): String =
     if (isWindows)
       (s"""@echo off
           |echo ${StdoutOutput.trim}

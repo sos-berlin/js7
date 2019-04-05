@@ -50,16 +50,15 @@ final class OutcomeTest extends FreeSpec {
     }
 
     "Failed" in {
-      testJson[Outcome](Outcome.Failed("ERROR", ReturnCode(1)), json"""
+      testJson[Outcome](Outcome.Failed(None, ReturnCode(1)), json"""
         {
           "TYPE": "Failed",
-          "errorMessage": "ERROR",
           "returnCode": 1
         }""")
     }
 
-    "Failed with keyValues" in {
-      testJson[Outcome](Outcome.Failed("ERROR", ReturnCode(1), Map("KEY" -> "VALUE")), json"""
+    "Failed complete" in {
+      testJson[Outcome](Outcome.Failed(Some("ERROR"), ReturnCode(1), Map("KEY" -> "VALUE")), json"""
         {
           "TYPE": "Failed",
           "errorMessage": "ERROR",

@@ -75,20 +75,20 @@ object Outcome
       } yield Succeeded(returnCode, keyValues)
   }
 
-  final case class Failed(errorMessage: String, returnCode: ReturnCode, keyValues: Map[String, String])
+  final case class Failed(errorMessage: Option[String], returnCode: ReturnCode, keyValues: Map[String, String])
   extends Undisrupted with NotSucceeded
   {
     def isSucceeded = false
   }
   object Failed extends Undisrupted.Companion[Failed]
   {
-    val DefaultErrorMessage = "Order step failed"
+    val DefaultErrorMessage = "Failed"
 
-    def apply(errorMessage: String, returnCode: ReturnCode): Failed =
+    def apply(errorMessage: Option[String], returnCode: ReturnCode): Failed =
       Failed(errorMessage, returnCode, Map.empty)
 
     protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
-      Failed(DefaultErrorMessage, returnCode, keyValues)
+      Failed(errorMessage = None, returnCode, keyValues)
 
     implicit val jsonEncoder: ObjectEncoder[Failed] =
       o => JsonObject.fromIterable(
@@ -98,7 +98,7 @@ object Outcome
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
-        errorMessage <- c.get[String]("errorMessage")
+        errorMessage <- c.get[Option[String]]("errorMessage")
         returnCode <- c.get[ReturnCode]("returnCode")
         keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
       } yield Failed(errorMessage, returnCode, keyValues)
