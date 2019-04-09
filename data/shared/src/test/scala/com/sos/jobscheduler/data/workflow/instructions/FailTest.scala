@@ -28,7 +28,7 @@ final class FailTest extends FreeSpec
         Fail(Some(StringConstant("ERROR")), Some(ReturnCode(7)), uncatchable = true, Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Fail",
-          "errorMessage": "'ERROR'",
+          "message": "'ERROR'",
           "returnCode": 7,
           "uncatchable": true,
           "sourcePos": [ 1, 2 ]

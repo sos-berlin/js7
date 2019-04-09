@@ -52,10 +52,10 @@ final class FailTest extends FreeSpec
         OrderStopped(Outcome.Failed(ReturnCode(7)))))
   }
 
-  "fail (returnCode=7, error='ERROR')" in {
+  "fail (returnCode=7, message='ERROR')" in {
     runUntil[OrderStopped]("""
       |define workflow {
-      |  fail (returnCode=7, error='ERROR');
+      |  fail (returnCode=7, message='ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),

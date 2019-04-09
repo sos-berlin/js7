@@ -128,14 +128,14 @@ object WorkflowParser
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
           keyValue("returnCode", returnCode) |
-          keyValue("error", stringExpression) |
+          keyValue("message", stringExpression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)
         .flatMap { case (start, maybeKeyToValue, end) =>
           val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
           for {
             returnCode <- keyToValue.get[ReturnCode]("returnCode")
-            errorMessage <- keyToValue.get[StringExpression]("error")
+            errorMessage <- keyToValue.get[StringExpression]("message")
             uncatchable <- keyToValue.get[BooleanConstant]("uncatchable") map (_.fold(false)(_.booleanValue))
           } yield FailInstr(errorMessage, returnCode, uncatchable = uncatchable, sourcePos(start, end))
         })

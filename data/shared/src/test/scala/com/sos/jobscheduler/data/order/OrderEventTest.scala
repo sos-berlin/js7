@@ -155,7 +155,7 @@ final class OrderEventTest extends FreeSpec {
         "outcome": {
           "TYPE": "Failed",
           "returnCode": 1,
-          "errorMessage": "ERROR"
+          "message": "ERROR"
         }
       }""")
   }
@@ -195,7 +195,7 @@ final class OrderEventTest extends FreeSpec {
         "outcome": {
           "TYPE": "Failed",
           "returnCode": 1,
-          "errorMessage": "FAILED"
+          "message": "FAILED"
         },
         "movedTo": [ 1 ]
       }""")
@@ -219,7 +219,7 @@ final class OrderEventTest extends FreeSpec {
         "outcome": {
           "TYPE": "Failed",
           "returnCode": 1,
-          "errorMessage": "ERROR"
+          "message": "ERROR"
         }
       }""")
   }
@@ -242,7 +242,7 @@ final class OrderEventTest extends FreeSpec {
         "outcome": {
           "TYPE": "Failed",
           "returnCode": 1,
-          "errorMessage": "ERROR"
+          "message": "ERROR"
         }
       }""")
   }

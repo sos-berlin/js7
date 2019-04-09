@@ -122,7 +122,7 @@ object WorkflowPrinter
           if (maybeErrorMessage.isDefined || maybeReturnCode.isDefined) {
             sb ++= (
               (uncatchable ? "uncatchable=true") ++
-              maybeErrorMessage.map(o => "error=" + o.toString) ++
+              maybeErrorMessage.map(o => "message=" + o.toString) ++
               maybeReturnCode.map(o => "returnCode=" + o.number.toString)
               ).mkString(" (", ", ", ")")
           }

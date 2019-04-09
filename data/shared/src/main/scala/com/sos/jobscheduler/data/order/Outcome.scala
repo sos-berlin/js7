@@ -92,13 +92,13 @@ object Outcome
 
     implicit val jsonEncoder: ObjectEncoder[Failed] =
       o => JsonObject.fromIterable(
-        ("errorMessage" -> o.errorMessage.asJson) ::
+        ("message" -> o.errorMessage.asJson) ::
         ("returnCode" -> o.returnCode.asJson) ::
         o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
 
     implicit val jsonDecoder: Decoder[Failed] =
       c => for {
-        errorMessage <- c.get[Option[String]]("errorMessage")
+        errorMessage <- c.get[Option[String]]("message")
         returnCode <- c.get[ReturnCode]("returnCode")
         keyValues <- c.get[Option[Map[String, String]]]("keyValues") map (_ getOrElse Map.empty)
       } yield Failed(errorMessage, returnCode, keyValues)

@@ -12,7 +12,7 @@ import io.circe.{Decoder, JsonObject, ObjectEncoder}
   * @author Joacim Zschimmer
   */
 sealed case class Fail(
-  errorMessage: Option[StringExpression] = None,
+  message: Option[StringExpression] = None,
   returnCode: Option[ReturnCode] = None,
   uncatchable: Boolean = false,
   sourcePos: Option[SourcePos] = None)
@@ -25,14 +25,14 @@ object Fail
 {
   implicit val jsonEncoder: ObjectEncoder[Fail] =
     o => JsonObject(
-      "errorMessage" -> o.errorMessage.asJson,
+      "message" -> o.message.asJson,
       "returnCode" -> o.returnCode.asJson,
       "uncatchable" -> (o.uncatchable ? o.uncatchable).asJson,
       "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[Fail] =
     c => for {
-      errorMessage <- c.get[Option[StringExpression]]("errorMessage")
+      errorMessage <- c.get[Option[StringExpression]]("message")
       returnCode <- c.get[Option[ReturnCode]]("returnCode")
       uncatchable <- c.get[Option[Boolean]]("uncatchable") map (_ getOrElse false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")

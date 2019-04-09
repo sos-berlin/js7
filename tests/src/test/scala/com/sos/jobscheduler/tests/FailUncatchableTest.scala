@@ -59,11 +59,11 @@ final class FailUncatchableTest extends FreeSpec
         OrderFailed(Outcome.Failed(ReturnCode(7)))))
   }
 
-  "fail (uncatchable=true, returnCode=7, error='ERROR')" in {
+  "fail (uncatchable=true, returnCode=7, message='ERROR')" in {
     checkEvents[OrderFailed]("""
       |define workflow {
       |  execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
-      |  fail (uncatchable=true, returnCode=7, error='TEST-ERROR');
+      |  fail (uncatchable=true, returnCode=7, message='TEST-ERROR');
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
@@ -84,7 +84,7 @@ final class FailUncatchableTest extends FreeSpec
      |  fork {
      |    "🥕": {
      |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];
-     |      fail (uncatchable=true, error="TEST-ERROR");
+     |      fail (uncatchable=true, message="TEST-ERROR");
      |    },
      |    "🍋": {
      |      execute agent="/AGENT", executable="/sleep.cmd";
@@ -131,7 +131,7 @@ final class FailUncatchableTest extends FreeSpec
      |  fork {
      |    "🥕": {
      |      execute agent="/AGENT", executable="/sleep.cmd";
-     |      fail (uncatchable=true, error="TEST-ERROR");
+     |      fail (uncatchable=true, message="TEST-ERROR");
      |    },
      |    "🍋": {
      |      execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3];

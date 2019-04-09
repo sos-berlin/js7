@@ -22,7 +22,7 @@ object FailExecutor extends EventInstructionExecutor
         Valid(Some(order.id <-: OrderStarted))
 
       case _: Order.Ready =>
-        lazy val maybeErrorMessage = fail.errorMessage
+        lazy val maybeErrorMessage = fail.message
           .map(o => context.makeScope(order).evalString(o).valueOr(_.toString))
         lazy val outcome = fail.returnCode match {
           case Some(returnCode) =>
