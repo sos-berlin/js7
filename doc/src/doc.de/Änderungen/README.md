@@ -131,8 +131,49 @@ Ein Workflow mit direktem Aufruf eines Skript und mit Definition eines Jobs sieh
 
 ### Skript im Job
 
-TODO
+Zum Schutz des Rechners akzeptiert der Agent Skripte im Workflow nur, 
+wenn folgende Einstellung in der Datei ```agent.conf``` gesetzt ist:
 
+```
+jobscheduler.agent.task.script-injection-allowed = yes
+```
+
+Ein Workflow mit zwei Jobs. Der eine referenziert ein Executable auf dem Agenten, der andere bringt sein Skript mit.
+
+```
+{
+  "path": "/TEST",
+  "versionId": "VERSION",
+  "instructions": [
+    {
+      "TYPE": "Execute.Named",
+      "jobName": "EXECUTABLE"
+    }, {
+      "TYPE": "Execute.Named",
+      "jobName": "OWN-SCRIPT"
+    }
+  ],
+  "jobs": {
+    "EXECUTABLE": {
+      "agentRefPath": "/AGENT",
+      "executable": {
+        "TYPE": "ExecutablePath",
+        "path": "/EXECUTABLE"
+      },
+      "taskLimit": 1
+    },
+    "OWN-SCRIPT": {
+      "agentRefPath": "/AGENT",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "#!/usr/bin/env bash\n..."
+      },
+      "taskLimit": 1
+    }
+  }
+}
+```
+        
 ## 2019-03-14
 
 ### Geändertes JSON für Aufruf eines Jobs

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.expression.PositionSearch
-import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
+import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Retry, TryInstruction}
@@ -178,6 +178,55 @@ final class WorkflowTest extends FreeSpec {
               "taskLimit": 3,
               "defaultArguments": { "JOB_B": "B-VALUE"
             }}
+          }
+        }""")
+    }
+
+    "Workflow with a script" in {
+      testJson[Workflow](
+        Workflow(
+          WorkflowPath("/TEST") ~ "VERSION",
+          Vector(
+            Execute.Named(WorkflowJob.Name("EXECUTABLE")),
+            Execute.Named(WorkflowJob.Name("OWN-SCRIPT"))),
+          Map(
+            WorkflowJob.Name("EXECUTABLE") ->
+              WorkflowJob(
+                AgentRefPath("/AGENT"),
+                ExecutablePath("/EXECUTABLE")),
+            WorkflowJob.Name("OWN-SCRIPT") ->
+              WorkflowJob(
+                AgentRefPath("/AGENT"),
+                ExecutableScript("#!/usr/bin/env bash\n...")))),
+        json"""{
+          "path": "/TEST",
+          "versionId": "VERSION",
+          "instructions": [
+            {
+              "TYPE": "Execute.Named",
+              "jobName": "EXECUTABLE"
+            }, {
+              "TYPE": "Execute.Named",
+              "jobName": "OWN-SCRIPT"
+            }
+          ],
+          "jobs": {
+            "EXECUTABLE": {
+              "agentRefPath": "/AGENT",
+              "executable": {
+                "TYPE": "ExecutablePath",
+                "path": "/EXECUTABLE"
+              },
+              "taskLimit": 1
+            },
+            "OWN-SCRIPT": {
+              "agentRefPath": "/AGENT",
+              "executable": {
+                "TYPE": "ExecutableScript",
+                "script": "#!/usr/bin/env bash\n..."
+              },
+              "taskLimit": 1
+            }
           }
         }""")
     }
