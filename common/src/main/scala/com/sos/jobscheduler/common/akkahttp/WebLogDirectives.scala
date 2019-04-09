@@ -78,7 +78,7 @@ trait WebLogDirectives extends ExceptionHandling {
       if (response.status.isFailure)
         response.entity match {  // Try to extract error message
           case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
-            appendQuotedString(sb, entity.data.utf8String take 210 takeWhile { c => !c.isControl } truncateWithEllipsis 200)
+            appendQuotedString(sb, entity.data.utf8String take 210 map (c => if (c.isControl) '·' else c) truncateWithEllipsis 200)
 
           case entity @ HttpEntity.Strict(`application/json`, _) =>
             parseJson(entity.data.utf8String) flatMap (_.as[Problem]) match {
