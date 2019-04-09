@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -15,6 +16,7 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then,
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.RetryTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -22,6 +24,8 @@ import scala.reflect.ClassTag
 
 final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
 {
+  override protected val masterConfig = ConfigFactory.parseString(
+    s"""jobscheduler.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
 
@@ -177,6 +181,64 @@ final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
     assert(stamped(1).timestamp - stamped(0).timestamp > 1.second)     // First retry after a second
     assert(stamped(2).timestamp - stamped(1).timestamp < 0.5.second)   // Following retries immediately (0 seconds)
     assert(stamped(3).timestamp - stamped(2).timestamp < 0.5.second)
+  }
+
+  "maxTries=3, special handling of 'catch retry'" in {
+    val workflowNotation = s"""
+       |define workflow {
+       |  try (maxTries=3) fail;
+       |  catch retry;
+       |}""".stripMargin
+    val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
+    val versionId = updateRepo(change = workflow :: Nil)
+
+    val expectedEvents = Vector(
+      OrderAdded(workflow.path ~ versionId),
+      OrderMoved(Position(0) / Try_ % 0),
+      OrderStarted,
+
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / Catch_ % 0),
+      OrderRetrying(Position(0) / try_(1) % 0),
+
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0),
+      OrderRetrying(Position(0) / try_(2) % 0),
+
+      // No OrderCatched here! OrderStopped has Outcome of last failed instruction in try block
+      OrderStopped(Outcome.Failed(ReturnCode(0))))
+
+    val orderId = OrderId("🔶")
+    val afterEventId = eventWatch.lastAddedEventId
+    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    awaitAndCheckEventSeq[OrderStopped](afterEventId, orderId, expectedEvents)
+  }
+
+  "maxTries=3, standard handling, stopping at retry instruction" in {
+    val workflowNotation = s"""
+       |define workflow {
+       |  try (maxTries=3) fail;
+       |  catch if (true) retry;
+       |}""".stripMargin
+    val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
+    val versionId = updateRepo(change = workflow :: Nil)
+
+    val expectedEvents = Vector(
+      OrderAdded(workflow.path ~ versionId),
+      OrderMoved(Position(0) / Try_ % 0),
+      OrderStarted,
+
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / Catch_ % 0 / Then % 0),
+      OrderRetrying(Position(0) / try_(1) % 0),
+
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0 / Then % 0),
+      OrderRetrying(Position(0) / try_(2) % 0),
+
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(2) % 0 / Then % 0),
+      OrderStopped(Outcome.Disrupted(Problem("Retry stopped because maxRetries=3 has been reached"))))
+
+    val orderId = OrderId("🔵")
+    val afterEventId = eventWatch.lastAddedEventId
+    master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+    awaitAndCheckEventSeq[OrderStopped](afterEventId, orderId, expectedEvents)
   }
 
   private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit = {

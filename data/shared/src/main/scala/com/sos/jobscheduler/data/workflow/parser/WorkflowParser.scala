@@ -181,17 +181,24 @@ object WorkflowParser
 
     private def tryInstruction[_: P] = P[TryInstruction](
       (Index ~ keyword("try") ~
-        (w ~ inParentheses(specificKeyValue("retryDelays", bracketCommaSequence(int)))).? ~
+        (w ~ inParentheses(keyValues(
+          keyValue("retryDelays", bracketCommaSequence(int)) |
+          keyValue("maxTries", int)))
+        ).?.map(_ getOrElse KeyToValue.empty) ~
         Index ~
         w ~/ curlyWorkflowOrInstruction ~ w ~/
         keyword("catch") ~ w ~/
         curlyWorkflowOrInstruction ~
         w ~/ instructionTerminator.?
-      ) .flatMap { case (start, delays, end, try_, catch_) =>
-          checkedToP(
-            TryInstruction.checked(try_, catch_,
+      ) .flatMap { case (start, keyToValue, end, try_, catch_) =>
+          for {
+            delays <- keyToValue.get[Seq[Int]]("retryDelays")
+            maxTries <- keyToValue.get[Int]("maxTries")
+            try_ <- checkedToP(TryInstruction.checked(try_, catch_,
               delays.map(_.toVector.map(FiniteDuration(_, TimeUnit.SECONDS))),
+              maxTries = maxTries,
               sourcePos(start, end)))
+          } yield try_
         })
 
     private def ifNonZeroReturnCodeGotoInstruction[_: P] = P[IfNonZeroReturnCodeGoto](

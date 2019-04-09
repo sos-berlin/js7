@@ -165,8 +165,10 @@ private[parser] object BasicParsers
     val empty = KeyToValue[Any](Map.empty)
   }
 
-  def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]): P[V] =
-    P((if (name.isEmpty) Pass else keyword(name) ~ w ~ "=" ~/ w) ~ valueParser)
+  def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]) = P[V] {
+    def keywordPart = if (name.isEmpty) Pass else keyword(name) ~ w ~ "=" ~/ w
+    P(keywordPart ~ valueParser)
+  }
 
   def curly[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
     h ~ "{" ~ w ~/ parser ~ w ~ "}")

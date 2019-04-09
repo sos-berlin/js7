@@ -69,6 +69,7 @@ final class TryInstructionTest extends FreeSpec
           tryWorkflow = Workflow.of(Fail(None)),
           catchWorkflow = Workflow.of(Retry()),
           retryDelays = Some(Vector(100.milliseconds, 1.minute)),
+          maxTries = Some(10),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Try",
@@ -83,6 +84,7 @@ final class TryInstructionTest extends FreeSpec
             ]
           },
          "retryDelays": [ 0.1, 60 ],
+         "maxTries": 10,
          "sourcePos": [ 1, 2 ]
         }""")
     }

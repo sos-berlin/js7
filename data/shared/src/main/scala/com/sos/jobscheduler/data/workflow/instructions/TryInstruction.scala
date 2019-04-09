@@ -21,11 +21,14 @@ final case class TryInstruction(
   tryWorkflow: Workflow,
   catchWorkflow: Workflow,
   retryDelays: Option[IndexedSeq[FiniteDuration]] = None,
+  maxTries: Option[Int] = None,
   sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
   def checked: Checked[TryInstruction] =
-    if (retryDelays.isDefined && !containsRetry(catchWorkflow))
+    if (maxTries exists (_ < 1))
+      Invalid(InvalidMaxTriesProblem)
+    else if ((retryDelays.isDefined || maxTries.isDefined) && !containsRetry(catchWorkflow))
       Invalid(MissingRetryProblem)
     else
       Valid(this)
@@ -80,12 +83,13 @@ extends Instruction
 object TryInstruction
 {
   private val NoRetryDelay = Duration.Zero  // No retryDelays, no delay
-  val MissingRetryProblem = Problem("Missing a retry instruction in the catch block to make sense of retryDelays")
+  val InvalidMaxTriesProblem = Problem.pure("maxTries argument must be a positive number")
+  val MissingRetryProblem = Problem.pure("Missing a retry instruction in the catch block to make sense of retryDelays or maxTries")
 
-  def checked(tryWorkflow: Workflow, catchWorkflow: Workflow, retryDelays: Option[Seq[FiniteDuration]] = None,
+  def checked(tryWorkflow: Workflow, catchWorkflow: Workflow, retryDelays: Option[Seq[FiniteDuration]] = None, maxTries: Option[Int] = None,
     sourcePos: Option[SourcePos] = None)
   : Checked[TryInstruction] =
-    new TryInstruction(tryWorkflow, catchWorkflow, retryDelays.map(_.toVector), sourcePos)
+    new TryInstruction(tryWorkflow, catchWorkflow, retryDelays.map(_.toVector), maxTries, sourcePos)
       .checked
 
   def toRetryIndex(branchId: BranchId): Checked[Int] =
@@ -107,6 +111,7 @@ object TryInstruction
       "try" -> o.tryWorkflow.asJson,
       "catch" -> o.catchWorkflow.asJson,
       "retryDelays" -> (o.retryDelays.nonEmpty ? o.retryDelays).asJson,
+      "maxTries" -> (o.maxTries.nonEmpty ? o.maxTries).asJson,
       "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[TryInstruction] =
@@ -114,7 +119,8 @@ object TryInstruction
       try_ <- c.get[Workflow]("try")
       catch_ <- c.get[Workflow]("catch")
       delays <- c.get[Option[Seq[FiniteDuration]]]("retryDelays")
+      maxTries <- c.get[Option[Int]]("maxTries")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
-      tryInstr <- TryInstruction.checked(try_, catch_, delays, sourcePos).toDecoderResult
+      tryInstr <- TryInstruction.checked(try_, catch_, delays, maxTries = maxTries, sourcePos).toDecoderResult
     } yield tryInstr
 }

@@ -38,7 +38,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute anonymous" in {
-    check("""define workflow { execute executable="/my/executable", agent="/AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="/AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my/executable")),
@@ -47,7 +47,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute anonymous with relative agent path" in {
-    check("""define workflow { execute executable="/my/executable", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/my/executable")),
@@ -56,7 +56,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute anonymous with default arguments 'SCHEDULER_PARAM_'" in {
-    check("""define workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
+    checkWithSourcePos("""define workflow { execute executable="/my/executable", agent="/AGENT", arguments={"A": "aaa", "B": "bbb"}, taskLimit=3; }""",
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"),
@@ -68,7 +68,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute script with \\n" in {
-    check(
+    checkWithSourcePos(
       """define workflow { execute script="LINE 1\nLINE 2\nLINE 3", agent="/AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
@@ -78,7 +78,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute script with multi-line string" in {
-    check(
+    checkWithSourcePos(
 """define workflow {
   execute agent="/AGENT", script=
    'LINE 1
@@ -94,7 +94,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Execute named" in {
-    check("""
+    checkWithSourcePos("""
       define workflow {
         job A;
         job B, arguments = { "KEY": "VALUE" };
@@ -147,7 +147,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Single instruction with relative job path" in {
-    check("""define workflow { execute executable="/A", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")), sourcePos(18, 56)),
@@ -155,7 +155,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Single instruction with absolute job path" in {
-    check("""define workflow { execute executable="/A", agent="/AGENT"; }""",
+    checkWithSourcePos("""define workflow { execute executable="/A", agent="/AGENT"; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")), sourcePos(18, 57)),
@@ -163,7 +163,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "execute with successReturnCodes" in {
-    check("""define workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
+    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT", successReturnCodes=[0, 1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
@@ -173,7 +173,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "execute with failureReturnCodes" in {
-    check("""define workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
+    checkWithSourcePos("""define workflow { execute executable="/A", agent="AGENT", failureReturnCodes=[1, 3]; }""",
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
@@ -183,7 +183,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Label and single instruction" in {
-    check("""define workflow { A: execute executable="/A", agent="AGENT"; }""",
+    checkWithSourcePos("""define workflow { A: execute executable="/A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
           "A" @: Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")), sourcePos(21, 59)),
@@ -191,7 +191,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "if (...) {...}" in {
-    check("""define workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
+    checkWithSourcePos("""define workflow { if ((returnCode in [1, 2]) || $KEY == "VALUE") { execute executable="/THEN", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(
@@ -208,7 +208,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "if (...) {...} else {...}" in {
-    check("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
+    checkWithSourcePos("""define workflow { if (returnCode == -1) { execute executable="/THEN", agent="AGENT" } else { execute executable="/ELSE", agent="AGENT" } }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
@@ -227,7 +227,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
  "if (...) instruction" in {
-    check("""define workflow { if (returnCode == -1) fail }""",
+    checkWithSourcePos("""define workflow { if (returnCode == -1) fail }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
@@ -237,7 +237,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
  "if (...) instruction else instruction" in {
-    check("""define workflow { if (returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
+    checkWithSourcePos("""define workflow { if (returnCode == -1) fail else execute executable="/ELSE", agent="AGENT" }""",
       Workflow.anonymous(
         Vector(
           If(Equal(LastReturnCode, NumericConstant(-1)),
@@ -250,7 +250,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Two consecutive ifs with semicolon" in {
-    check(
+    checkWithSourcePos(
      """define workflow {
           if (returnCode == 1) {}
           if (returnCode == 2) {}
@@ -270,7 +270,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Two consecutive ifs without semicolon" in {
-    check(
+    checkWithSourcePos(
      """define workflow {
           if (returnCode == 1) {
           }
@@ -292,7 +292,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "fork" in {
-    check(
+    checkWithSourcePos(
       """define workflow {
            fork {
              "🥕": {
@@ -318,14 +318,14 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "offer" in {
-    check("""define workflow { offer orderId = "OFFERED", timeout = 60; }""",
+    checkWithSourcePos("""define workflow { offer orderId = "OFFERED", timeout = 60; }""",
       Workflow(WorkflowPath.NoId, Vector(
         Offer(OrderId("OFFERED"), 60.seconds, sourcePos(18, 57)),
         ImplicitEnd(sourcePos(59, 60)))))
   }
 
   "await" in {
-    check("""define workflow { await orderId = "OFFERED"; }""",
+    checkWithSourcePos("""define workflow { await orderId = "OFFERED"; }""",
       Workflow(WorkflowPath.NoId, Vector(
         AwaitOrder(OrderId("OFFERED"), sourcePos(18, 43)),
         ImplicitEnd(sourcePos(45, 46)))))
@@ -333,7 +333,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   "try" - {
     "try" in {
-      check("""
+      checkWithSourcePos("""
         define workflow {
           try {
             execute executable="/TRY", agent="/AGENT";
@@ -359,20 +359,21 @@ final class WorkflowParserTest extends FreeSpec {
     }
 
     "try with retryDelays" in {
-      check("""
+      checkWithSourcePos("""
         define workflow {
-          try (retryDelays=[1, 2, 3]) fail;
+          try (retryDelays=[1, 2, 3], maxTries=3) fail;
           catch retry;
         }""",
         Workflow(WorkflowPath.NoId, Vector(
           TryInstruction(
             Workflow.of(
-              Fail(sourcePos = sourcePos(65, 69))),
+              Fail(sourcePos = sourcePos(77, 81))),
             Workflow.of(
-              Retry(sourcePos(87, 92))),
+              Retry(sourcePos(99, 104))),
             Some(Vector(1.second, 2.seconds, 3.seconds)),
-            sourcePos(37, 64)),
-          ImplicitEnd(sourcePos(102, 103)))))
+            maxTries = Some(3),
+            sourcePos = sourcePos(37, 76)),
+          ImplicitEnd(sourcePos(114, 115)))))
     }
 
     "try with retryDelays but retry is missing" in {
@@ -381,13 +382,22 @@ final class WorkflowParserTest extends FreeSpec {
           try (retryDelays=[1, 2, 3]) fail;
           catch {}
         }""") ==
-        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays:5:9, found "}"""")))
+        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
+    }
+
+    "try with maxRetries but retry is missing" in {
+      assert(WorkflowParser.parse("""
+        define workflow {
+          try (maxTries=3) fail;
+          catch {}
+        }""") ==
+        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
     }
   }
 
   "retry" - {
     "no delay" in {
-      check("""
+      checkWithSourcePos("""
         define workflow {
           try {
             fail;
@@ -409,7 +419,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "fail" in {
-    check("""
+    checkWithSourcePos("""
       define workflow {
         fail;
         fail (returnCode=7);
@@ -427,7 +437,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "finish" in {
-    check("""
+    checkWithSourcePos("""
       define workflow {
         finish;
       }""",
@@ -437,7 +447,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "onError and goto" in {
-    check("""
+    checkWithSourcePos("""
       define workflow {
         execute executable="/A", agent="/AGENT";
         ifNonZeroReturnCodeGoto FAILURE;
@@ -499,8 +509,15 @@ final class WorkflowParserTest extends FreeSpec {
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
 
-  private def check(source: String, workflow: Workflow): Unit = {
-    assert(WorkflowParser.parse(source) == Valid(workflow.copy(source = Some(source))))
+  private def checkWithSourcePos(source: String, workflow: Workflow): Unit =
+    check2(source, workflow, withSourcePos = true)
+
+  private def check(source: String, workflow: Workflow): Unit =
+    check2(source, workflow, withSourcePos = false)
+
+  private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
+    val parsedWorkflow = WorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
+    assert(parsedWorkflow == Valid(workflow.copy(source = Some(source))))
     val generatedSource = workflow.show
     assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
       == Valid(workflow.copy(source = Some(generatedSource)).withoutSourcePos),

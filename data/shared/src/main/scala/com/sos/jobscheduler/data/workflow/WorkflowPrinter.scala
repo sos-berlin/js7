@@ -171,12 +171,14 @@ object WorkflowPrinter
           indent(nesting)
           sb ++= "}\n"
 
-        case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, _) =>
+        case TryInstruction(tryWorkflow, catchWorkflow, retryDelays, maxTries, _) =>
           sb ++= "try "
-          for (delays <- retryDelays) {
-            sb ++= "(retryDelays="
-            sb ++= delays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")
-            sb ++= ") "
+          if (retryDelays.isDefined || maxTries.isDefined) {
+            sb ++= (
+              (for (delays <- retryDelays) yield
+                "retryDelays=" + delays.map(_.toBigDecimalSeconds.toString).mkString("[", ", ", "]")) ++
+              (for (n <- maxTries) yield "maxTries=" + n.toString)
+            ).mkString("(", ", ", ")")
           }
           sb ++= "{\n"
           appendWorkflowContent(sb, nesting + 1, tryWorkflow)

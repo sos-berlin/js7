@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
@@ -57,11 +57,11 @@ final class OrderEventSource(
 
             case Valid(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
               assert(oId == orderId)
-              catchPosition(orderId) match {
-                case None => Valid(Some(oId <-: OrderStopped(outcome)))
-                case Some(pos) =>
-                  applyMoveInstructions(order.withPosition(pos))
-                    .flatMap(pos => Valid(Some(oId <-: OrderCatched(outcome, pos))))
+              findCatchPosition(order) match {
+                case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
+                  applyMoveInstructions(order.withPosition(firstCatchPos))
+                    .flatMap (movedPos => Valid(Some(oId <-: OrderCatched(outcome, movedPos))))
+                case _ => Valid(Some(oId <-: OrderStopped(outcome)))
               }
 
             case o => o
@@ -69,6 +69,19 @@ final class OrderEventSource(
       }
     invalidToEvent(order, maybeEvent)
   }
+
+  // Special handling for try with maxRetries and catch block with retry instruction only:
+  // try (maxRetries=n) ... catch retry
+  // In this case, OrderStopped event must have original failures's position, not failed retry's position.
+  private def isMaxRetriesReached(order: Order[Order.State], firstCatchPos: Position): Boolean =
+    catchStartsWithRetry(order.workflowId /: firstCatchPos) &&
+      firstCatchPos.dropChild.forall(parentPos =>
+        instruction(order.workflowId /: parentPos) match {  // Parent must be a TryInstruction
+          case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
+        })
+
+  private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
+    instruction(firstCatchPos).withoutSourcePos == Retry()
 
   private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
   : Option[KeyedEvent[OrderActorEvent]] =
@@ -82,9 +95,8 @@ final class OrderEventSource(
       case Valid(o) => o
     }
 
-  private def catchPosition(orderId: OrderId): Option[Position] =
+  private def findCatchPosition(order: Order[Order.State]): Option[Position] =
     for {
-      order <- idToOrder.checked(orderId).toOption
       workflow <- idToWorkflow(order.workflowId).toOption
       position <- workflow.findCatchPosition(order.position)
     } yield position

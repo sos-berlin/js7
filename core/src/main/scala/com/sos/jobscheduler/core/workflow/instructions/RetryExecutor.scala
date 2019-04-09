@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.RetryExecutor._
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.OrderRetrying
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderRetrying, OrderStopped}
+import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchPath, TryBranchId}
 import scala.concurrent.duration._
@@ -28,15 +28,17 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
               .collect { case o: TryInstruction => o }
               .flatMap(_try =>
                 branchPath.lastOption.map(_.branchId).collect {
-                  case TryBranchId(index) => _try.retryDelay(index)
+                  case TryBranchId(index) => (_try.maxTries, _try.retryDelay(index))
                 }))
           .toChecked(missingTryProblem(branchPath))
-          .map { delay =>
-            Some(
-              order.id <-: OrderRetrying(
+          .map {
+            case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
+              Some(order.id <-: OrderStopped(Outcome.Disrupted(Problem.pure(s"Retry stopped because maxRetries=$maxRetries has been reached"))))
+            case (_, delay) =>
+              Some(order.id <-: OrderRetrying(
                 movedTo = branchPath % 0,
                 delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay)))
-          })
+            })
 
   private def nextTimestamp(delay: FiniteDuration) =
     clock() + delay match {

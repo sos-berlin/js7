@@ -36,9 +36,8 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   lazy val normalized: Position =
     reuseIfEqual(this, BranchPath.normalize(branchPath) % nr)
 
-  // not used
   /** Returns 0 if not in a try/catch-block. */
-  private[position] lazy val tryCount: Int = calculateTryCount
+  lazy val tryCount: Int = calculateTryCount
 
   @tailrec
   private def calculateTryCount: Int =

@@ -1,8 +1,46 @@
 # Änderungen
 
+## 2018-04-09
+
+### try maxTries
+
+Die Anweisung ```try``` kann die Anzahl der Versuche beschränken.
+
+```
+try (maxTries=3) {
+  job JOB;
+} catch retry;
+```
+
+Wenn der catch-Block nur die Anweisung retry enthält, 
+dann stoppt der Auftrag beim dritten fehlgeschlagenen Joblauf an dessen Position (falls es kein äußeres try/catch gibt).
+ 
 ## 2018-03-19
 
-### Zugriff auf vorherige Ergnisse vorheriger Auftragsschritte
+### Zugriff auf die Ergebnisse vorheriger Auftragsschritte
+
+```
+$NAME
+variable('NAME')
+variable(key='NAME')
+variable(key='NAME', default='VALUE')
+variable(key='NAME', label=LABEL)
+variable(key='NAME', job=JOB)
+argument('NAME')
+argument(key='NAME')
+argument(key='NAME', default='VALUE')
+```
+
+Neben der bisherigen Syntax ```$NAME``` und ```variable('NAME')``` kann nun auch die Quelle des Werts bestimmt werden:
+- Der von einem zuletzt ausgeführten Job gelieferte Wert kann mit ```label=``` oder ```job=``` bestimmt werden.
+- ```argument(...)``` liefert einen Wert, wie er beim Einspeisen des Auftrags in den Scheduler gesetzt worden ist.
+- Die Funktion ```variable``` ohne ```job=``` oder ```label``` liefert den zuletzt gesetzten Wert und durchsucht dabei 
+die Auftragshistorie in der Reihenfolge
+  - Ergebnisse der letzten Schritte
+  - Auftragsparameter
+
+Es ist ein Fehler, wenn der benannte Wert unbekannt ist und kein default angegeben ist.
+Der Auftrag stoppt dann.  
 
 #### Umbennungen
 
