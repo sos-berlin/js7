@@ -74,7 +74,22 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
       case _ => Invalid(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
     }
 
-  def isInFork = branchPath exists (_.branchId.isFork)
+  def isInFork = forkPosition.isDefined
+
+  /** Position of fork instruction. */
+  def forkPosition: Option[Position] =
+    branchPath.reverse.dropWhile(o => !o.branchId.isFork) match {
+      case Nil => None
+      case last :: reverseInit => Some(reverseInit.reverse % last.nr)
+    }
+
+  /** BranchPath of fork instruction. */
+  def forkBranch: BranchPath =
+    branchPath.reverse.dropWhile(o => !o.branchId.isFork).reverse
+
+  /** BranchPath of fork instruction in reverse order. */
+  def forkBranchReversed: BranchPath =
+    branchPath.reverse.dropWhile(o => !o.branchId.isFork)
 
   def asSeq: IndexedSeq[Any] =
     branchPath.toVector.flatMap(p => Array(p.nr.number, p.branchId.toSimpleType)) :+ nr.number

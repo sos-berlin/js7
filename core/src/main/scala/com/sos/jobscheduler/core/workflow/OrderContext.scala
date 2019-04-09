@@ -1,15 +1,18 @@
 package com.sos.jobscheduler.core.workflow
 
-import cats.data.Validated.Valid
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.core.workflow.OrderContext._
 import com.sos.jobscheduler.data.expression.Evaluator.{NumericValue, StringValue, Value}
 import com.sos.jobscheduler.data.expression.{Scope, ValueSearch}
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.Instructions
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -19,6 +22,15 @@ trait OrderContext
   def idToOrder: PartialFunction[OrderId, Order[Order.State]]
 
   def instruction(workflowPosition: WorkflowPosition): Instruction
+
+  def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition): Checked[Instruction] =
+    instruction(workflowPosition) match {
+      case o if implicitClass[A] isAssignableFrom o.getClass =>
+        Valid(o.asInstanceOf[A])
+      case o =>
+        Invalid(Problem(s"Expected instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
+          s"at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
+    }
 
   def childOrderEnded(order: Order[Order.State]): Boolean
 

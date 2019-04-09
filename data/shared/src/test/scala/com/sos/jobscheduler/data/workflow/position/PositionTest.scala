@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Try_, catch_, try_}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Then, Try_, catch_, try_}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -80,6 +80,22 @@ final class PositionTest extends FreeSpec {
         BranchPath.Segment(InstructionNr(1), "A") ::
           BranchPath.Segment(InstructionNr(2), "B") :: Nil,
         InstructionNr(3)))
+  }
+
+  "forkPosition" in {
+    assert(Position(1).forkPosition.isEmpty)
+    assert((Position(1) / "fork+A" % 2).forkPosition == Some(Position(1)))
+    assert((Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Some(Position(1)))
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).forkPosition == Some(Position(1) / "fork+A" % 2))
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkPosition == Some(Position(1) / "fork+A" % 2))
+  }
+
+  "fork Branch" in {
+    assert(Position(1).forkBranch == Nil)
+    assert((Position(1) / "fork+A" % 2).forkBranch == Position(1) / "fork+A")
+    assert((Position(1) / "fork+A" % 2 / Then % 3).forkBranch == Position(1) / "fork+A")
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).forkBranch == Position(1) / "fork+A" % 2 / "fork+B")
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkBranch == Position(1) / "fork+A" % 2 / "fork+B")
   }
 
   "tryCount" in {

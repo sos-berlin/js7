@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderStarted}
-import com.sos.jobscheduler.data.workflow.instructions.Finish
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Finish, Fork}
+import com.sos.jobscheduler.data.workflow.position.{BranchPath, InstructionNr}
 
 /**
   * @author Joacim Zschimmer
@@ -22,7 +25,22 @@ object FinishExecutor extends EventInstructionExecutor
         if (order.isAttached)
           Valid(Some(order.id <-: OrderDetachable))
         else
-          Valid(Some(order.id <-: OrderFinished))
+          order.position.forkBranchReversed match {
+            case Nil =>
+              // Not in a fork
+              Valid(Some(order.id <-: OrderFinished))
+
+            case BranchPath.Segment(nr, branchId) :: reverseInit =>
+              // In a fork
+              val forkPosition = reverseInit.reverse % nr
+              for {
+                fork <- context.instruction_[Fork](order.workflowId /: forkPosition)
+                branchWorkflow <- fork.workflow(branchId)
+                endPos <- branchWorkflow.instructions.iterator.zipWithIndex
+                  .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }
+                  .toChecked(Problem(s"Missing End instruction in branch ${forkPosition / branchId}"))  // Does not happen
+              } yield Some(order.id <-: OrderMoved(endPos))
+          }
 
       case _ => Valid(None)
     }

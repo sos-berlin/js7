@@ -50,7 +50,7 @@ object ForkExecutor extends EventInstructionExecutor
       //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentRefPath =>
       if (order.isAttached)
         Some(order.id <-: OrderDetachable)
-      else if (order.state.childOrderIds map context.idToOrder forall context.childOrderEnded)
+      else if (order.state.childOrderIds flatMap context.idToOrder.lift.apply forall context.childOrderEnded)
         Some(order.id <-: OrderJoined(Outcome.succeeded))
       else
         None)
