@@ -2,7 +2,65 @@
 
 ## 2018-04-09
 
-### try maxTries
+### Neue Anweisung finish
+
+Finish beendet einen Auftrag. 
+Nächstes Event is OrderFinished.
+
+Ein Kind-Auftrag einer fork-Anweisung wird wie gewohnt beendet, so dass der Eltern-Auftrag fortgesetzt werden kann, sobald
+alle anderen Kind-Aufträge auch beendet sind.  
+
+JSON:
+```
+{
+  "TYPE": "Finish"
+}
+```
+
+Workflow-Notation:
+```
+finish;
+```
+
+
+### Anweisung fail (uncatchable)
+
+Die Anweisung ```fail``` mit ```uncatchable``` beendet den Auftrag mit Fehler (Event ```OrderFailed``).
+Ein Kind-Auftrag einer fork-Anweisung wird wie gewohnt beendet, so dass der Eltern-Auftrag fortgesetzt werden kann, sobald
+alle anderen Kind-Aufträge auch beendet sind.  
+
+JSON:
+```
+{
+  "TYPE": "Fail",
+  "returnCode": 7,
+  "uncatchable": true
+}
+```
+
+Workflow-Notation:
+```
+fail (uncatchable, returnCode=7);
+```
+
+### Anweisung fail mit Parameter message
+
+JSON:
+```
+{
+  "TYPE": "Fail",
+  "message": "MY MESSAGE'",
+  "returnCode": 7
+}
+```
+
+Workflow-Notation:
+```
+fail (returnCode=7, message="MY MESSAGE");
+fail (uncatchable, returnCode=7, message="MY MESSAGE");
+```
+
+### Anweisung try mit Parameter maxTries
 
 Die Anweisung ```try``` kann die Anzahl der Versuche beschränken.
 
