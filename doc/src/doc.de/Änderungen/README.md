@@ -193,7 +193,7 @@ Zum Schutz des Rechners akzeptiert der Agent Skripte im Workflow nur,
 wenn folgende Einstellung in der Datei ```agent.conf``` gesetzt ist:
 
 ```
-jobscheduler.agent.task.script-injection-allowed = yes
+jobscheduler.agent.task.signed-script-injection-allowed = yes
 ```
 
 Ein Workflow mit zwei Jobs. Der eine referenziert ein Executable auf dem Agenten, der andere bringt sein Skript mit.

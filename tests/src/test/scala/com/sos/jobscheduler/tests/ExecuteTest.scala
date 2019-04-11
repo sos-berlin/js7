@@ -42,7 +42,7 @@ final class ExecuteTest extends FreeSpec
   "Execute" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.config / "agent.conf" ++= "jobscheduler.agent.task.script-injection-allowed = on\n"
+        a.config / "agent.conf" ++= "jobscheduler.agent.task.signed-script-injection-allowed = on\n"
         for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")
         for (o <- Array("/SCRIPT-1.cmd", "/SCRIPT-2.cmd", "/SCRIPT-3.cmd"))
           a.writeExecutable(ExecutablePath(o),
