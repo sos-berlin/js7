@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
-import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestsLimiter
+import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestLimiter
 import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.event.EventWatch
@@ -30,7 +30,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 
-// For tests see HistoryTest
+// For tests see FatEventsTest
 
 /**
   * @author Joacim Zschimmer
@@ -52,7 +52,7 @@ trait FatEventRoute extends MasterRouteProvider
 
   // Rebuilding FatState may take a long time, so we allow only one per time.
   // The client may impatiently abort and retry, overloading the server with multiple useless requests.
-  private val concurrentRequestsLimiter = new ConcurrentRequestsLimiter(limit = 1, FatEventServiceBusyProblem)
+  private val concurrentRequestsLimiter = new ConcurrentRequestLimiter(limit = 1, FatEventServiceBusyProblem, timeout = 1.second, queueSize = 1)
 
   private lazy val fatStateCache = new FatStateCache(eventWatch)
 

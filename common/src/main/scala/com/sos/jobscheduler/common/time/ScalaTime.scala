@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.time
 
+import cats.Show
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
@@ -299,6 +300,9 @@ object ScalaTime {
         case o => o.toString
       }
   }
+
+  implicit val ScalaDurationShow: Show[ScalaDuration] = _.pretty
+  implicit val FiniteDurationShow: Show[FiniteDuration] = _.pretty
 
   implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
     def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
