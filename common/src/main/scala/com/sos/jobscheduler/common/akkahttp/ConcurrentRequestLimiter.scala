@@ -25,22 +25,21 @@ extends Directive0
 
   def tapply(inner: Unit => Route) = requestContext => {
     def execute() = whenResponseTerminated(_ => onExecuted()).apply(inner(()))(requestContext)
-    val maybeRouteResultFuture =
-      queue.synchronized {
-        if (busy < limit) {
-          busy += 1
-          None
-        } else if (queue.size >= queueSize) {
-          Some(completeWithTooManyRequests(requestContext))
-        } else {
-          busy += 1
-          val promise = Promise[RouteResult]()
-          val timer = scheduler.scheduleOnce(timeout)(onTimeout(requestContext, promise))
-          queue.add(Entry(execute, promise, timer))
-          Some(promise.future)
-        }
+    queue.synchronized {
+      if (busy < limit) {
+        busy += 1
+        None  // Leave 'synchronized' then execute()
+      } else if (queue.size >= queueSize) {
+        Some(completeWithTooManyRequests(requestContext))
+      } else {
+        busy += 1
+        val promise = Promise[RouteResult]()
+        val timer = scheduler.scheduleOnce(timeout)(onTimeout(requestContext, promise))
+        queue.add(Entry(execute, promise, timer))
+        Some(promise.future)
       }
-    maybeRouteResultFuture getOrElse execute()
+    }
+    .getOrElse(execute())
   }
 
   private def onTimeout(requestContext: RequestContext, promise: Promise[RouteResult]): Unit = {
@@ -51,26 +50,19 @@ extends Directive0
     promise.tryCompleteWith(completeWithTooManyRequests(requestContext))
   }
 
-
   private def completeWithTooManyRequests(requestContext: RequestContext) =
     requestContext.complete(TooManyRequests -> rejectWithProblem)
 
-  private def onExecuted(): Unit = {
-    val maybeEntry =
-      queue.synchronized {
-        busy -= 1
-        queue.poll() match {
-          case null =>
-            None
-          case entry =>
-            entry.timer.cancel()
-            Some(entry)
-        }
+  private def onExecuted(): Unit =
+    queue.synchronized {
+      busy -= 1
+      for (entry <- Option(queue.poll())) yield {
+        entry.timer.cancel()
+        entry
       }
-    for (e <- maybeEntry) {
+    } foreach { e =>
       e.promise.completeWith(e.execute())
     }
-  }
 
   def isBusy = busy >= limit
 

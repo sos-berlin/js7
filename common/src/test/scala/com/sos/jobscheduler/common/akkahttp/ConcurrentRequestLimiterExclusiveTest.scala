@@ -99,16 +99,16 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
   }
 
   "limit=1 with timeout > 0s" - {
-    implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 250.millis, queueSize = 9)(Scheduler.global)
+    implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 210.millis, queueSize = 9)(Scheduler.global)
 
     "Second concurrent request is delayed" in {
       val t = currentTimeMillis
       val a = Future { blocking { executeRequest(100.millis, OK) } }
       assert(waitForCondition(1.s, 1.ms)(limiter.isBusy))
       val b = Future { blocking { executeRequest(100.millis, OK) } }
-      sleep(10.millis)
+      sleep(30.millis)
       val c = Future { blocking { executeRequest(100.millis, OK) } }
-      sleep(10.millis)
+      sleep(30.millis)
       val d = Future { blocking { executeRequest(100.millis, TooManyRequests) } }   // Times out
       a await 9.seconds
       assert(limiter.isBusy)
