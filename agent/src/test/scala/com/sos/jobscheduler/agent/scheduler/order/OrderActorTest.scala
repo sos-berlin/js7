@@ -173,6 +173,7 @@ private object OrderActorTest {
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
     private val stdoutStderr = (for (t <- StdoutOrStderr.values) yield t -> new StringBuilder).toMap
+    private var orderDetached = false
     private var orderActorTerminated = false
 
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
@@ -206,7 +207,12 @@ private object OrderActorTest {
 
     private def detaching: Receive = receiveOrderEvent orElse {
       case "DETACHED" =>
-        become(terminating)
+        orderDetached = true
+        checkTermination()
+
+      case Terminated(`orderActor`) =>
+        orderActorTerminated = true
+        checkTermination()
 
       case JobActor.Output.ReadyForOrder =>  // Ready for next order
     }
@@ -252,7 +258,7 @@ private object OrderActorTest {
       }
 
     private def checkTermination(): Unit = {
-      if (orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
+      if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
         terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, now - started))
         context.stop(self)
