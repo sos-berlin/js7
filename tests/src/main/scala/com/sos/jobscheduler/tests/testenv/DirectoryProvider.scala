@@ -317,8 +317,8 @@ object DirectoryProvider
     p.redirectError(INHERIT)
     val process = p.start()
     val finished = process.waitFor(9, SECONDS)
-    assert(finished)
-    assert(process.exitValue == 0)
+    assert(finished, "Command 'keytool' takes longer than 9 seconds")
+    assert(process.exitValue == 0, s"Command 'keytool' returns with exit code ${process.exitValue}")
   }
 
   final def defaultSigner = pgpSigner
