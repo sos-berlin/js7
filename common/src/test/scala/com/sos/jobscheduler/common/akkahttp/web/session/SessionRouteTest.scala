@@ -110,7 +110,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     super.afterAll()
   }
 
-  "login when server is unreachable" in {
+  "login fails if server is unreachable" in {
     withSessionApi() { api =>
       val exception = intercept[akka.stream.StreamTcpException] {
         api.login(None) await 99.s
@@ -119,38 +119,40 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "loginUntilReachable with invalid authorization" in {
-    withSessionApi() { api =>
-      var count = 0
-      def onError(t: Throwable) = {
-        logger.debug(t.toStringWithCauses)
-        count += 1
+  "loginUntilReachable" - {
+    "invalid authorization" in {
+      withSessionApi() { api =>
+        var count = 0
+        def onError(t: Throwable) = {
+          logger.debug(t.toStringWithCauses)
+          count += 1
+        }
+        val t = now
+        val whenLoggedIn = api.loginUntilReachable(
+          Some(UserId("INVALID") -> SecretString("INVALID")),
+          Iterator.continually(10.milliseconds),
+          onError
+        ).runToFuture
+        // Akka delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
+        waitForCondition(9.seconds, 10.milliseconds)(count >= 3)
+        assert(count >= 3)
+        server.start() await 99.s
+        val exception = intercept[AkkaHttpClient.HttpException] {
+          whenLoggedIn await 99.s
+        }
+        assert(exception.status == Unauthorized)
+        assert(now - t >= invalidAuthenticationDelay)
+        requireAccessIsUnauthorizedOrPublic(api)
       }
-      val t = now
-      val whenLoggedIn = api.loginUntilReachable(
-        Some(UserId("INVALID") -> SecretString("INVALID")),
-        Iterator.continually(10.milliseconds),
-        onError
-      ).runToFuture
-      sleep(500.ms)
-      server.start() await 99.s
-      val exception = intercept[AkkaHttpClient.HttpException] {
-        whenLoggedIn await 99.s
-      }
-      assert(exception.status == Unauthorized)
-      assert(now - t >= invalidAuthenticationDelay)
-      waitForCondition(2.seconds, 100.milliseconds)(count >= 3)
-      assert(count >= 3)
-      requireAccessIsUnauthorizedOrPublic(api)
     }
-  }
 
-  "loginUntilReachable, authorized" in {
-    withSessionApi() { api =>
-      api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => ()) await 99.s
-      requireAuthorizedAccess(api)
-      api.logout() await 99.s
-      requireAccessIsUnauthorizedOrPublic(api)
+    "authorized" in {
+      withSessionApi() { api =>
+        api.loginUntilReachable(Some(AUserAndPassword), Iterator.continually(10.milliseconds), _ => ()) await 99.s
+        requireAuthorizedAccess(api)
+        api.logout() await 99.s
+        requireAccessIsUnauthorizedOrPublic(api)
+      }
     }
   }
 
@@ -326,12 +328,12 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   }
 
   private def requireAuthorizedAccess(client: AkkaHttpClient): Unit = {
-    requireUnprotectedAccess(client)
+    requireAccessToUnprotected(client)
     client.get_[String](s"$localUri/authorizedUser") await 99.s shouldEqual "A-USER"
   }
 
   private def requireAccessIsUnauthorizedOrPublic(client: AkkaHttpClient): Unit = {
-    requireUnprotectedAccess(client)
+    requireAccessToUnprotected(client)
     if (isPublic) {
       requireAccessIsPublic(client)
     } else {
@@ -341,12 +343,12 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   private def requireAccessIsPublic(client: AkkaHttpClient): Unit = {
     assert(isPublic)
-    requireUnprotectedAccess(client)
+    requireAccessToUnprotected(client)
     getViaAuthorizedUsed(client)
   }
 
   private def requireAccessIsUnauthorized(client: AkkaHttpClient): HttpException = {
-    requireUnprotectedAccess(client)
+    requireAccessToUnprotected(client)
     val exception = intercept[AkkaHttpClient.HttpException] {
       getViaAuthorizedUsed(client)
     }
@@ -357,7 +359,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   }
 
   private def requireAccessIsForbidden(client: AkkaHttpClient): HttpException = {
-    requireUnprotectedAccess(client)
+    requireAccessToUnprotected(client)
     val exception = intercept[AkkaHttpClient.HttpException] {
       getViaAuthorizedUsed(client)
     }
@@ -369,7 +371,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   private def getViaAuthorizedUsed(client: AkkaHttpClient) =
     client.get_[String](s"$localUri/authorizedUser") await 99.s
 
-  private def requireUnprotectedAccess(client: AkkaHttpClient): Unit =
+  private def requireAccessToUnprotected(client: AkkaHttpClient): Unit =
     client.get_[String](s"$localUri/unprotected") await 99.s shouldEqual "THE RESPONSE"
 
   private def withSessionApi(headers: List[HttpHeader] = Nil)(body: SessionApi with AkkaHttpClient => Unit): Unit = {
