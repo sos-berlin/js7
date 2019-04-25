@@ -42,7 +42,7 @@ final class CatchingActorTest extends FreeSpec with BeforeAndAfterAll {
     val throwable = new IllegalArgumentException("TEST") with NoStackTrace
     a ! throwable
     val gotThrowable = Await.ready(terminated, 99.seconds).value.get.failed.get
-    assert(gotThrowable.isInstanceOf[CatchingSupervisorStrategy.ActorCrashedException])
+    assert(gotThrowable.isInstanceOf[CatchingSupervisorStrategy.ActorTerminatedException])
     assert(gotThrowable.getCause eq throwable)
   }
 }
