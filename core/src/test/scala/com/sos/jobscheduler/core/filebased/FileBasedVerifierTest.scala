@@ -24,8 +24,16 @@ final class FileBasedVerifierTest extends FreeSpec
   "FileBasedSigner.sign" in {
     implicit val jsonCodec = FileBasedVerifierTest.jsonCodec
     val workflowString = jsonCodec(workflow: FileBased).asJson.compactPrint
-    val signature = signer.sign(workflowString).toGenericSignature
-    assert(fileBasedSigner.sign(workflow) == SignedString(workflowString, signature))
+
+    def check() = {
+      val signature = signer.sign(workflowString).toGenericSignature
+      assert(fileBasedSigner.sign(workflow) == SignedString(workflowString, signature))
+    }
+    try check()
+    catch { case _: Throwable =>
+      // PGP signature changes every second, so we try multiple times
+      check()
+    }
   }
 
   "Verify valid objects" in {
