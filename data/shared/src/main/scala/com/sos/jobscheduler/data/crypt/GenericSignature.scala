@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.crypt
 
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.Strings.RichString
 import io.circe.generic.extras.defaults.defaultGenericConfiguration
 import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 
@@ -16,7 +15,10 @@ extends Signature
 {
   def toGenericSignature = this
 
-  override def toString = s"Signature(${signatureString.truncateWithEllipsis(20)})"
+  override def toString = s"Signature(" +
+    (if (signatureString.length <= 33) signatureString
+     else signatureString.take(15) + "..." + signatureString.substring(signatureString.length - 15)) +
+    ")"
 }
 
 object GenericSignature {
