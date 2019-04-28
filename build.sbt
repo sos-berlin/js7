@@ -70,6 +70,7 @@ val publishSettings = Seq(
   credentials ++= publishRepositoryCredentialsFile map (o => Credentials(o)),
   publishTo := publishRepositoryUri map (uri => publishRepositoryName getOrElse uri at uri))
 
+maintainer := "Joacim Zschimmer <jogit@zschimmer.com>"
 val commonSettings = Seq(
   organization := "com.sos-berlin.jobscheduler.engine2",
   organizationName := "SOS Berlin",
