@@ -14,6 +14,16 @@ object BuildUtils
 
   private val CommitHashLength = 7
 
+  val testParallelization: Int = {
+    val factor = sys.props.get("test.parallel") getOrElse "1" match {
+      case "" => 1 * sys.runtime.availableProcessors
+      case o if o.last == 'x' => (o.dropRight(1).toDouble * sys.runtime.availableProcessors + 0.01).toInt
+      case o => o.toInt
+    }
+    if (factor > 1) println(s"build.sbt: test.parallel=$factor")
+    factor
+  }
+
   private val isUncommitted = Def.setting(git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/)
   private val commitDate: Def.Initialize[Option[String]] =
     Def.setting(

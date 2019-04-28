@@ -31,12 +31,10 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 val rootDirectory = Paths.get(".").toAbsolutePath
 ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml"
 
-val testParallelization: Int = 1 * sys.runtime.availableProcessors
-
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o => new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
-val testParallel                     = sys.props contains "test.parallel"
+// BuildUtils reads more properties.
 val isForDevelopment                 = sys.props contains "dev"
 
 addCommandAlias("clean-all"      , "; clean; jobschedulerJS/clean; tester/clean")
@@ -49,7 +47,7 @@ addCommandAlias("build-only"     , "; compile-only; pack")
 addCommandAlias("compile-all"    , "; Test/compile; ForkedTest/compile; ExclusiveTest/compile")
 addCommandAlias("compile-only"   , "; compile")
 addCommandAlias("test-all",
-  if (testParallel)
+  if (testParallelization > 1)
     "; StandardTest:test" +
     "; ForkedTest:test" +
     "; set Global/concurrentRestrictions += Tags.exclusive(Tags.Test)" +  //Tags.limit(Tags.Test, max = 1)" +  // Slow: Tags.limitAll(1)
@@ -453,11 +451,11 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, test
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
       scalaTest % "test" ++
       mockito % "test" ++
-      log4j % "test" 
+      log4j % "test"
   }
 
 Global / concurrentRestrictions += (
-  if (testParallel)
+  if (testParallelization > 1)
     Tags.limit(Tags.Test, max = testParallelization)
   else
     Tags.exclusive(Tags.Test))
@@ -475,7 +473,7 @@ lazy val testSettings =
     ExclusiveTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
     ForkedTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
     ForkedTest / javaOptions ++= Seq("-Xmx100m", "-Xms20m"),
-    ForkedTest / testForkedParallel := testParallel,
+    ForkedTest / testForkedParallel := testParallelization > 1,
     Test          / logBuffered := false,  // Recommended for ScalaTest
     StandardTest  / logBuffered := false,
     ExclusiveTest / logBuffered := false,
