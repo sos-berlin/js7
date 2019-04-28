@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
@@ -20,25 +21,28 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
   type Instr = Retry
 
   def toEvent(context: OrderContext, order: Order[Order.State], retry: Retry) =
-    order.workflowPosition.position.nextRetryBranchPath
-      .flatMap(branchPath =>
-        branchPath.parent
-          .flatMap(parent =>
-            Some(context.instruction(order.workflowId /: parent))
-              .collect { case o: TryInstruction => o }
-              .flatMap(_try =>
-                branchPath.lastOption.map(_.branchId).collect {
-                  case TryBranchId(index) => (_try.maxTries, _try.retryDelay(index))
-                }))
-          .toChecked(missingTryProblem(branchPath))
-          .map {
-            case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
-              Some(order.id <-: OrderStopped(Outcome.Disrupted(Problem.pure(s"Retry stopped because maxRetries=$maxRetries has been reached"))))
-            case (_, delay) =>
-              Some(order.id <-: OrderRetrying(
-                movedTo = branchPath % 0,
-                delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay)))
-            })
+    if (!order.isState[Order.Ready])
+      Valid(None)
+    else
+      order.workflowPosition.position.nextRetryBranchPath
+        .flatMap(branchPath =>
+          branchPath.parent
+            .flatMap(parent =>
+              Some(context.instruction(order.workflowId /: parent))
+                .collect { case o: TryInstruction => o }
+                .flatMap(_try =>
+                  branchPath.lastOption.map(_.branchId).collect {
+                    case TryBranchId(index) => (_try.maxTries, _try.retryDelay(index))
+                  }))
+            .toChecked(missingTryProblem(branchPath))
+            .map {
+              case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
+                Some(order.id <-: OrderStopped(Outcome.Disrupted(Problem.pure(s"Retry stopped because maxRetries=$maxRetries has been reached"))))
+              case (_, delay) =>
+                Some(order.id <-: OrderRetrying(
+                  movedTo = branchPath % 0,
+                  delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay)))
+              })
 
   private def nextTimestamp(delay: FiniteDuration) =
     clock() + delay match {

@@ -50,7 +50,7 @@ object RetryExecutorTest
   private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
 
   private def toEvent(position: Position, delays: Seq[FiniteDuration] = Nil) = {
-    val order = Order(orderId, workflowId /: position, Order.Fresh(),
+    val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(1))) :: Nil)
     val context = new OrderContext {
       def idToOrder = Map(order.id -> order)
