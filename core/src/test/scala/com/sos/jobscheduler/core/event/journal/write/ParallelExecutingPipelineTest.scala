@@ -1,50 +1,44 @@
 package com.sos.jobscheduler.core.event.journal.write
 
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.concurrent.ParallelismCounter
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipelineExclusiveTest._
-import java.time.Instant.now
+import java.util.concurrent.Executors
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ParallelExecutingPipelineExclusiveTest extends FreeSpec {
-
-  private val sleepDuration = 1.ms
+final class ParallelExecutingPipelineTest extends FreeSpec
+{
+  private val sleepDuration = 200.millis
 
   "ParallelExecutionPipeline" in {
-    val n = 500 * sys.runtime.availableProcessors
+    val threadPool = Executors.newFixedThreadPool(sys.runtime.availableProcessors)
+    val executionContext = ExecutionContext.fromExecutor(threadPool)
+    val n = 2 * sys.runtime.availableProcessors
     val result = mutable.ArrayBuffer[Int]()
     result.sizeHint(n)
-    val pipeline = new ParallelExecutingPipeline[Int](result.+=)(ExecutionContext.global)
+    val pipeline = new ParallelExecutingPipeline[Int](result.+=)(executionContext)
     val count = new ParallelismCounter
-    def f(i: Int) = count {
-      nanoLoop(sleepDuration.toNanos)
+    def f(i: Int, duration: FiniteDuration) = count {
+      sleep(duration)
       i
-    }
-    pipeline.blockingAdd {  // Warm-up
-      f(0)
     }
     val t = now
     for (i <- 1 to n) {
        pipeline.blockingAdd {
-         f(i)
+         f(i, sleepDuration)
        }
     }
     pipeline.flush()
+    threadPool.shutdownNow()
     assert(count.maximum == sys.runtime.availableProcessors)
     val duration = now - t
     assert(duration < n * sleepDuration * 3 / sys.runtime.availableProcessors)
-    assert(result == (0 to n))
-  }
-}
-
-object ParallelExecutingPipelineExclusiveTest {
-  private def nanoLoop(nanos: Long): Unit = {
-    val t = System.nanoTime + nanos
-    while (System.nanoTime < t) {}
+    assert(result == (1 to n))
   }
 }

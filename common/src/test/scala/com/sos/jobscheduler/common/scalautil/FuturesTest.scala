@@ -15,7 +15,7 @@ import scala.util.Failure
 /**
  * @author Joacim Zschimmer
  */
-final class FuturesExclusiveTest extends FreeSpec {
+final class FuturesTest extends FreeSpec {
 
   "successValue" in {
     val promise = Promise[Int]()
@@ -49,17 +49,17 @@ final class FuturesExclusiveTest extends FreeSpec {
       Future { throw new RuntimeException }
     }
     intercept[RuntimeException] { f(true) }
-    Await.ready(f(false), 2.seconds).value.get.failed.get
-    Await.ready(catchInFuture { f(true) }, 2.seconds).value.get.failed.get
+    Await.ready(f(false), 99.seconds).value.get.failed.get
+    Await.ready(catchInFuture { f(true) }, 99.seconds).value.get.failed.get
   }
 
   "namedThreadFuture" in {
     val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o => (o.toInt, 1000))
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
-      val future = namedThreadFuture("FuturesExclusiveTest") { "x" }
+      val future = namedThreadFuture("FuturesTest") { "x" }
       assert(Await.result(future, 2.seconds) == "x")
     }.toString)
-    val future = namedThreadFuture("FuturesExclusiveTest") { sys.error("TEST-ERROR") }
+    val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
     assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }
 
@@ -73,20 +73,15 @@ final class FuturesExclusiveTest extends FreeSpec {
   "future.await" in {
     Future { true } await 1.s shouldBe true
     intercept[TimeoutException] {
-      Future { sleep(100.ms) } await 1.ms shouldBe true
+      Future { sleep(99.s) } await 1.ms
     }
   }
 
   "futures.await" in {
     List(Future { true }, Future { 1 }) await 1.s shouldBe List(true, 1)
     intercept[TimeoutException] {
-      Future { sleep(100.ms) } await 1.ms shouldBe true
+      Future { sleep(99.s) } await 1.ms
     }
-  }
-
-  "future.flatten" in {
-    val a = Future { Future { 77 } }
-    assert((a.flatten await 100.ms) == 77)
   }
 
   private def stackTraceContainsCreationsStackTrace(body: => Int): Boolean =

@@ -132,8 +132,8 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
     "/event?limit=3&after=150 skip some events" in {
       val t = now
-      val stampeds = getEvents("/event?limit=3&after=150")
-      assert(now < t + EventDirectives.MinimumDelay)
+      val stampeds = getEvents("/event?delay=99&limit=3&after=150")
+      assert(now < t + 1.second)  // Events must have been returned immediately
       assert(stampeds.head.eventId == 160)
       assert(stampeds.last.eventId == 180)
     }
