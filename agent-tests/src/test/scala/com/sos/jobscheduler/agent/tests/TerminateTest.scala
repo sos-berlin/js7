@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.agent.tests.TerminateTest._
@@ -42,7 +42,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
   }
 
   "Terminate" in {
-    implicit val actorSystem = newActorSystem("TerminateTest")
+    implicit val actorSystem = newAgentActorSystem("TerminateTest")
     closer onClose actorSystem.terminate()
 
     val client = AgentClient(agentUri = agent.localUri.toString)

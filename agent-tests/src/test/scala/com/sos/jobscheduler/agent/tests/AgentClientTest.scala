@@ -18,7 +18,7 @@ final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTester 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
 
   override lazy val agentConfiguration = newAgentConfiguration()
-  private implicit lazy val actorSystem = Akkas.newActorSystem("AgentClientTest")(closer)
+  private implicit lazy val actorSystem = Akkas.newAgentActorSystem("AgentClientTest")(closer)
   private lazy val client = AgentClient(agentUri = agent.localUri.toString)
 
   "get /" in {

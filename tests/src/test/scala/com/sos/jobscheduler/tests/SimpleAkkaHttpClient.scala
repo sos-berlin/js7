@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import akka.http.scaladsl.model.Uri
-import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -14,7 +14,7 @@ final class SimpleAkkaHttpClient(
   protected val baseUri: Uri,
   protected val uriPrefixPath: String) extends AkkaHttpClient
 {
-  protected val actorSystem = Akkas.newActorSystem(label)
+  protected val actorSystem = newActorSystem(label)
 
   protected def userAndPassword = None
 

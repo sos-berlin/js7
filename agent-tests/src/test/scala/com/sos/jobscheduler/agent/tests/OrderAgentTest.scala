@@ -5,7 +5,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
@@ -57,7 +57,7 @@ final class OrderAgentTest extends FreeSpec {
       val agentConf = AgentConfiguration.forTest(directory)
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem = newActorSystem(getClass.getSimpleName)
+          implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
           intercept[AkkaHttpClient.HttpException] {  // Login is required
             agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
@@ -104,7 +104,7 @@ final class OrderAgentTest extends FreeSpec {
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem = newActorSystem(getClass.getSimpleName)
+          implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
           agentClient.login(Some(TestUserAndPassword)) await 99.s
           assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Valid(AgentCommand.Response.Accepted))

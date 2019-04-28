@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
@@ -57,7 +57,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   private lazy val directoryProvider = new TestAgentDirectoryProvider {}
   private lazy val config = AgentConfiguration.forTest(directoryProvider.agentDirectory).finishAndProvideFiles.config
     .withValue("jobscheduler.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
-  private lazy val actorSystem = newActorSystem("OrderActorTest")
+  private lazy val actorSystem = newAgentActorSystem("OrderActorTest")
 
   override def afterAll() = {
     close()

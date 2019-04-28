@@ -3,7 +3,8 @@ package com.sos.jobscheduler.agent.task
 import akka.actor.{Actor, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.task.TaskRegisterTest._
@@ -36,7 +37,7 @@ import scala.io
 final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private implicit val timeout = Timeout(99.seconds)
-  private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
+  private implicit lazy val actorSystem = newAgentActorSystem("TaskRegisterTest",
     ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" -> "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles

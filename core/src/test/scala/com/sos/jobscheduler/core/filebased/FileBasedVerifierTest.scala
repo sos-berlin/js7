@@ -31,15 +31,22 @@ final class FileBasedVerifierTest extends FreeSpec
     }
     try check()
     catch { case _: Throwable =>
-      // PGP signature changes every second, so we try multiple times
+      // Generated PGP signature changes every second, so we try again
       check()
     }
   }
 
   "Verify valid objects" in {
-    val signedString = fileBasedSigner.sign(workflow)
-    assert(signedString == fileBasedSigner.sign(workflow))
-    assert(fileBasedVerifier.verify(signedString) == Valid(FileBasedVerifier.Verified(Signed(workflow, signedString), signerIds)))
+    def check() = {
+      val signedString = fileBasedSigner.sign(workflow)
+      assert(signedString == fileBasedSigner.sign(workflow))
+      assert(fileBasedVerifier.verify(signedString) == Valid(FileBasedVerifier.Verified(Signed(workflow, signedString), signerIds)))
+    }
+    try check()
+    catch { case _: Throwable =>
+      // Generated PGP signature changes every second, so we try again
+      check()
+    }
   }
 
   "Verify falsified" in {

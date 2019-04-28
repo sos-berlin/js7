@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext
 object Akkas {
   private val logger = Logger(getClass)
 
-  def newActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global)
+  def newAgentActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global)
     (implicit closer: Closer)
   : ActorSystem = {
     val myConfig = config withFallback AgentConfiguration.DefaultsConfig

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.akkahttp
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
-import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -18,7 +18,7 @@ import scala.language.reflectiveCalls
 final class StreamingSupportTest extends FreeSpec {
 
   "closeableIteratorToAkkaSource" in {
-    val actorSystem = Akkas.newActorSystem("StreamingSupportTest")
+    val actorSystem = newActorSystem("StreamingSupportTest")
     implicit val materializer = ActorMaterializer.create(actorSystem)
     val iterator = new CloseableIterator[Int] {
       var closed = false

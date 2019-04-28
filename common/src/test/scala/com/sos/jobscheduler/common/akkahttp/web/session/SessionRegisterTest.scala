@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegisterTest._
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import monix.execution.Scheduler.Implicits.global
@@ -53,7 +54,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
   }
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
-    val mySystem = ActorSystem("SessionRegisterTest")
+    val mySystem = newActorSystem("SessionRegisterTest")
     val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
     val sessionToken = mySessionRegister.login(SimpleUser.Anonymous).await(99.seconds)
 

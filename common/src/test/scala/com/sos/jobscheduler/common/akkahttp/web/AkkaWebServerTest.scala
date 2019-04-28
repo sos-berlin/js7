@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.akkahttp.https.{AkkaHttps, KeyStoreRef, Trust
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer.HasUri
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServerTest._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -32,7 +32,7 @@ import scala.concurrent.duration._
   */
 final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
 {
-  private implicit lazy val actorSystem = Akkas.newActorSystem("AkkaWebServerTest")
+  private implicit lazy val actorSystem = newActorSystem("AkkaWebServerTest")
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("AkkaWebServerTest-")
   private implicit lazy val materializer = ActorMaterializer()

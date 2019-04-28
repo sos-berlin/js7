@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
@@ -19,6 +18,7 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRouteTest._
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -46,7 +46,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   implicit protected def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
-  private lazy val actorSystem = ActorSystem("SessionRouteTest")
+  private lazy val actorSystem = newActorSystem("SessionRouteTest")
 
   protected lazy val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(
@@ -99,10 +99,6 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   import gateKeeper.invalidAuthenticationDelay
   import server.localUri
-
-  override def beforeAll() = {
-    super.beforeAll()
-  }
 
   override def afterAll() = {
     server.close()

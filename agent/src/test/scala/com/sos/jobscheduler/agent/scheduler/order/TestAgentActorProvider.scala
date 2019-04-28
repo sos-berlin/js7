@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{ActorRef, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
@@ -49,7 +49,7 @@ object TestAgentActorProvider {
 
   private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
-    val actorSystem = newActorSystem("TestAgentActorProvider")
+    val actorSystem = newAgentActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
     val eventCollector = injector.createChildInjector(new AbstractModule {

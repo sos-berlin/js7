@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -35,7 +35,7 @@ extends AbstractModule {
 
   @Provides @Singleton
   def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config, executionContext: ExecutionContext): ActorSystem =
-    newActorSystem(conf.name, config, executionContext)(closer)
+    newAgentActorSystem(conf.name, config, executionContext)(closer)
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, config: Config): IOExecutor = {
