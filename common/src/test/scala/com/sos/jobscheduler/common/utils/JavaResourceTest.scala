@@ -20,6 +20,10 @@ import org.scalatest.Matchers._
  */
 final class JavaResourceTest extends FreeSpec
 {
+  "Macro derives ClassLoader" in {
+    assert(JavaResource(getClass.getClassLoader, "MISSING").classLoader eq getClass.getClassLoader)
+  }
+
   "simpleName" in {
     javaResource.simpleName shouldEqual "test.txt"
     nonExistentJavaResource.simpleName shouldEqual "non-existent"
@@ -53,7 +57,7 @@ final class JavaResourceTest extends FreeSpec
 
   "copyToFiles" in {
     val dir = createTempDirectory("test")
-    val files = JavaResource(dirPath).copyToFiles(List("test.txt", "test-2.txt"), dir)
+    val files = JavaResource(getClass.getClassLoader, dirPath).copyToFiles(List("test.txt", "test-2.txt"), dir)
     assert(files == List(dir / "test.txt", dir / "test-2.txt"))
     assert(files(0).contentString == expectedString)
     assert(files(1).contentString == "TEST 2\n")
@@ -72,8 +76,8 @@ final class JavaResourceTest extends FreeSpec
   }
 
   "/" in {
-    assert(JavaResource("some/directory") / "resource" == JavaResource("some/directory/resource"))
-    assert(JavaResource("some/directory/") / "resource" == JavaResource("some/directory/resource"))
+    assert((JavaResource(getClass.getClassLoader, "some/directory") / "resource").path == "some/directory/resource")
+    assert((JavaResource(getClass.getClassLoader, "some/directory/") / "resource").path == "some/directory/resource")
   }
 
   "requireExists" in {
@@ -106,6 +110,6 @@ object JavaResourceTest
   private val path = "com/sos/jobscheduler/common/utils/test.txt"
   private val expectedString = "TEST CONTENT IN -> UTF-8\n"
   private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
-  private val javaResource = JavaResource(path)
-  private val nonExistentJavaResource = JavaResource(nonExistentPath)
+  private val javaResource = JavaResource(getClass.getClassLoader, path)
+  private val nonExistentJavaResource = JavaResource(getClass.getClassLoader, nonExistentPath)
 }

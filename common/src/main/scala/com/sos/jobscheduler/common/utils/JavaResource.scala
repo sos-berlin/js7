@@ -1,28 +1,38 @@
 package com.sos.jobscheduler.common.utils
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.effect.{Resource, SyncIO}
+import cats.effect.SyncIO
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.Resources
-import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.JavaResource._
 import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
+import java.util.Objects.requireNonNull
 import scala.collection.immutable
+import scala.language.experimental.macros
 import scala.language.implicitConversions
 
 /**
  * @author Joacim Zschimmer
  */
-final case class JavaResource(path: String)
+final case class JavaResource(classLoader: ClassLoader, path: String)
 {
+  requireNonNull(classLoader)
   require(!(path startsWith "/"), s"JavaResource must not start with a slash: $path")
 
-  private lazy val checkedUrl = JavaResource.url(path)
+  private lazy val checkedUrl: Checked[URL] =
+    classLoader.getResource(path) match {
+      case null => Invalid(Problem(s"Unknown JavaResource '$path'"))
+      case url =>
+        logger.trace(s"Using JavaResource $url")
+        Valid(url)
+    }
 
   def requireExistence() = {
     url
@@ -73,7 +83,8 @@ final case class JavaResource(path: String)
 
   def isValid = checkedUrl.isValid
 
-  val asResource: Resource[SyncIO, InputStream] = Resource.fromAutoCloseable(SyncIO { openStream() })
+  val asResource: cats.effect.Resource[SyncIO, InputStream] =
+    cats.effect.Resource.fromAutoCloseable(SyncIO { openStream() })
 
   def openStream(): InputStream = url.openStream()
 
@@ -87,7 +98,7 @@ final case class JavaResource(path: String)
    */
   def url: URL = checkedUrl.orThrow
 
-  def /(tail: String) = JavaResource(s"${path stripSuffix "/"}/$tail")
+  def /(tail: String) = copy(path = s"${path stripSuffix "/"}/$tail")
 
   override def toString = path
 }
@@ -95,18 +106,19 @@ final case class JavaResource(path: String)
 object JavaResource {
   private val logger = Logger(getClass)
 
-  def apply(o: Package) = new JavaResource(o.getName.replace('.', '/'))
+  def apply(classLoader: ClassLoader, path: String): JavaResource =
+    new JavaResource(classLoader, path)
 
-  implicit def asResource(o: JavaResource): Resource[SyncIO, InputStream] =
-    o.asResource
+  /** Uses the caller's class ClassLoader. */
+  def apply(path: String): JavaResource = apply2(path)  //  macro apply_macro
 
-  private def url(resourceName: String): Checked[URL] = {
-    val classLoader = Option(Thread.currentThread.getContextClassLoader) getOrElse classOf[JavaResource].getClassLoader
-    classLoader.getResource(resourceName) match {
-      case null => Invalid(Problem(s"Unknown JavaResource '$resourceName'"))
-      case url =>
-        logger.trace(s"Using JavaResource $url")
-        Valid(url)
-    }
+  def apply2(path: String): JavaResource = JavaResource(classOf[JavaResource].getClassLoader, path)
+
+  def apply_macro(c: scala.reflect.macros.blackbox.Context)(path: c.Expr[String]): c.Tree = {
+    import c.universe._
+    q"_root_.com.sos.jobscheduler.common.utils.JavaResource(this.getClass.getClassLoader, $path)"
   }
+
+  implicit def asResource(o: JavaResource): cats.effect.Resource[SyncIO, InputStream] =
+    o.asResource
 }

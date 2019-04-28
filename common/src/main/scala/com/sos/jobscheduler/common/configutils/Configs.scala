@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConv
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.ClassLoaders.currentClassLoader
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
@@ -36,7 +35,7 @@ object Configs {
 
   def loadResource(resource: JavaResource) = {
     logger.trace(s"Reading configuration JavaResource $resource")
-    ConfigFactory.parseResourcesAnySyntax(resource.path, Required.setClassLoader(currentClassLoader))
+    ConfigFactory.parseResourcesAnySyntax(resource.path, Required.setClassLoader(resource.classLoader))
   }
 
   implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]

@@ -16,7 +16,7 @@ import scala.concurrent.duration._
  */
 object Akkas {
   private val logger = Logger(getClass)
-  private val ConfigResource = JavaResource("com/sos/jobscheduler/common/akkautils/akka.conf")
+  private val ConfigResource = JavaResource(getClass.getClassLoader, "com/sos/jobscheduler/common/akkautils/akka.conf")
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
     logger.debug(s"new ActorSystem('$name')")
