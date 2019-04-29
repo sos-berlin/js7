@@ -205,7 +205,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
       // Wie geben wir am besten 'Torn' zurück? Als Ende des Streams, als Exception oder als eigenes Objekt?
       withJournalEventWatch(lastEventId = EventId(1000)) { (_, eventWatch) =>
         val e = intercept[TornException] {
-          eventWatch.observe(EventRequest.singleClass[AEvent](after = 10, timeout = 99.seconds)).countL await 9.s
+          eventWatch.observe(EventRequest.singleClass[AEvent](after = 10, timeout = 99.seconds)).countL await 99.s
         }
         assert(e.after == 10 && e.tornEventId == 1000)
       }
@@ -218,7 +218,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
           writer.flush(sync = false)
 
           val e = intercept[TornException] {
-            eventWatch.observe(EventRequest.singleClass[AEvent](after = 115, timeout = 99.seconds)).countL await 9.s
+            eventWatch.observe(EventRequest.singleClass[AEvent](after = 115, timeout = 99.seconds)).countL await 99.s
           }
           assert(e.after == 115 && e.tornEventId == 100)
 

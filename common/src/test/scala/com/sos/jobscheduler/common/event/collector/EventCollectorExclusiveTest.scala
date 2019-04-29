@@ -36,12 +36,12 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](timeout = 30.seconds)).runToFuture
     assert(!anyFuture.isCompleted)
     eventCollector.putEvent_("1" <-: A1)
-    val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms
+    val EventSeq.NonEmpty(anyEvents) = anyFuture await 9.seconds
     assert((anyEvents.toList map { _.value }) == List("1" <-: A1))
 
     assert(!bFuture.isCompleted)
     eventCollector.putEvent_("2" <-: B1)
-    val EventSeq.NonEmpty(bEventsIterator) = bFuture await 100.ms
+    val EventSeq.NonEmpty(bEventsIterator) = bFuture await 9.seconds
     val bEvents = bEventsIterator.toVector
     assert((bEvents map { _.value }) == Vector("2" <-: B1))
 
@@ -78,8 +78,8 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
   }
 }
 
-private object EventCollectorExclusiveTest {
-
+private object EventCollectorExclusiveTest
+{
   private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
     (implicit protected val eventIdGenerator: EventIdGenerator)
   extends EventCollector(configuration)

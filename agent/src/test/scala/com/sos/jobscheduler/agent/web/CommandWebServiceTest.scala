@@ -55,9 +55,9 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
         "sigkillProcessesAfter": 999
       }"""
     postJsonCommand(json) ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(99.seconds).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
-      assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
+      assert(responseEntity.toStrict(99.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{ "TYPE": "Accepted" }""")
     }
   }
@@ -66,9 +66,9 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     // When Agent is shutting down, the command may be okay and the Master should repeat the command later
     // Not valid for commands packaged in AgentCommand.Batch
     postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
-      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
+      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(99.seconds).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
-      assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
+      assert(responseEntity.toStrict(99.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{
           "TYPE": "Problem",
           "message": "Agent is shutting down"

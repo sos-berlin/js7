@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCode}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem
@@ -60,7 +60,7 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       assert(limiter.isBusy)
       executeRequest(0.millis, TooManyRequests)
       assert(limiter.isBusy)
-      a await 9.seconds
+      a await 99.seconds
       assert(!limiter.isBusy)
     }
 
@@ -79,9 +79,10 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
           assert(now - t < n * duration)
 
           assert(status == OK)  // Seems to wait for response
-          response.discardEntityBytes().future await 9.seconds
+          response.discardEntityBytes().future await 99.seconds
           assert(now - t >= n * duration)
-          assert(!limiter.isBusy)  // Maybe too early?
+          waitForCondition(9.seconds, 10.millis)(!limiter.isBusy)
+          assert(!limiter.isBusy)
         }
       }
       waitForCondition(1.s, 1.ms)(limiter.isBusy)
@@ -92,7 +93,7 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       executeRequest(0.millis, TooManyRequests)
       assert(limiter.isBusy)
 
-      longRequest await 9.seconds
+      longRequest await 99.seconds
       assert(!limiter.isBusy)
       executeRequest(0.millis, OK)
     }
@@ -110,21 +111,23 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       val c = Future { blocking { executeRequest(100.millis, OK) } }
       sleep(30.millis)
       val d = Future { blocking { executeRequest(100.millis, TooManyRequests) } }   // Times out
-      a await 9.seconds
+      a await 99.seconds
       assert(limiter.isBusy)
-      b await 9.seconds
+      b await 99.seconds
       assert(currentTimeMillis - t >= 190)
-      c await 9.seconds
+      c await 99.seconds
       assert(currentTimeMillis - t >= 290)
-      d await 9.seconds
+      d await 99.seconds
     }
   }
 
-  private def executeRequest(duration: Duration, expectedStatus: StatusCode)(implicit limiter: ConcurrentRequestLimiter): Unit =
+  private def executeRequest(duration: Duration, expectedStatus: StatusCode)(implicit limiter: ConcurrentRequestLimiter): Unit = {
+    implicit val t = RouteTestTimeout(99.seconds)
     Get() ~> limiter(sleepingRoute(duration)) ~> check {
       assert(status == expectedStatus)
       if (expectedStatus == OK) {
         assert(responseAs[String] == "RESPONSE")
       }
     }
+  }
 }

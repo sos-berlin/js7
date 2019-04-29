@@ -80,7 +80,7 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
   "HTTP" in {
     val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST")) await 99.seconds
     assert(response.status == StatusCodes.OK)
-    assert(response.utf8StringFuture.await(9.seconds) == "OKAY")
+    assert(response.utf8StringFuture.await(99.seconds) == "OKAY")
   }
 
   "HTTPS" - {
@@ -102,7 +102,7 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
       assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
       val response = http.singleRequest(HttpRequest(GET, s"https://localhost:$httpsPort/TEST"), httpsConnectionContext) await 99.seconds
       assert(response.status == StatusCodes.OK)
-      assert(response.utf8StringFuture.await(9.seconds) == "OKAY")
+      assert(response.utf8StringFuture.await(99.seconds) == "OKAY")
     }
   }
 }

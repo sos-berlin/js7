@@ -281,7 +281,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       assert(!whenObserved.isCompleted)
       whenObserved.cancel()
       intercept[CancellationException] {  // Due to onCancelTriggerError
-        whenObserved await 9.seconds
+        whenObserved await 99.seconds
       }
     }
   }

@@ -38,7 +38,7 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
     val response = Marshal(Problem("PROBLEM")).toResponseFor(HttpRequest()) await 99.s
     assert(response.status == BadRequest)
     assert(response.entity.contentType == `text/plain(UTF-8)`)
-    assert(response.entity.toStrict(9.seconds).await(99.s).data == ByteString("PROBLEM\n"))
+    assert(response.entity.toStrict(99.seconds).await(99.s).data == ByteString("PROBLEM\n"))
   }
 
   "ToEntityMarshaller[Problem], application/json" in {
@@ -63,14 +63,14 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
       val response = Marshal(Valid(A(7)): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == OK)
       assert(response.entity.contentType == ContentTypes.`application/json`)
-      assert(response.entity.toStrict(9.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json""" { "number": 7 } """)
+      assert(response.entity.toStrict(99.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json""" { "number": 7 } """)
     }
 
     "Invalid" in {
       val response = Marshal(Invalid(Problem("PROBLEM")): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == BadRequest)
       assert(response.entity.contentType == `text/plain(UTF-8)`)
-      assert(response.entity.toStrict(9.seconds).await(99.s).data == ByteString("PROBLEM\n"))
+      assert(response.entity.toStrict(99.seconds).await(99.s).data == ByteString("PROBLEM\n"))
     }
   }
 }

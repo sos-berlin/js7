@@ -93,7 +93,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     def actorSystem = SessionRouteTest.this.actorSystem
     def scheduler = Scheduler.global
-    val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findRandomFreeTcpPort())) :: Nil
+    lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findRandomFreeTcpPort())) :: Nil
     def newRoute(binding: WebServerBinding) = route
   }
 
@@ -108,6 +108,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
 
   "login fails if server is unreachable" in {
     withSessionApi() { api =>
+      // In the rare case of an already used TCP port (alien software) akka.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
       val exception = intercept[akka.stream.StreamTcpException] {
         api.login(None) await 99.s
       }
@@ -118,7 +119,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   "loginUntilReachable" - {
     "invalid authorization" in {
       withSessionApi() { api =>
-        var count = 0
+        @volatile var count = 0
         def onError(t: Throwable) = {
           logger.debug(t.toStringWithCauses)
           count += 1

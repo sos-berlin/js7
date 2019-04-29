@@ -455,10 +455,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, test
   }
 
 Global / concurrentRestrictions += (
-  if (testParallelization > 1)
-    Tags.limit(Tags.Test, max = testParallelization)
-  else
-    Tags.exclusive(Tags.Test))
+    Tags.limit(Tags.Test, max = testParallelization))
 
 lazy val StandardTest  = config("StandardTest" ) extend Test
 lazy val ExclusiveTest = config("ExclusiveTest") extend Test

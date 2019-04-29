@@ -54,36 +54,36 @@ final class CommandQueueTest extends FreeSpec {
     val aOrder = toOrder("A")
     commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
     expected += toQueuedInputResponse(aOrder) :: Nil
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
     for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentRefPath, signedWorkflow))
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
     expected += twoOrders map toQueuedInputResponse
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
     for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentRefPath, signedWorkflow))
     expected += fiveOrders take 1 map toQueuedInputResponse
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentRefPath, signedWorkflow))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
 
     // Finally, the last queued Input is processed
     commandQueue.handleBatchSucceeded(commandQueue.succeeded.last)
     expected += fiveOrders drop 4 map toQueuedInputResponse
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded == expected }
+    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
     assert(commandQueue.succeeded == expected)
     assert(commandQueue.failed.isEmpty)
   }

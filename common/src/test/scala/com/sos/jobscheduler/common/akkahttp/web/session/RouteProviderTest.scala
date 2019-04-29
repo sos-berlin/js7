@@ -28,7 +28,7 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
   implicit protected def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
-  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
+  private implicit val routeTestTimeout = RouteTestTimeout(99.seconds)
 
   protected val gateKeeper = new GateKeeper(
     GateKeeper.Configuration[SimpleUser](
