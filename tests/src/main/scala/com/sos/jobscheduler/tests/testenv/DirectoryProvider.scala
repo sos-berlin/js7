@@ -316,8 +316,8 @@ object DirectoryProvider
     p.redirectOutput(INHERIT)
     p.redirectError(INHERIT)
     val process = p.start()
-    val finished = process.waitFor(9, SECONDS)
-    assert(finished, "Command 'keytool' takes longer than 9 seconds")
+    val finished = process.waitFor(99, SECONDS)
+    assert(finished, "Command 'keytool' takes longer than 99 seconds")
     assert(process.exitValue == 0, s"Command 'keytool' returns with exit code ${process.exitValue}")
   }
 

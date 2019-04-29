@@ -25,17 +25,17 @@ final class SyncExclusiveTest extends FreeSpec {
       val b = sync.whenEventIsAvailable(bEventId, until = now + 1.hour).runToFuture
       assert(!b.isCompleted)
       sync.onEventAdded(aEventId)
-      a await 1.s
+      a await 9.s
       assert(a.isCompleted)
       assert(a.successValue)
-      b await 100.ms  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
+      b await 1.s  // b is completed, too, because Sync only waits for the next event. Sync does not wait for events in the far future
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture.isCompleted)
       assert(!sync.whenEventIsAvailable(aEventId, until = now + 1.hour).runToFuture.isCompleted)
     }
   }
 
   "timeout" in {
-    val tick = 100.millisecond
+    val tick = 200.millisecond
     val sync = new Sync(initialLastEventId = EventId.BeforeFirst)
     for (eventId <- 1L to 3L) {
       withClue(s"#$eventId") {

@@ -130,7 +130,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
           onError
         ).runToFuture
         // Akka delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
-        waitForCondition(9.seconds, 10.milliseconds)(count >= 3)
+        waitForCondition(99.seconds, 10.milliseconds)(count >= 3)
         assert(count >= 3)
         server.start() await 99.s
         val exception = intercept[AkkaHttpClient.HttpException] {

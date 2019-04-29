@@ -69,7 +69,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
     sleep(10.milliseconds)
     assert(counter == n)
     body
-    sleep(50.milliseconds)
+    sleep(100.milliseconds)
     assert(counter > n)
     sleep(10.milliseconds)
   }
