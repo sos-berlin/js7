@@ -15,9 +15,7 @@ object WaitForCondition {
     try body
     catch { case NonFatal(t) =>
       while (now < until) {
-        blocking {
-          sleep(step)
-        }
+        sleep(step)
         Try { body } match {
           case Success(result) => return result
           case _ =>

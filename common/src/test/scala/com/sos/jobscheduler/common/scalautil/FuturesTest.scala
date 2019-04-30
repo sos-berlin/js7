@@ -73,14 +73,14 @@ final class FuturesTest extends FreeSpec {
   "future.await" in {
     Future { true } await 1.s shouldBe true
     intercept[TimeoutException] {
-      Future { sleep(99.s) } await 1.ms
+      Future { sleep(1.s) } await 1.ms
     }
   }
 
   "futures.await" in {
     List(Future { true }, Future { 1 }) await 1.s shouldBe List(true, 1)
     intercept[TimeoutException] {
-      Future { sleep(99.s) } await 1.ms
+      Future { sleep(1.s) } await 1.ms
     }
   }
 

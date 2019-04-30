@@ -20,7 +20,7 @@ object BuildUtils
       case o if o.last == 'x' => (o.dropRight(1).toDouble * sys.runtime.availableProcessors + 0.01).toInt
       case o => o.toInt
     }
-    if (factor > 1) println(s"build.sbt: test.parallel=$factor")
+    if (factor != 1) println(s"build.sbt: test.parallel=$factor")
     factor
   }
 
