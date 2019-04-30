@@ -454,8 +454,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`, provider, test
       log4j % "test"
   }
 
-Global / concurrentRestrictions += (
-    Tags.limit(Tags.Test, max = testParallelization))
+Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)
 
 lazy val StandardTest  = config("StandardTest" ) extend Test
 lazy val ExclusiveTest = config("ExclusiveTest") extend Test

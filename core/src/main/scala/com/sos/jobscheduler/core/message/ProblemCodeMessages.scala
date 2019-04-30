@@ -19,7 +19,9 @@ object ProblemCodeMessages
   private val once = AtomicBoolean(false)
 
   def initialize(): Unit =
-    if (!once.getAndSet(true)) {
-      CodedMessages.codeToPattern = problemCodeToPattern
+    synchronized {
+      if (!once.getAndSet(true)) {
+        CodedMessages.codeToPattern = problemCodeToPattern
+      }
     }
 }
