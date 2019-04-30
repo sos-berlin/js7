@@ -29,24 +29,27 @@ import scala.concurrent.duration._
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
   def whenEventIsAvailable(after: EventId, until: Timestamp, delay: FiniteDuration = Duration.Zero): Task[Boolean] =
-    if (after < lastEventId)
-      Task.pure(true)
-    else
     if (until <= now)
       Task.pure(false)
-    else {
-      synchronized {
-        if (after < lastEventId)
-          Task.pure(true)
-        else {
-          if (promise == null) {
-            promise = Promise[Boolean]()
+    else if (after < lastEventId)
+      Task.pure(true)
+    else
+      (promise match {
+        case p if p != null =>
+          Task.fromFuture(p.future)
+        case _ =>
+          synchronized {
+            if (after < lastEventId)
+              Task.pure(true)
+            else {
+              if (promise == null) {
+                promise = Promise[Boolean]()
+              }
+              Task.fromFuture(promise.future)
+            }
           }
-          Task.fromFuture(promise.future)
-        }
-      }
+      })
       .delayResult(delay min (until - now)).timeoutTo(until - now, Task.pure(false))
-    }
 
   def lastAddedEventId = lastEventId
 }
