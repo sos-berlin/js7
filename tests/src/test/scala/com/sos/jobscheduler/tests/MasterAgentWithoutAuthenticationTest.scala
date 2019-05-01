@@ -73,7 +73,7 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
         new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
       }
 
-      val masterPort :: agentPort :: Nil = FreeTcpPortFinder.findRandomFreeTcpPorts(2)
+      val masterPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)
       val agentConfiguration = AgentConfiguration.fromCommandLine(
         "-config-directory=" + dir / "agent/config" ::
         "-data-directory=" + dir / "agent/data" ::

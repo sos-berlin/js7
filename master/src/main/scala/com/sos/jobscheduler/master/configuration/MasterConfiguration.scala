@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
@@ -47,7 +47,7 @@ object MasterConfiguration
 
   def forTest(configAndData: Path,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
     name: String = DefaultName

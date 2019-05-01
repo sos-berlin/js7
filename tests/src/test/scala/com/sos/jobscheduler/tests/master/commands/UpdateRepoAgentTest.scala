@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -55,7 +55,7 @@ final class UpdateRepoAgentTest extends FreeSpec
         }
 
         // Start a new Agent with same state but a (probably) different HTTP port
-        val port = findRandomFreeTcpPort()
+        val port = findFreeTcpPort()
         agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
           provider.agents.head.directory,
           httpPort = Some(port))

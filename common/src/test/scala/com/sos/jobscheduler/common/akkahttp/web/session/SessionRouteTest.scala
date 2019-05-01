@@ -28,7 +28,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
@@ -93,7 +93,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     def actorSystem = SessionRouteTest.this.actorSystem
     def scheduler = Scheduler.global
-    lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findRandomFreeTcpPort())) :: Nil
+    lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
     def newRoute(binding: WebServerBinding) = route
   }
 

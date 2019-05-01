@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.ConfigFactory
 import java.net.{InetAddress, InetSocketAddress}
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
 {
   private implicit lazy val actorSystem = newActorSystem("AkkaWebServerTest")
-  private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
+  private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("AkkaWebServerTest-")
   private implicit lazy val materializer = ActorMaterializer()
   private lazy val http = Http()

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
 import monix.eval.Task
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -62,7 +62,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   }
 
   "main with Agent URI only checks wether Agent is responding (it is not)" in {
-    val port = findRandomFreeTcpPort()
+    val port = findFreeTcpPort()
     val output = mutable.Buffer[String]()
     assertResult(1) {
       AgentClientMain.run(List(s"-data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)

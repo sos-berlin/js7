@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.MessageSigner
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
@@ -48,7 +48,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected final lazy val agent: RunningAgent = agents.head
 
   protected val masterModule: Module = EMPTY_MODULE
-  protected lazy val masterHttpPort: Option[Int] = Some(findRandomFreeTcpPort())
+  protected lazy val masterHttpPort: Option[Int] = Some(findFreeTcpPort())
   protected lazy val masterHttpsPort: Option[Int] = None
   protected def agentHttpsMutual = false
   protected def masterHttpsMutual = false

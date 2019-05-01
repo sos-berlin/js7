@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
 import com.sos.jobscheduler.core.crypt.{MessageSigner, SignatureVerifier}
@@ -132,7 +132,7 @@ extends HasCloser {
   def startMaster(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false)
   : Task[RunningMaster] =
@@ -142,7 +142,7 @@ extends HasCloser {
   private def startMaster2(
     module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
     fileBased: Seq[FileBased] = Nil,
@@ -246,8 +246,8 @@ object DirectoryProvider
   extends Tree {
     val directory = rootDirectory / agentRefPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
-        httpPort = !https ? findRandomFreeTcpPort(),
-        httpsPort = https ? findRandomFreeTcpPort(),
+        httpPort = !https ? findFreeTcpPort(),
+        httpsPort = https ? findFreeTcpPort(),
         mutualHttps = mutualHttps)
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)

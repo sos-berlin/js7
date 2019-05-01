@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.master.client.main.MasterClientMain
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -17,7 +17,7 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Di
   protected val fileBased = Nil
   private def configDirectory = directoryProvider.master.config
   private def dataDirectory = directoryProvider.master.data
-  private val httpsPort = findRandomFreeTcpPort()
+  private val httpsPort = findFreeTcpPort()
   override protected lazy val masterHttpPort = None
   override protected lazy val masterHttpsPort = Some(httpsPort)
 

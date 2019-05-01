@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -33,7 +33,7 @@ private[https] trait HttpsTestBase extends FreeSpec with BeforeAndAfterAll with 
   protected def provideMasterClientCertificate = false
 
   override protected final lazy val masterHttpPort = None
-  override protected final lazy val masterHttpsPort = Some(findRandomFreeTcpPort())
+  override protected final lazy val masterHttpsPort = Some(findFreeTcpPort())
   override protected final def masterClientCertificate = provideMasterClientCertificate ? ClientTrustStoreResource
 
   private lazy val keyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")

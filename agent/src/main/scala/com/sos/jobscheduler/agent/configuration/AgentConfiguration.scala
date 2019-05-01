@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
@@ -163,7 +163,7 @@ object AgentConfiguration {
     def apply(
       configAndData: Path,
       config: Config = ConfigFactory.empty,
-      httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+      httpPort: Option[Int] = Some(findFreeTcpPort()),
       httpsPort: Option[Int] = None,
       mutualHttps: Boolean = false
     ) =

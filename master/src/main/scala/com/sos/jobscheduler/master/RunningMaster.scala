@@ -26,7 +26,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
@@ -140,7 +140,7 @@ object RunningMaster {
 
   def newInjectorForTest(directory: Path, module: Module = EMPTY_MODULE,
     config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findRandomFreeTcpPort()),
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
     name: String)
