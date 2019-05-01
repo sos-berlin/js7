@@ -104,13 +104,13 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
 
     "Second concurrent request is delayed" in {
       val t = currentTimeMillis
-      val a = Future { blocking { executeRequest(100.millis, OK) } }
+      val a = Future { blocking { executeRequest(100.millis, OK) } }  // running from 0 till 100
       assert(waitForCondition(1.s, 1.ms)(limiter.isBusy))
-      val b = Future { blocking { executeRequest(100.millis, OK) } }
+      val b = Future { blocking { executeRequest(100.millis, OK) } }  // waits 100ms, running from 100 till 200
       sleep(30.millis)
-      val c = Future { blocking { executeRequest(100.millis, OK) } }
+      val c = Future { blocking { executeRequest(100.millis, OK) } }  // waits 170ms, running from 200 till 300
       sleep(30.millis)
-      val d = Future { blocking { executeRequest(100.millis, TooManyRequests) } }   // Times out
+      val d = Future { blocking { executeRequest(100.millis, TooManyRequests) } }   // should wait 240ms but times out after 210ms
       a await 99.seconds
       assert(limiter.isBusy)
       b await 99.seconds
