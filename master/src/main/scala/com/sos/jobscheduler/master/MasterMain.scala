@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.JavaMainSupport.{runMain, withShutdownHooks}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import monix.execution.Scheduler
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 /**
   * JobScheduler Master.
@@ -33,7 +33,7 @@ object MasterMain {
     }
   }
 
-  private def onJavaShutdown(master: RunningMaster, timeout: Duration)(implicit s: Scheduler): Unit = {
+  private def onJavaShutdown(master: RunningMaster, timeout: FiniteDuration)(implicit s: Scheduler): Unit = {
     logger.warn("Trying to terminate Master due to Java shutdown")
     master.terminate().runToFuture await timeout
     master.close()

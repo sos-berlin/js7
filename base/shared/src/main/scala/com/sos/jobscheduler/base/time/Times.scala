@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.base.time
 
-import java.util.concurrent.TimeUnit.{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, SECONDS}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 object Times
 {

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionActor._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable

@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath

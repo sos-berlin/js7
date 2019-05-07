@@ -8,13 +8,13 @@ import com.sos.jobscheduler.agent.task.TaskRegisterActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.job.TaskId
 import com.typesafe.config.Config
-import java.time.Instant
-import java.time.Instant.now
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.util.control.NonFatal
@@ -84,7 +84,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
           trySigtermProcesses()
         }
         killAllSchedule = context.system.scheduler.scheduleOnce(
-          delay = (cmd.sigkillProcessesAfter - now max 0.s).toFiniteDuration,
+          delay = (cmd.sigkillProcessesAfter - now) max 0.s,
           context.self, Internal.KillAll)
         sender() ! Completed
 
@@ -143,7 +143,7 @@ object TaskRegisterActor {
   sealed trait Command
   object Command {
     final case class SendSignalToAllProcesses(signal: ProcessSignal) extends Command
-    final case class Terminate(sigterm: Boolean, sigkillProcessesAfter: Instant) extends Command
+    final case class Terminate(sigterm: Boolean, sigkillProcessesAfter: Timestamp) extends Command
     final case object GetOverview extends Command
     final case object GetTaskOverviews extends Command
     final case class GetTaskOverview(taskId: AgentTaskId) extends Command

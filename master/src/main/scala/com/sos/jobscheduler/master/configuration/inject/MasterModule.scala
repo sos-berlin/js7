@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.system.ThreadPools
@@ -75,7 +76,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {
-        actorSystem.terminate() await config.getDuration("jobscheduler.akka.shutdown-timeout")
+        actorSystem.terminate() await config.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
         logger.debug("ActorSystem terminated")
       }
       catch {

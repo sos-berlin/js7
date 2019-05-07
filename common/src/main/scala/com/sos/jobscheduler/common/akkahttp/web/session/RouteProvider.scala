@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
 import com.sos.jobscheduler.common.akkahttp.web.session.{Session => Session_}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Duration

@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestLimiter
 import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
+import com.sos.jobscheduler.common.event.collector.EventDirectives.{DefaultTimeout, eventRequest}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.watch.ClosedException
 import com.sos.jobscheduler.core.problems.FatEventServiceBusyProblem
@@ -72,12 +72,12 @@ trait FatEventRoute extends MasterRouteProvider
     }
 
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
-    val timeoutAt = now + fatRequest.timeout
+    val timeoutAt = now + fatRequest.timeout.getOrElse(DefaultTimeout)
     Task {
       val stateAccessor = fatStateCache.newAccessor(fatRequest.after)
 
       def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
-        eventWatch.when[Event](underlyingRequest.copy[Event](timeout = timeoutAt - now))
+        eventWatch.when[Event](underlyingRequest.copy[Event](timeout = Some(timeoutAt - now)))
           .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
           .map {
             case o: TearableEventSeq.Torn =>

@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.order.OrderEvent._
@@ -24,7 +24,7 @@ import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
 import monix.execution.Scheduler
 import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -274,7 +274,7 @@ extends KeyedJournalingActor[OrderEvent]
   }
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
-    if (stdoutCommitDelay.isZero)  // slow
+    if (stdoutCommitDelay == Duration.Zero)  // slow
       persist(OrderStdWritten(t)(chunk)) { _ =>
         Accepted
       }

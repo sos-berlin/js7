@@ -2,9 +2,9 @@ package com.sos.jobscheduler.agent.data.views
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import java.time.Instant
 import org.scalatest.FreeSpec
 
 /**
@@ -15,7 +15,7 @@ final class AgentOverviewTest extends FreeSpec {
   "JSON" in {
     testJson(
       AgentOverview(
-        startedAt = Instant.parse("2015-06-01T12:00:00Z"),
+        startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
         version = "TEST-VERSION",
         buildId = "BUILD-ID",
         isTerminating = false,
@@ -25,7 +25,7 @@ final class AgentOverviewTest extends FreeSpec {
           JavaInformation.Memory(maximum = 3, total = 2, free = 1),
           systemProperties = Map("test" -> "TEST"))),
       json"""{
-        "startedAt": "2015-06-01T12:00:00Z",
+        "startedAt": 1433160000000,
         "version": "TEST-VERSION",
         "buildId": "BUILD-ID",
         "isTerminating": false,

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.auth.SecretStringGenerator.newSecretString
 import com.sos.jobscheduler.common.auth.SecretStringGeneratorTest._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import org.scalatest.FreeSpec
 

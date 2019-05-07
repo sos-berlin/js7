@@ -49,7 +49,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
-    assert(output(2) contains "startedAt: '2")
+    assert(output(2) contains "startedAt: 15")
     assert(output(2) contains "isTerminating: false")
   }
 

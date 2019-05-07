@@ -1,14 +1,16 @@
 package com.sos.jobscheduler.base.time
 
+import com.sos.jobscheduler.base.time.GenericTimestamp._
 import io.circe
-import java.util.concurrent.TimeUnit.MILLISECONDS
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
   this: A =>
+
+  def companion: Companion[A]
 
   def toEpochMilli: Long
 
@@ -23,10 +25,10 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   def compare(o: A) = toEpochMilli compare o.toEpochMilli
 
-  def +(o: Duration): A =
+  def +(o: FiniteDuration): A =
     copy(epochMilli = toEpochMilli + o.toMillis)
 
-  def -(o: Duration): A =
+  def -(o: FiniteDuration): A =
     copy(epochMilli = toEpochMilli - o.toMillis)
 
   def -(o: A): FiniteDuration =
@@ -38,6 +40,12 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   final def roundToNextSecond: A = copy((toEpochMilli + 999)/ 1000 * 1000)
 
+  def roundTo(duration: FiniteDuration): A = this + duration / 2 roundDownTo duration
+
+  def roundDownTo(duration: FiniteDuration): A = {
+    val durationMillis = duration.toMillis
+    companion.ofEpochMilli(toEpochMilli / durationMillis * durationMillis)
+  }
   def copy(epochMilli: Long): A
 
   override def toString = toIsoString

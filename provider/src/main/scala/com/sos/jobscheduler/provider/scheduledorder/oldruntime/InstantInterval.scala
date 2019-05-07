@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTime._
 import java.time._
 import scala.language.implicitConversions
 

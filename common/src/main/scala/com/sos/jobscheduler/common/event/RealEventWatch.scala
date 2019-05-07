@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event
 
+import cats.syntax.option._
 import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
@@ -9,7 +10,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventWatch._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
@@ -41,11 +42,11 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     val originalTimeout = request.timeout
-    var until = Timestamp(0)  // Value not used
+    var until = none[Timestamp]
 
     def next(lazyRequest: () => EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () => EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-      until = now + (request.timeout min EventRequest.LongTimeout)  // Timeout is renewd after every fetched event
+      until = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewd after every fetched event
       if (request.limit <= 0)
         NoMoreObservable
       else
@@ -54,8 +55,9 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             throw new TornException(after = request.after, tornEventId = tornAfter)
 
           case EventSeq.Empty(lastEventId) =>
-            val remaining = until - now
-            ((remaining > Duration.Zero) ? Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until - now))
+            val remaining = until.map(_ - now)
+            (remaining.forall(_ > Duration.Zero) ?
+              Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until.map(_ - now)))
 
           case EventSeq.NonEmpty(events) =>
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
@@ -128,33 +130,33 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
   : Task[TearableEventSeq[CloseableIterator, A]] = {
-    val until = now + (request.timeout min EventRequest.LongTimeout)  // Protected agains Timestamp overflow
-    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit, tornOlder = request.tornOlder)
+    val until = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))  // Protected agains Timestamp overflow
+    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
   }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Timestamp, delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, tornOlder: Duration)
+  private def whenAnyKeyedEvents2[A](after: EventId, until: Option[Timestamp], delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ =>
       sync.whenEventIsAvailable(after, until, delay)
         .flatMap (_ =>
           collectEventsSince(after, collect, limit) match {
             case eventSeq @ EventSeq.NonEmpty(iterator) =>
-              if (tornOlder.isFinite()) {
-                // If the first event is not fresh, we have a read congestion.
-                // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
-                val head = iterator.next()
-                if (head.timestamp + tornOlder < now) {
-                  iterator.close()
-                  Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
-                } else
-                  Task.pure(EventSeq.NonEmpty(head +: iterator))
-              } else
-                Task.pure(eventSeq)
+              maybeTornOlder match {
+                case None => Task.pure(eventSeq)
+                case Some(tornOlder) =>
+                  // If the first event is not fresh, we have a read congestion.
+                  // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+                  val head = iterator.next()
+                  if (head.timestamp + tornOlder < now) {
+                    iterator.close()
+                    Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
+                  } else
+                    Task.pure(EventSeq.NonEmpty(head +: iterator))
+              }
 
             case EventSeq.Empty(lastEventId) =>
-              val nw = now
-              if (nw < until)
-                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, tornOlder)
+              if (until.forall(now < _))
+                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, maybeTornOlder)
               else
                 Task.pure(EventSeq.Empty(lastEventId))
 
@@ -213,7 +215,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   @TestOnly
   def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] => Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]] =
-    when[E1](EventRequest.singleClass[E1](after = after, timeout), predicate) await timeout + 1.seconds match {
+    when[E1](EventRequest.singleClass[E1](after = after, Some(timeout)), predicate) await timeout + 1.seconds match {
       case EventSeq.NonEmpty(events) =>
         try events.toVector
         finally events.close()

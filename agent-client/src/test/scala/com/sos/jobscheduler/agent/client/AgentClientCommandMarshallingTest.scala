@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.command.CommandMeta
 import javax.inject.Singleton
 import monix.eval.Task
@@ -44,7 +44,7 @@ extends FreeSpec with ScalaFutures with AgentTester {
       def detailed = throw new NotImplementedError
     }
   }
-  override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
+  override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
   private lazy val client = new SimpleAgentClient(agent.localUri).closeWithCloser
     .sideEffect(_.setSessionToken(agent.sessionToken))
 

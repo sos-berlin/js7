@@ -19,9 +19,7 @@ import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.NoWhitespace._
 import fastparse._
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeUnit.SECONDS
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -195,7 +193,7 @@ object WorkflowParser
             delays <- keyToValue.get[Seq[Int]]("retryDelays")
             maxTries <- keyToValue.get[Int]("maxTries")
             try_ <- checkedToP(TryInstruction.checked(try_, catch_,
-              delays.map(_.toVector.map(FiniteDuration(_, TimeUnit.SECONDS))),
+              delays.map(_.toVector.map(FiniteDuration(_, SECONDS))),
               maxTries = maxTries,
               sourcePos(start, end)))
           } yield try_

@@ -11,17 +11,17 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptTest._
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit.SECONDS
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 
 /**

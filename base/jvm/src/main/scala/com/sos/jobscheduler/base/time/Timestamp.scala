@@ -9,7 +9,9 @@ import java.time.format.DateTimeFormatter
 /**
   * @author Joacim Zschimmer
   */
-final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp] {
+final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp]
+{
+  def companion = Timestamp
 
   /** Returns an ISO-8601 string with milliseconds.
     * For example "2017-12-04T11:22:33.456Z".
@@ -27,6 +29,8 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
 
 object Timestamp extends GenericTimestamp.Companion[Timestamp]
 {
+  val MaxValue = ofEpochMilli(Long.MaxValue)
+
   def ofEpochMilli(o: Long) = new Timestamp(o)
 
   def apply(instant: Instant) = ofInstant(instant)

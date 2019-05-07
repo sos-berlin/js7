@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -47,7 +47,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
-import scala.concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
@@ -177,7 +177,7 @@ private object OrderActorTest {
     private var orderActorTerminated = false
 
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
-    eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Duration.Inf)) foreach self.!
+    eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Some(999.s))) foreach self.!
     val started = now
 
     def receive = {

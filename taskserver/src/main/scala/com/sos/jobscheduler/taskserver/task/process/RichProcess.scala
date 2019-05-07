@@ -3,6 +3,7 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
@@ -11,7 +12,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.ioFuture
 import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
@@ -21,8 +21,6 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import java.time.Instant
-import java.time.Instant.now
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -35,7 +33,7 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
   (implicit iox: IOExecutor, ec: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
-  val startedAt = Instant.now
+  val startedAt = now
   val pidOption: Option[Pid] = processToPidOption(process)
   private val logger = Logger.withPrefix[RichProcess](toString)
   /**

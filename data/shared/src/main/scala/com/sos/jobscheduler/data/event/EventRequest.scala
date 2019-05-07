@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.event.EventRequest._
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, duration}
+import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
 /**
@@ -14,10 +14,10 @@ import scala.reflect.ClassTag
 final case class EventRequest[E <: Event](
   eventClasses: Set[Class[_ <: E]],
   after: EventId,
-  timeout: Duration,
+  timeout: Option[FiniteDuration],
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
-  tornOlder: Duration = Duration.Inf)
+  tornOlder: Option[FiniteDuration] = None)
 extends SomeEventRequest[E]
 {
   require(eventClasses.nonEmpty, "Missing Event class")
@@ -26,10 +26,14 @@ extends SomeEventRequest[E]
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     builder += returnQueryParameter
-    if (timeout != Duration.Zero) builder += "timeout" -> durationToString(timeout)
+    timeout match {
+      case None => builder += "timeout" -> "infinite"
+      case Some(Duration.Zero) =>
+      case Some(o) => builder += "timeout" -> durationToString(o)
+    }
     if (delay != DefaultDelay) builder += "delay" -> durationToString(delay)
     if (limit != DefaultLimit) builder += "limit" -> limit.toString
-    if (tornOlder != Duration.Inf) builder += "tornOlder" -> durationToString(tornOlder)
+    for (o <- tornOlder) builder += "tornOlder" -> durationToString(o)
     builder += "after" -> after.toString
     builder.result()
   }
@@ -40,8 +44,8 @@ extends SomeEventRequest[E]
     */
   @tailrec
   def repeat[A](fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
-    val waitTimeout = duration.Duration(timeout.toMillis + 10000, duration.MILLISECONDS)
-    Await.result(fetchEvents(this), waitTimeout) match {
+    val waitTimeout = timeout map (_ + 10.seconds)
+    Await.result(fetchEvents(this), waitTimeout getOrElse Duration.Inf) match {
       case EventSeq.NonEmpty(stampeds) =>
         stampeds.collect(collect) match {
           case Seq() => copy[E](after = stampeds.last.eventId).repeat(fetchEvents)(collect)
@@ -68,24 +72,18 @@ object EventRequest {
     /** Begin with events after `after`. `after` must be a known EventId. */
     after: EventId = EventId.BeforeFirst,
     /** Wait not longer then `timeout` for events. */
-    timeout: Duration = Duration.Zero,
+    timeout: Option[FiniteDuration] = Some(Duration.Zero),
     /** Delay after the first event to collect more events at once. **/
     delay: FiniteDuration = DefaultDelay,
     /** Limit the number of events. */
     limit: Int = DefaultLimit,
     /** Return Torn if the first event is older than `tornOlder`. */
-    tornOlder: Duration = Duration.Inf)
+    tornOlder: Option[FiniteDuration] = None)
   : EventRequest[E] =
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
 
-  private def durationToString(duration: Duration): String =
-    duration match {
-      case Duration.Inf => "infinite"
-      case Duration.MinusInf => "-∞"
-      case Duration.Undefined => "undefined"
-      case duration: FiniteDuration =>
-        BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
-    }
+  private def durationToString(duration: FiniteDuration): String =
+    BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
 }
 
 final case class ReverseEventRequest[E <: Event](

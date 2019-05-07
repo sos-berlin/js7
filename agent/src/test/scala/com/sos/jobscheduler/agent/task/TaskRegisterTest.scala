@@ -12,19 +12,19 @@ import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
 import com.sos.jobscheduler.data.job.JobKey
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.typesafe.config.ConfigFactory
-import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConverters._
 import scala.concurrent.Promise
@@ -136,7 +136,7 @@ private object TaskRegisterTest {
 
     val jobKey = JobKey(WorkflowPath("/WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB"))
     val pidOption = Some(Pid(123))
-    val overview = TaskOverview(jobKey, id, pidOption, now.toTimestamp)
+    val overview = TaskOverview(jobKey, id, pidOption, now)
     val terminatedPromise = Promise[Completed]()
     var signalled: ProcessSignal = null
 

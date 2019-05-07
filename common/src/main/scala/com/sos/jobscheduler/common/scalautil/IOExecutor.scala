@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.{logger, _}
-import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
 import java.util.concurrent.{Executor, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import scala.concurrent.duration._

@@ -10,7 +10,8 @@ import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
@@ -198,7 +199,7 @@ extends Actor with Stash {
   private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
     val sender = context.sender()
     def commit = Internal.Commit(writtenBuffer.length)
-    if (delay.isZero)
+    if (delay == Duration.Zero)
       self.forward(commit)
     else if (delay < forwardingCommit) {
       forwardingCommit = delay

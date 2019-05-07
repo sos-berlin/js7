@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.EventId
 import java.util.concurrent.ConcurrentHashMap
 import org.scalatest.FreeSpec

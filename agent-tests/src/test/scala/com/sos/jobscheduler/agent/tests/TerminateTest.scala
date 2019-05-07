@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
@@ -66,7 +66,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
     val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
       Future.sequence(
         for (orderId <- orderIds) yield
-          eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = 90.seconds), orderId)
+          eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(timeout = Some(90.s)), orderId)
             .runToFuture: Future[OrderEvent.OrderProcessed])
     sleep(2.s)
     assert(!whenStepEnded.isCompleted)

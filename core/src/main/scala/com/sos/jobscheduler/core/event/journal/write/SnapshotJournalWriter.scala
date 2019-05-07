@@ -2,16 +2,16 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
-import java.time.Instant.now
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 
 /**

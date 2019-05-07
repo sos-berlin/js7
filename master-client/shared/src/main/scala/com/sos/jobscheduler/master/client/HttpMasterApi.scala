@@ -53,13 +53,13 @@ trait HttpMasterApi extends MasterApi with SessionApi
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.events[E](request),
-      timeout = request.timeout + ToleratedEventDelay)
+      timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.fatEvents[E](request),
-      timeout = request.timeout + ToleratedEventDelay)
+      timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
   final def workflows: Task[Stamped[Seq[Workflow]]] =
     httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])

@@ -6,14 +6,14 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.system.JavaInformation
 import io.circe.Json
-import java.time.Instant
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
@@ -25,7 +25,7 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
 
   protected def scheduler = Scheduler.global
   protected def agentOverview = Task.pure(AgentOverview(
-    startedAt = Instant.parse("2015-06-01T12:00:00Z"),
+    startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
     buildId = "BUILD-ID",
     isTerminating = false,
@@ -36,7 +36,7 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
       systemProperties = Map("test" -> "TEST"))))
 
   private def expectedOverviewJson = json"""{
-    "startedAt": "2015-06-01T12:00:00Z",
+    "startedAt": 1433160000000,
     "version": "TEST-VERSION",
     "buildId": "BUILD-ID",
     "isTerminating": false,

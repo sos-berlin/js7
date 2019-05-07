@@ -1,8 +1,11 @@
 package com.sos.jobscheduler.common.utils
 
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import java.time.{Duration, Instant}
+import com.sos.jobscheduler.base.time.ScalaTime._
+import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
@@ -12,13 +15,13 @@ import scala.util.{Failure, Try}
 object Exceptions {
   private val logger = Logger(getClass)
 
-  def repeatUntilNoException[A](timeout: Duration, delayNext: Duration)(body: => A): A =
-    repeatUntilNoException(until = Instant.now() plus timeout, delayNext)(body)
+  def repeatUntilNoException[A](timeout: FiniteDuration, delayNext: FiniteDuration)(body: => A): A =
+    repeatUntilNoException(until = now + timeout, delayNext)(body)
 
-  def repeatUntilNoException[A](until: Instant, delayNext: Duration)(body: => A): A = {
+  def repeatUntilNoException[A](until: Timestamp, delayNext: FiniteDuration)(body: => A): A = {
     var tried = Try { body }
-    while (tried.isFailure && (Instant.now isBefore until)) {
-      Thread.sleep(delayNext.toMillis)
+    while (tried.isFailure && (now < until)) {
+      sleep(delayNext)
       tried = Try { body }
     }
     tried.get

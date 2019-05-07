@@ -1,15 +1,13 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
-import java.util.concurrent.TimeUnit.{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, SECONDS}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 
-final class ScalaTimeTest extends FreeSpec {
+final class JavaTimeTest extends FreeSpec {
 
   "Duration" - {
     "Int.µs" in {
@@ -58,16 +56,6 @@ final class ScalaTimeTest extends FreeSpec {
         bigDecimalToDuration(BigDecimal("0.1112223334"))
       }
     }
-
-//    "Int.min" in {
-//      (7.min: Duration).toMinutes shouldEqual 7
-//      (7.min: Duration).toMillis shouldEqual (7*60*1000)
-//    }
-//
-//    "Long.min" in {
-//      (7L.min: Duration).toHours shouldEqual 7
-//      (7L.min: Duration).toMillis shouldEqual (7*60*1000)
-//    }
 
     "Int.h" in {
       (7.h: Duration).toHours shouldEqual 7
@@ -206,20 +194,6 @@ final class ScalaTimeTest extends FreeSpec {
       assert(parseDuration("111222333444555666µs") == Duration.ofSeconds(111222333444L, 555666000L))
     }
 
-    "toConcurrent" in {
-      assert(1234.ms.toConcurrent == 1234.millis)
-      assert(Duration.ofNanos(111222333444555666L).toConcurrent == 111222333444555666L.nanos)
-      assert(Duration.ofNanos(Long.MaxValue).toConcurrent == Long.MaxValue.nanos)
-      assert((Duration.ofNanos(Long.MaxValue) + Duration.ofNanos(1)).toConcurrent == scala.concurrent.duration.Duration.Inf)   // Limit exceeded
-    }
-
-    "toFiniteDuration" in {
-      assert(1234.ms.toFiniteDuration== 1234.millis)
-      assert(Duration.ofNanos(111222333444555666L).toFiniteDuration == 111222333444555666L.nanos)
-      assert(Duration.ofNanos(Long.MaxValue).toFiniteDuration == Long.MaxValue.nanos)
-      assert((Duration.ofNanos(Long.MaxValue) + Duration.ofNanos(1)).toFiniteDuration == Long.MaxValue.nanos)   // Limit exceeded
-    }
-
 //    "Duration * Int" in {
 //      ((7.s * 3): Duration).toMillis shouldEqual (7*1000 * 3)
 //    }
@@ -345,13 +319,5 @@ final class ScalaTimeTest extends FreeSpec {
       assert(LocalDateTime.of(2016, 1, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-01-01T10:00:00Z"))
       assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
     }
-  }
-
-  "concurrent Duration to Java Duration" in {
-    assert(0.seconds.toJavaDuration == 0.s)
-    assert(123.seconds.toJavaDuration == 123.s)
-    assert(123.millis.toJavaDuration == 123.ms)
-    assert(123.nanos.toJavaDuration == Duration.ofNanos(123))
-    assert(292.days.toJavaDuration == Duration.ofDays(292))  // Maximum
   }
 }

@@ -5,13 +5,13 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
 import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.system.StdoutOrStderr
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
-import java.time.Duration
 import scala.collection.immutable
+import scala.concurrent.duration._
 
 object Processes {
   private val logger = Logger(getClass)
@@ -57,7 +57,7 @@ object Processes {
       * @see https://change.sos-berlin.com/browse/JS-1581
       * @see https://bugs.openjdk.java.net/browse/JDK-8068370
       */
-    def startRobustly(durations: Iterator[Duration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
+    def startRobustly(durations: Iterator[FiniteDuration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
       try delegate.start()
       catch {
         case TextFileBusyIOException(e) if durations.hasNext =>

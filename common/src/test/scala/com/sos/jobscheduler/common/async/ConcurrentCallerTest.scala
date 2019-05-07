@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.common.async
 
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import java.time.Instant
-import java.time.Instant.now
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -16,8 +16,8 @@ import scala.concurrent.Promise
 final class ConcurrentCallerTest extends FreeSpec {
 
   "ConcurrentCaller" in {
-    val instants = mutable.Buffer[Instant]()
-    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 3600.s), { () => instants += now() }, "TEST")) { backgroundCaller =>
+    val instants = mutable.Buffer[Timestamp]()
+    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 3600.s), { () => instants += now }, "TEST")) { backgroundCaller =>
       backgroundCaller.start()
       waitForCondition(timeout = 10.s, step = 10.ms) { instants.size == 4 }
     }

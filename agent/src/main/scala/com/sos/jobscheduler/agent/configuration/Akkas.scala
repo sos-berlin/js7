@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import scala.concurrent.ExecutionContext
 
@@ -24,7 +25,7 @@ object Akkas {
       DeadLetterActor.subscribe(o)
       closer.onClose {
         logger.debug(s"ActorSystem('${o.name}') terminate")
-        o.terminate() await myConfig.getDuration("jobscheduler.akka.shutdown-timeout")
+        o.terminate() await myConfig.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
       }
     }
   }

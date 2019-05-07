@@ -2,7 +2,7 @@ package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.data.order.FreshOrder
 import com.sos.jobscheduler.provider.scheduledorder.OrderScheduleGenerator._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval
@@ -40,7 +40,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Unit], con
   }
 
   private def generate()(implicit s: Scheduler): Unit = {
-    val interval = InstantInterval(generatedUntil.toInstant, addEvery.toJavaDuration)
+    val interval = InstantInterval(generatedUntil.toInstant, addEvery.asJava)
     logger.debug(s"Generating orders for time interval $interval")
     val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
     if (!closed) {

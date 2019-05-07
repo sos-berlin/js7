@@ -4,12 +4,12 @@ import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
+import cats.syntax.option._
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.event._
-import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -83,19 +83,16 @@ object EventDirectives {
   private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
     Unmarshaller.strict {
       case "infinite" => Duration.Inf
-      case "∞" => Duration.Inf
-      case "-∞" => Duration.MinusInf
-      case "undefined" => Duration.Undefined
       case o => stringToFiniteDuration(o)
     }
 
   private def stringToFiniteDuration(string: String) =
-    new FiniteDuration((BigDecimal(string) * 1000).toLong, TimeUnit.MILLISECONDS)
+    (BigDecimal(string) * 1000).toLong.millis
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[_ <: E]],
     defaultAfter: Option[EventId],
-    defaultTimeout: Duration,
+    defaultTimeout: FiniteDuration,
     defaultDelay: FiniteDuration,
     inner: Tuple1[SomeEventRequest[E]] => Route)
   : Route =
@@ -108,16 +105,21 @@ object EventDirectives {
           _ orElse defaultAfter match {
             case None => reject(ValidationRejection("Missing parameter after="))
             case Some(after) =>
-              parameter("timeout" ? defaultTimeout) { timeout =>
+              parameter("timeout" ? (defaultTimeout: Duration)) { timeout =>
+                val maybeTimeout = timeout match {
+                  case o: FiniteDuration => Some(o)
+                  case _/*Duration.Inf only*/ => None
+                }
                 parameter("delay" ? defaultDelay) { delay =>
-                  parameter("tornOlder" ? (Duration.Inf: Duration)) { tornOlder =>
-                    optionalHeaderValueByType[`Timeout-Access`](()) { h =>  // Setting akka.http.server.request-timeout
-                      val akkaTimeout = h map (_.timeoutAccess.timeout) match {
-                        case Some(o: FiniteDuration) => if (o > AkkaTimeoutTolerance) o - AkkaTimeoutTolerance else o
-                        case _ => timeout
-                      }
-                      val eventRequest = EventRequest[E](eventClasses, after = after,
-                        timeout = timeout min akkaTimeout, delay = delay max MinimumDelay, limit = limit, tornOlder = tornOlder)
+                  parameter("tornOlder" ? none[FiniteDuration]) { tornOlder =>
+                    optionalHeaderValueByType[`Timeout-Access`](()) { timeoutAccess =>  // Setting akka.http.server.request-timeout
+                      val eventRequest = EventRequest[E](eventClasses,
+                        after = after,
+                        timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
+                          case Some(o: FiniteDuration) => maybeTimeout.map(timeout => if (o > AkkaTimeoutTolerance) timeout - AkkaTimeoutTolerance else timeout)
+                          case _ => maybeTimeout
+                        },
+                        delay = delay max MinimumDelay, limit = limit, tornOlder = tornOlder)
                       inner(Tuple1(eventRequest))
                     }
                   }

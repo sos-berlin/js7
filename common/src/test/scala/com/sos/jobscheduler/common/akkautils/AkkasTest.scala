@@ -4,10 +4,10 @@ import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.{ByteString, Timeout}
 import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.ConfigFactory
-import java.util.concurrent.TimeUnit
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 import scala.util.Random
 
 /**
@@ -19,7 +19,7 @@ final class AkkasTest extends FreeSpec {
     val millis = Int.MaxValue * 10L - 2000
     assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months
     val actorSystem = ActorSystem("AkkasTest")
-    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, MILLISECONDS))
     actorSystem.terminate()
   }
 
@@ -28,7 +28,7 @@ final class AkkasTest extends FreeSpec {
     assert(millis / 1000 / 3600 / 24 / 365 == 68)  // Years
     val config = ConfigFactory.parseString("akka.scheduler.tick-duration = 1s")
     val actorSystem = ActorSystem("AkkasTest", config)
-    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, MILLISECONDS))
     actorSystem.terminate()
   }
 

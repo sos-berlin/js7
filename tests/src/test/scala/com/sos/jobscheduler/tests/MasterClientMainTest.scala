@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.master.client.main.MasterClientMain
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest

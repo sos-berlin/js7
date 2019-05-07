@@ -13,7 +13,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
@@ -181,7 +181,7 @@ with ReceiveLoggingActor.WithStash {
         isAwaitingFetchedEvents = true
         val fetchCouplingNumber = couplingNumber
         val after = lastEventId
-        client.mastersEvents(EventRequest[Event](EventClasses, after = after, eventFetchTimeout, limit = EventLimit))
+        client.mastersEvents(EventRequest[Event](EventClasses, after = after, Some(eventFetchTimeout), limit = EventLimit))
           .materialize foreach { tried =>
             // *** Asynchronous ***
             self ! Internal.Fetched(tried, after, fetchCouplingNumber)

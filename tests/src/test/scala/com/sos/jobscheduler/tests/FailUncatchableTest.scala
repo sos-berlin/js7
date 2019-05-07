@@ -2,7 +2,6 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.time.ScalaTime.JavaFiniteDuration
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
@@ -179,7 +178,7 @@ final class FailUncatchableTest extends FreeSpec
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
-      directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.milliseconds.toJavaDuration))
+      directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.milliseconds))
       directoryProvider.run { (master, _) =>
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         master.eventWatch.await[E](_.key == orderId)

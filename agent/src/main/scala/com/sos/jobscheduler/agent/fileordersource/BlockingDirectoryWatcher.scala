@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.agent.fileordersource
 
 import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
-import java.time.Instant.now
-import java.time.{Duration, Instant}
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import scala.collection.JavaConverters._
 import scala.concurrent._
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -24,15 +24,15 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
 
   directory.register(watchService, ENTRY_CREATE)
 
-  def waitForMatchingDirectoryChange(until: Instant): Unit = while (!waitForNextChange(until)) {}
+  def waitForMatchingDirectoryChange(until: Timestamp): Unit = while (!waitForNextChange(until)) {}
 
   /**
    * Waits until any directory change.
    *
    * @return true, iff Path matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
-  def waitForNextChange(until: Instant): Boolean = {
-    val remainingMillis = (until - now()).toMillis
+  def waitForNextChange(until: Timestamp): Boolean = {
+    val remainingMillis = (until - now).toMillis
     remainingMillis <= 0 || {
       lazy val logPrefix = s"Watching directory $directory"
       logger.trace(s"$logPrefix for ${remainingMillis}ms ...")
@@ -54,6 +54,6 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
 }
 
 object BlockingDirectoryWatcher {
-  val PossibleDelay: Duration = if (isMac) 30.s else 5.s  // Slow for macOS. See https://bugs.openjdk.java.net/browse/JDK-7133447
+  val PossibleDelay: FiniteDuration = if (isMac) 30.s else 5.s  // Slow for macOS. See https://bugs.openjdk.java.net/browse/JDK-7133447
   private val logger = Logger(getClass)
 }

@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.agent.AgentAddress
@@ -99,7 +99,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
-    assert(output(2) contains "startedAt: '2")
+    assert(output(2) contains "startedAt: 15")
     assert(output(2) contains "isTerminating: false")
   }
 

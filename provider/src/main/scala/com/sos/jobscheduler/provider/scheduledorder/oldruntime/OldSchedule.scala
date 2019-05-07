@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.provider.scheduledorder.oldruntime
 
 import com.google.common.collect.{AbstractIterator => GuavaIterator}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTime._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule._
 import java.time._
 import scala.annotation.tailrec

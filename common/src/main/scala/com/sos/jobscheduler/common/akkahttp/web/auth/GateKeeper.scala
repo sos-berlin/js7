@@ -14,7 +14,8 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.Config
 import monix.eval.Task
 import monix.execution.Scheduler

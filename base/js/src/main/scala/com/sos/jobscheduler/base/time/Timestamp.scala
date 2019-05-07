@@ -7,7 +7,9 @@ import scala.scalajs.js
 /**
   * @author Joacim Zschimmer
   */
-final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp] {
+final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp]
+{
+  def companion = Timestamp
 
   /** "2017-12-04T11:22:33.456Z". */
   def toIsoString = {

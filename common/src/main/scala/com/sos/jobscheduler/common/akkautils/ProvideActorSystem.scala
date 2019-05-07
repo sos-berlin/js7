@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.akkautils.ProvideActorSystem._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.Config
 
 /**

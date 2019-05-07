@@ -22,11 +22,10 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.typesafe.config.Config
-import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -90,7 +89,7 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent => A): A =
+  def run[A](configuration: AgentConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningAgent => A): A =
     autoClosing(apply(configuration) await timeout) { agent =>
       val a = body(agent)
       agent.terminated await 99.s

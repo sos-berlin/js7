@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.time
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch._
 import org.scalatest.FreeSpec
 

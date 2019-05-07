@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
@@ -20,14 +20,13 @@ import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class AgentActorTest extends FreeSpec {
 
-  private implicit val askTimeout = Timeout(60.seconds)
+  private implicit val askTimeout = Timeout(60.s)
 
   for (n <- List(10) ++ (sys.props contains "test.speed" option 1000 /*needs taskLimit=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
@@ -46,7 +45,7 @@ final class AgentActorTest extends FreeSpec {
               AttachOrder(TestOrder.copy(id = orderId), TestAgentRefPath, provider.fileBasedSigner.sign(SimpleTestWorkflow))))
           .await(99.s)
         for (orderId <- orderIds)
-          eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
+          eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
         val Valid(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
@@ -64,7 +63,7 @@ final class AgentActorTest extends FreeSpec {
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         for (orderId <- orderIds)
-          eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = 90.seconds), orderId) await 99.s
+          eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         executeCommand(AgentCommand.Terminate()) await 99.s
       }
     }

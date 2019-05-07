@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.async
 
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import java.time.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, blocking}
 
 /**
@@ -9,8 +9,8 @@ import scala.concurrent.{Future, Promise, blocking}
  *
  * @author Joacim Zschimmer
  */
-final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () => Unit, name: String) extends AutoCloseable {
-
+final class ConcurrentCaller(pauses: TraversableOnce[FiniteDuration], function: () => Unit, name: String) extends AutoCloseable
+{
   private val terminatedPromise = Promise[Unit]()
 
   private object thread extends Thread {

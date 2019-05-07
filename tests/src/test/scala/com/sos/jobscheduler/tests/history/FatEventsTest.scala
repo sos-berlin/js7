@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
@@ -35,7 +35,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.language.implicitConversions
 
 /**
@@ -71,7 +70,7 @@ final class FatEventsTest extends FreeSpec
           var rounds = 0
           while (!finished) {
             rounds += 1
-            val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = 99.seconds, limit = 2)
+            val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = Some(99.s), limit = 2)
             val EventSeq.NonEmpty(stampeds) = master.httpApi.fatEvents(request) await 99.s
             val chunk = stampeds take 2
             chunk foreach history.handleFatEvent
@@ -138,23 +137,23 @@ final class FatEventsTest extends FreeSpec
           master.eventWatch.await[MasterReady](after = lastAddedEventId)
 
           // after=0 is torn
-          val torn = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = 99.seconds)) await 99.s
+          val torn = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = Some(99.s))) await 99.s
           assert(torn.isInstanceOf[TearableEventSeq.Torn])
 
-          val EventSeq.NonEmpty(stamped) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = 99.seconds)) await 99.s
+          val EventSeq.NonEmpty(stamped) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = keepEventsEventId, timeout = Some(99.s))) await 99.s
           assert(stamped.head.eventId > keepEventsEventId)
           assert(stamped.map(_.value.event) ==
             Vector.fill(listJournalFiles.length)(MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId)))  // Only MasterReady, nothing else happened
 
           locally { // Test a bug: Start a new journal file, then KeepEvent, then fetch fat events, while lean events invisible for fat events are issued
             assert(listJournalFiles.length == 2)
-            val EventSeq.Empty(eventId1) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = stamped.last.eventId, timeout = 0.seconds)) await 99.s
+            val EventSeq.Empty(eventId1) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = stamped.last.eventId, timeout = Some(0.s))) await 99.s
 
             // Issue an event ignored by FatState
             master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
 
             // FatState should advance to the EventId returned as EventSeq.Empty (skipIgnoredEventIds)
-            val EventSeq.Empty(eventId2) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId1, timeout = 0.seconds)) await 99.s
+            val EventSeq.Empty(eventId2) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId1, timeout = Some(0.s))) await 99.s
             assert(eventId2 > eventId1)
 
             // KeepEvents deletes last file
@@ -162,16 +161,16 @@ final class FatEventsTest extends FreeSpec
             assert(listJournalFiles.length == 1)  // One file deleted
 
             // Should not return Torn:
-            val EventSeq.Empty(`eventId2`) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+            val EventSeq.Empty(`eventId2`) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
 
             // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the second time
             master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
-            val EventSeq.Empty(eventId3) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+            val EventSeq.Empty(eventId3) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
             assert(eventId3 > eventId2)
 
             // Again, issue an ignored event. Then fetch fatEvents again after=eventId2 the third time
             master.httpApi.executeCommand(MasterCommand.IssueTestEvent) await 99.s
-            val EventSeq.Empty(eventId4) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = 0.seconds)) await 99.s
+            val EventSeq.Empty(eventId4) = master.httpApi.fatEvents(EventRequest.singleClass[FatEvent](after = eventId2, timeout = Some(0.s))) await 99.s
             assert(eventId4 > eventId2)
           }
         }

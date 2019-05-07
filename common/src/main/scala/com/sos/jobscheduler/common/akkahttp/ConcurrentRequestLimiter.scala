@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.whenResponseTerminated
 import com.sos.jobscheduler.common.akkahttp.ConcurrentRequestLimiter._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration._
@@ -35,7 +35,7 @@ extends Directive0
         busy += 1
         val promise = Promise[RouteResult]()
         val timer = scheduler.scheduleOnce(timeout)(onTimeout(requestContext, promise))
-        queue.add(Entry(execute, promise, timer))
+        queue.add(Entry(() => execute(), promise, timer))
         Some(promise.future)
       }
     }

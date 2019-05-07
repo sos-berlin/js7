@@ -1,18 +1,18 @@
 package com.sos.jobscheduler.common.time
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition._
 import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
 import java.lang.System.currentTimeMillis
-import java.time.Duration
-import java.time.Instant.now
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.concurrent.duration._
 
 final class WaitForConditionExclusiveTest extends FreeSpec {
 
   "Warm-up" in {
-    realTimeIterator(Seq(now().toEpochMilli)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
+    realTimeIterator(Seq(now.toEpochMilli)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
     meterElapsedTime { retryUntil(99.s, 1.s) { 7 } }
     intercept[IllegalStateException] { throw new IllegalStateException }
   }
@@ -54,8 +54,8 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 
   "realTimeIterator (time-sensitive test)" in {
-    meterElapsedTime { realTimeIterator(Seq((now() + 10.s).toEpochMilli)) } should be < 300.ms // Bereitstellung soll nicht warten
-    val t0 = now().toEpochMilli
+    meterElapsedTime { realTimeIterator(Seq((now + 10.s).toEpochMilli)) } should be < 300.ms // Bereitstellung soll nicht warten
+    val t0 = now.toEpochMilli
     val (t1, t2, t3) = (t0 + 500, t0 + 1500, t0 + 2000)
     val i = realTimeIterator(Seq(t1, t2, t3))
     meterElapsedTime { i.next() } .toMillis should be (t1 - t0 +- 400)
@@ -80,8 +80,9 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 }
 
-private object WaitForConditionExclusiveTest {
-  def meterElapsedTime(f: => Unit): Duration = {
+private object WaitForConditionExclusiveTest
+{
+  def meterElapsedTime(f: => Unit): FiniteDuration = {
     val start = currentTimeMillis()
     f
     (currentTimeMillis() - start).ms

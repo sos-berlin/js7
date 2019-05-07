@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -37,7 +37,6 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
-import java.time.Duration
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.Seq
@@ -79,7 +78,7 @@ object TestMasterAgent
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
-                 |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
+                 |${if (conf.jobDuration.toSeconds > 0) s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul" else ""}
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""
@@ -109,7 +108,7 @@ object TestMasterAgent
             } .closeWithCloser
 
             val startTime = now
-            Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period.toFiniteDuration) {
+            Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
                 master.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at))).runAsyncAndForget  // No error checking
@@ -135,7 +134,7 @@ object TestMasterAgent
                     if (finished > printedFinished) {
                       val duration = lastDuration.fold("-")(_.pretty)
                       val delta = finished - printedFinished
-                      val diff = s"(diff ${finished - (now - startTime).getSeconds * conf.orderGeneratorCount})"
+                      val diff = s"(diff ${finished - (now - startTime).toSeconds * conf.orderGeneratorCount})"
                       val notFinished = added - finished
                       val throughput = stopwatch.itemsPerSecondString(finished, "orders")
                       val cpu = getOperatingSystemMXBean match {
@@ -187,9 +186,9 @@ object TestMasterAgent
     agentCount: Int,
     workflowLength: Int,
     tasksPerJob: Int,
-    jobDuration: Duration,
+    jobDuration: FiniteDuration,
     stdoutSize: Int,
-    period: Duration,
+    period: FiniteDuration,
     orderGeneratorCount: Int)
   {
     require(agentCount >= 1)
@@ -211,9 +210,9 @@ object TestMasterAgent
           agentCount = agentCount,
           workflowLength = a.as[Int]("-jobs-per-agent=", 1),
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
-          jobDuration = a.as[Duration]("-job-duration=", 0.s),
+          jobDuration = a.as[FiniteDuration]("-job-duration=", 0.s),
           stdoutSize = a.as("-stdout-size=", StdoutRowSize)(o => DecimalPrefixes.toInt(o)),
-          period = a.as[Duration]("-period=", 1.s),
+          period = a.as[FiniteDuration]("-period=", 1.s),
           orderGeneratorCount = a.as[Int]("-orders=", 1))
         if (a.boolean("-?") || a.boolean("-help") || a.boolean("--help")) {
           print(usage(conf))

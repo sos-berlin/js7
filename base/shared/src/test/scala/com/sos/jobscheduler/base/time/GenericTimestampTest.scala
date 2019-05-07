@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
 import io.circe.syntax.EncoderOps
+import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
@@ -58,6 +59,20 @@ final class GenericTimestampTest extends FreeSpec {
     assert(Timestamp.parse("2019-03-07T12:00:00Z").roundToNextSecond == Timestamp.parse("2019-03-07T12:00:00Z"))
     assert(Timestamp.parse("2019-03-07T12:00:00.001Z").roundToNextSecond == Timestamp.parse("2019-03-07T12:00:01Z"))
     assert(Timestamp.parse("2019-03-07T12:00:00.999Z").roundToNextSecond == Timestamp.parse("2019-03-07T12:00:01Z"))
+  }
+
+  "roundTo" in {
+    assert(Timestamp.parse("2015-01-01T12:01:01.499Z").roundTo(1.second) == Timestamp.parse("2015-01-01T12:01:01Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:01.500Z").roundTo(1.second) == Timestamp.parse("2015-01-01T12:01:02Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:29.999Z").roundTo(60.seconds) == Timestamp.parse("2015-01-01T12:01:00Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:30Z"    ).roundTo(60.seconds) == Timestamp.parse("2015-01-01T12:02:00Z"))
+  }
+
+  "roundDownTo" in {
+    assert(Timestamp.parse("2015-01-01T12:01:01.499Z").roundDownTo(1.second) == Timestamp.parse("2015-01-01T12:01:01Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:01.500Z").roundDownTo(1.second) == Timestamp.parse("2015-01-01T12:01:01Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:29.999Z").roundDownTo(60.seconds) == Timestamp.parse("2015-01-01T12:01:00Z"))
+    assert(Timestamp.parse("2015-01-01T12:01:30Z"    ).roundDownTo(60.seconds) == Timestamp.parse("2015-01-01T12:01:00Z"))
   }
 
   if (sys.props contains "test.speed")

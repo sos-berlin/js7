@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollector.intToBytesString
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollectorTest._
-import com.sos.jobscheduler.common.time.ScalaTime._
-import java.time.Instant.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import org.scalatest.FreeSpec
 import scala.util.Random
 
@@ -85,12 +85,12 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
     Random.nextBytes(chunkArray)
     val chunk = ByteString(chunkArray)
     val lastChunk = ByteString.fromArray(chunkArray, 0, length = length % chunkSize)
-    val start = now()
+    val start = now
     val n = 1000
     for (_ <- 1 to n) {
       assert(collector.isReset)
       collector(intToBytesString(length))
-      for (i <- 0 until length / chunkSize) collector(chunk)
+      for (_ <- 0 until length / chunkSize) collector(chunk)
       val result = collector(lastChunk)
       if (result.get.size != length) fail()
     }

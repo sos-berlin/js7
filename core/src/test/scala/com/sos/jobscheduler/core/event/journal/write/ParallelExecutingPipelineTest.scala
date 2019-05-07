@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.concurrent.ParallelismCounter
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.util.concurrent.Executors
 import org.scalatest.FreeSpec
 import scala.collection.mutable

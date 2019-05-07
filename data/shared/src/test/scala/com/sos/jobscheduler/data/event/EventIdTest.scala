@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.event
 
-import java.time.Instant
+import com.sos.jobscheduler.base.time.Timestamp
 import org.scalatest.FreeSpec
 
 /**
@@ -8,13 +8,13 @@ import org.scalatest.FreeSpec
   */
 final class EventIdTest extends FreeSpec {
 
-  private val MaximumJsonLosslessEventIdInstant = Instant.parse("2255-06-05T23:47:34.740992Z")
+  private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740Z")
+//private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740992Z")
 
   "JavascriptMaxValue" in {
     assert(EventId.JavascriptMaxValue == 9007199254740992L)  // https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64
-    val perSecond = 1000 * EventId.IdsPerMillisecond
-    val instant = Instant.ofEpochSecond(EventId.JavascriptMaxValue / perSecond, EventId.JavascriptMaxValue % perSecond * 1000)
-    assert(instant == MaximumJsonLosslessEventIdInstant)
+    val timestamp = Timestamp.ofEpochMilli(EventId.JavascriptMaxValue / 1000)
+    assert(timestamp == MaximumJsonLosslessEventIdInstant)
   }
 
   "toString" in {

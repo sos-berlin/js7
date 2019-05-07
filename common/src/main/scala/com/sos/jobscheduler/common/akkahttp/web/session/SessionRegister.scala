@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.{RichPath, pathToFile}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.{Files, Path}
 import monix.eval.Task

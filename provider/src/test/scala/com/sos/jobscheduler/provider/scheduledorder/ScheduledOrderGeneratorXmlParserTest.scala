@@ -2,7 +2,7 @@ package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTime._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}

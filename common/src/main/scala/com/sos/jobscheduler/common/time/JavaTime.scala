@@ -1,23 +1,19 @@
 package com.sos.jobscheduler.common.time
 
-import cats.Show
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
-import java.util.concurrent.TimeUnit.NANOSECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.blocking
-import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
 import scala.language.implicitConversions
 import scala.math.abs
 import scala.util.Random
 
-object ScalaTime {
+object JavaTime {
   val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
-  private val MaxConcurrentDuration = Duration.ofNanos(Long.MaxValue)
   val Iso8601DurationRegex = "[0-9.A-Za-z]+".r
 
   @TestOnly @volatile var extraSleepCount = 0L
@@ -86,7 +82,7 @@ object ScalaTime {
     def s: Duration = bigDecimalToDuration(delegate)
   }
 
-  def bigDecimalToDuration(o: BigDecimal) = {
+  def bigDecimalToDuration(o: BigDecimal): Duration = {
     val (seconds, fraction) = o /% 1
     try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
     catch { case t: ArithmeticException =>
@@ -137,8 +133,6 @@ object ScalaTime {
     def min(o: Duration): Duration = if (this <= o) delegate else o
     def max(o: Duration): Duration = if (this > o) delegate else o
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
-    def toConcurrent: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
-    def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
     override def toString = pretty  // For ScalaTest
 
     def pretty: String =
@@ -205,8 +199,6 @@ object ScalaTime {
       Instant.ofEpochMilli(delegate.toEpochMilli / durationMillis * durationMillis)
     }
 
-    def toTimestamp = Timestamp.ofEpochMilli(delegate.toEpochMilli)
-
     override def toString = delegate.toString  // For ScalaTest
   }
 
@@ -226,19 +218,6 @@ object ScalaTime {
     def compare(o: RichLocalDateTime) = delegate compareTo o.delegate
     def toInstant(zone: ZoneId) = delegate.toInstant(zone.getRules.getOffset(delegate))
   }
-
-  def javaToConcurrentDuration(o: Duration): scala.concurrent.duration.Duration = {
-    if ((o compareTo MaxConcurrentDuration) > 0) scala.concurrent.duration.Duration.Inf
-    else simpleJavaToConcurrentFiniteDuration(o)
-  }
-
-  def javaToConcurrentFiniteDuration(o: Duration): FiniteDuration = {
-    if ((o compareTo Duration.ofNanos(Long.MaxValue)) > 0) FiniteDuration(Long.MaxValue, NANOSECONDS)
-    else simpleJavaToConcurrentFiniteDuration(o)
-  }
-
-  private def simpleJavaToConcurrentFiniteDuration(o: Duration): FiniteDuration =
-    new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest
 
   @tailrec
   def sleepUntil(until: Instant): Unit = {
@@ -290,27 +269,7 @@ object ScalaTime {
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit final class JavaFiniteDuration(private val underlying: FiniteDuration) extends AnyVal {
-    def toJavaDuration = Duration.ofNanos(underlying.toNanos)
-  }
-
-  implicit final class JavaConcurrentDuration(private val underlying: ScalaDuration) extends AnyVal {
-    def pretty: String =
-      underlying match {
-        case o: FiniteDuration => o.toJavaDuration.pretty
-        case ScalaDuration.Inf => "infinite"
-        case ScalaDuration.Undefined => "undefined"
-        case o => o.toString
-      }
-  }
-
-  implicit val ScalaDurationShow: Show[ScalaDuration] = _.pretty
-  implicit val FiniteDurationShow: Show[FiniteDuration] = _.pretty
-
   implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
     def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
   }
-
-  implicit def finiteToJavaDuration(duration: FiniteDuration): Duration =
-    duration.toJavaDuration
 }

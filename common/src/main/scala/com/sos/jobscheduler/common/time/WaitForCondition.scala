@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.common.time
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.lang.System.currentTimeMillis
-import java.time.Duration
-import java.time.Instant.now
 import scala.concurrent.blocking
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 
 object WaitForCondition {
 
-  def retryUntil[A](timeout: Duration, step: Duration)(body: => A): A = {
+  def retryUntil[A](timeout: FiniteDuration, step: FiniteDuration)(body: => A): A = {
     val until = now + timeout
     try body
     catch { case NonFatal(t) =>
@@ -28,7 +28,7 @@ object WaitForCondition {
   /** Wartet längstens t.timeout in Schritten von t.step, bis condition wahr wird.
     * condition wird bei t.timeout > 0 wenigsten zweimal aufgerufen: am Anfang und am Ende.
     * @return letztes Ergebnis von condition */
-  def waitForCondition(timeout: Duration, step: Duration)(condition: => Boolean): Boolean =
+  def waitForCondition(timeout: FiniteDuration, step: FiniteDuration)(condition: => Boolean): Boolean =
     waitForCondition(TimeoutWithSteps(timeout, step))(condition)
 
   /** Wartet längstens t.timeout in Schritten von t.step, bis condition wahr wird.

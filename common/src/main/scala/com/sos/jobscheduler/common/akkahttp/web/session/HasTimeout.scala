@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import com.sos.jobscheduler.base.time.Timestamp
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import monix.execution.Scheduler
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

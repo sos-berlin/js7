@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
@@ -36,13 +36,12 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
-import java.time.Duration
-import java.util.concurrent.TimeUnit.SECONDS
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.Random
 import scala.util.control.NonFatal
 
@@ -276,7 +275,7 @@ object DirectoryProvider
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
-  final def script(duration: Duration, resultVariable: Option[String] = None): String =
+  final def script(duration: FiniteDuration, resultVariable: Option[String] = None): String =
     if (isWindows)
       (s"""@echo off
           |echo ${StdoutOutput.trim}

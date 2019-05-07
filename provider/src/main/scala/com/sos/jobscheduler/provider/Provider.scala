@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.{HasCloser, IOExecutor, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.crypt.generic.MessageSigners
 import com.sos.jobscheduler.core.filebased.FileBaseds.diffFileBaseds
 import com.sos.jobscheduler.core.filebased.{FileBasedSigner, FileBaseds, TypedPaths, TypedSourceReader}

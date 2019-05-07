@@ -1,17 +1,18 @@
 package com.sos.jobscheduler.common.files
 
 import com.google.common.io.MoreFiles.touch
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.files.DirectoryReader.Entry
 import com.sos.jobscheduler.common.files.DirectoryReaderTest._
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
-import java.time.Instant
-import java.time.Instant.now
 import java.util.Comparator
 import org.scalatest.FreeSpec
 import scala.util.Random
@@ -40,9 +41,9 @@ final class DirectoryReaderTest extends FreeSpec
           subdir / "A",
           subdir / "B"))
 
-      def isValidInstant(instant: Instant) = instant > now - 30.s && instant <= now
+      def isValidInstant(timestamp: Timestamp) = timestamp > now - 30.s && timestamp <= now
       assert(entries.forall(e => e.attributes.size == 0 && !e.attributes.isDirectory && e.attributes.isRegularFile &&
-        isValidInstant(e.attributes.lastModifiedTime.toInstant)))
+        isValidInstant(e.attributes.lastModifiedTime.toInstant.toTimestamp)))
 
       // Second call yields equivalent result
       assert(entries == DirectoryReader.entries(dir))

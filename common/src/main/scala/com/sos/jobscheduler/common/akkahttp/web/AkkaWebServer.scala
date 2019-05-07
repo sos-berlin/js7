@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq

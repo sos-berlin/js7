@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq}
@@ -58,11 +59,11 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 
   "User requires permission 'UpdateRepo'" in {
-    master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.seconds
+    master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
     assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
       Invalid(Problem("User 'without-permission' does not have the required permission 'UpdateRepo'")))
 
-    master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
+    master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
   }
 
   "MasterCommand.UpdateRepo" in {
@@ -75,17 +76,17 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 
     val promises = Vector.fill(2)(Promise[Timestamp]())
     for (i <- orderIds.indices) {
-      master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = 99.seconds), _.key == orderIds(i)) foreach {
+      master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i)) foreach {
         case EventSeq.NonEmpty(_) =>
           promises(i).success(now)
       }
     }
-    val finishedAt = promises.map(_.future) await 99.seconds
+    val finishedAt = promises.map(_.future) await 99.s
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
-    assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.seconds) ==
+    assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
       Invalid(Problem("Has been deleted: Workflow:/WORKFLOW 3")))
 
     withClue("Tampered with configuration: ") {
@@ -99,7 +100,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     // First, add two workflows
     executeCommand(UpdateRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
     locally {
-      val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
+      val repo = master.fileBasedApi.stampedRepo.await(99.s).value
       assert(repo.versions == V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
       assert(repo.currentFileBaseds.toSet
         == Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4) ++ directoryProvider.agentRefs.map(_ withVersion Vinitial))
@@ -107,7 +108,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 
     // Now replace: delete one workflow and change the other
     executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
-    val repo = master.fileBasedApi.stampedRepo.await(99.seconds).value
+    val repo = master.fileBasedApi.stampedRepo.await(99.s).value
     assert(repo.versions == V5 :: V4 :: V3 :: V2 :: V1 :: Vinitial :: Nil)
     assert(repo.currentFileBaseds.toSet
       == Set(otherWorkflow5 withVersion V5) ++ directoryProvider.agentRefs.map(_ withVersion V5))
@@ -116,7 +117,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     master.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))
 
     val promise = Promise[Timestamp]()
-    master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = 99.seconds), _.key == orderId) foreach {
+    master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderId) foreach {
       case EventSeq.NonEmpty(_) =>
         promise.success(now)
     }
@@ -137,12 +138,12 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
   private def executeCommand(cmd: MasterCommand): Checked[cmd.Response] =
     master.httpApi.executeCommand(cmd).map(Valid.apply)
       .onErrorRecover { case e: HttpException if e.problem.isDefined => Invalid(e.problem.get) }
-      .await(99.seconds)
+      .await(99.s)
 }
 
 object UpdateRepoTest
 {
-  private val Tick = 2.second
+  private val Tick = 2.s
   private val TestAgentRefPath = AgentRefPath("/AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
   private val script1 = """

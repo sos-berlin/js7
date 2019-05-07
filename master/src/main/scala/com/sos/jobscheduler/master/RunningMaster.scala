@@ -25,7 +25,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
@@ -48,7 +48,6 @@ import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
-import java.time.Duration
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -131,7 +130,7 @@ object RunningMaster {
   val StartedAt = Timestamp.now
   private val logger = Logger(getClass)
 
-  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster => Unit)(implicit s: Scheduler): Unit =
+  def run[A](configuration: MasterConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningMaster => Unit)(implicit s: Scheduler): Unit =
     autoClosing(apply(configuration) await timeout) { master =>
       for (t <- master.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(master)

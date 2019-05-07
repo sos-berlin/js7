@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
 import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.typesafe.config.Config
 import java.io.Writer

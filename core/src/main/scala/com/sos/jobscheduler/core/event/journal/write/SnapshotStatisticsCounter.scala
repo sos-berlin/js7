@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.write
 
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer

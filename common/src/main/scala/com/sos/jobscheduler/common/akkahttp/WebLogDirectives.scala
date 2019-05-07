@@ -7,17 +7,17 @@ import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives._
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
-import java.time.Duration
 import scala.collection.JavaConverters._
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -96,7 +96,7 @@ trait WebLogDirectives extends ExceptionHandling {
           sb.append("STREAM")
       }
       sb.append(' ')
-      sb.append(Duration.ofNanos(nanos).pretty)
+      sb.append(nanos.nanoseconds.pretty)
     }
     sb.toString
   }

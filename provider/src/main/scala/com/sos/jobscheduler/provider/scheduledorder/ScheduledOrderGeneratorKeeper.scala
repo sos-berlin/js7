@@ -2,7 +2,7 @@ package com.sos.jobscheduler.provider.scheduledorder
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.time.ScalaTime.RichInstant
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
 import com.sos.jobscheduler.provider.scheduledorder.oldruntime.InstantInterval

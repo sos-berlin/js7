@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.configuration.{AgentStartInformation, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
@@ -15,7 +15,7 @@ import org.scalatest.concurrent.ScalaFutures
  */
 final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTester {
 
-  override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
+  override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 
   override lazy val agentConfiguration = newAgentConfiguration()
   private implicit lazy val actorSystem = Akkas.newAgentActorSystem("AgentClientTest")(closer)

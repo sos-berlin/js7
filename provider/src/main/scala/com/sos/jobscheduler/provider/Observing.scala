@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
-import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.provider.Observing._
 import java.nio.file.Files.exists
 import java.nio.file.Path

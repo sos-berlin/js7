@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 final class EventRequestTest extends FreeSpec {
 
   "toQueryParameters" in {
-    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = 123.seconds, delay = 500.milliseconds, limit = 999, tornOlder = 10.seconds)
+    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.seconds), delay = 500.milliseconds, limit = 999, tornOlder = Some(10.seconds))
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent",
@@ -22,13 +22,13 @@ final class EventRequestTest extends FreeSpec {
     assert(EventRequest[Event](
       Set[Class[_ <: Event]](classOf[AEvent], classOf[BEvent]),
       after = EventId(3),
-      timeout = Duration.Zero,
+      timeout = Some(Duration.Zero),
       limit = Int.MaxValue)
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent,BEvent",
           "after" -> "3"))
-    assert(EventRequest.singleClass[AEvent](timeout = Duration.Inf)
+    assert(EventRequest.singleClass[AEvent](timeout = None)
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent",

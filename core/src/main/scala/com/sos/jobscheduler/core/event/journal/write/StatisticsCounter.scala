@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.core.event.journal.write
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.write.StatisticsCounter._
 import java.lang.System.nanoTime
-import java.time.Duration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -50,5 +50,5 @@ object StatisticsCounter
 {
   private def t(nanos: Long, n: Int, name: String): Option[String] =
     if (n == 0) None
-    else Some(Duration.ofNanos(nanos / n).pretty + s"/$name")
+    else Some((nanos / n).nanoseconds.pretty + s"/$name")
 }

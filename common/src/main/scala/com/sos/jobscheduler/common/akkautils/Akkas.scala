@@ -8,7 +8,6 @@ import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 
 /**
@@ -40,7 +39,7 @@ object Akkas {
    * @return A Timeout which Akka http accepts
    */
   def maximumTimeout(settings: Settings) =
-    tickDurationToMaximumTimeout(tickMillis = settings.config.getDuration("akka.scheduler.tick-duration", TimeUnit.MILLISECONDS))
+    tickDurationToMaximumTimeout(tickMillis = settings.config.getDuration("akka.scheduler.tick-duration", MILLISECONDS))
 
   def tickDurationToMaximumTimeout(tickMillis: Long): Timeout = {
     // 68 years, maximum for scheduler.tick-duration = 1s, 8 months when tick-duration = 10ms

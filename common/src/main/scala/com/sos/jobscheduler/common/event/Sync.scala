@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event._
 import monix.eval.Task
 import scala.concurrent.Promise
@@ -28,13 +29,13 @@ import scala.concurrent.duration._
   /**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
-  def whenEventIsAvailable(after: EventId, until: Timestamp, delay: FiniteDuration = Duration.Zero): Task[Boolean] =
-    if (until <= now)
+  def whenEventIsAvailable(after: EventId, until: Option[Timestamp], delay: FiniteDuration = Duration.Zero): Task[Boolean] =
+    if (until.exists(_ <= now))
       Task.pure(false)
     else if (after < lastEventId)
       Task.pure(true)
-    else
-      (promise match {
+    else {
+      val task = (promise match {
         case p if p != null =>
           Task.fromFuture(p.future)
         case _ =>
@@ -48,8 +49,9 @@ import scala.concurrent.duration._
               Task.fromFuture(promise.future)
             }
           }
-      })
-      .delayResult(delay min (until - now)).timeoutTo(until - now, Task.pure(false))
+      }).delayResult(delay min until.fold(FiniteDuration.MaxValue)(_ - now))
+      until.fold(task)(u => task.timeoutTo(u - now, Task.pure(false)))
+    }
 
   def lastAddedEventId = lastEventId
 }

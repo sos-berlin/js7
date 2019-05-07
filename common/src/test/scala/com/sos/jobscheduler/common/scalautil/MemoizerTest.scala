@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MemoizerTest._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FreeSpec
 import scala.collection.mutable

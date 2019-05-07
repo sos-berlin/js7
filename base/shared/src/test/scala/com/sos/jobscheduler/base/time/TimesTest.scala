@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.base.time
 
 import com.sos.jobscheduler.base.time.Times._
-import java.util.concurrent.TimeUnit.{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, SECONDS}
 import org.scalatest.FreeSpec
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

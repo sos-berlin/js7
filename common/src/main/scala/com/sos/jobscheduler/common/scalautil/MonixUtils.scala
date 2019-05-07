@@ -8,7 +8,7 @@ import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import scala.collection.generic.CanBuildFrom
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.language.higherKinds
 import scala.util.{Failure, Success, Try}
 
@@ -20,29 +20,15 @@ object MonixUtils
   private val logger = Logger(getClass)
 
   object ops {
-    implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal {
-
-      def await(duration: java.time.Duration)(implicit s: Scheduler): A =
-        underlying.runToFuture await duration
-
-      def await(duration: Option[java.time.Duration])(implicit s: Scheduler): A =
-        underlying.runToFuture await duration
-
-      def await(duration: Duration)(implicit s: Scheduler): A =
+    implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
+    {
+      def await(duration: FiniteDuration)(implicit s: Scheduler): A =
         underlying.runToFuture await duration
     }
 
-    implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal {
-      /**
-        * Awaits the futures completion for the duration or infinite.
-        */
-      def await(duration: Option[java.time.Duration])(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
-        duration match {
-          case Some(o) => await(o)
-          case None => awaitInfinite
-        }
-
-      def await(duration: java.time.Duration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
+    implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal
+    {
+      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture await duration
 
       def awaitInfinite(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =

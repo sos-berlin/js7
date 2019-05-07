@@ -6,7 +6,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkautils.CatchingActorTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration.DurationInt

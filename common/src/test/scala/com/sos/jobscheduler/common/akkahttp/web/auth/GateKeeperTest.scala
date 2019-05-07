@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, Is
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import io.circe.Json
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec

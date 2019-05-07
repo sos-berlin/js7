@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.base.utils.StackTraces._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -19,9 +19,9 @@ object Futures {
   /**
    * Like [[Await]]`.result` - in case of exception, own stack trace is added.
    */
-  def awaitResult[A](future: Future[A], atMost: java.time.Duration): A = {
+  def awaitResult[A](future: Future[A], atMost: FiniteDuration): A = {
     import implicits.SuccessFuture
-    Await.ready[A](future, atMost.toConcurrent.toCoarsest).successValue
+    Await.ready[A](future, atMost.toCoarsest).successValue
   }
 
   /**
@@ -85,7 +85,7 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[java.time.Duration]): A =
+      def await(duration: Option[FiniteDuration]): A =
         duration match {
           case Some(o) => await(o)
           case None => awaitInfinite
@@ -99,10 +99,7 @@ object Futures {
           case None => throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
         }
 
-      def await(duration: java.time.Duration): A =
-        await(duration.toFiniteDuration)
-
-      def await(duration: Duration): A =
+      def await(duration: FiniteDuration): A =
         Await.ready(delegate, duration).value match {
           case Some(Success(o)) => o
           case Some(Failure(t)) => throw t.appendCurrentStackTrace
@@ -114,16 +111,13 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[java.time.Duration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: Option[FiniteDuration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         duration match {
           case Some(o) => await(o)
           case None => awaitInfinite
         }
 
-      def await(duration: java.time.Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        await(duration.toFiniteDuration)
-
-      def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         Future.sequence(delegate)(cbf, ec) await duration
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =

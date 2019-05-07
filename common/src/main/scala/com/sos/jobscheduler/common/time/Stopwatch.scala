@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch._
 import java.lang.System.nanoTime
-import java.time.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -22,8 +22,8 @@ final class Stopwatch {
   def elapsedMs: Long =
     duration.toMillis
 
-  def duration: Duration =
-    Duration.ofNanos(nanoTime - start)
+  def duration: FiniteDuration =
+    (nanoTime - start).nanoseconds
 
   override def toString =
     duration.pretty
@@ -34,7 +34,7 @@ object Stopwatch {
     for (_ <- 1 to warmUp) body
     val start = nanoTime
     for (_ <- 1 to n) body
-    val duration = Duration.ofNanos(nanoTime - start)
+    val duration = (nanoTime - start).nanoseconds
     Result(duration, n, ops)
   }
 
@@ -42,17 +42,17 @@ object Stopwatch {
     (for (_ <- 1 to warmUp) yield Future { body }).awaitInfinite
     val start = nanoTime
     (for (_ <- 1 to n) yield Future { body }).awaitInfinite
-    val duration = Duration.ofNanos(nanoTime - start)
+    val duration = (nanoTime - start).nanoseconds
     Result(duration, n, ops)
   }
 
   /**
     * Returns something like "2s/3000 items, 666µs/item, 1500 items/s"
     */
-  def itemsPerSecondString(duration: Duration, n: Long, ops: String = "ops"): String =
+  def itemsPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops"): String =
     Result(duration, n, ops).toString
 
-  final case class Result(duration: Duration, n: Long, ops: String = "ops") {
+  final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops") {
     def singleDuration = duration / n
     def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
     override def toString =

@@ -4,12 +4,12 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
+import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.typesafe.config.Config
 import scala.collection.immutable.Seq
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -30,7 +30,7 @@ object JavaMainSupport
       sys.runtime.exit(1)
     }
 
-  def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration => Unit)(body: => A): A = {
+  def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: FiniteDuration => Unit)(body: => A): A = {
     val hooks = addJavaShutdownHooks(config, name, onJavaShutdown)
     try body
     finally hooks foreach (_.close())
@@ -38,7 +38,7 @@ object JavaMainSupport
 
   private val akkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
 
-  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: Duration => Unit): Seq[JavaShutdownHook] = {
+  private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: FiniteDuration => Unit): Seq[JavaShutdownHook] = {
     val shutdownHookTimeout = config.getDuration("jobscheduler.termination.shutdown-hook-timeout").toFiniteDuration
     if (config.as[Boolean](akkaShutdownHook, false)) {
       logger.debug(s"JobScheduler shutdown hook suppressed because Akka has one: $akkaShutdownHook = on")

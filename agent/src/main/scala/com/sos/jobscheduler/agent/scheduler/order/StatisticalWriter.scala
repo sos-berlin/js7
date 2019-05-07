@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import java.io.Writer
 import java.lang.System.nanoTime
-import java.time.Duration
-import java.time.Instant.now
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class StatisticalWriter(writer: Writer) extends Writer {
-
+private[order] final class StatisticalWriter(writer: Writer) extends Writer
+{
   private val startTime = now
   private var blockedNanos = 0L
   private var messageCount = 0
@@ -28,7 +28,7 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer {
   override def toString =
     s"$messageCount chunks" +
       (if (size == 0) "" else {
-        val bocked = Duration.ofNanos(blockedNanos)
+        val bocked = blockedNanos.nanoseconds
         val duration = (now - startTime).toNanos
         val percentage = if (duration == 0) 1 else 100 * bocked.toNanos / duration
         s" (${toKBGB(size)}), blocked ${bocked.pretty} ($percentage%)"

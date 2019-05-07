@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.auth.IdToUserTest._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._

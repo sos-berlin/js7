@@ -8,16 +8,16 @@ import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
 import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger, SetOnce}
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
 import java.nio.file.Files.delete
-import java.time.Instant.now
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
@@ -38,7 +38,7 @@ extends TaskRunner {
     def jobKey = conf.jobKey
     def pidOption = richProcessOnce flatMap { _.pidOption }
     def terminated = terminatedPromise.future
-    def overview = TaskOverview(jobKey, id, pidOption, startedAt.toTimestamp)
+    def overview = TaskOverview(jobKey, id, pidOption, startedAt)
 
     def sendProcessSignal(signal: ProcessSignal) =
       for (o <- richProcessOnce) o.sendProcessSignal(signal)

@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.base.time.ScalaTime._
 
 final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
 {
