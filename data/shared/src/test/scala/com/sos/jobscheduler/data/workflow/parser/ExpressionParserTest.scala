@@ -76,14 +76,14 @@ final class ExpressionParserTest extends FreeSpec
     testExpression(""" "ö" """.trim, StringConstant("ö"))
 
     "Invalid strings" in {
-      assert(checkedParse("''", stringExpression(_)).isInvalid)
-      assert(checkedParse(""" "\" """.trim, stringExpression(_)).isInvalid)
-      assert(checkedParse(" \"\t\" ".trim, stringExpression(_)).isInvalid)
+      assert(checkedParse("''", expression(_)).isInvalid)
+      assert(checkedParse(""" "\" """.trim, expression(_)).isInvalid)
+      assert(checkedParse(" \"\t\" ".trim, expression(_)).isInvalid)
     }
   }
 
-  testError(""""1" < 1""",
-    """Expected Expression is not of type String: '1' < 1:1:8, found """"")
+  //TODO testError(""""1" < 1""",
+  //  """Expected Expression is not of type String: '1' < 1:1:8, found """"")
 
   "Comparison" - {
     testBooleanExpression("returnCode != 7", NotEqual(LastReturnCode, NumericConstant(7)))
@@ -157,20 +157,20 @@ final class ExpressionParserTest extends FreeSpec
       StringConstant("A.*")))
 
   "Unknown numeric function" in {
-    def parser[_: P] = numericExpression ~ End
+    def parser[_: P] = expression ~ End
     assert(checkedParse(""""123".toNumber""", parser(_)) == Valid(ToNumber(StringConstant("123"))))
     assert(checkedParse(""""123".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
   }
 
   "Unknown boolean function" in {
-    def parser[_: P] = booleanExpression ~ End
+    def parser[_: P] = expression ~ End
     assert(checkedParse(""""true".toBoolean""", parser(_)) == Valid(ToBoolean(StringConstant("true"))))
     assert(checkedParse(""""true".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      def parser[_: P] = booleanExpression ~ End
+      def parser[_: P] = expression ~ End
       assert(checkedParse(exprString, parser(_)) == Valid(expr))
       assert(checkedParse(expr.toString, parser(_)) == Valid(expr), " - toString")
     }
@@ -184,7 +184,7 @@ final class ExpressionParserTest extends FreeSpec
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     registerTest(exprString + " - should fail") {
-      def parser[_: P] = stringExpression ~ End
+      def parser[_: P] = expression ~ End
       assert(checkedParse(exprString, parser(_)) == Invalid(Problem(errorMessage)))
     }
 }

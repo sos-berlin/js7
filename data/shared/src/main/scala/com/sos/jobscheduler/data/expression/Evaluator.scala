@@ -28,16 +28,15 @@ final class Evaluator(scope: Scope)
       case LessOrEqual    (a, b) => numNumToBool(a, b)(_.number <= _.number)
       case GreaterOrEqual (a, b) => numNumToBool(a, b)(_.number >= _.number)
       case In(a, set: ListExpression) => eval(a).map2(evalListExpression(set))((a1, set1) => BooleanValue(set1 contains a1))
-      case Matches(a: StringExpression, b: StringExpression) => evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
+      case Matches        (a, b) => evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
       case Not            (a)    => evalBoolean(a) map (o => !o.booleanValue) map BooleanValue.apply
       case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.booleanValue) o.valid else evalBoolean(b))
       case Or             (a, b) => evalBoolean(a) flatMap (o => if (o.booleanValue) o.valid else evalBoolean(b))
-      case ToBoolean(a: StringExpression) => evalString(a) flatMap toBoolean
+      case ToBoolean(a) => evalString(a) flatMap toBoolean
       case NumericConstant(o) => NumericValue(o).valid
       case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
       case ToNumber(e) => eval(e) flatMap toNumeric
-      case StringConstant(o) =>
-        StringValue(o).valid
+      case StringConstant(o) => StringValue(o).valid
 
       case NamedValue(where, what, default) =>
         val w = where match {

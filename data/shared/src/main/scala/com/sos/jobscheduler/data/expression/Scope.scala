@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.expression
 
 import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.data.expression.Expression.{BooleanExpression, StringExpression}
 
 /**
   * @author Joacim Zschimmer
@@ -13,11 +12,11 @@ trait Scope
 
   val findValue: ValueSearch => Checked[Option[Evaluator.Value]]
 
-  final def evalBoolean(booleanExpression: BooleanExpression): Checked[Boolean] =
-    new Evaluator(this).evalBoolean(booleanExpression) map (_.booleanValue)
+  final def evalBoolean(expression: Expression): Checked[Boolean] =
+    new Evaluator(this).evalBoolean(expression) map (_.booleanValue)
 
-  final def evalString(stringExpression: StringExpression): Checked[String] =
-    new Evaluator(this).evalString(stringExpression) map (_.string)
+  final def evalString(expression: Expression): Checked[String] =
+    new Evaluator(this).evalString(expression) map (_.string)
 }
 
 object Scope

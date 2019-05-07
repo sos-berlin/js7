@@ -5,8 +5,8 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.expression.Evaluator
-import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, StringExpression}
+import com.sos.jobscheduler.data.expression.Expression.BooleanConstant
+import com.sos.jobscheduler.data.expression.{Evaluator, Expression}
 import com.sos.jobscheduler.data.job.{Executable, ExecutablePath, ExecutableScript, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
-import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanConstant, booleanExpression, constantExpression, stringExpression}
+import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
 import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow, WorkflowId, WorkflowPath}
 import fastparse.NoWhitespace._
@@ -126,14 +126,14 @@ object WorkflowParser
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
           keyValue("returnCode", returnCode) |
-          keyValue("message", stringExpression) |
+          keyValue("message", expression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)
         .flatMap { case (start, maybeKeyToValue, end) =>
           val keyToValue = maybeKeyToValue getOrElse KeyToValue.empty
           for {
             returnCode <- keyToValue.get[ReturnCode]("returnCode")
-            errorMessage <- keyToValue.get[StringExpression]("message")
+            errorMessage <- keyToValue.get[Expression]("message")
             uncatchable <- keyToValue.get[BooleanConstant]("uncatchable") map (_.fold(false)(_.booleanValue))
           } yield FailInstr(errorMessage, returnCode, uncatchable = uncatchable, sourcePos(start, end))
         })
@@ -165,7 +165,7 @@ object WorkflowParser
         map { case (start, orderId_, end) => AwaitOrder(OrderId(orderId_), sourcePos(start, end)) })
 
     private def ifInstruction[_: P] = P[If](
-      (Index ~ keyword("if") ~ w ~/ inParentheses(booleanExpression) ~ Index ~
+      (Index ~ keyword("if") ~ w ~/ inParentheses(expression) ~ Index ~
         w ~/ curlyWorkflowOrInstruction ~/
         (w ~ "else" ~ w ~/ curlyWorkflowOrInstruction).? ~
         w ~/ instructionTerminator.?

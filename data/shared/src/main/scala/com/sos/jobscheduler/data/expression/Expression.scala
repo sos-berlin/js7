@@ -20,21 +20,15 @@ sealed trait Expression extends Expression.Precedence
 
 object Expression
 {
+  implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
+  implicit val jsonDecoder: Decoder[Expression] =
+    _.as[String] flatMap (string => checkedParse(string, ExpressionParser.expression(_)).toDecoderResult)
+
   sealed trait BooleanExpression extends Expression
-  object BooleanExpression {
-    implicit val jsonEncoder: Encoder[BooleanExpression] = expr => Json.fromString(expr.toString)
-    implicit val jsonDecoder: Decoder[BooleanExpression] =
-      _.as[String] flatMap (string => checkedParse(string, ExpressionParser.booleanExpression(_)).toDecoderResult)
-  }
 
   sealed trait NumericExpression extends Expression
 
   sealed trait StringExpression extends Expression
-  object StringExpression {
-    implicit val jsonEncoder: Encoder[StringExpression] = expr => Json.fromString(expr.toString)
-    implicit val jsonDecoder: Decoder[StringExpression] =
-      _.as[String] flatMap (string => checkedParse(string, ExpressionParser.stringExpression(_)).toDecoderResult)
-  }
 
   final case class Not(a: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Factor
@@ -86,7 +80,7 @@ object Expression
     override def toString = toString(a, "in", b)
   }
 
-  final case class Matches(a: Expression, b: StringExpression) extends BooleanExpression {
+  final case class Matches(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.WordOperator
     override def toString = toString(a, "matches", b)
   }
@@ -171,6 +165,7 @@ object Expression
   object NamedValue {
     def last(key: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key))
     def last(key: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(key), Some(default))
+    def argument(key: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(key))
 
     def isSimpleName(name: String) = isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
@@ -184,7 +179,7 @@ object Expression
     case object Argument extends Where
 
     sealed trait What
-    final case class KeyValue(key: StringExpression) extends What
+    final case class KeyValue(key: Expression) extends What
     object KeyValue {
       def apply(key: String) = new KeyValue(StringConstant(key))
     }
@@ -198,7 +193,7 @@ object Expression
     override def toString = "catchCount"
   }
 
-  final case class StripMargin(expression: StringExpression) extends StringExpression {
+  final case class StripMargin(expression: Expression) extends StringExpression {
     def precedence = Precedence.Factor
     override def toString = Precedence.inParentheses(expression, precedence) + ".stripMargin"
   }

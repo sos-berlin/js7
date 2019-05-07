@@ -29,7 +29,7 @@ final class EvaluatorTest extends FreeSpec
 
         val findValue = {
           case ValueSearch(ValueSearch.LastOccurred, ValueSearch.KeyValue(key)) =>
-            Valid(Map("ASTRING" -> "AA", "ANUMBER" -> "7").get(key) map StringValue.apply)
+            Valid(Map("ASTRING" -> "AA", "ANUMBER" -> "7", "ABOOLEAN" -> "true").get(key) map StringValue.apply)
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.KeyValue(key)) =>
             Valid(Map("KEY" -> "LABEL-VALUE").get(key) map StringValue.apply)
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.KeyValue(key)) =>
@@ -168,6 +168,10 @@ final class EvaluatorTest extends FreeSpec
       result = false,
       Valid(ToBoolean(StringConstant("false"))))
 
+    testEval(""" variable("ABOOLEAN").toBoolean """,
+      result = true,
+      Valid(ToBoolean(NamedValue.last("ABOOLEAN"))))
+
     locally {
       val longString =
          """LINE 1
@@ -226,6 +230,10 @@ final class EvaluatorTest extends FreeSpec
     testEval(""" "A-" matches "A.+" """,
       result = true,
       Valid(Matches(StringConstant("A-"), StringConstant("A.+"))))
+
+    testEval(""" variable("ASTRING") matches "A+" """,
+      result = true,
+      Valid(Matches(NamedValue.last("ASTRING"), StringConstant("A+"))))
 
     testEval("!false",
       result = true,

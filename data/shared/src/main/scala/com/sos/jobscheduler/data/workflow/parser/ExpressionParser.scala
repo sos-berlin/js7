@@ -19,24 +19,6 @@ object ExpressionParser
   def expression[_: P]: P[Expression] =
     P(wordOperation)
 
-  def booleanExpression[_: P] = P[BooleanExpression](
-    expression flatMap {
-      case o: BooleanExpression => valid(o)
-      case o => invalid(s"Expression is not of type Boolean: $o")
-    })
-
-  def numericExpression[_: P] = P[NumericExpression](
-    expression flatMap {
-      case o: NumericExpression => valid(o)
-      case o => invalid(s"Expression is not of type Number: $o")
-    })
-
-  def stringExpression[_: P] = P[StringExpression](
-    expression flatMap {
-      case o: StringExpression => valid(o)
-      case o => invalid(s"Expression is not of type String: $o")
-    })
-
   private def parenthesizedExpression[_: P] = P[Expression](
     ("(" ~ w ~/ expression ~ w ~ ")") |
       bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
@@ -52,8 +34,8 @@ object ExpressionParser
 
   def booleanConstant[_: P] = P(trueConstant | falseConstant)
 
-  private def numericConstant[_: P] = P[NumericConstant](int
-    .map(o => NumericConstant(o)))
+  private def numericConstant[_: P] = P[NumericConstant](
+    int.map(o => NumericConstant(o)))
 
   private def stringConstant[_: P] = P[StringConstant](quotedString
     .map(StringConstant.apply))
@@ -91,7 +73,7 @@ object ExpressionParser
       inParentheses(
         for {
           kv <- keyValues(keyValue("default", expression) | keyValue("key", expression) | keyValue("", expression))
-          key <- kv.oneOf[StringExpression]("key", "").map(_._2)
+          key <- kv.oneOf[Expression]("key", "").map(_._2)
           default <- kv.get[Expression]("default")
         } yield NamedValue(NamedValue.Argument, NamedValue.KeyValue(key), default)))
 
@@ -100,7 +82,7 @@ object ExpressionParser
       for {
         kv <- keyValues(namedValueKeyValue | keyValue("key", expression) | keyValue("", expression))
         where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
-        key <- kv.oneOf[StringExpression]("key", "").map(_._2)
+        key <- kv.oneOf[Expression]("key", "").map(_._2)
         default <- kv.get[Expression]("default")
       } yield NamedValue(where, NamedValue.KeyValue(key), default)))
 
@@ -129,8 +111,8 @@ object ExpressionParser
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
       case (o, None) => valid(o)
       case (o, Some("toNumber")) => valid(ToNumber(o))
-      case (o: StringExpression, Some("toBoolean")) => valid(ToBoolean(o))
-      case (o: StringExpression, Some("stripMargin")) => valid(StripMargin(o))
+      case (o, Some("toBoolean")) => valid(ToBoolean(o))
+      case (o, Some("stripMargin")) => valid(StripMargin(o))
       case (_, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 
@@ -147,10 +129,10 @@ object ExpressionParser
     leftRecurse(bFactor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
       case (a, "==", b) => valid(Equal(a, b))
       case (a, "!=", b) => valid(NotEqual(a, b))
-      case (a: Expression, "<=", b: Expression) => valid(LessOrEqual(a, b))
-      case (a: Expression, ">=", b: Expression) => valid(GreaterOrEqual(a, b))
-      case (a: Expression, "<" , b: Expression) => valid(LessThan(a, b))
-      case (a: Expression, ">" , b: Expression) => valid(GreaterThan(a, b))
+      case (a, "<=", b) => valid(LessOrEqual(a, b))
+      case (a, ">=", b) => valid(GreaterOrEqual(a, b))
+      case (a, "<" , b) => valid(LessThan(a, b))
+      case (a, ">" , b) => valid(GreaterThan(a, b))
     })
 
   private def and[_: P] = P[Expression](
@@ -169,7 +151,7 @@ object ExpressionParser
     leftRecurse(or, keyword) {
       case (a, "in", list: ListExpression) => valid(In(a, list))
       case (_, "in", _) => invalid("List expected after operator 'in'")
-      case (a, "matches", b: StringExpression) => valid(Matches(a, b))
+      case (a, "matches", b) => valid(Matches(a, b))
       case (_, "matches", _) => invalid("String expected after operator 'matches'")
       case (a, op, b) => invalid(s"Operator '$op' with unexpected operand type: " + Precedence.toString(a, op, Precedence.Or, b))
     })

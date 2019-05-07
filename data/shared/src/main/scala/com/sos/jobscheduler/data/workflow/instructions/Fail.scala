@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.expression.Expression.StringExpression
+import com.sos.jobscheduler.data.expression.Expression
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
@@ -12,7 +12,7 @@ import io.circe.{Decoder, JsonObject, ObjectEncoder}
   * @author Joacim Zschimmer
   */
 sealed case class Fail(
-  message: Option[StringExpression] = None,
+  message: Option[Expression] = None,
   returnCode: Option[ReturnCode] = None,
   uncatchable: Boolean = false,
   sourcePos: Option[SourcePos] = None)
@@ -32,7 +32,7 @@ object Fail
 
   implicit val jsonDecoder: Decoder[Fail] =
     c => for {
-      errorMessage <- c.get[Option[StringExpression]]("message")
+      errorMessage <- c.get[Option[Expression]]("message")
       returnCode <- c.get[Option[ReturnCode]]("returnCode")
       uncatchable <- c.get[Option[Boolean]]("uncatchable") map (_ getOrElse false)
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
