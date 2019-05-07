@@ -115,6 +115,7 @@ object ExpressionParser
       case (o, Some("toNumber")) => valid(ToNumber(o))
       case (o, Some("toBoolean")) => valid(ToBoolean(o))
       case (o, Some("stripMargin")) => valid(StripMargin(o))
+      case (o, Some("mkString")) => valid(MkString(o))
       case (_, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 

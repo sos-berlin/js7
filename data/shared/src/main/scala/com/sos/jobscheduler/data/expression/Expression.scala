@@ -198,6 +198,11 @@ object Expression
     override def toString = Precedence.inParentheses(expression, precedence) + ".stripMargin"
   }
 
+  final case class MkString(expression: Expression) extends StringExpression {
+    def precedence = Precedence.Factor
+    override def toString = Precedence.inParentheses(expression, precedence) + ".mkString"
+  }
+
   sealed trait Precedence {
     protected def precedence: Int
 

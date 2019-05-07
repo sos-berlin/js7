@@ -328,6 +328,11 @@ final class EvaluatorTest extends FreeSpec
       assert(eval(And(LessThan(NumericConstant(1), NumericConstant(2)), LessThan(NumericConstant(1), ToNumber(StringConstant("7"))))) ==
         Valid(BooleanValue(true)))
     }
+
+    "mkString" in {
+      assert(eval(MkString(ListExpression(StringConstant("»") :: NamedValue.last("ASTRING") :: NumericConstant(7) :: Nil)))
+        == Valid(StringValue("»AA7")))
+    }
   }
 
   "Constant expressions" - {

@@ -21,13 +21,14 @@ final class Evaluator(scope: Scope)
   def eval(expr: Expression): Checked[Value] =
     expr match {
       case BooleanConstant(o)    => BooleanValue(o).valid
+      case ListExpression(list) => list.traverse(eval) map ListValue.apply
       case Equal          (a, b) => anyAnyToBool(a, b)(_ == _)
       case NotEqual       (a, b) => anyAnyToBool(a, b)(_ != _)
       case LessThan       (a, b) => numNumToBool(a, b)(_.number <  _.number)
       case GreaterThan    (a, b) => numNumToBool(a, b)(_.number >  _.number)
       case LessOrEqual    (a, b) => numNumToBool(a, b)(_.number <= _.number)
       case GreaterOrEqual (a, b) => numNumToBool(a, b)(_.number >= _.number)
-      case In(a, set: ListExpression) => eval(a).map2(evalListExpression(set))((a1, set1) => BooleanValue(set1 contains a1))
+      case In(a, set: ListExpression) => eval(a).map2(evalListExpression(set))((a1, set1) => BooleanValue(set1.list contains a1))
       case Matches        (a, b) => evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
       case Not            (a)    => evalBoolean(a) map (o => !o.booleanValue) map BooleanValue.apply
       case And            (a, b) => evalBoolean(a) flatMap (o => if (!o.booleanValue) o.valid else evalBoolean(b))
@@ -36,6 +37,7 @@ final class Evaluator(scope: Scope)
       case NumericConstant(o) => NumericValue(o).valid
       case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.asNumeric)
       case ToNumber(e) => eval(e) flatMap toNumeric
+      case MkString(e) => eval(e) flatMap mkString
       case StringConstant(o) => StringValue(o).valid
 
       case NamedValue(where, what, default) =>
@@ -73,8 +75,8 @@ final class Evaluator(scope: Scope)
       case _ => Invalid(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
-  private def evalListExpression(expr: ListExpression): Checked[List[Value]] =
-    expr.expressions traverse eval
+  private def evalListExpression(expr: ListExpression): Checked[ListValue] =
+    expr.expressions traverse eval map ListValue.apply
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =
     for {
@@ -91,6 +93,7 @@ final class Evaluator(scope: Scope)
   private[expression] def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.asBoolean)
   private[expression] def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.asNumeric)
   private[expression] def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.asString)
+  private[expression] def evalList(e: Expression): Checked[ListValue] = eval(e).flatMap(_.asList)
 
   private def toNumeric(v: Value): Checked[NumericValue] =
     v match {
@@ -113,6 +116,9 @@ final class Evaluator(scope: Scope)
       case StringValue(o) => Problem(s"Not a valid Boolean value: ${o.truncateWithEllipsis(10)}")
     }
 
+  private def mkString(v: Value): Checked[StringValue] =
+    v.asList.map(listValue => StringValue(listValue.list.map(_.convertToString).mkString))
+
   //private def castValue[A: ClassTag](v: Value): Checked[A] =
   //  if (implicitClass[A] isAssignableFrom v.getClass)
   //
@@ -129,10 +135,13 @@ object Evaluator
     def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
     def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))
     def asBoolean: Checked[BooleanValue] = Invalid(Problem(s"Boolean value expected instead of: $toString"))
+    def asList: Checked[ListValue] = Invalid(Problem(s"List value expected instead of: $toString"))
+    def convertToString: String
   }
 
   final case class BooleanValue(booleanValue: Boolean) extends Value {
     override def asBoolean = Valid(BooleanValue(booleanValue))
+    def convertToString = booleanValue.toString
   }
   object BooleanValue {
     val True = BooleanValue(true)
@@ -141,6 +150,7 @@ object Evaluator
 
   final case class NumericValue(number: BigDecimal) extends Value {
     override def asNumeric = Valid(this)
+    def convertToString = number.toString
   }
   object NumericValue {
     def fromString(number: String): Checked[NumericValue] =
@@ -151,5 +161,12 @@ object Evaluator
 
   final case class StringValue(string: String) extends Value {
     override def asString = Valid(this)
+    def convertToString = string
+  }
+
+  final case class ListValue(list: List[Value]) extends Value {
+    override def asList = Valid(this)
+    def convertToString = toString
+    override def toString = list.mkString("[", ", ", "]")
   }
 }

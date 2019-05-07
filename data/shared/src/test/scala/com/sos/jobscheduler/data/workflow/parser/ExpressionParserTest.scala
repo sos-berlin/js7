@@ -146,6 +146,9 @@ final class ExpressionParserTest extends FreeSpec
           GreaterThan(
             LastReturnCode,
             NumericConstant(0)))))
+
+    testExpression("""["STRING", $NAME, 7].mkString""",
+      MkString(ListExpression(StringConstant("STRING") :: NamedValue.last("NAME") :: NumericConstant(7) :: Nil)))
   }
 
   testExpression("'STRING'.stripMargin",
