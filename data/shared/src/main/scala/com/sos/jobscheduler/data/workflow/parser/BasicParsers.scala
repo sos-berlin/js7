@@ -78,7 +78,7 @@ private[parser] object BasicParsers
       .map { case (a, pairs) => a + pairs.map(o => o._1 + o._2).mkString })
 
   private def doubleQuotedContentPart[_: P] = P[String](
-    CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$'/*reserved for interpolation*/ && ch >= ' ', 0).!)
+    CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$'/*reserved for interpolation*/ /*&& ch >= ' '*/, 0).!)
 
   private def escapedChar[_: P] = P[String](
     SingleChar.!.flatMap {

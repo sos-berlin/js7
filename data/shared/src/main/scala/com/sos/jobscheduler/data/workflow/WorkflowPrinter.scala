@@ -24,9 +24,9 @@ object WorkflowPrinter
     sb.toString
   }
 
-  private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String = {
-    def appendQuoted(string: String) =
-      sb.append('"').append(string.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"").replace("$", "\\$")).append('"')
+  private def appendWorkflowContent(sb: StringBuilder, nesting: Int, workflow: Workflow): String =
+  {
+    def appendQuoted(string: String) = WorkflowPrinter.appendQuoted(sb, string)
 
     def appendQuotedExpression(string: String) =
       if (string.contains('\n')) {
@@ -216,4 +216,13 @@ object WorkflowPrinter
     }
     sb.toString
   }
+
+  def appendQuoted(sb: StringBuilder, string: String) =
+    sb.append('"')
+      .append(string
+        .replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\"", "\\\"")
+        .replace("$", "\\$"))
+      .append('"')
 }

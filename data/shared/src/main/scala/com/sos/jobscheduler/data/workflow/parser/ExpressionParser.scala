@@ -40,6 +40,8 @@ object ExpressionParser
   private def stringConstant[_: P] = P[StringConstant](quotedString
     .map(StringConstant.apply))
 
+  def quotedString[_: P] = P[String](BasicParsers.quotedString)  // Public
+
   private[parser] def dollarNamedValue[_: P] = P[NamedValue] {
     def simpleName = P[String](
       (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)

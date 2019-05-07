@@ -78,7 +78,7 @@ final class ExpressionParserTest extends FreeSpec
     "Invalid strings" in {
       assert(checkedParse("''", expression(_)).isInvalid)
       assert(checkedParse(""" "\" """.trim, expression(_)).isInvalid)
-      assert(checkedParse(" \"\t\" ".trim, expression(_)).isInvalid)
+      // We do not reject any string - assert(checkedParse(" \"\t\" ".trim, expression(_)).isInvalid)
     }
   }
 
