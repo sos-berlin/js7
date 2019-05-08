@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -15,7 +15,6 @@ import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
 import com.sos.jobscheduler.core.filebased.{FileBasedReader, FileBaseds, Repo, TypedPaths}
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
@@ -38,6 +37,7 @@ import java.nio.file.{Files, Paths}
 import java.util.concurrent._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -60,7 +60,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
     "-master-uri=" + master.localUri :: Nil,
     testConfig)
   private lazy val provider = Provider(providerConfiguration).orThrow
-  private lazy val v1Timestamp = now
+  private lazy val v1Time = now
   import provider.fileBasedSigner.toSigned
 
   override def beforeAll() = {
@@ -118,7 +118,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
       live.resolve(agentRef.path.toFile(SourceType.Json)) := agentRef
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
-      v1Timestamp
+      v1Time
 
       // `initiallyUpdateMasterConfiguration` will send this diff to the Master
       assert(provider.testMasterDiff.await(99.seconds).orThrow == FileBaseds.Diff(
@@ -139,7 +139,7 @@ final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
     }
 
     "An unknown and some invalid files" in {
-      sleep(v1Timestamp + 1.1.seconds - now)  // File system timestamps may have only a one second precision
+      sleep((v1Time + 1.1.seconds).timeLeftOrZero)  // File system timestamps may have only a one second precision
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(CWorkflowPath)
       (live / "UNKNOWN.tmp") := "?"

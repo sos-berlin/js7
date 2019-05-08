@@ -3,13 +3,12 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.{ActorContext, ActorRef, DeadLetterSuppression}
 import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
 import com.sos.jobscheduler.base.generic.Accepted
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.typesafe.config.Config
 import java.io.Writer
 import monix.execution.{Cancelable, Scheduler}
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
@@ -25,7 +24,7 @@ private[order] class StdouterrToEvent(
   import conf.{chunkSize, delay, noDelayAfter}
   import orderActorContext.self
 
-  private var lastEventAt = Timestamp.ofEpochMilli(0)
+  private var lastEventAt = Deadline(Duration.Zero)
   private var timer: Cancelable = null
 
   val writers = Map[StdoutOrStderr, Writer](

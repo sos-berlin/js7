@@ -2,21 +2,21 @@ package com.sos.jobscheduler.common.event
 
 import cats.syntax.option._
 import com.google.common.annotations.VisibleForTesting
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventWatch._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
@@ -42,7 +42,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     val originalTimeout = request.timeout
-    var until = none[Timestamp]
+    var until = none[Deadline]
 
     def next(lazyRequest: () => EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () => EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
@@ -55,9 +55,9 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             throw new TornException(after = request.after, tornEventId = tornAfter)
 
           case EventSeq.Empty(lastEventId) =>
-            val remaining = until.map(_ - now)
+            val remaining = until.map(_.timeLeft)
             (remaining.forall(_ > Duration.Zero) ?
-              Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until.map(_ - now)))
+              Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until.map(_.timeLeftOrZero)))
 
           case EventSeq.NonEmpty(events) =>
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
@@ -134,7 +134,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
     whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
   }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Option[Timestamp], delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
+  private def whenAnyKeyedEvents2[A](after: EventId, until: Option[Deadline], delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ =>
       sync.whenEventIsAvailable(after, until, delay)
@@ -147,7 +147,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                   // If the first event is not fresh, we have a read congestion.
                   // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
                   val head = iterator.next()
-                  if (head.timestamp + tornOlder < now) {
+                  if (head.timestamp + tornOlder < Timestamp.now) {
                     iterator.close()
                     Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
                   } else

@@ -3,7 +3,8 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel.LevelScalaLogger
@@ -23,6 +24,7 @@ import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.control.NonFatal
 
@@ -33,7 +35,8 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
   (implicit iox: IOExecutor, ec: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
-  val startedAt = now
+  val startedAt = Timestamp.now
+  private val startedAtRelative = now
   val pidOption: Option[Pid] = processToPidOption(process)
   private val logger = Logger.withPrefix[RichProcess](toString)
   /**
@@ -51,7 +54,7 @@ extends HasCloser with ClosedFuture {
 
   //logger.debug(s"Process started " + (argumentsForLogging map { o => s"'$o'" } mkString ", "))
 
-  def duration = now - startedAt
+  def duration = startedAtRelative.elapsed
 
   def terminated: Future[ReturnCode] =
     _terminated

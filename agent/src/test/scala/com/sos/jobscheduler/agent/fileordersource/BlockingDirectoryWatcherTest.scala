@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.agent.fileordersource
 
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import java.nio.file.Files.{createTempDirectory, delete}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.Deadline.now
 
 /**
  * @author Joacim Zschimmer

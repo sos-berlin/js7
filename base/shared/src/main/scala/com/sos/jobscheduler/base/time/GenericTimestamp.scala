@@ -46,6 +46,7 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
     val durationMillis = duration.toMillis
     companion.ofEpochMilli(toEpochMilli / durationMillis * durationMillis)
   }
+
   def copy(epochMilli: Long): A
 
   override def toString = toIsoString

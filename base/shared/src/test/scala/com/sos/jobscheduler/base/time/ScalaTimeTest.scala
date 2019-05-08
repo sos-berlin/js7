@@ -231,6 +231,26 @@ final class ScalaTimeTest extends FreeSpec
     }
   }
 
+  "RichDeadline" - {
+    "hasElapsed" in {
+      assert((Deadline.now - 1.s).hasElapsed)
+    }
+
+    "elapsed" in {
+      assert((Deadline.now - 2.s).elapsed > 1.s)
+    }
+
+    "elapsedOrZero" in {
+      assert((Deadline.now + 2.s).elapsed < -1.s)
+      assert((Deadline.now + 2.s).elapsedOrZero == 0.s)
+    }
+
+    "timeLeftOrZero" in {
+      assert((Deadline.now - 2.s).timeLeft < -1.s)
+      assert((Deadline.now - 2.s).timeLeftOrZero == 0.s)
+    }
+  }
+
   "Timestamp" - {
     "Timestamp + Duration" in {
       (Timestamp.ofEpochMilli(7) + 2.ms: Timestamp) shouldEqual Timestamp.ofEpochMilli(7 + 2)

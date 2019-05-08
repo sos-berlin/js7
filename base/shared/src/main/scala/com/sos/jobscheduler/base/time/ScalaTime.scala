@@ -2,7 +2,6 @@ package com.sos.jobscheduler.base.time
 
 import cats.Show
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
 import scala.concurrent.blocking
@@ -178,16 +177,40 @@ object ScalaTime
         Duration(delegate.toSeconds, SECONDS) - milliseconds.ms
   }
 
-  implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type)
+  implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
   {
     def MaxValue: FiniteDuration = MaxDuration
     def MinValue: FiniteDuration = MinDuration
   }
 
+  implicit final class RichDeadline(private val underlying: Deadline) extends AnyVal
+  {
+    /** Different to isOverdue, this returns true even if timeLeft == 0. */
+    def hasElapsed: Boolean =
+      underlying.time.toNanos <= System.nanoTime
+
+    def elapsedOrZero: FiniteDuration =
+      elapsed max Duration.Zero
+
+    def elapsed: FiniteDuration =
+      (System.nanoTime - underlying.time.toNanos).nanoseconds
+
+    def timeLeftOrZero: FiniteDuration =
+      underlying.timeLeft max Duration.Zero
+
+    //def roundTo(duration: FiniteDuration): Deadline =
+    //  (underlying + duration / 2) roundDownTo duration
+    //
+    //def roundDownTo(duration: FiniteDuration): Deadline = {
+    //  val durationNanos = duration.toNanos
+    //  Deadline((underlying.time.toNanos / durationNanos * durationNanos).nanoseconds)
+    //}
+  }
+
   @tailrec
-  def sleepUntil(until: Timestamp): Unit = {
-    val duration = until - now
-    if (duration > 0.s) {
+  def sleepUntil(until: Deadline): Unit = {
+    val duration = until.timeLeft
+    if (duration > Duration.Zero) {
       sleep(duration)
       sleepUntil(until)
     }

@@ -47,8 +47,8 @@ private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEnt
   }
 }
 
-private[order] object OrderRegister {
-
+private[order] object OrderRegister
+{
   final class OrderEntry(
     private var _order: Order[Order.State],
     val workflow: Workflow,
@@ -70,7 +70,7 @@ private[order] object OrderRegister {
     def instruction = workflow.instruction(order.position)
 
     def at(timestamp: Timestamp)(body: => Unit)(implicit scheduler: Scheduler): Unit = {
-      val t = scheduler.scheduleFor(timestamp) {
+      val t = scheduler.scheduleFor(timestamp) {  // TODO What to do when clock is adjusted?
         timer = None
         body
       }

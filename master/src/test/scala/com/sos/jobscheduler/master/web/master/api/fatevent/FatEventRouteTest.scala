@@ -5,12 +5,11 @@ import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
@@ -34,6 +33,7 @@ import monix.execution.Scheduler
 import org.scalatest.{Args, FreeSpec}
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 

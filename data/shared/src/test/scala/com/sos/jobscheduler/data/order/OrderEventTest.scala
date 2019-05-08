@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -15,6 +16,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -365,15 +367,15 @@ final class OrderEventTest extends FreeSpec {
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ <- 1 to 10) {
-      val circeSerialize = measure(event.asJson.compactPrint)
+      val circeSerialize =  measure(event.asJson.compactPrint)
       val circeDeserialize = measure(jsonString.parseJsonOrThrow.as[OrderEvent].orThrow: OrderEvent)
       println(f"$circeSerialize%-20s $circeDeserialize%-20s")
     }
     def measure[A](serialize: => Unit) = {
-      val t = System.currentTimeMillis
+      val t = System.nanoTime
       for (_ <- 1 to n) serialize
-      val d = System.currentTimeMillis - t
-      s"${d}ms ${n*1000/d}/s"
+      val d = (System.nanoTime - t).nanoseconds
+      s"${d.pretty} ${n*1000/d.toMillis}/s"
     }
   }
 }

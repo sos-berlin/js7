@@ -4,8 +4,8 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -20,7 +20,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -107,7 +106,7 @@ object TestMasterAgent
               Log4j.shutdown()
             } .closeWithCloser
 
-            val startTime = now
+            val startTime = Timestamp.now
             Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
@@ -128,13 +127,13 @@ object TestMasterAgent
                   case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) =>
                     added += 1
                   case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) =>
-                    lastDuration = Some(now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
+                    lastDuration = Some(Timestamp.now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>
                     if (finished > printedFinished) {
                       val duration = lastDuration.fold("-")(_.pretty)
                       val delta = finished - printedFinished
-                      val diff = s"(diff ${finished - (now - startTime).toSeconds * conf.orderGeneratorCount})"
+                      val diff = s"(diff ${finished - (Timestamp.now - startTime).toSeconds * conf.orderGeneratorCount})"
                       val notFinished = added - finished
                       val throughput = stopwatch.itemsPerSecondString(finished, "orders")
                       val cpu = getOperatingSystemMXBean match {

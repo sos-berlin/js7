@@ -19,7 +19,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
@@ -399,7 +399,7 @@ extends MainJournalingActor[Event] with Stash {
     val order = orderEntry.order
     if (order.isAttached) {
       order.state.maybeDelayedUntil match {
-        case Some(until) if now < until =>
+        case Some(until) if Timestamp.now < until =>
           orderEntry.at(until) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)
           }

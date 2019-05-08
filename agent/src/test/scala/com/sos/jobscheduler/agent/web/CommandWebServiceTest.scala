@@ -10,7 +10,6 @@ import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -41,7 +40,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected def commandOverview = Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
 
   protected def commandDetailed = Task.pure(CommandHandlerDetailed(List(
-    CommandRunOverview(InternalCommandId(333), Timestamp("2015-06-22T12:00:00Z"), TestCommand))))
+    CommandRunOverview(InternalCommandId(333), 1.hour, TestCommand))))
 
   private val route =
     pathSegments("agent/api/command") {
@@ -96,7 +95,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(
           "internalId" -> "333".asJson,
-          "startedAt" -> Timestamp("2015-06-22T12:00:00Z").toEpochMilli.asJson,
+          "duration" -> 3600.asJson,
           "command" -> (TestCommand: AgentCommand).asJson))))
     }
   }

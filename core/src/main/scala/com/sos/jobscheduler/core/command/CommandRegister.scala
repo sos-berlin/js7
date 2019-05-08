@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.core.command
 
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommonCommand, InternalCommandId}
 import scala.collection.mutable
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer

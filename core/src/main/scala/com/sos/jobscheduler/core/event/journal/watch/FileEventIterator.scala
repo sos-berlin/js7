@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -13,6 +12,7 @@ import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.concurrent.blocking
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**

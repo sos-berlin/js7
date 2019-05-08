@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.execution.{Cancelable, Scheduler}
 import org.scalatest.FreeSpec
 import scala.concurrent.Promise
@@ -30,7 +29,7 @@ final class MonixUtilsTest extends FreeSpec
     p.future await  99.s
 
     p = Promise[Unit]()
-    cancelable = scheduler.scheduleFor(now + 10.millis) { p.success(()) }
+    cancelable = scheduler.scheduleFor(Timestamp.now + 10.millis) { p.success(()) }
     p.future await 99.s
   }
 }

@@ -15,8 +15,6 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
@@ -33,6 +31,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import javax.inject.Inject
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, blocking}
 
@@ -58,7 +57,7 @@ extends MainJournalingActor[AgentEvent] {
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
   private var terminating = false
-  private var terminateRespondedAt: Option[Timestamp] = None
+  private var terminateRespondedAt: Option[Deadline] = None
   private val terminateCompleted = Promise[Completed]()
 
   def snapshots = Future.successful(masterToOrderKeeper.keys map AgentSnapshot.Master.apply)

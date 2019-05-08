@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.common.time
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.TimeoutWithSteps._
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
+import scala.concurrent.duration._
 
 final class TimeoutWithStepsTest extends FreeSpec {
 
   "instantIterator" in {
-    millisInstantIterator(100, 7, 7).toList shouldEqual List(100, 100 + 7)
-    millisInstantIterator(100, 7, 3).toList shouldEqual List(100, 100 + 3, 100 + 6, 100 + 7)
-    millisInstantIterator(100, 3, 7).toList shouldEqual List(100, 100 + 3)
+    assert(deadlineIterator(Deadline(100.ms), 7.ms, 7.ms).toList == Deadline(100.ms) :: Deadline(107.ms) :: Nil)
+    assert(deadlineIterator(Deadline(100.ms), 7.ms, 3.ms).toList == Deadline(100.ms) :: Deadline(103.ms) :: Deadline(106.ms) :: Deadline(107.ms) :: Nil)
+    assert(deadlineIterator(Deadline(100.ms), 3.ms, 7.ms).toList == Deadline(100.ms) :: Deadline(103.ms) :: Nil)
   }
 }

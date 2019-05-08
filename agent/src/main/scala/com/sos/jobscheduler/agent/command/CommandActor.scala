@@ -10,15 +10,15 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, EmergencySt
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.Shutdown
 import com.sos.jobscheduler.core.command.{CommandMeta, CommandRegister, CommandRun}
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 

@@ -11,15 +11,15 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
 import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, SimpleUser, User, UserId, ValidUserPermission}
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeperTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.base.time.ScalaTime._
 import io.circe.Json
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 

@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.agent.fileordersource
 
 import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.base.time.ScalaTime._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
 import scala.collection.JavaConverters._
@@ -24,20 +22,20 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
 
   directory.register(watchService, ENTRY_CREATE)
 
-  def waitForMatchingDirectoryChange(until: Timestamp): Unit = while (!waitForNextChange(until)) {}
+  def waitForMatchingDirectoryChange(until: Deadline): Unit = while (!waitForNextChange(until)) {}
 
   /**
    * Waits until any directory change.
    *
    * @return true, iff Path matches `pathMatches` or the event OVERFLOW has occurred or the time is over.
    */
-  def waitForNextChange(until: Timestamp): Boolean = {
-    val remainingMillis = (until - now).toMillis
-    remainingMillis <= 0 || {
+  def waitForNextChange(until: Deadline): Boolean = {
+    val remaining = until.timeLeft
+    remaining <= Duration.Zero || {
       lazy val logPrefix = s"Watching directory $directory"
-      logger.trace(s"$logPrefix for ${remainingMillis}ms ...")
+      logger.trace(s"$logPrefix for ${remaining.pretty} ...")
       val watchKey = blocking {
-        watchService.poll(remainingMillis, MILLISECONDS)
+        watchService.poll(remaining.length, remaining.unit)
       }
       if (watchKey == null) {
         logger.trace(s"$logPrefix, expired")

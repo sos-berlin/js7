@@ -13,8 +13,7 @@ import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -62,8 +61,9 @@ import java.time.ZoneId
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
+import scala.concurrent.Future
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
 /**
@@ -98,7 +98,7 @@ with MainJournalingActor[Event]
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
   private var terminating = false
-  private var terminateRespondedAt: Option[Timestamp] = None
+  private var terminateRespondedAt: Option[Deadline] = None
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -127,12 +127,10 @@ with MainJournalingActor[Event]
   override def postStop() = {
     super.postStop()
     for (t <- terminateRespondedAt) {
-      val millis = (t + 500.millis - now).toMillis
-      if (millis > 0) {
+      val deadline = t + 500.millis
+      if (deadline.hasTimeLeft()) {
         logger.debug("Delaying to let HTTP server respond to Terminate command")
-        blocking {
-          Thread.sleep(millis)
-        }
+        sleepUntil(deadline)
       }
     }
     logger.debug("Stopped")

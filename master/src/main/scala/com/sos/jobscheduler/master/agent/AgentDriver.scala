@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
@@ -29,6 +28,7 @@ import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 

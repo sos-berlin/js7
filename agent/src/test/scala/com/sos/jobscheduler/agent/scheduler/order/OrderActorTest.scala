@@ -12,7 +12,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -20,7 +20,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -47,7 +46,8 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -260,7 +260,7 @@ private object OrderActorTest {
     private def checkTermination(): Unit = {
       if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
-        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, now - started))
+        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, started.elapsed))
         context.stop(self)
       }
     }

@@ -11,6 +11,7 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
@@ -24,7 +25,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -56,7 +56,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
 
-  private val testStartedAt = System.currentTimeMillis - 24*3600*1000
+  private val testStartedAt = Timestamp.now - 24.h
 
   private lazy val uri = master.localUri
 
@@ -108,7 +108,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   "/master/api" in {
     val overview = httpClient.get[Json](s"$uri/master/api") await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
-    assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt)
+    assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt.toEpochMilli)
     assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
 

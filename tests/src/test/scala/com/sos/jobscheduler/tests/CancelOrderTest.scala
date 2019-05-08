@@ -2,9 +2,9 @@ package com.sos.jobscheduler.tests
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.command.CancelMode
@@ -38,7 +38,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 
   "Cancel a fresh order" in {
-    val order = FreshOrder(OrderId("🔹"), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
+    val order = FreshOrder(OrderId("🔹"), SingleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     master.addOrderBlocking(order)
     master.eventWatch.await[OrderTransferredToAgent](_.key == order.id)
     master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds).orThrow
@@ -108,7 +108,7 @@ final class CancelOrderTest extends FreeSpec with DirectoryProviderForScalaTest
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(now + 99.seconds))
+    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), SingleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) master.addOrderBlocking(o)
     for (o <- orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
     val response = master.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow

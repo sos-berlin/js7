@@ -8,8 +8,8 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
@@ -17,7 +17,6 @@ import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirecti
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished}
@@ -28,6 +27,7 @@ import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**

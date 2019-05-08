@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.core.command
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.command.{CommandRunOverview, CommonCommand, InternalCommandId}
-import io.circe.generic.JsonCodec
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class CommandRun[C <: CommonCommand](
   internalId: InternalCommandId,
   command: C,
-  startedAt: Timestamp,
+  startedAt: Deadline,
   batchInternalId: Option[InternalCommandId])
 {
   override def toString = s"$idString ${command.toShortString}"
@@ -21,5 +21,5 @@ final case class CommandRun[C <: CommonCommand](
     case Some(batchId) => s"$batchId+${internalId.number - batchId.number}"  // #100+1
   }
 
-  def overview = new CommandRunOverview(internalId, startedAt, command)
+  def overview = new CommandRunOverview(internalId, startedAt.elapsed, command)
 }

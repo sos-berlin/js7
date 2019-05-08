@@ -8,10 +8,10 @@ import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
 import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger, SetOnce}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
@@ -47,7 +47,7 @@ extends TaskRunner {
   }
 
   private val terminatedPromise = Promise[Completed]()
-  private val startedAt = now
+  private val startedAt = Timestamp.now
   private val variablePrefix = DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory = agentConfiguration.temporaryDirectory)
   private val richProcessOnce = new SetOnce[RichProcess]

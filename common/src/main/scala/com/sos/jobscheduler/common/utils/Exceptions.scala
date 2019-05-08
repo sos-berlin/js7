@@ -1,11 +1,10 @@
 package com.sos.jobscheduler.common.utils
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
@@ -18,10 +17,10 @@ object Exceptions {
   def repeatUntilNoException[A](timeout: FiniteDuration, delayNext: FiniteDuration)(body: => A): A =
     repeatUntilNoException(until = now + timeout, delayNext)(body)
 
-  def repeatUntilNoException[A](until: Timestamp, delayNext: FiniteDuration)(body: => A): A = {
+  def repeatUntilNoException[A](until: Deadline, delayNext: FiniteDuration)(body: => A): A = {
     var tried = Try { body }
-    while (tried.isFailure && (now < until)) {
-      sleep(delayNext)
+    while (tried.isFailure && until.hasTimeLeft()) {
+      sleep(delayNext min until.timeLeftOrZero)
       tried = Try { body }
     }
     tried.get

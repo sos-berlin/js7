@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.common.utils
 
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.Exceptions._
 import com.sos.jobscheduler.common.utils.ExceptionsTest._
 import java.io.IOException
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.concurrent.duration.Deadline.now
 import scala.util.{Success, Try}
 
 /**
@@ -28,7 +28,7 @@ final class ExceptionsTest extends FreeSpec {
       if (i < 5) sys.error("TEST")
     }
     assert(i == 5)
-    val duration = now - t
+    val duration = t.elapsed
     assert(duration >= 400.ms && duration <= 7.s)
     intercept[IOException] {
       repeatUntilNoException(100.ms, 10.ms) { throw new IOException }

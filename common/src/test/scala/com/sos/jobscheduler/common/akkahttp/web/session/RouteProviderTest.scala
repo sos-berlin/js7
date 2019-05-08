@@ -7,7 +7,6 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProviderTest._
 import com.sos.jobscheduler.common.auth.IdToUser

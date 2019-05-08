@@ -13,7 +13,6 @@ import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.BuildInfo
@@ -39,6 +38,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 

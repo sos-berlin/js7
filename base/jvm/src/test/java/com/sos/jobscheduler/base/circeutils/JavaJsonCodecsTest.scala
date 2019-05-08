@@ -12,6 +12,7 @@ import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -38,10 +39,10 @@ final class JavaJsonCodecsTest extends FreeSpec {
 
       def run(what: String)(implicit instantJsonCodec: Encoder[Instant], decoder: Decoder[Instant]) = {
         for (i <- 1 to 100000) Instant.ofEpochMilli(i).asJson.as[Instant].orThrow  // Warm-up
-        val t = System.currentTimeMillis
+        val t = System.nanoTime
         for (i <- 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
-        val duration = System.currentTimeMillis - t
-        info(s"Instant as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
+        val duration = (System.nanoTime - t).nanoseconds
+        info(s"Instant as $what: ${if (duration > 0.seconds) 1000*n / duration.toMillis else "∞"} conversions/s")
       }
     }
 

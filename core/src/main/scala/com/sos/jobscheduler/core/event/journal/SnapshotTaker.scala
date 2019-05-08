@@ -3,11 +3,10 @@ package com.sos.jobscheduler.core.event.journal
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Terminated}
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.SnapshotTaker._
 import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipeline
 import com.typesafe.config.Config
@@ -15,6 +14,7 @@ import io.circe.Encoder
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.blocking
+import scala.concurrent.duration.Deadline.now
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -59,7 +59,7 @@ extends Actor
     case Internal.LogProgress =>
       logProgressCancelable.cancel()
       val limit = remaining.size min logProgressActorLimit
-      logger.info(s"Writing journal snapshot for ${(now - startedAt).pretty}, ${remaining.size} snapshot elements remaining" +
+      logger.info(s"Writing journal snapshot for ${startedAt.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
       for (o <- remaining take limit) {

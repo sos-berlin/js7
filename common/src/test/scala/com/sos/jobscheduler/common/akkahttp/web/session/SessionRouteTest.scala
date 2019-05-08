@@ -11,7 +11,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.session.SessionApi
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
@@ -26,7 +26,6 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.typesafe.config.ConfigFactory
@@ -34,6 +33,7 @@ import java.net.InetSocketAddress
 import monix.execution.Scheduler
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -138,7 +138,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
           whenLoggedIn await 99.s
         }
         assert(exception.status == Unauthorized)
-        assert(now - t >= invalidAuthenticationDelay)
+        assert(t.elapsed >= invalidAuthenticationDelay)
         requireAccessIsUnauthorizedOrPublic(api)
       }
     }
@@ -169,7 +169,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
-      assert(now - t >= invalidAuthenticationDelay)
+      assert(t.elapsed >= invalidAuthenticationDelay)
       requireAccessIsUnauthorized(api)
     }
   }
@@ -183,7 +183,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
       assert(exception.status == Unauthorized)
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(List(HttpChallenges.basic(realm = "TEST REALM")))))
-      assert(now - t >= invalidAuthenticationDelay)
+      assert(t.elapsed >= invalidAuthenticationDelay)
       requireAccessIsUnauthorized(api)
     }
   }
@@ -231,7 +231,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
       assert(exception.header[`WWW-Authenticate`] ==
         Some(`WWW-Authenticate`(HttpChallenges.basic("TEST REALM") :: Nil)))
       assert(exception.dataAsString contains "Login: unknown user or invalid password")
-      assert(now - t >= invalidAuthenticationDelay)
+      assert(t.elapsed >= invalidAuthenticationDelay)
 
       requireAccessIsUnauthorizedOrPublic(api)  // public=true allows access
     }

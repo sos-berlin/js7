@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.core.event.journal.write
 
-import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.concurrent.ParallelismCounter
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.concurrent.ParallelismCounter
 import java.util.concurrent.Executors
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -37,7 +37,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec
     pipeline.flush()
     threadPool.shutdownNow()
     assert(count.maximum == sys.runtime.availableProcessors)
-    val duration = now - t
+    val duration = t.elapsed
     assert(duration < n * sleepDuration * 3 / sys.runtime.availableProcessors)
     assert(result == (1 to n))
   }

@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
@@ -70,7 +70,7 @@ trait JournalRecoverer[E <: Event] {
       logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
-      val age = (now - EventId.toTimestamp(_lastEventId)).withMillis(0).pretty
+      val age = (Timestamp.now - EventId.toTimestamp(_lastEventId)).withMillis(0).pretty
       logger.info(s"Recovered last EventId is ${EventId.toString(_lastEventId)}, issued $age ago " +
         s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }

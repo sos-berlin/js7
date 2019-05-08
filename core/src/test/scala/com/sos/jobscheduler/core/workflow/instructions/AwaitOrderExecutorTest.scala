@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.AwaitOrderExecutorTest._
 import com.sos.jobscheduler.data.event.<-:
@@ -30,7 +30,7 @@ final class AwaitOrderExecutorTest extends FreeSpec {
 
     val offerResult = InstructionExecutor.toEvent(Offer(OfferingOrderId, 60.seconds), offeredOrder, context)
     val Valid(Some(OfferingOrderId <-: OrderOffered(OfferedOrderId, until))) = offerResult
-    assert(until >= now + 50.seconds && until <= now + 70.seconds)
+    assert(until >= Timestamp.now + 50.seconds && until <= Timestamp.now + 70.seconds)
   }
 }
 

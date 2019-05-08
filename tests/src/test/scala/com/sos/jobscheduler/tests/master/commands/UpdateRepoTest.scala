@@ -5,14 +5,13 @@ import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTask
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.sleepingShellScript
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq}
@@ -30,6 +29,7 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -74,7 +74,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     executeCommand(UpdateRepo(V2, sign(workflow2) :: Nil)).orThrow
     master.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
-    val promises = Vector.fill(2)(Promise[Timestamp]())
+    val promises = Vector.fill(2)(Promise[Deadline]())
     for (i <- orderIds.indices) {
       master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i)) foreach {
         case EventSeq.NonEmpty(_) =>
@@ -119,7 +119,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     val promise = Promise[Timestamp]()
     master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderId) foreach {
       case EventSeq.NonEmpty(_) =>
-        promise.success(now)
+        promise.success(Timestamp.now)
     }
   }
 

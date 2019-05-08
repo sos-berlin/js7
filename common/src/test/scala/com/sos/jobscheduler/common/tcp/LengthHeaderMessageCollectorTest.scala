@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollector.intToBytesString
 import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollectorTest._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
 /**
@@ -94,7 +94,7 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
       val result = collector(lastChunk)
       if (result.get.size != length) fail()
     }
-    val totalDuration = now - start
+    val totalDuration = start.elapsed
     logger.info(s"${(totalDuration / n).pretty} (${totalDuration.pretty}/$n)")
     assert(totalDuration < 2.s)
   }

@@ -2,17 +2,16 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import java.nio.file.Path
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-
 
 /**
   * @author Joacim Zschimmer
@@ -47,7 +46,7 @@ extends JournalWriter[E](append = false)
   def endSnapshotSection(sync: Boolean): Unit = {
     jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
     flush(sync = sync)
-    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${(now - startedAt).pretty})")
+    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${startedAt.elapsed.pretty})")
     for (o <- statistics.debugString) logger.debug(o)
   }
 

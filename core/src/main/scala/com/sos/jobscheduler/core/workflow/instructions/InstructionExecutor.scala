@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
@@ -42,7 +42,7 @@ object InstructionExecutor
       case _: If => IfExecutor
       case _: TryInstruction => TryExecutor
       case _: Offer => OfferExecutor
-      case _: Retry => new RetryExecutor(() => now)
+      case _: Retry => new RetryExecutor(() => Timestamp.now)
     }
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Checked[Option[Position]] =

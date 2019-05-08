@@ -9,15 +9,14 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import io.circe.Json
-import java.lang.System.currentTimeMillis
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 
@@ -103,7 +102,7 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
     implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 210.millis, queueSize = 9)(Scheduler.global)
 
     "Second concurrent request is delayed" in {
-      val t = currentTimeMillis
+      val t = now
       val a = Future { blocking { executeRequest(100.millis, OK) } }  // running from 0 till 100
       assert(waitForCondition(1.s, 1.ms)(limiter.isBusy))
       val b = Future { blocking { executeRequest(100.millis, OK) } }  // waits 100ms, running from 100 till 200
@@ -114,9 +113,9 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       a await 99.seconds
       assert(limiter.isBusy)
       b await 99.seconds
-      assert(currentTimeMillis - t >= 190)
+      assert(t.elapsed >= 190.millis)
       c await 99.seconds
-      assert(currentTimeMillis - t >= 290)
+      assert(t.elapsed >= 290.millis)
       d await 99.seconds
     }
   }

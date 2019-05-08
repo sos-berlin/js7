@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import java.io.Writer
 import java.lang.System.nanoTime
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
