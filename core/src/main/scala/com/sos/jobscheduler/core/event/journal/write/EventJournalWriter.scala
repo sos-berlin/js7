@@ -37,8 +37,6 @@ with AutoCloseable
   private var _eventWritten = false
   private var notFlushedCount = 0
 
-  if (!Files.exists(file)) sys.error(s"EventJournalWriter: Not expecting existent files '$file'")
-
   def closeProperly(sync: Boolean): Unit =
     try if (eventsStarted) endEventSection(sync = sync)
     finally close()
