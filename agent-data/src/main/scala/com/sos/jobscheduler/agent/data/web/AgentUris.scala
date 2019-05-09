@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.web.AgentUris._
-import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.order.OrderId
 
@@ -13,8 +12,8 @@ import com.sos.jobscheduler.data.order.OrderId
  *
  * @author Joacim Zschimmer
  */
-final class AgentUris private(agentUri: AgentAddress) {
-
+final class AgentUris private(agentUri: String)
+{
   val prefixedUri = Uri(s"$agentUri/agent")
 
   val overview = toUri("api")
@@ -62,18 +61,12 @@ final class AgentUris private(agentUri: AgentAddress) {
     u.copy(path = Path(s"${prefixedUri.path}/${stripLeadingSlash(uri.path.toString())}"))
   }
 
-  override def toString = agentUri.string
+  override def toString = agentUri
 }
 
-object AgentUris {
-  val LicenseKeyHeaderName = "X-JobScheduler-LicenseKey"
+object AgentUris
+{
+  def apply(uri: String) = new AgentUris(uri stripSuffix "/")
 
-  def apply(address: AgentAddress): AgentUris = new AgentUris(address)
-
-  def apply(agentUri: String) = new AgentUris(AgentAddress.normalized(agentUri))
-
-  private def stripLeadingSlash(o: String) =
-    o match {
-      case _ => o stripPrefix "/"
-    }
+  private def stripLeadingSlash(o: String) = o stripPrefix "/"
 }

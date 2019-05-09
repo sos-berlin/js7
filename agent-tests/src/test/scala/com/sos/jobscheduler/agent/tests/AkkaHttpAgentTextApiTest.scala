@@ -14,15 +14,14 @@ import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
 import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurMemoizingAuthenticator
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -110,7 +109,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
       client.requireIsResponding()
     }
     assert(output == List("JobScheduler Agent is responding"))
-    val agentUri = AgentAddress(s"http://127.0.0.1:${findFreeTcpPort()}")
+    val agentUri = s"http://127.0.0.1:${findFreeTcpPort()}"
     autoClosing(new AkkaHttpAgentTextApi(agentUri, _ => Unit)) { client =>
       val t = intercept[Exception] {
         client.requireIsResponding()
@@ -120,7 +119,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   }
 
   private def newTextAgentClient(output: String => Unit) =
-    new AkkaHttpAgentTextApi(agentUri = AgentAddress(agent.localUri.toString), output, configDirectory = Some(configDirectory))
+    new AkkaHttpAgentTextApi(agentUri = agent.localUri.toString, output, configDirectory = Some(configDirectory))
 }
 
 private object AkkaHttpAgentTextApiTest {

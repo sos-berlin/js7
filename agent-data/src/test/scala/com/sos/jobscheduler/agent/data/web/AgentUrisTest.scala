@@ -7,8 +7,8 @@ import org.scalatest.FreeSpec
 /**
  * @author Joacim Zschimmer
  */
-final class AgentUrisTest extends FreeSpec {
-
+final class AgentUrisTest extends FreeSpec
+{
   private val agentUris = AgentUris("https://example.com:9999/testPrefix")
 
   "command" in {
@@ -46,5 +46,12 @@ final class AgentUrisTest extends FreeSpec {
   "overview" in {
     assert(agentUris.overview ==
       Uri("https://example.com:9999/testPrefix/agent/api"))
+  }
+
+  "Trailing slash in URI is ignored" in {
+    assert(AgentUris("https://example.com:9999").overview == Uri("https://example.com:9999/agent/api"))
+    assert(AgentUris("https://example.com:9999/").overview == Uri("https://example.com:9999/agent/api"))
+    assert(AgentUris("https://example.com:9999/x").overview == Uri("https://example.com:9999/x/agent/api"))
+    assert(AgentUris("https://example.com:9999/x/").overview == Uri("https://example.com:9999/x/agent/api"))
   }
 }

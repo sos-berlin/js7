@@ -12,7 +12,6 @@ import com.sos.jobscheduler.common.configutils.Configs.{ConvertibleConfig, parse
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, TextApi}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
-import com.sos.jobscheduler.data.agent.AgentAddress
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import scala.collection.JavaConverters._
@@ -21,7 +20,7 @@ import scala.collection.JavaConverters._
   * @author Joacim Zschimmer
   */
 private[agent] final class AkkaHttpAgentTextApi(
-  agentUri: AgentAddress,
+  agentUri: String,
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with SessionApi with AkkaHttpClient {
@@ -44,7 +43,7 @@ extends HasCloser with ProvideActorSystem with TextApi with SessionApi with Akka
     }
   }
 
-  protected def baseUri = Uri(agentUri.string)
+  protected val baseUri = Uri(agentUri)
 
   protected def uriPrefixPath = "/agent"
 

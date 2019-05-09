@@ -8,7 +8,6 @@ import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.agent.AgentAddress
 import java.nio.file.{Files, Path}
 import scala.collection.JavaConverters._
 import scala.io
@@ -54,7 +53,7 @@ object AgentClientMain {
 
   private def parseArgs(args: Seq[String]) =
     CommandLineArguments.parse(args) { arguments =>
-      val agentUri = AgentAddress.normalized(arguments.keylessValue(0))
+      val agentUri = arguments.keylessValue(0)
       val configDirectory = arguments.optionAs[Path]("-config-directory=")
       val dataDirectory = arguments.as[Path]("-data-directory=")
       val operations = arguments.keylessValues.tail map {
