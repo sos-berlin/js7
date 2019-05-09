@@ -1,18 +1,14 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
-import java.time.Instant.now
 import java.time._
 import org.jetbrains.annotations.TestOnly
-import scala.annotation.tailrec
-import scala.concurrent.blocking
 import scala.language.implicitConversions
 import scala.math.abs
-import scala.util.Random
 
-object JavaTime {
+object JavaTime
+{
   val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
   val Iso8601DurationRegex = "[0-9.A-Za-z]+".r
 
@@ -120,8 +116,6 @@ object JavaTime {
     else
       Duration parse string
 
-  def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
-
   implicit final class RichDuration(private val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def unary_- = Duration.ZERO minus delegate
     def +(o: Duration): Duration = delegate plus o
@@ -206,47 +200,10 @@ object JavaTime {
     def compare(o: RichLocalTime) = delegate compareTo o.delegate
   }
 
-//  implicit object InstantOrdering extends Ordering[Instant] {
-//    def compare(a: Instant, b: Instant) = a compareTo b
-//  }
-//
-//  implicit object LocalTimeOrdering extends Ordering[LocalTime] {
-//    def compare(a: LocalTime, b: LocalTime) = a compareTo b
-//  }
-
   implicit final class RichLocalDateTime(private val delegate: LocalDateTime) extends AnyVal with Ordered[RichLocalDateTime] {
     def compare(o: RichLocalDateTime) = delegate compareTo o.delegate
     def toInstant(zone: ZoneId) = delegate.toInstant(zone.getRules.getOffset(delegate))
   }
-
-  @tailrec
-  def sleepUntil(until: Instant): Unit = {
-    val duration = until - now()
-    if (duration > 0.s) {
-      sleep(duration)
-      sleepUntil(until)
-    }
-  }
-
-  def sleep(d: Duration): Unit = sleep(d.toMillis)
-
-  def sleep(millis: Long) =
-    if (millis > 0) {
-      blocking {
-        val m = 1000*1000
-        val until = System.nanoTime() + millis * m
-        Thread.sleep(millis)
-        @tailrec def extraSleep(): Unit = {
-          val remainingNanos = until - System.nanoTime()
-          if (remainingNanos > 0) {
-            extraSleepCount += 1
-            Thread.sleep(remainingNanos / m, (remainingNanos % m).toInt)
-            extraSleep()
-          }
-        }
-        extraSleep()
-      }
-    }
 
   private def formatNumber(number: Double, divisor: Int, suffix: String) = {
     val result = new StringBuilder(11 + suffix.length)
@@ -268,8 +225,4 @@ object JavaTime {
   }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
-
-  implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
-    def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
-  }
 }

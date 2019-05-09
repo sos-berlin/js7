@@ -16,7 +16,6 @@ import com.typesafe.config.Config
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline
-import scala.concurrent.duration.Deadline.now
 import scala.util.control.NonFatal
 
 /**
@@ -84,7 +83,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
           trySigtermProcesses()
         }
         killAllSchedule = context.system.scheduler.scheduleOnce(
-          delay = (cmd.sigkillProcessesAfter - now) max 0.s,
+          delay = cmd.sigkillProcessesDeadline.timeLeftOrZero,
           context.self, Internal.KillAll)
         sender() ! Completed
 
@@ -143,7 +142,7 @@ object TaskRegisterActor {
   sealed trait Command
   object Command {
     final case class SendSignalToAllProcesses(signal: ProcessSignal) extends Command
-    final case class Terminate(sigterm: Boolean, sigkillProcessesAfter: Deadline) extends Command
+    final case class Terminate(sigterm: Boolean, sigkillProcessesDeadline: Deadline) extends Command
     final case object GetOverview extends Command
     final case object GetTaskOverviews extends Command
     final case class GetTaskOverview(taskId: AgentTaskId) extends Command

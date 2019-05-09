@@ -4,6 +4,7 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.{complete, get, pathEnd}
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.auth.ValidUserPermission
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -72,12 +73,12 @@ trait FatEventRoute extends MasterRouteProvider
     }
 
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
-    val timeoutAt = now + fatRequest.timeout.getOrElse(DefaultTimeout)
+    val deadline = now + fatRequest.timeout.getOrElse(DefaultTimeout)
     Task {
       val stateAccessor = fatStateCache.newAccessor(fatRequest.after)
 
       def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
-        eventWatch.when[Event](underlyingRequest.copy[Event](timeout = Some(timeoutAt - now)))
+        eventWatch.when[Event](underlyingRequest.copy[Event](timeout = Some(deadline.timeLeftOrZero)))
           .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
           .map {
             case o: TearableEventSeq.Torn =>
@@ -85,7 +86,7 @@ trait FatEventRoute extends MasterRouteProvider
 
             case empty: EventSeq.Empty =>
               stateAccessor.skipIgnoredEventIds(empty.lastEventId)
-              val nextTimeout = timeoutAt - now
+              val nextTimeout = deadline.timeLeftOrZero
               if (nextTimeout > Duration.Zero)
                 requestFat(underlyingRequest.copy[Event](after = empty.lastEventId)).runToFuture
               else

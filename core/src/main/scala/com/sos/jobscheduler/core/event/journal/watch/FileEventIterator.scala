@@ -92,13 +92,13 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
 
   private class TimeWatch(after: EventId) {
     private val PositionAnd(startPosition, startEventId) = positionAndEventId
-    private val startedAt = now
+    private val runningSince = now
     private var skipped = 0
     private var debugIssued = false
 
     def onSkipped(): Unit = {
       skipped += 1
-      val duration = now - startedAt
+      val duration = runningSince.elapsed
       def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${duration.pretty}" +
         s" while searching ${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)} in journal, "
       if (!debugIssued && (position - startPosition >= 100*1000*1000 || duration > 10.seconds)) {
@@ -109,7 +109,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
 
     def end(): Unit = {
       val skippedSize = position - startPosition
-      val duration = now - startedAt
+      val duration = runningSince.elapsed
       if (skipped > 0)
         logger.trace(s"$skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
       if (skippedSize >= WarnSkippedSize || duration >= WarnDuration)

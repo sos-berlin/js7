@@ -42,11 +42,11 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
     val originalTimeout = request.timeout
-    var until = none[Deadline]
+    var deadline = none[Deadline]
 
     def next(lazyRequest: () => EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () => EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-      until = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewd after every fetched event
+      deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewd after every fetched event
       if (request.limit <= 0)
         NoMoreObservable
       else
@@ -55,9 +55,9 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
             throw new TornException(after = request.after, tornEventId = tornAfter)
 
           case EventSeq.Empty(lastEventId) =>
-            val remaining = until.map(_.timeLeft)
+            val remaining = deadline.map(_.timeLeft)
             (remaining.forall(_ > Duration.Zero) ?
-              Observable.empty, () => request.copy[E1](after = lastEventId, timeout = until.map(_.timeLeftOrZero)))
+              Observable.empty, () => request.copy[E1](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
 
           case EventSeq.NonEmpty(events) =>
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
@@ -130,14 +130,14 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   private def whenAnyKeyedEvents[E1 <: E, A](request: EventRequest[E1], collect: PartialFunction[AnyKeyedEvent, A])
   : Task[TearableEventSeq[CloseableIterator, A]] = {
-    val until = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))  // Protected agains Timestamp overflow
-    whenAnyKeyedEvents2(request.after, until, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
+    val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))  // Protected agains Timestamp overflow
+    whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
   }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Option[Deadline], delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
+  private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[Deadline], delay: FiniteDuration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ =>
-      sync.whenEventIsAvailable(after, until, delay)
+      sync.whenEventIsAvailable(after, deadline, delay)
         .flatMap (_ =>
           collectEventsSince(after, collect, limit) match {
             case eventSeq @ EventSeq.NonEmpty(iterator) =>
@@ -155,8 +155,8 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
               }
 
             case EventSeq.Empty(lastEventId) =>
-              if (until.forall(now < _))
-                whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit, maybeTornOlder)
+              if (deadline.forall(_.hasTimeLeft))
+                whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
               else
                 Task.pure(EventSeq.Empty(lastEventId))
 

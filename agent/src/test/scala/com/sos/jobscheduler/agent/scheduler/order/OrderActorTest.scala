@@ -178,7 +178,7 @@ private object OrderActorTest {
 
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
     eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Some(999.s))) foreach self.!
-    val started = now
+    val runningSince = now
 
     def receive = {
       case JournalActor.Output.Ready =>
@@ -260,7 +260,7 @@ private object OrderActorTest {
     private def checkTermination(): Unit = {
       if (orderDetached && orderActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
-        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, started.elapsed))
+        terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }, runningSince.elapsed))
         context.stop(self)
       }
     }

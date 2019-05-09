@@ -113,7 +113,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
         }
       }
     })
-    val terminateResponse = (actor ? TaskRegisterActor.Command.Terminate(sigterm = true, sigkillProcessesAfter = now + 300.ms)).await(99.s)
+    val terminateResponse = (actor ? TaskRegisterActor.Command.Terminate(sigterm = true, sigkillProcessesDeadline = now + 300.ms)).await(99.s)
     assert(terminateResponse == Completed)
     if (!isWindows) retryUntil(1.s, 10.ms) {
       assert(bTask.signalled == SIGTERM)

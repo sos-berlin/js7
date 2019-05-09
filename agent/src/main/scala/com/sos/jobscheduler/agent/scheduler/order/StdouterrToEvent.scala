@@ -41,7 +41,7 @@ private[order] class StdouterrToEvent(
 
   def onBufferingStarted(): Unit =
     if (timer == null) {
-      val d = if (lastEventAt + noDelayAfter < now) Duration.Zero else delay
+      val d = if ((lastEventAt + noDelayAfter).hasTimeLeft) Duration.Zero else delay
       timer = scheduler.scheduleOnce(d) {
         self ! Stdouterr.FlushStdoutStderr
       }

@@ -107,14 +107,14 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
       fatEvents
     }
 
-    private val startedAt = now
+    private val runningSince = now
     private var eventCount = 0
     private var stillRebuildingLogged = false
     private var longDurationLogged = false
 
     private def watch(eventId: EventId): Unit = {
       eventCount += 1
-      lazy val duration = now - startedAt
+      lazy val duration = runningSince.elapsed
       if (!stillRebuildingLogged && eventId <= after && duration >= InfoAfter) {
         stillRebuildingLogged = true
         logger.info(s"Still rebuilding requested FatState, $eventCount events processed since ${duration.pretty}")

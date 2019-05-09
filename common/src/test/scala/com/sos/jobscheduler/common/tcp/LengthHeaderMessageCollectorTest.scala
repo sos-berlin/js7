@@ -85,7 +85,7 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
     Random.nextBytes(chunkArray)
     val chunk = ByteString(chunkArray)
     val lastChunk = ByteString.fromArray(chunkArray, 0, length = length % chunkSize)
-    val start = now
+    val runningSince = now
     val n = 1000
     for (_ <- 1 to n) {
       assert(collector.isReset)
@@ -94,7 +94,7 @@ final class LengthHeaderMessageCollectorTest extends FreeSpec {
       val result = collector(lastChunk)
       if (result.get.size != length) fail()
     }
-    val totalDuration = start.elapsed
+    val totalDuration = runningSince.elapsed
     logger.info(s"${(totalDuration / n).pretty} (${totalDuration.pretty}/$n)")
     assert(totalDuration < 2.s)
   }

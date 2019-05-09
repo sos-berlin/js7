@@ -15,6 +15,7 @@ import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
@@ -56,9 +57,10 @@ extends MainJournalingActor[AgentEvent] {
     "Journal"))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
-  private var terminating = false
-  private var terminateRespondedAt: Option[Deadline] = None
+  private var terminatingSince: Option[Deadline] = None
   private val terminateCompleted = Promise[Completed]()
+
+  private def terminating = terminatingSince.isDefined
 
   def snapshots = Future.successful(masterToOrderKeeper.keys map AgentSnapshot.Master.apply)
 
@@ -71,8 +73,8 @@ extends MainJournalingActor[AgentEvent] {
 
   override def postStop() = {
     super.postStop()
-    for (t <- terminateRespondedAt) {
-      val millis = (t + 500.millis - now).toMillis
+    for (t <- terminatingSince) {
+      val millis = (t + 500.millis).elapsed.toMillis
       if (millis > 0) {
         logger.debug("Delaying to let HTTP server respond to Terminate command")
         blocking {
@@ -154,9 +156,8 @@ extends MainJournalingActor[AgentEvent] {
     val masterId = MasterId.fromUserId(userId)
     command match {
       case command: AgentCommand.Terminate =>
-        terminateRespondedAt = Some(now)
         if (!terminating) {
-          terminating = true
+          terminatingSince = Some(now)
           terminateOrderKeepers(command) onComplete { ordersTerminated =>
             response.complete(ordersTerminated map Valid.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination

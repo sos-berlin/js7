@@ -391,7 +391,7 @@ private[master] object AgentDriver
 
     def onCouple() = lastCoupling = now
     def onCouplingSucceeded() = pauses = initial
-    def nextPause() = (lastCoupling + pauses.next() - now) max Minimum
+    def nextPause() = (lastCoupling + pauses.next()).timeLeft max Minimum
 
     private def initial = Iterator(Minimum, Minimum, Minimum, Minimum, 2.seconds, 5.seconds) ++
       Iterator.continually(10.seconds)

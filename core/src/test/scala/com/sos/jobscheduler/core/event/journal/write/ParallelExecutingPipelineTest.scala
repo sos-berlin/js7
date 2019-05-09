@@ -28,7 +28,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec
       sleep(duration)
       i
     }
-    val t = now
+    val runningSince = now
     for (i <- 1 to n) {
        pipeline.blockingAdd {
          f(i, sleepDuration)
@@ -37,7 +37,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec
     pipeline.flush()
     threadPool.shutdownNow()
     assert(count.maximum == sys.runtime.availableProcessors)
-    val duration = t.elapsed
+    val duration = runningSince.elapsed
     assert(duration < n * sleepDuration * 3 / sys.runtime.availableProcessors)
     assert(result == (1 to n))
   }

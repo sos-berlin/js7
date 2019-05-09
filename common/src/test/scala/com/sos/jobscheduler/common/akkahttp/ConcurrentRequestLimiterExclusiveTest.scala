@@ -72,14 +72,14 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       val route = complete(source)
 
       val longRequest = Future {
-        val t = now
+        val runningSince = now
         Get() ~> limiter(route) ~> check {
           assert(limiter.isBusy)
-          assert(now - t < n * duration)
+          assert(runningSince.elapsed < n * duration)
 
           assert(status == OK)  // Seems to wait for response
           response.discardEntityBytes().future await 99.seconds
-          assert(now - t >= n * duration)
+          assert(runningSince.elapsed >= n * duration)
           waitForCondition(9.seconds, 10.millis)(!limiter.isBusy)
           assert(!limiter.isBusy)
         }
@@ -102,7 +102,7 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
     implicit val limiter = new ConcurrentRequestLimiter(limit = 1, concurrentProblem, timeout = 210.millis, queueSize = 9)(Scheduler.global)
 
     "Second concurrent request is delayed" in {
-      val t = now
+      val runningSince = now
       val a = Future { blocking { executeRequest(100.millis, OK) } }  // running from 0 till 100
       assert(waitForCondition(1.s, 1.ms)(limiter.isBusy))
       val b = Future { blocking { executeRequest(100.millis, OK) } }  // waits 100ms, running from 100 till 200
@@ -113,9 +113,9 @@ final class ConcurrentRequestLimiterExclusiveTest extends FreeSpec with Scalates
       a await 99.seconds
       assert(limiter.isBusy)
       b await 99.seconds
-      assert(t.elapsed >= 190.millis)
+      assert(runningSince.elapsed >= 190.millis)
       c await 99.seconds
-      assert(t.elapsed >= 290.millis)
+      assert(runningSince.elapsed >= 290.millis)
       d await 99.seconds
     }
   }

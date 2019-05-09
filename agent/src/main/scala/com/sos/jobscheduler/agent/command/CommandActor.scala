@@ -18,7 +18,6 @@ import com.sos.jobscheduler.core.command.{CommandMeta, CommandRegister, CommandR
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
@@ -44,7 +43,7 @@ extends Actor {
 
     case Internal.Respond(run, promise, response) =>
       if (run.batchInternalId.isEmpty || response != Success(Valid(AgentCommand.Response.Accepted))) {
-        logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${(now - run.startedAt).pretty}): $response")
+        logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $response")
       }
       register.remove(run.internalId)
       promise.complete(response)

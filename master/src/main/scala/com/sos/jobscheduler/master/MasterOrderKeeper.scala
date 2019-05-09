@@ -97,8 +97,8 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private var terminating = false
-  private var terminateRespondedAt: Option[Deadline] = None
+  private var terminatingSince: Option[Deadline] = None
+  private def terminating = terminatingSince.isDefined
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -126,7 +126,7 @@ with MainJournalingActor[Event]
 
   override def postStop() = {
     super.postStop()
-    for (t <- terminateRespondedAt) {
+    for (t <- terminatingSince) {
       val deadline = t + 500.millis
       if (deadline.hasTimeLeft()) {
         logger.debug("Delaying to let HTTP server respond to Terminate command")
@@ -364,8 +364,7 @@ with MainJournalingActor[Event]
       case MasterCommand.Terminate =>
         logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
-        terminating = true
-        terminateRespondedAt = Some(now)
+        terminatingSince = Some(now)
         Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>

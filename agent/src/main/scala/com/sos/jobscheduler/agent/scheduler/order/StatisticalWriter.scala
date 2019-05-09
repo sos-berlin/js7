@@ -12,7 +12,7 @@ import scala.concurrent.duration._
   */
 private[order] final class StatisticalWriter(writer: Writer) extends Writer
 {
-  private val startTime = now
+  private val runningSince = now
   private var blockedNanos = 0L
   private var messageCount = 0
   private var size = 0L
@@ -29,7 +29,7 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer
     s"$messageCount chunks" +
       (if (size == 0) "" else {
         val bocked = blockedNanos.nanoseconds
-        val duration = (now - startTime).toNanos
+        val duration = runningSince.elapsed.toNanos
         val percentage = if (duration == 0) 1 else 100 * bocked.toNanos / duration
         s" (${toKBGB(size)}), blocked ${bocked.pretty} ($percentage%)"
       })  // This is the time an unbuffered stdout/stderr pipe is blocked

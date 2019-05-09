@@ -6,6 +6,7 @@ import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.util.Random
 
 final class JavaTimeTest extends FreeSpec {
 
@@ -320,4 +321,7 @@ final class JavaTimeTest extends FreeSpec {
       assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
     }
   }
+
+  private def randomDuration(maximum: Duration): Duration =
+    Duration.ofNanos((maximum.toNanos * Random.nextFloat).toLong)
 }

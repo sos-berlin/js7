@@ -27,7 +27,7 @@ extends JournalWriter[E](append = false)
   protected val statistics = new SnapshotStatisticsCounter
   private var snapshotStarted = false
   private var snapshotCount = 0
-  private val startedAt = now
+  private val runningSince = now
 
   def beginSnapshotSection(): Unit = {
     if (snapshotStarted) throw new IllegalStateException("SnapshotJournalWriter: duplicate beginSnapshotSection()")
@@ -46,7 +46,7 @@ extends JournalWriter[E](append = false)
   def endSnapshotSection(sync: Boolean): Unit = {
     jsonWriter.write(ByteString(SnapshotFooter.compactPrint))
     flush(sync = sync)
-    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${startedAt.elapsed.pretty})")
+    logger.debug(s"Snapshot finished, $fileSizeString written ($snapshotCount snapshot objects in ${runningSince.elapsed.pretty})")
     for (o <- statistics.debugString) logger.debug(o)
   }
 

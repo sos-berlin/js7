@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
@@ -116,11 +115,12 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
     val orderId = OrderId("⭕️")
     master.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))
 
-    val promise = Promise[Timestamp]()
+    val promise = Promise[Deadline]()
     master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderId) foreach {
       case EventSeq.NonEmpty(_) =>
-        promise.success(Timestamp.now)
+        promise.success(now)
     }
+    //...
   }
 
   "MasterCommand.UpdateRepo with divergent VersionId is rejected" in {

@@ -131,9 +131,9 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
     }
 
     "/event?limit=3&after=150 skip some events" in {
-      val t = now
+      val runningSince = now
       val stampeds = getEvents("/event?delay=99&limit=3&after=150")
-      assert(now < t + 1.second)  // Events must have been returned immediately
+      assert(runningSince.elapsed < 1.second)  // Events must have been returned immediately
       assert(stampeds.head.eventId == 160)
       assert(stampeds.last.eventId == 180)
     }
@@ -143,42 +143,42 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
     }
 
     "/event?after=180 no more events, with timeout" in {
-      val t = now
+      val runningSince = now
       assert(getEventSeq("/event?after=180&timeout=0.2") == EventSeq.Empty(180))
-      assert(now - t >= 200.millis)
+      assert(runningSince.elapsed >= 200.millis)
     }
 
     "/event DefaultDelay" in {
       val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished)
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
       val stampeds = getEvents("/event?timeout=30&after=180")
       assert(stampeds == stamped :: Nil)
-      assert(now - t >= 100.millis + EventDirectives.DefaultDelay)
+      assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay)
     }
 
     "/event?delay=0 MinimumDelay" in {
       val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished)
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
       val stampeds = getEvents("/event?delay=0&timeout=30&after=190")
       assert(stampeds == stamped :: Nil)
-      assert(now - t >= 100.millis + EventDirectives.MinimumDelay)
+      assert(runningSince.elapsed >= 100.millis + EventDirectives.MinimumDelay)
     }
 
     "/event?delay=0.2" in {
       val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished)
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
       val stampeds = getEvents("/event?delay=0.2&timeout=30&after=200")
       assert(stampeds == stamped :: Nil)
-      assert(now - t >= 100.millis + 200.millis)
+      assert(runningSince.elapsed >= 100.millis + 200.millis)
     }
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream

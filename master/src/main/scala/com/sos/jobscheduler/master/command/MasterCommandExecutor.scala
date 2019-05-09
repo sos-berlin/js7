@@ -29,7 +29,7 @@ extends CommandExecutor[MasterCommand]
     executeCommand2(command, meta, run.internalId, batchId)
       .map { checkedResponse =>
         if (run.batchInternalId.isEmpty || checkedResponse != Valid(MasterCommand.Response.Accepted)) {
-          logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${run.startedAt.elapsed.pretty}): $checkedResponse")
+          logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $checkedResponse")
         }
         register.remove(run.internalId)
         checkedResponse.map(_.asInstanceOf[command.Response])

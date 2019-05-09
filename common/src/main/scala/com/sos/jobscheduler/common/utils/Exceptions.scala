@@ -15,12 +15,12 @@ object Exceptions {
   private val logger = Logger(getClass)
 
   def repeatUntilNoException[A](timeout: FiniteDuration, delayNext: FiniteDuration)(body: => A): A =
-    repeatUntilNoException(until = now + timeout, delayNext)(body)
+    repeatUntilNoException(deadline = now + timeout, delayNext)(body)
 
-  def repeatUntilNoException[A](until: Deadline, delayNext: FiniteDuration)(body: => A): A = {
+  def repeatUntilNoException[A](deadline: Deadline, delayNext: FiniteDuration)(body: => A): A = {
     var tried = Try { body }
-    while (tried.isFailure && until.hasTimeLeft()) {
-      sleep(delayNext min until.timeLeftOrZero)
+    while (tried.isFailure && deadline.hasTimeLeft()) {
+      sleep(delayNext min deadline.timeLeftOrZero)
       tried = Try { body }
     }
     tried.get

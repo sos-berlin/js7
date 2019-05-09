@@ -35,7 +35,7 @@ extends Actor
   private val logProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration
   private val logProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit")
   private var logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
-  private val startedAt = now
+  private val runningSince = now
   private var testLogCount = 0
 
   self ! Internal.Start
@@ -59,7 +59,7 @@ extends Actor
     case Internal.LogProgress =>
       logProgressCancelable.cancel()
       val limit = remaining.size min logProgressActorLimit
-      logger.info(s"Writing journal snapshot for ${startedAt.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
+      logger.info(s"Writing journal snapshot for ${runningSince.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
       for (o <- remaining take limit) {

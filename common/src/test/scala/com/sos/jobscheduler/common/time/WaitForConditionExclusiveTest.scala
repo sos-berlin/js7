@@ -5,12 +5,13 @@ import com.sos.jobscheduler.common.time.WaitForCondition._
 import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 final class WaitForConditionExclusiveTest extends FreeSpec {
 
   "Warm-up" in {
-    realTimeIterator(Seq(Deadline.now)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
+    realTimeIterator(Seq(now)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
     meterElapsedTime { retryUntil(99.s, 1.s) { 7 } }
     intercept[IllegalStateException] { throw new IllegalStateException }
   }
@@ -52,8 +53,8 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 
   "realTimeIterator (time-sensitive test)" in {
-    meterElapsedTime { realTimeIterator(Seq(Deadline.now + 10.s)) } should be < 300.ms // Bereitstellung soll nicht warten
-    val t0 = Deadline.now
+    meterElapsedTime { realTimeIterator(Seq(now + 10.s)) } should be < 300.ms // Bereitstellung soll nicht warten
+    val t0 = now
     val (t1, t2, t3) = (t0 + 500.ms, t0 + 1500.ms, t0 + 2000.ms)
     val i = realTimeIterator(Seq(t1, t2, t3))
     meterElapsedTime { i.next() } .toMillis should be ((t1 - t0).toMillis +- 400)

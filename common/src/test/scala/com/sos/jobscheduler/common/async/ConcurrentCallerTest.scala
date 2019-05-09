@@ -16,13 +16,13 @@ import scala.concurrent.duration._
 final class ConcurrentCallerTest extends FreeSpec {
 
   "ConcurrentCaller" in {
-    val instants = mutable.Buffer[Deadline]()
-    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 3600.s), { () => instants += now }, "TEST")) { backgroundCaller =>
+    val deadlines = mutable.Buffer[Deadline]()
+    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 3600.s), { () => deadlines += now }, "TEST")) { backgroundCaller =>
       backgroundCaller.start()
-      waitForCondition(timeout = 10.s, step = 10.ms) { instants.size == 4 }
+      waitForCondition(timeout = 10.s, step = 10.ms) { deadlines.size == 4 }
     }
     val expectedSummedDurations = List(0.ms, 10.ms, 40.ms, 140.ms)
-    val durations = instants map { _ - instants.head }
+    val durations = deadlines map { _ - deadlines.head }
     for ((duration, expectedMinimum) <- durations zip expectedSummedDurations) assert(duration >= expectedMinimum)
   }
 

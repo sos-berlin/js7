@@ -13,6 +13,7 @@ import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.common.BuildInfo
@@ -111,7 +112,7 @@ trait GenericEventRoute extends RouteProvider
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request =>
         implicit val x = streamingSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-        val t = now
+        val runningSince = now
         completeTask(
           // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
           eventWatch.when(request, predicate = isRelevantEvent).map {
@@ -129,7 +130,7 @@ trait GenericEventRoute extends RouteProvider
                   request = request.copy[Event](
                     after = head.eventId,
                     limit = request.limit - 1,
-                    delay = (request.delay - (now - t)) min Duration.Zero),
+                    delay = request.delay - runningSince.elapsedOrZero),
                   predicate = isRelevantEvent)
                 .onErrorRecoverWith { case NonFatal(e) =>
                   logger.warn(e.toStringWithCauses)

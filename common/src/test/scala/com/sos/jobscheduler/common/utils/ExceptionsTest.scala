@@ -21,14 +21,14 @@ final class ExceptionsTest extends FreeSpec {
     var _i = 0
     repeatUntilNoException(10.s, 10.ms) { _i += 1;if (_i < 2) sys.error("TEST") }
 
-    val t = now
+    val runningSince = now
     var i = 0
     repeatUntilNoException(10.s, 100.ms) {
       i += 1
       if (i < 5) sys.error("TEST")
     }
     assert(i == 5)
-    val duration = t.elapsed
+    val duration = runningSince.elapsed
     assert(duration >= 400.ms && duration <= 7.s)
     intercept[IOException] {
       repeatUntilNoException(100.ms, 10.ms) { throw new IOException }

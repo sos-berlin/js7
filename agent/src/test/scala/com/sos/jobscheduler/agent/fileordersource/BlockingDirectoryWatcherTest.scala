@@ -23,26 +23,25 @@ final class BlockingDirectoryWatcherTest extends FreeSpec {
       val directory = createTempDirectory("sos-") withCloser delete
       val matchingPath = directory / "MATCHING-FILE"
       val watcher  = new BlockingDirectoryWatcher(directory, _ == matchingPath).closeWithCloser
-      val start = now
-      val until = start + 5.s + BlockingDirectoryWatcher.PossibleDelay
-      val beforeUntil = until - 3.s
+      val deadline = now + 5.s + BlockingDirectoryWatcher.PossibleDelay
+      val beforeUntil = deadline - 3.s
 
       locally {
-        val nonMatchingFuture = blockingThreadFuture { watcher.waitForNextChange(until) }
+        val nonMatchingFuture = blockingThreadFuture { watcher.waitForNextChange(deadline) }
         sleep(1.s)
         assert(!nonMatchingFuture.isCompleted)
         touchAndDeleteWithCloser(directory / "X")
         sleep(1.s)
-        val matches = nonMatchingFuture await (beforeUntil - now)
+        val matches = nonMatchingFuture await beforeUntil.timeLeft
         assert(!matches)
       }
 
       locally {
-        val matchingFuture = Future { watcher.waitForNextChange(until) }
+        val matchingFuture = Future { watcher.waitForNextChange(deadline) }
         sleep(1.s)
         assert(!matchingFuture.isCompleted)
         touchAndDeleteWithCloser(matchingPath)
-        val matches = matchingFuture await (beforeUntil - now)
+        val matches = matchingFuture await beforeUntil.timeLeft
         assert(matches)
       }
     }

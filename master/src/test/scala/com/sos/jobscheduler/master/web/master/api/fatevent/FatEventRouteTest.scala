@@ -150,45 +150,45 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     }
 
     "/fatEvent?after=193, intermediate event added (OrderDetached), with timeout" in {
-      val t = now
+      val runningSince = now
       assert(getFatEventSeq("/fatEvent?after=193&timeout=0.1") == EventSeq.Empty(200))
-      assert(now - t >= 100.millis)
+      assert(runningSince.elapsed >= 100.millis)
     }
 
     "/fatEvent?after=200, OrderFinished added" in {
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(Stamped(EventId(201), OrderId("10") <-: OrderStdoutWritten("1")))
       }
       assert(getFatEventSeq("/fatEvent?timeout=30&after=200") == EventSeq.NonEmpty(
         Stamped(201, OrderId("10") <-: OrderStdoutWrittenFat("1")):: Nil))
-      assert(now - t >= 100.millis + EventDirectives.DefaultDelay, "(100ms + DefaultDelay)")
+      assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay, "(100ms + DefaultDelay)")
     }
 
     "/fatEvent?after=201, with delay" in {
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(Stamped(EventId(202), OrderId("10") <-: OrderStdoutWritten("2")))
       }
       assert(getFatEventSeq("/fatEvent?delay=0.1&timeout=30&after=201") == EventSeq.NonEmpty(
         Stamped(202, OrderId("10") <-: OrderStdoutWrittenFat("2")):: Nil))
-      assert(now - t >= 100.millis)
+      assert(runningSince.elapsed >= 100.millis)
     }
 
     "/fatEvent?after=202, with delay=0" in {
-      val t = now
+      val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(Stamped(EventId(203), OrderId("10") <-: OrderStdoutWritten("3")))
       }
       assert(getFatEventSeq("/fatEvent?delay=0&timeout=30&after=202") == EventSeq.NonEmpty(
         Stamped(203, OrderId("10") <-: OrderStdoutWrittenFat("3")):: Nil))
-      assert(now - t >= EventDirectives.MinimumDelay)
+      assert(runningSince.elapsed >= EventDirectives.MinimumDelay)
     }
 
     "/fatEvent?after=203 no more events, with timeout" in {
-      val t = now
+      val runningSince = now
       assert(getFatEventSeq("/fatEvent?after=203&timeout=0.1") == EventSeq.Empty(203))
-      assert(now - t >= 100.millis)
+      assert(runningSince.elapsed >= 100.millis)
     }
 
     "After truncated journal" in {

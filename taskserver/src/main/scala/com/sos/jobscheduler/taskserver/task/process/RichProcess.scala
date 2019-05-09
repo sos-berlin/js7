@@ -36,7 +36,7 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
 extends HasCloser with ClosedFuture {
 
   val startedAt = Timestamp.now
-  private val startedAtRelative = now
+  private val runningSince = now
   val pidOption: Option[Pid] = processToPidOption(process)
   private val logger = Logger.withPrefix[RichProcess](toString)
   /**
@@ -54,7 +54,7 @@ extends HasCloser with ClosedFuture {
 
   //logger.debug(s"Process started " + (argumentsForLogging map { o => s"'$o'" } mkString ", "))
 
-  def duration = startedAtRelative.elapsed
+  def duration = runningSince.elapsed
 
   def terminated: Future[ReturnCode] =
     _terminated
