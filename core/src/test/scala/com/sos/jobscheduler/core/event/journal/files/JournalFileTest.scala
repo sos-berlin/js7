@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.files
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.data.event.EventId
+import cats.data.Validated.Valid
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
@@ -14,18 +13,15 @@ final class JournalFileTest extends FreeSpec
     assert(JournalFile.toFile(Paths.get("DIR/NAME"), 123) == Paths.get("DIR/NAME--123.journal"))
   }
 
-  "pattern" in {
-    val pattern = JournalFile.pattern(Paths.get("NAME"))
-    def matchFile(string: String): Option[EventId] = {
-      val matcher = pattern.matcher(string)
-      matcher.matches ? matcher.group(1).toLong
-    }
-    assert(matchFile("NAME--0.journal") == Some(0))
-    assert(matchFile("NAME--1112223334445556667.journal") == Some(1112223334445556667L))
-    assert(matchFile("NAME--0_journal") == None)
-    assert(matchFile("NAME--X.journal") == None)
-    assert(matchFile("NAME--.journal") == None)
-    assert(matchFile("OTHER--0.journal") == None)
-    assert(matchFile("--0.journal") == None)
+  "maybeJournalfile" in {
+    val matcher = new JournalFile.Matcher(Paths.get("NAME"))
+    assert(matcher.checkedEventId(Paths.get("NAME--0.journal")) == Valid(0))
+    assert(matcher.checkedEventId(Paths.get("NAME--1112223334445556667.journal")) == Valid(1112223334445556667L))
+    assert(matcher.checkedEventId(Paths.get("NAME---1_journal")).isInvalid)
+    assert(matcher.checkedEventId(Paths.get("NAME--0_journal")).isInvalid)
+    assert(matcher.checkedEventId(Paths.get("NAME--X.journal")).isInvalid)
+    assert(matcher.checkedEventId(Paths.get("NAME--.journal")).isInvalid)
+    assert(matcher.checkedEventId(Paths.get("OTHER--0.journal")).isInvalid)
+    assert(matcher.checkedEventId(Paths.get("--0.journal")).isInvalid)
   }
 }

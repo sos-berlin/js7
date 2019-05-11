@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.event.journal.files
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId}
@@ -23,12 +22,15 @@ object JournalFiles
     if (!exists(directory))
       Vector.empty
     else
-      autoClosing(Files.list(directory)) { stream =>
-        val pattern = JournalFile.pattern(journalFileBase.getFileName)
-        stream.iterator.asScala.flatMap { file =>
-          val matcher = pattern.matcher(file.getFileName.toString)
-          matcher.matches ? JournalFile(afterEventId = matcher.group(1).toLong, file)
-        } .toVector.sortBy(_.afterEventId)
+      journalFileBase.getFileName match {
+        case null => Vector.empty
+        case baseFilename =>
+          autoClosing(Files.list(directory)) { stream =>
+            val matcher = new JournalFile.Matcher(baseFilename)
+            stream.iterator.asScala
+              .flatMap(file => matcher.checkedJournalFile(file).toOption)
+              .toVector.sortBy(_.afterEventId)
+          }
       }
   }
 
