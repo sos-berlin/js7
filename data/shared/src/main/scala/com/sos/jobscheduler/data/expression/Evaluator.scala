@@ -132,10 +132,10 @@ object Evaluator
   val Constant = new Evaluator(Scope.Constant)
 
   sealed trait Value {
-    def asNumeric: Checked[NumericValue] = Invalid(Problem(s"Numeric value expected instead of: $toString"))
-    def asString: Checked[StringValue] = Invalid(Problem(s"String value expected instead of: $toString"))
-    def asBoolean: Checked[BooleanValue] = Invalid(Problem(s"Boolean value expected instead of: $toString"))
-    def asList: Checked[ListValue] = Invalid(Problem(s"List value expected instead of: $toString"))
+    def asNumeric: Checked[NumericValue] = Invalid(InvalidExpressionTypeProblem("Numeric", this))
+    def asString: Checked[StringValue] = Invalid(InvalidExpressionTypeProblem("String", this))
+    def asBoolean: Checked[BooleanValue] = Invalid(InvalidExpressionTypeProblem("Boolean", this))
+    def asList: Checked[ListValue] = Invalid(InvalidExpressionTypeProblem("List", this))
     def convertToString: String
   }
 
@@ -168,5 +168,11 @@ object Evaluator
     override def asList = Valid(this)
     def convertToString = toString
     override def toString = list.mkString("[", ", ", "]")
+  }
+
+  private case class InvalidExpressionTypeProblem(typ: String, value: Value) extends Problem.Coded {
+    def arguments = Map(
+      "type" -> typ,
+      "value" -> value.toString.truncateWithEllipsis(30))
   }
 }

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.auth
 
-import com.sos.jobscheduler.base.problem.ProblemException
 import org.scalatest.FreeSpec
 
 /**
@@ -9,15 +8,15 @@ import org.scalatest.FreeSpec
 final class UserIdTest extends FreeSpec {
 
   "Invalid UserId" in {
-    intercept[ProblemException] { UserId("") }
-    intercept[ProblemException] { UserId("a?") }
-    intercept[ProblemException] { UserId("a?b") }
-    intercept[ProblemException] { UserId("a/b") }
-    intercept[ProblemException] { UserId("/root") }
-    intercept[ProblemException] { UserId(".") }
-    intercept[ProblemException] { UserId("..") }
-    intercept[ProblemException] { UserId(".hidden") }
-    intercept[ProblemException] { UserId("Master--100") }  // "--" is used for history journal files
+    assert(UserId.checked("").isInvalid)
+    assert(UserId.checked("a?").isInvalid)
+    assert(UserId.checked("a?b").isInvalid)
+    assert(UserId.checked("a/b").isInvalid)
+    assert(UserId.checked("/root").isInvalid)
+    assert(UserId.checked(".").isInvalid)
+    assert(UserId.checked("..").isInvalid)
+    assert(UserId.checked(".hidden").isInvalid)
+    assert(UserId.checked("Master--100").isInvalid)  // "--" is used for history journal files
   }
 
   "Valid UserId" in {

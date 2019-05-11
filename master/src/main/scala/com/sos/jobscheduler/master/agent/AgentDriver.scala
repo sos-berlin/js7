@@ -325,7 +325,7 @@ with ReceiveLoggingActor.WithStash {
             }
 
           case torn: TearableEventSeq.Torn =>
-            val problem = Problem(s"Bad response from Agent $agentRefPath ${client.baseUri}: $torn, requested events after=$after")
+            val problem = BadResponseFromAgentProblem(agentRefPath, uri = client.baseUri.toString, torn, requestingAfter = after)
             logger.error(problem.toString)
             persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ =>
               if (isCoupled) scheduler.scheduleOnce(15.second) {
@@ -440,5 +440,15 @@ private[master] object AgentDriver
     final case object FetchEvents extends DeadLetterSuppression/*TODO Besser: Antwort empfangen und mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedTry: Try[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
     final case class KeepEventsDelayed(agentEventId: EventId) extends DeadLetterSuppression
+  }
+
+  private final case class BadResponseFromAgentProblem(agentRefPath: AgentRefPath, uri: String, torn: TearableEventSeq.Torn,
+    requestingAfter: EventId) extends Problem.Coded
+  {
+    def arguments = Map(
+      "agentRefPath" -> agentRefPath.string,
+      "uri" -> uri,
+      "torn" -> torn.toString,
+      "requestingAfter" -> EventId.toString(requestingAfter))
   }
 }

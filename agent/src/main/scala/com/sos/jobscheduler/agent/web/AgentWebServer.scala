@@ -72,6 +72,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
 object AgentWebServer {
   private val logger = Logger(getClass)
 
+  private case object AgentIsNotYetReadyProblem extends Problem.ArgumentlessCoded
+
   private val ServiceUnavailableException =
-    new HttpStatusCodeException(ServiceUnavailable, Problem("Agent is not yet completely ready"))
+    new HttpStatusCodeException(ServiceUnavailable, AgentIsNotYetReadyProblem)
 }

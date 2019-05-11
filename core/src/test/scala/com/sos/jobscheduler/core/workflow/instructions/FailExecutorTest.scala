@@ -26,9 +26,9 @@ final class FailExecutorTest extends FreeSpec
 
     def instruction(position: WorkflowPosition) = position match {
       case WorkflowPosition(TestWorkflowId, Position(Nil, InstructionNr(1))) =>
-        Fork(Vector(
-          Fork.Branch(Fork.Branch.Id("🥕"), Workflow.empty),
-          Fork.Branch(Fork.Branch.Id("🍋"), Workflow.empty)))
+        Fork.of(
+          "🥕" -> Workflow.empty,
+          "🍋" -> Workflow.empty)
       //case WorkflowPosition(TestWorkflowId, Position(BranchPath.Segment(InstructionNr(1), BranchId.Named("fork+🥕")) :: Nil, InstructionNr(2))) =>
       case pos => fail(s"No instruction at $pos")
     }

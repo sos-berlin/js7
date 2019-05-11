@@ -10,8 +10,8 @@ import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fail, Fork
 /**
   * @author Joacim Zschimmer
   */
-object Workflows {
-
+object Workflows
+{
   implicit final class ExecutableWorkflow(private val underlying: Workflow) extends AnyVal {
     import underlying._
 
@@ -28,9 +28,9 @@ object Workflows {
               tryWorkflow = instr.tryWorkflow.reduceForAgent(agentRefPath),
               catchWorkflow = instr.catchWorkflow.reduceForAgent(agentRefPath)))
 
-          case labels @: (fj: Fork) if fj isPartiallyExecutableOnAgent agentRefPath =>
-            labels @: Fork(
-              for (b <- fj.branches) yield
+          case labels @: (fork: Fork) if fork isPartiallyExecutableOnAgent agentRefPath =>
+            labels @: fork.copy(
+              for (b <- fork.branches) yield
                 reuseIfEqual(b, b.copy(
                   workflow = b.workflow.reduceForAgent(agentRefPath))))
 

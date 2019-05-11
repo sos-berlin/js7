@@ -70,7 +70,7 @@ final case class Repo private(
   private def checkVersion(versionId: VersionId, signedFileBased: Iterable[Signed[FileBased]]): Checked[Vector[Signed[FileBased]]] =
     signedFileBased.toVector.traverse(o => o.value.id.versionId match {
       case `versionId` => Valid(o)
-      case _ => Invalid(Problem(s"Expected version '${versionId.string}' in '${o.value.id}'"))
+      case _ => Invalid(ObjectVersionDoesNotMatchProblem(versionId, o.value.id))
     })
 
   private def toAddedOrChanged(signedFileBased: Signed[FileBased]): Option[RepoEvent.FileBasedEvent] = {
@@ -122,17 +122,17 @@ final case class Repo private(
 
       case event: FileBasedEvent =>
         if (versions.isEmpty)
-          Problem(s"Missing first event VersionAdded for Repo")
+          Problem(s"Missing initial VersionAdded event for Repo")
         else
           event match {
             case event @ FileBasedAddedOrChanged(path, signedString) =>
               fileBasedVerifier.verify(signedString).map(_.fileBased).flatMap(fileBased =>
                 if (path != fileBased.path)
-                  Problem(s"Error in FileBasedAddedOrChanged: path=$path does not equals path=${fileBased.path}")
+                  Problem(s"Error in FileBasedAddedOrChanged event: path=$path does not equal path=${fileBased.path}")
                 else if (fileBased.path.isAnonymous)
-                  Problem(s"Adding an anonymous ${fileBased.companion.name}?")
+                  Problem(s"Adding an anonymous ${fileBased.companion.name} is not allowed")
                 else if (fileBased.id.versionId != versionId)
-                  Problem(s"Version '${versionId.string}' expected in ${event.toShortString}")
+                  EventVersionDoesNotMatchProblem(versionId, event)
                 else
                   Valid(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString)))))
 
@@ -274,4 +274,12 @@ object Repo
 
   final case class DuplicateVersionProblem private[Repo](versionId: VersionId)
     extends Problem.Lazy(s"Duplicate VersionId '${versionId.string}'")
+
+  final case class ObjectVersionDoesNotMatchProblem(versionId: VersionId, fileBasedId: FileBasedId[_ <: TypedPath]) extends Problem.Coded {
+    def arguments = Map("versionId" -> versionId.string, "id" -> fileBasedId.toString)
+  }
+
+  final case class EventVersionDoesNotMatchProblem(versionId: VersionId, event: FileBasedAddedOrChanged) extends Problem.Coded {
+    def arguments = Map("versionId" -> versionId.string, "event" -> event.toShortString)
+  }
 }

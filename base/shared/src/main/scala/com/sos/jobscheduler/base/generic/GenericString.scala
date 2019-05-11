@@ -62,12 +62,16 @@ object GenericString
   {
     override def checked(string: String): Checked[A] =
       if (string.nonEmpty) super.checked(string)
-      else Invalid(Problem(s"$name must not be empty"))
+      else Invalid(EmptyStringProblem(name))
   }
 
   trait NameValidating[A <: GenericString] extends Checked_[A]
   {
     override def checked(string: String): Checked[A] =
-      NameValidator.checked(string) mapProblem (_ withKey name) flatMap super.checked
+      NameValidator.checked(typeName = name, name = string) flatMap super.checked
+  }
+
+  final case class EmptyStringProblem(name: String) extends Problem.Coded {
+    def arguments = Map("name" -> name)
   }
 }

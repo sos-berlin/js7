@@ -198,7 +198,7 @@ object FileUtils {
 
   def checkRelativePath(path: String): Checked[String] =
     if (path.isEmpty)
-      Invalid(Problem("File path must not be empty"))
+      Invalid(Problem("Relative file path must not be empty"))
     else if (RelativePathRegex.pattern.matcher(path).find())
       Invalid(Problem(s"Not a valid relative file path: $path"))
     else

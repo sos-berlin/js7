@@ -13,8 +13,6 @@ import io.circe.{Decoder, Encoder, Json}
   */
 final case class VersionId(string: String) extends GenericString
 {
-  VersionId.check(string).orThrow
-
   def requireNonAnonymous(): Unit =
     VersionId.checked(string).orThrow
 
@@ -23,7 +21,7 @@ final case class VersionId(string: String) extends GenericString
   override def toString = s"version $string"
 }
 
-object VersionId extends GenericString.Checked_[VersionId]
+object VersionId extends GenericString.NonEmpty[VersionId]
 {
   val Anonymous = VersionId.unchecked("⊥")
 
@@ -53,16 +51,9 @@ object VersionId extends GenericString.Checked_[VersionId]
 
   override def checked(string: String): Checked[VersionId] =
     for {
-      _ <- check(string)
       versionId <- super.checked(string) match {
         case Valid(VersionId.Anonymous) => Invalid(Problem.pure("VersionId.Anonymous?"))
         case o => o
       }
     } yield versionId
-
-  def check(string: String): Checked[Unit] =
-    if (string.isEmpty)
-      Problem("Empty VersionId?")
-    else
-      Checked.unit
 }

@@ -171,12 +171,11 @@ final class WorkflowPrinterTest extends FreeSpec {
   "fork" in {
     check(
       Workflow.of(
-        Fork(
-          Vector(
-            Fork.Branch("🥕", Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))))),
-            Fork.Branch("🍋", Workflow.of(
-              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))))),
+        Fork.of(
+            "🥕" -> Workflow.of(
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")))),
+            "🍋" -> Workflow.of(
+              Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")))))),
       """define workflow {
         |  fork {
         |    "🥕": {

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.crypt.silly.{SillySignatureVerifier, SillySigner}
-import com.sos.jobscheduler.core.filebased.Repo.{Changed, Deleted}
+import com.sos.jobscheduler.core.filebased.Repo.{Changed, Deleted, DuplicateVersionProblem, ObjectVersionDoesNotMatchProblem}
 import com.sos.jobscheduler.core.filebased.RepoTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
@@ -31,7 +31,7 @@ final class RepoTest extends FreeSpec
       Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
     assert(emptyRepo.applyEvent(FileBasedAdded(a1.path, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED")))) ==
-      Invalid(Problem("Missing first event VersionAdded for Repo")))
+      Invalid(Problem("Missing initial VersionAdded event for Repo")))
   }
 
   "empty version" in {
@@ -119,12 +119,12 @@ final class RepoTest extends FreeSpec
 
   "toEvent" - {
     "FileBased with alien version is rejected" in {
-      assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Invalid(Problem("Expected version '1' in 'A:/A 2'")))
+      assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Invalid(ObjectVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ V2)))
     }
 
     "FileBased without version is rejected" in {
       // The signer signs the VersionId, too. It must not be diverge from the commands VersionId
-      assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1.withoutVersion)  :: Nil) == Invalid(Problem("Expected version '1' in 'A:/A'")))
+      assert(emptyRepo.fileBasedToEvents(V1, toSigned(a1.withoutVersion)  :: Nil) == Invalid(ObjectVersionDoesNotMatchProblem(VersionId("1"), a1.path)))
     }
 
     "FileBased with matching version" in {
@@ -132,7 +132,7 @@ final class RepoTest extends FreeSpec
         == Valid(VersionAdded(V1) :: FileBasedAdded(a1.path, sign(a1)) :: Nil))
     }
 
-    "Deleting unknown" in {
+    "Deleting åunknown" in {
       assert(emptyRepo.fileBasedToEvents(V1, Nil, deleted = bx2.path :: Nil)
         == Valid(VersionAdded(V1) :: Nil))
     }
@@ -158,7 +158,7 @@ final class RepoTest extends FreeSpec
       repo = repo.applyEvents(events).orThrow
       assert(repo == Repo(V2 :: V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil, fileBasedVerifier))
 
-      assert(repo.applyEvents(events) == Invalid(Problem("Duplicate VersionId '2'")))
+      assert(repo.applyEvents(events) == Invalid(DuplicateVersionProblem(VersionId("2"))))
     }
   }
 

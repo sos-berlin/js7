@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.base.generic
 
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.generic.GenericStringTest._
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import org.scalatest.FreeSpec
 
 /**
@@ -11,17 +12,18 @@ import org.scalatest.FreeSpec
 final class GenericStringTest extends FreeSpec
 {
   "NonEmpty.checked" in {
-    assert(NonEmptyA.checked("") == Invalid(Problem("Problem with 'NonEmptyA': Name must not be empty")))
+    assert(NonEmptyA.checked("") == Invalid(EmptyStringProblem("NonEmptyA")))
   }
 
   "NameValidating.checked" in {
     assert(ValidatedA.checked("validated") == Valid(ValidatedA("validated")))
-    assert(ValidatedA.checked("") == Invalid(Problem("Problem with 'ValidatedA': Name must not be empty")))
-    assert(ValidatedA.checked("/") == Invalid(Problem("Problem with 'ValidatedA': Invalid character or character combination in name '/'")))
+    assert(ValidatedA.checked("") == Invalid(EmptyStringProblem("ValidatedA")))
+    assert(ValidatedA.checked("/") == Invalid(InvalidNameProblem(typeName = "ValidatedA", name = "/")))
   }
 }
 
-private object GenericStringTest {
+private object GenericStringTest
+{
   private case class ValidatedA(string: String) extends GenericString
   private object ValidatedA extends GenericString.NameValidating[ValidatedA] {
     protected def unchecked(string: String) = new ValidatedA(string)
@@ -31,5 +33,4 @@ private object GenericStringTest {
   private object NonEmptyA extends GenericString.NameValidating[NonEmptyA] {
     protected def unchecked(string: String) = new NonEmptyA(string)
   }
-
 }

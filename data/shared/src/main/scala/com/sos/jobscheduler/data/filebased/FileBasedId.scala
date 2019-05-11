@@ -19,16 +19,13 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
 
-  def toSimpleString = if (versionId.isAnonymous) path.string else path.string + VersionSeparator + versionId.string
-
-  def pretty = if (versionId.isAnonymous) path.pretty else s"${path.pretty} ${versionId.string}"
-
-  def toShortString = if (versionId.isAnonymous) path.string else s"${path.string} ${versionId.string}"
+  def toSimpleString = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
 
   override def toString = if (versionId.isAnonymous) path.toString else s"$path ${versionId.string}"
 }
 
-object FileBasedId {
+object FileBasedId
+{
   private val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   implicit def pathToFileBasedId[P <: TypedPath](path: P): FileBasedId[P] =

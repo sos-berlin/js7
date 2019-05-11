@@ -302,8 +302,7 @@ final class WorkflowParserTest extends FreeSpec {
            }
          }""",
       Workflow.of(
-        Fork(
-          Vector(
+        Fork.forTest(Vector(
             Fork.Branch("🥕", Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentRefPath("/agent-a"), ExecutablePath("/a")),

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.Show
 import com.sos.jobscheduler.base.time.Times._
-import com.sos.jobscheduler.base.utils.Identifier
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -110,7 +109,7 @@ object WorkflowPrinter
 
         case Execute.Named(name, arguments, _) =>
           sb ++= "job "
-          sb ++= Identifier(name.string).toString
+          sb ++= name.string
           if (arguments.nonEmpty) {
             sb ++= ", arguments="
             appendJsonObject(arguments)
@@ -205,7 +204,7 @@ object WorkflowPrinter
     for ((name, job) <- workflow.nameToJob) {
       indent(nesting)
       sb ++= "define job "
-      sb ++= Identifier(name.string).toString
+      sb ++= name.string
       sb ++= " {\n"
       indent(nesting + 1)
       sb ++= "execute "

@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.emptyToNone
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
@@ -91,7 +92,7 @@ extends FileBased
   private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
     instructions flatMap {
       case _: Retry =>
-        !inCatch thenList Invalid(Problem("Statement 'retry' is allowed only in a catch block"))
+        !inCatch thenList Invalid(Problem("Statement 'retry' is only allowed in a catch block"))
       case instr: If =>
         instr.workflows flatMap (_.checkRetry(inCatch))
       case instr: TryInstruction =>
@@ -107,7 +108,7 @@ extends FileBased
       .filter(_._2.lengthCompare(1) > 0)
       .mapValues(_.map(_._2))
       .map { case (label, positions) =>
-        Invalid(Problem(s"Label '${label.string}' is duplicate at positions " + positions.mkString(", ")))
+        Invalid(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
       }
 
   def positionMatchesSearch(position: Position, search: PositionSearch): Boolean =
@@ -154,13 +155,13 @@ extends FileBased
   def labelToPosition(branchPath: BranchPath, label: Label): Checked[Position] =
     for {
       workflow <- nestedWorkflow(branchPath)
-      nr <- workflow.labelToNumber.get(label).toChecked(Problem(s"Unknown label '$label'"))
+      nr <- workflow.labelToNumber.get(label).toChecked(UnknownKeyProblem("Label", label.string))
     } yield branchPath % nr
 
   def labelToPosition(label: Label): Checked[Position] =
     flattenedInstructions.find(_._2.maybeLabel contains label)
       .map(_._1)
-      .toChecked(Problem(s"Unknown label '$label'"))
+      .toChecked(UnknownKeyProblem("Label", label.toString))
 
   def jobNameToPositions(name: WorkflowJob.Name): Checked[Seq[Position]] =
     findJob(name).map(_ => flattenedInstructions collect {
@@ -281,7 +282,7 @@ extends FileBased
       case Some(job) => Valid(job)
       case None =>
         outer match {
-          case None => Invalid(Problem(s"known job name ('$name' is unknown)"))
+          case None => Invalid(Problem(s"known job name ('$name' is unknown)"))  // TODO Fehlermeldung ist an fastparse angepasst, beginnnt "Expected "
           case Some(o) => o.findJob(name)
         }
     }

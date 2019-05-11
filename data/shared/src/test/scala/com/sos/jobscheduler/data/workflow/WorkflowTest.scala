@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.expression.PositionSearch
@@ -280,7 +281,7 @@ final class WorkflowTest extends FreeSpec {
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Nil, Label("A")) == Valid(Position(0)))
-    assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
+    assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(UnknownKeyProblem("Label", "UNKNOWN")))
     assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Valid(Position(1) / Then % 0))
   }
 
@@ -293,7 +294,7 @@ final class WorkflowTest extends FreeSpec {
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Label("A")) == Valid(Position(0)))
     assert(workflow.labelToPosition(Label("B")) == Valid(Position(1) / Then % 0))
-    assert(workflow.labelToPosition(Label("UNKNOWN")) == Invalid(Problem("Unknown label 'UNKNOWN'")))
+    assert(workflow.labelToPosition(Label("UNKNOWN")) == Invalid(UnknownKeyProblem("Label", "UNKNOWN")))
   }
 
   "Duplicate labels" in {
@@ -303,7 +304,7 @@ final class WorkflowTest extends FreeSpec {
         thenWorkflow = Workflow.of(
           "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked ==
-      Invalid(Problem("Label 'DUPLICATE' is duplicate at positions 0, 1/then:0")))
+      Invalid(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
   }
 
   "Duplicate label in nested workflow" in {
@@ -423,13 +424,13 @@ final class WorkflowTest extends FreeSpec {
 
     "retry is not allowed outside a catch block" - {
       "simple case" in {
-        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is allowed only in a catch block")))
+        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
       }
     }
 
     "in try" in {
       assert(Workflow.of(TryInstruction(Workflow.of(Retry()), Workflow.empty)).completelyChecked
-        == Invalid(Problem("Statement 'retry' is allowed only in a catch block")))
+        == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
     }
 
     "in catch" in {
@@ -442,8 +443,8 @@ final class WorkflowTest extends FreeSpec {
     }
 
     "'fork' is a barrier" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork(Vector(Fork.Branch("A", Workflow.of(Retry())))))))
-        .completelyChecked == Invalid(Problem("Statement 'retry' is allowed only in a catch block")))
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork.of("A" -> Workflow.of(Retry())))))
+        .completelyChecked == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
     }
   }
 

@@ -1,31 +1,30 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.instructions.Fork._
 import com.sos.jobscheduler.data.workflow.position.BranchId
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
-import scala.collection.immutable.IndexedSeq
+import io.circe._
+import io.circe.syntax._
+import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Fork(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None)
+final case class Fork private(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None)
 extends Instruction
 {
-  locally {
-    val dups = branches.duplicateKeys(_.id)
-    if (dups.nonEmpty) throw Problem(s"Non-unique branch IDs in fork: ${dups.mkString(", ")}").throwable  // To Fork.checked(..): Checked[Fork]
-  }
-
+  // TODO Fork.checked(..): Checked[Fork]
+  for (dups <- branches.duplicateKeys(_.id))
+    throw DuplicatedBranchIdsInForkProblem(dups.keys.toImmutableSeq).throwable
   for (idAndScript <- branches) Fork.validateBranch(idAndScript).orThrow
 
   def withoutSourcePos = copy(
@@ -67,6 +66,15 @@ extends Instruction
 
 object Fork
 {
+  private def apply(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None) =
+    throw new NotImplementedError
+
+  def forTest(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =
+    checked(branches, sourcePos).orThrow
+
+  def checked(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Checked[Fork] =
+    Valid(new Fork(branches, sourcePos))
+
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
@@ -92,5 +100,22 @@ object Fork
     implicit val jsonCodec = deriveCodec[Branch]
   }
 
-  implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
+  //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
+  implicit val jsonEncoder: ObjectEncoder[Fork] =
+    o => JsonObject(
+      "branches" -> o.branches.asJson,
+      "sourcePos" -> o.sourcePos.asJson)
+
+  implicit val jsonDecoder: Decoder[Fork] =
+    c => for {
+      branches <- c.get[IndexedSeq[Fork.Branch]]("branches")
+      sourcePos <- c.get[Option[SourcePos]]("sourcePos")
+      fork <- checked(branches, sourcePos).toDecoderResult
+    } yield fork
+
+  private case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {
+    def arguments = Map(
+      "branchIds" -> branchIds.mkString(", ")
+    )
+  }
 }

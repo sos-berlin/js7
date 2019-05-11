@@ -4,7 +4,8 @@ import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
+import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import java.nio.file.Path
 
 sealed trait Executable
@@ -26,9 +27,9 @@ object ExecutablePath extends GenericString.Checked_[ExecutablePath]
 
   override def checked(path: String) =
     if (path.isEmpty)
-      Invalid(Problem("Executable path must not be empty"))
+      Invalid(EmptyStringProblem(name))
     else if (!path.startsWith("/") || path == "/" || path.contains('\\') || path.startsWith(".") || path.contains("/."))  // TODO Check for ".."
-      Invalid(Problem(s"Invalid executable path: $path"))
+      Invalid(InvalidNameProblem(name, path))
     else
       super.checked(path)
 }

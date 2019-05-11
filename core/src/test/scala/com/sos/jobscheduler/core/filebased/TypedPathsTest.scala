@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.filebased
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
@@ -34,7 +35,7 @@ final class TypedPathsTest extends FreeSpec {
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Valid(WorkflowPath("/folder/test") -> SourceType.Json))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==
-      Invalid(Problem("Problem with 'Workflow:/a@b': Invalid character or character combination in name 'a@b'")))
+      Invalid(InvalidNameProblem("WorkflowPath", "a@b")))
   }
 
   if (sys.props contains "test.speed") "speed" in {

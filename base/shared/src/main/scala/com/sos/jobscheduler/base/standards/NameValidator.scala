@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.base.standards
 
-import cats.data.Validated.Valid
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 /**
@@ -9,13 +11,13 @@ import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate,
   */
 class NameValidator(isAllowedChar: Char => Boolean = _ => false)
 {
-  final def checked(string: String): Checked[String] =
-    if (string.isEmpty)
-      Problem("Name must not be empty")
-    else if (isValid(string))
-      Valid(string)
+  final def checked(typeName: String, name: String): Checked[String] =
+    if (name.isEmpty)
+      Invalid(EmptyStringProblem(typeName))
+    else if (isValid(name))
+      Valid(name)
     else
-      Problem(s"Invalid character or character combination in name '$string'")
+      Invalid(InvalidNameProblem(typeName, name))
 
   final def isValid(string: String): Boolean =
     string.nonEmpty &&

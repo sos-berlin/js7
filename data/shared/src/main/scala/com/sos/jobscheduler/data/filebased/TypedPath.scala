@@ -6,7 +6,9 @@ import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
+import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString, Problem}
 import com.sos.jobscheduler.base.standards.NameValidator
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
@@ -53,8 +55,10 @@ trait TypedPath extends GenericString {
     if (string startsWith InternalPrefix)
       Problem(s"Internal path is not allowed here: $this")
     else
-      withoutStartingSlash.split('/').toVector traverse officialSyntaxNameValidator.checked match {
-        case Invalid(problem) => problem.head withKey toString
+      withoutStartingSlash.split('/')
+        .toVector.traverse(officialSyntaxNameValidator.checked(typeName = companion.name, _))
+      match {
+        case Invalid(problem) => problem.head
         case Valid(_) => Valid(this)
       }
 
@@ -100,25 +104,21 @@ object TypedPath {
     /** Must be non-anonymous, too. */
     override final def checked(string: String): Checked[P] =
       if (string == Anonymous.string)
-        Problem(s"Anonymous $name?")
+        Problem(s"An anonymous $name is not allowed")
       else
         check(string) flatMap (_ => super.checked(string))
 
-    final private[TypedPath] def check(string: String): Checked[Unit] = {
-      def errorString = s"$name '$string'"
+    final private[TypedPath] def check(string: String): Checked[Unit] =
       if (!isEmptyAllowed && string.isEmpty)
-        Problem(s"Must not be the empty string in $errorString")
+        EmptyStringProblem(name)
       else if (string.nonEmpty && !string.startsWith("/"))
-        Problem(s"Absolute path expected in $errorString")
+        Problem(s"$name must be an absolute path, not: $string")
       else if (string.endsWith("/") && (!isSingleSlashAllowed || string != "/"))
-        Problem(s"Trailing slash not allowed in $errorString")
-      else if (string contains "//")
-        Problem(s"Double slash not allowed in $errorString")
-      else if (string exists ForbiddenCharacters)
-        Problem(s"Contains a forbidden character: $errorString")
+        Problem(s"$name must not end with a slash: $string")
+      else if (string.contains("//") || string.exists(ForbiddenCharacters))
+        InvalidNameProblem(name, string)
       else
         Checked.unit
-    }
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
@@ -201,6 +201,6 @@ object TypedPath {
       typ <- c.get[String]("TYPE")
       path <- c.get[String]("path")
       t <- toTypedPathCompanion(typ).toDecoderResult
-      typedPath <- t.checked(path).map(_.asInstanceOf[TypedPath]).toDecoderResult
+      typedPath <- t.checked(path).toDecoderResult
     } yield typedPath
 }

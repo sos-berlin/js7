@@ -148,7 +148,7 @@ object WorkflowParser
         (branchId ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
           map Fork.Branch.fromPair)
       (Index ~ keyword("fork") ~ Index ~ w ~ curly(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator.?)
-        .map { case (start, end, (branch, more)) => Fork(Vector(branch) ++ more, sourcePos(start, end)) }
+        .flatMap { case (start, end, (branch, more)) => checkedToP(Fork.checked(Vector(branch) ++ more, sourcePos(start, end))) }
     }
 
     private def offerInstruction[_: P] = P[Offer](

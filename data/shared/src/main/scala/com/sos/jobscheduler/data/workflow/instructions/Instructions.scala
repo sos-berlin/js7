@@ -15,7 +15,7 @@ object Instructions
     Subtype[ImplicitEnd],  // Serialized for easier external use of Workflow
     Subtype[Finish],
     Subtype[Fail],
-    Subtype(Fork.jsonCodec),
+    Subtype[Fork],
     Subtype[Offer],
     Subtype[If],
     Subtype[IfNonZeroReturnCodeGoto],

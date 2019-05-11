@@ -3,10 +3,10 @@ package com.sos.jobscheduler.master.web.master.api.graphql
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
@@ -539,9 +539,8 @@ object MasterGraphqlSchemaTest
             WorkflowPath.NoId,
             Vector(
               Execute(WorkflowJob.Name("JOB")),
-              Fork(Vector(
-                Fork.Branch("BRANCH", Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))))
-              ))),
+              Fork.of(
+                "BRANCH" -> Workflow.of(Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))))),
             Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/TEST.sh")))).asInstanceOf[A])
         case _ => Problem(s"No such ''$id'")
     })

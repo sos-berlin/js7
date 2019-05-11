@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.convert
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
@@ -31,7 +31,7 @@ final class ConvertiblePartialFunctionTest extends FreeSpec {
   }
 
   "checkedAs" in {
-    assert(convertible[String, String]().checkedAs[Int]("KEY") == Invalid(Problem(s"Missing configuration key 'KEY'")))
+    assert(convertible[String, String]().checkedAs[Int]("KEY") == Invalid(MissingConfigurationKeyProblem("KEY")))
     assert(convertible("KEY" -> "111").checkedAs[Int]("KEY") == Valid(111))
     assert(convertible[String, String]().checkedAs[Int]("KEY", Some(222)) == Valid(222))
   }

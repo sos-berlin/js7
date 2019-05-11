@@ -28,8 +28,8 @@ trait OrderContext
       case o if implicitClass[A] isAssignableFrom o.getClass =>
         Valid(o.asInstanceOf[A])
       case o =>
-        Invalid(Problem(s"Expected instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
-          s"at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
+        Invalid(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
+          s"is expected at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
     }
 
   def childOrderEnded(order: Order[Order.State]): Boolean
@@ -71,7 +71,7 @@ trait OrderContext
                 case HistoricOutcome(pos, outcome: Outcome.Undisrupted) if workflow.positionMatchesSearch(pos, positionSearch) =>
                   whatToValue(outcome, what)
               }
-              .toChecked(Problem(s"No position in workflow matches '$positionSearch'"))
+              .toChecked(Problem(s"There is no position in workflow that matches '$positionSearch'"))
           } yield maybeValue
       }
     }

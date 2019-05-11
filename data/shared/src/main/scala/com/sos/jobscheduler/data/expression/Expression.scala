@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.expression
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
-import com.sos.jobscheduler.base.utils.Identifier
 import com.sos.jobscheduler.base.utils.Identifier.isIdentifier
 import com.sos.jobscheduler.data.expression.Expression.NamedValue.{LastOccurred, ReturnCode}
 import com.sos.jobscheduler.data.workflow.Label
@@ -145,9 +144,9 @@ object Expression
           case NamedValue.LastOccurredByPrefix(prefix) =>
             args += "prefix=" + prefix   // Not used
           case NamedValue.LastExecutedJob(jobName) =>
-            args += "job=" + Identifier(jobName.string).toString
+            args += "job=" + jobName.string
           case NamedValue.ByLabel(label) =>
-            args += "label=" + Identifier(label.string).toString
+            args += "label=" + label.string
         }
         for (d <- default) args += "default=" + d.toString
         (where, what) match {

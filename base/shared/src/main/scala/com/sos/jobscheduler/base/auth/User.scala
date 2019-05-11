@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.auth
 
 import cats.data.Validated.Invalid
+import com.sos.jobscheduler.base.auth.User._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
 /**
@@ -16,7 +17,7 @@ trait User
 
   final def checkPermission(requiredPermission: Permission): Checked[Unit] =
     if (!hasPermission(requiredPermission))
-      Invalid(Problem(s"User '${id.string}' does not have the required permission '${requiredPermission.name}'"))
+      Invalid(UserDoesNotHavePermissionProblem(id, requiredPermission))
     else
       Checked.unit
 
@@ -33,5 +34,12 @@ object User
 {
   trait Companion[U <: User] {
     def addPermissions(user: U, permissions: Set[Permission]): U
+  }
+
+  final case class UserDoesNotHavePermissionProblem(userId: UserId, permission: Permission) extends Problem.Coded {
+    def arguments = Map(
+      "userId" -> userId.string,
+      "permission" -> permission.name
+    )
   }
 }

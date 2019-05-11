@@ -16,27 +16,26 @@ object Identifier
     if (isIdentifier(string))
       Valid(new Identifier(string))
     else
-      Problem(s"Invalid character or character combination in identifier '$string'")
+      Problem(s"Invalid character or character combination in identifier: $string")
 
-  // TODO Rething syntax and match with ExpressionParser
+  // TODO Check syntax and match with ExpressionParser
   /**
-    * Like a Java identifier with minus character.
+    * Like a Java identifier with minus character and UNICODE surrogates.
     * Minus character is not allowed as last or first character.
     */
   def isIdentifier(string: String): Boolean =
     string.nonEmpty &&
       string.last != '-' &&
-      isIdentifierStart(string charAt 0) &&
-      (1 until string.length forall { i => isIdentifierPart(string charAt i) })
+      isIdentifierStart(string.charAt(0)) &&
+      (1 until string.length forall { i => isIdentifierPart(string.charAt(i)) })
 
   def isIdentifierStart(c: Char): Boolean =
-    isUnicodeIdentifierStart(c) || character.isHighSurrogate(c)
+    isUnicodeIdentifierStart(c) || isHighSurrogate(c)
 
   def isIdentifierPart(c: Char): Boolean =
-    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || character.isSurrogate(c)
+    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || isSurrogate(c)
 
-  private object character { // Corresponding Java methods are not implemented in Scala.js
-    def isHighSurrogate(c: Char) = c >= '\uD800' && c <= '\uDBFF'
-    def isSurrogate(c: Char)     = c >= '\uD800' && c <= '\uDFFF'
-  }
+  // Corresponding Java methods are not implemented in Scala.js
+  private def isHighSurrogate(c: Char) = c >= '\uD800' && c <= '\uDBFF'
+  private def isSurrogate(c: Char)     = c >= '\uD800' && c <= '\uDFFF'
 }

@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.DecimalPrefixes
@@ -169,13 +170,14 @@ object TestMasterAgent
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(TestWorkflowPath,
       Execute(testJob(conf, conf.agentRefPaths.head)),
-      Fork(
+      Fork.checked(
         for ((agentRefPath, pathName) <- conf.agentRefPaths.toVector zip PathNames) yield
           Fork.Branch(
             pathName,
             Workflow(
               WorkflowPath("/TestMasterAgent") ~ "1",
-              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentRefPath, TestExecutablePath)) }))),
+              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentRefPath, TestExecutablePath)) })))
+        .orThrow,
       If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),
         thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))),
         elseWorkflow = Some(Workflow.of(Execute(testJob(conf, conf.agentRefPaths.head))))))

@@ -64,7 +64,7 @@ final case class Order[+S <: Order.State](
 
     event match {
       case _: OrderAdded | _: OrderAttached =>
-        Invalid(Problem("OrderAdded and OrderAttached are not handled by the Order itself"))
+        Invalid(Problem("OrderAdded and OrderAttached events are not handled by the Order itself"))
 
       case OrderStarted =>
         check(isState[Fresh] && (isDetached || isAttached),
