@@ -156,7 +156,7 @@ object Evaluator
     def fromString(number: String): Checked[NumericValue] =
       try
         NumericValue(BigDecimal(number)).valid
-      catch { case e: NumberFormatException => Problem(e.getMessage)}
+      catch { case e: NumberFormatException => Problem(Option(e.getMessage) getOrElse e.toString)}
   }
 
   final case class StringValue(string: String) extends Value {

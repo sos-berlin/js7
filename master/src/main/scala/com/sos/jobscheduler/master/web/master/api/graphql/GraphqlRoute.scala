@@ -139,7 +139,7 @@ trait GraphqlRoute extends MasterRouteProvider {
         complete(BadRequest ->
           Json.obj("errors" -> Json.arr(
             Json.obj(
-              "message" -> syntaxError.getMessage.asJson,
+              "message" -> Option(syntaxError.getMessage).getOrElse("").asJson,
               "locations" -> Json.arr(Json.obj(
                 "line" -> syntaxError.originalError.position.line.asJson,
                 "column" -> syntaxError.originalError.position.column.asJson))))))

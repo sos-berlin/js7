@@ -82,7 +82,7 @@ object JavaTime
     val (seconds, fraction) = o /% 1
     try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
     catch { case t: ArithmeticException =>
-      throw new ArithmeticException(s"Not a Duration (${t.getMessage}): $o")
+      throw new ArithmeticException(s"Not a Duration (${Option(t.getMessage) getOrElse t}): $o")
     }
   }
 

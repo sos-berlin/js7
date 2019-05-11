@@ -61,7 +61,7 @@ trait GenericEventRoute extends RouteProvider
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
     private val exceptionHandler = ExceptionHandler {
-      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException =>
+      case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException if t.getMessage != null =>
         complete((StatusCodes.ServiceUnavailable, Problem.pure(t.getMessage)))
     }
 

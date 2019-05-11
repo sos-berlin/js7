@@ -39,7 +39,7 @@ trait OrderRoute extends MasterRouteProvider
           entity(as[Json]) { json =>
             if (json.isArray)
               json.as[Seq[FreshOrder]] match {
-                case Left(failure) => complete(BadRequest -> failure.getMessage)
+                case Left(failure) => complete(BadRequest -> Option(failure.getMessage).getOrElse(failure.toString))
                 case Right(orders) =>
                   completeTask(
                     orderApi.addOrders(orders)
@@ -47,7 +47,7 @@ trait OrderRoute extends MasterRouteProvider
               }
             else
               json.as[FreshOrder] match {
-                case Left(failure) => complete(BadRequest -> failure.getMessage)
+                case Left(failure) => complete(BadRequest -> Option(failure.getMessage).getOrElse(failure.toString))
                 case Right(order) =>
                   extractUri { uri =>
                     onSuccess(orderApi.addOrder(order).runToFuture) {

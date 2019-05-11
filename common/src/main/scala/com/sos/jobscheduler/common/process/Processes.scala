@@ -72,7 +72,8 @@ object Processes {
 
     object TextFileBusyIOException {
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)
-      def unapply(e: IOException): Option[IOException] = matchesError26(e.getMessage).matches option e
+      def unapply(e: IOException): Option[IOException] =
+        matchesError26(Option(e.getMessage) getOrElse "").matches option e
     }
   }
 }
