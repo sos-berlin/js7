@@ -56,7 +56,7 @@ extends Actor {
     if (!stoppedPromise.isCompleted) {
       stoppedPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
     }
-    logger.info("Stopped")
+    logger.debug("Stopped")
     super.postStop()
   }
 
@@ -68,7 +68,7 @@ extends Actor {
       agentHandle.executeCommand(cmd, userId, response)
 
     case Terminated(`agentActor`) =>
-      logger.debug("AgentActor has stopped")
+      logger.debug("Stop")
       stoppedPromise.trySuccess(Completed)
       context.stop(self)
   }
