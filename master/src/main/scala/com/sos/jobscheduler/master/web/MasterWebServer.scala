@@ -10,7 +10,8 @@ import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
 import com.sos.jobscheduler.data.event.Event
@@ -30,11 +31,13 @@ import monix.execution.Scheduler
 final class MasterWebServer private(
   masterConfiguration: MasterConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  injector: Injector,
   fileBasedApi: FileBasedApi,
   orderApi: OrderApi.WithCommands,
   commandExecutor: MasterCommandExecutor,
   masterState: Task[MasterState],
+  sessionRegister: SessionRegister[SimpleSession],
+  protected val config: Config,
+  injector: Injector,
   implicit protected val actorSystem: ActorSystem,
   protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
@@ -54,7 +57,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
-      protected val sessionRegister     = injector.instance[SessionRegister[SimpleSession]]
+      protected val sessionRegister     = MasterWebServer.this.sessionRegister
       protected val eventWatch          = injector.instance[EventWatch[Event]]
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi
@@ -74,15 +77,20 @@ object MasterWebServer {
   final class Factory @Inject private(
     masterConfiguration: MasterConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
+    sessionRegister: SessionRegister[SimpleSession],
+    config: Config,
     injector: Injector,
     actorSystem: ActorSystem,
-    scheduler: Scheduler)
+    scheduler: Scheduler,
+    closer: Closer)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
       commandExecutor: MasterCommandExecutor, masterState: Task[MasterState])
     : MasterWebServer =
-      new MasterWebServer(masterConfiguration, gateKeeperConfiguration, injector,
+      new MasterWebServer(masterConfiguration, gateKeeperConfiguration,
         fileBasedApi, orderApi, commandExecutor, masterState,
+        sessionRegister, config, injector,
         actorSystem, scheduler)
+      .closeWithCloser(closer)
   }
 }

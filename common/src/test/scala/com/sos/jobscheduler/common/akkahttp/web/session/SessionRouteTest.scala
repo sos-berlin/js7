@@ -91,6 +91,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     })
 
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
+    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
     def actorSystem = SessionRouteTest.this.actorSystem
     def scheduler = Scheduler.global
     lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil

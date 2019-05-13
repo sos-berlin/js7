@@ -13,7 +13,6 @@ import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -62,8 +61,6 @@ import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 /**
@@ -97,8 +94,7 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private var terminatingSince: Option[Deadline] = None
-  private def terminating = terminatingSince.isDefined
+  private var terminating = false
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -126,13 +122,6 @@ with MainJournalingActor[Event]
 
   override def postStop() = {
     super.postStop()
-    for (t <- terminatingSince) {
-      val deadline = t + 500.millis
-      if (deadline.hasTimeLeft()) {
-        logger.debug("Delaying to let HTTP server respond to Terminate command")
-        sleepUntil(deadline)
-      }
-    }
     logger.debug("Stopped")
   }
 
@@ -306,7 +295,6 @@ with MainJournalingActor[Event]
 
     case Terminated(`journalActor`) =>
       if (!terminating) logger.error("JournalActor terminated")
-      logger.info("Stop")
       context.stop(self)
   }
 
@@ -364,7 +352,7 @@ with MainJournalingActor[Event]
       case MasterCommand.Terminate =>
         logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
-        terminatingSince = Some(now)
+        terminating = true
         Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>

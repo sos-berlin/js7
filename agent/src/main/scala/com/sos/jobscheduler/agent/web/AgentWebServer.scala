@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
-import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -14,9 +13,9 @@ import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.{Closer, Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.command.CommandMeta
+import com.typesafe.config.Config
 import monix.execution.Scheduler
 
 /**
@@ -25,13 +24,11 @@ import monix.execution.Scheduler
 final class AgentWebServer(
   conf: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  closer: Closer,
-  injector: Injector,
+  sessionRegister: SessionRegister[SimpleSession],
+  protected val config: Config,
   implicit protected val actorSystem: ActorSystem,
   implicit protected val scheduler: Scheduler)
 extends AkkaWebServer with AkkaWebServer.HasUri {
-
-  closer.register(this)
 
   protected val bindings = conf.webServerBindings.toVector
   private val runningAgentOnce = new SetOnce[RunningAgent]("RunningAgent")
@@ -50,7 +47,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
-      protected def sessionRegister = injector.instance[SessionRegister[SimpleSession]]
+      protected def sessionRegister = AgentWebServer.this.sessionRegister
 
       protected def agentApi(meta: CommandMeta) = runningAgent.api(meta)
       protected def agentOverview = anonymousApi.overview

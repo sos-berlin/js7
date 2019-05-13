@@ -16,7 +16,6 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 
 /**
@@ -105,11 +104,11 @@ trait WebLogDirectives extends ExceptionHandling {
 object WebLogDirectives {
   private val webLogger = Logger("jobscheduler.web.log")
 
-  val TestConfig = ConfigFactory.parseMap(Map(
-    "jobscheduler.webserver.log.level" -> "debug",
-    "jobscheduler.webserver.log.duration" -> "false",
-    "jobscheduler.webserver.verbose-error-messages" -> true.toString)
-    .asJava)
+  val TestConfig = ConfigFactory.parseString("""
+     |jobscheduler.webserver.log.level = debug
+     |jobscheduler.webserver.log.duration = off
+     |jobscheduler.webserver.verbose-error-messages = true
+     |jobscheduler.webserver.shutdown-timeout = 10s""")
 
   def apply(config: Config, actorSystem: ActorSystem): WebLogDirectives = {
     val c = config

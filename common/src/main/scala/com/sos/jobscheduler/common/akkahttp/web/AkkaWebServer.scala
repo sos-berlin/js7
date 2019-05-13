@@ -1,38 +1,50 @@
 package com.sos.jobscheduler.common.akkahttp.web
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http.HttpTerminated
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.{ActorMaterializer, TLSClientAuth}
+import cats.instances.future._
+import cats.instances.vector._
+import cats.syntax.traverse._
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/json-seq`
 import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
+import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
-trait AkkaWebServer extends AutoCloseable {
-
+trait AkkaWebServer extends AutoCloseable
+{
   protected implicit def actorSystem: ActorSystem
+  protected def config: Config
   protected def scheduler: Scheduler
-  private implicit def implicitScheduler: Scheduler = scheduler
   protected def newRoute(binding: WebServerBinding): Route
   protected def bindings: Seq[WebServerBinding]
+
   private val akkaHttp = Http(actorSystem)
   private implicit val materializer = ActorMaterializer()
+  private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration
 
   private var activeBindings: Seq[Future[Http.ServerBinding]] = null
+
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   /**
    * @return Future, completed when Agent has been started and is running.
@@ -67,20 +79,24 @@ trait AkkaWebServer extends AutoCloseable {
       settings = ServerSettings(actorSystem)
         .withParserSettings(ParserSettings(actorSystem) withCustomMediaTypes `application/json-seq`))
 
-  def close() = {
-    materializer.shutdown()
-    if (activeBindings != null) {
-      (for (future <- activeBindings) yield
-        for (binding <- future) yield
-          binding.unbind()
-      ) await ShutdownTimeout
-      //akkaHttp.gracefulShutdown()  https://github.com/akka/akka-http/issues/188, https://github.com/lagom/lagom/issues/644
+  def close() =
+    try terminate() await shutdownTimeout + 1.s
+    catch { case NonFatal(t) =>
+      // In RecoveryTest: IllegalStateException: IO Listener actor terminated unexpectedly for remote endpoint [..]
+      logger.debug(t.toStringWithCauses, t)
     }
+
+  private def terminate() = {
+    materializer.shutdown()
+    if (activeBindings == null)
+      Future.successful(Completed)
+    else
+      activeBindings.toVector.traverse(_.flatMap(_.terminate(hardDeadline = shutdownTimeout)))
+        .map((_: Seq[HttpTerminated]) => Completed)
   }
 }
 
 object AkkaWebServer {
-  private val ShutdownTimeout = 10.s
   private val logger = Logger(getClass)
 
   trait HasUri extends WebServerBinding.HasLocalUris {

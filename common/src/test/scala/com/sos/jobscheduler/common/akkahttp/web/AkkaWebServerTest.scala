@@ -39,6 +39,7 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
   private lazy val http = Http()
 
   private lazy val webServer = new AkkaWebServer with HasUri {
+    protected val config = ConfigFactory.parseString("jobscheduler.webserver.shutdown-timeout = 10s")
     protected def actorSystem = AkkaWebServerTest.this.actorSystem
     protected def scheduler = Scheduler.global
 
