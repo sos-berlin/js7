@@ -55,7 +55,9 @@ with ConvertibleMultiPartialFunction[String, String] {
   }
 }
 
-object CommandLineArguments {
+object CommandLineArguments
+{
+  // Don't use a Logger here to avoid overwriting a concurrently used logfile
   private val OptionWithValueRegex = "(?s)(-[^=]+=)(.*)".r   // "(?s)" to match multi-line arguments
 
   def apply(args: Seq[String]): CommandLineArguments = {

@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -74,14 +75,14 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
       }
 
       val masterPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)
-      val agentConfiguration = AgentConfiguration.fromCommandLine(
+      val agentConfiguration = AgentConfiguration.fromCommandLine(CommandLineArguments(
         "-config-directory=" + dir / "agent/config" ::
         "-data-directory=" + dir / "agent/data" ::
-        "-http-port=" + agentPort :: Nil)
-      val masterConfiguration = MasterConfiguration.fromCommandLine(
+        "-http-port=" + agentPort :: Nil))
+      val masterConfiguration = MasterConfiguration.fromCommandLine(CommandLineArguments(
         "-config-directory=" + dir / "master/config" ::
         "-data-directory=" + dir / "master/data" ::
-        "-http-port=" + masterPort :: Nil)
+        "-http-port=" + masterPort :: Nil))
 
       val agentRef = AgentRef(agentRefPath ~ versionId, s"http://127.0.0.1:$agentPort")
       val agent = RunningAgent(agentConfiguration) await 99.seconds

@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.configuration
 import com.sos.jobscheduler.agent.configuration.AgentConfigurationTest._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -22,7 +23,8 @@ final class AgentConfigurationTest extends FreeSpec  {
 
   "Shortest argument list" in {
     provideConfigAndData { (config, data) =>
-      val c = AgentConfiguration.fromCommandLine(List(s"-config-directory=$config", s"-data-directory=$data")).finishAndProvideFiles
+      val c = AgentConfiguration.fromCommandLine(CommandLineArguments(s"-config-directory=$config" :: s"-data-directory=$data" :: Nil))
+        .finishAndProvideFiles
       assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
         configDirectory = config,
         dataDirectory = data,
@@ -89,7 +91,7 @@ final class AgentConfigurationTest extends FreeSpec  {
 
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(
-      args.toVector,
+      CommandLineArguments(args.toVector),
       ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
   }
 }

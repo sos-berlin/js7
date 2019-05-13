@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.configuration
 
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
@@ -14,7 +15,8 @@ import scala.concurrent.duration.DurationInt
   */
 final class MasterConfigurationTest extends FreeSpec {
 
-  private val configuration = MasterConfiguration.fromCommandLine(Vector("-config-directory=CONFIG", "-data-directory=DATA"))
+  private val configuration = MasterConfiguration.fromCommandLine(CommandLineArguments(
+    Vector("-config-directory=CONFIG", "-data-directory=DATA")))
 
   "Empty argument list" in {
     assert(configuration.copy(config = ConfigFactory.empty) == MasterConfiguration(
@@ -50,6 +52,6 @@ final class MasterConfigurationTest extends FreeSpec {
 
   private def conf(args: String*) =
     MasterConfiguration.fromCommandLine(
-      Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args,
+      CommandLineArguments(Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args),
       ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
 }

@@ -4,8 +4,8 @@ import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.Shutdown
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
+import com.sos.jobscheduler.core.startup.Shutdown
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import com.sos.jobscheduler.master.command.MasterCommandExecutor._
 import com.sos.jobscheduler.master.data.MasterCommand

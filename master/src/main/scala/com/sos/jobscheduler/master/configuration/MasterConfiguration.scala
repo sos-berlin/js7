@@ -65,17 +65,16 @@ object MasterConfiguration
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
 
-  def fromCommandLine(args: Seq[String], config: Config = ConfigFactory.empty) =
-    CommandLineArguments.parse(args) { a =>
-      val common = CommonConfiguration.Common.fromCommandLineArguments(a)
-      val conf = fromDirectories(
-        configDirectory = common.configDirectory,
-        dataDirectory = common.dataDirectory,
-        config,
-        name = MasterConfiguration.DefaultName)
-      conf.copy(webServerPorts = common.webServerPorts ++ conf.webServerPorts)
-        .withCommandLineArguments(a)
-    }
+  def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
+    val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)
+    val conf = fromDirectories(
+      configDirectory = common.configDirectory,
+      dataDirectory = common.dataDirectory,
+      config,
+      name = MasterConfiguration.DefaultName)
+    conf.copy(webServerPorts = common.webServerPorts ++ conf.webServerPorts)
+      .withCommandLineArguments(commandLineArguments)
+  }
 
   private def fromDirectories(
     configDirectory: Path,

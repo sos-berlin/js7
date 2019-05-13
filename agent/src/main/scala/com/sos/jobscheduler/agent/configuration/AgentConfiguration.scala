@@ -110,14 +110,14 @@ object AgentConfiguration {
   lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
-  def fromCommandLine(args: Seq[String], extraDefaultConfig: Config = ConfigFactory.empty) = CommandLineArguments.parse(args) { a =>
-    val common = CommonConfiguration.Common.fromCommandLineArguments(a)
+  def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
+    val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)
     val c = fromDirectories(
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,
       extraDefaultConfig)
     c.copy(webServerPorts = common.webServerPorts ++ c.webServerPorts)
-    .withCommandLineArguments(a)
+    .withCommandLineArguments(arguments)
   }
 
   private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): AgentConfiguration = {

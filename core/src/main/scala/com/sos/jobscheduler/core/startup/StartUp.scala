@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core
+package com.sos.jobscheduler.core.startup
 
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations

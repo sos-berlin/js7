@@ -27,7 +27,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
@@ -35,6 +34,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
+import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
@@ -164,17 +164,13 @@ object RunningMaster
   def apply(injector: Injector): Future[RunningMaster] =
     new Starter(injector).start()
 
-  private class Starter(injector: Injector) {
-    private val closer = injector.instance[Closer]
-    private val masterConfiguration = injector.instance[MasterConfiguration]
-    private val actorSystem = injector.instance[ActorSystem]
-    implicit private val scheduler = injector.instance[Scheduler]
-
-    private def createDirectories(): Unit =
-      masterConfiguration.stateDirectory match {
-        case o if !exists(o) => createDirectory(o)
-        case _ =>
-      }
+  private class Starter(injector: Injector)
+  {
+    // Lazy vals to allow earlier logStartUp message
+    private lazy val closer = injector.instance[Closer]
+    private lazy val masterConfiguration = injector.instance[MasterConfiguration]
+    private lazy val actorSystem = injector.instance[ActorSystem]
+    implicit private lazy val scheduler = injector.instance[Scheduler]
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
@@ -207,7 +203,9 @@ object RunningMaster
 
     private[RunningMaster] def start(): Future[RunningMaster] = {
       StartUp.logStartUp(masterConfiguration.configDirectory, Some(masterConfiguration.dataDirectory))
-      createDirectories()
+      if (!exists(masterConfiguration.stateDirectory)) {  // In case of a test
+        createDirectory(masterConfiguration.stateDirectory)
+      }
 
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       createSessionTokenFile(sessionRegister)

@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import scala.collection._
+import scala.collection.breakOut
+import scala.collection.immutable.Seq
 
 /**
   * Provides methods for convertion of the Iterable result of a PartialFunction (for example a Map).
@@ -16,8 +17,8 @@ trait ConvertibleMultiPartialFunction[K, V] {
 
   def as[W](key: K)(implicit convert: As[V, W]): W =
     apply(key) match {
-      case Seq() => throw new NoSuchElementException(s"Missing ${renderKey(key)}")
-      case Seq(value) => wrappedConvert(convert.apply, renderKey(key))(value)
+      case collection.Seq() => throw new NoSuchElementException(s"Missing ${renderKey(key)}")
+      case collection.Seq(value) => wrappedConvert(convert.apply, renderKey(key))(value)
       case _ => throwNotUnique(key)
     }
 
@@ -26,14 +27,14 @@ trait ConvertibleMultiPartialFunction[K, V] {
 
   def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =
     seqAs(key) match {
-      case Seq() => None
-      case Seq(value) => Some(value)
+      case collection.Seq() => None
+      case collection.Seq(value) => Some(value)
       case _ => throwNotUnique(key)
     }
 
   private def throwNotUnique(key: K) = throw new IllegalArgumentException(s"For ${renderKey(key)}, only one value is allowed")
 
-  def seqAs[W](key: K)(implicit convert: As[V, W]): immutable.Seq[W] =
+  def seqAs[W](key: K)(implicit convert: As[V, W]): Seq[W] =
     lift(key) match {
       case None => Nil  // Missing is equivalent to empty
       case Some(seq) =>
@@ -43,3 +44,5 @@ trait ConvertibleMultiPartialFunction[K, V] {
 
   protected def renderKey(key: K) = s"key '$key'"
 }
+
+// Don't use a Logger here to avoid overwriting a concurrently used logfile before start-up
