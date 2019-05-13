@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.system.ThreadPools
@@ -76,8 +77,9 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     closer.onClose {
       logger.debug("ActorSystem.terminate ...")
       try {
+        val stopwatch = new Stopwatch
         actorSystem.terminate() await config.getDuration("jobscheduler.akka.shutdown-timeout").toFiniteDuration
-        logger.debug("ActorSystem terminated")
+        logger.debug(s"ActorSystem terminated ($stopwatch)")
       }
       catch {
         case NonFatal(t) => logger.warn(s"ActorSystem.terminate(): $t")
