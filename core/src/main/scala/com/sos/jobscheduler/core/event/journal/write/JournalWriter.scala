@@ -22,7 +22,7 @@ extends AutoCloseable {
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
 
-  if (!append && Files.exists(file)) sys.error(s"JournalWriter: Not expecting existent file '$file'")
+  if (!append && Files.exists(file)) sys.error(s"JournalWriter: Not expecting already existing file '$file'")
   if (append && !Files.exists(file)) sys.error(s"JournalWriter: Missing file '$file'")
 
   protected final val jsonWriter = new FileJsonWriter(file, append = append, simulateSync = simulateSync)

@@ -103,7 +103,7 @@ object Futures {
         Await.ready(delegate, duration).value match {
           case Some(Success(o)) => o
           case Some(Failure(t)) => throw t.appendCurrentStackTrace
-          case None => throw new TimeoutException(s"await(${duration.pretty}): Future as not been completed in time")
+          case None => throw new TimeoutException(s"await(${duration.pretty}): Future has not been completed in time")
         }
     }
 

@@ -42,7 +42,7 @@ extends AutoCloseable
   /** Observable may only be subscribed to once, because it uses the outer WatchService. */
   def singleUseObservable: Observable[Unit] =
     subscriber => {
-      if (subscribed.getAndSet(true)) sys.error("DirectoryWatcher#singleUseObservable is subscribable only once")
+      if (subscribed.getAndSet(true)) sys.error("DirectoryWatcher singleUseObservable is subscribable only once")
       new Cancelable {
         def cancel() = {
           logger.trace(s"$directory: cancel")

@@ -21,7 +21,7 @@ object VariablesXmlParser {
         a.getName.toString match {
           case "name" => name = a.getValue
           case "value" => value = a.getValue
-          case attr => throw new IllegalArgumentException(s"Unknonwn attribute '$attr' in <param>")
+          case attr => throw new IllegalArgumentException(s"Unknown '$attr' attribute in <param> element")
         }
       }
       require(name.nonEmpty, "Attribute name must not be empty")

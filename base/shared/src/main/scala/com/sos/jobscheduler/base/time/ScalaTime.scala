@@ -66,7 +66,7 @@ object ScalaTime
   private[time] def bigDecimalToDuration(o: BigDecimal): FiniteDuration = {
     try Duration((o * 1000000000).toLongExact, NANOSECONDS)
     catch { case t: ArithmeticException =>
-      throw new ArithmeticException(s"Invalid Duration (${t.getMessage}): $o")
+      throw new ArithmeticException(s"Invalid duration (${t.getMessage}): $o")
     }
   }
 

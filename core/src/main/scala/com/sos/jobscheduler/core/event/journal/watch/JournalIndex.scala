@@ -29,7 +29,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
 
   def addAfter(eventId: EventId, position: Long, n: Int = 1): Unit =
     if (!tryAddAfter(eventId, position, n))
-      throw new IllegalArgumentException(s"JournalIndex: EventId out of order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
+      throw new IllegalArgumentException(s"JournalIndex: EventIds are in wrong order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
   def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean = {
     require(n >= 1, "JournalIndex.tryAddAfter")

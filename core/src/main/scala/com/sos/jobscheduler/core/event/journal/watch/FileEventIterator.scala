@@ -31,7 +31,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
   private var closed = false
 
   closeOnError(journalReader) {
-    if (journalReader.tornEventId != tornEventId) sys.error(s"Journal file '$journalFile' has different eventId=${journalReader.tornEventId} than expected=$tornEventId")
+    if (journalReader.tornEventId != tornEventId) sys.error(s"Journal file '$journalFile': found eventId=${journalReader.tornEventId}, expected was: $tornEventId")
   }
 
   def close(): Unit =

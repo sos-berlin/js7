@@ -47,7 +47,7 @@ trait TypedPath extends GenericString {
   }
 
   final def cast[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
-    if (P != companion) throw new ClassCastException(s"Expected ${companion.name} but is: $toString")
+    if (P != companion) throw new ClassCastException(s"Expected ${companion.name}, but is: $toString")
     this.asInstanceOf[P]
   }
 

@@ -49,8 +49,9 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     super.preStart()
   }
 
+  // TODO Inhibit bedeutet gehemmt, beeintrichtigt. Besser etwas wie 'stop'
   protected def inhibitJournaling(): Unit = {
-    if (stashingCount > 0) throw new IllegalStateException("inhibitJournaling while persist operation is active?")
+    if (stashingCount > 0) throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
     stashingCount = Inhibited
   }
 

@@ -25,7 +25,7 @@ trait FileBased {
   final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
 
   def cast[A <: FileBased](implicit A: FileBased.Companion[A]): A = {
-    if (A != companion) throw new ClassCastException(s"Expected ${companion.typedPathCompanion.name} but is: $path")
+    if (A != companion) throw new ClassCastException(s"Expected ${companion.typedPathCompanion.name}, but is: $path")
     this.asInstanceOf[A]
   }
 }

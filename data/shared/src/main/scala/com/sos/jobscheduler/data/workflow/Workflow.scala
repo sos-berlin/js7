@@ -352,7 +352,7 @@ extends FileBased
   def labeledInstruction(position: Position): Instruction.Labeled =
     nestedWorkflow(position.branchPath).orThrow
       .labeledInstructions.get(position.nr.number)
-      .getOrElse(throw new IllegalArgumentException(s"Unknown workflow position $position"))
+      .getOrElse(throw new IllegalArgumentException(s"Unknown Workflow position $position"))
 
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos

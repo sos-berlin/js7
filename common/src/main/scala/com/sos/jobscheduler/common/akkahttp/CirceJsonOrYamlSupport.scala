@@ -49,7 +49,7 @@ object CirceJsonOrYamlSupport
       } catch {
         case t: OutOfMemoryError =>
           logger.error(t.toString)
-          throw new RuntimeException(s"While converting to YAML: $t", t)  // To avoid termination of Akka
+          throw new RuntimeException(s"Error while converting to YAML: $t", t)  // To avoid termination of Akka
       }
     }
 

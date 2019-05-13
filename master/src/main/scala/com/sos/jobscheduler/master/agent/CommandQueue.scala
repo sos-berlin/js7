@@ -96,7 +96,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case QueuedInputResponse(input, Valid(AgentCommand.Response.Accepted)) =>
         Some(input)
       case QueuedInputResponse(_, Valid(o)) =>
-        sys.error(s"Unexpected response from agent: $o")
+        sys.error(s"Unexpected response from Agent: $o")
       case QueuedInputResponse(input, Invalid(problem)) =>
         // CancelOrder(NotStarted) fails if order has started !!!
         logger.error(s"Agent has rejected the command ${input.toShortString}: $problem")

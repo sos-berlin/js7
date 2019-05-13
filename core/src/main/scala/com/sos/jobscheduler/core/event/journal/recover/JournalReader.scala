@@ -23,7 +23,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
   val journalHeader = closeOnError(jsonReader) {
-    JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal '$journalFile' is empty"), journalFile)
+    JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"), journalFile)
   }
   val tornEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
@@ -101,7 +101,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
   @tailrec
   private def nextSnapshotJson(): Option[Json] = {
     if (eventHeaderRead) throw new IllegalStateException("nextSnapshotJson has been called after nextEvent")
-    val positionAndJson = jsonReader.read() getOrElse sys.error(s"Journal '$journalFile' is truncated in snapshot section")
+    val positionAndJson = jsonReader.read() getOrElse sys.error(s"Journal file '$journalFile' is truncated in snapshot section")
     val json = positionAndJson.value
     if (!snapshotHeaderRead)
       json match {
@@ -170,7 +170,7 @@ private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[
           case json if json.isObject =>
             val stampedEvent = deserialize(positionAndJson.value)
             if (stampedEvent.eventId <= _eventId)
-              throw new CorruptJournalException(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
+              throw new CorruptJournalException(s"Journal is corrupt, EventIds are in wrong order: ${EventId.toString(stampedEvent.eventId)} follows ${EventId.toString(_eventId)}",
                 journalFile, positionAndJson)
             if (_totalEventCount != -1) _totalEventCount += 1
             Some(stampedEvent)

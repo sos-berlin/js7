@@ -12,7 +12,7 @@ final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
     assert(convertible("KEY" -> List("111")).as[Int]("KEY", default = 999) == 111)
     assert(convertible[String, String]().as[Int]("KEY", default = 999) == 999)
     intercept[IllegalArgumentException] { convertible("KEY" -> List("111", "222")).as[Int]("KEY", default = 999) }
-      .getMessage shouldEqual "For key 'KEY', only one value is allowed"
+      .getMessage shouldEqual "Only one value is allowed for key 'KEY'"
   }
 
   "as" in {
@@ -20,7 +20,7 @@ final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
     intercept[NoSuchElementException] { convertible[String, String]().as[Int]("KEY") }
       .getMessage shouldEqual "key not found: KEY"
     intercept[IllegalArgumentException] { convertible("KEY" -> List("111", "222")).as[Int]("KEY") }
-      .getMessage shouldEqual "For key 'KEY', only one value is allowed"
+      .getMessage shouldEqual "Only one value is allowed for key 'KEY'"
   }
 
   "as String" in {
@@ -40,7 +40,7 @@ final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
     assert(convertible("KEY" -> List("111")).optionAs[Int]("KEY", None) == Some(111))
     assert(convertible("KEY" -> List("111")).optionAs[Int]("KEY", Some(333)) == Some(111))
     intercept[IllegalArgumentException] { convertible("KEY" -> List("111", "222")).optionAs[Int]("KEY") }
-      .getMessage shouldEqual "For key 'KEY', only one value is allowed"
+      .getMessage shouldEqual "Only one value is allowed for key 'KEY'"
   }
 
   "seqAs" in {

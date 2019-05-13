@@ -12,7 +12,7 @@ import scala.collection.mutable
 private[order] final class WorkflowRegister {
 
   private val _idToWorkflow = mutable.Map[WorkflowId, Workflow]()
-    .withDefault { workflowPath => throw new NoSuchElementException(s"Unknown $workflowPath") }
+    .withDefault { workflowPath => throw new NoSuchElementException(s"No such $workflowPath") }
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow] = _idToWorkflow
 

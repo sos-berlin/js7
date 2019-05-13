@@ -57,7 +57,7 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def totalCount = counter.get
 
-  protected def throwNoSuchKey(key: Key) = throw new NoSuchElementException(s"Unknown '$key'")
+  protected def throwNoSuchKey(key: Key) = throw new NoSuchElementException(s"No such '$key'")
 }
 
 object ConcurrentRegister {

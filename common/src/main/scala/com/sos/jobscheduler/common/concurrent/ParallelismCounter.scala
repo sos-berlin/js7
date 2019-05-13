@@ -48,7 +48,7 @@ object ParallelismCounter {
     val counter = new ParallelismCounter
     val result = body(counter)
     for (o <- total; if counter.total != o)
-      throw new RuntimeException(s"Total number of excecutions ${counter.total} != expected $o")
+      throw new RuntimeException(s"Total number of executions ${counter.total} != expected $o")
     for (o <- parallelismMaximum; if counter.maximum != o)
       throw new RuntimeException(s"Parallelism maximum ${counter.maximum} != expected $o")
     result

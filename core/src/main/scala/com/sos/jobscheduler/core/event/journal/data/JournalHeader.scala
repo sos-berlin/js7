@@ -37,11 +37,11 @@ object JournalHeader
 
   def checkHeader(json: Json, journalFile: Path): JournalHeader = {
     val header = json.as[JournalHeader] match {
-      case Left(t) => throw new RuntimeException(s"Not a valid JobScheduler journal file: $journalFile. Expected JournalHeader instead of ${json.compactPrint}", t)
+      case Left(t) => throw new RuntimeException(s"Not a valid JobScheduler journal file: $journalFile. Expected a JournalHeader instead of ${json.compactPrint}", t)
       case Right(o) => o
     }
     if (header.version != Version)
-      sys.error(s"Journal has version ${header.version} but $Version is expected. Incompatible journal file: $journalFile")
+      sys.error(s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFile")
     json.as[JournalHeader].orThrow
   }
 }

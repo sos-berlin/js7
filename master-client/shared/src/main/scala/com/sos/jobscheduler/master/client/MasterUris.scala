@@ -69,7 +69,7 @@ final class MasterUris private(masterUri: String) {
     api("", query: _*)
 
   def api(path: String, query: (String, String)*): String = {
-    if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Master URI path must start with slash")
+    if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Master URI path must start with a slash")
     master("api" + path) +
       encodeQuery(query: _*)
   }

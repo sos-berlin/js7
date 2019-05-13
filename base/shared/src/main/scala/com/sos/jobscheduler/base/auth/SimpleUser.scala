@@ -12,7 +12,7 @@ final case class SimpleUser private(
 extends User
 {
   if (id.isAnonymous && grantedPermissions.contains(ValidUserPermission))
-    throw new IllegalArgumentException("Anonymous must not have ValidUserPermission")
+    throw new IllegalArgumentException("Anonymous cannot not have ValidUserPermission")
 }
 
 object SimpleUser extends User.Companion[SimpleUser] {

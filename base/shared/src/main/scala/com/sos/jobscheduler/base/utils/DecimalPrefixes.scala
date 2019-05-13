@@ -14,7 +14,7 @@ object DecimalPrefixes
     if (string.nonEmpty && string.last.isLetter) {
       val prefix = string.last
       val factor = PrefixToFactor.getOrElse(prefix,
-        throw new IllegalArgumentException(s"Unknown SI-Prefix: '$prefix', expected: ${PrefixToFactor.keys.mkString(", ")}"))
+        throw new IllegalArgumentException(s"Unknown SI prefix: '$prefix', expected: ${PrefixToFactor.keys.mkString(", ")}"))
       val number = string.take(string.length - 1).toInt
       Math.multiplyExact(number, factor)
     } else
