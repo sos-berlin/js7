@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
+config=/var/opt/jobscheduler/master/config
 data=/var/opt/jobscheduler/master/data
 hprof=$data/logs/OutOfMemoryError.hprof
+
+if [ "$HOME" = "/home/jobscheduler" ]; then
+  [ -e "$HOME/config" ] || ln -ns $config "$HOME/config"
+  [ -e "$HOME/data" ] || ln -ns $data "$HOME/data"
+fi
 
 exec /opt/jobscheduler/bin/jobscheduler-master \
   -log4j-async \
