@@ -50,8 +50,6 @@ final class RunningAgent private(
   @TestOnly val injector: Injector)
 extends AutoCloseable {
 
-  webServer.setRunningAgent(this)
-
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val localUri: Uri = webServer.localUri
@@ -87,7 +85,6 @@ extends AutoCloseable {
 
 object RunningAgent {
   private val logger = Logger(getClass)
-  private val WebServerReadyTimeout = 60.s
 
   def run[A](configuration: AgentConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningAgent => A): A =
     autoClosing(apply(configuration) await timeout) { agent =>
@@ -119,12 +116,12 @@ object RunningAgent {
     val actorSystem = injector.instance[ActorSystem]
     val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
-    val webServerReady = webServer.start()
+
     val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
-    val readyPromise = Promise[MainActor.Ready]()
+    val mainActorReadyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
     val mainActor = actorSystem.actorOf(
-      Props { new MainActor(agentConfiguration, sessionRegister, injector, readyPromise, stoppedPromise) },
+      Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, stoppedPromise) },
       "main")
     implicit val scheduler = injector.instance[Scheduler]
 
@@ -137,16 +134,12 @@ object RunningAgent {
     }
     closer onClose { sessionTokenFile.delete() }
 
-    for (ready <- readyPromise.future) yield {
-      webServerReady await WebServerReadyTimeout
-      val terminated = stoppedPromise.future
-        //.andThen { case _ =>
-          //To early. closer.close()  // Close automatically after termination
-        //}
-        //.andThen {
-        //  case Failure(t) => logger.error(t.toStringWithCauses, t)
-        //}
-      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, ready.agentHandle, sessionToken, closer, injector)
-    }
+    for  {
+      ready <- mainActorReadyPromise.future
+      api = { meta: CommandMeta => new DirectAgentApi(ready.commandHandler, ready.agentHandle, meta) }
+      _ <- webServer.start(api)
+    } yield
+      new RunningAgent(webServer, mainActor, terminated = stoppedPromise.future, ready.commandHandler, ready.agentHandle, sessionToken,
+        closer, injector)
   }
 }

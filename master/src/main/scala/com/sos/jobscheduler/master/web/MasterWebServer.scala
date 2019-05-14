@@ -36,6 +36,7 @@ final class MasterWebServer private(
   commandExecutor: MasterCommandExecutor,
   masterState: Task[MasterState],
   sessionRegister: SessionRegister[SimpleSession],
+  eventWatch: EventWatch[Event],
   protected val config: Config,
   injector: Injector,
   implicit protected val actorSystem: ActorSystem,
@@ -50,15 +51,15 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected val masterConfiguration = MasterWebServer.this.masterConfiguration
       protected val masterId            = masterConfiguration.masterId
       protected val injector            = MasterWebServer.this.injector
-      protected val actorSystem         = injector.instance[ActorSystem]
+      protected val actorSystem         = MasterWebServer.this.actorSystem
       protected implicit def actorRefFactory = MasterWebServer.this.actorSystem
       protected implicit val scheduler  = MasterWebServer.this.scheduler
-      protected val config              = injector.instance[Config]
+      protected val config              = MasterWebServer.this.config
       protected val gateKeeper          = new GateKeeper(gateKeeperConfiguration,
         isLoopback = binding.address.getAddress.isLoopbackAddress,
         mutual = binding.mutual)
       protected val sessionRegister     = MasterWebServer.this.sessionRegister
-      protected val eventWatch          = injector.instance[EventWatch[Event]]
+      protected val eventWatch          = MasterWebServer.this.eventWatch
       protected val fileBasedApi = MasterWebServer.this.fileBasedApi
       protected val orderApi = MasterWebServer.this.orderApi
       protected def orderCount = orderApi.orderCount
@@ -78,6 +79,7 @@ object MasterWebServer {
     masterConfiguration: MasterConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     sessionRegister: SessionRegister[SimpleSession],
+    eventWatch: EventWatch[Event],
     config: Config,
     injector: Injector,
     actorSystem: ActorSystem,
@@ -89,7 +91,7 @@ object MasterWebServer {
     : MasterWebServer =
       new MasterWebServer(masterConfiguration, gateKeeperConfiguration,
         fileBasedApi, orderApi, commandExecutor, masterState,
-        sessionRegister, config, injector,
+        sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)
       .closeWithCloser(closer)
   }
