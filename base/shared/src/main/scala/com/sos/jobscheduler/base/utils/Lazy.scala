@@ -10,24 +10,34 @@ import scala.language.implicitConversions
 final class Lazy[A] private(eval: => A)
 {
   @volatile
-  private var option: Option[A] = None
+  private var cache: Option[A] = None
 
   def apply(): A =
-    option match {
+    cache match {
       case Some(a) => a
       case None =>
         synchronized {
-          option match {
+          cache match {
             case Some(a) => a
             case None =>
               val a = eval
-              option = Some(a)
+              cache = Some(a)
               a
           }
         }
     }
 
-  def toOption: Option[A] = option
+  def toOption: Option[A] = cache
+
+  def isDefined = cache.isDefined
+
+  def isEmpty = cache.isEmpty
+
+  //def map[B](f: A => B): Option[B] =
+  //  cache map f
+
+  def foreach(f: A => Unit): Unit =
+    cache foreach f
 }
 
 object Lazy
@@ -37,7 +47,4 @@ object Lazy
 
   implicit def evalLazy[A](o: Lazy[A]): A =
     o()
-
-  implicit def lazyToOption[A](o: Lazy[A]): Option[A] =
-    o.toOption
 }
