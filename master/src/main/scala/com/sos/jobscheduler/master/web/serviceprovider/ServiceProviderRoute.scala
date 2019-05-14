@@ -3,13 +3,13 @@ package com.sos.jobscheduler.master.web.serviceprovider
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.combineRoutes
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.master.web.serviceprovider.ServiceProviderRoute._
 import java.util.ServiceLoader
-import monix.execution.Scheduler
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
@@ -18,7 +18,6 @@ import scala.collection.immutable.Seq
   */
 private[web] trait ServiceProviderRoute
 {
-  protected def scheduler: Scheduler
   protected def injector: Injector
 
   private lazy val services: Seq[RouteService] = {
@@ -31,12 +30,20 @@ private[web] trait ServiceProviderRoute
     services
   }
 
-  final lazy val serviceProviderRoute: Route = {
+  private val lazyServiceProviderRoute = Lazy[Route] {
     val servicePathRoutes = for (s <- services; (p, r) <- s.pathToRoute) yield (s, p, r)
     logAndCheck(servicePathRoutes)
     combineRoutes(
       for ((_, p, r) <- servicePathRoutes) yield pathSegments(p)(r))
   }
+
+  protected def serviceProviderRoute: Route =
+    requestContext => {
+      if (lazyServiceProviderRoute.isEmpty) {
+        logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
+      }
+      lazyServiceProviderRoute()(requestContext)
+    }
 }
 
 private[web] object ServiceProviderRoute
