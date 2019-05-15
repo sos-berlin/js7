@@ -25,7 +25,7 @@ import scala.concurrent.{Future, Promise}
   * @author Joacim Zschimmer
   */
 private class TestAgentActorProvider extends HasCloser {
-  private val directoryProvider = new TestAgentDirectoryProvider {} .closeWithCloser
+  private val directoryProvider = TestAgentDirectoryProvider().closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
   lazy val (eventCollector, agentActor) = start(agentDirectory)

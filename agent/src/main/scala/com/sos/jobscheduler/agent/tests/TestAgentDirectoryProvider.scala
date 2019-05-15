@@ -60,7 +60,10 @@ trait TestAgentDirectoryProvider extends HasCloser
   }
 }
 
-object TestAgentDirectoryProvider {
+object TestAgentDirectoryProvider
+{
+  def apply() = new TestAgentDirectoryProvider {}
+
   /* Following resources have been generated with the command lines:
      common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -host=localhost -alias=agent-https -config-directory=agent/src/test/resources/com/sos/jobscheduler/agent/test/config
 
@@ -71,7 +74,7 @@ object TestAgentDirectoryProvider {
   private val logger = Logger(getClass)
 
   def provideAgentDirectory[A](body: Path => A): A =
-    autoClosing(new TestAgentDirectoryProvider {}) { provider =>
+    autoClosing(TestAgentDirectoryProvider()) { provider =>
       body(provider.agentDirectory)
     }
 }
