@@ -13,6 +13,7 @@ import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -20,8 +21,8 @@ import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.event.EventIdClock
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
@@ -61,6 +62,8 @@ import monix.execution.Scheduler
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
 
 /**
@@ -94,7 +97,9 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private var terminating = false
+  private val terminatingSince = new SetOnce[Deadline]
+
+  private def terminating = terminatingSince.isDefined
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -122,7 +127,7 @@ with MainJournalingActor[Event]
 
   override def postStop() = {
     super.postStop()
-    logger.debug("Stopped")
+    logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   protected def snapshots = Future.successful(masterState.toSnapshots)
@@ -352,7 +357,7 @@ with MainJournalingActor[Event]
       case MasterCommand.Terminate =>
         logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
-        terminating = true
+        terminatingSince := now
         Future.successful(Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>

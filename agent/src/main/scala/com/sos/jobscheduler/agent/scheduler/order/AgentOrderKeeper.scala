@@ -19,13 +19,14 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -49,6 +50,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import java.nio.file.Path
 import java.time.ZoneId
 import monix.execution.{Cancelable, Scheduler}
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
@@ -91,12 +93,14 @@ extends MainJournalingActor[Event] with Stash {
     private var terminatingOrders = false
     private var terminatingJobs = false
     private var terminatingJournal = false
+    val since = new SetOnce[Deadline]
 
     def terminating = terminateCommand.isDefined
 
     def start(terminate: AgentCommand.Terminate): Unit =
       if (!terminating) {
         terminateCommand = Some(terminate)
+        since := now
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillTerminating
@@ -172,7 +176,7 @@ extends MainJournalingActor[Event] with Stash {
     termination.close()
     eventWatch.close()
     super.postStop()
-    logger.debug("Stopped")
+    logger.debug("Stopped" + termination.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   def snapshots = Future.successful(workflowRegister.workflows)
