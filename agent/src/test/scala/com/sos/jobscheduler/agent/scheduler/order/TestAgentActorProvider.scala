@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
+import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.event.collector.EventCollector

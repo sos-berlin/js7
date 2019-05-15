@@ -8,9 +8,8 @@ import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.TestUserAndPassword
-import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentProvider}
 import com.sos.jobscheduler.agent.tests.AkkaHttpAgentTextApiTest._
+import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import com.sos.jobscheduler.base.auth.{HashedPassword, SimpleUser}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked

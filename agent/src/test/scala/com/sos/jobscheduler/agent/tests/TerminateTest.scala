@@ -4,18 +4,17 @@ import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, Terminate}
-import com.sos.jobscheduler.agent.test.AgentTester
 import com.sos.jobscheduler.agent.tests.TerminateTest._
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}

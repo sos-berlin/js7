@@ -5,15 +5,15 @@ import com.sos.jobscheduler.agent.AgentTest._
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.test.AgentTester
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
+import com.sos.jobscheduler.agent.tests.AgentTester
+import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.FileUtils.WorkingDirectory
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner

@@ -119,7 +119,6 @@ lazy val jobscheduler = (project in file("."))
     `master-data`.jvm,
     `agent-client`,
     `agent-data`,
-    `agent-tests`,
     taskserver,
     provider,
     tests)
@@ -353,7 +352,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
       Seq(versionFile)
     }.taskValue)
 
-lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, tester.jvm % "test")
+lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskserver, `agent-client` % "test", tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -375,8 +374,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
       log4j % "test"
   }
 
-lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common, `agent-data`,
-    `agent` % "test->test", tester.jvm % "test")
+lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common, `agent-data`, tester.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -402,19 +400,6 @@ lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
       javaxAnnotations % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
-      log4j % "test"
-  }
-
-lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", tester.jvm % "test")
-  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(
-    commonSettings,
-    description := "JobScheduler Agent Tests")
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTest % "test" ++
-      mockito % "test" ++
       log4j % "test"
   }
 

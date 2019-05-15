@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.task.TaskRegisterTest._
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
+import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}

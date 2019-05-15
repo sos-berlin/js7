@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
-import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
+import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._

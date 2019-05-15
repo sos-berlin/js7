@@ -5,7 +5,6 @@ import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.agent.test.TestAgentProvider
 import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule

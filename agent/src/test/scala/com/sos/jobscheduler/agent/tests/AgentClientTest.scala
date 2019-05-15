@@ -3,9 +3,8 @@ package com.sos.jobscheduler.agent.tests
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.{AgentStartInformation, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.test.AgentTester
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
