@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core
 
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderId
 
 /**
@@ -36,4 +37,8 @@ package object problems
   case object TamperedWithSignedMessageProblem extends Problem.ArgumentlessCoded
 
   case object MessageSignedByUnknownProblem extends Problem.ArgumentlessCoded
+
+  final case class NoSuchMasterProblem(masterId: MasterId) extends Problem.Coded {
+    def arguments = Map("masterId" -> masterId.string)
+  }
 }

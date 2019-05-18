@@ -26,6 +26,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
@@ -230,7 +231,7 @@ object AgentActor {
   }
 
   private final class MasterRegister extends ActorRegister[MasterId, ActorRef](identity) {
-    override protected def noSuchKeyMessage(masterId: MasterId) = s"Unknown Master '$masterId'"
+    override protected def noSuchKeyProblem(masterId: MasterId) = NoSuchMasterProblem(masterId)
 
     override def insert(kv: (MasterId, ActorRef)) = super.insert(kv)
 

@@ -6,17 +6,16 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
-import java.util.NoSuchElementException
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
 class ActorRegister[K, V](valueToActorRef: V => ActorRef)  {
-  private val keyToValue = mutable.Map[K, V]() withDefault (k => throw new NoSuchElementException(noSuchKeyMessage(k)))
+  private val keyToValue = mutable.Map[K, V]() withDefault (k => throw noSuchKeyProblem(k).throwable)
   private val _actorToKey = mutable.Map[ActorRef, K]()
 
-  protected def noSuchKeyMessage(k: K) = s"No such key '$k'"
+  protected def noSuchKeyProblem(k: K): Problem = Problem(s"No such key: $k")
 
   protected def insert(kv: (K, V)): Unit = {
     if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}, existing: ${keyToValue(kv._1)}")
@@ -60,7 +59,7 @@ class ActorRegister[K, V](valueToActorRef: V => ActorRef)  {
     keyToValue(_actorToKey(actorRef))
 
   final def checked(key: K): Checked[V] =
-    keyToValue.get(key) toChecked Problem(noSuchKeyMessage(key))
+    keyToValue.get(key) toChecked noSuchKeyProblem(key)
 
   final def get(key: K): Option[V] =
     keyToValue.get(key)

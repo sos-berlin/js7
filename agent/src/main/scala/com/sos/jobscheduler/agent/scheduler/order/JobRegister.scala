@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -15,7 +16,7 @@ import scala.collection.mutable
   */
 final class JobRegister extends ActorRegister[JobKey, JobEntry](_.actor) {
 
-  override protected def noSuchKeyMessage(jobKey: JobKey) = s"No such job '$jobKey'"
+  override protected def noSuchKeyProblem(jobKey: JobKey) = Problem.pure(s"No such Job: $jobKey")
 
   def onActorTerminated(actor: ActorRef): Unit =
     for (jobEntry <- remove(actorToKey(actor))) {
