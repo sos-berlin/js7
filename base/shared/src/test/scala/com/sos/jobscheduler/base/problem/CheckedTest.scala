@@ -54,6 +54,16 @@ final class CheckedTest extends FreeSpec
     assert(Checked.fromTry(Failure(throwable)) == Invalid(Problem("EXCEPTION")))
   }
 
+  "cond" in {
+    assert(Checked.cond(true, 1, Problem("PROBLEM")) == Valid(1))
+    assert(Checked.cond(false, 1, Problem("PROBLEM")) == Invalid(Problem("PROBLEM")))
+  }
+
+  "invalidIf" in {
+    assert(Checked.invalidIf(true, Problem("PROBLEM")) == Invalid(Problem("PROBLEM")))
+    assert(Checked.invalidIf(false, Problem("PROBLEM")) == Checked.unit)
+  }
+
   "catchNonFatal" in {
     assert(Checked.catchNonFatal(7) == Valid(7))
     val t = new IllegalArgumentException("TEST")

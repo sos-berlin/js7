@@ -35,6 +35,15 @@ object Checked
       case Failure(t) => Invalid(Problem.pure(t))
     }
 
+  final def invalidIf(predicate: Boolean, problem: => Problem): Checked[Unit] =
+    if (predicate) Invalid(problem) else unit
+
+  final def cond[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
+    Validated.cond(predicate, a, problem)
+
+  def ifOr(predicate: Boolean, problem: Problem): Checked[Unit] =
+    if (predicate) unit else Invalid(problem)
+
   def catchNonFatal[A](f: => A): Checked[A] =
     try Valid(f)
     catch {
