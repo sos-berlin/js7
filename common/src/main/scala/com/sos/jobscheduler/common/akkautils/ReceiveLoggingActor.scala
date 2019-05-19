@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
   */
 trait ReceiveLoggingActor extends SimpleStateActor
 {
-  protected val isReceiveLoggingEnabled = context.system.settings.config.getBoolean("jobscheduler.logging.actor")
+  protected val isReceiveLoggingEnabled = context.system.settings.config.getBoolean("jobscheduler.akka.actor-logging")
 
   protected[ReceiveLoggingActor] def isLoggingEnabled = isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)
 
