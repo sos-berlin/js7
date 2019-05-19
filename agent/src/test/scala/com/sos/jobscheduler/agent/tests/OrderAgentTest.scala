@@ -75,7 +75,7 @@ final class OrderAgentTest extends FreeSpec {
           attachOrder(SignedSimpleWorkflow) shouldEqual Valid(AgentCommand.Response.Accepted)
 
           EventRequest.singleClass[OrderEvent](timeout = Some(10.s))
-            .repeat(eventRequest => agentClient.mastersEvents(eventRequest).runToFuture) {
+            .repeat(eventRequest => agentClient.mastersEvents(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
           val Valid(processedOrder) = agentClient.order(order.id) await 99.s
@@ -120,7 +120,7 @@ final class OrderAgentTest extends FreeSpec {
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
           while (
-            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](timeout = Some(timeout))) await 99.s match {
+            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
               case EventSeq.NonEmpty(stampeds) =>
                 ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
                 ready != awaitedOrderIds

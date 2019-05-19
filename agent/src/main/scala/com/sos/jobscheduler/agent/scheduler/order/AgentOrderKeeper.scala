@@ -208,7 +208,7 @@ extends MainJournalingActor[Event] with Stash {
       response.completeWith(processOrderCommand(cmd))
 
     case Input.GetEventWatch =>
-      sender() ! eventWatch
+      sender() ! Valid(eventWatch)
 
     case terminate: AgentCommand.Terminate =>
       termination.start(terminate)

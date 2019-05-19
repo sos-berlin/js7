@@ -45,6 +45,6 @@ extends AgentApi
     commandHandler.typedExecute(AgentCommand.GetOrders, meta)
       .map(_.map(_.orders))
 
-  def eventWatchForMaster(masterId: MasterId): Task[EventWatch[Event]] =
+  def eventWatchForMaster(masterId: MasterId): Task[Checked[EventWatch[Event]]] =
     agentHandle.eventWatch(masterId)
 }

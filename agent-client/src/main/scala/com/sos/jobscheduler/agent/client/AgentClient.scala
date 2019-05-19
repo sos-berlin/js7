@@ -68,14 +68,15 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
     liftProblem(
       get[Seq[Order[Order.State]]](agentUris.order.orders))
 
-  final def mastersEvents[E <: Event](request: EventRequest[E]): Task[TearableEventSeq[Seq, KeyedEvent[E]]] = {
+  final def mastersEvents[E <: Event](request: EventRequest[E]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[E]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
     //  case o: EventRequest[_] => o.timeout + 10.s
     //  case _ => akka configured default value
     //}
-    get[TearableEventSeq[Seq, KeyedEvent[E]]](agentUris.mastersEvents(request))
+    liftProblem(
+      get[TearableEventSeq[Seq, KeyedEvent[E]]](agentUris.mastersEvents(request)))
   }
 
   override def toString = s"AgentClient($baseUri)"

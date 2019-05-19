@@ -10,9 +10,10 @@ import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.model.{HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
@@ -54,7 +55,7 @@ trait GenericEventRoute extends RouteProvider
   {
     implicit protected def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event]
 
-    protected def eventWatchFor(user: Session#User): Task[EventWatch[Event]]
+    protected def eventWatchFor(user: Session#User): Task[Checked[EventWatch[Event]]]
 
     protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
 
@@ -71,20 +72,24 @@ trait GenericEventRoute extends RouteProvider
           handleExceptions(exceptionHandler) {
             authorizedUser(ValidUserPermission) { user =>
               routeTask(
-                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map { eventWatch =>
-                  htmlPreferred {
+                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map {
+                  case Invalid(problem) =>
+                    complete(problem)
+
+                  case Valid(eventWatch) =>
+                    htmlPreferred {
+                      oneShot(eventWatch)
+                    } ~
+                    accept(`application/x-ndjson`) {
+                      jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
+                    } ~
+                    accept(`application/json-seq`) {
+                      jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
+                    } ~
+                    accept(`text/event-stream`) {
+                      serverSentEvents(eventWatch)
+                    } ~
                     oneShot(eventWatch)
-                  } ~
-                  accept(`application/x-ndjson`) {
-                    jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
-                  } ~
-                  accept(`application/json-seq`) {
-                    jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
-                  } ~
-                  accept(`text/event-stream`) {
-                    serverSentEvents(eventWatch)
-                  } ~
-                  oneShot(eventWatch)
                 })
             }
           }

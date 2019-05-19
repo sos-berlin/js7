@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.event.GenericEventRoute
@@ -20,7 +21,7 @@ trait EventRoute extends MasterRouteProvider with GenericEventRoute
 
   protected final lazy val eventRoute = new GenericEventRouteProvider {
     def keyedEventTypedJsonCodec = MasterJournalKeyedEventJsonCodec
-    def eventWatchFor(user: SimpleUser) = Task.pure(eventWatch)
+    def eventWatchFor(user: SimpleUser) = Task.pure(Valid(eventWatch))
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = EventRoute.isRelevantEvent(keyedEvent)
   }.route
 }

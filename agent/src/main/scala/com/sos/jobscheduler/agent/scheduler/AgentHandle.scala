@@ -24,9 +24,9 @@ final class AgentHandle(actor: ActorRef)(implicit askTimeout: Timeout) {
   : Unit =
     actor ! AgentActor.Input.ExternalCommand(userId, command, response)
 
-  def eventWatch(masterId: MasterId): Task[EventWatch[Event]] =
+  def eventWatch(masterId: MasterId): Task[Checked[EventWatch[Event]]] =
     Task.deferFuture(
-      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[EventWatch[Event]])
+      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[Checked[EventWatch[Event]]])
 
   def overview: Task[AgentOverview] =
     Task.deferFuture(
