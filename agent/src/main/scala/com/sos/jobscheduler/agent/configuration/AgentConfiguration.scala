@@ -129,7 +129,7 @@ object AgentConfiguration {
       logDirectory = config.optionAs("jobscheduler.agent.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      akkaAskTimeout = config.getDuration("jobscheduler.akka-ask-timeout").toFiniteDuration,
+      akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
       name = DefaultName,
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
