@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 
 final class ExecuteTest extends FreeSpec
 {
-  "Executing an own script is not allowed" in {
+  "Executing an inline script is not allowed" in {
     val workflowNotation = """
       define workflow {
         execute agent="AGENT", script=":";

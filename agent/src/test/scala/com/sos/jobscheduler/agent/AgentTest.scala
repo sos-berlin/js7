@@ -15,8 +15,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.core.command.CommandMeta
-import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
@@ -29,7 +27,6 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 import scala.concurrent.duration._
 
 /**
@@ -58,7 +55,8 @@ final class AgentTest extends FreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            agentApi.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
+            assert(agentApi.commandExecute(RegisterAsMaster).await(99.s).toOption.get
+              .isInstanceOf[RegisterAsMaster.Response])
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath, fileBasedSigner.sign(TestWorkflow))).await(99.s)

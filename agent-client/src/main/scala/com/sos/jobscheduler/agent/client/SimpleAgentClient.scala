@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.HasCloser
 
 /**
- * Simple client for JobScheduler Agent.
+ * Simple client for JobScheduler Agent Server.
  * <p>
  * Should be closed after use, to close all remaining HTTP connections.
  *

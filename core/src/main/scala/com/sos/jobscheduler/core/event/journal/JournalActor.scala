@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import com.sos.jobscheduler.base.convert.As.StringAsByteCountWithDecimalPrefix
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -11,7 +12,6 @@ import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
@@ -376,7 +376,7 @@ object JournalActor
       lastEventId: EventId,
       totalEventCount: Long)
     final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
-    private[journal] case object RegisterMe
+    /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,

@@ -21,7 +21,7 @@ import monix.eval.Task
 import scala.collection.immutable.Seq
 
 /**
- * Client for JobScheduler Agent.
+ * Client for JobScheduler Agent Server.
  * The HTTP requests are considerd to be responded within `RequestTimeout`.
  *
  * @author Joacim Zschimmer

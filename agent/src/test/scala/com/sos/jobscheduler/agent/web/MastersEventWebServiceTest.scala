@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.RegisterAsMaster
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
+import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
 import com.sos.jobscheduler.agent.tests.AgentTester
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -10,7 +12,11 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
+import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
+import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, TearableEventSeq}
+import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 
@@ -24,18 +30,72 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem = agent.injector.instance[ActorSystem]
   private val agentClient = AgentClient(agent.localUri).closeWithCloser
+  private var agentRunId: AgentRunId = _
+  private var eventId = EventId.BeforeFirst
 
-  "(login)"  in {
+  "(Login)"  in {
       agentClient.login(Some(TestUserAndPassword)).await(99.s)
-      agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
+  }
+
+  "Requesting events of unregistered Master" in {
+    assert(agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
+      Invalid(NoSuchMasterProblem(MasterId.fromUserId(TestUserAndPassword.userId))))
+  }
+
+  "(RegisterAsMaster)" in {
+    val RegisterAsMaster.Response(agentRunId_) = agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
+    this.agentRunId = agentRunId_
   }
 
   "Request events after known EventId" in {
-    val EventSeq.NonEmpty(events) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
+    eventId = events.last.eventId
   }
 
   "Requesting events after unknown EventId returns Torn" in {
-    val TearableEventSeq.Torn(0) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s)
+    // When Master requests events, the requested EventId (after=) must be known
+    val Valid(TearableEventSeq.Torn(0)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s)
+  }
+
+  "Login again"  in {
+    agentClient.logout().await(99.s)
+    agentClient.login(Some(TestUserAndPassword)).await(99.s)
+  }
+
+  "Recoupling with changed AgentRunId fails" in {
+    assert(agentClient.commandExecute(CoupleMaster(AgentRunId("CHANGED"), eventId)).await(99.s) == Invalid(MasterAgentMismatchProblem))
+    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+    assert(events.head.eventId > EventId.BeforeFirst)
+  }
+
+  "Recoupling with Agent's last events deleted fails" in {
+    // Delete fetched events:
+    agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
+    agentClient.commandExecute(KeepEvents(eventId)).await(99.s).orThrow
+
+    assert(agentClient.commandExecute(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
+      Invalid(MasterRequiresUnknownEventIdProblem(EventId.BeforeFirst)))
+  }
+
+  "Recoupling with Master's last events deleted fails" in {
+    val newerEventId = eventId + 1  // Assuming that no further Event has been issued
+    assert(agentClient.commandExecute(CoupleMaster(agentRunId, newerEventId)).await(99.s) ==
+      Invalid(MasterRequiresUnknownEventIdProblem(newerEventId)))
+  }
+
+  "Recouple" in {
+    agentClient.commandExecute(CoupleMaster(agentRunId, eventId)).await(99.s).orThrow
+  }
+
+  "Continue fetching events" in {
+    val Valid(EventSeq.Empty(lastEventId)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
+    assert(lastEventId == eventId)
+  }
+
+  "Torn EventSeq" in {
+    val tornEventId = eventId
+    val Valid(TearableEventSeq.Torn(`tornEventId`)) =
+      agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId + 1)).await(99.s)
   }
 }

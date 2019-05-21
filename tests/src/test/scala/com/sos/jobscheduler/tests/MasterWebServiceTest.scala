@@ -28,29 +28,31 @@ import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.KeyedEvent
+import com.sos.jobscheduler.data.event.{<-:, Event, KeyedEvent}
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
-import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
+import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import java.time.ZoneId
 import javax.inject.Singleton
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.collection.immutable
 import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
+final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
 
   ProblemCodeMessages.initialize()
 
@@ -476,10 +478,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   "/master/api/snapshot/ (only JSON)" in {
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
     val snapshots = httpClient.get[Json](s"$uri/master/api/snapshot/", headers) await 99.s
-    assert(snapshots.asObject.get("eventId") == Some(1000022.asJson) ||
-           snapshots.asObject.get("eventId") == Some(1000023.asJson))  // In case of AgentCouplingFailed ?
+    assert(snapshots.asObject.get("eventId") == Some(1000024.asJson) ||
+           snapshots.asObject.get("eventId") == Some(1000025.asJson))  // In case of AgentCouplingFailed ?
     val shortenedArray = Json.fromValues(snapshots.asObject.get("array").get.asArray.get
-      .filterNot(o => o.asObject.get("TYPE").contains("AgentEventId".asJson)))  // Delete AgentEventId in `array` (for easy comparison)
+      .filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
     assert(shortenedArray == json"""[
       {
         "TYPE": "VersionAdded",
@@ -533,9 +535,14 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "/master/api/event (only JSON)" in {
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
-    val events = httpClient.get[Json](s"$uri/master/api/event?after=0", headers) await 99.s
+    val eventsJson = httpClient.get[Json](s"$uri/master/api/event?after=0", headers) await 99.s
+    val keyedEvents: immutable.Seq[KeyedEvent[Event]] = {
+      import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
+      eventsJson.asObject.get("stamped").get.asArray.get.map(_.as[KeyedEvent[Event]].orThrow)
+    }
+    val agentRunId = keyedEvents.collectFirst { case AgentRefPath("/AGENT") <-: (e: AgentRegisteredMaster) => e.agentRunId }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
-    assert(manipulateEventsForTest(events) == json"""{
+    assert(manipulateEventsForTest(eventsJson) == json"""{
       "TYPE": "NonEmpty",
       "stamped": [
         {
@@ -571,15 +578,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         }, {
           "eventId": 1005,
+          "key": "/AGENT",
+          "TYPE": "AgentRegisteredMaster",
+          "agentRunId": "${agentRunId.string}"
+        }, {
+          "eventId": 1006,
           "TYPE": "AgentReady",
           "key": "/AGENT",
           "timezone": "${ZoneId.systemDefault.getId}"
         }, {
-          "eventId": 1006,
+          "eventId": 1007,
           "TYPE": "VersionAdded",
           "versionId": "VERSION-1"
         }, {
-          "eventId": 1007,
+          "eventId": 1008,
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
@@ -590,7 +602,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             }
           }
         }, {
-          "eventId": 1008,
+          "eventId": 1009,
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
@@ -601,7 +613,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             }
           }
         }, {
-          "eventId": 1009,
+          "eventId": 1010,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
@@ -609,25 +621,25 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "versionId": "VERSION-1"
           }
         }, {
-          "eventId": 1010,
+          "eventId": 1011,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
           "agentRefPath":"/AGENT"
         }, {
-          "eventId": 1011,
+          "eventId": 1012,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
           "agentRefPath": "/AGENT"
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "outcome": {
@@ -635,20 +647,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "returnCode": 0
           }
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1016,
+          "eventId": 1017,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1017,
+          "eventId": 1018,
           "TYPE": "OrderTransferredToMaster",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1018,
+          "eventId": 1019,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }
@@ -658,7 +670,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     def manipulateEventsForTest(eventResponse: Json): Json = {
       def ignoreIt(json: Json): Boolean = {
         val obj = json.asObject.get.toMap
-        obj("TYPE") == Json.fromString("AgentReady") && json.as[KeyedEvent[MasterAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only AgentReady for one AgentRef, because ordering is undefined
+        (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentRegisteredMaster")) &&
+            json.as[KeyedEvent[MasterAgentEvent]].orThrow.key != TestAgentRefPath || // Let through only Events for one AgentRef, because ordering is undefined
           obj("TYPE") == Json.fromString("AgentCouplingFailed")
       }
       val eventIds = Iterator.from(1001)

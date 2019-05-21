@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.data.events
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady}
@@ -14,11 +15,13 @@ import org.scalatest.FreeSpec
 final class MasterAgentEventTest extends FreeSpec
 {
   "AgentCouplingFailed" in {
-    testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentCouplingFailed("ERROR"),
+    testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentCouplingFailed(Problem("ERROR")),
       json"""{
         "TYPE": "AgentCouplingFailed",
         "key": "/AGENT",
-        "message": "ERROR"
+        "problem": {
+          "message": "ERROR"
+        }
       }""")
   }
 

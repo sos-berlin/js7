@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.command
 
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommonCommand, InternalCommandId}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -13,11 +14,11 @@ final class CommandRegister[C <: CommonCommand]
   private val idToCommand = mutable.Map[InternalCommandId, CommandRun[C]]()
   private val idGenerator = InternalCommandId.newGenerator()
 
-  def add(command: C, batchId: Option[InternalCommandId]): CommandRun[C] =
+  def add(userId: UserId, command: C, batchId: Option[InternalCommandId]): CommandRun[C] =
     synchronized {
       totalCounter += 1
       val id = idGenerator.next()
-      val run = CommandRun[C](id, command, now, batchId)
+      val run = CommandRun[C](id, userId, command, now, batchId)
       idToCommand += id -> run
       run
     }

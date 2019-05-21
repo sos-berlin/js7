@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.event.{Event, EventRequest}
 import com.sos.jobscheduler.data.order.OrderId
 
 /**
- * URIs of the JobScheduler Agent.
+ * URIs of the JobScheduler Agent Server.
  *
  * @author Joacim Zschimmer
  */

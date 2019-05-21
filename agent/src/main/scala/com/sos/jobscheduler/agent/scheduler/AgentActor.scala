@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.agent.scheduler
 
-import akka.actor.{ActorRef, PoisonPill, Props, Status, Terminated}
-import akka.pattern.ask
+import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
+import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
+import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -12,10 +14,12 @@ import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
+import com.sos.jobscheduler.common.auth.SecretStringGenerator.randomString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
@@ -25,11 +29,15 @@ import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
+import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.workflow.Workflow
 import javax.inject.Inject
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -58,7 +66,8 @@ extends MainJournalingActor[AgentEvent] {
   private var terminating = false
   private val terminateCompleted = Promise[Completed]()
 
-  def snapshots = Future.successful(masterToOrderKeeper.keys map AgentSnapshot.Master.apply)
+  def snapshots = Future.successful(
+    masterToOrderKeeper.values.map(o => AgentSnapshot.Master(o.masterId, o.agentRunId)))
 
   override def preStart() = {
     super.preStart()
@@ -77,8 +86,8 @@ extends MainJournalingActor[AgentEvent] {
     protected val journalMeta = AgentActor.this.journalMeta
 
     def recoverSnapshot = {
-      case AgentSnapshot.Master(masterId) =>
-        addOrderKeeper(masterId)
+      case AgentSnapshot.Master(masterId, agentRunId) =>
+        addOrderKeeper(masterId, agentRunId)
     }
 
     def recoverEvent = {
@@ -111,13 +120,13 @@ extends MainJournalingActor[AgentEvent] {
 
     case Input.GetEventWatch(masterId) =>
       masterToOrderKeeper.checked(masterId) match {
-        case Valid(actor) => actor.forward(AgentOrderKeeper.Input.GetEventWatch)
-        case Invalid(problem) => sender() ! Status.Failure(problem.throwable)
+        case Valid(entry) => entry.eventWatch.whenStarted.map(Valid.apply).runToFuture pipeTo sender()
+        case o @ Invalid(_) => sender() ! o
       }
 
     case msg: JobActor.Output.ReadyForOrder.type =>
-      for (actor <- masterToOrderKeeper.values) {
-        actor.forward(msg)
+      for (entry <- masterToOrderKeeper.values) {
+        entry.actor.forward(msg)
       }
 
     case Terminated(a) if masterToOrderKeeper.contains(a) =>
@@ -153,20 +162,34 @@ extends MainJournalingActor[AgentEvent] {
         }
 
       case AgentCommand.RegisterAsMaster if !terminating =>
-        if (masterToOrderKeeper contains masterId) {
-          response.success(Valid(AgentCommand.Response.Accepted))
-        } else {
-          response completeWith
-            persist(AgentEvent.MasterAdded(masterId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
-              update(event)
-              Valid(AgentCommand.Response.Accepted)
-            }
+        masterToOrderKeeper.get(masterId) match {
+          case None =>
+            val agentRunId = AgentRunId(randomString())
+            response completeWith
+              persist(AgentEvent.MasterRegistered(masterId, agentRunId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
+                update(event)
+                Valid(AgentCommand.RegisterAsMaster.Response(agentRunId))
+              }
+          case Some(entry) =>
+            response.success(Valid(AgentCommand.RegisterAsMaster.Response(entry.agentRunId)))
         }
 
-      case command: AgentCommand.OrderCommand =>
+      case AgentCommand.CoupleMaster(agentRunId, eventId) if !terminating =>
+        // Command does not change state. It only checks the coupling (for now)
+        response.completeWith(
+          for {
+            checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
+            checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted).runToFuture
+          } yield
+            for {
+              _ <- checkedEntry.flatMap(entry =>  Checked.cond(agentRunId == entry.agentRunId, (), MasterAgentMismatchProblem))
+              _ <- checkedEventWatch.flatMap(_.checkEventId(eventId))
+            } yield AgentCommand.Response.Accepted)
+
+      case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type) =>
         masterToOrderKeeper.checked(masterId) match {
-          case Valid(actor) =>
-            actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
+          case Valid(entry) =>
+            entry.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
           case Invalid(problem) =>
             response.failure(problem.throwable)
         }
@@ -183,22 +206,25 @@ extends MainJournalingActor[AgentEvent] {
 
   private def terminateOrderKeepers(terminate: AgentCommand.Terminate): Future[AgentCommand.Response.Accepted] =
     Future.sequence(
-      for (a <- masterToOrderKeeper.values) yield
+      for (a <- masterToOrderKeeper.values.map(_.actor)) yield
         (a ? terminate).mapTo[AgentCommand.Response.Accepted])
     .map { _ => AgentCommand.Response.Accepted }
 
   private def update(event: AgentEvent): Unit =
     event match {
-      case AgentEvent.MasterAdded(masterId) =>
-        addOrderKeeper(masterId)
+      case AgentEvent.MasterRegistered(masterId, agentRunId) =>
+        addOrderKeeper(masterId, agentRunId)
     }
 
-  private def addOrderKeeper(masterId: MasterId): ActorRef = {
+  private def addOrderKeeper(masterId: MasterId, agentRunId: AgentRunId): ActorRef = {
+    val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"master-$masterId")
+    val eventWatch = new JournalEventWatch(journalMeta, agentConfiguration.config)
+
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
           masterId,
-          journalFileBase = stateDirectory / s"master-$masterId",
+          eventWatch,
           signatureVerifier,
           newTaskRunner,
           askTimeout = akkaAskTimeout,
@@ -206,7 +232,7 @@ extends MainJournalingActor[AgentEvent] {
           agentConfiguration)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
-    masterToOrderKeeper.insert(masterId -> actor)
+    masterToOrderKeeper.insert(masterId -> MasterRegister.Entry(masterId, agentRunId, eventWatch, actor))
     watch(actor)
   }
 
@@ -215,6 +241,9 @@ extends MainJournalingActor[AgentEvent] {
 
 object AgentActor {
   private val logger = Logger(getClass)
+  private val SnapshotJsonFormat = TypedJsonCodec[Any](
+    Subtype[Workflow],
+    Subtype[Order[Order.State]])
 
   object Command {
     case object GetOverview
@@ -230,11 +259,14 @@ object AgentActor {
     case object Ready
   }
 
-  private final class MasterRegister extends ActorRegister[MasterId, ActorRef](identity) {
+  private final class MasterRegister extends ActorRegister[MasterId, MasterRegister.Entry](_.actor) {
     override protected def noSuchKeyProblem(masterId: MasterId) = NoSuchMasterProblem(masterId)
 
-    override def insert(kv: (MasterId, ActorRef)) = super.insert(kv)
+    override def insert(kv: (MasterId, MasterRegister.Entry)) = super.insert(kv)
 
     override def -=(a: ActorRef) = super.-=(a)
+  }
+  object MasterRegister {
+    final case class Entry(masterId: MasterId, agentRunId: AgentRunId, eventWatch: JournalEventWatch[Event], actor: ActorRef)
   }
 }

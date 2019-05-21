@@ -122,7 +122,7 @@ echo PID $pid
 
 terminate() {
   echo
-  echo Terminate JobScheduler Agent
+  echo Terminate JobScheduler Agent Server
   # Add some seconds to start Java with AgentClientMain
   terminateTimeout=30
   if [ "$SHELL" = "/bin/bash" ]; then
@@ -144,7 +144,7 @@ terminate() {
 }
 
 trap terminate SIGTERM SIGINT
-wait $pid || echo "JobScheduler Agent exited with exit code $?"
+wait $pid || echo "JobScheduler Agent Server exited with exit code $?"
 rm $pidFile
 trap - SIGTERM SIGINT
 
@@ -156,5 +156,5 @@ if [ -n "$crashKillScript" -a -s "$crashKillScript" ]; then :
   (. "$crashKillScript" || true)
   ps fux || true
 fi
-echo -e "\n$(date --iso-8601=ns) JobScheduler Agent has been shut down" >>$logs/stdouterr.log
+echo -e "\n$(date --iso-8601=ns) JobScheduler Agent Server has been shut down" >>$logs/stdouterr.log
 exit $returnCode

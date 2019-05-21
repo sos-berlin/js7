@@ -18,6 +18,8 @@ import scala.util.control.NoStackTrace
   */
 sealed trait Problem
 {
+  def codeOption: Option[ProblemCode] = None
+
   def throwable: Throwable
 
   def throwableOption: Option[Throwable]
@@ -91,6 +93,8 @@ object Problem
     def code: ProblemCode
     def arguments: Map[String, String]
 
+    override final def codeOption = Some(code)
+
     final def cause = None
 
     def rawMessage = CodedMessages.problemCodeToMessage(code, arguments)
@@ -111,7 +115,13 @@ object Problem
   }
 
   trait Coded extends HasCode {
-    final val code = ProblemCode(getClass.simpleScalaName stripSuffix "Problem")
+    final val code = Coded.codeOf(getClass)
+  }
+  object Coded {
+    trait Companion {
+      val code = codeOf(getClass)
+    }
+    private[Coded] def codeOf(clas: Class[_]) = ProblemCode(clas.simpleScalaName stripSuffix "Problem")
   }
 
   trait ArgumentlessCoded extends Coded {
@@ -145,7 +155,7 @@ object Problem
   final case class Multiple private[problem](problems: Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
-    def throwable = new ProblemException(this)
+    def throwable = new ProblemException(this) with NoStackTrace
 
     def throwableOption: None.type = None
 

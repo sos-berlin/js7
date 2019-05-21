@@ -6,8 +6,9 @@ import akka.util.Timeout
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, TakeSnapshot, Terminate}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -50,8 +51,8 @@ extends Actor {
   }
 
   private def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Checked[Response]], batchId: Option[InternalCommandId] = None): Unit = {
-    val run = register.add(command, batchId)
-    logCommand(run)
+    val run = register.add(meta.user.id, command, batchId)
+    logCommand(meta.user.id, run)
     val myResponse = Promise[Checked[Response]]()
     executeCommand2(batchId, run.internalId, command, meta,myResponse)
     myResponse.future onComplete { tried =>
@@ -59,7 +60,7 @@ extends Actor {
     }
   }
 
-  private def logCommand(run: CommandRun[AgentCommand]): Unit =
+  private def logCommand(userId: UserId, run: CommandRun[AgentCommand]): Unit =
     run.command match {
       case Batch(_) =>  // Log only individual commands
       case _ => logger.info(run.toString)
@@ -81,7 +82,7 @@ extends Actor {
       case NoOperation =>
         response.success(Valid(AgentCommand.Response.Accepted))
 
-      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) =>
+      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: Terminate) =>
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop =>

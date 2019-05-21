@@ -2,19 +2,22 @@ package com.sos.jobscheduler.master.agent
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, PoisonPill, Props}
 import akka.http.scaladsl.model.Uri
+import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
-import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -23,21 +26,24 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.agent.AgentSnapshot
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 import com.typesafe.config.ConfigUtil
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
 
 /**
   * Couples to an Agent, sends orders, and fetches events.
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentRefPath: AgentRefPath, initialUri: Uri, masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
+final class AgentDriver private(agentRefPath: AgentRefPath,
+  initialUri: Uri, initialAgentRunId: Option[AgentRunId], initialEventId: EventId,
+  masterConfiguration: MasterConfiguration, protected val journalActor: ActorRef)
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash {
@@ -60,16 +66,19 @@ with ReceiveLoggingActor.WithStash {
     config.optionAs[SecretString](authConfigPath)
       .map(password => UserAndPassword(masterConfiguration.masterId.toUserId, password))
 
+  private val agentRunIdOnce = new SetOnce[AgentRunId]
+  initialAgentRunId foreach agentRunIdOnce.:=
+
+  private var lastEventId = initialEventId
   private var startInputReceived = false
   private var isCoupled = false
   private var isAwaitingFetchedEvents = false
-  private var lastEventId = EventId.BeforeFirst
   private var couplingNumber = 0L
   @volatile
   private var keepEventsCancelable: Option[Cancelable] = None
   private var delayKeepEvents = false
   private var logCount = 0
-  private var lastError: Option[(Long, String)] = None
+  private var lastError: Option[(Long, Problem)] = None
   private var terminating = false
 
   private val commandQueue = new CommandQueue(logger, batchSize = batchSize) {
@@ -79,14 +88,15 @@ with ReceiveLoggingActor.WithStash {
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
       self ! Internal.BatchSucceeded(queuedInputResponses)
 
-    protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable) =
-      self ! Internal.BatchFailed(inputs, throwable)
+    protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
+      self ! Internal.BatchFailed(inputs, problem)
   }
 
   protected def key = agentRefPath  // Only one version is active at any time
   protected def recoverFromSnapshot(snapshot: Any) = {}
   protected def recoverFromEvent(event: MasterAgentEvent) = {}
-  protected def snapshot = None
+
+  protected def snapshot = Some(AgentSnapshot(agentRefPath, agentRunIdOnce.toOption, lastEventId))
 
   override def preStart() = {
     super.preStart()
@@ -110,22 +120,14 @@ with ReceiveLoggingActor.WithStash {
     case Internal.Couple =>
       delayKeepEvents = false
       recouplePause.onCouple()
-      if (client == null/*only initially*/ || client.baseUri != uri) {
+      if (client == null || client.baseUri != uri) {
         if (client != null) client.close()
         client = AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
       }
-      ( for {
-          _ <- client.login(agentUserAndPassword)  // Separate commands because AgentClient catches the SessionToken of Login.LoggedIn
-          _ <- if (lastEventId == EventId.BeforeFirst)
-                client.commandExecute(AgentCommand.RegisterAsMaster)
-              else
-                Task.pure(Completed)
-        } yield Completed
-      ).materialize foreach { tried =>
-        self ! Internal.AfterCoupling(tried)
+      agentRunIdOnce.toOption match {
+        case None => registerMaster()
+        case Some(agentRunId) => coupleMaster(agentRunId)
       }
-      unstashAll()
-      become("coupling")(coupling)
 
     case Input.Reconnect(uri_) =>
       uri = uri_
@@ -134,23 +136,67 @@ with ReceiveLoggingActor.WithStash {
       stash()
   }
 
+  private def registerMaster(): Unit = {
+    if (lastEventId != EventId.BeforeFirst) {
+      sys.error(s"Agent coupling internal error: No AgentRunId but lastEventId=$lastEventId")
+    }
+    unstashAll()
+    become("registering")(registering)
+    (client.login(agentUserAndPassword) >>
+     client.commandExecute(AgentCommand.RegisterAsMaster))
+      .map(_.map(_.agentRunId))
+      .materialize
+      .foreach { tried =>
+        self ! Internal.AfterMasterRegistering(Checked.fromTry(tried).flatten)
+      }
+  }
+
+  private def registering: Receive = {
+    case Internal.AfterMasterRegistering(Valid(agentRunId)) =>
+      unstashAll()
+      become("coupling")(coupling)
+      persist(AgentRegisteredMaster(agentRunId)) { event =>
+        update(event)
+        self ! Internal.AfterCoupling(Valid(Completed))
+      }
+
+    case Internal.AfterMasterRegistering(Invalid(problem)) =>
+      handleConnectionError(problem) {
+        recouple()
+      }
+
+    case _ =>
+      stash()
+  }
+
+  private def coupleMaster(agentRunId: AgentRunId): Unit = {
+    unstashAll()
+    become("coupling")(coupling)
+    (client.login(agentUserAndPassword) >>
+     client.commandExecute(AgentCommand.CoupleMaster(agentRunId, eventId = lastEventId)))
+      .materialize
+      .foreach { tried =>
+        self ! Internal.AfterCoupling(
+          Checked.fromTry(tried).flatten.map((_: AgentCommand.Response.Accepted) => Completed))
+      }
+  }
+
   private def coupling: Receive = {
-    case Internal.AfterCoupling(Success(Completed)) =>
+    case Internal.AfterCoupling(Valid(Completed)) =>
       couplingNumber += 1
       lastError = None
       isCoupled = true
       recouplePause.onCouplingSucceeded()
       commandQueue.onRecoupled()
-      // TODO AgentRunId einführen und vergleichen, außerdem EventId vergleichen, um erfolgreiche Koppelung melden
       logger.info(s"Coupled with ${client.baseUri}")
       unstashAll()
       become("waitingForStart")(waitingForStart)
       if (startInputReceived) {
-        self ! Input.Start(lastEventId)
+        self ! Input.Start
       }
 
-    case Internal.AfterCoupling(Failure(throwable)) =>
-      handleConnectionError(throwable) {
+    case Internal.AfterCoupling(Invalid(problem)) =>
+      handleConnectionError(problem) {
         recouple()
       }
 
@@ -159,8 +205,7 @@ with ReceiveLoggingActor.WithStash {
   }
 
   private def waitingForStart: Receive = {
-    case Input.Start(eventId) =>
-      lastEventId = eventId
+    case Input.Start =>
       startInputReceived = true
       commandQueue.maySend()
       unstashAll()
@@ -184,7 +229,7 @@ with ReceiveLoggingActor.WithStash {
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, Some(eventFetchTimeout), limit = EventLimit))
           .materialize foreach { tried =>
             // *** Asynchronous ***
-            self ! Internal.Fetched(tried, after, fetchCouplingNumber)
+            self ! Internal.Fetched(Checked.fromTry(tried).flatten, after, fetchCouplingNumber)
           }
         }
 
@@ -292,15 +337,15 @@ with ReceiveLoggingActor.WithStash {
 
     case Internal.CommandQueueReady =>
 
-    case Internal.Fetched(Failure(throwable), _, fetchCouplingNumber) =>
+    case Internal.Fetched(Invalid(problem), _, fetchCouplingNumber) =>
       isAwaitingFetchedEvents = false
       if (fetchCouplingNumber == couplingNumber && isCoupled) {
-        handleConnectionError(throwable) {
+        handleConnectionError(problem) {
           recouple()
         }
       }
 
-    case Internal.Fetched(Success(eventSeq), after, fetchCouplingNumber) =>
+    case Internal.Fetched(Valid(eventSeq), after, fetchCouplingNumber) =>
       isAwaitingFetchedEvents = false
       if (fetchCouplingNumber != couplingNumber) {
         logger.debug(s"Discarding obsolete Agent response Internal.Fetched(after=$after)")
@@ -325,9 +370,9 @@ with ReceiveLoggingActor.WithStash {
             }
 
           case torn: TearableEventSeq.Torn =>
-            val problem = BadResponseFromAgentProblem(agentRefPath, uri = client.baseUri.toString, torn, requestingAfter = after)
+            val problem = AgentLostEventsProblem(agentRefPath, uri = client.baseUri.toString, torn, requestingAfter = after)
             logger.error(problem.toString)
-            persist(MasterAgentEvent.AgentCouplingFailed(problem.toString)) { _ =>
+            persist(MasterAgentEvent.AgentCouplingFailed(problem)) { _ =>
               if (isCoupled) scheduler.scheduleOnce(15.second) {
                 self ! Internal.FetchEvents
               }
@@ -335,19 +380,18 @@ with ReceiveLoggingActor.WithStash {
         }
   }
 
-  private def handleConnectionError(throwable: Throwable)(andThen: => Unit): Unit = {
-    val msg = throwable.toStringWithCauses
+  private def handleConnectionError(problem: Problem)(andThen: => Unit): Unit = {
     if (terminating)
-      logger.debug(s"While terminating: $msg")
-    else if (lastError.forall(_._1 == couplingNumber) && lastError.forall(_._2 != msg)) {
-      lastError = Some(couplingNumber -> msg)
-      logger.warn(msg)
-      if (throwable.getStackTrace.nonEmpty) logger.debug(msg, throwable)
-      persist(MasterAgentEvent.AgentCouplingFailed(throwable.toStringWithCauses)) { _ =>
+      logger.debug(s"While terminating: $problem")
+    else if (lastError.forall(_._1 == couplingNumber) && lastError.forall(_._2 != problem)) {
+      lastError = Some(couplingNumber -> problem)
+      logger.warn(problem.toString)
+      for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(problem.toString, t)
+      persist(MasterAgentEvent.AgentCouplingFailed(problem)) { _ =>
         andThen
       }
     } else {
-      logger.debug(msg)
+      logger.debug(problem.toString)
       andThen
     }
   }
@@ -358,10 +402,10 @@ with ReceiveLoggingActor.WithStash {
       keepEventsCancelable = None
       isCoupled = false
       client.logout().materialize foreach { _ =>
-        self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
+        self ! Internal.MaybeLoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
       }
-      become("LoggedOut") {
-        case Internal.LoggedOut =>
+      become("MaybeLoggedOut") {
+        case Internal.MaybeLoggedOut =>
           scheduler.scheduleOnce(recouplePause.nextPause()) {
             self ! Internal.Couple
           }
@@ -374,6 +418,14 @@ with ReceiveLoggingActor.WithStash {
     }
   }
 
+  private def update(event: MasterAgentEvent): Unit =
+    event match {
+      case AgentRegisteredMaster(agentRunId) =>
+        agentRunIdOnce := agentRunId
+
+      case _ => sys.error(s"Unexpected event: $event")
+    }
+
   override def toString = s"AgentDriver($agentRefPath)"
 }
 
@@ -381,8 +433,10 @@ private[master] object AgentDriver
 {
   private val EventClasses = Set[Class[_ <: Event]](classOf[OrderEvent], classOf[AgentMasterEvent.AgentReadyForMaster])
 
-  def props(agentRefPath: AgentRefPath, uri: Uri, masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler) =
-    Props { new AgentDriver(agentRefPath, uri, masterConfiguration, journalActor) }
+  def props(agentRefPath: AgentRefPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
+    masterConfiguration: MasterConfiguration, journalActor: ActorRef)(implicit s: Scheduler)
+  =
+    Props { new AgentDriver(agentRefPath, uri, agentRunId, eventId, masterConfiguration, journalActor) }
 
   private class RecouplingPause {
     private val Minimum = 1.second
@@ -407,7 +461,7 @@ private[master] object AgentDriver
   object Input {
     final case class Reconnect(uri: Uri)
 
-    final case class Start(lastAgentEventId: EventId)
+    case object Start
 
     final case class AttachOrder(order: Order[Order.FreshOrReady], agentRefPath: AgentRefPath, signedWorkflow: Signed[Workflow]) extends Input with Queueable {
       def orderId = order.id
@@ -431,18 +485,19 @@ private[master] object AgentDriver
 
   private object Internal {
     final case object Couple
-    final case class AfterCoupling(result: Try[Completed]) extends DeadLetterSuppression
-    final case object LoggedOut extends DeadLetterSuppression
+    final case class AfterMasterRegistering(result: Checked[AgentRunId]) extends DeadLetterSuppression
+    final case class AfterCoupling(result: Checked[Completed]) extends DeadLetterSuppression
+    final case object MaybeLoggedOut extends DeadLetterSuppression
     final case object Ready
     final case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
-    final case class BatchFailed(inputs: Seq[Queueable], throwable: Throwable) extends DeadLetterSuppression
+    final case class BatchFailed(inputs: Seq[Queueable], problem: Problem) extends DeadLetterSuppression
     final case object FetchEvents extends DeadLetterSuppression/*TODO Besser: Antwort empfangen und mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
-    final case class Fetched(stampedTry: Try[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
+    final case class Fetched(stampedChecked: Checked[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
     final case class KeepEventsDelayed(agentEventId: EventId) extends DeadLetterSuppression
   }
 
-  private final case class BadResponseFromAgentProblem(agentRefPath: AgentRefPath, uri: String, torn: TearableEventSeq.Torn,
+  private final case class AgentLostEventsProblem(agentRefPath: AgentRefPath, uri: String, torn: TearableEventSeq.Torn,
     requestingAfter: EventId) extends Problem.Coded
   {
     def arguments = Map(

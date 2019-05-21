@@ -3,6 +3,7 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
@@ -46,8 +47,8 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
 
   "jobscheduler.webserver.auth.public = false" in {
     runMyTest(isPublic = false) { (master, agentPort) =>
-      assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.message
-        == s"HTTP 401 Unauthorized: http://127.0.0.1:$agentPort/agent/api/command: The resource requires authentication, which was not supplied with the request")
+      assert(master.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
+        == Problem(s"HTTP 401 Unauthorized: http://127.0.0.1:$agentPort/agent/api/command: The resource requires authentication, which was not supplied with the request"))
     }
   }
 

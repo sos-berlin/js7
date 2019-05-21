@@ -59,7 +59,7 @@ trait JournalRecoverer[E <: Event] {
 
   private def recoverEvents(journalReader: JournalReader[E]): Unit =
     for (stampedEvent <- journalReader.nextEvents()) {
-      wrapException(s"Error recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
+      wrapException(s"Error while recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
         eventCount += 1
         recoverEvent(stampedEvent)
       }

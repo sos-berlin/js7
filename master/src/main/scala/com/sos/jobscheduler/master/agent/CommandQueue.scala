@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.agent
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.master.agent.AgentDriver.{Input, KeepEventsQueueable, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
@@ -16,11 +16,11 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler) {
-
+private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler)
+{
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
-  protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable): Unit
+  protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Unit
 
   private val executingInputs = mutable.Set[Queueable]()
   private var freshReconnected = true  // After connect, send a single command first. Start queueing first after one successful response.
@@ -67,10 +67,10 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
             asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
 
           case Success(Invalid(problem)) =>
-            asyncOnBatchFailed(inputs, problem.throwable)
+            asyncOnBatchFailed(inputs, problem)
 
           case Failure(t) =>
-            asyncOnBatchFailed(inputs, t)
+            asyncOnBatchFailed(inputs, Problem.pure(t))
         }
     }
   }

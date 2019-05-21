@@ -14,7 +14,7 @@ import com.sos.jobscheduler.core.startup.JavaMainSupport.withShutdownHooks
 import scala.concurrent.duration._
 
 /**
- * JobScheduler Agent.
+ * JobScheduler Agent Server.
  *
  * @author Joacim Zschimmer
  */
@@ -23,21 +23,21 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): Unit = {
-    logger.info(s"Agent ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
         agent.terminated.awaitInfinite
       }
     }
-    val msg = "JobScheduler Agent terminates"
+    val msg = "JobScheduler Agent Server terminates"
     logger.info(msg)
     println(msg)
 
   }
 
   private def onJavaShutdown(agent: RunningAgent)(timeout: FiniteDuration): Unit = {
-    logger.warn("Trying to terminate Agent due to Java shutdown")
+    logger.warn("Trying to terminate JobScheduler Agent Server due to Java shutdown")
     import agent.scheduler
     val sigkillAfter = agent.config.getDuration("jobscheduler.termination.sigkill-after").toFiniteDuration
     agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter))).runAsyncAndForget

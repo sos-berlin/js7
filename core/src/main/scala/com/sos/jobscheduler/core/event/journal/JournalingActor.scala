@@ -45,6 +45,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   }
 
   override def preStart() = {
+    // FIXME Race condition: A snapshot before JournalActor has received RegisterMe, will not include this Actor
     journalActor ! JournalActor.Input.RegisterMe
     super.preStart()
   }

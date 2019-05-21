@@ -8,14 +8,12 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
-import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -30,7 +28,6 @@ import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
@@ -47,7 +44,6 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import java.nio.file.Path
 import java.time.ZoneId
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
@@ -61,7 +57,7 @@ import scala.concurrent.{Future, Promise}
   */
 final class AgentOrderKeeper(
   masterId: MasterId,
-  journalFileBase: Path,
+  eventWatch: JournalEventWatch[Event],
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
@@ -75,8 +71,7 @@ extends MainJournalingActor[Event] with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
-  private val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, journalFileBase)
-  private val eventWatch = new JournalEventWatch(journalMeta, conf.config)
+  private val journalMeta = eventWatch.journalMeta
   protected val journalActor = watch(actorOf(
     JournalActor.props(journalMeta, conf.config, keyedEventBus, scheduler),
     "Journal"))
@@ -205,10 +200,7 @@ extends MainJournalingActor[Event] with Stash {
 
   private def ready: Receive = {
     case Input.ExternalCommand(cmd, response) =>
-      response.completeWith(processOrderCommand(cmd))
-
-    case Input.GetEventWatch =>
-      sender() ! Valid(eventWatch)
+      response.completeWith(processCommand(cmd))
 
     case terminate: AgentCommand.Terminate =>
       termination.start(terminate)
@@ -249,6 +241,17 @@ extends MainJournalingActor[Event] with Stash {
 
     case Internal.Due(orderId) if orderRegister contains orderId =>
       proceedWithOrder(orderId)
+  }
+
+  private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
+    case cmd: OrderCommand => processOrderCommand(cmd)
+
+    case AgentCommand.TakeSnapshot =>
+      (journalActor ? JournalActor.Input.TakeSnapshot)
+        .mapTo[JournalActor.Output.SnapshotTaken.type]
+        .map(_ => Valid(AgentCommand.Response.Accepted))
+
+    case _ => Future.successful(Invalid(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
@@ -523,14 +526,9 @@ extends MainJournalingActor[Event] with Stash {
 object AgentOrderKeeper {
   private val logger = Logger(getClass)
 
-  private val SnapshotJsonFormat = TypedJsonCodec[Any](
-    Subtype[Workflow],
-    Subtype[Order[Order.State]])
-
   sealed trait Input
   object Input {
-    final case object GetEventWatch
-    final case class ExternalCommand(command: OrderCommand, response: Promise[Checked[Response]])
+    final case class ExternalCommand(command: AgentCommand, response: Promise[Checked[Response]])
   }
 
   private object Internal {

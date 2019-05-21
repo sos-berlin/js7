@@ -2,11 +2,11 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ExecutablePath
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
@@ -15,14 +15,14 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApiTest extends FreeSpec with DirectoryProviderForScalaTest {
+final class AkkaHttpMasterApiTest extends FreeSpec with MasterAgentForScalaTest {
 
   protected val agentRefPaths = Nil
   protected val fileBased = TestWorkflow :: Nil

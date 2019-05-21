@@ -35,7 +35,7 @@ import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
-import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
+import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -135,19 +135,24 @@ with MainJournalingActor[Event]
   private def masterState = MasterState(
     persistedEventId,
     repo,
-    orderRegister.values.map(_.order).toImmutableSeq,
-    agentRegister.values.map(entry => entry.agentRefPath -> entry.lastAgentEventId).uniqueToMap)
+    agents = Nil,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
+    orderRegister.values.map(_.order).toImmutableSeq)
 
   private def recover() = {
     val recoverer = new MasterJournalRecoverer(journalMeta)
     recoverer.recoverAll()
     for (masterState <- recoverer.masterState) {
       setRepo(masterState.repo)
+      val pathToAgentSnapshot = masterState.agents.toKeyedMap(_.agentRefPath)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
-        registerAgent(agentRef)
+        val agentSnapshot = pathToAgentSnapshot.checked(agentRef.path).orThrow
+        val e = registerAgent(agentRef, agentSnapshot.agentRunId, eventId = agentSnapshot.eventId)
+        // Send an extra RegisterMe here, to be sure JournalActor has registered the AgentDriver when a snapshot is taken
+        // TODO Fix fundamentally the race condition with JournalActor.Input.RegisterMe
+        journalActor.tell(JournalActor.Input.RegisterMe, e.actor)
       }
-      for ((agentRefPath, eventId) <- masterState.agentToEventId) {
-        agentRegister(agentRefPath).lastAgentEventId = eventId
+      for (agentSnapshot <- masterState.agents) {
+        agentRegister(agentSnapshot.agentRefPath).lastAgentEventId = agentSnapshot.eventId
       }
       for (order <- masterState.orders) {
         orderRegister.insert(order.id -> new OrderEntry(order))
@@ -350,9 +355,9 @@ with MainJournalingActor[Event]
 
       case MasterCommand.TakeSnapshot =>
         import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes
-          (journalActor ? JournalActor.Input.TakeSnapshot)
-            .mapTo[JournalActor.Output.SnapshotTaken.type]
-            .map(_ => Valid(MasterCommand.Response.Accepted))
+        (journalActor ? JournalActor.Input.TakeSnapshot)
+          .mapTo[JournalActor.Output.SnapshotTaken.type]
+          .map(_ => Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.Terminate =>
         logger.info("Command Terminate")
@@ -372,7 +377,7 @@ with MainJournalingActor[Event]
     def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
       deletionNotSupported(diff) :+
         Valid(SyncIO {
-          for (agentRef <- diff.added) registerAgent(agentRef).start()
+          for (agentRef <- diff.added) registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst).start()
           for (agentRef <- diff.updated) {
             agentRegister.update(agentRef)
             agentRegister(agentRef.path).reconnect()
@@ -414,9 +419,9 @@ with MainJournalingActor[Event]
     orderProcessor = new OrderProcessor(repo.idTo[Workflow], idToOrder)
   }
 
-  private def registerAgent(agent: AgentRef): AgentEntry = {
+  private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.path, agent.uri, masterConfiguration, journalActor = journalActor),
+      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId, masterConfiguration, journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.path.withoutStartingSlash)))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.path -> entry)
@@ -649,7 +654,7 @@ private[master] object MasterOrderKeeper {
     def agentRefPath = agentRef.path
 
     def start()(implicit sender: ActorRef): Unit =
-      actor ! AgentDriver.Input.Start(lastAgentEventId = lastAgentEventId)
+      actor ! AgentDriver.Input.Start
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.Reconnect(uri = agentRef.uri)

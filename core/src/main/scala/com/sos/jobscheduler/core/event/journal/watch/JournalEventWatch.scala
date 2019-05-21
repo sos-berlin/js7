@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.event.journal.watch
 import cats.data.Validated.Invalid
 import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -16,6 +16,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFil
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
 import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.problems.{MasterRequiresUnknownEventIdProblem}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
@@ -32,7 +33,7 @@ import scala.concurrent.Promise
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
-final class JournalEventWatch[E <: Event](journalMeta: JournalMeta[E], config: Config)
+final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], config: Config)
   (implicit protected val scheduler: Scheduler)
 extends AutoCloseable
 with RealEventWatch[E]
@@ -62,7 +63,7 @@ with JournalingObserver
   private def currentEventReader =
     currentEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
 
-  def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
+  protected[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
@@ -83,6 +84,15 @@ with JournalingObserver
     started.trySuccess(this)
     evictUnusedEventReaders()
   }
+
+  def checkEventId(eventId: EventId): Checked[Unit] =
+    eventsAfter(eventId) match {
+      case Some(iterator) =>
+        iterator.close()
+        Checked.unit
+      case None =>
+        Invalid(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
+    }
 
   def tornEventId =
     synchronized {

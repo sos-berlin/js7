@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -15,15 +16,14 @@ import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, catch_, try_}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.RetryTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import com.sos.jobscheduler.base.time.ScalaTime._
 
-final class RetryTest extends FreeSpec with DirectoryProviderForScalaTest
+final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 {
   override protected val masterConfig = ConfigFactory.parseString(
     s"""jobscheduler.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure

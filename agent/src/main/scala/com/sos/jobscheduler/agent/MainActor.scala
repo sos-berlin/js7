@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, Simple
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.command.CommandMeta
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -43,6 +44,8 @@ extends Actor {
     new CommandActor.Handle(actor)(akkaAskTimeout)
   }
 
+  private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, agentHandle, meta)
+
   override def preStart() = {
     super.preStart()
     for (t <- stoppedPromise.future.failed) readyPromise.tryFailure(t)
@@ -62,7 +65,7 @@ extends Actor {
 
   def receive = {
     case AgentActor.Output.Ready =>
-      readyPromise.success(Ready(commandHandler, agentHandle))
+      readyPromise.success(Ready(api))
 
     case Input.ExternalCommand(userId, cmd, response) =>  // For RunningMaster
       agentHandle.executeCommand(cmd, userId, response)
@@ -77,7 +80,7 @@ extends Actor {
 object MainActor {
   private val logger = Logger(getClass)
 
-  final case class Ready(commandHandler: CommandHandler, agentHandle: AgentHandle)
+  final case class Ready(api: CommandMeta => DirectAgentApi)
 
   object Input {
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])

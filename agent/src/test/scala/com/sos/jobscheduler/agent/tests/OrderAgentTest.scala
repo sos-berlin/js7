@@ -63,7 +63,8 @@ final class OrderAgentTest extends FreeSpec {
             agentClient.commandExecute(RegisterAsMaster).await(99.s).orThrow
           } .status shouldEqual Unauthorized
           agentClient.login(Some(TestUserAndPassword)) await 99.s
-          agentClient.commandExecute(RegisterAsMaster) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)  // Without Login, this registers all anonymous clients
+          assert(agentClient.commandExecute(RegisterAsMaster).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+            .isInstanceOf[RegisterAsMaster.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> "X"))
 

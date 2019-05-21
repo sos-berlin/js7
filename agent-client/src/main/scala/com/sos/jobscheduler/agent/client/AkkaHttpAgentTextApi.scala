@@ -47,7 +47,7 @@ extends HasCloser with ProvideActorSystem with TextApi with SessionApi with Akka
 
   protected def uriPrefixPath = "/agent"
 
-  protected def serverName = "JobScheduler Agent"
+  protected def serverName = "JobScheduler Agent Server"
 
   protected val sessionUri = agentUris.session.toString
 

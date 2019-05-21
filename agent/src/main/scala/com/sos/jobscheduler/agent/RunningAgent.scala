@@ -5,11 +5,9 @@ import akka.http.scaladsl.model.Uri
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.RunningAgent._
-import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.auth.{SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.Completed
@@ -33,7 +31,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
 /**
- * JobScheduler Agent.
+ * JobScheduler Agent Server.
  *
  * Integration test in engine-tests, for example com.sos.jobscheduler.tests.jira.js1291.JS1291AgentIT.
  *
@@ -43,8 +41,7 @@ final class RunningAgent private(
   val webServer: AgentWebServer,
   mainActor: ActorRef,
   val terminated: Future[Completed],
-  private[agent] val commandHandler: CommandHandler,
-  agentHandle: AgentHandle,
+  val api: CommandMeta => DirectAgentApi,
   val sessionToken: SessionToken,
   closer: Closer,
   @TestOnly val injector: Injector)
@@ -70,17 +67,14 @@ extends AutoCloseable {
       } yield t
     }
 
-  /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
+  /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */  // TODO Do we need all this code?
   private def directExecuteCommand(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
       promiseFuture[Checked[AgentCommand.Response]](promise =>
         mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
 
-  def api(meta: CommandMeta): DirectAgentApi =
-    new DirectAgentApi(commandHandler, agentHandle, meta)
-
   def executeCommand(command: AgentCommand, meta: CommandMeta = CommandMeta.Anonymous): Task[Checked[AgentCommand.Response]] =
-    commandHandler.execute(command, meta)
+    api(meta).commandExecute(command)
 }
 
 object RunningAgent {
@@ -136,10 +130,9 @@ object RunningAgent {
 
     for  {
       ready <- mainActorReadyPromise.future
-      api = { meta: CommandMeta => new DirectAgentApi(ready.commandHandler, ready.agentHandle, meta) }
+      api = ready.api
       _ <- webServer.start(api)
     } yield
-      new RunningAgent(webServer, mainActor, terminated = stoppedPromise.future, ready.commandHandler, ready.agentHandle, sessionToken,
-        closer, injector)
+      new RunningAgent(webServer, mainActor, terminated = stoppedPromise.future, api, sessionToken, closer, injector)
   }
 }

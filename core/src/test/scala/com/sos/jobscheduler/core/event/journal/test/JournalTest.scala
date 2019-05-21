@@ -2,11 +2,11 @@ package com.sos.jobscheduler.core.event.journal.test
 
 import akka.pattern.ask
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.blockingThreadFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
@@ -165,7 +165,7 @@ object JournalTest {
   private val FirstJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.20",
+      "version": "0.21",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 0,
@@ -252,7 +252,7 @@ object JournalTest {
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JobScheduler.Journal",
-      "version": "0.20",
+      "version": "0.21",
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "eventId": 1000066,

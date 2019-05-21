@@ -15,7 +15,8 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.master.data.agent.{AgentEventId, AgentEventIdEvent}
+import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
@@ -28,17 +29,17 @@ extends JournalRecoverer[Event]
 {
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val agentToEventId = mutable.Map[AgentRefPath, EventId]()
+  private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
 
   protected def recoverSnapshot = {
-    case order: Order[Order.State] =>
-      idToOrder.insert(order.id -> order)
-
-    case AgentEventId(agentRefPath, eventId) =>
-      agentToEventId(agentRefPath) = eventId
-
     case event: RepoEvent =>
       repo = repo.applyEvent(event).orThrow
+
+    case snapshot: AgentSnapshot =>
+      pathToAgent.insert(snapshot.agentRefPath -> snapshot)
+
+    case order: Order[Order.State] =>
+      idToOrder.insert(order.id -> order)
   }
 
   override protected def onAllSnapshotRecovered() = {
@@ -55,6 +56,17 @@ extends JournalRecoverer[Event]
         case KeyedEvent(_: NoKey, event: RepoEvent) =>
           repo = repo.applyEvent(event).orThrow
 
+        case KeyedEvent(agentRefPath: AgentRefPath, event: MasterAgentEvent) =>
+          event match {
+            case AgentRegisteredMaster(agentRunId) =>
+              pathToAgent.insert(agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))
+            case _ =>
+          }
+
+        case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>
+          // Preceding AgentSnapshot is required (see recoverSnapshot)
+          pathToAgent(a) = pathToAgent(a).copy(eventId = agentEventId)
+
         case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
           event match {
             case event: OrderAdded =>
@@ -70,10 +82,6 @@ extends JournalRecoverer[Event]
             case _: OrderStdWritten =>
           }
 
-        case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>
-          agentToEventId(a) = agentEventId
-
-        case KeyedEvent(_, _: MasterAgentEvent) =>
         case KeyedEvent(_, MasterTestEvent) =>
 
         case _ => sys.error(s"Unknown event recovered from journal: $keyedEvent")
@@ -100,5 +108,5 @@ extends JournalRecoverer[Event]
     }
 
   def masterState: Option[MasterState] =
-    hasJournal ? MasterState(lastRecoveredEventId, repo, idToOrder.values.toImmutableSeq, agentToEventId.toMap)
+    hasJournal ? MasterState(lastRecoveredEventId, repo, pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
 }

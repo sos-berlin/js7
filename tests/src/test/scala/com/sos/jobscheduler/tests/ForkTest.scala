@@ -3,9 +3,9 @@ package com.sos.jobscheduler.tests
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.EventSeq
 import com.sos.jobscheduler.data.job.ExecutablePath
@@ -19,13 +19,13 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.data.MasterCommand.CancelOrder
 import com.sos.jobscheduler.tests.ForkTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.{StdoutOutput, script}
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
-final class ForkTest extends FreeSpec with DirectoryProviderForScalaTest
+final class ForkTest extends FreeSpec with MasterAgentForScalaTest
 {
   protected val agentRefPaths = AAgentRefPath :: BAgentRefPath :: Nil
   override protected val masterConfig = ConfigFactory.parseString(

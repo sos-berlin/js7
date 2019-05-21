@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.tests
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.master.client.main.MasterClientMain
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
-final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with DirectoryProviderForScalaTest {
+final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
 
   protected val agentRefPaths = Nil
   protected val fileBased = Nil

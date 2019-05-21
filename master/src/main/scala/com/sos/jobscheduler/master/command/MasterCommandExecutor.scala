@@ -24,7 +24,7 @@ extends CommandExecutor[MasterCommand]
     executeCommand(command, meta, None)
 
   private def executeCommand(command: MasterCommand, meta: CommandMeta, batchId: Option[InternalCommandId]): Task[Checked[command.Response]] = {
-    val run = register.add(command, batchId)
+    val run = register.add(meta.user.id, command, batchId)
     logCommand(run)
     executeCommand2(command, meta, run.internalId, batchId)
       .map { checkedResponse =>

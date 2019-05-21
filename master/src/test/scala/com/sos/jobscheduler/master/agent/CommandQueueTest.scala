@@ -3,8 +3,9 @@ package com.sos.jobscheduler.master.agent
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
@@ -34,7 +35,7 @@ final class CommandQueueTest extends FreeSpec {
   "test" in {
     val commandQueue = new CommandQueue(logger, batchSize = 3) {
       val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
-      val failed = mutable.Buffer[(Vector[Queueable], Throwable)]()
+      val failed = mutable.Buffer[(Vector[Queueable], Problem)]()
 
       protected def executeCommand(command: AgentCommand.Batch) =
         Task(Valid(Batch.Response(Vector.fill(command.commands.size)(Valid(AgentCommand.Response.Accepted)))))
@@ -42,8 +43,8 @@ final class CommandQueueTest extends FreeSpec {
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses
 
-      protected def asyncOnBatchFailed(inputs: Vector[Queueable], throwable: Throwable) =
-        failed += ((inputs, throwable))
+      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
+        failed += ((inputs, problem))
     }
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()

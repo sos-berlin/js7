@@ -29,7 +29,7 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.provider.Provider
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
 import com.sos.jobscheduler.tests.provider.ProviderTest._
-import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
+import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
 import com.typesafe.config.ConfigFactory
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectories, delete}
@@ -43,7 +43,7 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends FreeSpec with DirectoryProviderForScalaTest
+final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
 {
   override protected def suppressRepoInitialization = true
   protected val agentRefPaths = agentRefPath :: Nil

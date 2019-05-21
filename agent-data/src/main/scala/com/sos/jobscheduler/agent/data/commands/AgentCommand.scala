@@ -7,9 +7,9 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
@@ -73,7 +73,23 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  /** Registers the Master identified by current User as a new Master and couples it.
+    * The Agent Server starts a new Agent, dedicated to the Master.
+    * Command may be given twice (in case of a sudden restart).
+    */
   case object RegisterAsMaster extends AgentCommand {
+    /**
+      * @param agentRunId Use the value for `CoupleMaster`. */
+    final case class Response(agentRunId: AgentRunId) extends AgentCommand.Response
+  }
+
+  /** Couples the registered Master identified by current User.
+    * @param agentRunId Must be the value returned by `RegisterAsMaster`. */
+  final case class CoupleMaster(agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+    type Response = Response.Accepted
+  }
+
+  case object TakeSnapshot extends AgentCommand {
     type Response = Response.Accepted
   }
 
@@ -140,16 +156,19 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[KeepEvents]),
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
+      Subtype(deriveCodec[CoupleMaster]),
       Subtype(deriveCodec[Terminate]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),
+      Subtype(TakeSnapshot),
       Subtype(GetOrderIds))
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
-      Subtype(Response.Accepted))
+      Subtype(Response.Accepted),
+      Subtype.named(deriveCodec[RegisterAsMaster.Response], "RegisterAsMasterResponse"))
 
   intelliJuseImport((checkedJsonEncoder[Int], checkedJsonDecoder[Int]))
 }
