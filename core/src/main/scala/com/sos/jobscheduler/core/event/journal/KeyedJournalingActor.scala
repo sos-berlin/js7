@@ -11,10 +11,8 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 /**
   * @author Joacim Zschimmer
   */
-trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
-
-  private var registered = false
-
+trait KeyedJournalingActor[E <: Event] extends JournalingActor[E]
+{
   protected def key: E#Key
   protected def snapshot: Option[Any]
   protected def recoverFromSnapshot(snapshot: Any): Unit
@@ -24,35 +22,27 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   protected final def snapshots: Future[Iterable[Any]] =
     Future.successful(snapshot.toList)
 
-  protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: EE => A): Future[A] = {
-    registerMe()
+  protected final def persist[EE <: E, A](event: EE, async: Boolean = false)(callback: EE => A): Future[A] =
     super.persistKeyedEvent(KeyedEvent(key, event), async = async) { stampedEvent =>
       callback(stampedEvent.value.event.asInstanceOf[EE])
     }
-  }
 
-  protected final def persistAcceptEarly[EE <: E, A](event: EE, delay: FiniteDuration = Duration.Zero): Future[Accepted] = {
-    registerMe()
+  protected final def persistAcceptEarly[EE <: E, A](event: EE, delay: FiniteDuration = Duration.Zero): Future[Accepted] =
     super.persistKeyedEventAcceptEarly(KeyedEvent(key, event), delay = delay)
-  }
 
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
     (callback: Seq[EE] => A)
-  : Future[A] = {
-    registerMe()
+  : Future[A] =
     super.persistKeyedEvents(events map (e => Timestamped(KeyedEvent(key, e))), async = async, transaction = true) {
       stampedEvents => callback(stampedEvents map (_.value.event.asInstanceOf[EE]))
     }
-  }
 
   override def journaling = super.journaling orElse {
     case Input.RecoverFromSnapshot(o) =>
-      registered = true
       recoverFromSnapshot(o)
 
     case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) =>
       assert(k == key)
-      registered = true
       recoverFromEvent(event.asInstanceOf[E])
 
     case Input.FinishRecovery =>
@@ -60,16 +50,10 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
       sender() ! KeyedJournalingActor.Output.RecoveryFinished
   }
 
-  private def registerMe(): Unit =
-    if (!registered) {
-      journalActor ! JournalActor.Input.RegisterMe
-      registered = true
-    }
-
   private def callFinishRecovery(): Unit = {
     finishRecovery()
     val snapshot = this.snapshot
-    if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot is null")
+    if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot must not be null")
   }
 
   override def toString = s"${getClass.simpleScalaName}($key)"
