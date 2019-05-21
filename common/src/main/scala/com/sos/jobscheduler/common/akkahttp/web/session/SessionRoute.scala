@@ -26,10 +26,9 @@ trait SessionRoute extends RouteProvider {
     pathEnd {
       post {
         gateKeeper.authenticate { httpUser =>
-          sessionOption(httpUser) { sessionOption =>
+          sessionTokenOption(httpUser) { tokenOption =>
             entity(as[SessionCommand]) { command =>
-              val token = sessionOption map (_.sessionToken)
-              onSuccess(execute(command, httpUser, token).runToFuture) {
+              onSuccess(execute(command, httpUser, tokenOption).runToFuture) {
                 case Invalid(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
                   completeUnauthenticatedLogin(Unauthorized, problem)
 

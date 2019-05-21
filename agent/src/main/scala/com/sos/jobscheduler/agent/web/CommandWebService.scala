@@ -10,8 +10,7 @@ import cats.data.Validated.Invalid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
-import com.sos.jobscheduler.base.auth.{SessionToken, ValidUserPermission}
-import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
@@ -36,10 +35,10 @@ trait CommandWebService extends AgentRouteProvider {
     authorizedUser(ValidUserPermission) { user =>
       post {
         pathEnd {
-          optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption =>
+          sessionTokenOption(user) { maybeSessionToken =>
             entity(as[AgentCommand]) { command =>
               completeTask {
-                val meta = CommandMeta(user, sessionTokenOption map { o => SessionToken(SecretString(o)) })
+                val meta = CommandMeta(user, maybeSessionToken)
                 commandExecute(meta, command).map {
                   case Invalid(problem @ AgentIsShuttingDownProblem) =>
                     ToResponseMarshallable(ServiceUnavailable -> problem)

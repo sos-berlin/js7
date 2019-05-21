@@ -293,7 +293,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "logout clears SessionToken even if invalid" in {
+  "logout clears SessionToken even if unknown" in {
     withSessionApi() { api =>
       api.setSessionToken(SessionToken(SecretString("DISCARDED")))
       assert(api.hasSession)
@@ -302,26 +302,38 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     }
   }
 
-  "Second Login invalidates first Login" in {
-    withSessionApi() { api =>
-      api.login(Some(AUserAndPassword)) await 99.s
-      val Some(firstSessionToken) = api.sessionToken
-      assert(api.hasSession)
-      api.login(Some(BUserAndPassword)) await 99.s
-      assert(api.hasSession)
+  "Login with SessionToken" - {
+    "Known SessionToken is invalidated" in {
+      withSessionApi() { api =>
+        api.login(Some(AUserAndPassword)) await 99.s
+        val Some(firstSessionToken) = api.sessionToken
+        assert(api.hasSession)
+        api.login(Some(BUserAndPassword)) await 99.s
+        assert(api.hasSession)
 
-      withSessionApi() { otherClient =>
-        // Using old SessionToken is Unauthorized
-        otherClient.setSessionToken(firstSessionToken)
-        val exception = intercept[AkkaHttpClient.HttpException] {
-          otherClient.get_[String](s"$localUri/authorizedUser") await 99.s
+        withSessionApi() { otherClient =>
+          // Using old SessionToken is Unauthorized
+          otherClient.setSessionToken(firstSessionToken)
+          val exception = intercept[AkkaHttpClient.HttpException] {
+            otherClient.get_[String](s"$localUri/authorizedUser") await 99.s
+          }
+          requireAccessIsForbidden(otherClient)
+          assert(AkkaHttpClient.sessionMayBeLost(exception))
         }
-        requireAccessIsForbidden(otherClient)
-        assert(AkkaHttpClient.sessionMayBeLost(exception))
-      }
 
-      api.logout() await 99.s shouldEqual Completed
-      assert(!api.hasSession)
+        api.logout() await 99.s shouldEqual Completed
+        assert(!api.hasSession)
+      }
+    }
+
+    "Unknown SessionToken is ignored" in {
+      withSessionApi() { api =>
+        val unknown = SessionToken(SecretString("UNKNKOWN"))
+        api.setSessionToken(unknown)
+        api.login(Some(AUserAndPassword)) await 99.s
+        assert(api.sessionToken.exists(_ != unknown))
+        api.logout() await 99.s shouldEqual Completed
+      }
     }
   }
 

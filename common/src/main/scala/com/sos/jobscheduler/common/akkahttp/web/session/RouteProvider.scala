@@ -8,6 +8,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{Permission, SessionToken}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.ExceptionHandling
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
@@ -16,7 +17,6 @@ import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider._
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRoute.InvalidLoginProblem
 import com.sos.jobscheduler.common.akkahttp.web.session.{Session => Session_}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Duration
@@ -70,16 +70,15 @@ trait RouteProvider extends ExceptionHandling
     * The request is `Forbidden` if
     * the SessionToken is invalid or
     * the given `userId` is not Anonymous and does not match the sessions UserId.*/
-  protected def sessionOption(httpUser: Session#User): Directive[Tuple1[Option[Session]]] = {
-    // user == Anonymous iff no credentials are given
+  protected final def sessionOption(httpUser: Session#User): Directive[Tuple1[Option[Session]]] =
     new Directive[Tuple1[Option[Session]]] {
       def tapply(inner: Tuple1[Option[Session]] => Route) =
-        optionalHeaderValueByName(SessionToken.HeaderName) {
+        sessionTokenOption(httpUser) {
           case None =>
             inner(Tuple1(None))
 
-          case Some(string) =>
-            onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, SessionToken(SecretString(string)))) {
+          case Some(sessionToken) =>
+            onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, sessionToken)) {
               case Invalid(problem) =>
                 completeUnauthenticatedLogin(Forbidden, problem)
 
@@ -88,9 +87,17 @@ trait RouteProvider extends ExceptionHandling
             }
           }
     }
-  }
 
-  protected def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
+  protected final def sessionTokenOption(httpUser: Session#User): Directive[Tuple1[Option[SessionToken]]] =
+    // user == Anonymous iff no credentials are given
+    new Directive[Tuple1[Option[SessionToken]]] {
+      def tapply(inner: Tuple1[Option[SessionToken]] => Route) =
+        optionalHeaderValueByName(SessionToken.HeaderName) { option =>
+          inner(Tuple1(option.map(string => SessionToken(SecretString(string)))))
+        }
+    }
+
+  protected final def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =
     (if (statusCode == Unauthorized) respondWithHeader(gateKeeper.wwwAuthenticateHeader) else pass) {
       val delay =
         if (problem == InvalidLoginProblem) {
