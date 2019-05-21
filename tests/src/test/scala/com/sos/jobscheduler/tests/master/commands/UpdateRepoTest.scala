@@ -88,7 +88,7 @@ final class UpdateRepoTest extends FreeSpec with DirectoryProviderForScalaTest
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Invalid(Problem("Has been deleted: Workflow:/WORKFLOW 3")))
+      Invalid(Problem("Has been deleted: Workflow:/WORKFLOW~3")))
 
     withClue("Tampered with configuration: ") {
       val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)

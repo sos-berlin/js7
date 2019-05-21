@@ -52,8 +52,8 @@ final class RepoTest extends FreeSpec
   "Event input" in {
     assert(testRepo.idTo[AFileBased](APath("/A") ~ "4") == Invalid(Problem("No such 'version 4'")))
     assert(testRepo.idTo[AFileBased](APath("/X") ~ V1) == Invalid(Problem("No such key 'A:/X'")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Invalid(Problem("No such 'B:/Bx 1'")))
-    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Invalid(Problem("Has been deleted: B:/Bx 3")))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V1) == Invalid(Problem("No such 'B:/Bx~1'")))
+    assert(testRepo.idTo[BFileBased](BPath("/Bx") ~ V3) == Invalid(Problem("Has been deleted: B:/Bx~3")))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V1) == Valid(a1))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V2) == Valid(a2))
     assert(testRepo.idTo[AFileBased](APath("/A") ~ V3) == Valid(a3))

@@ -21,7 +21,9 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 
   def toSimpleString = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
 
-  override def toString = if (versionId.isAnonymous) path.toString else s"$path ${versionId.string}"
+  override def toString = if (versionId.isAnonymous) path.toString else s"$path$VersionSeparator${versionId.string}"
+
+  def pretty = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
 }
 
 object FileBasedId
