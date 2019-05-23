@@ -15,7 +15,7 @@ final case class CommandRun[C <: CommonCommand](
   runningSince: Deadline,
   batchInternalId: Option[InternalCommandId])
 {
-  override def toString = s"$idString (User ${userId.string}) ${command.toShortString}"
+  override def toString = s"Command $idString by User '${userId.string}': ${command.toShortString}"
 
   def idString = batchInternalId match {
     case None => internalId.toString  // #101

@@ -45,7 +45,7 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      logger.info(s"Session #${session.sessionNumber} for user '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
+      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${if (session.isEternal) " (eternal)" else ""}")
       sender() ! token
       scheduleNextCleanup()
 
@@ -97,7 +97,7 @@ extends Actor {
     if (session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
-      logger.info(s"Session #${session.sessionNumber} for user '${session.sessionInit.loginUser.id}' changed to user '${newUser.id}'")
+      logger.info(s"Session #${session.sessionNumber} for User '${session.sessionInit.loginUser.id}' switched to User '${newUser.id}'")
       Some(session)
     } else {
       logger.debug(s"Rejecting session token #${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")

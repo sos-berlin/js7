@@ -81,7 +81,6 @@ extends Actor with Stash {
       handleIfReadyForOrder()
 
     case cmd: Command.ProcessOrder if waitingForNextOrder =>
-      logger.debug(s"ProcessOrder(${cmd.order.id})")
       if (cmd.jobKey != jobKey)
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
       else

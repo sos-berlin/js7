@@ -98,11 +98,11 @@ object IdToUser {
         Some(HashedPassword(SecretString(pw), sha512Hasher))
 
       case EntryRegex(_, _) =>
-        logger.error(s"Unknown password encoding scheme for user '$userId'")
+        logger.error(s"Unknown password encoding scheme for User '$userId'")
         None
 
       case _ =>
-        logger.error(s"Missing password encoding scheme for user '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
+        logger.error(s"Missing password encoding scheme for User '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
         None
     }
 }

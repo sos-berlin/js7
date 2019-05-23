@@ -452,7 +452,6 @@ extends MainJournalingActor[Event] with Stash {
     }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit = {
-    logger.debug(s"$orderId is queuing for ${jobEntry.jobKey}")
     jobEntry.queue += orderId
     if (jobEntry.waitingForOrder) {
       tryStartProcessing(jobEntry)
@@ -480,7 +479,6 @@ extends MainJournalingActor[Event] with Stash {
     }
 
   private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
-    logger.debug(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobKey}")
     val defaultArguments = orderEntry.instruction match {
       case o: Execute.Named => o.defaultArguments
       case _ => Map.empty[String, String]

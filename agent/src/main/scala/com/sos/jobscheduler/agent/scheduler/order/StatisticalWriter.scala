@@ -39,6 +39,9 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer
 
   def close() = writer.close()
 
-  def nonEmpty = !isEmpty
-  def isEmpty = messageCount == 0
+  def isRelevant = messageCount > 0 && blockedNanos >= RelevantBlockedNanos
+}
+
+object StatisticalWriter {
+  private val RelevantBlockedNanos = 1.second.toNanos
 }

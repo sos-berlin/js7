@@ -115,7 +115,7 @@ extends KeyedJournalingActor[OrderEvent]
         val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
         val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
         become("processing")(processing(jobKey, workflowJob, jobActor,
-          () => (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
+          () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
         context.watch(jobActor)
         val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
         persistTransaction(orderStarted :+ OrderProcessingStarted) { events =>
@@ -313,7 +313,7 @@ extends KeyedJournalingActor[OrderEvent]
   override def unhandled(msg: Any) =
     msg match {
       case msg @ (_: Command | _: Input) =>
-        logger.error(s"Unhandled message $msg in state '$actorStateName', Order ${order.state}")
+        logger.error(s"Unhandled message $msg in Actor state '$actorStateName', Order state is ${order.state}")
 
       case _ =>
         super.unhandled(msg)
