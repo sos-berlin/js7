@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
+import com.sos.jobscheduler.agent.scheduler.order.StatisticalWriter._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import java.io.Writer

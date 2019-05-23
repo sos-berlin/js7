@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.master
 
+import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -15,18 +18,28 @@ import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.master.MasterJournalRecoverer._
+import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import com.typesafe.config.Config
 import scala.collection.mutable
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
-private final class MasterJournalRecoverer(protected val journalMeta: JournalMeta[Event])
+private final class MasterJournalRecoverer(masterConfiguration: MasterConfiguration)
 extends JournalRecoverer[Event]
 {
+  protected val journalMeta = JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.journalFileBase)
+
+  protected def expectedJournalId = None
+
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
@@ -107,6 +120,29 @@ extends JournalRecoverer[Event]
       case _ =>
     }
 
-  def masterState: Option[MasterState] =
+  private def masterState: Option[MasterState] =
     hasJournal ? MasterState(lastRecoveredEventId, repo, pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
+
+  private def result(config: Config) = new Recovered(this, config)
+}
+
+private[master] object MasterJournalRecoverer
+{
+  def recover(masterConfiguration: MasterConfiguration): Recovered = {
+    val recoverer = new MasterJournalRecoverer(masterConfiguration)
+    recoverer.recoverAll()
+    recoverer.result(masterConfiguration.config)
+  }
+
+  final class Recovered private[MasterJournalRecoverer](recoverer: MasterJournalRecoverer, config: Config)
+  {
+    val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalId), config)
+
+    def journalMeta = recoverer.journalMeta
+    def journalId = recoverer.journalId
+    def masterState = recoverer.masterState
+
+    def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type)(implicit arf: ActorRefFactory) =
+      recoverer.startJournalAndFinishRecovery(journalActor = journalActor, journalingObserver = Some(eventWatch))
+  }
 }

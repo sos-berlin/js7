@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 
@@ -10,6 +10,7 @@ import java.nio.file.{Files, Path}
   */
 private[journal] final class HistoricEventReader[E <: Event](
   protected val journalMeta: JournalMeta[E],
+  protected val expectedJournalId: Option[JournalId],
   val tornEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config)

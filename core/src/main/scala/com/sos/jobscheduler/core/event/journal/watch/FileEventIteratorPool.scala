@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPool._
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
 import java.nio.file.Path
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -14,7 +14,11 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: JournalMeta[E], journalFile: Path, tornEventId: EventId,
+private[watch] final class FileEventIteratorPool[E <: Event](
+  journalMeta: JournalMeta[E],
+  expectedJournalId: Option[JournalId],
+  journalFile: Path,
+  tornEventId: EventId,
   flushedLength: () => Long)
 {
   private val freeIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
@@ -64,7 +68,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](journalMeta: Journa
     synchronized {
       if (closed()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
-      val result = new FileEventIterator[E](journalMeta, journalFile, tornEventId = tornEventId, flushedLength) {
+      val result = new FileEventIterator[E](journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, flushedLength) {
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
 

@@ -4,15 +4,16 @@ import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.{Checked, ProblemException}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.event.TornException
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader.JournalIdMismatchProblem
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
@@ -21,7 +22,8 @@ import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, wri
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import java.util.UUID
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -31,7 +33,20 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
+final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
+{
+  "JournalId is checked" in {
+    withJournalMeta { journalMeta =>
+      val myJournalId = JournalId(UUID.randomUUID)
+      val file = writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
+      withJournal(journalMeta, MyEvents1.last.eventId) { (_, eventWatch) =>
+        intercept[ProblemException] {
+          // Read something to open the first journal file and to check its header
+          eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+        } .problem == JournalIdMismatchProblem(file, expectedJournalId = myJournalId, foundJournalId = journalId)
+      }
+    }
+  }
 
   "eventWatch.when, .keepEvents" in {
     withJournalMeta { journalMeta =>
@@ -155,7 +170,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
     "Second onJournalingStarted (snapshot)" in {
       withJournalMeta { journalMeta =>
-        autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+        autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
           autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch))) { writer =>
             writer.beginEventSection()
             writer.writeEvents(
@@ -235,7 +250,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
 
       // --0.journal with no snapshot objects
       writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
-      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
         val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
         assert(eventId == EventId.BeforeFirst)
         assert(iterator.toVector.isEmpty)
@@ -245,7 +260,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
       // --100.journal with some snapshot objects
       val snapshotObjects = List[Any](ASnapshot("ONE"), ASnapshot("TWO"))
       writeJournalSnapshot(journalMeta, after = 100, snapshotObjects)
-      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
         locally {
           val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
           assert(eventId == EventId.BeforeFirst)
@@ -291,20 +306,21 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll {
       body(journalMeta)
     }
 
-  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) => Unit): Unit = {
-    autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) => Unit): Unit =
+    autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
       autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer =>
-        writer.writeHeader(JournalHeader(eventId = lastEventId, totalEventCount = 0))
+        writer.writeHeader(JournalHeader(journalId, eventId = lastEventId, totalEventCount = 0))
         writer.beginEventSection()
         body(writer, eventWatch)
         writer.endEventSection(sync = false)
       }
     }
-  }
 }
 
 private object JournalEventWatchTest
 {
+  private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
+
   private val MyEvents1 =
     Stamped(110, "A1" <-: A1) ::
     Stamped(120, "A2" <-: A2) ::

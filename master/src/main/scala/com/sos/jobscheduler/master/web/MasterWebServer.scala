@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -79,7 +78,6 @@ object MasterWebServer {
     masterConfiguration: MasterConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     sessionRegister: SessionRegister[SimpleSession],
-    eventWatch: EventWatch[Event],
     config: Config,
     injector: Injector,
     actorSystem: ActorSystem,
@@ -87,7 +85,8 @@ object MasterWebServer {
     closer: Closer)
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
-      commandExecutor: MasterCommandExecutor, masterState: Task[MasterState])
+      commandExecutor: MasterCommandExecutor, masterState: Task[MasterState],
+      eventWatch: EventWatch[Event])
     : MasterWebServer =
       new MasterWebServer(masterConfiguration, gateKeeperConfiguration,
         fileBasedApi, orderApi, commandExecutor, masterState,

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIterator._
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now
@@ -21,12 +21,13 @@ import scala.concurrent.duration._
 private[watch] class FileEventIterator[E <: Event](
   journalMeta: JournalMeta[E],
   val journalFile: Path,
+  expectedJournalId: Option[JournalId],
   tornEventId: EventId,
   flushedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
   private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)
-  private val journalReader = new JournalReader(journalMeta, journalFile)
+  private val journalReader = new JournalReader(journalMeta, expectedJournalId, journalFile)
   private var nextEvent: Stamped[KeyedEvent[E]] = null
   private var closed = false
 

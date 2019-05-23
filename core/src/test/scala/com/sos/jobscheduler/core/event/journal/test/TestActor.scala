@@ -4,12 +4,12 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
@@ -17,8 +17,9 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.test.TestActor._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
+import java.util.UUID
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -54,7 +55,8 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {
     protected val sender = TestActor.this.sender()
     protected val journalMeta = TestActor.this.journalMeta
-    protected val journalEventWatch = new JournalEventWatch[TestEvent](journalMeta, JournalEventWatch.TestConfig)(Scheduler.global)
+    protected val expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
+    protected def newJournalEventWatch = new JournalEventWatch[TestEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)
 
     protected def snapshotToKey = {
       case a: TestAggregate => a.key

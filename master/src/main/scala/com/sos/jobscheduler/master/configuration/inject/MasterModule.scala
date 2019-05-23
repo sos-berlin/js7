@@ -8,20 +8,14 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch}
-import com.sos.jobscheduler.common.scalautil.Closer.ops._
+import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.system.ThreadPools
-import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
-import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import monix.execution.Scheduler
@@ -33,19 +27,6 @@ import scala.util.control.NonFatal
   */
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule
 {
-  @Provides @Singleton
-  def eventWatch(p: JournalEventWatch[Event]): EventWatch[Event] =
-    p
-
-  @Provides @Singleton
-  def journalEventReader(journalMeta: JournalMeta[Event])(implicit s: Scheduler, config: Config, closer: Closer): JournalEventWatch[Event] =
-    new JournalEventWatch[Event](journalMeta, config)
-      .closeWithCloser
-
-  @Provides @Singleton
-  def journalMeta(): JournalMeta[Event] =
-    JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.stateDirectory resolve "master")
-
   @Provides @Singleton
   def eventIdClock(): EventIdClock =
     EventIdClock.Default

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
-import com.sos.jobscheduler.common.event.{EventIdClock, EventWatch, StrictEventWatch}
+import com.sos.jobscheduler.common.event.{EventIdClock, StrictEventWatch}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
@@ -28,11 +28,8 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{Closer, Logger}
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
-import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.data.event.{Event, Stamped}
@@ -66,7 +63,7 @@ import shapeless.tag.@@
  * @author Joacim Zschimmer
  */
 final class RunningMaster private(
-  val sessionRegister: SessionRegister[SimpleSession],
+  val eventWatch: StrictEventWatch[Event],
   val commandExecutor: MasterCommandExecutor,
   val webServer: MasterWebServer,
   val fileBasedApi: MainFileBasedApi,
@@ -79,6 +76,7 @@ extends AutoCloseable
 {
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
+  val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
 
   def terminate(): Task[Completed] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed
@@ -121,7 +119,6 @@ extends AutoCloseable
       protected def baseUri = localUri
       protected def actorSystem = injector.instance[ActorSystem]
     } closeWithCloser closer
-  val eventWatch: StrictEventWatch[Event] = injector.instance[EventWatch[Event]].strict
 
   def close() = closer.close()
 }
@@ -181,17 +178,16 @@ object RunningMaster
       closer onClose { sessionTokenFile.delete() }
     }
 
-    private def startMasterOrderKeeper(signatureVerifier: SignatureVerifier)
+    private def startMasterOrderKeeper(recovered: MasterJournalRecoverer.Recovered)
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
             _ => Props {
               new MasterOrderKeeper(
+                recovered,
                 masterConfiguration,
-                injector.instance[JournalMeta[Event]],
-                injector.instance[JournalEventWatch[Event]],
                 injector.instance[EventIdClock],
-                signatureVerifier)(
+                GenericSignatureVerifier(masterConfiguration.config).orThrow)(
                 injector.instance[StampedKeyedEventBus],
                 scheduler)
             },
@@ -206,12 +202,11 @@ object RunningMaster
       if (!exists(masterConfiguration.stateDirectory)) {  // In case of a test
         createDirectory(masterConfiguration.stateDirectory)
       }
+      createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
 
-      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
-      createSessionTokenFile(sessionRegister)
+      val recovered = MasterJournalRecoverer.recover(masterConfiguration)  // May take minutes !!!
+      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(recovered)
 
-      val signatureVerifier = GenericSignatureVerifier(masterConfiguration.config).orThrow
-      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(signatureVerifier)
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
       val orderKeeperCommandExecutor = new CommandExecutor[MasterCommand] {
         def executeCommand(command: MasterCommand, meta: CommandMeta) =
@@ -227,10 +222,11 @@ object RunningMaster
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
         .andThen { case _ => closer.close() }  // Close automatically after termination
 
-      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor, masterState)
+      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor, masterState, recovered.eventWatch)
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
-        new RunningMaster(sessionRegister, commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
+        new RunningMaster(recovered.eventWatch.strict,
+          commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
     }
   }
 

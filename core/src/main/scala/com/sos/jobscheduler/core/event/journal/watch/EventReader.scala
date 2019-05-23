@@ -8,7 +8,7 @@ import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader
 import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import monix.execution.atomic.AtomicAny
@@ -21,8 +21,9 @@ extends AutoCloseable
 {
   /** `flushedLength` does not grow if `isOwnJournalIndex`. */
   protected val journalMeta: JournalMeta[E]
-  protected def isHistoric: Boolean
+  protected def expectedJournalId: Option[JournalId]
   protected def journalFile: Path
+  protected def isHistoric: Boolean
   protected def tornEventId: EventId
   protected def tornPosition: Long
   /** Must be constant if `isHistoric`. */
@@ -33,7 +34,7 @@ extends AutoCloseable
   protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
     size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")
-  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, journalFile, tornEventId, () => flushedLength)
+  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, expectedJournalId, journalFile, tornEventId, () => flushedLength)
   @volatile
   private var _closeAfterUse = false
   @volatile
@@ -124,7 +125,7 @@ extends AutoCloseable
   }
 
   final def snapshotObjects: CloseableIterator[Any] =
-    CloseableIterator.fromCloseable(new JournalReader(journalMeta, journalFile))(_.nextSnapshots())
+    CloseableIterator.fromCloseable(new JournalReader(journalMeta, expectedJournalId, journalFile))(_.nextSnapshots())
 
   final def lastUsedAt: Long =
     _lastUsed

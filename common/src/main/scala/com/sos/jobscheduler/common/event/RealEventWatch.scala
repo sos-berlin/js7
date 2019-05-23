@@ -25,8 +25,6 @@ import scala.reflect.ClassTag
   */
 trait RealEventWatch[E <: Event] extends EventWatch[E]
 {
-  protected def scheduler: Scheduler
-
   def whenStarted: Task[this.type] = Task.pure(this)
 
   @VisibleForTesting

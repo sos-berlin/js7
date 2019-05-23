@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPoolTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestEvent, TestKeyedEventJsonCodec, writeJournal}
+import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import com.sos.jobscheduler.data.event.{EventId, Stamped}
 import java.nio.file.Files
 import org.scalatest.FreeSpec
@@ -20,7 +20,7 @@ final class FileEventIteratorPoolTest extends FreeSpec
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
       val journalFile = journalMeta.file(after = After)
       writeJournal[TestEvent](journalMeta, after = After, TestEvents)
-      val pool = new FileEventIteratorPool[TestEvent](journalMeta,
+      val pool = new FileEventIteratorPool[TestEvent](journalMeta, Some(journalId),
         journalFile, tornEventId = After, () => Files.size(journalFile))
 
       assert(pool.firstEventPosition > 0)

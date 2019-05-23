@@ -29,7 +29,6 @@ import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
@@ -49,6 +48,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
+import shapeless.tag
 
 /**
   * Keeper of one Master's orders.
@@ -57,7 +57,7 @@ import scala.concurrent.{Future, Promise}
   */
 final class AgentOrderKeeper(
   masterId: MasterId,
-  eventWatch: JournalEventWatch[Event],
+  recovered_ : OrderJournalRecoverer.Recovered,
   signatureVerifier: SignatureVerifier,
   newTaskRunner: TaskRunner.Factory,
   implicit private val askTimeout: Timeout,
@@ -70,11 +70,12 @@ extends MainJournalingActor[Event] with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private val journalMeta = recovered_.journalMeta
+  private val eventWatch = recovered_.eventWatch
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
-  private val journalMeta = eventWatch.journalMeta
-  protected val journalActor = watch(actorOf(
+  protected val journalActor = tag[JournalActor.type](watch(actorOf(
     JournalActor.props(journalMeta, conf.config, keyedEventBus, scheduler),
-    "Journal"))
+    "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config)
@@ -142,15 +143,28 @@ extends MainJournalingActor[Event] with Stash {
   }
   import termination.terminating
 
-  override def preStart() = {
-    super.preStart()  // First let JournalingActor register itself
-    recover()
+  self ! Internal.Recover(recovered_)
+  // Do not use recovered_ after here to allow release of the big object
+
+  override def postStop() = {
+    termination.close()
+    eventWatch.close()
+    super.postStop()
+    logger.debug("Stopped" + termination.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
-  private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalMeta)
-    recoverer.recoverAll()
-    val state = recoverer.state
+  def snapshots = Future.successful(workflowRegister.workflows)
+
+  def receive = {
+    case Internal.Recover(recovered) =>
+      recover(recovered)
+      become("Recovering")(recovering)
+      unstashAll()
+    case _ => stash()
+  }
+
+  private def recover(recovered: OrderJournalRecoverer.Recovered): Unit = {
+    val state = recovered.agentState
     for (workflow <- state.idToWorkflow.values)
       wrapException(s"Error when recovering ${workflow.path}") {
         workflowRegister.recover(workflow)
@@ -164,19 +178,11 @@ extends MainJournalingActor[Event] with Stash {
         orderRegister.recover(order, workflow, actor)
         actor ! OrderActor.Input.Recover(order)
       }
-    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors, Some(eventWatch))
+    recovered.startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
+    become("Recovering")(recovering)
   }
 
-  override def postStop() = {
-    termination.close()
-    eventWatch.close()
-    super.postStop()
-    logger.debug("Stopped" + termination.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
-  }
-
-  def snapshots = Future.successful(workflowRegister.workflows)
-
-  def receive = {
+  private def recovering: Receive = {
     case OrderActor.Output.RecoveryFinished(order) =>
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
@@ -532,6 +538,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
+    final case class Recover(recovered: OrderJournalRecoverer.Recovered)
     final case class ContinueAttachOrder(order: Order[Order.FreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression

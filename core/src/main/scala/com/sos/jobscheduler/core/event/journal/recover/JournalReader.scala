@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.utils.untilNoneIterator
@@ -8,7 +9,7 @@ import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, Posit
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.JournalReader._
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
 import scala.annotation.tailrec
@@ -19,11 +20,13 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], journalFile: Path) extends AutoCloseable
+private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], journalFile: Path)
+extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
   val journalHeader = closeOnError(jsonReader) {
-    JournalHeader.checkHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"), journalFile)
+    JournalHeader.checkedHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"),
+      journalFile, expectedJournalId).orThrow
   }
   val tornEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount

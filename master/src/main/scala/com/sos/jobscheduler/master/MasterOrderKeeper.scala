@@ -27,9 +27,7 @@ import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
-import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
@@ -65,14 +63,14 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
+import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
+  recovered_ : MasterJournalRecoverer.Recovered,
   masterConfiguration: MasterConfiguration,
-  journalMeta: JournalMeta[Event],
-  eventWatch: JournalEventWatch[Event],
   eventIdClock: EventIdClock,
   signatureVerifier: SignatureVerifier)
   (implicit
@@ -85,9 +83,11 @@ with MainJournalingActor[Event]
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val journalActor = watch(actorOf(
+  private val journalMeta = recovered_.journalMeta
+  private val eventWatch = recovered_.eventWatch
+  protected val journalActor = tag[JournalActor.type](watch(actorOf(
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
-    "Journal"))
+    "Journal")))
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
@@ -120,10 +120,8 @@ with MainJournalingActor[Event]
     }
   }
 
-  override def preStart() = {
-    super.preStart()  // First let JournalingActor register itself
-    recover()
-  }
+  self ! Internal.Recover(recovered_)
+  // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
     super.postStop()
@@ -138,10 +136,16 @@ with MainJournalingActor[Event]
     agents = Nil,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
     orderRegister.values.map(_.order).toImmutableSeq)
 
-  private def recover() = {
-    val recoverer = new MasterJournalRecoverer(journalMeta)
-    recoverer.recoverAll()
-    for (masterState <- recoverer.masterState) {
+  def receive = {
+    case Internal.Recover(recovered) =>
+      recover(recovered)
+      become("Recovering")(recovering)
+      unstashAll()
+    case _ => stash()
+  }
+
+  private def recover(recovered: MasterJournalRecoverer.Recovered) = {
+    for (masterState <- recovered.masterState) {
       setRepo(masterState.repo)
       val pathToAgentSnapshot = masterState.agents.toKeyedMap(_.agentRefPath)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
@@ -159,10 +163,10 @@ with MainJournalingActor[Event]
       }
       persistedEventId = masterState.eventId
     }
-    recoverer.startJournalAndFinishRecovery(journalActor = journalActor, journalingObserver = Some(eventWatch))
+    recovered.startJournalAndFinishRecovery(journalActor)
   }
 
-  def receive = {
+  private def recovering: Receive = {
     case JournalRecoverer.Output.JournalIsReady =>
       agentRegister.values foreach { _.start() }
 
@@ -631,6 +635,7 @@ private[master] object MasterOrderKeeper {
   }
 
   private object Internal {
+    final case class Recover(recovered: MasterJournalRecoverer.Recovered)
     case object Ready
     case object AfterProceedEventsAdded
   }

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
@@ -14,20 +14,23 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files
+import java.util.UUID.randomUUID
 
 /**
   * @author Joacim Zschimmer
   */
-trait JournalRecoverer[E <: Event] {
-
-  private val stopwatch = new Stopwatch
-  protected val journalMeta: JournalMeta[E]
+trait JournalRecoverer[E <: Event]
+{
+  protected def journalMeta: JournalMeta[E]
+  protected def expectedJournalId: Option[JournalId]
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
   protected def onAllSnapshotRecovered(): Unit = {}
 
+  private val stopwatch = new Stopwatch
+  private val journalIdOnce = new SetOnce[JournalId]
   private var _lastEventId = EventId.BeforeFirst
   private var snapshotCount, eventCount = 0L
   private var _totalEventCount = 0L
@@ -36,17 +39,24 @@ trait JournalRecoverer[E <: Event] {
   protected final def hasJournal = journalFileOption.isDefined
 
   final def recoverAll(): Unit =
-    for (file <- journalFileOption) {
-      logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
-      // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
-      autoClosing(new JournalReader(journalMeta, file)) { journalReader =>
-        recoverSnapshots(journalReader)
-        onAllSnapshotRecovered()
-        recoverEvents(journalReader)
-        _lastEventId = journalReader.eventId
-        _totalEventCount = journalReader.totalEventCount
-        logStatistics()
-      }
+    journalFileOption match {
+      case None =>
+        val journalId = expectedJournalId getOrElse JournalId(randomUUID)
+        logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}' with journalid=${journalId.string} will be started")
+        journalIdOnce := journalId
+
+      case Some(file) =>
+        logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
+        // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
+        autoClosing(new JournalReader(journalMeta, expectedJournalId, file)) { journalReader =>
+          journalIdOnce := journalReader.journalHeader.journalId
+          recoverSnapshots(journalReader)
+          onAllSnapshotRecovered()
+          recoverEvents(journalReader)
+          _lastEventId = journalReader.eventId
+          _totalEventCount = journalReader.totalEventCount
+          logStatistics()
+        }
     }
 
   private def recoverSnapshots(journalReader: JournalReader[E]): Unit =
@@ -82,8 +92,11 @@ trait JournalRecoverer[E <: Event] {
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, lastEventId = _lastEventId,
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, journalId,
+      lastEventId = _lastEventId,
       totalEventCount = _totalEventCount)
+
+  final lazy val journalId = journalIdOnce()
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -95,6 +108,7 @@ object JournalRecoverer {
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],
+    journalId: JournalId,
     lastEventId: EventId,
     totalEventCount: Long)
     (implicit actorRefFactory: ActorRefFactory)
@@ -104,7 +118,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, observer, lastEventId = lastEventId, totalEventCount = totalEventCount)
+          journalActor ! JournalActor.Input.Start(recoveredActors, observer, journalId, lastEventId = lastEventId, totalEventCount = totalEventCount)
 
           def receive = {
             case JournalActor.Output.Ready =>

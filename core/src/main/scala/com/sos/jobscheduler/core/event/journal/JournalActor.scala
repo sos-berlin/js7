@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -19,11 +19,12 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.Config
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.{Path, Paths}
+import java.util.UUID.randomUUID
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -59,6 +60,7 @@ extends Actor with Stash {
   private var snapshotRequested = false
   private var snapshotSchedule: Cancelable = null
 
+  private val journalId = new SetOnce[JournalId]
   private var observerOption: Option[JournalingObserver] = None
   private var eventWriter: EventJournalWriter[E] = null
   private var snapshotWriter: SnapshotJournalWriter[E] = null
@@ -87,7 +89,8 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer, lastEventId, totalEventCount_) =>
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer, journalId_, lastEventId, totalEventCount_) =>
+      journalId := journalId_
       observerOption = observer
       lastWrittenEventId = lastEventId
       totalEventCount = totalEventCount_
@@ -111,7 +114,8 @@ extends Actor with Stash {
     case Input.StartWithoutRecovery(observer) =>  // Testing only
       observerOption = observer
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
-      eventWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
+      journalId := JournalId(randomUUID)
+      eventWriter.writeHeader(JournalHeader(journalId(), eventId = lastWrittenEventId, totalEventCount = totalEventCount))
       unstashAll()
       becomeReady()
       sender() ! Output.Ready
@@ -271,7 +275,7 @@ extends Actor with Stash {
     }
 
     snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observerOption, simulateSync = simulateSync)
-    snapshotWriter.writeHeader(JournalHeader(eventId = lastWrittenEventId, totalEventCount = totalEventCount))
+    snapshotWriter.writeHeader(JournalHeader(journalId(), eventId = lastWrittenEventId, totalEventCount = totalEventCount))
     snapshotWriter.beginSnapshotSection()
     actorOf(
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
@@ -373,6 +377,7 @@ object JournalActor
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
+      journalId: JournalId,
       lastEventId: EventId,
       totalEventCount: Long)
     final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)

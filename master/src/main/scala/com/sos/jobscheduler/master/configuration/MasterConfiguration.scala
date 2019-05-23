@@ -39,6 +39,8 @@ extends CommonConfiguration
   def fileBasedDirectory: Path = configDirectory / "live"
 
   def stateDirectory: Path = dataDirectory / "state"
+
+  def journalFileBase = stateDirectory / "master"
 }
 
 object MasterConfiguration

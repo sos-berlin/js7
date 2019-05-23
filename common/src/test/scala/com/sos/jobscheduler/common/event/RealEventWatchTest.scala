@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventWatchTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
@@ -63,7 +63,6 @@ object RealEventWatchTest {
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
   private class EndlessEventWatch extends RealEventWatch[TestEvent] {
-    protected def scheduler = Scheduler.global
     val tornEventId = 0
 
     protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty

@@ -11,7 +11,7 @@ import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
+import com.sos.jobscheduler.agent.scheduler.order.{AgentOrderKeeper, OrderJournalRecoverer}
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -19,7 +19,6 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
-import com.sos.jobscheduler.common.auth.SecretStringGenerator.randomString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
@@ -34,13 +33,15 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActo
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
+import java.util.UUID.randomUUID
 import javax.inject.Inject
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
+import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
@@ -58,9 +59,9 @@ extends MainJournalingActor[AgentEvent] {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
-  protected val journalActor = watch(actorOf(
+  protected val journalActor = tag[JournalActor.type](watch(actorOf(
     JournalActor.props(journalMeta, agentConfiguration.config, keyedEventBus, scheduler),
-    "Journal"))
+    "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
   private var terminating = false
@@ -73,7 +74,7 @@ extends MainJournalingActor[AgentEvent] {
     super.preStart()
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAll()
-    recoverer.startJournalAndFinishRecovery(journalActor = journalActor)
+    recoverer.startJournalAndFinishRecovery(journalActor)
   }
 
   override def postStop() = {
@@ -84,6 +85,7 @@ extends MainJournalingActor[AgentEvent] {
   private class MyJournalRecoverer extends JournalRecoverer[AgentEvent] {
     protected val sender = AgentActor.this.sender()
     protected val journalMeta = AgentActor.this.journalMeta
+    protected val expectedJournalId = None
 
     def recoverSnapshot = {
       case AgentSnapshot.Master(masterId, agentRunId) =>
@@ -99,7 +101,7 @@ extends MainJournalingActor[AgentEvent] {
   def receive = {
     case JournalRecoverer.Output.JournalIsReady =>
       if (masterToOrderKeeper.nonEmpty) {
-        logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
+        logger.info(s"${masterToOrderKeeper.size} recovered Master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       }
       become("startable")(startable)
       unstashAll()
@@ -164,7 +166,7 @@ extends MainJournalingActor[AgentEvent] {
       case AgentCommand.RegisterAsMaster if !terminating =>
         masterToOrderKeeper.get(masterId) match {
           case None =>
-            val agentRunId = AgentRunId(randomString())
+            val agentRunId = AgentRunId(JournalId(randomUUID))
             response completeWith
               persist(AgentEvent.MasterRegistered(masterId, agentRunId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
                 update(event)
@@ -218,13 +220,12 @@ extends MainJournalingActor[AgentEvent] {
 
   private def addOrderKeeper(masterId: MasterId, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"master-$masterId")
-    val eventWatch = new JournalEventWatch(journalMeta, agentConfiguration.config)
-
+    val recovered = OrderJournalRecoverer.recover(journalMeta, agentRunId.journalId, agentConfiguration)  // May take minutes !!!
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
           masterId,
-          eventWatch,
+          recovered,
           signatureVerifier,
           newTaskRunner,
           askTimeout = akkaAskTimeout,
@@ -232,7 +233,7 @@ extends MainJournalingActor[AgentEvent] {
           agentConfiguration)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$masterId"))
-    masterToOrderKeeper.insert(masterId -> MasterRegister.Entry(masterId, agentRunId, eventWatch, actor))
+    masterToOrderKeeper.insert(masterId -> MasterRegister.Entry(masterId, agentRunId, recovered.eventWatch, actor))
     watch(actor)
   }
 

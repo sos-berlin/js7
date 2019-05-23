@@ -1,14 +1,20 @@
 package com.sos.jobscheduler.data.agent
 
 import com.sos.jobscheduler.base.generic.GenericString
+import com.sos.jobscheduler.data.event.JournalId
 
 /** The ID of an Agent run.
   * It identifies an Agent's event stream.
   * So and Agents keeps its `AgentRunId` event if its restartet,
   * as long as it uses the same event steam (Journal). */
-final case class AgentRunId(string: String) extends GenericString
+final case class AgentRunId(journalId: JournalId) extends GenericString {
+  def string = journalId.string
+}
 
 object AgentRunId extends GenericString.NonEmpty[AgentRunId]
 {
-  protected def unchecked(string: String): AgentRunId = new AgentRunId(string)
+  protected def unchecked(string: String) = throw new NotImplementedError
+
+  override def checked(string: String) = JournalId.checked(string) map apply
 }
+

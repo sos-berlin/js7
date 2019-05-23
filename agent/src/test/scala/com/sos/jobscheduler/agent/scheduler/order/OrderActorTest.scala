@@ -160,7 +160,7 @@ private object OrderActorTest {
     private val journalActor = actorOf(
       JournalActor.props(journalMeta, config, new StampedKeyedEventBus, Scheduler.global),
       "Journal")
-    private val eventWatch = new JournalEventWatch(journalMeta, config)
+    private val eventWatch = new JournalEventWatch(journalMeta, None, config)
     private val jobActor = actorOf(
       JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,
         temporaryDirectory = dir / "data" / "tmp",

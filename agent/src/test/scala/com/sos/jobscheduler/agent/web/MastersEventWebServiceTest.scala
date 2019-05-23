@@ -14,9 +14,10 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalId, TearableEventSeq}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
+import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 
@@ -64,7 +65,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Recoupling with changed AgentRunId fails" in {
-    assert(agentClient.commandExecute(CoupleMaster(AgentRunId("CHANGED"), eventId)).await(99.s) == Invalid(MasterAgentMismatchProblem))
+    assert(agentClient.commandExecute(CoupleMaster(AgentRunId(JournalId(randomUUID)), eventId)).await(99.s) == Invalid(MasterAgentMismatchProblem))
     val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
   }

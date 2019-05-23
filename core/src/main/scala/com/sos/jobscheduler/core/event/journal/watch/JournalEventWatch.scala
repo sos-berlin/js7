@@ -15,14 +15,13 @@ import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
 import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.problems.{MasterRequiresUnknownEventIdProblem}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
 import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
@@ -33,8 +32,7 @@ import scala.concurrent.Promise
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
-final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], config: Config)
-  (implicit protected val scheduler: Scheduler)
+final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], config: Config)
 extends AutoCloseable
 with RealEventWatch[E]
 with JournalingObserver
@@ -78,7 +76,7 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, flushedLengthAndEventId, config))
+      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, expectedJournalId, flushedLengthAndEventId, config))
     }
     onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
     started.trySuccess(this)
@@ -224,7 +222,7 @@ with JournalingObserver
     def eventReader: EventReader[E] =
       _eventReader.get match {
         case null =>
-          val r = new HistoricEventReader[E](journalMeta, tornEventId = afterEventId, file, config)
+          val r = new HistoricEventReader[E](journalMeta, expectedJournalId, tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
