@@ -309,7 +309,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
   private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) => Unit): Unit =
     autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
       autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, Some(eventWatch))) { writer =>
-        writer.writeHeader(JournalHeader(journalId, eventId = lastEventId, totalEventCount = 0))
+        writer.writeHeader(JournalHeader.forTest(journalId, eventId = lastEventId))
         writer.beginEventSection()
         body(writer, eventWatch)
         writer.endEventSection(sync = false)

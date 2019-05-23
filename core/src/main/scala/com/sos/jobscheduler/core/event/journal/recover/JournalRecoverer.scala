@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
-import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
@@ -30,7 +30,8 @@ trait JournalRecoverer[E <: Event]
   protected def onAllSnapshotRecovered(): Unit = {}
 
   private val stopwatch = new Stopwatch
-  private val journalIdOnce = new SetOnce[JournalId]
+  private val journalHeaderOnce = new SetOnce[JournalHeader]
+  private var lastEventTimestamp = Timestamp.ofEpochSecond(0)
   private var _lastEventId = EventId.BeforeFirst
   private var snapshotCount, eventCount = 0L
   private var _totalEventCount = 0L
@@ -43,13 +44,15 @@ trait JournalRecoverer[E <: Event]
       case None =>
         val journalId = expectedJournalId getOrElse JournalId(randomUUID)
         logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}' with journalid=${journalId.string} will be started")
-        journalIdOnce := journalId
+        journalHeaderOnce := JournalHeader.initial(journalId)
+        lastEventTimestamp = journalHeaderOnce().timestamp
 
       case Some(file) =>
         logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
         // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
         autoClosing(new JournalReader(journalMeta, expectedJournalId, file)) { journalReader =>
-          journalIdOnce := journalReader.journalHeader.journalId
+          journalHeaderOnce := journalReader.journalHeader
+          lastEventTimestamp = journalHeaderOnce().timestamp
           recoverSnapshots(journalReader)
           onAllSnapshotRecovered()
           recoverEvents(journalReader)
@@ -71,6 +74,7 @@ trait JournalRecoverer[E <: Event]
     for (stampedEvent <- journalReader.nextEvents()) {
       wrapException(s"Error while recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
         eventCount += 1
+        lastEventTimestamp = stampedEvent.timestamp
         recoverEvent(stampedEvent)
       }
     }
@@ -92,11 +96,10 @@ trait JournalRecoverer[E <: Event]
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, journalId,
-      lastEventId = _lastEventId,
-      totalEventCount = _totalEventCount)
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver,
+      journalHeaderOnce().copy(eventId = _lastEventId, totalEventCount = _totalEventCount, timestamp = lastEventTimestamp))
 
-  final lazy val journalId = journalIdOnce()
+  final lazy val journalId = journalHeaderOnce().journalId
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -108,9 +111,7 @@ object JournalRecoverer {
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],
-    journalId: JournalId,
-    lastEventId: EventId,
-    totalEventCount: Long)
+    virtualJournalHeader: JournalHeader)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
@@ -118,7 +119,7 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, observer, journalId, lastEventId = lastEventId, totalEventCount = totalEventCount)
+          journalActor ! JournalActor.Input.Start(recoveredActors, observer, virtualJournalHeader)
 
           def receive = {
             case JournalActor.Output.Ready =>

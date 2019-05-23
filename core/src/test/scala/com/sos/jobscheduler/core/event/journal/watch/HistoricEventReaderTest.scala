@@ -21,7 +21,7 @@ final class HistoricEventReaderTest extends FreeSpec
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer =>
-        writer.writeHeader(JournalHeader(journalId, eventId = After, totalEventCount = 0))
+        writer.writeHeader(JournalHeader.forTest(journalId, eventId = After))
         writer.beginEventSection()
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)

@@ -5,6 +5,7 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
@@ -14,7 +15,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
@@ -132,10 +132,9 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
   protected final def journalJsons(file: Path): Vector[Json] =
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>
       Vector.build[Json] { builder =>
-        try reader.iterator foreach (o => builder += normalizeTimestamp(o.value))
+        try reader.iterator foreach (o => builder += normalizeValues(o.value))
         catch {
           case _: EOFException => None
-          case _: java.util.zip.ZipException => None
         }
       }
     }
@@ -169,8 +168,13 @@ private[journal] object TestJournalMixin
      |}
      |""".stripMargin)
 
-  private def normalizeTimestamp(json: Json): Json = json.asObject match {
-    case Some(o) => o("timestamp").map(_ => o.add("timestamp", "TIMESTAMP".asJson)).getOrElse(o).asJson
+  private def normalizeValues(json: Json): Json = json.asObject match {
+    case Some(jsonObject) =>
+      var o = jsonObject
+      for (_ <- o("startedAt")) o = o.add("startedAt", "STARTED-AT".asJson)
+      for (_ <- o("timestamp")) o = o.add("timestamp", "TIMESTAMP".asJson)
+      for (_ <- o("totalRunningTime")) o = o.add("totalRunningTime", 3600.asJson)
+      o.asJson
     case None => json
   }
 }

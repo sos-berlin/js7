@@ -7,16 +7,21 @@ import com.sos.jobscheduler.data.event.JournalId
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalHeaderTest extends FreeSpec {
-
+final class JournalHeaderTest extends FreeSpec
+{
   "JSON" in {
     testJson[JournalHeader](
-      JournalHeader(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")), eventId = 777, totalEventCount = 999).copy(
-        timestamp = Timestamp.parse("2019-05-22T12:00:00.000Z").toIsoString),
+      JournalHeader.initial(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))).copy(
+        eventId = 777,
+        totalEventCount = 999,
+        startedAt = Timestamp.parse("2019-05-22T12:00:00.000Z"),
+        totalRunningTime = 1.hour,
+        timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z")),
       json"""{
         "TYPE": "JobScheduler.Journal",
         "version": "${JournalHeader.Version}",
@@ -25,7 +30,9 @@ final class JournalHeaderTest extends FreeSpec {
         "journalId": "ABEiM0RVZneImaq7zN3u_w",
         "eventId": 777,
         "totalEventCount": 999,
-        "timestamp": "2019-05-22T12:00:00Z"
+        "startedAt": "2019-05-22T12:00:00Z",
+        "totalRunningTime": 3600,
+        "timestamp": "2019-05-23T22:22:22.222Z"
       }""")
   }
 }

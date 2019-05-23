@@ -29,6 +29,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -49,6 +50,7 @@ extends Actor with Stash {
   import journalMeta.snapshotJsonCodec
 
   private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
+  private val runningSince = now
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
   private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
@@ -60,7 +62,8 @@ extends Actor with Stash {
   private var snapshotRequested = false
   private var snapshotSchedule: Cancelable = null
 
-  private val journalId = new SetOnce[JournalId]
+  /** Originates from `JournalValue`, caculcated from recovered journal if not freshly initialized. */
+  private val virtualHeader = new SetOnce[JournalHeader]
   private var observerOption: Option[JournalingObserver] = None
   private var eventWriter: EventJournalWriter[E] = null
   private var snapshotWriter: SnapshotJournalWriter[E] = null
@@ -89,17 +92,17 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer, journalId_, lastEventId, totalEventCount_) =>
-      journalId := journalId_
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer, virtualJournalHeader) =>
+      virtualHeader := virtualJournalHeader
       observerOption = observer
-      lastWrittenEventId = lastEventId
-      totalEventCount = totalEventCount_
-      eventIdGenerator.updateLastEventId(lastEventId)
+      lastWrittenEventId = virtualJournalHeader.eventId
+      totalEventCount = virtualJournalHeader.totalEventCount
+      eventIdGenerator.updateLastEventId(lastWrittenEventId)
       journalingActors ++= keyToActor.values
       journalingActors foreach watch
       val sender = this.sender()
       locally {
-        val file = toSnapshotTemporary(journalMeta.file(after = lastEventId))
+        val file = toSnapshotTemporary(journalMeta.file(after = lastWrittenEventId))
         if (exists(file)) {
           logger.warn(s"JournalWriter: Deleting existent file '$file'")
           delete(file)  // TODO Provide alternative to move file
@@ -114,8 +117,8 @@ extends Actor with Stash {
     case Input.StartWithoutRecovery(observer) =>  // Testing only
       observerOption = observer
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
-      journalId := JournalId(randomUUID)
-      eventWriter.writeHeader(JournalHeader(journalId(), eventId = lastWrittenEventId, totalEventCount = totalEventCount))
+      virtualHeader := JournalHeader.initial(JournalId(randomUUID))
+      eventWriter.writeHeader(virtualHeader())
       unstashAll()
       becomeReady()
       sender() ! Output.Ready
@@ -275,7 +278,8 @@ extends Actor with Stash {
     }
 
     snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observerOption, simulateSync = simulateSync)
-    snapshotWriter.writeHeader(JournalHeader(journalId(), eventId = lastWrittenEventId, totalEventCount = totalEventCount))
+    snapshotWriter.writeHeader(virtualHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
+      totalRunningTime = virtualHeader().totalRunningTime + runningSince.elapsed))
     snapshotWriter.beginSnapshotSection()
     actorOf(
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
@@ -377,9 +381,7 @@ object JournalActor
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
-      journalId: JournalId,
-      lastEventId: EventId,
-      totalEventCount: Long)
+      virtualJournalHeader: JournalHeader)
     final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
     /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(

@@ -3,45 +3,81 @@ package com.sos.jobscheduler.core.event.journal.data
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichJson, deriveCodec}
+import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader._
 import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import io.circe.Json
 import java.nio.file.Path
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class JournalHeader(
+final case class JournalHeader private[data](
   version: String,
   softwareVersion: String,
   buildId: String,
   journalId: JournalId,
+  startedAt: Timestamp,
+  totalRunningTime: FiniteDuration,
   eventId: EventId,
   totalEventCount: Long,
-  timestamp: String)
+  timestamp: Timestamp)
+{
+  def update(eventId: EventId, totalEventCount: Long, totalRunningTime: FiniteDuration) =
+    copy(
+      version = Version,
+      softwareVersion = BuildInfo.version,
+      buildId = BuildInfo.buildId,
+      eventId = eventId,
+      totalEventCount = totalEventCount,
+      totalRunningTime = totalRunningTime,
+      timestamp = Timestamp.now)
+}
 
 object JournalHeader
 {
   private[data] val Version = "0.22"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
   private val logger = Logger(getClass)
 
-  def apply(journalId: JournalId, eventId: EventId, totalEventCount: Long) = new JournalHeader(
-    version = Version,
-    softwareVersion = BuildInfo.version,
-    buildId = BuildInfo.buildId,
-    journalId,
-    eventId = eventId,
-    totalEventCount = totalEventCount,
-    Timestamp.now.toIsoString)
+  def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
+    new JournalHeader(
+      version = Version,
+      softwareVersion = BuildInfo.version,
+      buildId = BuildInfo.buildId,
+      journalId,
+      Timestamp.now,
+      Duration.Zero,
+      eventId = eventId,
+      totalEventCount = 0,
+      Timestamp.now)
 
-  implicit lazy val jsonCodec = TypedJsonCodec[JournalHeader](
-    Subtype.named(deriveCodec[JournalHeader], "JobScheduler.Journal"))
+  def initial(journalId: JournalId) =
+    new JournalHeader(
+      version = Version,
+      softwareVersion = BuildInfo.version,
+      buildId = BuildInfo.buildId,
+      journalId,
+      startedAt = Timestamp.now,
+      totalRunningTime = Duration.Zero,
+      eventId = EventId.BeforeFirst,
+      totalEventCount = 0,
+      Timestamp.now)
+
+  implicit lazy val jsonCodec = {
+    intelliJuseImport(FiniteDurationJsonEncoder)
+    implicit val x = Timestamp.StringTimestampJsonEncoder
+    TypedJsonCodec[JournalHeader](
+      Subtype.named(deriveCodec[JournalHeader], "JobScheduler.Journal"))
+  }
 
   def checkedHeader(json: Json, journalFile: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
     for {

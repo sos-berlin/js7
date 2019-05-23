@@ -35,7 +35,7 @@ private[watch] object TestData
 
   def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta[E], after: EventId, snapshotObjects: Seq[Any]): Unit =
     autoClosing(SnapshotJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
-      writer.writeHeader(JournalHeader(journalId, eventId = after, totalEventCount = 0))
+      writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
         writer.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
@@ -47,7 +47,7 @@ private[watch] object TestData
     journalId: JournalId = this.journalId): Path
   =
     autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
-      writer.writeHeader(JournalHeader(journalId, eventId = after, totalEventCount = 0))
+      writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
       writer.beginEventSection()
       writer.writeEvents(stampedEvents take 1)
       writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)

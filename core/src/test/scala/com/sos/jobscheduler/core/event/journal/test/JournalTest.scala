@@ -171,6 +171,8 @@ object JournalTest {
       "journalId" : "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 0,
       "totalEventCount": 0,
+      "startedAt": "STARTED-AT",
+      "totalRunningTime": 3600,
       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
@@ -259,7 +261,9 @@ object JournalTest {
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 1000066,
       "totalEventCount": 67,
-      "timestamp": "TIMESTAMP"
+      "startedAt" : "STARTED-AT",
+      "totalRunningTime" : 3600,
+       "timestamp": "TIMESTAMP"
     }""",
     json""""-------SNAPSHOTS-------"""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",

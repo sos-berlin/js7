@@ -41,7 +41,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeader(journalId, eventId = EventId.BeforeFirst, totalEventCount = 0))
+      writer.writeHeader(JournalHeader.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
@@ -57,7 +57,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeader(journalId, eventId = EventId.BeforeFirst, totalEventCount = 0))
+      writer.writeHeader(JournalHeader.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
@@ -106,7 +106,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0, withoutSnapshots = true)) { writer =>
-        writer.writeHeader(JournalHeader(journalId, eventId = EventId.BeforeFirst, totalEventCount = 0))
+        writer.writeHeader(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection()
         writer.writeEvents(first :: Nil)
         writer.writeEvents(ta, transaction = true)
@@ -143,7 +143,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
         def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(ByteString(encoder(a).compactPrint))
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
-        write(JournalHeader(journalId, eventId = EventId.BeforeFirst, totalEventCount = 0).asJson)
+        write(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst).asJson)
         write(JournalSeparators.EventHeader)
         writeEvent(first)
         write(JournalSeparators.Transaction)
