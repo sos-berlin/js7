@@ -78,8 +78,8 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
     val promises = Vector.fill(2)(Promise[Deadline]())
     for (i <- orderIds.indices) {
       master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i)) foreach {
-        case EventSeq.NonEmpty(_) =>
-          promises(i).success(now)
+        case EventSeq.NonEmpty(_) => promises(i).success(now)
+        case o => fail(s"Unexpected: $o")
       }
     }
     val finishedAt = promises.map(_.future) await 99.s
@@ -119,8 +119,8 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
 
     val promise = Promise[Deadline]()
     master.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderId) foreach {
-      case EventSeq.NonEmpty(_) =>
-        promise.success(now)
+      case EventSeq.NonEmpty(_) => promise.success(now)
+      case o => fail(s"Unexpected: $o")
     }
     //...
   }

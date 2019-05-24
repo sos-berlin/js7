@@ -7,6 +7,7 @@ import cats.syntax.traverse._
 import cats.syntax.validated._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.expression.Evaluator._
 import com.sos.jobscheduler.data.expression.Expression._
@@ -44,7 +45,7 @@ final class Evaluator(scope: Scope)
         val w = where match {
           case NamedValue.Argument => ValueSearch.Argument
           case NamedValue.LastOccurred => ValueSearch.LastOccurred
-          case NamedValue.LastOccurredByPrefix(label) => ValueSearch.LastExecuted(PositionSearch.ByPrefix(label))
+          case NamedValue.LastOccurredByPrefix(prefix) => ValueSearch.LastExecuted(PositionSearch.ByPrefix(prefix))
           case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
           case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
         }
@@ -58,6 +59,7 @@ final class Evaluator(scope: Scope)
                   default.map(evalString).toChecked(Problem(where match {
                     case NamedValue.Argument => s"No such order argument: $key"
                     case NamedValue.LastOccurred => s"No such named value: $key"
+                    case NamedValue.LastOccurredByPrefix(prefix) => s"Order has not passed a position '$prefix'"
                     case NamedValue.ByLabel(Label(label)) => s"Workflow instruction at label $label did not return a named value '$key'"
                     case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a named value '$key'"
                   })).flatten)
@@ -106,6 +108,7 @@ final class Evaluator(scope: Scope)
           // getMessage returns null
           Problem(s"Not a valid number: ${o.truncateWithEllipsis(10)}")
         }
+      case o => Problem(s"Operator .toNumeric may not applied to a value of type ${o.getClass.simpleScalaName}")
     }
 
   private def toBoolean(v: Value): Checked[BooleanValue] =
@@ -114,6 +117,7 @@ final class Evaluator(scope: Scope)
       case StringValue("false") => BooleanValue(false).valid
       case StringValue("true") => BooleanValue(true).valid
       case StringValue(o) => Problem(s"Not a valid Boolean value: ${o.truncateWithEllipsis(10)}")
+      case o => Problem(s"Operator .toBoolean may not applied to a value of type ${o.getClass.simpleScalaName}")
     }
 
   private def mkString(v: Value): Checked[StringValue] =

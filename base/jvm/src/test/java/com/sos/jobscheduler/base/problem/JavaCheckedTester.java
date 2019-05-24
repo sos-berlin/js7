@@ -8,9 +8,9 @@ import cats.data.Validated;
 final class JavaCheckedTester
 {
     // Access to cryptic JobScheduler internals for this test only. Not an offical API.
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked","rawtypes"})
     private static final JavaChecked<String> valid = new JavaChecked<>(new Validated.Valid("VALID"));
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked","rawtypes"})
     private static final JavaChecked<String> invalid = new JavaChecked<>(new Validated.Invalid(Problem$.MODULE$.pure("PROBLEM")));
 
     private JavaCheckedTester() {}

@@ -44,6 +44,8 @@ final class EvaluatorTest extends FreeSpec
             Valid(Some(NumericValue(3)))
           case ValueSearch(ValueSearch.Argument, ValueSearch.KeyValue(key)) =>
             Valid(Map("ARG" -> "ARG-VALUE").get(key) map StringValue.apply)
+          case o =>
+            Invalid(Problem(s"UNEXPECTED CASE: $o"))
         }
       })
     val eval = evaluator.eval _

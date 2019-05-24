@@ -136,6 +136,7 @@ object ExpressionParser
       case (a, ">=", b) => valid(GreaterOrEqual(a, b))
       case (a, "<" , b) => valid(LessThan(a, b))
       case (a, ">" , b) => valid(GreaterThan(a, b))
+      case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
     })
 
   private def and[_: P] = P[Expression](
@@ -155,7 +156,6 @@ object ExpressionParser
       case (a, "in", list: ListExpression) => valid(In(a, list))
       case (_, "in", _) => invalid("List expected after operator 'in'")
       case (a, "matches", b) => valid(Matches(a, b))
-      case (_, "matches", _) => invalid("String expected after operator 'matches'")
       case (a, op, b) => invalid(s"Operator '$op' with unexpected operand type: " + Precedence.toString(a, op, Precedence.Or, b))
     })
 }

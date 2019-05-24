@@ -36,7 +36,8 @@ extends Actor {
   }
 
   def receive = {
-    case Command.Login(user: S#User, tokenOption, isEternalSession) =>
+    case Command.Login(_user: User, tokenOption, isEternalSession) =>
+      val user = _user.asInstanceOf[S#User]
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken(SecretStringGenerator.newSecretString())
       assert(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
@@ -53,7 +54,8 @@ extends Actor {
       delete(token, reason = "logout")
       sender() ! Completed
 
-    case Command.Get(token, userOption: Option[S#User]) =>
+    case Command.Get(token, _userOption: Option[User]) =>
+      val userOption = _userOption.asInstanceOf[Option[S#User]]
       val sessionOption = (tokenToSession.get(token), userOption) match {
         case (None, _) =>
           logger.debug("Rejecting unknown session token" + userOption.fold("")(o => s" (user '${o.id.string}')"))
