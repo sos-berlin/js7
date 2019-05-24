@@ -7,12 +7,12 @@ object Dependencies
 {
   val scalaVersion = "2.12.8"
 
-  val akkaVersion = "2.5.21"
+  val akkaVersion = "2.5.22"
   val akkaHttpVersion = "10.1.7"
   val slf4jVersion = "1.7.26"
   val log4jVersion = "2.11.2"
   val catsVersion = "1.6.0"
-  val catsEffectVersion = "1.2.0"
+  val catsEffectVersion = "1.3.0"
   val fastparseVersion = "2.1.0"
   val kittensVersion = "1.2.0"
   val circeVersion = "0.11.1"
@@ -64,8 +64,9 @@ object Dependencies
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.24"
 
-  val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "1.3.9"  // Everyone uses this version
-  val guava               = "com.google.guava" % "guava" % "27.0.1-jre"
+  //val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.1"
+  val spotbugs            = "com.github.spotbugs" % "spotbugs" % "3.1.12"
+  val guava               = "com.google.guava" % "guava" % "27.1-jre"
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 

@@ -85,9 +85,18 @@ val commonSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
-  dependencyOverrides += Dependencies.guava,
-  dependencyOverrides += Dependencies.scalaXml,
-  dependencyOverrides += Dependencies.cats,
+  dependencyOverrides ++= {
+    if (sys.props.contains("evictionWarnings"))
+      Nil
+    else {
+      import Dependencies._
+      cats ++
+        ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
+        circe ++
+        //("org.sangria-graphql" %% "sangria-marshalling-api" % sangriaVersion) ++  // sangria-circe uses an older version
+        scalaXml ++ guava ++ slf4j
+      }
+  },
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {},
   // Publish
@@ -197,7 +206,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
-      javaxAnnotations % "compile" ++
+      spotbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
 
@@ -236,7 +245,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       akkaSlf4j ++
       guava ++
       intelliJAnnotations % "compile" ++
-      javaxAnnotations % "compile" ++
+      spotbugs % "compile" ++
       scalaTest % "test" ++
       mockito % "test" ++
       log4j % "test"
@@ -360,7 +369,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      javaxAnnotations % "compile" ++
+      spotbugs % "compile" ++
       akkaActor ++
       akkaStream ++
       akkaSlf4j ++
@@ -397,7 +406,7 @@ lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      javaxAnnotations % "compile" ++
+      spotbugs % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test"
