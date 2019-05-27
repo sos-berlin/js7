@@ -52,7 +52,7 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     actorSystem
 
   @Provides @Singleton
-  def actorSystem(implicit closer: Closer, executionContext: ExecutionContext): ActorSystem = {
+  def actorSystem(closer: Closer, executionContext: ExecutionContext): ActorSystem = {
     val actorSystem = ActorSystem(configuration.name, config = Some(configuration.config),
       defaultExecutionContext = config.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? executionContext)
     closer.onClose {
