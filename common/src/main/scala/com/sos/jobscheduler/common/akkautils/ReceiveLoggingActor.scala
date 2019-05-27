@@ -42,5 +42,12 @@ object ReceiveLoggingActor {
       }
       super.stash()
     }
+
+    override def unstashAll() = {
+      if (isLoggingEnabled) {
+        logger.debug(Logger.Actor, s"${context.self.path} unstashAll")
+      }
+      super.unstashAll()
+    }
   }
 }

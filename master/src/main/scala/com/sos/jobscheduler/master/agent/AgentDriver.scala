@@ -60,6 +60,7 @@ with ReceiveLoggingActor.WithStash {
   private val authConfigPath = "jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefPath.string)
   private val recouplePause = new RecouplingPause
   private var uri = initialUri
+  private var changedUri: Uri = null
   private var client: AgentClient = null
 
   private val agentUserAndPassword: Option[UserAndPassword] =
@@ -183,7 +184,6 @@ with ReceiveLoggingActor.WithStash {
 
   private def coupling: Receive = {
     case Internal.AfterCoupling(Valid(Completed)) =>
-      couplingNumber += 1
       lastError = None
       isCoupled = true
       recouplePause.onCouplingSucceeded()
@@ -210,7 +210,7 @@ with ReceiveLoggingActor.WithStash {
       commandQueue.maySend()
       unstashAll()
       become("ready")(ready)
-      self ! Internal.FetchEvents
+      self ! Internal.FetchEvents(couplingNumber)
 
     case _ =>
       stash()
@@ -218,20 +218,24 @@ with ReceiveLoggingActor.WithStash {
 
   private def ready: Receive = {
     case Input.Reconnect(uri_) =>
-      uri = uri_
-      recouple()
+      changedUri = uri_
 
-    case Internal.FetchEvents if isCoupled && !isAwaitingFetchedEvents =>
-      if (!terminating) {
+    case Internal.FetchEvents(fetchCouplingNumber) =>
+      if (changedUri != null && changedUri != uri) {
+        uri = changedUri
+        changedUri = null
+        recouple(immediately = true)
+      } else if (!isCoupled || isAwaitingFetchedEvents) {
+        logger.debug(s"Discarding FetchEvents due to isCoupled=$isCoupled or isAwaitingFetchedEvents=$isAwaitingFetchedEvents")
+      } else if (!terminating) {
         isAwaitingFetchedEvents = true
-        val fetchCouplingNumber = couplingNumber
         val after = lastEventId
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, Some(eventFetchTimeout), limit = EventLimit))
           .materialize foreach { tried =>
             // *** Asynchronous ***
             self ! Internal.Fetched(Checked.fromTry(tried).flatten, after, fetchCouplingNumber)
           }
-        }
+      }
 
     case Internal.KeepEventsDelayed(agentEventId) =>
       if (!terminating && isCoupled) {
@@ -286,7 +290,7 @@ with ReceiveLoggingActor.WithStash {
             })
         }
         scheduler.scheduleOnce(eventFetchDelay) {
-          self ! Internal.FetchEvents
+          self ! Internal.FetchEvents(couplingNumber)
         }
       }
 
@@ -337,9 +341,11 @@ with ReceiveLoggingActor.WithStash {
 
     case Internal.CommandQueueReady =>
 
-    case Internal.Fetched(Invalid(problem), _, fetchCouplingNumber) =>
+    case Internal.Fetched(Invalid(problem), after, fetchCouplingNumber) =>
       isAwaitingFetchedEvents = false
-      if (fetchCouplingNumber == couplingNumber && isCoupled) {
+      if (fetchCouplingNumber != couplingNumber) {
+        logger.debug(s"Discarding obsolete Agent response Internal.Fetched(after=$after, $problem)")
+      } else if (isCoupled) {
         handleConnectionError(problem) {
           recouple()
         }
@@ -366,7 +372,7 @@ with ReceiveLoggingActor.WithStash {
             if (isCoupled) scheduler.scheduleOnce(1.second) {
               assert(lastEventId <= lastEventId_)
               lastEventId = lastEventId_
-              self ! Internal.FetchEvents
+              self ! Internal.FetchEvents(couplingNumber)
             }
 
           case torn: TearableEventSeq.Torn =>
@@ -374,7 +380,7 @@ with ReceiveLoggingActor.WithStash {
             logger.error(problem.toString)
             persist(MasterAgentEvent.AgentCouplingFailed(problem)) { _ =>
               if (isCoupled) scheduler.scheduleOnce(15.second) {
-                self ! Internal.FetchEvents
+                self ! Internal.FetchEvents(couplingNumber)
               }
             }
         }
@@ -383,7 +389,7 @@ with ReceiveLoggingActor.WithStash {
   private def handleConnectionError(problem: Problem)(andThen: => Unit): Unit = {
     if (terminating)
       logger.debug(s"While terminating: $problem")
-    else if (lastError.forall(_._1 == couplingNumber) && lastError.forall(_._2 != problem)) {
+    else if (/*?lastError.forall(_._1 == couplingNumber) &&*/ lastError.forall(_._2 != problem)) {
       lastError = Some(couplingNumber -> problem)
       logger.warn(problem.toString)
       for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(problem.toString, t)
@@ -396,17 +402,20 @@ with ReceiveLoggingActor.WithStash {
     }
   }
 
-  private def recouple() = {
+  private def recouple(immediately: Boolean = false) = {
     if (!terminating) {
       keepEventsCancelable foreach (_.cancel())
       keepEventsCancelable = None
       isCoupled = false
+      couplingNumber += 1
+      isAwaitingFetchedEvents = false  // A pending GET will be ignored due to different couplingNumber
       client.logout().materialize foreach { _ =>
         self ! Internal.MaybeLoggedOut  // We ignore an error due to unknown SessionToken (because Agent may have been restarted) or Agent shutdown
       }
       become("MaybeLoggedOut") {
         case Internal.MaybeLoggedOut =>
-          scheduler.scheduleOnce(recouplePause.nextPause()) {
+          val delay = if (immediately) Duration.Zero else recouplePause.nextPause()
+          scheduler.scheduleOnce(delay) {
             self ! Internal.Couple
           }
           unstashAll()
@@ -447,7 +456,7 @@ private[master] object AgentDriver
     def onCouplingSucceeded() = pauses = initial
     def nextPause() = (lastCoupling + pauses.next()).timeLeft max Minimum
 
-    private def initial = Iterator(Minimum, Minimum, Minimum, Minimum, 2.seconds, 5.seconds) ++
+    private def initial = Iterator(Minimum, 1.second, 1.second, 1.second, 2.seconds, 5.seconds) ++
       Iterator.continually(10.seconds)
   }
 
@@ -492,7 +501,7 @@ private[master] object AgentDriver
     final case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
     final case class BatchFailed(inputs: Seq[Queueable], problem: Problem) extends DeadLetterSuppression
-    final case object FetchEvents extends DeadLetterSuppression/*TODO Besser: Antwort empfangen und mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
+    final case class FetchEvents(couplingNumber: Long) extends DeadLetterSuppression/*TODO Besser: Antwort empfangen und mit discardBytes() verwerfen, um Akka-Warnung zu vermeiden*/
     final case class Fetched(stampedChecked: Checked[TearableEventSeq[Seq, KeyedEvent[Event]]], after: EventId, couplingNumber: Long) extends DeadLetterSuppression
     final case class KeepEventsDelayed(agentEventId: EventId) extends DeadLetterSuppression
   }

@@ -46,25 +46,29 @@ final class UpdateRepoAgentTest extends FreeSpec
           |""".stripMargin
       provider.agentToTree(agentRefPath).writeExecutable(ExecutablePath("/SCRIPT.cmd"), ":")
 
+      // Start Agent before Master to bind the reserved TCP port early, and the Master needs not to wait
+      val agent1 = provider.startAgents().await(99.seconds).head
       var agent2: RunningAgent = null
       provider.runMaster() { master =>
         master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
+        runOrder(master, OrderId("🔺"))
+        agent1.terminate() await 99.seconds
 
-        provider.runAgents() { _ =>
-          runOrder(master, OrderId("🔺"))
+        for (i <- 1 to 3) {
+          if (agent2 != null) agent2.terminate() await 99.seconds
+          // Start a new Agent with same state but a (hopefully) different HTTP port
+          val port = findFreeTcpPort()
+          agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
+            provider.agents.head.directory,
+            httpPort = Some(port))
+          ).await(99.seconds)
+
+          val versionId = VersionId(s"$i")
+          val agentRef = AgentRef(agentRefPath ~ versionId, uri = agent2.localUri.toString)
+          executeCommand(master, UpdateRepo(versionId, provider.fileBasedSigner.sign(agentRef) :: Nil))
+
+          runOrder(master, OrderId(s"🔵-$i"))
         }
-
-        // Start a new Agent with same state but a (probably) different HTTP port
-        val port = findFreeTcpPort()
-        agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
-          provider.agents.head.directory,
-          httpPort = Some(port))
-        ).await(99.seconds)
-
-        val agentRef = AgentRef(agentRefPath ~ V1, uri = agent2.localUri.toString)
-        executeCommand(master, UpdateRepo(V1, provider.fileBasedSigner.sign(agentRef) :: Nil))
-
-        runOrder(master, OrderId("🔵"))
       }
 
       // Master recovery
@@ -75,7 +79,6 @@ final class UpdateRepoAgentTest extends FreeSpec
       agent2.terminate() await 99.seconds
     }
   }
-
 
   private def executeCommand(master: RunningMaster, cmd: MasterCommand): Checked[cmd.Response] =
     master.httpApi.executeCommand(cmd).map(Valid.apply)
@@ -91,7 +94,6 @@ object UpdateRepoAgentTest
           execute executable="/SCRIPT.cmd", agent="/AGENT";
         }"""
   ).orThrow
-  private val V1 = VersionId("1")
 
   private def runOrder(master: RunningMaster, orderId: OrderId): Unit = {
     master.addOrderBlocking(FreshOrder(orderId, workflow.path))
