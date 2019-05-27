@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStderrWrittenFat, OrderStdoutWrittenFat}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.master.MasterFileBaseds
+import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStderrWritten, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
@@ -25,7 +25,7 @@ final class FatStateTest extends FreeSpec
   private val sign = new FileBasedSigner(new SillySigner, MasterFileBaseds.jsonCodec).sign _
   private val repo = Repo.signatureVerifying(new FileBasedVerifier(new SillySignatureVerifier, MasterFileBaseds.jsonCodec))
   private val eventIds = Iterator.from(1)
-  private var fatState = new FatState(eventIds.next(), repo, Map.empty)
+  private var fatState = FatState(MasterId("MASTER-ID"), eventIds.next(), repo, Map.empty)
 
   "VersionAdded" in {
     check(RepoEvent.VersionAdded(versionId),

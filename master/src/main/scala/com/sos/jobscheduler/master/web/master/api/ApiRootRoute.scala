@@ -8,19 +8,21 @@ import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.data.master.MasterId
-import com.sos.jobscheduler.master.RunningMaster
+import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRootRoute extends MasterRouteProvider {
-
+trait ApiRootRoute extends MasterRouteProvider
+{
   protected def masterId: MasterId
-  protected def orderCount: Task[Int]
+  protected def masterState: Task[MasterState]
+  protected def totalRunningTime: FiniteDuration
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -33,13 +35,14 @@ trait ApiRootRoute extends MasterRouteProvider {
     }
 
   private def overview: Task[MasterOverview] =
-    for (orderCount <- orderCount) yield
+    for (masterState <- masterState) yield
       MasterOverview(
         id = masterId,
         version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,
-        startedAt = RunningMaster.StartedAt,
-        orderCount = orderCount,
+        startedAt = masterState.masterStarted.startedAt,
+        totalRunningTime = totalRunningTime,
+        orderCount = masterState.orders.size,
         system = systemInformation(),
         java = javaInformation)
 }

@@ -56,7 +56,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
     protected val sender = TestActor.this.sender()
     protected val journalMeta = TestActor.this.journalMeta
     protected val expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
-    protected def newJournalEventWatch = new JournalEventWatch[TestEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)
+    protected def newJournalEventWatch = new JournalEventWatch[TestEvent](journalMeta, Some(journalHeader.journalId), JournalEventWatch.TestConfig)
 
     protected def snapshotToKey = {
       case a: TestAggregate => a.key
@@ -78,7 +78,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady =>
+    case JournalRecoverer.Output.JournalIsReady(_) =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")

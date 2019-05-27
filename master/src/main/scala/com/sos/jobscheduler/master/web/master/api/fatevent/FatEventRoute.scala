@@ -20,6 +20,7 @@ import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEven
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
@@ -39,6 +40,7 @@ import scala.concurrent.duration._
 trait FatEventRoute extends MasterRouteProvider
 {
   protected def eventWatch: EventWatch[Event]
+  protected def masterConfiguration: MasterConfiguration
 
   private implicit val fatScheduler = Scheduler(
     newSingleThreadExecutor { runnable =>
@@ -55,7 +57,7 @@ trait FatEventRoute extends MasterRouteProvider
   // The client may impatiently abort and retry, overloading the server with multiple useless requests.
   private val concurrentRequestsLimiter = new ConcurrentRequestLimiter(limit = 1, FatEventServiceBusyProblem, timeout = 1.second, queueSize = 1)
 
-  private lazy val fatStateCache = new FatStateCache(eventWatch)
+  private lazy val fatStateCache = new FatStateCache(masterConfiguration.masterId, eventWatch)
 
   @TestOnly
   protected def isBusy = concurrentRequestsLimiter.isBusy
@@ -75,35 +77,39 @@ trait FatEventRoute extends MasterRouteProvider
   private def requestFatEvents(fatRequest: EventRequest[FatEvent]): Task[ToResponseMarshallable] = {
     val deadline = now + fatRequest.timeout.getOrElse(DefaultTimeout)
     Task {
-      val stateAccessor = fatStateCache.newAccessor(fatRequest.after)
+      fatStateCache.newAccessor(fatRequest.after) match {
+        case None =>
+          ToResponseMarshallable(TearableEventSeq.Torn(fatRequest.after): TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-      def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
-        eventWatch.when[Event](underlyingRequest.copy[Event](timeout = Some(deadline.timeLeftOrZero)))
-          .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
-          .map {
-            case o: TearableEventSeq.Torn =>
-              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
+        case Some(stateAccessor) =>
+          def requestFat(underlyingRequest: EventRequest[Event]): Task[ToResponseMarshallable] =
+            eventWatch.when[Event](underlyingRequest.copy[Event](timeout = Some(deadline.timeLeftOrZero)))
+              .map(stateAccessor.toFatEventSeq(fatRequest, _))  // May take a long time !!!
+              .map {
+                case o: TearableEventSeq.Torn =>
+                  ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-            case empty: EventSeq.Empty =>
-              stateAccessor.skipIgnoredEventIds(empty.lastEventId)
-              val nextTimeout = deadline.timeLeftOrZero
-              if (nextTimeout > Duration.Zero)
-                requestFat(underlyingRequest.copy[Event](after = empty.lastEventId)).runToFuture
-              else
-                ToResponseMarshallable(empty: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
+                case empty: EventSeq.Empty =>
+                  stateAccessor.skipIgnoredEventIds(empty.lastEventId)
+                  val nextTimeout = deadline.timeLeftOrZero
+                  if (nextTimeout > Duration.Zero)
+                    requestFat(underlyingRequest.copy[Event](after = empty.lastEventId)).runToFuture
+                  else
+                    ToResponseMarshallable(empty: TearableEventSeq[Seq, KeyedEvent[FatEvent]])
 
-            case EventSeq.NonEmpty(stampedIterator) =>
-              implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              closeableIteratorToMarshallable(stampedIterator)
-          }
+                case EventSeq.NonEmpty(stampedIterator) =>
+                  implicit val x = NonEmptyEventSeqJsonStreamingSupport
+                  closeableIteratorToMarshallable(stampedIterator)
+              }
 
-      requestFat(EventRequest[Event](
-          Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
-          after = stateAccessor.eventId,
-          timeout = fatRequest.timeout,
-          delay = fatRequest.delay,
-          limit = Int.MaxValue))
-        .runToFuture
+          requestFat(EventRequest[Event](
+              Set(classOf[OrderEvent], classOf[RepoEvent], classOf[MasterEvent], classOf[MasterAgentEvent.AgentReady]),
+              after = stateAccessor.eventId,
+              timeout = fatRequest.timeout,
+              delay = fatRequest.delay,
+              limit = Int.MaxValue))
+            .runToFuture
+      }
     }
   }
 }

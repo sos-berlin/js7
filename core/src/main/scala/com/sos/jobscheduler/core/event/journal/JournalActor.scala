@@ -63,8 +63,8 @@ extends Actor with Stash {
   private var snapshotSchedule: Cancelable = null
 
   /** Originates from `JournalValue`, caculcated from recovered journal if not freshly initialized. */
-  private val virtualHeader = new SetOnce[JournalHeader]
-  private var observerOption: Option[JournalingObserver] = None
+  private val recoveredJournalHeader = new SetOnce[JournalHeader]
+  private var observer = new SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter[E] = null
   private var snapshotWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()
@@ -92,11 +92,11 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Input.Start(RecoveredJournalingActors(keyToActor), observer, virtualJournalHeader) =>
-      virtualHeader := virtualJournalHeader
-      observerOption = observer
-      lastWrittenEventId = virtualJournalHeader.eventId
-      totalEventCount = virtualJournalHeader.totalEventCount
+    case Input.Start(RecoveredJournalingActors(keyToActor), observer_, header) =>
+      observer := observer_
+      recoveredJournalHeader := header
+      lastWrittenEventId = header.eventId
+      totalEventCount = header.totalEventCount
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
       journalingActors ++= keyToActor.values
       journalingActors foreach watch
@@ -108,20 +108,21 @@ extends Actor with Stash {
           delete(file)  // TODO Provide alternative to move file
         }
       }
-      becomeTakingSnapshotThen() {
+      becomeTakingSnapshotThen() { journalHeader =>
         unstashAll()
         becomeReady()
-        sender ! Output.Ready
+        sender ! Output.Ready(journalHeader)
       }
 
-    case Input.StartWithoutRecovery(observer) =>  // Testing only
-      observerOption = observer
+    case Input.StartWithoutRecovery(observer_) =>  // Testing only
+      observer := observer_
+      val header = JournalHeader.initial(JournalId(randomUUID))
+      recoveredJournalHeader := header
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
-      virtualHeader := JournalHeader.initial(JournalId(randomUUID))
-      eventWriter.writeHeader(virtualHeader())
+      eventWriter.writeHeader(header)
       unstashAll()
       becomeReady()
-      sender() ! Output.Ready
+      sender() ! Output.Ready(header)
 
     case Input.RegisterMe =>
       handleRegisterMe()
@@ -182,7 +183,7 @@ extends Actor with Stash {
         if (sender() != self) sender() ! Output.SnapshotTaken
       } else {
         val sender = this.sender()
-        becomeTakingSnapshotThen() {
+        becomeTakingSnapshotThen() { _ =>
           becomeReady()  // Writes EventHeader
           if (sender != self) sender ! Output.SnapshotTaken
         }
@@ -264,7 +265,7 @@ extends Actor with Stash {
       }
     }
 
-  private def becomeTakingSnapshotThen()(andThen: => Unit) = {
+  private def becomeTakingSnapshotThen()(andThen: JournalHeader => Unit) = {
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
@@ -277,15 +278,16 @@ extends Actor with Stash {
       closeEventWriter()
     }
 
-    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observerOption, simulateSync = simulateSync)
-    snapshotWriter.writeHeader(virtualHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
-      totalRunningTime = virtualHeader().totalRunningTime + runningSince.elapsed))
+    val header = recoveredJournalHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
+      totalRunningTime = recoveredJournalHeader().totalRunningTime + runningSince.elapsed)
+    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observer(), simulateSync = simulateSync)
+    snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
     actorOf(
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
         .withDispatcher(DispatcherName),
       uniqueActorName("SnapshotTaker"))
-    become(takingSnapshot(commander = sender(), () => andThen))
+    become(takingSnapshot(commander = sender(), () => andThen(header)))
   }
 
   private def takingSnapshot(commander: ActorRef, andThen: () => Unit): Receive = {
@@ -312,7 +314,7 @@ extends Actor with Stash {
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = lastWrittenEventId)
-    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observerOption, simulateSync = simulateSync,
+    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observer(), simulateSync = simulateSync,
       withoutSnapshots = withoutSnapshots)
 
     Try { createSymbolicLink(symLink, file.getFileName) }
@@ -327,14 +329,14 @@ extends Actor with Stash {
   }
 
   private def deleteObsoleteJournalFiles(): Unit =
-    observerOption match {
+    observer() match {
       case None =>
         for (file <- listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
           try delete(file)
           catch { case NonFatal(t) => logger.warn(s"Cannot delete file '$file': ${t.toStringWithCauses}") }
         }
-      case Some(observer) =>
-        observer.deleteObsoleteJournalFiles()
+      case Some(o) =>
+        o.deleteObsoleteJournalFiles()
     }
 
   private def handleRegisterMe() = {
@@ -381,7 +383,7 @@ object JournalActor
     private[journal] final case class Start(
       recoveredJournalingActors: RecoveredJournalingActors,
       journalingObserver: Option[JournalingObserver],
-      virtualJournalHeader: JournalHeader)
+      recoveredJournalHeader: JournalHeader)
     final case class StartWithoutRecovery(journalingObserver: Option[JournalingObserver] = None)
     /*private[journal] due to race condition when starting AgentDriver*/ case object RegisterMe
     private[journal] final case class Store(
@@ -404,7 +406,7 @@ object JournalActor
 
   sealed trait Output
   object Output {
-    final case object Ready
+    final case class Ready(journalHeader: JournalHeader)
     private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
     private[journal] final case class Accepted(item: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output

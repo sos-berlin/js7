@@ -13,7 +13,6 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -125,7 +124,6 @@ extends AutoCloseable
 
 object RunningMaster
 {
-  val StartedAt = Timestamp.now
   private val logger = Logger(getClass)
 
   def run[A](configuration: MasterConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningMaster => Unit)(implicit s: Scheduler): Unit =
@@ -222,11 +220,14 @@ object RunningMaster
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
         .andThen { case _ => closer.close() }  // Close automatically after termination
 
-      val webServer = injector.instance[MasterWebServer.Factory].apply(fileBasedApi, orderApi, commandExecutor, masterState, recovered.eventWatch)
+      val webServer = injector.instance[MasterWebServer.Factory].apply(
+        startUpTotalRunningTime = recovered.totalRunningTime,
+        fileBasedApi, orderApi, commandExecutor, masterState, recovered.eventWatch)
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
         new RunningMaster(recovered.eventWatch.strict,
-          commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper, terminated, closer, injector)
+          commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper,
+          terminated, closer, injector)
     }
   }
 

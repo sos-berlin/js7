@@ -30,7 +30,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     withTestActor() { (_, _ ) => }
     val file = currentFile
     autoClosing(new JournalReader(journalMeta, Some(journalId), file)) { journalReader =>
-      assert(journalReader.nextSnapshots().toList == Nil)
+      assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
       assert(journalReader.nextEvents().toList == Nil)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.totalEventCount == 0)
@@ -46,7 +46,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
       writer.endSnapshotSection(sync = false)
     }
     autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
-      assert(journalReader.nextSnapshots().toList == Nil)
+      assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
       assert(journalReader.nextEvents().toList == Nil)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.totalEventCount == 0)
@@ -69,7 +69,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.tornEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
-      assert(journalReader.nextSnapshots().toList == Nil)
+      assert(journalReader.nextSnapshots().toList == journalReader.journalHeader :: Nil)
       assert(journalReader.nextEvents().toList == Stamped(1001, "X" <-: TestEvent.Removed) :: Nil)
       assert(journalReader.eventId == 1001)
       assert(journalReader.totalEventCount == 1)
@@ -85,6 +85,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     }
     autoClosing(new JournalReader(journalMeta, Some(journalId), currentFile)) { journalReader =>
       assert(journalReader.nextSnapshots().toSet == Set(
+        journalReader.journalHeader,
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C","(C.Add)")))
       assert(journalReader.nextEvents().toList == List(

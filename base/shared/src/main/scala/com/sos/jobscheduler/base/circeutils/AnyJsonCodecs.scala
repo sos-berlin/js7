@@ -33,6 +33,7 @@ object AnyJsonCodecs {
       case v: Iterable[_] => Json.fromValues(v map anyToJson)
       case v: java.lang.Iterable[_] => Json.fromValues(v.asScala map anyToJson)
       case v: Json => v
+      case v: BigDecimal => Json.fromBigDecimal(v)
       case v: java.math.BigDecimal => Json.fromBigDecimal(v)
       case v => sys.error(s"Unsupported type for JSON serialization: ${v.getClass.getName}")
     }

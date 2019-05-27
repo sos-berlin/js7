@@ -1,15 +1,16 @@
 package com.sos.jobscheduler.common.event.collector
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
@@ -86,6 +87,7 @@ private object EventCollectorExclusiveTest
   with EventIdGenerating
   {
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)
+    def snapshotObjectsFor(after: EventId) = None
   }
 
   private trait AEvent extends Event {

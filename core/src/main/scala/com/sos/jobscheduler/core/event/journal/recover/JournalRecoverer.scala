@@ -63,7 +63,7 @@ trait JournalRecoverer[E <: Event]
     }
 
   private def recoverSnapshots(journalReader: JournalReader[E]): Unit =
-    for (snapshot <- journalReader.nextSnapshots()) {
+    for (snapshot <- journalReader.nextSnapshotsWithoutJournalHeader()) {
       wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
         snapshotCount += 1
         recoverSnapshot(snapshot)
@@ -99,7 +99,7 @@ trait JournalRecoverer[E <: Event]
     JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver,
       journalHeaderOnce().copy(eventId = _lastEventId, totalEventCount = _totalEventCount, timestamp = lastEventTimestamp))
 
-  final lazy val journalId = journalHeaderOnce().journalId
+  final lazy val journalHeader = journalHeaderOnce()
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -111,7 +111,7 @@ object JournalRecoverer {
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],
-    virtualJournalHeader: JournalHeader)
+    recoveredJournalHeader: JournalHeader)
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
@@ -119,27 +119,27 @@ object JournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JournalActor.Input.Start(recoveredActors, observer, virtualJournalHeader)
+          journalActor ! JournalActor.Input.Start(recoveredActors, observer, recoveredJournalHeader)
 
           def receive = {
-            case JournalActor.Output.Ready =>
+            case JournalActor.Output.Ready(journalHeader) =>
               for (a <- actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
               logger.debug(s"Awaiting RecoveryFinished from ${actors.size} actors")
-              becomeWaitingForChildren(actors.size)
+              becomeWaitingForChildren(journalHeader, actors.size)
           }
 
-          private def becomeWaitingForChildren(n: Int): Unit = {
+          private def becomeWaitingForChildren(journalHeader: JournalHeader, n: Int): Unit = {
             if (n == 0) {
               logger.debug(s"JournalIsReady")
-              context.parent ! Output.JournalIsReady
+              context.parent ! Output.JournalIsReady(journalHeader)
               context.stop(self)
             } else {
               context.become {
                 case KeyedJournalingActor.Output.RecoveryFinished =>
                   logger.trace(s"${n - 1} actors left: Actor has RecoveryFinished: ${actorToKey(sender())}'")
-                  becomeWaitingForChildren(n - 1)
+                  becomeWaitingForChildren(journalHeader, n - 1)
 
                 case msg if actorToKey contains sender() =>
                   context.parent.forward(msg)  // For example OrderActor.Output.RecoveryFinished
@@ -152,6 +152,6 @@ object JournalRecoverer {
   }
 
   object Output {
-    case object JournalIsReady
+    final case class JournalIsReady(journalHeader: JournalHeader)
   }
 }

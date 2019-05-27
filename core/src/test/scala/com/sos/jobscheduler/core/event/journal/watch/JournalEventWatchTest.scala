@@ -252,9 +252,9 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       // --0.journal with no snapshot objects
       writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
       autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
-        val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+        val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
         assert(eventId == EventId.BeforeFirst)
-        assert(iterator.toVector.isEmpty)
+        assert(iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))
         iterator.close()
       }
 
@@ -263,24 +263,23 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       writeJournalSnapshot(journalMeta, after = 100, snapshotObjects)
       autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
         locally {
-          val (eventId, iterator) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
-          assert(eventId == EventId.BeforeFirst)
-          assert(iterator.toVector.isEmpty)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+          assert(eventId == EventId.BeforeFirst && iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))  // Contains only JournalHeader
           iterator.close()
         }
         locally {
-          val (eventId, iterator) = eventWatch.snapshotObjectsFor(99)
-          assert(eventId == EventId.BeforeFirst && iterator.isEmpty)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(99)
+          assert(eventId == EventId.BeforeFirst && iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))  // Contains only JournalHeader
           iterator.close()
         }
         locally {
-          val (eventId, iterator) = eventWatch.snapshotObjectsFor(100)
-          assert(eventId == 100 && iterator.toList == snapshotObjects)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(100)
+          assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
           iterator.close()
         }
         locally {
-          val (eventId, iterator) = eventWatch.snapshotObjectsFor(101)
-          assert(eventId == 100 && iterator.toList == snapshotObjects)
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(101)
+          assert(eventId == 100 && iterator.filterNot(_.isInstanceOf[JournalHeader]).toList == snapshotObjects)
           iterator.close()
         }
       }

@@ -7,7 +7,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, CancelOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, KeepEvents, OrderCommand, Response}
-import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -187,9 +187,9 @@ extends MainJournalingActor[Event] with Stash {
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
 
-    case JournalRecoverer.Output.JournalIsReady =>
+    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
       logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-      persist(AgentMasterEvent.AgentReadyForMaster(ZoneId.systemDefault.getId)) { _ =>
+      persist(AgentReadyForMaster(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { _ =>
         become("ready")(ready)
         unstashAll()
         logger.info("Ready")

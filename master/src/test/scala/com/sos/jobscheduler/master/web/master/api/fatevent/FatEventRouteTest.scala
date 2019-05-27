@@ -6,29 +6,36 @@ import akka.http.scaladsl.model.StatusCodes.{OK, TooManyRequests}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.fatevent.OrderFatEvent
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventSeq, JournalId, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdoutWrittenFat}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.master.MasterFileBaseds
+import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTransferredToAgent}
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Execute
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterStarted
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
+import java.nio.file.Paths
+import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.{Args, FreeSpec}
 import scala.annotation.tailrec
@@ -42,6 +49,8 @@ import scala.util.{Failure, Success}
   */
 final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute
 {
+  protected val masterConfiguration = MasterConfiguration.forTest(Paths.get("/tmp/FatEventRouteTest/not-used"))
+
   override protected def runTest(testName: String, args: Args) = {
     logger.debug("-" * 50)
     logger.debug(s"""Test "$testName"""")
@@ -60,7 +69,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
   protected implicit def scheduler: Scheduler = Scheduler.global
 
   InitialEvents foreach eventWatch.addStamped
-  OrderEvents.flatten foreach eventWatch.addStamped
+  TestEvents.flatten foreach eventWatch.addStamped
 
   private def route = pathSegments("fatEvent")(fatEventRoute)
 
@@ -204,7 +213,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     }
   }
 
-  private def getFatEvents(uri: String): Seq[Stamped[KeyedEvent[OrderFatEvent]]] =
+  private def getFatEvents(uri: String): Seq[Stamped[KeyedEvent[FatEvent]]] =
     getFatEventSeq(uri) match {
       case EventSeq.NonEmpty(stampeds) =>
         assert(stampeds.nonEmpty)
@@ -214,7 +223,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     }
 
   @tailrec
-  private def getFatEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]] = {
+  private def getFatEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[FatEvent]] = {
     var retryCount = 0
     Get(uri) ~> Accept(`application/json`) ~> route ~> check {
       status match {
@@ -223,7 +232,7 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
           logger.debug("TooManyRequests #" + retryCount)
           sleep(10.ms)
           None
-        case OK => Some(responseAs[TearableEventSeq[Seq, KeyedEvent[OrderFatEvent]]])
+        case OK => Some(responseAs[TearableEventSeq[Seq, KeyedEvent[FatEvent]]])
         case _ => fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       }
     } match {
@@ -234,6 +243,12 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
 
   protected final class TestEventWatch extends EventCollector(EventCollector.Configuration.ForTest) {
     var lastEventsAfter = EventId(-1)
+
+    // Return a minimum snapshot
+    def snapshotObjectsFor(after: EventId) = Some(EventId.BeforeFirst -> CloseableIterator(
+      JournalHeader.initial(JournalId(randomUUID())),  // JournalHeader is implicitly a snapshot object
+      masterStarted))
+
     override def eventsAfter(after: EventId) = {
       lastEventsAfter = after
       super.eventsAfter(after)
@@ -250,20 +265,26 @@ object FatEventRouteTest
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/test") ~ TestVersionId,
     Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
+  private val masterStarted = MasterStarted(MasterId("FatEventRouteTest"), Timestamp.now)
   private val InitialEvents =
-    Stamped(EventId(1), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(2), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
-    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
+    Stamped(EventId(1), NoKey <-: masterStarted) ::   // MasterState.fromIterable requires a MasterStarted event
+    //Stamped(EventId(2), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
+    Stamped(EventId(3), NoKey <-: VersionAdded(TestVersionId)) ::
+    Stamped(EventId(4), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
+    Stamped(EventId(5), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
 
-  private val OrderEvents: Seq[Seq[Stamped[KeyedEvent[OrderEvent.OrderCoreEvent]]]] =
+  private val TestEvents: Seq[Seq[Stamped[AnyKeyedEvent]]] =
     (1 to 18).map(i =>
       Stamped(EventId(i * 10    ), OrderId(i.toString) <-: OrderAdded(TestWorkflow.id, None, Map.empty)) ::     // Yields OrderFatEvent
       Stamped(EventId(i * 10 + 1), OrderId(i.toString) <-: OrderAttachable(TestAgentRefId.path)) ::     // No FatEvent
       Stamped(EventId(i * 10 + 2), OrderId(i.toString) <-: OrderTransferredToAgent(TestAgentRefId.path)) ::  // No FatEvent
       Nil)
-  private val TestFatEvents =
-    for (events <- OrderEvents; event = events.head) yield
-      Stamped(event.eventId, event.timestamp, event.value.key <-: OrderAddedFat(TestWorkflow.id, None, Map.empty))
+  private val TestFatEvents: Seq[Stamped[KeyedEvent[OrderAddedFat]]] =
+    TestEvents.flatMap(
+      _ collectFirst {
+        case Stamped(eventId, timestamp, KeyedEvent(orderId: OrderId, _: OrderAdded)) =>
+          Stamped(eventId, timestamp, orderId <-: OrderAddedFat(TestWorkflow.id, None, Map.empty))
+      })
 
   private def fatEventsAfter(after: EventId) = TestFatEvents dropWhile (_.eventId <= after)
 

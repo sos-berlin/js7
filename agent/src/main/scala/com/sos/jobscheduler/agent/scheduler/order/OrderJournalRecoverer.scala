@@ -37,11 +37,11 @@ extends JournalRecoverer[Event] {
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
   protected def recoverSnapshot = {
-    case workflow: Workflow =>
-      workflowRegister.recover(workflow)
-
     case order: Order[Order.State] =>
       idToOrder.insert(order.id -> order)
+
+    case workflow: Workflow =>
+      workflowRegister.recover(workflow)
   }
 
   override protected def onAllSnapshotRecovered() = {
@@ -113,10 +113,10 @@ private[agent] object OrderJournalRecoverer
 
   final class Recovered private[OrderJournalRecoverer](recoverer: OrderJournalRecoverer, config: Config)
   {
-    val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalId), config)
+    val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalHeader.journalId), config)
 
     def journalMeta = recoverer.journalMeta
-    def journalId = recoverer.journalId
+    def journalId = recoverer.journalHeader.journalId
     def agentState = recoverer.agentState
 
     def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type, actors: RecoveredJournalingActors)(implicit arf: ActorRefFactory) =

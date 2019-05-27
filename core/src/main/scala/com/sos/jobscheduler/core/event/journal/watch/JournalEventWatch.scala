@@ -184,9 +184,9 @@ with JournalingObserver
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
 
-  override def snapshotObjectsFor(after: EventId) =
+  def snapshotObjectsFor(after: EventId) =
     historicJournalFileAfter(after)
-      .fold(super.snapshotObjectsFor(after)) { historyJournalFile =>
+      .map { historyJournalFile =>
         logger.debug(s"Reading snapshot from journal file '$historyJournalFile'")
         historyJournalFile.afterEventId -> historyJournalFile.eventReader.snapshotObjects
       }

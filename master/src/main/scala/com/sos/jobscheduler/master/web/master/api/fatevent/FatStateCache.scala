@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatStateCache._
 import scala.concurrent.duration.Deadline.now
@@ -14,7 +15,7 @@ import scala.concurrent.duration._
 
 /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.
   */
-private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
+private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: EventWatch[Event])
 {
   // May be accessed by multiple clients simultaneously
   @volatile
@@ -22,13 +23,10 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
   @volatile
   private var lastDelivered: Option[FatState] = None  // Modified while on-the-fly built FatEvent stream is being sent to client !!!
 
-  def newAccessor(after: EventId) = new Accessor(fatStateFor(after), after)
+  def newAccessor(after: EventId) = fatStateFor(after).map(fatState => new Accessor(fatState, after))
 
-  private def fatStateFor(after: EventId): FatState =
-    useFatState(after) match {
-      case Some(fatState) => fatState
-      case None => recoverFatState(after)
-    }
+  private def fatStateFor(after: EventId): Option[FatState] =
+    useFatState(after) orElse recoverFatState(after)
 
   private def useFatState(after: EventId): Option[FatState] =
     lastDelivered match {
@@ -49,13 +47,13 @@ private[fatevent] final class FatStateCache(eventWatch: EventWatch[Event])
         }
     }
 
-  private def recoverFatState(after: EventId): FatState = {
-    val (eventId, snapshotObjects) = eventWatch.snapshotObjectsFor(after = after)  // Returns a CloseableIterator
-    val state = autoClosing(snapshotObjects) { _ =>
-      MasterState.fromIterable(eventId, snapshotObjects)
+  private def recoverFatState(after: EventId): Option[FatState] =
+    eventWatch.snapshotObjectsFor(after = after) map { case (eventId, snapshotObjectsCloseableIterator) =>
+      val masterState = autoClosing(snapshotObjectsCloseableIterator) { _ =>
+        MasterState.fromIterable(eventId, snapshotObjectsCloseableIterator)
+      }
+      FatState(masterId, masterState.eventId, masterState.repo, masterState.orders.map(o => o.id -> o).toMap)
     }
-    FatState(state.eventId, state.repo, state.orders.map(o => o.id -> o).toMap)
-  }
 
   final class Accessor(initialFatState: FatState, after: EventId)
   {

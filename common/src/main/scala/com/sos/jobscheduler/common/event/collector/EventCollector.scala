@@ -47,4 +47,7 @@ object EventCollector
     configuration: Configuration = Configuration.ForTest)
     (implicit scheduler: Scheduler)
     extends EventCollector(configuration)
+  {
+    def snapshotObjectsFor(after: EventId) = None
+  }
 }

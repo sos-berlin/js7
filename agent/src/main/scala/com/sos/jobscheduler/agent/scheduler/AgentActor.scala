@@ -99,7 +99,7 @@ extends MainJournalingActor[AgentEvent] {
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady =>
+    case JournalRecoverer.Output.JournalIsReady(_) =>
       if (masterToOrderKeeper.nonEmpty) {
         logger.info(s"${masterToOrderKeeper.size} recovered Master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       }

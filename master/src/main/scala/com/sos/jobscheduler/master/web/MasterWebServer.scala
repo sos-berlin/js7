@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import com.sos.jobscheduler.base.auth.SimpleUser
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
@@ -23,11 +24,14 @@ import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
 final class MasterWebServer private(
+  startUpTotalRunningTime: FiniteDuration,
   masterConfiguration: MasterConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
   fileBasedApi: FileBasedApi,
@@ -40,10 +44,11 @@ final class MasterWebServer private(
   injector: Injector,
   implicit protected val actorSystem: ActorSystem,
   protected val scheduler: Scheduler)
-extends AkkaWebServer with AkkaWebServer.HasUri {
-
-  protected def uriPathPrefix = ""
+extends AkkaWebServer with AkkaWebServer.HasUri
+{
   protected val bindings = masterConfiguration.webServerBindings
+
+  private val runningSince = now
 
   protected def newRoute(binding: WebServerBinding): Route =
     new CompleteRoute {
@@ -64,6 +69,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
       protected def orderCount = orderApi.orderCount
       protected def executeCommand(command: MasterCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def masterState = MasterWebServer.this.masterState
+      protected def totalRunningTime = MasterWebServer.this.startUpTotalRunningTime + runningSince.elapsed
 
       logger.info(gateKeeper.boundMessage(binding))
     }
@@ -84,11 +90,14 @@ object MasterWebServer {
     scheduler: Scheduler,
     closer: Closer)
   {
-    def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
+    def apply(startUpTotalRunningTime: FiniteDuration,
+      fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
       commandExecutor: MasterCommandExecutor, masterState: Task[MasterState],
       eventWatch: EventWatch[Event])
     : MasterWebServer =
-      new MasterWebServer(masterConfiguration, gateKeeperConfiguration,
+      new MasterWebServer(
+        startUpTotalRunningTime,
+        masterConfiguration, gateKeeperConfiguration,
         fileBasedApi, orderApi, commandExecutor, masterState,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)

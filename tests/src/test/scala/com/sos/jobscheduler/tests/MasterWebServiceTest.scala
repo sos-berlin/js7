@@ -34,9 +34,10 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
+import com.sos.jobscheduler.master.data.MasterSnapshots
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterReady
+import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterReady, MasterStarted}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.MasterWebServiceTest._
 import com.sos.jobscheduler.tests.testenv.{DirectoryProvider, MasterAgentForScalaTest}
@@ -480,10 +481,16 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
     val snapshots = httpClient.get[Json](s"$uri/master/api/snapshot/", headers) await 99.s
     assert(snapshots.asObject.get("eventId") == Some(1000024.asJson) ||
            snapshots.asObject.get("eventId") == Some(1000025.asJson))  // In case of AgentCouplingFailed ?
-    val shortenedArray = Json.fromValues(snapshots.asObject.get("array").get.asArray.get
-      .filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
+    val array = snapshots.asObject.get("array").get.asArray.get
+    val shortenedArray = Json.fromValues(array.filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
+    val startedAt = array.iterator.map(_.as(MasterSnapshots.SnapshotJsonCodec).orThrow)
+      .collectFirst { case o: MasterStarted => o }.get.startedAt
     assert(shortenedArray == json"""[
       {
+        "TYPE": "MasterStarted",
+        "masterId": "Master",
+        "startedAt": ${startedAt.toEpochMilli}
+      }, {
         "TYPE": "VersionAdded",
         "versionId": "INITIAL"
       }, {
@@ -541,21 +548,28 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as[KeyedEvent[Event]].orThrow)
     }
     val agentRunId = keyedEvents.collectFirst { case AgentRefPath("/AGENT") <-: (e: AgentRegisteredMaster) => e.agentRunId }.get
+    val startedAt = keyedEvents.collectFirst { case _ <-: (e: MasterStarted) => e.startedAt }.get
+    val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: MasterReady) => e.totalRunningTime }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateEventsForTest(eventsJson) == json"""{
       "TYPE": "NonEmpty",
       "stamped": [
         {
           "eventId": 1001,
-          "TYPE": "MasterReady",
+          "TYPE": "MasterStarted",
           "masterId": "Master",
-          "timezone": "${ZoneId.systemDefault.getId}"
+          "startedAt": ${startedAt.toEpochMilli}
         }, {
           "eventId": 1002,
+          "TYPE": "MasterReady",
+          "timezone": "${ZoneId.systemDefault.getId}",
+          "totalRunningTime": ${totalRunningTime.toBigDecimal}
+        }, {
+          "eventId": 1003,
           "TYPE": "VersionAdded",
           "versionId": "INITIAL"
         }, {
-          "eventId": 1003,
+          "eventId": 1004,
           "TYPE": "FileBasedAdded",
           "path": "AgentRef:/AGENT",
           "signed": {
@@ -566,7 +580,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             }
           }
         }, {
-          "eventId": 1004,
+          "eventId": 1005,
           "TYPE": "FileBasedAdded",
           "path": "AgentRef:/FOLDER/AGENT-A",
           "signed": {
@@ -577,21 +591,21 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             }
           }
         }, {
-          "eventId": 1005,
+          "eventId": 1006,
           "key": "/AGENT",
           "TYPE": "AgentRegisteredMaster",
           "agentRunId": "${agentRunId.string}"
         }, {
-          "eventId": 1006,
+          "eventId": 1007,
           "TYPE": "AgentReady",
           "key": "/AGENT",
           "timezone": "${ZoneId.systemDefault.getId}"
         }, {
-          "eventId": 1007,
+          "eventId": 1008,
           "TYPE": "VersionAdded",
           "versionId": "VERSION-1"
         }, {
-          "eventId": 1008,
+          "eventId": 1009,
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
@@ -602,7 +616,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             }
           }
         }, {
-          "eventId": 1009,
+          "eventId": 1010,
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
@@ -613,7 +627,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             }
           }
         }, {
-          "eventId": 1010,
+          "eventId": 1011,
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
@@ -621,25 +635,25 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             "versionId": "VERSION-1"
           }
         }, {
-          "eventId": 1011,
+          "eventId": 1012,
           "TYPE": "OrderAttachable",
           "key": "ORDER-ID",
           "agentRefPath":"/AGENT"
         }, {
-          "eventId": 1012,
+          "eventId": 1013,
           "TYPE": "OrderTransferredToAgent",
           "key": "ORDER-ID",
           "agentRefPath": "/AGENT"
         }, {
-          "eventId": 1013,
+          "eventId": 1014,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "outcome": {
@@ -647,20 +661,20 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
             "returnCode": 0
           }
         }, {
-          "eventId": 1016,
+          "eventId": 1017,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1017,
+          "eventId": 1018,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1018,
+          "eventId": 1019,
           "TYPE": "OrderTransferredToMaster",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1019,
+          "eventId": 1020,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }

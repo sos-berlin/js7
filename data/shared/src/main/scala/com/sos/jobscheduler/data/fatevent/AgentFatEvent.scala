@@ -14,7 +14,6 @@ sealed trait AgentFatEvent extends FatEvent {
 object AgentFatEvent
 {
   final case class AgentReadyFat(timezone: String) extends AgentFatEvent
-  case object MasterReady
 
   implicit val jsonCodec: TypedJsonCodec[AgentFatEvent] = TypedJsonCodec(
     Subtype(deriveCodec[AgentReadyFat]))

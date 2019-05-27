@@ -2,8 +2,10 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
@@ -24,7 +26,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterStarted, MasterTestEvent}
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.typesafe.config.Config
 import scala.collection.mutable
@@ -36,23 +38,28 @@ import shapeless.tag.@@
 private final class MasterJournalRecoverer(masterConfiguration: MasterConfiguration)
 extends JournalRecoverer[Event]
 {
+  private val resumedAt = Timestamp.now
   protected val journalMeta = JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.journalFileBase)
 
   protected def expectedJournalId = None
 
+  private val masterStarted = new SetOnce[MasterStarted]
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
 
   protected def recoverSnapshot = {
+    case order: Order[Order.State] =>
+      idToOrder.insert(order.id -> order)
+
     case event: RepoEvent =>
       repo = repo.applyEvent(event).orThrow
 
     case snapshot: AgentSnapshot =>
       pathToAgent.insert(snapshot.agentRefPath -> snapshot)
 
-    case order: Order[Order.State] =>
-      idToOrder.insert(order.id -> order)
+    case o: MasterStarted =>
+      masterStarted := o
   }
 
   override protected def onAllSnapshotRecovered() = {
@@ -95,6 +102,10 @@ extends JournalRecoverer[Event]
             case _: OrderStdWritten =>
           }
 
+        case KeyedEvent(_: NoKey, o: MasterStarted) =>
+          // The very first journal file "master--0.journal" contains a (premature) MasterStarted snapshot and a MasterStarted event
+          require(o == masterStarted(), s"Error in journal: recovered $o event differs from snapshot ${masterStarted()}")
+
         case KeyedEvent(_, MasterTestEvent) =>
 
         case _ => sys.error(s"Unknown event recovered from journal: $keyedEvent")
@@ -120,8 +131,13 @@ extends JournalRecoverer[Event]
       case _ =>
     }
 
-  private def masterState: Option[MasterState] =
-    hasJournal ? MasterState(lastRecoveredEventId, repo, pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
+  private def masterState: Option[MasterState] = {
+    hasJournal ? MasterState(
+      eventId = lastRecoveredEventId,
+      masterStarted(),
+      repo,
+      pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
+  }
 
   private def result(config: Config) = new Recovered(this, config)
 }
@@ -136,11 +152,10 @@ private[master] object MasterJournalRecoverer
 
   final class Recovered private[MasterJournalRecoverer](recoverer: MasterJournalRecoverer, config: Config)
   {
-    val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalId), config)
-
+    val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalHeader.journalId), config)
     def journalMeta = recoverer.journalMeta
-    def journalId = recoverer.journalId
     def masterState = recoverer.masterState
+    def totalRunningTime = recoverer.journalHeader.totalRunningTime
 
     def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type)(implicit arf: ActorRefFactory) =
       recoverer.startJournalAndFinishRecovery(journalActor = journalActor, journalingObserver = Some(eventWatch))

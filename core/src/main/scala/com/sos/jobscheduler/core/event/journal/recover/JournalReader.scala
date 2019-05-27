@@ -99,7 +99,10 @@ extends AutoCloseable
   }
 
   def nextSnapshots(): Iterator[Any] =
-    untilNoneIterator(nextSnapshotJson()) map (json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
+    Iterator(journalHeader) ++ nextSnapshotsWithoutJournalHeader()
+
+  def nextSnapshotsWithoutJournalHeader(): Iterator[Any] =
+    untilNoneIterator(nextSnapshotJson()).map(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
 
   @tailrec
   private def nextSnapshotJson(): Option[Json] = {

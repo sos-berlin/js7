@@ -26,12 +26,14 @@ final class AnyJsonCodecsTest extends FreeSpec {
     val map = Map(
       "string" -> "STRING",
       "int" -> 333,
+      "bigDecimal" -> BigDecimal("111222333444555666777888999.1234556789"),
       "boolean" -> true,
       "array" -> Vector(1, "two"))
     val json =
       json"""{
         "string": "STRING",
         "int": 333,
+        "bigDecimal": 111222333444555666777888999.1234556789,
         "boolean": true,
         "array": [1, "two"]
       }"""

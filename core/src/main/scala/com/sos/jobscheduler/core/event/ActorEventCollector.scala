@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.ActorEventCollector._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import javax.inject.{Inject, Singleton}
 import monix.execution.Scheduler
 
@@ -18,7 +18,9 @@ final class ActorEventCollector private(
   keyedEventBus: StampedKeyedEventBus,
   actorSystem: ActorSystem)
 extends EventCollector(configuration)(scheduler)
-with AutoCloseable {
+with AutoCloseable
+{
+  def snapshotObjectsFor(after: EventId) = None
 
   private val actorRef = actorSystem.actorOf(
     Props {

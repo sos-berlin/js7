@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.fatevent.MasterFatEvent.MasterReadyFat
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent.{OrderAddedFat, OrderFinishedFat, OrderForkedFat, OrderJoinedFat, OrderProcessedFat, OrderProcessingStartedFat, OrderStdWrittenFat}
 import com.sos.jobscheduler.data.fatevent.{AgentFatEvent, FatEvent, MasterFatEvent, OrderFatEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.master.MasterFileBaseds
+import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -20,7 +20,7 @@ import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 /**
   * @author Joacim Zschimmer
   */
-private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
+private[fatevent] final case class FatState(masterId: MasterId, eventId: EventId, repo: Repo, idToOrder: Map[OrderId, Order[Order.State]])
 {
   def toFatEvents(stamped: Stamped[KeyedEvent[Event]]): (FatState, Option[Stamped[KeyedEvent[FatEvent]]]) = {
     if (stamped.eventId <= eventId) throw new IllegalArgumentException(s"Duplicate stamped.eventId ${EventId.toString(stamped.eventId)} <= eventId ${EventId.toString(eventId)}")
@@ -103,8 +103,8 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
 
   private def toMasterFatEvent(event: MasterEvent): Option[MasterFatEvent] =
     event match {
-      case MasterEvent.MasterReady(masterId, timezone) =>
-        Some(MasterReadyFat(masterId, timezone))
+      case masterReady: MasterEvent.MasterReady =>
+        Some(MasterReadyFat(masterId, masterReady.timezone))
 
       case _ =>
         None
@@ -118,8 +118,4 @@ private[fatevent] final case class FatState(eventId: EventId, repo: Repo, idToOr
       case _ =>
         None
     }
-}
-
-object FatState {
-  val Initial = FatState(EventId.BeforeFirst, Repo(MasterFileBaseds.jsonCodec), Map.empty)
 }
