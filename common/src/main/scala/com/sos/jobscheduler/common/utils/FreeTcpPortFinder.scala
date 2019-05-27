@@ -18,7 +18,7 @@ object FreeTcpPortFinder
     findFreeTcpPorts(1).head
 
   def findFreeTcpPorts(n: Int): List[Int] =
-    synchronized {
+    freePortNumberIterator.synchronized {
       val result = freePortNumberIterator
         .take(n)
         .map { o =>
