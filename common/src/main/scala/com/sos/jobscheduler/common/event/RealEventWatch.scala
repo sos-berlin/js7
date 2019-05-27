@@ -19,6 +19,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
@@ -212,7 +213,8 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](predicate: KeyedEvent[E1] => Boolean, after: EventId, timeout: FiniteDuration)(implicit s: Scheduler)
+  def await[E1 <: E: ClassTag: TypeTag](predicate: KeyedEvent[E1] => Boolean, after: EventId, timeout: FiniteDuration)
+    (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E1]]] =
     when[E1](EventRequest.singleClass[E1](after = after, Some(timeout)), predicate) await timeout + 1.seconds match {
       case EventSeq.NonEmpty(events) =>
@@ -228,7 +230,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
+  def all[E1 <: E: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]] =
     when[E1](EventRequest.singleClass(), _ => true) await 99.s
 }
 

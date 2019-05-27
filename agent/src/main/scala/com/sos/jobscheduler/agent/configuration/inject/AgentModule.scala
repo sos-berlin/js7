@@ -38,8 +38,8 @@ extends AbstractModule {
     newAgentActorSystem(conf.name, config, executionContext)(closer)
 
   @Provides @Singleton
-  def ioExecutor(closer: Closer, config: Config): IOExecutor = {
-    val threadPool = IOExecutor.newThreadPoolExecutor(config)
+  def ioExecutor(closer: Closer, conf: AgentConfiguration, config: Config): IOExecutor = {
+    val threadPool = IOExecutor.newThreadPoolExecutor(config, name = conf.name)
     closer.onClose { threadPool.shutdown() }
     new IOExecutor(threadPool)
   }

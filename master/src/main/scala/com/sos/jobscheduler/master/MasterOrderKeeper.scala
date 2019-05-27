@@ -364,7 +364,6 @@ with MainJournalingActor[Event]
           .map(_ => Valid(MasterCommand.Response.Accepted))
 
       case MasterCommand.Terminate =>
-        logger.info("Command Terminate")
         journalActor ! JournalActor.Input.TakeSnapshot
         terminatingSince := now
         Future.successful(Valid(MasterCommand.Response.Accepted))

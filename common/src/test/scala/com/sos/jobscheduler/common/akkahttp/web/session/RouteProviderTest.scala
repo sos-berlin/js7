@@ -90,7 +90,7 @@ final class RouteProviderTest extends FreeSpec with RouteProvider with Scalatest
     }
 
     "Known SessionToken" in {
-      sessionToken = sessionRegister.login(TestUser).await(99.seconds)(scheduler)
+      sessionToken = sessionRegister.login(TestUser).await(99.seconds)
       Get("/sessionOption") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")

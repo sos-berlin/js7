@@ -21,7 +21,7 @@ import org.scalatest.FreeSpec
 final class TryTest extends FreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -37,7 +37,7 @@ final class TryTest extends FreeSpec
   }
 
   "Nested try catch with failing catch, OrderStopped" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
@@ -64,7 +64,7 @@ final class TryTest extends FreeSpec
          |  }
          |  execute executable="/OKAY$sh", agent="AGENT";
          |}""".stripMargin).orThrow
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
         a.writeExecutable(ExecutablePath(s"/FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")

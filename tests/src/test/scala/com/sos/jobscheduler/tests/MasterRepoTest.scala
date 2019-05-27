@@ -26,7 +26,7 @@ final class MasterRepoTest extends FreeSpec {
   import MasterRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentRefPath))) { provider =>
+    autoClosing(new DirectoryProvider(List(TestAgentRefPath), testName = Some("MasterRepoTest"))) { provider =>
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
         provider.agents.head.writeExecutable(ExecutablePath(s"/EXECUTABLE-V$v$sh"), s"echo /VERSION-$v/")
 

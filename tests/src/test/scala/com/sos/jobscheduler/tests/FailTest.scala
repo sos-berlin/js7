@@ -15,6 +15,7 @@ import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 final class FailTest extends FreeSpec
 {
@@ -63,13 +64,13 @@ final class FailTest extends FreeSpec
         OrderStopped(Outcome.Failed(Some("ERROR"), ReturnCode(7)))))
   }
 
-  private def runUntil[E <: OrderEvent: ClassTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
+  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](notation: String, expectedEvents: Vector[OrderEvent]): Unit =
     runUntil[E](
       WorkflowParser.parse(TestWorkflowId, notation).orThrow,
       expectedEvents)
 
-  private def runUntil[E <: OrderEvent: ClassTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
+  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflow: Workflow, expectedEvents: Vector[OrderEvent]): Unit =
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
       directoryProvider.run { (master, _) =>
         val orderId = OrderId("🔺")

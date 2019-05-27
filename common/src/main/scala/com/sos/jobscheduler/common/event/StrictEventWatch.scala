@@ -10,6 +10,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * Strict delegator for lazy `CloseableIterator` `EventWatch`.
@@ -65,20 +66,20 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
     predicate: KeyedEvent[E1] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.seconds)
-    (implicit s: Scheduler)
+    (implicit s: Scheduler, E1: TypeTag[E1])
   : Vector[Stamped[KeyedEvent[E1]]]
   = eventWatch.await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E1 <: E: ClassTag](key: E1#Key)(implicit s: Scheduler): Seq[E1] =
+  def keyedEvents[E1 <: E: ClassTag: TypeTag](key: E1#Key)(implicit s: Scheduler): Seq[E1] =
     keyedEvents[E1] collect {
       case o if o.key == key => o.event
     }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E1 <: E: ClassTag](implicit s: Scheduler): Seq[KeyedEvent[E1]] =
+  def keyedEvents[E1 <: E: ClassTag: TypeTag](implicit s: Scheduler): Seq[KeyedEvent[E1]] =
     eventWatch.all[E1].strict match {
       case EventSeq.NonEmpty(stamped) => stamped map (_.value)
       case EventSeq.Empty(_) => Nil
@@ -87,7 +88,7 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[Seq, KeyedEvent[E1]] =
+  def all[E1 <: E: ClassTag](implicit s: Scheduler, E1: TypeTag[E1]): TearableEventSeq[Seq, KeyedEvent[E1]] =
     eventWatch.all[E1].strict
 
   @inline

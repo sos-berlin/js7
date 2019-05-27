@@ -17,6 +17,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 final class FailUncatchableTest extends FreeSpec
 {
@@ -171,12 +172,12 @@ final class FailUncatchableTest extends FreeSpec
         OrderTransferredToMaster))
   }
 
-  private def checkEvents[E <: OrderEvent: ClassTag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
+  private def checkEvents[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
     assert(runUntil[E](workflowNotation).map(_.event) == expectedEvents)
 
-  private def runUntil[E <: OrderEvent: ClassTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
+  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(ExecutablePath("/sleep.cmd"), DirectoryProvider.script(100.milliseconds))
       directoryProvider.run { (master, _) =>

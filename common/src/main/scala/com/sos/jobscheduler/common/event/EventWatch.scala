@@ -10,6 +10,7 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
@@ -56,7 +57,7 @@ trait EventWatch[E <: Event] {
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](
+  def await[E1 <: E: ClassTag: TypeTag](
     predicate: KeyedEvent[E1] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.seconds)
@@ -65,7 +66,7 @@ trait EventWatch[E <: Event] {
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
+  def all[E1 <: E: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
 
   def tornEventId: EventId
 

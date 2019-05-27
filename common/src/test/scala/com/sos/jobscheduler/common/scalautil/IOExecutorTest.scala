@@ -11,7 +11,7 @@ import scala.concurrent.duration._
   */
 final class IOExecutorTest extends FreeSpec
 {
-  private implicit val iox = new IOExecutor(Duration.Zero)
+  private implicit val iox = new IOExecutor(Duration.Zero, name = "IOExecutorTest")
 
   "Success" in {
     assert(ioFuture(7).await(10.seconds) == 7)
@@ -24,7 +24,7 @@ final class IOExecutorTest extends FreeSpec
 
   "Thread name" in {
     ioFuture {
-      assert(Thread.currentThread.getName startsWith "JobScheduler I/O ")
+      assert(Thread.currentThread.getName startsWith "IOExecutorTest I/O ")
     } await 10.seconds
   }
 }

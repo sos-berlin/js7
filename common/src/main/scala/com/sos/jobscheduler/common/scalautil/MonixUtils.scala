@@ -10,6 +10,7 @@ import monix.reactive.Observable
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent.duration._
 import scala.language.higherKinds
+import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -22,13 +23,13 @@ object MonixUtils
   object ops {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
-      def await(duration: FiniteDuration)(implicit s: Scheduler): A =
+      def await(duration: FiniteDuration)(implicit s: Scheduler, A: TypeTag[A]): A =
         underlying.runToFuture await duration
     }
 
     implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal
     {
-      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =
+      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture await duration
 
       def awaitInfinite(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]]): M[A] =

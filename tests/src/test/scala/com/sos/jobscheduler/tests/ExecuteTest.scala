@@ -28,7 +28,7 @@ final class ExecuteTest extends FreeSpec
       }"""
     val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), workflowNotation).orThrow
 
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = workflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = workflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
       directoryProvider.run { (master, _) =>
         val orderId = OrderId("❌")
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
@@ -40,7 +40,7 @@ final class ExecuteTest extends FreeSpec
   }
 
   "Execute" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, fileBased = TestWorkflow :: Nil, testName = Some("ExecuteTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.config / "agent.conf" ++= "jobscheduler.agent.task.signed-script-injection-allowed = on\n"
         for (o <- Array("/SCRIPT-0a.cmd", "/SCRIPT-0b.cmd")) a.writeExecutable(ExecutablePath(o), ":")

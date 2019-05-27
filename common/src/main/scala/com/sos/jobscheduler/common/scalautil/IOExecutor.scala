@@ -24,7 +24,7 @@ final class IOExecutor(_executionContext: ExecutionContext) extends Executor
       threadPool,
       t => logger.error(t.toStringWithCauses, t)))
 
-  def this(keepAlive: FiniteDuration) = this(newThreadPoolExecutor(keepAlive))
+  def this(keepAlive: FiniteDuration, name: String) = this(newThreadPoolExecutor(keepAlive, name = name))
 
   def execute(runnable: Runnable) = _executionContext.execute(runnable)
 
@@ -36,23 +36,24 @@ object IOExecutor
   private val logger = Logger(getClass)
 
   object Implicits {
-    implicit val globalIOX = new IOExecutor(60.seconds)
+    implicit val globalIOX = new IOExecutor(60.seconds, name = "JobScheduler")
   }
 
-  def newThreadPoolExecutor(config: Config): ThreadPoolExecutor =
+  def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
     newThreadPoolExecutor(
       keepAlive = config.getDuration("jobscheduler.thread-pools.io.keep-alive").toFiniteDuration,
       minimum   = config.getInt     ("jobscheduler.thread-pools.io.minimum"),
-      maximum   = config.as         ("jobscheduler.thread-pools.io.maximum")(StringAsIntOrUnlimited))
+      maximum   = config.as         ("jobscheduler.thread-pools.io.maximum")(StringAsIntOrUnlimited),
+      name      = name)
 
-  def newThreadPoolExecutor(keepAlive: FiniteDuration = 60.seconds, minimum: Int = 0, maximum: Option[Int] = None): ThreadPoolExecutor =
+  def newThreadPoolExecutor(keepAlive: FiniteDuration = 60.seconds, minimum: Int = 0, maximum: Option[Int] = None, name: String): ThreadPoolExecutor =
     new ThreadPoolExecutor(minimum, maximum getOrElse Int.MaxValue, keepAlive.toMillis, MILLISECONDS,
       if (maximum.isEmpty) new SynchronousQueue[Runnable] else new LinkedBlockingQueue[Runnable],
-      MyThreadFactory) //with NamedRunnable.RenamesThread
+      myThreadFactory(name)) //with NamedRunnable.RenamesThread
 
-  private val MyThreadFactory: ThreadFactory = runnable => {
+  private def myThreadFactory(name: String): ThreadFactory = runnable => {
     val thread = new Thread(runnable)
-    thread.setName(s"JobScheduler I/O ${thread.getId}")
+    thread.setName(s"$name I/O ${thread.getId}")
     thread.setDaemon(true)  // Do it like Monix and Akka
     thread
   }

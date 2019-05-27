@@ -86,13 +86,18 @@ trait AkkaWebServer extends AutoCloseable
       logger.debug(t.toStringWithCauses, t)
     }
 
-  private def terminate() = {
+  private def terminate(): Future[Completed.type] = {
     materializer.shutdown()
     if (activeBindings == null)
       Future.successful(Completed)
     else
-      activeBindings.toVector.traverse(_.flatMap(_.terminate(hardDeadline = shutdownTimeout)))
-        .map((_: Seq[HttpTerminated]) => Completed)
+      activeBindings.toVector.traverse(_.flatMap(binding =>
+        binding.terminate(hardDeadline = shutdownTimeout)
+          .map { _: Http.HttpTerminated =>
+            logger.debug(s"$binding terminated")
+            Completed
+          }))
+        .map((_: Seq[Completed]) => Completed)
   }
 }
 

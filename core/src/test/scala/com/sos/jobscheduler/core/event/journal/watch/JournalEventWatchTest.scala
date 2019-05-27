@@ -29,6 +29,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
@@ -152,7 +153,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
           Stamped(5, "1" <-: B2) :: Nil)
         writer.flush(sync = false)
 
-        def eventsForKey[E <: MyEvent: ClassTag](key: E#Key) = {
+        def eventsForKey[E <: MyEvent: ClassTag: TypeTag](key: E#Key) = {
           val EventSeq.NonEmpty(eventIterator) = eventWatch.whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key).await(10.s).strict
           eventIterator.toVector map { _.value }
         }
@@ -160,7 +161,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
         assert(eventsForKey[AEvent]("2") == Vector(A2))
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
-        def keyedEvent[E <: MyEvent: ClassTag](key: E#Key) =
+        def keyedEvent[E <: MyEvent: ClassTag: TypeTag](key: E#Key) =
           eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = Some(99.s)), key) await 10.s
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)

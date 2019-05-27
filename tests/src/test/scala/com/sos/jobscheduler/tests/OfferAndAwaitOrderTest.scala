@@ -38,7 +38,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
           execute executable="/executable$sh", agent="AGENT";
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) =>
@@ -100,7 +100,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         define workflow {
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows)) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(ExecutablePath(s"/executable$sh"), ":")
 
       directoryProvider.run { (master, _) =>

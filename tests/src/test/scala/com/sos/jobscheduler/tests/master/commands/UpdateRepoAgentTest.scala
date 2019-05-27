@@ -35,7 +35,7 @@ import scala.concurrent.duration._
 final class UpdateRepoAgentTest extends FreeSpec
 {
   "MasterCommand.UpdateRepo" in {
-    autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil)) { provider =>
+    autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
       (provider.master.config / "private" / "private.conf") ++=
         """jobscheduler.auth.users {
           |  UpdateRepoAgentTest {

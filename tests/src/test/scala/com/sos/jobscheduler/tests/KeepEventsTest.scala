@@ -32,7 +32,7 @@ import scala.concurrent.duration.Duration
 final class KeepEventsTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil)) { provider =>
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("KeepEventsTest"))) { provider =>
       for ((_, tree) <- provider.agentToTree) {
         tree.writeExecutable(TestExecutablePath, script(0.s))
       }

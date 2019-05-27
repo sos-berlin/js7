@@ -22,6 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 {
@@ -242,7 +243,8 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
     awaitAndCheckEventSeq[OrderStopped](afterEventId, orderId, expectedEvents)
   }
 
-  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit = {
+  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: TypeTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
+  {
     eventWatch.await[E](_.key == orderId, after = after)
     sleep(50.millis)  // No more events should arrive
     eventWatch.when[OrderEvent](EventRequest.singleClass(after = after)) await 99.seconds match {

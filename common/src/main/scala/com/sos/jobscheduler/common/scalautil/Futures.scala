@@ -8,6 +8,7 @@ import scala.concurrent.duration._
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
+import scala.reflect.runtime.universe._
 
 /**
  * @author Joacim Zschimmer
@@ -85,7 +86,7 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[FiniteDuration]): A =
+      def await(duration: Option[FiniteDuration])(implicit A: TypeTag[A]): A =
         duration match {
           case Some(o) => await(o)
           case None => awaitInfinite
@@ -99,11 +100,11 @@ object Futures {
           case None => throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
         }
 
-      def await(duration: FiniteDuration): A =
+      def await(duration: FiniteDuration)(implicit A: TypeTag[A]): A =
         Await.ready(delegate, duration).value match {
           case Some(Success(o)) => o
           case Some(Failure(t)) => throw t.appendCurrentStackTrace
-          case None => throw new TimeoutException(s"await(${duration.pretty}): Future has not been completed in time")
+          case None => throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tpe.toString}] has not been completed in time")
         }
     }
 
@@ -111,13 +112,13 @@ object Futures {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
-      def await(duration: Option[FiniteDuration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: Option[FiniteDuration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         duration match {
           case Some(o) => await(o)
           case None => awaitInfinite
         }
 
-      def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+      def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         Future.sequence(delegate)(cbf, ec) await duration
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
