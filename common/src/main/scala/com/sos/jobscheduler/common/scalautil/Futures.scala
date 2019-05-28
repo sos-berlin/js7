@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.StackTraces._
+import java.util.concurrent.TimeoutException
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.higherKinds
+import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
-import scala.reflect.runtime.universe._
 
 /**
  * @author Joacim Zschimmer
@@ -94,18 +95,21 @@ object Futures {
 
       // Separate implementation to differentiate calls to awaitInfinite and await(Duration)
       def awaitInfinite: A =
-        Await.ready(delegate, Duration.Inf).value match {
-          case Some(Success(o)) => o
-          case Some(Failure(t)) => throw t.appendCurrentStackTrace
-          case None => throw new TimeoutException(s"awaitInfite on Future failed")  // Should never happen
+        Await.ready(delegate, Duration.Inf).value.get match {
+          case Success(o) => o
+          case Failure(t) => throw t.appendCurrentStackTrace
         }
 
-      def await(duration: FiniteDuration)(implicit A: TypeTag[A]): A =
-        Await.ready(delegate, duration).value match {
-          case Some(Success(o)) => o
-          case Some(Failure(t)) => throw t.appendCurrentStackTrace
-          case None => throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tpe.toString}] has not been completed in time")
+      def await(duration: FiniteDuration)(implicit A: TypeTag[A]): A = {
+        try Await.ready(delegate, duration)
+        catch { case _: TimeoutException =>
+          throw new TimeoutException(s"await(${duration.pretty}): Future[${A.tpe.toString}] has not been completed in time")
         }
+        delegate.value.get match {
+          case Success(o) => o
+          case Failure(t) => throw t.appendCurrentStackTrace
+        }
+      }
     }
 
     implicit final class RichFutures[A, M[X] <: TraversableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
