@@ -68,7 +68,7 @@ final class RunningMaster private(
   val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
-  val terminated1: Future[Completed],
+  terminated1: Future[Completed],
   closer: Closer,
   val injector: Injector)
 extends AutoCloseable
@@ -168,7 +168,7 @@ object RunningMaster
   private class Starter(injector: Injector)
   {
     // Lazy vals to allow earlier logStartUp message
-    private lazy val closer = injector.instance[Closer]
+    private implicit lazy val closer = injector.instance[Closer]
     private lazy val masterConfiguration = injector.instance[MasterConfiguration]
     private lazy val actorSystem = injector.instance[ActorSystem]
     implicit private lazy val scheduler = injector.instance[Scheduler]
@@ -229,6 +229,7 @@ object RunningMaster
       val webServer = injector.instance[MasterWebServer.Factory].apply(
         startUpTotalRunningTime = recovered.totalRunningTime,
         fileBasedApi, orderApi, commandExecutor, masterState, recovered.eventWatch)
+          .closeWithCloser
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
         new RunningMaster(recovered.eventWatch.strict,
