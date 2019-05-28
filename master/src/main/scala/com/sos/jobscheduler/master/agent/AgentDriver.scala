@@ -67,7 +67,7 @@ with ReceiveLoggingActor.WithStash {
     config.optionAs[SecretString](authConfigPath)
       .map(password => UserAndPassword(masterConfiguration.masterId.toUserId, password))
 
-  private val agentRunIdOnce = new SetOnce[AgentRunId]
+  private val agentRunIdOnce = SetOnce[AgentRunId]
   initialAgentRunId foreach agentRunIdOnce.:=
 
   private var lastEventId = initialEventId

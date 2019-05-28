@@ -43,7 +43,7 @@ extends JournalRecoverer[Event]
 
   protected def expectedJournalId = None
 
-  private val masterStarted = new SetOnce[MasterStarted]
+  private val masterStarted = SetOnce[MasterStarted]
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()

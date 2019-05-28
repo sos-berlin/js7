@@ -89,7 +89,7 @@ extends MainJournalingActor[Event] with Stash {
     private var terminatingOrders = false
     private var terminatingJobs = false
     private var terminatingJournal = false
-    val since = new SetOnce[Deadline]
+    val since = SetOnce[Deadline]
 
     def terminating = terminateCommand.isDefined
 

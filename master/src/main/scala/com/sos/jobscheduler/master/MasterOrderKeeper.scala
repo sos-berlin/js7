@@ -99,7 +99,7 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private val terminatingSince = new SetOnce[Deadline]
+  private val terminatingSince = SetOnce[Deadline]
 
   private def terminating = terminatingSince.isDefined
 

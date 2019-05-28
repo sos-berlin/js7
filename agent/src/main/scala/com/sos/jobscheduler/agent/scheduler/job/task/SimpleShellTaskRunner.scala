@@ -50,7 +50,7 @@ extends TaskRunner {
   private val startedAt = Timestamp.now
   private val variablePrefix = DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory = agentConfiguration.temporaryDirectory)
-  private val richProcessOnce = new SetOnce[RichProcess]
+  private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
   def terminate(): Future[Completed] =

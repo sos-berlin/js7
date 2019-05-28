@@ -1,19 +1,18 @@
 package com.sos.jobscheduler.common.scalautil
 
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 
 /**
  * @author Joacim Zschimmer
  */
-final class SetOnceTest extends FreeSpec {
-
+final class SetOnceTest extends FreeSpec
+{
   "SetOnce" in {
-    val a = new SetOnce[Int]
+    val a = SetOnce[Int]
     assert(a.isEmpty)
     assert(!a.nonEmpty)
     assert(!a.isDefined)
-    intercept[IllegalStateException] { a() }
+    assert(intercept[IllegalStateException] { a() } .getMessage == "SetOnce[Int] promise has not been kept so far")
     assert(a.toOption == None)
     assert((a getOrElse -1) == -1)
     a := 0
@@ -23,7 +22,7 @@ final class SetOnceTest extends FreeSpec {
     assert(a() == 0)
     assert(a.toOption == Some(0))
     assert((a getOrElse -1) == -0)
-    intercept[IllegalStateException] { a := 0 } .getMessage should include ("SetOnce[java.lang.Integer]")
+    assert(intercept[IllegalStateException] { a := 0 } .getMessage == "SetOnce[Int] has already been set")
     assert((for (i <- a) yield (i: Int) + 3) == Some(3))
     var r = 7
     for (i <- a) r = a()
@@ -31,16 +30,9 @@ final class SetOnceTest extends FreeSpec {
   }
 
   "getOrUpdate" in {
-    val a = new SetOnce[Int]
+    val a = SetOnce[Int]
     assert((a getOrUpdate 1) == 1)
     assert((a getOrUpdate 2) == 1)
     assert((a getOrUpdate sys.error("")) == 1)
-  }
-
-  "SetOnce with Implicit" in {
-    val a = new SetOnce[Int] with SetOnce.Implicit
-    intercept[IllegalStateException] { a: Int }
-    a := 0
-    assert((a: Int) == 0)
   }
 }

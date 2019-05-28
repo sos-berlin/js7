@@ -63,8 +63,8 @@ extends Actor with Stash {
   private var snapshotSchedule: Cancelable = null
 
   /** Originates from `JournalValue`, caculcated from recovered journal if not freshly initialized. */
-  private val recoveredJournalHeader = new SetOnce[JournalHeader]
-  private var observer = new SetOnce[Option[JournalingObserver]]
+  private val recoveredJournalHeader = SetOnce[JournalHeader]
+  private var observer = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter[E] = null
   private var snapshotWriter: SnapshotJournalWriter[E] = null
   private val journalingActors = mutable.Set[ActorRef]()

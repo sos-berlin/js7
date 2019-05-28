@@ -42,8 +42,8 @@ extends EventBasedState
 object MasterState
 {
   def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
-    val masterStarted = new SetOnce[MasterStarted]("MasterStarted")
-    val journalHeader = new SetOnce[JournalHeader]
+    val masterStarted = SetOnce[MasterStarted]
+    val journalHeader = SetOnce[JournalHeader]
     var repo = Repo(MasterFileBaseds.jsonCodec)
     val orders = Vector.newBuilder[Order[Order.State]]
     val agents = Vector.newBuilder[AgentSnapshot]

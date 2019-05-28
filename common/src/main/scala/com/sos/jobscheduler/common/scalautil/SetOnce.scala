@@ -1,52 +1,54 @@
 package com.sos.jobscheduler.common.scalautil
 
-import java.util.Objects.requireNonNull
-import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.Promise
+import scala.reflect.runtime.universe._
 
 /**
  * Variable which can be set only once. Thread-safe.
  *
  * @author Joacim Zschimmer
  */
-class SetOnce[A](name: String = "SetOnce") {
-  protected[this] val ref = new AtomicReference[A]
+class SetOnce[A](name: String)
+{
+  protected[this] val promise = Promise[A]
 
   /**
    * The value of the set variable.
    *
    * @throws IllegalStateException
    */
-  def apply() = getOrElse { throw new IllegalStateException(s"$name is not yet ready") }
+  def apply() = getOrElse { throw new IllegalStateException(s"SetOnce[$name] promise has not been kept so far") }
 
   final override def toString = toStringOr("(not yet set)")
 
   @inline final def toStringOr(or: => String): String =
-    ref.get match {
-      case null => or
-      case o => o.toString
+    promise.future.value match {
+      case None => or
+      case Some(o) => o.toString
     }
 
-  @inline final def getOrElse[B >: A](els: => B) =
-    ref.get match {
-      case null => els
-      case o => o
+  @inline final def getOrElse[B >: A](els: => B): B =
+    promise.future.value match {
+      case None => els
+      case Some(o) => o.get
     }
 
-  final def getOrUpdate(value: => A) =
-    if (ref.get != null)
-      ref.get
-    else {
-      trySet(value)   // When concurrently called, the value is discarded
-      ref.get
+  final def getOrUpdate(value: => A): A =
+    promise.future.value match {
+      case Some(o) => o.get
+      case None =>
+        promise.trySuccess(value)  // When concurrently called, the value is discarded
+        promise.future.value.get.get
     }
 
-  final def toOption = Option(ref.get)
+  final def toOption: Option[A] =
+    promise.future.value.map(_.get)
 
   final def isDefined = nonEmpty
 
-  final def nonEmpty = ref.get != null
+  final def isEmpty = !nonEmpty
 
-  final def isEmpty = ref.get == null
+  final def nonEmpty = promise.future.isCompleted
 
   /**
    * Sets the variable.
@@ -56,33 +58,16 @@ class SetOnce[A](name: String = "SetOnce") {
    * @throws IllegalStateException
    */
   final def :=(value: A): A = {
-    val ok = trySet(value)
-    if (!ok) throw new IllegalStateException(s"SetOnce[${ref.get.getClass.getName}] has already been set")
+    if (!promise.trySuccess(value)) throw new IllegalStateException(s"SetOnce[$name] has already been set")
     value
   }
-
-  final def trySet(value: A): Boolean =
-    ref.compareAndSet(null.asInstanceOf[A], requireNonNull(value))   // Returns false on concurrent execution. Then value is discarded
 }
 
-object SetOnce {
+object SetOnce
+{
   import scala.language.implicitConversions
 
+  def apply[A](implicit A: TypeTag[A]) = new SetOnce[A](A.tpe.toString)
+
   implicit def setOnceToOption[A](o: SetOnce[A]): Option[A] = o.toOption
-
-  /**
-    * Makes a SetOnce implicitly readable.
-    * <pre>
-    * val once = new SetOnce[Int] with SetOnce.Implicit
-    * ...
-    * val i: Int = once
-    * </pre>
-    */
-  trait Implicit {
-    this: SetOnce[_] =>
-  }
-
-  object Implicit {
-    implicit def dereference[A](a: SetOnce[A] with Implicit): A = a()
-  }
 }

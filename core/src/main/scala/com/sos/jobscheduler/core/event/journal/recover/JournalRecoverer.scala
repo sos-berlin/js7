@@ -30,7 +30,7 @@ trait JournalRecoverer[E <: Event]
   protected def onAllSnapshotRecovered(): Unit = {}
 
   private val stopwatch = new Stopwatch
-  private val journalHeaderOnce = new SetOnce[JournalHeader]
+  private val journalHeaderOnce = SetOnce[JournalHeader]
   private var lastEventTimestamp = Timestamp.ofEpochSecond(0)
   private var _lastEventId = EventId.BeforeFirst
   private var snapshotCount, eventCount = 0L
