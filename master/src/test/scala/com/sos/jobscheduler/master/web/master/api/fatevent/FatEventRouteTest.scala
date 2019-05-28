@@ -31,7 +31,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterStarted
+import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import java.nio.file.Paths
@@ -245,9 +245,10 @@ final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRou
     var lastEventsAfter = EventId(-1)
 
     // Return a minimum snapshot
-    def snapshotObjectsFor(after: EventId) = Some(EventId.BeforeFirst -> CloseableIterator(
-      JournalHeader.initial(JournalId(randomUUID())),  // JournalHeader is implicitly a snapshot object
-      masterStarted))
+    def snapshotObjectsFor(after: EventId) = Some(EventId.BeforeFirst ->
+      CloseableIterator(
+        JournalHeader.initial(JournalId(randomUUID())),  // JournalHeader is implicitly a snapshot object
+        masterMetaState))
 
     override def eventsAfter(after: EventId) = {
       lastEventsAfter = after
@@ -265,13 +266,12 @@ object FatEventRouteTest
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/test") ~ TestVersionId,
     Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
-  private val masterStarted = MasterStarted(MasterId("FatEventRouteTest"), Timestamp.now)
+  private val masterMetaState = MasterMetaState(MasterId("FatEventRouteTest"), Timestamp.now, 1.hour)
   private val InitialEvents =
-    Stamped(EventId(1), NoKey <-: masterStarted) ::   // MasterState.fromIterable requires a MasterStarted event
-    //Stamped(EventId(2), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
-    Stamped(EventId(3), NoKey <-: VersionAdded(TestVersionId)) ::
-    Stamped(EventId(4), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
-    Stamped(EventId(5), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
+    //Stamped(EventId(1), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
+    Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::
+    Stamped(EventId(3), NoKey <-: FileBasedAdded(TestAgentRefId.path, sign(AgentRef(TestAgentRefId, "http://127.0.0.1:0")))) ::
+    Stamped(EventId(4), NoKey <-: FileBasedAdded(TestWorkflow.path, sign(TestWorkflow))) :: Nil
 
   private val TestEvents: Seq[Seq[Stamped[AnyKeyedEvent]]] =
     (1 to 18).map(i =>

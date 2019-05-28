@@ -23,10 +23,10 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.MasterJournalRecoverer._
 import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
+import com.sos.jobscheduler.master.data.MasterSnapshots.{MasterMetaState, SnapshotJsonCodec}
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterStarted, MasterTestEvent}
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import com.typesafe.config.Config
 import scala.collection.mutable
@@ -43,7 +43,7 @@ extends JournalRecoverer[Event]
 
   protected def expectedJournalId = None
 
-  private val masterStarted = SetOnce[MasterStarted]
+  private val masterMetaState = SetOnce[MasterMetaState]
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
@@ -58,8 +58,8 @@ extends JournalRecoverer[Event]
     case snapshot: AgentSnapshot =>
       pathToAgent.insert(snapshot.agentRefPath -> snapshot)
 
-    case o: MasterStarted =>
-      masterStarted := o
+    case o: MasterMetaState =>
+      masterMetaState := o
   }
 
   override protected def onAllSnapshotRecovered() = {
@@ -102,10 +102,6 @@ extends JournalRecoverer[Event]
             case _: OrderStdWritten =>
           }
 
-        case KeyedEvent(_: NoKey, o: MasterStarted) =>
-          // The very first journal file "master--0.journal" contains a (premature) MasterStarted snapshot and a MasterStarted event
-          require(o == masterStarted(), s"Error in journal: recovered $o event differs from snapshot ${masterStarted()}")
-
         case KeyedEvent(_, MasterTestEvent) =>
 
         case _ => sys.error(s"Unknown event recovered from journal: $keyedEvent")
@@ -134,7 +130,7 @@ extends JournalRecoverer[Event]
   private def masterState: Option[MasterState] = {
     hasJournal ? MasterState(
       eventId = lastRecoveredEventId,
-      masterStarted(),
+      masterMetaState(),
       repo,
       pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
   }

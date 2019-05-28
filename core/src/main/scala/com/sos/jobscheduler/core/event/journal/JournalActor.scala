@@ -30,7 +30,7 @@ import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -111,7 +111,7 @@ extends Actor with Stash {
       becomeTakingSnapshotThen() { journalHeader =>
         unstashAll()
         becomeReady()
-        sender ! Output.Ready(journalHeader)
+        sender ! Output.Ready(journalHeader, runningSince)
       }
 
     case Input.StartWithoutRecovery(observer_) =>  // Testing only
@@ -122,7 +122,7 @@ extends Actor with Stash {
       eventWriter.writeHeader(header)
       unstashAll()
       becomeReady()
-      sender() ! Output.Ready(header)
+      sender() ! Output.Ready(header, runningSince)
 
     case Input.RegisterMe =>
       handleRegisterMe()
@@ -406,7 +406,7 @@ object JournalActor
 
   sealed trait Output
   object Output {
-    final case class Ready(journalHeader: JournalHeader)
+    final case class Ready(journalHeader: JournalHeader, runningSince: Deadline)
     private[journal] final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]], item: CallersItem) extends Output
     private[journal] final case class Accepted(item: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output

@@ -13,7 +13,6 @@ import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -22,7 +21,6 @@ trait ApiRootRoute extends MasterRouteProvider
 {
   protected def masterId: MasterId
   protected def masterState: Task[MasterState]
-  protected def totalRunningTime: FiniteDuration
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -40,8 +38,8 @@ trait ApiRootRoute extends MasterRouteProvider
         id = masterId,
         version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,
-        startedAt = masterState.masterStarted.startedAt,
-        totalRunningTime = totalRunningTime,
+        startedAt = masterState.masterMetaState.startedAt,
+        totalRunningTime = masterState.masterMetaState.totalRunningTime,
         orderCount = masterState.orders.size,
         system = systemInformation(),
         java = javaInformation)

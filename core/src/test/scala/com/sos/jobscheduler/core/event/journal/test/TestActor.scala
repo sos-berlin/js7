@@ -78,7 +78,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   }
 
   def receive = {
-    case JournalRecoverer.Output.JournalIsReady(_) =>
+    case JournalRecoverer.Output.JournalIsReady(_, _) =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")

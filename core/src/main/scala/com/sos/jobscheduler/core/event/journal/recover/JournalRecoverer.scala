@@ -17,6 +17,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingAct
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files
 import java.util.UUID.randomUUID
+import scala.concurrent.duration.{Deadline, Duration}
 
 /**
   * @author Joacim Zschimmer
@@ -31,7 +32,6 @@ trait JournalRecoverer[E <: Event]
 
   private val stopwatch = new Stopwatch
   private val journalHeaderOnce = SetOnce[JournalHeader]
-  private var lastEventTimestamp = Timestamp.ofEpochSecond(0)
   private var _lastEventId = EventId.BeforeFirst
   private var snapshotCount, eventCount = 0L
   private var _totalEventCount = 0L
@@ -45,14 +45,12 @@ trait JournalRecoverer[E <: Event]
         val journalId = expectedJournalId getOrElse JournalId(randomUUID)
         logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}' with journalId=${journalId.string} will be started")
         journalHeaderOnce := JournalHeader.initial(journalId)
-        lastEventTimestamp = journalHeaderOnce().timestamp
 
       case Some(file) =>
         logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
         // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
         autoClosing(new JournalReader(journalMeta, expectedJournalId, file)) { journalReader =>
           journalHeaderOnce := journalReader.journalHeader
-          lastEventTimestamp = journalHeaderOnce().timestamp
           recoverSnapshots(journalReader)
           onAllSnapshotRecovered()
           recoverEvents(journalReader)
@@ -74,7 +72,6 @@ trait JournalRecoverer[E <: Event]
     for (stampedEvent <- journalReader.nextEvents()) {
       wrapException(s"Error while recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
         eventCount += 1
-        lastEventTimestamp = stampedEvent.timestamp
         recoverEvent(stampedEvent)
       }
     }
@@ -96,10 +93,18 @@ trait JournalRecoverer[E <: Event]
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver,
-      journalHeaderOnce().copy(eventId = _lastEventId, totalEventCount = _totalEventCount, timestamp = lastEventTimestamp))
+    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, journalHeader)
 
-  final lazy val journalHeader = journalHeaderOnce()
+  final lazy val journalHeader = {
+    val lastTimestamp =
+      if (_lastEventId == EventId.BeforeFirst) journalHeaderOnce().timestamp
+      else EventId.toTimestamp(_lastEventId)
+    journalHeaderOnce().copy(
+      eventId = _lastEventId,
+      totalEventCount = _totalEventCount,
+      timestamp = lastTimestamp,
+      totalRunningTime = journalHeaderOnce().totalRunningTime + (lastTimestamp - journalHeaderOnce().timestamp))
+  }
 
   final def lastRecoveredEventId = _lastEventId
 }
@@ -122,24 +127,24 @@ object JournalRecoverer {
           journalActor ! JournalActor.Input.Start(recoveredActors, observer, recoveredJournalHeader)
 
           def receive = {
-            case JournalActor.Output.Ready(journalHeader) =>
+            case JournalActor.Output.Ready(journalHeader, runningSince) =>
               for (a <- actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
               logger.debug(s"Awaiting RecoveryFinished from ${actors.size} actors")
-              becomeWaitingForChildren(journalHeader, actors.size)
+              becomeWaitingForChildren(journalHeader, runningSince, actors.size)
           }
 
-          private def becomeWaitingForChildren(journalHeader: JournalHeader, n: Int): Unit = {
+          private def becomeWaitingForChildren(journalHeader: JournalHeader, runningSince: Deadline, n: Int): Unit = {
             if (n == 0) {
               logger.debug(s"JournalIsReady")
-              context.parent ! Output.JournalIsReady(journalHeader)
+              context.parent ! Output.JournalIsReady(journalHeader, runningSince)
               context.stop(self)
             } else {
               context.become {
                 case KeyedJournalingActor.Output.RecoveryFinished =>
                   logger.trace(s"${n - 1} actors left: Actor has RecoveryFinished: ${actorToKey(sender())}'")
-                  becomeWaitingForChildren(journalHeader, n - 1)
+                  becomeWaitingForChildren(journalHeader, runningSince, n - 1)
 
                 case msg if actorToKey contains sender() =>
                   context.parent.forward(msg)  // For example OrderActor.Output.RecoveryFinished
@@ -152,6 +157,6 @@ object JournalRecoverer {
   }
 
   object Output {
-    final case class JournalIsReady(journalHeader: JournalHeader)
+    final case class JournalIsReady(journalHeader: JournalHeader, runningSince: Deadline)
   }
 }

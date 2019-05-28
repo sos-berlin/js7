@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.master.{MasterFileBaseds, MasterId}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.data.MasterOverview
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterStarted
+import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -26,10 +26,9 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
 {
   protected val masterId = MasterId("TEST-MASTER")
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected def totalRunningTime = 1.hour
   protected def masterState = Task.pure(MasterState(
     EventId(1001),
-    MasterStarted(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z")),
+    MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), 1.hour),
     Repo(MasterFileBaseds.jsonCodec),
     Nil,
     Nil))

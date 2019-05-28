@@ -50,7 +50,7 @@ private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: Even
   private def recoverFatState(after: EventId): Option[FatState] =
     eventWatch.snapshotObjectsFor(after = after) map { case (eventId, snapshotObjectsCloseableIterator) =>
       val masterState = autoClosing(snapshotObjectsCloseableIterator) { _ =>
-        MasterState.fromIterable(eventId, snapshotObjectsCloseableIterator)
+        MasterState.fromIterator(eventId, snapshotObjectsCloseableIterator)
       }
       FatState(masterId, masterState.eventId, masterState.repo, masterState.orders.map(o => o.id -> o).toMap)
     }

@@ -181,7 +181,7 @@ private object OrderActorTest {
     val runningSince = now
 
     def receive = {
-      case JournalActor.Output.Ready(_) =>
+      case JournalActor.Output.Ready(_, _) =>
         become(jobActorReady)
         jobActor ! JobActor.Input.OrderAvailable
     }

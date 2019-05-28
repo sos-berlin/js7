@@ -29,7 +29,6 @@ object MasterEvent
   case object MasterTestEvent extends MasterEvent
 
   implicit val jsonCodec: TypedJsonCodec[MasterEvent] = TypedJsonCodec(
-    Subtype[MasterStarted],
     Subtype[MasterReady],
     Subtype(MasterTestEvent))
 }

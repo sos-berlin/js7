@@ -29,6 +29,12 @@ final case class Repo private(
 {
   assert(versions.nonEmpty || idToSignedFileBased.isEmpty)
 
+  /** `fileBasedVerifier` is not compared - for testing only. */
+  override def equals(o: Any) = o match {
+    case o: Repo => versions == o.versions && idToSignedFileBased == o.idToSignedFileBased
+    case _ => false
+  }
+
   import Repo._
 
   lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous

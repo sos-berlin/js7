@@ -51,10 +51,11 @@ import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.AgentDriver
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterStarted, MasterTestEvent}
+import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.execution.Scheduler
@@ -89,7 +90,8 @@ with MainJournalingActor[Event]
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
     JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
     "Journal")))
-  private var masterStarted = MasterStarted(masterConfiguration.masterId, Timestamp.now)  // Will be overwritten in case of recovery
+  private var runningSince = now  // Will be overwritten after recovery
+  private var masterMetaState = MasterMetaState(masterConfiguration.masterId, Timestamp.now, Duration.Zero)
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
@@ -130,11 +132,11 @@ with MainJournalingActor[Event]
     logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
-  protected def snapshots = Future.successful(masterState.toSnapshots)
+  protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
 
   private def masterState = MasterState(
     persistedEventId,
-    masterStarted,  // MasterStarted is included in initial snapshot despite that the event can not have been written yet
+    masterMetaState.copy(totalRunningTime = masterMetaState.totalRunningTime + runningSince.elapsed),
     repo,
     agents = Nil,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
     orderRegister.values.map(_.order).toImmutableSeq)
@@ -149,9 +151,9 @@ with MainJournalingActor[Event]
 
   private def recover(recovered: MasterJournalRecoverer.Recovered) = {
     for (masterState <- recovered.masterState) {
-      if (masterState.masterStarted.masterId != masterConfiguration.masterId)
-        throw Problem(s"Recovered '${masterState.masterStarted.masterId}' MasterId defers from configured one '${masterConfiguration.masterId}'").throwable
-      masterStarted = masterState.masterStarted
+      if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
+        throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
+      masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       setRepo(masterState.repo)
       val pathToAgentSnapshot = masterState.agents.toKeyedMap(_.agentRefPath)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
@@ -173,16 +175,13 @@ with MainJournalingActor[Event]
   }
 
   private def recovering: Receive = {
-    case JournalRecoverer.Output.JournalIsReady(journalHeader) =>
+    case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
+      runningSince = runningSince_
       agentRegister.values foreach { _.start() }
       orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
-      }
-      if (persistedEventId == EventId.BeforeFirst) {  // MasterStarted event has not been written?
-        // Persist the MasterStarted event the first time. Must be the same the one written as initial snapshot
-        persist(masterStarted) { _ => }
       }
       persist(MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))(_ =>
         self ! Internal.Ready

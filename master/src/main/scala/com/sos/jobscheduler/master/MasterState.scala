@@ -10,8 +10,8 @@ import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.master.MasterFileBaseds.MasterTypedPathCompanions
 import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.AgentSnapshot
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterStarted
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
 
@@ -20,20 +20,14 @@ import scala.collection.immutable.Seq
   */
 final case class MasterState(
   eventId: EventId,
-  masterStarted: MasterStarted,
+  masterMetaState: MasterMetaState,
   repo: Repo,
   agents: Seq[AgentSnapshot],
   orders: Seq[Order[Order.State]])
 extends EventBasedState
 {
-  def toSnapshots: Seq[Any] =
-    Vector(masterStarted) ++
-    repo.eventsFor(MasterTypedPathCompanions) ++
-      agents ++
-      orders
-
   def toSnapshotObservable: Observable[Any] =
-    Observable(masterStarted) ++
+    Observable(masterMetaState) ++
     Observable.fromIterable(repo.eventsFor(MasterTypedPathCompanions)) ++
     Observable.fromIterable(agents) ++
     Observable.fromIterable(orders)
@@ -41,8 +35,8 @@ extends EventBasedState
 
 object MasterState
 {
-  def fromIterable(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
-    val masterStarted = SetOnce[MasterStarted]
+  def fromIterator(eventId: EventId, snapshotObjects: Iterator[Any]): MasterState = {
+    val masterMetaState = SetOnce[MasterMetaState]
     val journalHeader = SetOnce[JournalHeader]
     var repo = Repo(MasterFileBaseds.jsonCodec)
     val orders = Vector.newBuilder[Order[Order.State]]
@@ -58,12 +52,12 @@ object MasterState
       case event: RepoEvent =>
         repo = repo.applyEvent(event).orThrow
 
-      case o: MasterStarted =>
-        masterStarted := o
+      case o: MasterMetaState =>
+        masterMetaState := o
 
       case o: JournalHeader =>
         journalHeader := o
     }
-    MasterState(eventId = eventId, masterStarted(), repo, agents.result(), orders.result())
+    MasterState(eventId = eventId, masterMetaState(), repo, agents.result(), orders.result())
   }
 }
