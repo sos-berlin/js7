@@ -95,7 +95,9 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
     def actorSystem = SessionRouteTest.this.actorSystem
     def scheduler = Scheduler.global
     lazy val bindings = WebServerBinding.Http(new InetSocketAddress("127.0.0.1", findFreeTcpPort())) :: Nil
-    def newRoute(binding: WebServerBinding) = route
+    def newRoute(binding: WebServerBinding) = new AkkaWebServer.BoundRoute {
+      def webServerRoute = route
+    }
   }
 
   import gateKeeper.invalidAuthenticationDelay

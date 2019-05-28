@@ -4,14 +4,13 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.DirectAgentApi
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.web.AgentWebServer._
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.typesafe.config.Config
 import monix.execution.Scheduler
@@ -40,7 +39,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
   private def api = apiOnce()
 
   protected def newRoute(binding: WebServerBinding) =
-    new CompleteRoute {
+    new AkkaWebServer.BoundRoute with CompleteRoute {
       private lazy val anonymousApi = api(CommandMeta.Anonymous)
 
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
@@ -63,10 +62,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def config = AgentWebServer.this.conf.config
       protected def actorSystem = AgentWebServer.this.actorSystem
 
-      logger.info(gateKeeper.boundMessage(binding))
-    }.completeRoute
-}
+      def webServerRoute = completeRoute
 
-object AgentWebServer {
-  private val logger = Logger(getClass)
+      override def boundMessageSuffix = gateKeeper.secureStateString
+    }
 }

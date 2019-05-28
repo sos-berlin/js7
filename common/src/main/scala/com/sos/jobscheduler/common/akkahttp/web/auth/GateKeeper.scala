@@ -9,13 +9,12 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.sos.jobscheduler.base.auth.{HashedPassword, Permission, User, UserAndPassword, UserId, ValidUserPermission}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
-import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
 import com.sos.jobscheduler.common.auth.IdToUser
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.Config
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -145,12 +144,7 @@ final class GateKeeper[U <: User](configuraton: Configuration[U], isLoopback: Bo
 
   def invalidAuthenticationDelay = configuraton.invalidAuthenticationDelay
 
-  def boundMessage(binding: WebServerBinding): String =
-    s"Bound ${binding.scheme}://${binding.address.getAddress.getHostAddress}:${binding.address.getPort}" +
-      (if (binding.mutual) ", client certificate is required" else "") +
-      secureStateString
-
-  private def secureStateString: String =
+  def secureStateString: String =
     if (configuraton.isPublic)
       " - ACCESS IS PUBLIC - EVERYONE HAS ACCESS (public = true)"
     else if (configuraton.loopbackIsPublic && configuraton.getIsPublic)

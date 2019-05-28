@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http.HttpTerminated
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http}
@@ -35,8 +34,8 @@ trait AkkaWebServer extends AutoCloseable
   protected implicit def actorSystem: ActorSystem
   protected def config: Config
   protected def scheduler: Scheduler
-  protected def newRoute(binding: WebServerBinding): Route
   protected def bindings: Seq[WebServerBinding]
+  protected def newRoute(binding: WebServerBinding): BoundRoute
 
   private val akkaHttp = Http(actorSystem)
   private implicit val materializer = ActorMaterializer()
@@ -73,11 +72,19 @@ trait AkkaWebServer extends AutoCloseable
         clientAuth = https.mutual ? TLSClientAuth.Need))
   }
 
-  private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] =
-    akkaHttp.bindAndHandle(newRoute(binding), interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
+  private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] = {
+    val boundRoute = newRoute(binding)
+    akkaHttp.bindAndHandle(boundRoute.webServerRoute, interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
       connectionContext,
       settings = ServerSettings(actorSystem)
         .withParserSettings(ParserSettings(actorSystem) withCustomMediaTypes `application/json-seq`))
+    .map { serverBinding =>
+      logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
+        (if (binding.mutual) ", client certificate is required" else "") +
+        boundRoute.boundMessageSuffix)
+      serverBinding
+    }
+  }
 
   def close() =
     try terminate() await shutdownTimeout + 1.s
@@ -114,4 +121,10 @@ object AkkaWebServer {
     s"$prefix-${binding.scheme}-${inetSocketAddressToName(binding.address)}"
 
   private def inetSocketAddressToName(o: InetSocketAddress): String = o.getAddress.getHostAddress + s":${o.getPort}"
+
+  trait BoundRoute {
+    def webServerRoute: Route
+    /** Suffix for the bound log message, for example a security hint. */
+    def boundMessageSuffix = ""
+  }
 }

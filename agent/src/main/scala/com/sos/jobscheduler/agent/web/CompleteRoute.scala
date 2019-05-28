@@ -11,7 +11,7 @@ import com.typesafe.config.Config
 /**
  * @author Joacim Zschimmer
  */
-private trait CompleteRoute
+private[web] trait CompleteRoute
 extends WebLogDirectives
 with ApiRoute
 {
