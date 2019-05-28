@@ -49,7 +49,8 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Request events after known EventId" in {
-    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
+      EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
     eventId = events.last.eventId
   }
@@ -66,7 +67,8 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
 
   "Recoupling with changed AgentRunId fails" in {
     assert(agentClient.commandExecute(CoupleMaster(AgentRunId(JournalId(randomUUID)), eventId)).await(99.s) == Invalid(MasterAgentMismatchProblem))
-    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
+      EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
   }
 
