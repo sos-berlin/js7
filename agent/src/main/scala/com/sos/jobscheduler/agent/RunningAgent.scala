@@ -40,7 +40,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 final class RunningAgent private(
   val webServer: AgentWebServer,
   mainActor: ActorRef,
-  val terminated: Future[Completed],
+  terminated1: Future[Completed],
   val api: CommandMeta => DirectAgentApi,
   val sessionToken: SessionToken,
   closer: Closer,
@@ -50,6 +50,12 @@ extends AutoCloseable {
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val localUri: Uri = webServer.localUri
+
+  val terminated: Future[Completed] =
+    for (o <- terminated1) yield {
+      close()
+      o
+    }
   //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)
 
   logger.debug("Ready")
@@ -133,6 +139,6 @@ object RunningAgent {
       api = ready.api
       _ <- webServer.start(api)
     } yield
-      new RunningAgent(webServer, mainActor, terminated = stoppedPromise.future, api, sessionToken, closer, injector)
+      new RunningAgent(webServer, mainActor, stoppedPromise.future, api, sessionToken, closer, injector)
   }
 }

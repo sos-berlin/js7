@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.Config
 import monix.execution.schedulers.ExecutorScheduler
-import monix.execution.{ExecutionModel, Scheduler, UncaughtExceptionReporter}
+import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.util.control.NonFatal
 
 /**
@@ -28,7 +28,7 @@ object ThreadPools
       UncaughtExceptionReporter.default.reportFailure(throwable)
   }
 
-  def newStandardScheduler(name: String, config: Config): Scheduler =
+  def newStandardScheduler(name: String, config: Config): ExecutorScheduler =
     ExecutorScheduler.forkJoinDynamic(name,
       parallelism = config.as("jobscheduler.thread-pools.standard.parallelism")(ThreadCount),
       maxThreads = config.as("jobscheduler.thread-pools.standard.maximum")(ThreadCount),

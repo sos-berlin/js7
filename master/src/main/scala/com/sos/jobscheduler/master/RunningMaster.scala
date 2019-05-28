@@ -68,7 +68,7 @@ final class RunningMaster private(
   val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
   val orderKeeper: ActorRef,
-  val terminated: Future[Completed],
+  val terminated1: Future[Completed],
   closer: Closer,
   val injector: Injector)
 extends AutoCloseable
@@ -76,6 +76,12 @@ extends AutoCloseable
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
+
+  val terminated: Future[Completed] =
+    for (o <- terminated1) yield {
+      close()
+      o
+    }
 
   def terminate(): Task[Completed] =
     if (terminated.isCompleted)  // Works only if previous termination has been completed

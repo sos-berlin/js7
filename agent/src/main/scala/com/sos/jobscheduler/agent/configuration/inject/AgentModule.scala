@@ -49,8 +49,14 @@ extends AbstractModule {
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(configuration: AgentConfiguration): Scheduler =
-    ThreadPools.newStandardScheduler(configuration.name, configuration.config)
+  def monixScheduler(configuration: AgentConfiguration, closer: Closer): Scheduler = {
+    val scheduler = ThreadPools.newStandardScheduler(configuration.name, configuration.config)
+    closer.onClose {
+      scheduler.shutdown()
+      //scheduler.awaitTermination(xxx, SECONDS, ???)
+    }
+    scheduler
+  }
 
   @Provides @Singleton
   def agentConfiguration(): AgentConfiguration = originalAgentConfiguration.finishAndProvideFiles

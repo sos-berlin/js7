@@ -44,8 +44,14 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(): Scheduler =
-    ThreadPools.newStandardScheduler(configuration.name, config)
+  def monixScheduler(): Scheduler = {
+    val scheduler = ThreadPools.newStandardScheduler(configuration.name, config)
+    closer.onClose {
+      scheduler.shutdown()
+      //scheduler.awaitTermination(xxx, SECONDS, ???)
+    }
+    scheduler
+  }
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =
