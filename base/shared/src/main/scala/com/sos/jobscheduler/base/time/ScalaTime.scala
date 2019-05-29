@@ -126,7 +126,6 @@ object ScalaTime
         case o => o.toString
       }
 
-
     private def smallPretty = {
       val nanos = delegate.toNanos
       val a = abs(nanos)
@@ -151,10 +150,8 @@ object ScalaTime
     private def bigPretty = {
       val seconds = delegate.toSeconds
       val absSeconds = abs(seconds)
-      if (absSeconds >= 3*365.25*24*60*60)
-        s"${seconds / (365.25*24*60*60).toLong}~years"
-      else if (absSeconds >= 366*24*60*60)
-        s"${seconds / (30*24*60*60)}~months"
+      if (absSeconds >= 15*24*60*60)
+        s"${seconds / (7*24*60*60)}weeks"
       else if (absSeconds >= 3*24*60*60)
         s"${seconds / (24*60*60)}days"
       else if (absSeconds >= 3*60*60)
