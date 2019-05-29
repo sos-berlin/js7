@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
+import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
 import scala.collection.immutable.{ListMap, Seq}
 import shapeless.Lazy
 
@@ -131,10 +131,10 @@ object CirceUtils {
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {
-    def toDecoderResult: Decoder.Result[A] =
+    def toDecoderResult(history: List[CursorOp]): Decoder.Result[A] =
       underlying match {
         case Valid(o) => Right(o)
-        case Invalid(o) => Left(DecodingFailure(o.toString, Nil))  // Ignoring stacktrace ???
+        case Invalid(o) => Left(DecodingFailure(o.toString, history))  // Ignoring stacktrace ???
       }
   }
 

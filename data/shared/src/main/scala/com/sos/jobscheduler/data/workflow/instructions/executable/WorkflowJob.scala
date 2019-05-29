@@ -97,6 +97,6 @@ object WorkflowJob
       arguments <- cursor.getOrElse[Map[String, String]]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
-      job <- checked(agentRefPath, executable, arguments, rc, taskLimit).toDecoderResult
+      job <- checked(agentRefPath, executable, arguments, rc, taskLimit).toDecoderResult(cursor.history)
     } yield job
 }

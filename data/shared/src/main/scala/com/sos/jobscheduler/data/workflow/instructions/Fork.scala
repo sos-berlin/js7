@@ -110,7 +110,7 @@ object Fork
     c => for {
       branches <- c.get[IndexedSeq[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
-      fork <- checked(branches, sourcePos).toDecoderResult
+      fork <- checked(branches, sourcePos).toDecoderResult(c.history)
     } yield fork
 
   private case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {

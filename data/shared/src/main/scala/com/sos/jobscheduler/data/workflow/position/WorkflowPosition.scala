@@ -32,7 +32,7 @@ object WorkflowPosition
   //      jsons <- cursor.as[Seq[Json]]
   //      absolute <-
   //        if (jsons.isEmpty)
-  //          Left(DecodingFailure("Empty JSON array as Position.WorkflowPosition?", Nil))
+  //          Left(DecodingFailure("Empty JSON array as Position.WorkflowPosition?", cursor.history))
   //        else
   //          for {
   //            workflowId <- jsons(0).as[WorkflowId]

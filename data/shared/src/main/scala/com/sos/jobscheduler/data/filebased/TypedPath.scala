@@ -150,7 +150,7 @@ object TypedPath {
     }
 
     override final implicit val jsonDecoder: Decoder[P] =
-      _.as[String] flatMap (o => checked(o).toDecoderResult)
+      c => c.as[String] flatMap (o => checked(o).toDecoderResult(c.history))
   }
 
   def fileToString(file: Path): String =
@@ -167,12 +167,12 @@ object TypedPath {
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
-            case _ => Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", Nil))
+            case _ => Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", c.history))
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
           typedPath <- typeToCompanion.get(prefix).map(_.apply(path))
-            .toRight(DecodingFailure(s"Unrecognized type prefix in TypedPath: $prefix", Nil))
+            .toRight(DecodingFailure(s"Unrecognized type prefix in TypedPath: $prefix", c.history))
         } yield typedPath
     }
 
@@ -200,7 +200,7 @@ object TypedPath {
     c => for {
       typ <- c.get[String]("TYPE")
       path <- c.get[String]("path")
-      t <- toTypedPathCompanion(typ).toDecoderResult
-      typedPath <- t.checked(path).toDecoderResult
+      t <- toTypedPathCompanion(typ).toDecoderResult(c.history)
+      typedPath <- t.checked(path).toDecoderResult(c.history)
     } yield typedPath
 }

@@ -45,7 +45,7 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   }
 
   override implicit val jsonDecoder: Decoder[VersionId] =
-    _.as[String] flatMap (o => checked(o).toDecoderResult)
+    c => c.as[String] flatMap (o => checked(o).toDecoderResult(c.history))
 
   def unchecked(string: String) = new VersionId(string)
 

@@ -121,6 +121,6 @@ object TryInstruction
       delays <- c.get[Option[Seq[FiniteDuration]]]("retryDelays")
       maxTries <- c.get[Option[Int]]("maxTries")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
-      tryInstr <- TryInstruction.checked(try_, catch_, delays, maxTries = maxTries, sourcePos).toDecoderResult
+      tryInstr <- TryInstruction.checked(try_, catch_, delays, maxTries = maxTries, sourcePos).toDecoderResult(c.history)
     } yield tryInstr
 }

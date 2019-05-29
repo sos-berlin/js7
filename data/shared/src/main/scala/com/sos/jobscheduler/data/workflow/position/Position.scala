@@ -116,9 +116,9 @@ object Position
   implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[Position] =
-    _.as[List[Json]] flatMap (parts =>
+    cursor => cursor.as[List[Json]] flatMap (parts =>
       if (parts.size % 2 != 1)
-        Left(DecodingFailure("Not a valid Position", Nil))
+        Left(DecodingFailure("Not a valid Position", cursor.history))
       else
         for {
           branchPath <- BranchPath.decodeSegments(parts dropRight 1 grouped 2)

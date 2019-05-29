@@ -456,10 +456,10 @@ object Workflow extends FileBased.Companion[Workflow] {
       instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
       namedJobs <- cursor.get[Option[Map[WorkflowJob.Name, WorkflowJob]]]("jobs") map (_ getOrElse Map.empty)
       source <- cursor.get[Option[String]]("source")
-      workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult
+      workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult(cursor.history)
     } yield workflow
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =
-    cursor => jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult)
+    cursor => jsonDecoder.decodeJson(cursor.value) flatMap (_.completelyChecked.toDecoderResult(cursor.history))
 }

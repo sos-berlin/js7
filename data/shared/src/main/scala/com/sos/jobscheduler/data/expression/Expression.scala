@@ -21,7 +21,7 @@ object Expression
 {
   implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   implicit val jsonDecoder: Decoder[Expression] =
-    _.as[String] flatMap (string => checkedParse(string, ExpressionParser.expression(_)).toDecoderResult)
+    c => c.as[String] flatMap (string => checkedParse(string, ExpressionParser.expression(_)).toDecoderResult(c.history))
 
   sealed trait BooleanExpression extends Expression
 

@@ -64,9 +64,9 @@ object JavaJsonCodecs {
     o => Json.fromString(o.getId)
 
   implicit val zoneIdJsonDecoder: Decoder[ZoneId] =
-    _.as[String] flatMap (string =>
+    cursor => cursor.as[String] flatMap (string =>
       try Right(ZoneId.of(string))
       catch {
-        case NonFatal(e) => Left(DecodingFailure(e.toString, Nil))
+        case NonFatal(e) => Left(DecodingFailure(e.toString, cursor.history))
       })
 }

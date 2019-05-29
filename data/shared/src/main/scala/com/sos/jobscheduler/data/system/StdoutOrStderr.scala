@@ -22,10 +22,10 @@ object StdoutOrStderr {
     case _ => None
   }
   implicit val jsonEncoder: Encoder[StdoutOrStderr] = o => Json.fromString(o.string)
-  implicit val jsonDecoder: Decoder[StdoutOrStderr] = _.as[String] flatMap { string =>
+  implicit val jsonDecoder: Decoder[StdoutOrStderr] = cursor => cursor.as[String] flatMap { string =>
     keyJsonDecoder(string) match {
       case Some(o) => Right(o)
-      case None => Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", Nil))
+      case None => Left(DecodingFailure(s"'stdout' or 'stderr' expected, not: $string", cursor.history))
     }
   }
 }

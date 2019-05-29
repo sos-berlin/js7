@@ -425,7 +425,7 @@ object Order {
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor =>
     jsonDecoder(cursor) flatMap {
       o => o.ifState[FreshOrReady] match {
-        case None => Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", Nil))
+        case None => Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", cursor.history))
         case Some(x) => Right(x)
       }
     }

@@ -37,9 +37,9 @@ package object position
   implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[BranchPath] =
-    _.as[List[Json]] flatMap (parts =>
+    cursor => cursor.as[List[Json]] flatMap (parts =>
       if (parts.size % 2 != 0)
-        Left(DecodingFailure("Not a valid BranchPath", Nil))
+        Left(DecodingFailure("Not a valid BranchPath", cursor.history))
       else
         BranchPath.decodeSegments(parts grouped 2))
 

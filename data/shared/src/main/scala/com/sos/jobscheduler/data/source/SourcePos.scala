@@ -17,6 +17,6 @@ object SourcePos
   implicit val jsonDecoder: Decoder[SourcePos] =
     c => c.value.as[Array[Int]].flatMap {
       case a if a.length == 2 => Right(SourcePos(a(0), a(1)))
-      case _ => Left(DecodingFailure("Not a SourcePos", Nil))
+      case _ => Left(DecodingFailure("Not a SourcePos", c.history))
     }
 }

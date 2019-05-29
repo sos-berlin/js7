@@ -32,7 +32,7 @@ object RepoEvent {
     private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c =>
       for {
         signed <- c.get[SignedString]("signed")
-        parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, Nil))
+        parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, c.history))
         fileBased <- parsed.as[FileBased]
       } yield (fileBased, signed)
   }
