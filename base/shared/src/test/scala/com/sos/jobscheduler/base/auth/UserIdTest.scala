@@ -26,5 +26,6 @@ final class UserIdTest extends FreeSpec {
     UserId("0")
     UserId("ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÅÜabcdefghijklmnopqrstuvwxyzäöåüß0123456789.-_")
     UserId("a.")
+    UserId("A-B")
   }
 }

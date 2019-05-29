@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master.data.events
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.master.data.events.MasterEvent._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import java.time.ZoneId
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
@@ -13,7 +12,7 @@ import scala.concurrent.duration._
 final class MasterEventTest extends FreeSpec
 {
   "MasterReady" in {
-    testJson[MasterEvent](MasterReady(ZoneId.of("Europe/Berlin").getId, 1.hour),
+    testJson[MasterEvent](MasterReady("Europe/Berlin", 1.hour),
       json"""{
         "TYPE": "MasterReady",
         "timezone": "Europe/Berlin",

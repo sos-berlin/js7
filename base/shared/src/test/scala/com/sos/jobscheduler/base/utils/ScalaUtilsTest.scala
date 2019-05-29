@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.lang.model.SourceVersion
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.reflect.ClassTag
@@ -49,12 +48,13 @@ final class ScalaUtilsTest extends FreeSpec
       }
     }
 
-    if (SourceVersion.values map (_.toString) contains "RELEASE_9")
-      assert(A.B.getSimpleName == "B$")
-    else
-      intercept[java.lang.InternalError] {  // Until Java 8: https://bugs.openjdk.java.net/browse/JDK-8057919
-        A.B.getSimpleName
-      }
+    //scala-js does not know Java SourceVersion:
+    //if (SourceVersion.values map (_.toString) contains "RELEASE_9")
+    //  assert(A.B.getSimpleName == "B$")
+    //else
+    //  intercept[java.lang.InternalError] {  // Until Java 8: https://bugs.openjdk.java.net/browse/JDK-8057919
+    //    A.B.getSimpleName
+    //  }
     assert(A.B.simpleName == "B$")
     assert(simpleClassName("C") == "C")
     assert(simpleClassName("a.C") == "C")

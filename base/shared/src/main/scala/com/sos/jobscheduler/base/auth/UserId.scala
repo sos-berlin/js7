@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.base.auth
 
-import cats.data.Validated.Invalid
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
+import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
+import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 /**
   * @author Joacim Zschimmer
@@ -14,14 +16,28 @@ final case class UserId private(string: String) extends GenericString
 
 object UserId extends GenericString.Checked_[UserId]
 {
-  private val NamePattern = """^([\p{L}0-9_][\p{L}0-9_.-]*)$""".r.pattern  // TODO Use NameValidator
   val Anonymous = UserId("Anonymous")
 
   def unchecked(string: String) = new UserId(string)
 
   override def checked(string: String) =
-    if (NamePattern.matcher(string).matches && !string.contains("--"))
-      super.checked(string)
+    if (string.isEmpty)
+      Invalid(EmptyStringProblem(name))
+    else if (isValid(string))
+      Valid(new UserId(string))
     else
-      Invalid(InvalidNameProblem("UserId", string))
+      Invalid(InvalidNameProblem(name, string))
+
+  private def isValid(string: String): Boolean =
+    string.nonEmpty &&
+      string.last != '-' &&
+      !string.contains("--") &&
+      isNameStart(string charAt 0) &&
+      (1 until string.length forall { i => isNamePart(string charAt i) })
+
+  private def isNameStart(c: Char): Boolean =
+    isUnicodeIdentifierStart(c) || c.isDigit
+
+  private def isNamePart(c: Char): Boolean =
+    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || c == '.'
 }

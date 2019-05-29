@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import java.time.ZoneId
 import java.util.UUID
 import org.scalatest.FreeSpec
 
@@ -28,7 +27,7 @@ final class MasterAgentEventTest extends FreeSpec
     }
 
     "AgentReady" in {
-      testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentReady(ZoneId.of("Europe/Berlin").getId),
+      testJson[KeyedEvent[MasterAgentEvent]](AgentRefPath("/AGENT") <-: AgentReady("Europe/Berlin"),
         json"""{
           "TYPE": "AgentReady",
           "key": "/AGENT",
