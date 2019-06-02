@@ -1,13 +1,14 @@
 package com.sos.jobscheduler.common.akkautils
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.typesafe.config.Config
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
@@ -19,8 +20,10 @@ trait ProvideActorSystem extends HasCloser
 
   protected lazy val actorSystem = newActorSystem(actorSystemName, config) withCloser { o =>
     if (!o.whenTerminated.isCompleted) {
-      logger.debug(s"ActorSystem('${o.name}') terminate")
+      val since = now
+      logger.debug(s"ActorSystem('${o.name}') terminate ...")
       o.terminate() await TerminationTimeout
+      logger.debug(s"ActorSystem('${o.name}') terminated (${since.elapsed.pretty})")
     }
   }
 }
