@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionC
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.typesafe.config.{Config, ConfigFactory}
 
 /**
@@ -23,10 +24,12 @@ with ProvideActorSystem
 {
   private type CommonAkka = AkkaHttpMasterApi.CommonAkka
 
-  actorSystem  // Initialize eagerly to avoid "ClassCastException: interface akka.event.LoggingFilter is not assignable from class akka.event.slf4j.Slf4jLoggingFilter"
-  closer.onClose { super[CommonAkka].close() }
+  closer onClose { super[CommonAkka].close() }
+  closeOnError(closer) {
+    actorSystem  // Initialize eagerly to avoid "ClassCastException: interface akka.event.LoggingFilter is not assignable from class akka.event.slf4j.Slf4jLoggingFilter"
+  }
 
-  override def close() = super[ProvideActorSystem].closer.close()
+  override def close() = closer.close()
 }
 
 object AkkaHttpMasterApi
