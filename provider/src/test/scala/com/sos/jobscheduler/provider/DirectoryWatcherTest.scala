@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.provider
 
 import com.google.common.io.MoreFiles.touch
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isMac
-import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.{createTempDirectory, delete}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -17,12 +18,12 @@ import scala.concurrent.duration._
   */
 final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
 {
-  private val timeout = if (isMac) 100.milliseconds else 1.minute
+  private val timeout = if (isMac) 100.milliseconds else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
-  private var counter = 0
   private lazy val observableFuture = observable map (_ => counter += 1) foreach { _ => }
+  private var counter = 0
 
   override def beforeAll() = {
     observableFuture
@@ -69,7 +70,7 @@ final class DirectoryWatcherTest extends FreeSpec with BeforeAndAfterAll
     sleep(10.milliseconds)
     assert(counter == n)
     body
-    sleep(100.milliseconds)
+    waitForCondition(99.s, 10.ms)(counter > n)
     assert(counter > n)
     sleep(10.milliseconds)
   }

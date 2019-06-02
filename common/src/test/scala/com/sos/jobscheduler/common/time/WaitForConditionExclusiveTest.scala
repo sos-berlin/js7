@@ -63,19 +63,19 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 
   "waitForCondition(TimeoutWithSteps) 0 steps (time-sensitive test)" in {
-    val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(2.s, 1.s)) { true } }
-    elapsed should be < 500.ms
+    val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(20.s, 10.s)) { true } }
+    elapsed should be < 1.s
   }
 
   "waitForCondition(TimeoutWithSteps) all steps (time-sensitive test)" in {
     val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(300.ms, 1.ms)) { false } }
-    elapsed should (be >= 300.ms and be <= 700.ms)
+    elapsed should (be >= 300.ms and be <= 3.s)
   }
 
   "waitForCondition(TimeoutWithSteps) some steps (time-sensitive test)" in {
     var cnt = 0
     val elapsed = meterElapsedTime { waitForCondition(TimeoutWithSteps(1.s, 10.ms)) { cnt += 1; cnt > 10 } }  // 100ms
-    elapsed should (be >= 100.ms and be < 400.ms)
+    elapsed should (be >= 100.ms and be < 3.s)
   }
 }
 

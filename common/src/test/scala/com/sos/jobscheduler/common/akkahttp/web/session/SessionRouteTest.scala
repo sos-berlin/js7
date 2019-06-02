@@ -124,8 +124,8 @@ extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with SessionRout
       withSessionApi() { api =>
         @volatile var count = 0
         def onError(t: Throwable) = {
-          logger.debug(t.toStringWithCauses)
           count += 1
+          logger.debug(s"count=$count " + t.toStringWithCauses)
         }
         val runningSince = now
         val whenLoggedIn = api.loginUntilReachable(
