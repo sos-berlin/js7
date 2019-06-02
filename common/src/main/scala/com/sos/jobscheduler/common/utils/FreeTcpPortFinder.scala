@@ -8,10 +8,15 @@ import scala.util.Random
 object FreeTcpPortFinder
 {
   private val logger = Logger(getClass)
+  // Do not overlap with ephemeral port range to avoid collision.
+  // IANA recommends for ephemeral ports the range 49152 to 65535.
+  // Linux may use 32767 to 60999, see  /proc/sys/net/ipv4/ip_local_port_range
+  private val availablePorts = 10000 to 32767
+  private val requiredPortCount = 5000
 
   private val freePortNumberIterator = {
-    val start = 40000 + abs(Random.nextInt(9000))  // 40000..48999
-    Iterator.range(start, 0x10000).filter(portIsFree)
+    val first = availablePorts.head + abs(Random.nextInt(availablePorts.length - requiredPortCount))
+    Iterator.range(first, availablePorts.last).filter(portIsFree)
   }
 
   def findFreeTcpPort(): Int =
@@ -19,14 +24,9 @@ object FreeTcpPortFinder
 
   def findFreeTcpPorts(n: Int): List[Int] =
     freePortNumberIterator.synchronized {
-      val result = freePortNumberIterator
-        .take(n)
-        .map { o =>
-          logger.debug(s"findFreeTcpPort => $o")
-          o
-        }
-        .toList
+      val result = freePortNumberIterator.take(n).toList
       if (result.length != n) sys.error(s"Not enough free tcp ports available")
+      logger.debug("findFreeTcpPort => " + result.mkString(", "))
       result
     }
 
