@@ -48,7 +48,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
-import com.sos.jobscheduler.master.agent.AgentDriver
+import com.sos.jobscheduler.master.agent.{AgentDriver, AgentDriverConfiguration}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
@@ -85,6 +85,7 @@ with MainJournalingActor[Event]
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config).orThrow
   private val journalMeta = recovered_.journalMeta
   private val eventWatch = recovered_.eventWatch
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
@@ -432,7 +433,8 @@ with MainJournalingActor[Event]
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId, masterConfiguration, journalActor = journalActor),
+      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, masterConfiguration,
+        journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.path.withoutStartingSlash)))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.path -> entry)
