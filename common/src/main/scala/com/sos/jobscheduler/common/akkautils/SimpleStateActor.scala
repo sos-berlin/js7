@@ -7,5 +7,12 @@ import akka.actor.Actor
   */
 trait SimpleStateActor extends Actor
 {
-  protected def become(state: String)(recv: Receive): Unit
+  private var _actorStateName: String = ""
+
+  protected def become(stateName: String)(receive: Receive): Unit = {
+    _actorStateName = stateName
+    context.become(receive)
+  }
+
+  final def actorStateName = _actorStateName
 }
