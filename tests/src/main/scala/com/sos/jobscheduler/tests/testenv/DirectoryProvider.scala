@@ -165,7 +165,7 @@ extends HasCloser {
     }
 
   def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
-    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents =>
+    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 99.s) { agents =>
       val a = body(agents)
       agents map (_.terminate()) await 99.s
       a
