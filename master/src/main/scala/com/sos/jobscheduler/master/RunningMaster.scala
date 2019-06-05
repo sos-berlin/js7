@@ -63,11 +63,10 @@ import shapeless.tag.@@
  */
 final class RunningMaster private(
   val eventWatch: StrictEventWatch[Event],
-  val commandExecutor: MasterCommandExecutor,
-  val webServer: MasterWebServer,
+  commandExecutor: MasterCommandExecutor,
+  webServer: MasterWebServer,
   val fileBasedApi: MainFileBasedApi,
   val orderApi: OrderApi.WithCommands,
-  val orderKeeper: ActorRef,
   terminated1: Future[Completed],
   closer: Closer,
   val injector: Injector)
@@ -232,7 +231,7 @@ object RunningMaster
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
         new RunningMaster(recovered.eventWatch.strict,
-          commandExecutor, webServer, fileBasedApi, orderApi, orderKeeper,
+          commandExecutor, webServer, fileBasedApi, orderApi,
           terminated, closer, injector)
     }
   }
