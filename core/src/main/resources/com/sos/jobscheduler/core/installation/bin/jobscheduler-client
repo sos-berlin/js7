@@ -59,7 +59,7 @@ if [ ! -f "$sessionTokenFile" ]; then
 fi
 
 httpUri="$(cat "$data/state/http-uri")"
-if ! [[ $httpUri =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
+if ! [[ "$httpUri" =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
   echo File "$data/state/http-uri does not contain a valid HTTP URI. Maybe JobScheduler is not running or does not provide a HTTP port on localhost"
   exit 1
 else
@@ -68,7 +68,12 @@ else
 fi
 
 for arg in "${args[@]}"; do
-  exec 3<>/dev/tcp/127.0.0.1/$httpPort
+  # Try until connected
+  for i in {30..0}; do
+    exec 3<>"/dev/tcp/127.0.0.1/$httpPort" && break
+    test $i -gt 0 || exit 1
+    sleep 1
+  done
   request=$(argToRequest "$arg")
   echo "$request" >&3
 
