@@ -64,8 +64,7 @@ object Dependencies
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.24"
 
-  //val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.1"
-  val spotbugs            = "com.github.spotbugs" % "spotbugs" % "3.1.12"
+  val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   val guava               = "com.google.guava" % "guava" % "27.1-jre"
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil

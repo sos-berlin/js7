@@ -206,7 +206,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
-      spotbugs % "compile" ++
+      findbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
 
@@ -245,7 +245,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       akkaSlf4j ++
       guava ++
       intelliJAnnotations % "compile" ++
-      spotbugs % "compile" ++
+      findbugs % "compile" ++
       scalaTest % "test" ++
       mockito % "test" ++
       log4j % "test"
@@ -369,7 +369,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, data.jvm, taskser
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      spotbugs % "compile" ++
+      findbugs % "compile" ++
       akkaActor ++
       akkaStream ++
       akkaSlf4j ++
@@ -406,7 +406,7 @@ lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "test")
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      spotbugs % "compile" ++
+      findbugs % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test"
