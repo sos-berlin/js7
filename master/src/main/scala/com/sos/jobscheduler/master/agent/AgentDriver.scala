@@ -34,6 +34,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import com.sos.jobscheduler.base.time.ScalaTime._
 
 /**
   * Couples to an Agent, sends orders, and fetches events.
@@ -222,6 +223,7 @@ with ReceiveLoggingActor.WithStash
         logger.debug(s"Discarding FetchEvents due to isCoupled=$isCoupled or (fetchCouplingNumber=$fetchCouplingNumber but coulingNumber=$couplingNumber) or isFetchingEvents=$isFetchingEvents")
       } else {
         isFetchingEvents = true
+        lastFetchAt = now
         val after = lastEventId
         client.mastersEvents(EventRequest[Event](EventClasses, after = after, Some(conf.eventFetchTimeout), limit = conf.eventLimit))
           .materialize foreach { tried =>
@@ -267,7 +269,7 @@ with ReceiveLoggingActor.WithStash
               self ! Internal.KeepEventsDelayed(after)
             })
         }
-        scheduler.scheduleOnce(conf.eventFetchDelay) {
+        scheduler.scheduleOnce(conf.eventFetchDelay - lastFetchAt.elapsed) {
           self ! Internal.FetchEvents(couplingNumber)
         }
       }
