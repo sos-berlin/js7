@@ -8,8 +8,8 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class AgentEventIdEvent(agentEventPath: EventId) extends Event {
+final case class AgentEventIdEvent(agentEventId: EventId) extends Event {
   type Key = AgentRefPath
 
-  override def toString = s"AgentEventIdEvent(${EventId.toString(agentEventPath)})"
+  override def toString = s"AgentEventIdEvent(${EventId.toString(agentEventId)})"
 }
