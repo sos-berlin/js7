@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import com.sos.jobscheduler.core.startup.JavaMainSupport.withShutdownHooks
+import java.time.LocalTime
 import scala.concurrent.duration._
 
 /**
@@ -23,7 +24,7 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): Unit = {
-    logger.info(s"Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
@@ -49,8 +50,10 @@ object AgentMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
+    println(s"${LocalTime.now.toString take 12} JobScheduler Agent Server ${BuildInfo.prettyVersion}")
     lockAndRunMain(args) { commandLineArguments =>
       new AgentMain().run(commandLineArguments)
     }
+  }
 }

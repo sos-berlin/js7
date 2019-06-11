@@ -34,7 +34,7 @@ final class ExecuteTest extends FreeSpec
         master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         val stampedSeq = master.eventWatch.await[OrderStopped](_.key == orderId)
         assert(stampedSeq.head.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem
-          == Problem.pure("Agent does not allow script jobs"))
+          == Problem.pure("Agent does not allow signed script jobs"))
       }
     }
   }

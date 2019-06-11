@@ -30,6 +30,6 @@ object FileBasedVerifier
     def fileBased: A = signedFileBased.value
 
     override def toString =
-      s"'${fileBased.id}' verified, signed by ${signerIds.mkString("'", "', '", "'")}"
+      s"'${fileBased.id}' verified: signed by ${signerIds.mkString("'", "', '", "'")}"
   }
 }

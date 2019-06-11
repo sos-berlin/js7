@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import com.sos.jobscheduler.core.startup.JavaMainSupport.withShutdownHooks
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import java.time.LocalTime
 import monix.execution.Scheduler
 import scala.concurrent.duration._
 
@@ -21,7 +22,7 @@ final class MasterMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): Unit = {
-    logger.info(s"Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JobScheduler Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     val masterConfiguration = MasterConfiguration.fromCommandLine(arguments)
     autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master =>
       import master.scheduler
@@ -45,8 +46,10 @@ object MasterMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
-  def main(args: Array[String]): Unit =
+  def main(args: Array[String]): Unit = {
+    println(s"${LocalTime.now.toString take 12} JobScheduler Master ${BuildInfo.prettyVersion}")
     lockAndRunMain(args) { commandLineArguments =>
       new MasterMain().run(commandLineArguments)
     }
+  }
 }

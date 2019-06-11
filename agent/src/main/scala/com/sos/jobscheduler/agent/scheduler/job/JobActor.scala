@@ -54,7 +54,7 @@ extends Actor with Stash {
 
     case script: ExecutableScript =>
       if (!conf.scriptInjectionAllowed)
-        Invalid(Problem.pure("Agent does not allow script jobs"))
+        Invalid(Problem.pure("Agent does not allow signed script jobs"))
       else
         Checked.catchNonFatal {
           val ext = if (isWindows) ".cmd" else ""
