@@ -5,6 +5,7 @@ import akka.pattern.{ask, pipe}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
 import com.sos.jobscheduler.agent.data.views.AgentOverview
@@ -33,7 +34,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActo
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -174,20 +175,15 @@ extends MainJournalingActor[AgentEvent] {
                 Valid(AgentCommand.RegisterAsMaster.Response(agentRunId))
               }
           case Some(entry) =>
-            response.success(Valid(AgentCommand.RegisterAsMaster.Response(entry.agentRunId)))
+            response.completeWith(
+              checkMaster(masterId, None, EventId.BeforeFirst)
+                .map(_.map(_ => AgentCommand.RegisterAsMaster.Response(entry.agentRunId))))
         }
 
       case AgentCommand.CoupleMaster(agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.completeWith(
-          for {
-            checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
-            checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted).runToFuture
-          } yield
-            for {
-              _ <- checkedEntry.flatMap(entry =>  Checked.cond(agentRunId == entry.agentRunId, (), MasterAgentMismatchProblem))
-              _ <- checkedEventWatch.flatMap(_.checkEventId(eventId))
-            } yield AgentCommand.Response.Accepted)
+          checkMaster(masterId, Some(agentRunId), eventId))
 
       case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type) =>
         masterToOrderKeeper.checked(masterId) match {
@@ -201,6 +197,16 @@ extends MainJournalingActor[AgentEvent] {
         response.failure(AgentIsShuttingDownProblem.throwable)
     }
   }
+
+  private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Future[Checked[Response.Accepted]] =
+    for {
+      checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
+      checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted).runToFuture
+    } yield
+      for {
+        _ <- checkedEntry.flatMap(entry =>  Checked.cond(requiredAgentRunId.forall(_ == entry.agentRunId), (), MasterAgentMismatchProblem))
+        _ <- checkedEventWatch.flatMap(_.checkEventId(eventId))
+      } yield AgentCommand.Response.Accepted
 
   private def continueTermination(): Unit =
     if (terminating && masterToOrderKeeper.isEmpty) {

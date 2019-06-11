@@ -66,7 +66,9 @@ trait GenericEventRoute extends RouteProvider
 
     private val exceptionHandler = ExceptionHandler {
       case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException if t.getMessage != null =>
-        complete((StatusCodes.ServiceUnavailable, Problem.pure(t.getMessage)))
+        complete(ServiceUnavailable -> Problem.pure(t.getMessage))
+      //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch
+      //  complete(ServiceUnavailable -> Problem.pure(t.toString))
     }
 
     final lazy val route: Route =

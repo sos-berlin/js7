@@ -136,6 +136,11 @@ object Checked
       case Valid(a) => a
       case Invalid(problem) => throw problem.throwable.appendCurrentStackTrace
     }
+
+    def orThrowWithoutStacktrace: A = underlying match {
+      case Valid(a) => a
+      case Invalid(problem) => throw problem.throwable
+    }
   }
 
   implicit final class CheckedFlattenOps[A](private val underlying: Checked[Checked[A]]) extends AnyVal {

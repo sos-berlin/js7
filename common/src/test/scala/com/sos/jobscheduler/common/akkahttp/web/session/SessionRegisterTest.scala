@@ -1,12 +1,11 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegisterTest._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -50,7 +49,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
   }
 
   "Changed UserId is rejected" in {
-    assert(sessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(Problem("Invalid session token")))
+    assert(sessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(InvalidSessionTokenProblem))
   }
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
@@ -66,7 +65,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
 
     assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
-    assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(Problem("Invalid session token")))
+    assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(InvalidSessionTokenProblem))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 
     mySystem.terminate() await 99.seconds

@@ -173,7 +173,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   override def toString = s"AkkaHttpClient($baseUri)"
 }
 
-object AkkaHttpClient {
+object AkkaHttpClient
+{
   private val ErrorMessageLengthMaximum = 10000
   private val FailureTimeout = 30.seconds
   private val logger = Logger(getClass.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler"))  // TODO Use Logger adapter (unreachable in module common)
@@ -192,8 +193,10 @@ object AkkaHttpClient {
           case None => Failure(t)
           case Some(problem) => Success(Invalid(problem))
         }
-      case Failure(t) => Failure(t)
-      case Success(a) => Success(Valid(a))
+      case Failure(t) =>
+        Failure(t)
+      case Success(a) =>
+        Success(Valid(a))
     }
     .dematerialize
 

@@ -37,6 +37,8 @@ final class CommandQueueTest extends FreeSpec {
       val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
       val failed = mutable.Buffer[(Vector[Queueable], Problem)]()
 
+      protected def commandParallelism = 2
+
       protected def executeCommand(command: AgentCommand.Batch) =
         Task(Valid(Batch.Response(Vector.fill(command.commands.size)(Valid(AgentCommand.Response.Accepted)))))
 
@@ -49,9 +51,9 @@ final class CommandQueueTest extends FreeSpec {
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()
 
-    commandQueue.onRecoupled()
+    commandQueue.onCoupled()
 
-    // The first Input is sent alone to the Agent regardless of batchSize.
+    // The first Input is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")
     commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentRefPath, signedWorkflow))
     expected += toQueuedInputResponse(aOrder) :: Nil

@@ -12,8 +12,9 @@ extends RuntimeException(message, cause)
   protected[problem] def this(problem: Problem) =
     this(problem, problem.toString, null)
 
-  override def toString =
-    if (getClass == classOf[ProblemException]) s"ProblemException: $getMessage" else super.toString
+  override def toString = myToString
+
+  protected def myToString = s"ProblemException: $getMessage"
 }
 
 object ProblemException {

@@ -391,6 +391,7 @@ lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common,
     import Dependencies._
     libraryDependencies ++=
       guice ++
+      "io.monix" %% "monix-reactive" % monixVersion ++
       akkaActor ++
       akkaHttp ++
       scalaTest % "test" ++

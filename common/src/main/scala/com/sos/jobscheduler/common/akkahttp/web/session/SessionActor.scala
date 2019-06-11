@@ -4,7 +4,7 @@ import akka.actor.{Actor, DeadLetterSuppression, Props}
 import com.sos.jobscheduler.base.auth.{SessionToken, User}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionActor._
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
@@ -74,7 +74,7 @@ extends Actor {
             Some(session)
           }
       }
-      val checkedSession = sessionOption toChecked Problem("Invalid session token")
+      val checkedSession = sessionOption toChecked InvalidSessionTokenProblem
       sender() ! checkedSession
 
     case Command.GetCount =>

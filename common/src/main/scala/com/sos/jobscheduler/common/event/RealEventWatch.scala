@@ -147,7 +147,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                   // If the first event is not fresh, we have a read congestion.
                   // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
                   val head = iterator.next()
-                  if (head.timestamp + tornOlder < Timestamp.now) {
+                  if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
                     iterator.close()
                     Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
                   } else

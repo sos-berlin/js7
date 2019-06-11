@@ -6,25 +6,29 @@ import com.typesafe.config.Config
 import scala.concurrent.duration.FiniteDuration
 
 final case class AgentDriverConfiguration(
-  batchSize: Int,
-  batchDelay: FiniteDuration,
-  keepEventsPeriod: FiniteDuration,
-  eventLimit: Int,
   eventFetchTimeout: FiniteDuration,
   eventFetchDelay: FiniteDuration,
-  eventTimeoutDelay: FiniteDuration)
+  eventBufferDuration: FiniteDuration,
+  eventBufferLimit: Int,
+  commandBatchSize: Int,
+  commandBatchDelay: FiniteDuration,
+  commandErrorDelay: FiniteDuration,
+  commandParallelism: Int,
+  keepEventsPeriod: FiniteDuration)
 
 object AgentDriverConfiguration
 {
   def fromConfig(config: Config): Checked[AgentDriverConfiguration] =
     Checked.catchNonFatal {
       new AgentDriverConfiguration(
-        batchSize         = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size"),
-        batchDelay        = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration,
-        keepEventsPeriod  = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration,
-        eventLimit        = config.getInt     ("jobscheduler.master.agent-driver.event-fetch-limit"),
-        eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration,
-        eventFetchDelay   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration,
-        eventTimeoutDelay = config.getDuration("jobscheduler.master.agent-driver.event-timeout-delay").toFiniteDuration)
+        eventFetchTimeout   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration,
+        eventFetchDelay     = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration,
+        eventBufferDuration = config.getDuration("jobscheduler.master.agent-driver.event-buffer-duration").toFiniteDuration,
+        eventBufferLimit    = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-limit"),
+        commandBatchSize    = config.getInt     ("jobscheduler.master.agent-driver.command-batch-size"),
+        commandBatchDelay   = config.getDuration("jobscheduler.master.agent-driver.command-batch-delay").toFiniteDuration,
+        commandErrorDelay   = config.getDuration("jobscheduler.master.agent-driver.command-error-delay").toFiniteDuration,
+        commandParallelism  = config.getInt     ("jobscheduler.master.agent-driver.command-parallelism"),
+        keepEventsPeriod    = config.getDuration("jobscheduler.master.agent-driver.keep-events-period").toFiniteDuration)
     }
 }

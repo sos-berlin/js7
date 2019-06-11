@@ -4,10 +4,12 @@ import cats.effect.Resource
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import scala.collection.generic.CanBuildFrom
+import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.language.higherKinds
 import scala.reflect.runtime.universe._
@@ -25,6 +27,9 @@ object MonixUtils
     {
       def await(duration: FiniteDuration)(implicit s: Scheduler, A: TypeTag[A]): A =
         underlying.runToFuture await duration
+
+      def awaitInfinite(implicit s: Scheduler, A: TypeTag[A]): A =
+        underlying.runToFuture.awaitInfinite
     }
 
     implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal
@@ -47,6 +52,9 @@ object MonixUtils
       }
     }
   }
+
+  def promiseTask[A](body: Promise[A] => Unit): Task[A] =
+    Task.deferFuture(promiseFuture(body))
 
   def autoCloseableToObservable[A <: AutoCloseable](newA: => A): Observable[A] =
     Observable.fromResource(Resource.fromAutoCloseable(Task(newA)))

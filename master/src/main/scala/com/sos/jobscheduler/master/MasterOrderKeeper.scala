@@ -178,7 +178,6 @@ with MainJournalingActor[Event]
   private def recovering: Receive = {
     case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
       runningSince = runningSince_
-      agentRegister.values foreach { _.start() }
       orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
@@ -237,14 +236,14 @@ with MainJournalingActor[Event]
     case Command.GetState =>
       sender() ! masterState
 
-    case AgentDriver.Output.EventsFromAgent(stampeds) =>
+    case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
       var lastAgentEventId = none[EventId]
       var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
         case stamped @ Stamped(agentEventId, timestamp, keyedEvent) =>
           if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
-            logger.error(s"Agent ${agentEntry.agentRefPath} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
+            logger.debug(s"AgentDriver ${agentEntry.agentRefPath} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
             None
           } else {
             lastAgentEventId = agentEventId.some
@@ -270,18 +269,21 @@ with MainJournalingActor[Event]
       }
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
-      persistTransactionTimestamped(masterStamped) {
-        _ map (_.value) foreach {
-          case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-            handleOrderEvent(orderId, event)
+      persistTransactionTimestamped(masterStamped, async = true) { stampedEvents =>
+        // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
+        //  Agent does not send these events, but just in case.
+        stampedEvents.map(_.value)
+          .foreach {
+            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+              handleOrderEvent(orderId, event)
 
-          case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
-            assert(agentEntry.lastAgentEventId < agentEventId)
-            agentEntry.lastAgentEventId = agentEventId
-            agentEntry.actor ! AgentDriver.Input.EventsAccepted(agentEventId)
+            case KeyedEvent(_, AgentEventIdEvent(agentEventId)) =>
+              assert(agentEntry.lastAgentEventId < agentEventId)
+              agentEntry.lastAgentEventId = agentEventId
 
-          case _ =>
-        }
+            case _ =>
+          }
+        completedPromise.success(Checked.completed)
       }
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>
@@ -389,7 +391,7 @@ with MainJournalingActor[Event]
     def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
       deletionNotSupported(diff) :+
         Valid(SyncIO {
-          for (agentRef <- diff.added) registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst).start()
+          for (agentRef <- diff.added) registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
           for (agentRef <- diff.updated) {
             agentRegister.update(agentRef)
             agentRegister(agentRef.path).reconnect()
@@ -667,11 +669,8 @@ private[master] object MasterOrderKeeper {
   {
     def agentRefPath = agentRef.path
 
-    def start()(implicit sender: ActorRef): Unit =
-      actor ! AgentDriver.Input.Start
-
     def reconnect()(implicit sender: ActorRef): Unit =
-      actor ! AgentDriver.Input.Reconnect(uri = agentRef.uri)
+      actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)
   }
 
   private class OrderEntry(private var _order: Order[Order.State])

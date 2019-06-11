@@ -18,6 +18,7 @@ import scala.util.{Failure, Success}
   */
 private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler)
 {
+  protected def commandParallelism: Int
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
   protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Unit
@@ -46,7 +47,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     def iterator = detachQueue.iterator ++ queue.iterator
   }
 
-  final def onRecoupled() =
+  final def onCoupled() =
     freshReconnected = true
 
   final def enqueue(input: Queueable): Unit = {
@@ -58,7 +59,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   final def maySend(): Unit = {
     lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
-    if (openRequestCount < OpenRequestsMaximum && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
+    if (openRequestCount < commandParallelism && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
       executingInputs ++= inputs
       openRequestCount += 1
       executeCommand(Batch(inputs map inputToAgentCommand))
@@ -118,8 +119,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   }
 }
 
-object CommandQueue {
-  private val OpenRequestsMaximum = 2
-
+object CommandQueue
+{
   private[agent] final case class QueuedInputResponse(input: Queueable, response: Checked[AgentCommand.Response])
 }

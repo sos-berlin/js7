@@ -69,11 +69,12 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
   "CoupleMaster command fails with MasterRequiresUnknownEventIdProblem if Agent misses last events" in {
     directoryProvider.runMaster() { master =>
       // REMOVE NEW AGENTS'S EVENTS THE MASTER HAS ALREADY READ => MasterRequiresUnknownEventIdProblem
-      val lastJournalFiles = agentStateDir.pathSet.toVector
+      val journalFiles = agentStateDir.pathSet.toVector
         .map(_.getFileName.getPath)
         .filter(_.startsWith("master-Master--"))
+        .sorted
         .map(agentStateDir / _)
-      for (o <- lastJournalFiles) move(o, Paths.get(s"$o-MOVED"))
+      for (o <- journalFiles.init) move(o, Paths.get(s"$o-MOVED"))
       directoryProvider.runAgents() { _ =>
         master.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
           ke => ke.key == agentRefPath &&

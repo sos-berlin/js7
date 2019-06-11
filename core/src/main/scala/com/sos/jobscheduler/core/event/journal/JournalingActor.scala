@@ -9,11 +9,13 @@ import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.SimpleStateActor
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import monix.eval.Task
 import scala.collection.immutable.{Iterable, Seq}
-import scala.concurrent.Future
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -50,6 +52,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     if (stashingCount > 0) throw new IllegalStateException("inhibitJournaling called while a persist operation is active?")
     stashingCount = Inhibited
   }
+
+  protected final def persistKeyedEventTask[A](keyedEvent: KeyedEvent[E])(callback: Stamped[KeyedEvent[E]] => A): Task[A] =
+    promiseTask[A] { promise =>
+      self ! Persist(keyedEvent, callback, promise)
+    }
 
   private[event] final def persistKeyedEventAcceptEarly[EE <: E](
     keyedEvent: KeyedEvent[EE],
@@ -121,6 +128,12 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   }
 
   protected[journal] def journaling: Receive = {
+    case Persist(keyedEvent, callback, promise) =>
+      promise.completeWith(
+        persistKeyedEvent(keyedEvent) { stamped =>
+          callback(stamped)
+        })
+
     case JournalActor.Output.Stored(stampedSeq, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
       stampedSeq.lastOption foreach { last =>
@@ -207,6 +220,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   private case class Deferred(async: Boolean, callback: () => Unit) extends Item {
     override def toString = s"Deferred${if (async) "async" else ""}"
   }
+
+  private case class Persist[A](keyedEvent: KeyedEvent[E], callback: Stamped[KeyedEvent[E]] => A, promise: Promise[A])
 }
 
 object JournalingActor {
