@@ -3,16 +3,17 @@ package com.sos.jobscheduler.core.event
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
+import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`text/event-stream`
-import akka.http.scaladsl.model.StatusCodes.BadRequest
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
-import akka.http.scaladsl.model.{HttpEntity, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -49,6 +50,8 @@ import scala.util.control.NonFatal
   */
 trait GenericEventRoute extends RouteProvider
 {
+  protected val closedObservable: Observable[Completed]
+
   private implicit def implicitScheduler: Scheduler = scheduler
 
   protected trait GenericEventRouteProvider
@@ -141,8 +144,8 @@ trait GenericEventRoute extends RouteProvider
                   logger.warn(e.toStringWithCauses)
                   Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
                 }
-              monixObservableToMarshallable(
-                Observable.pure(head) ++ tail)
+              val observable = (Observable.pure(head) ++ tail).takeUntil(closedObservable)
+              monixObservableToMarshallable(observable)
             })
     }
 

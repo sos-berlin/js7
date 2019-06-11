@@ -25,6 +25,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
@@ -39,6 +40,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
+  protected val closedObservable = Observable.never
   protected val eventWatch = new EventCollector.ForTest()(Scheduler.global)
   protected implicit def scheduler: Scheduler = Scheduler.global
 

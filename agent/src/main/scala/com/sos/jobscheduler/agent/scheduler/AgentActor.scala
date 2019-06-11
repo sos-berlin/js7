@@ -78,6 +78,7 @@ extends MainJournalingActor[AgentEvent] {
   }
 
   override def postStop() = {
+    for (m <- masterToOrderKeeper.values) m.eventWatch.close()
     super.postStop()
     logger.debug("Stopped")
   }
