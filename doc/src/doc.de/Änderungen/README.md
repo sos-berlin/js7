@@ -1,6 +1,6 @@
 # Änderungen
 
-## 2018-04-09
+## 2019-04-09
 
 ### Neue Anweisung finish
 
@@ -73,7 +73,7 @@ try (maxTries=3) {
 Wenn der catch-Block nur die Anweisung retry enthält, 
 dann stoppt der Auftrag beim dritten fehlgeschlagenen Joblauf an dessen Position (falls es kein äußeres try/catch gibt).
  
-## 2018-03-19
+## 2019-03-19
 
 ### Zugriff auf die Ergebnisse vorheriger Auftragsschritte
 
@@ -125,7 +125,7 @@ In GraphQL heißt das Feld ```outcome``` jetzt ```lastOutcome```.
 ```
 
 
-## 2018-03-18
+## 2019-03-18
 
 ### Syntax für fork-Anweisung geändert
 
