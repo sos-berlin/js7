@@ -73,8 +73,8 @@ trait TypedPath extends GenericString {
   final def toTypedString: String = s"${companion.camelName}:$string"
 }
 
-object TypedPath {
-  val VersionSeparator = "%"
+object TypedPath
+{
   val InternalPrefix = "/?/"
   private val ForbiddenCharacters = Set[Char](VersionSeparator(0), ','/*reserved*/)
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))

@@ -28,7 +28,7 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 
 object FileBasedId
 {
-  private val VersionSeparator = "~"  // Can be used in an Akka actor name
+  val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   implicit def pathToFileBasedId[P <: TypedPath](path: P): FileBasedId[P] =
     FileBasedId(path, VersionId.Anonymous)

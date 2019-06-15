@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
-import com.sos.jobscheduler.data.filebased.TypedPath.VersionSeparator
+import com.sos.jobscheduler.data.filebased.FileBasedId.VersionSeparator
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -41,7 +41,7 @@ final class TypedPathTest extends FreeSpec
     intercept[ProblemException] { APath("x/") }
     intercept[ProblemException] { APath("/x//y") }
     intercept[ProblemException] { APath("/x,y") }
-    intercept[ProblemException] { APath("/x%y") }
+    intercept[ProblemException] { APath("/x~y") }
   }
 
   "check" in {
@@ -108,7 +108,7 @@ final class TypedPathTest extends FreeSpec
     assert(APath("/folder/a_b").officialSyntaxChecked == Valid(APath("/folder/a_b")))
     assert(APath("/folder/a.b").officialSyntaxChecked == Valid(APath("/folder/a.b")))
     assert(APath("/a@b/x@y").officialSyntaxChecked == Invalid(InvalidNameProblem("APath", "a@b")))  // Show only first problem
-    assert(APath.checked(s"/folder/a${VersionSeparator}b") == Invalid(InvalidNameProblem("APath", "/folder/a%b")))
+    assert(APath.checked(s"/folder/a${VersionSeparator}b") == Invalid(InvalidNameProblem("APath", "/folder/a~b")))
     //Shadowed: assert(APath(s"/folder/a${VersionSeparator}b").officialSyntaxChecked ==
     //  Invalid(Problem("Problem with 'A:/folder/a%b': Invalid character or character combination in name 'a%b'")))
   }
