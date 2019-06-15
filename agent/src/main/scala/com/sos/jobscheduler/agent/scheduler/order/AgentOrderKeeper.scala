@@ -74,7 +74,7 @@ extends MainJournalingActor[Event] with Stash {
   private val eventWatch = recovered_.eventWatch
   private val workflowVerifier = new FileBasedVerifier(signatureVerifier, Workflow.topJsonDecoder)
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, conf.config, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, conf.journalConf, keyedEventBus, scheduler),
     "Journal")))
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister

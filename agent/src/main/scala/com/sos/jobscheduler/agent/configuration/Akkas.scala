@@ -21,7 +21,7 @@ object Akkas {
   def newAgentActorSystem(name: String, config: Config = ConfigFactory.empty, defaultExecutionContext: ExecutionContext = ExecutionContext.global)
     (implicit closer: Closer)
   : ActorSystem = {
-    val myConfig = config withFallback AgentConfiguration.DefaultsConfig
+    val myConfig = config withFallback AgentConfiguration.DefaultConfig
     val ec = myConfig.getBoolean("jobscheduler.akka.use-jobscheduler-thread-pool") ? defaultExecutionContext
     ActorSystem(name, config = Some(myConfig), defaultExecutionContext = ec) sideEffect { o =>
       DeadLetterActor.subscribe(o)

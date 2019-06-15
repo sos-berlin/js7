@@ -17,6 +17,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
+import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
@@ -39,6 +40,7 @@ final case class AgentConfiguration(
   /** Unused. */jobJavaOptions: Seq[String],
   killScript: Option[ProcessKillScript],
   implicit val akkaAskTimeout: Timeout,
+  journalConf: JournalConf,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 extends CommonConfiguration
@@ -107,7 +109,7 @@ object AgentConfiguration {
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
   private[configuration] val DefaultName = if (isTest) "Agent" else "JobScheduler"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
-  lazy val DefaultsConfig = Configs.loadResource(
+  lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
@@ -130,6 +132,7 @@ object AgentConfiguration {
       jobJavaOptions = config.stringSeq("jobscheduler.agent.task.java.options"),
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
+      journalConf = JournalConf.fromConfig(config),
       name = DefaultName,
       config = config)
     v = v.withKillScript(config.optionAs[String]("jobscheduler.agent.task.kill.script"))
@@ -143,7 +146,7 @@ object AgentConfiguration {
     ConfigFactory.systemProperties
       .withFallback(configDirectoryConfig(configDirectory))
       .withFallback(extraDefaultConfig)
-      .withFallback(DefaultsConfig)
+      .withFallback(DefaultConfig)
       .resolve
   }
 

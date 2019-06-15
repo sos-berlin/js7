@@ -2,7 +2,9 @@ package com.sos.jobscheduler.master.configuration
 
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Paths
@@ -19,15 +21,16 @@ final class MasterConfigurationTest extends FreeSpec {
     Vector("-config-directory=CONFIG", "-data-directory=DATA")))
 
   "Empty argument list" in {
-    assert(configuration.copy(config = ConfigFactory.empty) == MasterConfiguration(
+    assert(configuration.copy(config = DefaultConfig) == MasterConfiguration(
       masterId = MasterId("Master"),
       dataDirectory = Paths.get("DATA").toAbsolutePath,
       configDirectory = Paths.get("CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
+      journalConf = JournalConf.fromConfig(DefaultConfig),
       name = MasterConfiguration.DefaultName,
-      config = ConfigFactory.empty))
+      config = DefaultConfig))
   }
 
   "-id=" in {

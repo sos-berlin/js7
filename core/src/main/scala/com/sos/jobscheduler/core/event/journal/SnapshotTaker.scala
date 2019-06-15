@@ -25,16 +25,14 @@ private[journal] final class SnapshotTaker(
   write: ByteString => Unit,
   journalingActors: Set[ActorRef],
   jsonEncoder: Encoder[Any],
-  config: Config,
+  conf: JournalConf,
   scheduler: Scheduler)
 extends Actor
 {
   private val remaining = mutable.Set.empty ++ journalingActors
   private var snapshotCount = 0
   private val pipeline = new ParallelExecutingPipeline[ByteString](write)(scheduler)
-  private val logProgressPeriod = config.getDuration("jobscheduler.journal.snapshot.log-period").toFiniteDuration
-  private val logProgressActorLimit = config.getInt("jobscheduler.journal.snapshot.log-actor-limit")
-  private var logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
+  private var logProgressCancelable = scheduler.scheduleOnce(conf.snapshotLogProgressPeriod) { self ! Internal.LogProgress }
   private val runningSince = now
   private var testLogCount = 0
 
@@ -58,14 +56,14 @@ extends Actor
 
     case Internal.LogProgress =>
       logProgressCancelable.cancel()
-      val limit = remaining.size min logProgressActorLimit
+      val limit = remaining.size min conf.snapshotLogProgressActorLimit
       logger.info(s"Writing journal snapshot for ${runningSince.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
       for (o <- remaining take limit) {
         logger.info(s"... awaiting snapshot element from actor ${o.path}")
       }
-      logProgressCancelable = scheduler.scheduleOnce(logProgressPeriod) { self ! Internal.LogProgress }
+      logProgressCancelable = scheduler.scheduleOnce(conf.snapshotLogProgressPeriod) { self ! Internal.LogProgress }
       testLogCount += 1
 
     case "getTestLogCount" =>

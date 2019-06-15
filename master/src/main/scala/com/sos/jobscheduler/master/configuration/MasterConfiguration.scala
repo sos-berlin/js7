@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
+import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.data.master.MasterId
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
@@ -29,6 +30,7 @@ final case class MasterConfiguration(
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
+  journalConf: JournalConf,
   name: String,
   config: Config)
 extends CommonConfiguration
@@ -95,6 +97,7 @@ object MasterConfiguration
         //config.seqAs("jobscheduler.webserver.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
+      journalConf = JournalConf.fromConfig(config),
       name = name,
       config = config)
   }

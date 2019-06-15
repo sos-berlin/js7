@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.configuration
 
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration.DefaultConfig
 import com.sos.jobscheduler.agent.configuration.AgentConfigurationTest._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
@@ -7,6 +8,7 @@ import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.createTempDirectory
@@ -25,7 +27,7 @@ final class AgentConfigurationTest extends FreeSpec  {
     provideConfigAndData { (config, data) =>
       val c = AgentConfiguration.fromCommandLine(CommandLineArguments(s"-config-directory=$config" :: s"-data-directory=$data" :: Nil))
         .finishAndProvideFiles
-      assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
+      assert(c.copy(config = DefaultConfig) == AgentConfiguration(
         configDirectory = config,
         dataDirectory = data,
         webServerPorts = Nil,
@@ -34,8 +36,9 @@ final class AgentConfigurationTest extends FreeSpec  {
         jobJavaOptions = Nil,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
         akkaAskTimeout = 60.seconds,
+        JournalConf.fromConfig(DefaultConfig),
         name = AgentConfiguration.DefaultName,
-        ConfigFactory.empty))
+        DefaultConfig))
     }
   }
 

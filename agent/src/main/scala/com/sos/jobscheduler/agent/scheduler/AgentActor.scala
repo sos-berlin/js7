@@ -61,7 +61,7 @@ extends MainJournalingActor[AgentEvent] {
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, agentConfiguration.config, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler),
     "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow

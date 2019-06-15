@@ -89,7 +89,7 @@ with MainJournalingActor[Event]
   private val journalMeta = recovered_.journalMeta
   private val eventWatch = recovered_.eventWatch
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, masterConfiguration.config, keyedEventBus, scheduler, eventIdClock),
+    JournalActor.props(journalMeta, masterConfiguration.journalConf, keyedEventBus, scheduler, eventIdClock),
     "Journal")))
   private var runningSince = now  // Will be overwritten after recovery
   private var masterMetaState = MasterMetaState(masterConfiguration.masterId, Timestamp.now, Duration.Zero)

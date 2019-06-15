@@ -30,7 +30,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
     actorRefFactory, SimpleSession.apply, SessionRegister.TestConfig)
 
-  override def testConfig = AgentConfiguration.DefaultsConfig
+  override def testConfig = AgentConfiguration.DefaultConfig
   protected final def actorSystem = system
   protected val config = WebLogDirectives.TestConfig
 

@@ -1,17 +1,14 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import com.sos.jobscheduler.base.convert.As.StringAsByteCountWithDecimalPrefix
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor._
@@ -20,7 +17,6 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOp
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalId, KeyedEvent, Stamped}
-import com.typesafe.config.Config
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.{Path, Paths}
@@ -39,7 +35,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class JournalActor[E <: Event] private(
   journalMeta: JournalMeta[E],
-  config: Config,
+  conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   eventIdClock: EventIdClock,
@@ -53,12 +49,6 @@ extends Actor with Stash {
   private val runningSince = now
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private val syncOnCommit = config.getBoolean("jobscheduler.journal.sync")
-  private val simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration)
-  private val commitDelay = config.getDuration("jobscheduler.journal.delay").toFiniteDuration
-  private val snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration
-  private val snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix)
-  private val eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size")  // TODO Better limit byte count to avoid OutOfMemoryError
   private var snapshotRequested = false
   private var snapshotSchedule: Cancelable = null
 
@@ -74,7 +64,7 @@ extends Actor with Stash {
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
-  for (o <- simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
+  for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
   override def postStop() = {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
@@ -133,7 +123,7 @@ extends Actor with Stash {
 
   private def becomeReady(): Unit = {
     become(ready)
-    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
+    logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
     eventWriter.beginEventSection()
   }
 
@@ -155,14 +145,14 @@ extends Actor with Stash {
       } else {
         writtenBuffer += NormallyWritten(stampedEvents, replyTo, sender(), item)
       }
-      forwardCommit(delay max commitDelay)
+      forwardCommit(delay max conf.delay)
       if (stampedEvents.nonEmpty) {
         scheduleNextSnapshot()
       }
 
     case Internal.Commit(level) =>
       forwardingCommit = Duration.Inf
-      if (writtenBuffer.iterator.map(_.eventCount).sum >= eventLimit)
+      if (writtenBuffer.iterator.map(_.eventCount).sum >= conf.eventLimit)
         commit()
       else if (level < writtenBuffer.length) {
         // writtenBuffer has grown? Queue again to coalesce two commits
@@ -172,8 +162,8 @@ extends Actor with Stash {
       } else if (writtenBuffer.nonEmpty) {
         logger.trace(s"Discarded: Commit($level), writtenBuffer.length=${writtenBuffer.length}")
       }
-      if (eventWriter.bytesWritten > snapshotSizeLimit && !snapshotRequested) {  // Snapshot is not counted
-        logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(snapshotSizeLimit)}")
+      if (eventWriter.bytesWritten > conf.snapshotSizeLimit && !snapshotRequested) {  // Snapshot is not counted
+        logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
         requestSnapshot()
       }
 
@@ -221,7 +211,7 @@ extends Actor with Stash {
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(): Unit = {
     forwardingCommit = Duration.Inf
-    try eventWriter.flush(sync = syncOnCommit)
+    try eventWriter.flush(sync = conf.syncOnCommit)
     catch { case NonFatal(t) =>
       val tt = t.appendCurrentStackTrace
       writtenBuffer foreach {
@@ -230,7 +220,7 @@ extends Actor with Stash {
       }
       throw tt;
     }
-    logStored(flushed = true, synced = syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o } flatMap (_.stamped))
+    logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o } flatMap (_.stamped))
     for (NormallyWritten(keyedEvents, replyTo, sender, item) <- writtenBuffer) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
@@ -280,11 +270,11 @@ extends Actor with Stash {
 
     val header = recoveredJournalHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
       totalRunningTime = recoveredJournalHeader().totalRunningTime + runningSince.elapsed)
-    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observer(), simulateSync = simulateSync)
+    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observer(), simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
     actorOf(
-      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, config, scheduler) }
+      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, conf, scheduler) }
         .withDispatcher(DispatcherName),
       uniqueActorName("SnapshotTaker"))
     become(takingSnapshot(commander = sender(), () => andThen(header)))
@@ -295,7 +285,7 @@ extends Actor with Stash {
       throw t.appendCurrentStackTrace
 
     case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) =>
-      snapshotWriter.endSnapshotSection(sync = syncOnCommit)
+      snapshotWriter.endSnapshotSection(sync = conf.syncOnCommit)
       snapshotWriter.close()
       val file = journalMeta.file(after = lastWrittenEventId)
       move(snapshotWriter.file, file, ATOMIC_MOVE)
@@ -314,7 +304,7 @@ extends Actor with Stash {
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = lastWrittenEventId)
-    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observer(), simulateSync = simulateSync,
+    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observer(), simulateSync = conf.simulateSync,
       withoutSnapshots = withoutSnapshots)
 
     Try { createSymbolicLink(symLink, file.getFileName) }
@@ -323,7 +313,7 @@ extends Actor with Stash {
 
   def closeEventWriter(): Unit = {
     if (eventWriter != null) {
-      eventWriter.closeProperly(sync = syncOnCommit)
+      eventWriter.closeProperly(sync = conf.syncOnCommit)
       eventWriter = null
     }
   }
@@ -346,7 +336,7 @@ extends Actor with Stash {
 
   private def scheduleNextSnapshot(): Unit =
     if (snapshotSchedule == null) {
-      snapshotSchedule = scheduler.scheduleOnce(snapshotPeriod) {
+      snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod) {
         requestSnapshot()
       }
     }
@@ -366,13 +356,13 @@ object JournalActor
 
   def props[E <: Event](
     journalMeta: JournalMeta[E],
-    config: Config,
+    conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     eventIdClock: EventIdClock = EventIdClock.Default,
     stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, config, keyedEventBus, scheduler, eventIdClock, stopped) }
+    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix

@@ -26,11 +26,10 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
-import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{<-:, Event, KeyedEvent}
+import com.sos.jobscheduler.data.event.{<-:, Event, EventId, KeyedEvent}
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessed}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestAgentRefPath
@@ -54,10 +53,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest {
-
-  ProblemCodeMessages.initialize()
-
+final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with MasterAgentForScalaTest
+{
   override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
 
   private val testStartedAt = Timestamp.now - 24.h
@@ -80,6 +77,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   import httpClient.materializer
 
   override def beforeAll() = {
+    directoryProvider.master.config / "master.conf" ++=
+      """jobscheduler.journal.sync = off
+         jobscheduler.journal.delay = 0s
+        |""".stripMargin
     writeMasterConfiguration(directoryProvider.master)
     writeAgentConfiguration(directoryProvider.agents(0))
     super.beforeAll()
@@ -473,15 +474,17 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
     }
   }
 
+  var orderFinishedEventId: EventId = -1
+
   "(await OrderFinished)" in {
-    master.eventWatch.await[OrderFinished]()  // Needed for test /master/api/events
+    val stampedEvents = master.eventWatch.await[OrderFinished]()  // Needed for test /master/api/events
+    orderFinishedEventId = stampedEvents.head.eventId
   }
 
   "/master/api/snapshot/ (only JSON)" in {
     val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
     val snapshots = httpClient.get[Json](s"$uri/master/api/snapshot/", headers) await 99.s
-    assert(snapshots.asObject.get("eventId") == Some(1000024.asJson) ||
-           snapshots.asObject.get("eventId") == Some(1000025.asJson))  // In case of AgentCouplingFailed ?
+    assert(snapshots.asObject.get("eventId") == Some(orderFinishedEventId.asJson))
     val array = snapshots.asObject.get("array").get.asArray.get
     val shortenedArray = Json.fromValues(array.filterNot(o => o.asObject.get("TYPE").contains("AgentSnapshot".asJson)))  // Delete AgentSnapshot in `array` (for easy comparison)
     val masterMetaState = array.iterator.map(_.as(MasterSnapshots.SnapshotJsonCodec).orThrow)
@@ -746,6 +749,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         master.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
         master.addOrderBlocking(FreshOrder(order2Id, WorkflowPath("/FOLDER/WORKFLOW-2")))
         master.eventWatch.await[OrderProcessed](_.key == order2Id)
+        master.eventWatch.await[OrderMoved](_.key == order2Id)
       }
 
       "Single order" in {

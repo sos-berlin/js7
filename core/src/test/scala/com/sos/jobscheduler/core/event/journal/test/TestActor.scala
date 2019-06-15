@@ -11,12 +11,12 @@ import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.test.TestActor._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.UUID
@@ -35,7 +35,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, config withFallback TestConfig, new StampedKeyedEventBus, Scheduler.global,
+    JournalActor.props(journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
       new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
       journalStopped),
     "Journal"))
@@ -165,6 +165,7 @@ private[journal] object TestActor {
   private val TestConfig = ConfigFactory.parseString("""
      |jobscheduler.journal.sync = on
      |jobscheduler.journal.delay = 0s
+     |jobscheduler.journal.sync-delay = 0s
      |jobscheduler.journal.simulate-sync = 1ms
      |jobscheduler.journal.snapshot.log-period = 10ms
      |jobscheduler.journal.snapshot.log-actor-limit = 1

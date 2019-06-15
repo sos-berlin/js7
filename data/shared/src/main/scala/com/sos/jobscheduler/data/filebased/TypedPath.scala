@@ -14,6 +14,7 @@ import com.sos.jobscheduler.base.standards.NameValidator
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.data.filebased.FileBasedId.VersionSeparator
 import com.sos.jobscheduler.data.filebased.TypedPath._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject, ObjectEncoder}
 import java.nio.file.{Path, Paths}
