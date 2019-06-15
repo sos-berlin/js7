@@ -5,11 +5,10 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.SnapshotTaker._
 import com.sos.jobscheduler.core.event.journal.write.ParallelExecutingPipeline
-import com.typesafe.config.Config
 import io.circe.Encoder
 import monix.execution.Scheduler
 import scala.collection.mutable
@@ -61,7 +60,7 @@ extends Actor
         (if (limit == remaining.size) "" else s" (showing $limit actors)") +
         ":")
       for (o <- remaining take limit) {
-        logger.info(s"... awaiting snapshot element from actor ${o.path}")
+        logger.info(s"... awaiting snapshot element from actor ${o.path.pretty}")
       }
       logProgressCancelable = scheduler.scheduleOnce(conf.snapshotLogProgressPeriod) { self ! Internal.LogProgress }
       testLogCount += 1
@@ -70,7 +69,7 @@ extends Actor
       sender() ! testLogCount
 
     case Terminated(a) =>
-      logger.debug(s"${a.path} terminated while taking snapshot")
+      logger.debug(s"${a.path.pretty} terminated while taking snapshot")
       onDone(a)
 
     case JournalingActor.Output.GotSnapshot(snapshots) =>

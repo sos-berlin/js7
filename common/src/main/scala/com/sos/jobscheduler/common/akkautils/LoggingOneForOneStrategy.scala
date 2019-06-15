@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.akkautils
 import akka.actor.SupervisorStrategy.{Decider, Directive, Escalate, Restart, Resume, Stop, defaultDecider}
 import akka.actor.{ActorContext, ActorInitializationException, ActorRef, OneForOneStrategy, SupervisorStrategy}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy._
 import com.sos.jobscheduler.common.log.LogLevel._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -31,7 +32,7 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
       case Escalate => Debug
       case Restart | Stop => Error
     }
-    logger.log(logLevel, s"$decision ${child.path}: $logMessage", throwable)
+    logger.log(logLevel, s"$decision ${child.path.pretty}: $logMessage", throwable)
   }
 }
 

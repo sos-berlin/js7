@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.ActorSystem.Settings
-import akka.actor.{ActorContext, ActorSystem, Cancellable}
+import akka.actor.{ActorContext, ActorPath, ActorSystem, Cancellable, ChildActorPath, RootActorPath}
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import com.sos.jobscheduler.common.configutils.Configs
@@ -96,16 +96,27 @@ object Akkas {
     sb.toString
   }
 
+
   /** When an actor name to be re-used, the previous actor may still terminate, occupying the name. */
   def uniqueActorName(name: String)(implicit context: ActorContext): String = {
     var _name = name
     if (context.child(name).isDefined) {
       _name = Iterator.from(2).map(i => s"$name~$i").find { nam => context.child(nam).isEmpty }.get
-      logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path}/$name")
+      logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path.pretty}/$name")
     }
     _name
   }
 
   def decodeActorName(o: String): String =
     Uri.Path(o).head.toString
+
+  implicit final class RichActorPath(private val underlying: ActorPath) extends AnyVal
+  {
+    /** Returns a non-unique readable string. "/" and "%2F" are both returns as "/". */
+    def pretty: String =
+      underlying match {
+        case RootActorPath(address, name) => address + name
+        case child: ChildActorPath => child.parent.pretty.stripSuffix("/") + "/" + decodeActorName(child.name)
+      }
+  }
 }

@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.akkautils
 import akka.actor.SupervisorStrategy.{Decider, Stop}
 import akka.actor.{ActorContext, ActorRef, ChildRestartStats, SupervisorStrategy}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy._
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.concurrent.Promise
@@ -18,7 +19,7 @@ trait CatchingSupervisorStrategy[A] extends SupervisorStrategy {
     stats: ChildRestartStats, children: Iterable[ChildRestartStats]): Unit
   = {
     if (!restart) { // That means SupervisorStrategy.Stop
-      if (!promise.tryFailure(new ActorTerminatedException(s"Actor '${child.path}' terminated due to error: ${throwable.toStringWithCauses}", throwable))) {
+      if (!promise.tryFailure(new ActorTerminatedException(s"Actor '${child.path.pretty}' terminated due to error: ${throwable.toStringWithCauses}", throwable))) {
         logger.warn(s"promise.tryFailure failed: $throwable", throwable)
       }
     }

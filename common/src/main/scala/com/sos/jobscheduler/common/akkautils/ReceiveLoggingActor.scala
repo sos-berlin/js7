@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.akkautils
 
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor._
 import com.sos.jobscheduler.common.scalautil.Logger
 
@@ -14,7 +15,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
 
   abstract override protected def become(state: String)(recv: Receive): Unit =
     if (isLoggingEnabled) {
-      logger.debug(Logger.Actor, s"${context.self.path} becomes $state")
+      logger.debug(Logger.Actor, s"${context.self.path.pretty} becomes $state")
       super.become(state)(debugReceive(recv))
     } else
       super.become(state)(recv)
@@ -24,7 +25,7 @@ trait ReceiveLoggingActor extends SimpleStateActor
       def isDefinedAt(msg: Any) = recv isDefinedAt msg
 
       def apply(msg: Any) = {
-        logger.debug(Logger.Actor, s"${context.self.path} receives '$msg' from ${sender().path}")
+        logger.debug(Logger.Actor, s"${context.self.path.pretty} receives '$msg' from ${sender().path.pretty}")
         recv(msg)
       }
     }
@@ -38,14 +39,14 @@ object ReceiveLoggingActor {
   {
     override def stash() = {
       if (isLoggingEnabled) {
-        logger.debug(Logger.Actor, s"${context.self.path} stash")
+        logger.debug(Logger.Actor, s"${context.self.path.pretty} stash")
       }
       super.stash()
     }
 
     override def unstashAll() = {
       if (isLoggingEnabled) {
-        logger.debug(Logger.Actor, s"${context.self.path} unstashAll")
+        logger.debug(Logger.Actor, s"${context.self.path.pretty} unstashAll")
       }
       super.unstashAll()
     }

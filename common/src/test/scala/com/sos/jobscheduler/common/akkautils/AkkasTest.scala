@@ -13,8 +13,8 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-final class AkkasTest extends FreeSpec {
-
+final class AkkasTest extends FreeSpec
+{
   "maximumTimeout" in {
     val millis = Int.MaxValue * 10L - 2000
     assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months
@@ -60,6 +60,8 @@ final class AkkasTest extends FreeSpec {
     assert(encodeAsActorName("$/$") == "%24%2F$")
     assert(encodeAsActorName("%%@") == "%25%25@")
     assert(encodeAsActorName("åЮ") == "%C3%A5%D0%AE")
+    assert(encodeAsActorName("🔺") == "%F0%9F%94%BA")
+    assert(encodeAsActorName("🥕") == "%F0%9F%A5%95")
     assert(decodeActorName("%C3%A5%D0%AE") == "åЮ")
     assert(decodeActorName("%24%2F$") == "$/$")
     assert(encodeAsActorName("folder/subfolder/jobname") == "folder%2Fsubfolder%2Fjobname")
@@ -75,6 +77,18 @@ final class AkkasTest extends FreeSpec {
       assert(ActorPath.isValidPathElement(actorName))
       assert(decodeActorName(actorName) == string)
     }
+  }
+
+  "AkkaPath pretty" in {
+    assert(ActorPath.fromString("akka://ActorSystem/a/b/c").pretty == "akka://ActorSystem/a/b/c")
+    assert(ActorPath.fromString("akka://ActorSystem/a/b").pretty == "akka://ActorSystem/a/b")
+    assert(ActorPath.fromString("akka://ActorSystem/%24%2F$").pretty == "akka://ActorSystem/$/$")
+    assert(ActorPath.fromString("akka://ActorSystem/%25%25@").pretty == "akka://ActorSystem/%%@")
+    assert(ActorPath.fromString("akka://ActorSystem/%C3%A5%D0%AE").pretty == "akka://ActorSystem/åЮ")
+    assert(ActorPath.fromString("akka://ActorSystem/folder%2Fsubfolder%2Fjobname").pretty == "akka://ActorSystem/folder/subfolder/jobname")
+    assert(ActorPath.fromString("akka://ActorSystem/a%3Fb=!&c=%C3%B6%5B%5D%7B%7D").pretty == "akka://ActorSystem/a?b=!&c=ö[]{}")
+    assert(ActorPath.fromString("akka://ActorSystem/%28%29").pretty == "akka://ActorSystem/()")
+    assert(ActorPath.fromString("akka://ActorSystem/%F0%9F%94%BA/%F0%9F%A5%95").pretty == "akka://ActorSystem/🔺/🥕")
   }
 
   "SupervisorStrategy" in {
