@@ -116,7 +116,7 @@ object ScalaUtils
           case _: java.util.NoSuchElementException =>
             delegate.toString stripPrefix "java.util."
 
-          case _: java.lang.IllegalStateException =>
+          case _: IllegalStateException | _: NumberFormatException =>
             delegate.toString stripPrefix "java.lang."
 
           case _ =>
