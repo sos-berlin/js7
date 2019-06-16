@@ -86,8 +86,8 @@ extends KeyedJournalingActor[OrderEvent]
           becomeAsStateOf(attached, force = true)
           persist(OrderAttached(arguments, workflowPosition, state, historicOutcomes, parent, agentRefPath)) { event =>
             update(event)
-            sender() ! Completed
-          }
+            Completed
+          } pipeTo sender()
 
         case _ =>
           executeOtherCommand(command)

@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 /**
   * Instances of this trait are thought to be a controlling actor, the only for a journal.
@@ -34,9 +35,10 @@ trait MainJournalingActor[E <: Event] extends JournalingActor[E] {
   : Future[A] =
     persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)
 
-  protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]], async: Boolean = false)
+  protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]],
+    async: Boolean = false, delay: FiniteDuration = Duration.Zero, alreadyDelayed: FiniteDuration = Duration.Zero)
     (callback: Seq[Stamped[KeyedEvent[EE]]] => A)
   : Future[A] =
-    super.persistKeyedEvents(keyedEvents, async = async, transaction = true)(callback)
+    super.persistKeyedEvents(keyedEvents, async = async, transaction = true, delay = delay, alreadyDelayed = alreadyDelayed)(callback)
 }
 

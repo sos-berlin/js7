@@ -269,7 +269,7 @@ with MainJournalingActor[Event]
       }
       masterStamped ++= lastAgentEventId.map(agentEventId => Timestamped(agentRefPath <-: AgentEventIdEvent(agentEventId)))
 
-      persistTransactionTimestamped(masterStamped, async = true) { stampedEvents =>
+      persistTransactionTimestamped(masterStamped, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) { stampedEvents =>
         // Inhibit OrderAdded, OrderFinished, OrderJoined(?), OrderAttachable and others ???
         //  Agent does not send these events, but just in case.
         stampedEvents.map(_.value)

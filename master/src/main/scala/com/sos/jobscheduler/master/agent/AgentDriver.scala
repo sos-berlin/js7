@@ -333,7 +333,7 @@ with ReceiveLoggingActor.WithStash
     eventObservable
       .timeoutOnSlowUpstream(conf.eventFetchTimeout + TimeoutReserve)   // throws UpstreamTimeoutException
       .map { o => logEvent(o); o }
-      .bufferTimedAndCounted(conf.eventBufferDuration, maxCount = conf.eventBufferLimit)  // ticks
+      .bufferTimedAndCounted(conf.eventBufferDelay max conf.commitDelay, maxCount = conf.eventBufferLimit)  // ticks
       .filter(_.nonEmpty)   // Ignore empty ticks
       .map(_.toImmutableSeq)
       .mapEval(stampedEvents =>

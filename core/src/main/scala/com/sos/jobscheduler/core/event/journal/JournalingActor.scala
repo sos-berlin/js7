@@ -67,7 +67,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       start(async = true)
       val timestamped = Timestamped(keyedEvent, timestamp) :: Nil
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false, delay = delay,
+        JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
+          delay = delay, alreadyDelayed = Duration.Zero,
           Deferred(async = true, () => promise.success(Accepted))))
     }
 
@@ -86,6 +87,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
     timestamped: Seq[Timestamped[EE]],
     transaction: Boolean = false,
     delay: FiniteDuration = Duration.Zero,
+    alreadyDelayed: FiniteDuration = Duration.Zero,
     async: Boolean = false)(
     callback: Seq[Stamped[KeyedEvent[EE]]] => A)
   : Future[A] =
@@ -94,7 +96,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       if (logger.underlying.isTraceEnabled)
         for (t <- timestamped) logger.trace(s"“$toString” Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction, delay = delay,
+        JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
+          delay = delay, alreadyDelayed = alreadyDelayed,
           EventsCallback(
             async = async,
             events => promise.complete(
@@ -114,7 +117,8 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
 
   private def defer_(async: Boolean, callback: => Unit): Unit = {
     start(async = async)
-    journalActor.forward(JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false, delay = Duration.Zero,
+    journalActor.forward(JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
+      delay = Duration.Zero, alreadyDelayed = Duration.Zero,
       Deferred(async = async, () => callback)))
   }
 

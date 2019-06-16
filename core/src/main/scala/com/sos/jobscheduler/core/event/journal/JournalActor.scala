@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
+import com.sos.jobscheduler.common.akkautils.Akkas.{RichActorPath, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
@@ -60,7 +60,7 @@ extends Actor with Stash {
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
-  private var forwardingCommit: Duration = Duration.Inf
+  private var commitDeadline: Deadline = null
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
 
@@ -70,7 +70,7 @@ extends Actor with Stash {
     if (snapshotSchedule != null) snapshotSchedule.cancel()
     if (delayedCommit != null) delayedCommit.cancel()  // Discard commit for fast exit
     stopped.trySuccess(Stopped(keyedEventJournalingActorCount = journalingActors.size))
-    for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path}")
+    for (a <- journalingActors) logger.debug(s"Journal stopped while a JournalingActor is still running: ${a.path.pretty}")
     if (snapshotWriter != null) {
       logger.debug(s"Deleting temporary journal files due to termination: ${snapshotWriter.file}")
       snapshotWriter.close()
@@ -131,7 +131,7 @@ extends Actor with Stash {
     case Input.RegisterMe =>
       handleRegisterMe()
 
-    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, item) =>
+    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
       eventWriter.writeEvents(stampedEvents, transaction = transaction)
       for (lastStamped <- stampedEvents.lastOption) {
@@ -139,19 +139,19 @@ extends Actor with Stash {
       }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
       if (acceptEarly) {
-        reply(sender(), replyTo, Output.Accepted(item))
+        reply(sender(), replyTo, Output.Accepted(callersItem))
         writtenBuffer += AcceptEarlyWritten(stampedEvents.size, sender())
         // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
       } else {
-        writtenBuffer += NormallyWritten(stampedEvents, replyTo, sender(), item)
+        writtenBuffer += NormallyWritten(stampedEvents, replyTo, sender(), callersItem)
       }
-      forwardCommit(delay max conf.delay)
+      forwardCommit((delay max conf.delay) - alreadyDelayed)
       if (stampedEvents.nonEmpty) {
         scheduleNextSnapshot()
       }
 
     case Internal.Commit(level) =>
-      forwardingCommit = Duration.Inf
+      commitDeadline = null
       if (writtenBuffer.iterator.map(_.eventCount).sum >= conf.eventLimit)
         commit()
       else if (level < writtenBuffer.length) {
@@ -197,20 +197,23 @@ extends Actor with Stash {
   private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
     val sender = context.sender()
     def commit = Internal.Commit(writtenBuffer.length)
-    if (delay == Duration.Zero)
+    if (delay <= Duration.Zero)
       self.forward(commit)
-    else if (delay < forwardingCommit) {
-      forwardingCommit = delay
-      if (delayedCommit != null) delayedCommit.cancel()
-      delayedCommit = scheduler.scheduleOnce(delay) {
-        self.tell(commit, sender)  // Don't  use forward in async operation
+    else {
+      val deadline = now + delay
+      if (commitDeadline == null || deadline < commitDeadline) {
+        commitDeadline = deadline
+        if (delayedCommit != null) delayedCommit.cancel()
+        delayedCommit = scheduler.scheduleOnce(deadline.timeLeft) {
+          self.tell(commit, sender)  // Don't  use forward in async operation
+        }
       }
     }
   }
 
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
   private def commit(): Unit = {
-    forwardingCommit = Duration.Inf
+    commitDeadline = null
     try eventWriter.flush(sync = conf.syncOnCommit)
     catch { case NonFatal(t) =>
       val tt = t.appendCurrentStackTrace
@@ -234,7 +237,7 @@ extends Actor with Stash {
 
   private def receiveTerminatedOrGet: Receive = {
     case Terminated(a) if journalingActors contains a =>
-      logger.trace(s"Terminated: ${a.path}")
+      logger.trace(s"Terminated: ${a.path.pretty}")
       journalingActors -= a
 
     case Input.GetState =>
@@ -382,6 +385,7 @@ object JournalActor
       acceptEarly: Boolean,
       transaction: Boolean,
       delay: FiniteDuration,
+      alreadyDelayed: FiniteDuration,
       item: CallersItem)
     final case object TakeSnapshot
     final case object Terminate
