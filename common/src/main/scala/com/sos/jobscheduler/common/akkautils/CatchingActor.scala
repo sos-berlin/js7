@@ -4,6 +4,7 @@ import akka.actor.SupervisorStrategy.Decider
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Terminated}
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Try}
+import com.sos.jobscheduler.common.akkautils.Akkas._
 
 /**
   * Catches the exception of a failing top-level actor.
@@ -73,5 +74,5 @@ object CatchingActor {
   }
 
   final class StoppedException(actorRef: ActorRef)
-  extends RuntimeException(s"Actor '${actorRef.path}' stopped unexpectedly")
+  extends RuntimeException(s"Actor '${actorRef.path.pretty}' stopped unexpectedly")
 }
