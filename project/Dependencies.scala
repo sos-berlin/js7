@@ -7,21 +7,21 @@ object Dependencies
 {
   val scalaVersion = "2.12.8"
 
-  val akkaVersion = "2.5.22"
-  val akkaHttpVersion = "10.1.7"
+  val akkaVersion = "2.5.23"
+  val akkaHttpVersion = "10.1.8"
   val slf4jVersion = "1.7.26"  // See also plugins.sbt
   val log4jVersion = "2.11.2"  // See also plugins.sbt
-  val catsVersion = "1.6.0"
-  val catsEffectVersion = "1.3.0"
-  val fastparseVersion = "2.1.0"
-  val kittensVersion = "1.2.0"
+  val catsVersion = "1.6.1"
+  val catsEffectVersion = "1.3.1"
+  val kittensVersion = "1.2.1"
+  val fastparseVersion = "2.1.2"
   val circeVersion = "0.11.1"
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.12.0"
   val disciplineVersion = "0.8"  //"0.11.0"
   val monixVersion = "3.0.0-RC2"
   val monocleVersion = "1.5.0"
-  val scalaJsDomVersion = "0.9.6"
+  val scalaJsDomVersion = "0.9.7"
   val sangriaVersion = "1.4.2"
   val sangriaCirceVersion = "1.2.1"
 
@@ -36,7 +36,7 @@ object Dependencies
                             /*jansi ::*/ Nil
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
-  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.1.1"
+  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.14.0"
@@ -46,7 +46,7 @@ object Dependencies
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "4.2.2" classifier "no_aop") :: javaxInject :: Nil
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.3.3"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.3.4"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
