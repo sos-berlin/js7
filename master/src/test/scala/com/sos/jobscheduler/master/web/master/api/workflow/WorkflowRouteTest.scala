@@ -65,7 +65,8 @@ final class WorkflowRouteTest extends FreeSpec with RouteTester with WorkflowRou
   // Workflow
   for (uri <- List(
        s"$WorkflowUri/${pathToWorkflow.values.head.path.withoutStartingSlash}",
-       s"$WorkflowUri/${pathToWorkflow.values.head.path.withoutStartingSlash.replace("/", "%2F")}")) {
+       s"$WorkflowUri/${pathToWorkflow.values.head.path.string}",
+       s"$WorkflowUri/${pathToWorkflow.values.head.path.string.replace("/", "%2F")}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)

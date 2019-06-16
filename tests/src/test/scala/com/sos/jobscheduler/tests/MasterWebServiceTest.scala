@@ -314,7 +314,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         "uri": "$agent2Uri"
       }""")
 
-    testGet("master/api/agent/FOLDER%2FAGENT-A?return=AgentRef",
+    testGet("master/api/agent/%2FFOLDER%2FAGENT-A?return=AgentRef",
       RawHeader("X-JobScheduler-Session", sessionToken) :: Nil,
       json"""{
         "eventId": ${master.eventWatch.lastAddedEventId},
@@ -325,7 +325,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   }
 
   "/master/api/agent-proxy" - {
-    "/master/api/agent-proxy/FOLDER%2FAGENT-A" in {
+    "/master/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
       // Pass-through AgentRef. Slashes but the first in AgentRefPath must be coded as %2F.
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       val overview = httpClient.get[AgentOverview](s"$uri/master/api/agent-proxy/FOLDER%2FAGENT-A", Duration.Inf, headers) await 99.s

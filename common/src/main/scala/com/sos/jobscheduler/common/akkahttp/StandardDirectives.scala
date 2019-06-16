@@ -36,8 +36,8 @@ object StandardDirectives
 
   private def uriPathToTypedPath[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
     uriPath match {
-      case Path.Segment(segment, Path.Empty) =>
-        P.checked("/" + segment.stripPrefix("/"))  // Slashes encoded as %2F; First slash is optional
+      case Path.Segment(segment, Path.Empty) if segment startsWith "/" =>
+        P.checked(segment)  // Slashes encoded as %2F in a single path segment
       case _ =>
         P.checked("/" + uriPath.toString.stripPrefix("/"))   // Slashes not encoded, first slash optional (to avoid /api/xxx//path)
     }

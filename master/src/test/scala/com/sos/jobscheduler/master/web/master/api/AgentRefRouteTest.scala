@@ -64,7 +64,8 @@ final class AgentRefRouteTest extends FreeSpec with RouteTester with AgentRefRou
   // AgentRef
   for (uri <- List(
        s"$AgentUri/${pathToAgent.values.head.path.withoutStartingSlash}",
-       s"$AgentUri/${pathToAgent.values.head.path.withoutStartingSlash.replace("/", "%2F")}")) {
+       s"$AgentUri/${pathToAgent.values.head.path.string}",
+       s"$AgentUri/${pathToAgent.values.head.path.string.replace("/", "%2F")}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
