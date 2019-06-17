@@ -42,11 +42,11 @@ define workflow {
   }
 
   define job TEST1 {
-    execute agent="agent-1", taskLimit=30, arguments={"hello": "Hello"}, executable="/test";
+    execute agent="agent-1", taskLimit=50, arguments={"hello": "Hello"}, executable="/test";
   }
 
   define job TEST2 {
-    execute agent="agent-2", taskLimit=10,
+    execute agent="agent-2", taskLimit=50,
       arguments={
         "testArgument": "☘️",
         "other": "other value"
