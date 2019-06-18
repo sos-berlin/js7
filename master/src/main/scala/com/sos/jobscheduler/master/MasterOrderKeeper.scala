@@ -85,7 +85,7 @@ with MainJournalingActor[Event]
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config).orThrow
+  private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
   private val journalMeta = recovered_.journalMeta
   private val eventWatch = recovered_.eventWatch
   protected val journalActor = tag[JournalActor.type](watch(actorOf(

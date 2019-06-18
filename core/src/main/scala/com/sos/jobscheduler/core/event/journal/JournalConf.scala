@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.convert.As.StringAsByteCountWithDecimalPrefix
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.typesafe.config.Config
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 final case class JournalConf(
   syncOnCommit: Boolean,
@@ -25,7 +25,7 @@ object JournalConf
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("jobscheduler.journal.simulate-sync") map (_.toFiniteDuration),
-      delay = if (syncOnCommit) syncDelay max delay else delay,  // TODO Max 1s
+      delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.second,
       eventLimit = config.as[Int]("jobscheduler.journal.event-buffer-size"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("jobscheduler.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("jobscheduler.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
