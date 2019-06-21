@@ -21,7 +21,7 @@ object Akkas {
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
-      .withFallback(Configs.loadResource(ConfigResource))
+      .withFallback(Configs.loadResource(ConfigResource, internal = true))
       .resolve
     ActorSystem(name, myConfig)
   }

@@ -4,38 +4,76 @@ import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
+import com.typesafe.config.ConfigRenderOptions.concise
+import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.JavaConverters._
 import scala.collection.immutable.IndexedSeq
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
-object Configs {
+object Configs
+{
+  private val InternalOriginDescription = "JobScheduler"
+  private val SecretOriginDescription = "JobScheduler Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
   private val logger = Logger(getClass)
 
-  def parseConfigIfExists(file: Option[Path]): Config = file.fold(ConfigFactory.empty)(parseConfigIfExists)
-
-  def parseConfigIfExists(file: Path): Config =
+  def parseConfigIfExists(file: Path, secret: Boolean): Config =
     if (exists(file)) {
       logger.info(s"Reading configuration file $file")
-      ConfigFactory.parseFile(file, Required)
+      var options = Required
+      if (secret) options = options.setOriginDescription(SecretOriginDescription)
+      ConfigFactory.parseFile(file, options)
     } else {
       logger.debug(s"No configuration file $file")
       ConfigFactory.empty
     }
 
-  def loadResource(resource: JavaResource) = {
+  def loadResource(resource: JavaResource, internal: Boolean = false) = {
     logger.trace(s"Reading configuration JavaResource $resource")
-    ConfigFactory.parseResourcesAnySyntax(resource.path, Required.setClassLoader(resource.classLoader))
+    var options = Required.setClassLoader(resource.classLoader)
+    if (internal) options = options.setOriginDescription(InternalOriginDescription)
+    ConfigFactory.parseResourcesAnySyntax(resource.path, options)
+  }
+
+  def logConfig(config: Config): Unit =
+    for (line <- renderConfig(config)) logger.debug(line)
+
+  def renderConfig(config: Config): Seq[String] =
+    Vector.build[String] { builder =>
+      val sb = new StringBuilder
+      for (entry <- config.entrySet.asScala.toVector
+        .filter(_.getValue.origin.description.replaceFirst(": [0-9]+(-[0-9]+)?", "") != InternalOriginDescription)
+        .sortBy(_.getKey))
+      {
+        sb.clear()
+        sb ++= renderKeyValue(entry.getKey, entry.getValue)
+        if (!entry.getValue.origin.description.startsWith(SecretOriginDescription)) {
+          sb ++= " ("
+          sb ++= entry.getValue.origin.description
+          sb += ')'
+        }
+        builder += sb.toString
+      }
+    }
+
+  private def renderKeyValue(key: String, value: ConfigValue): String = {
+    val v =
+      if (key.endsWith("password") || value.origin.description.startsWith(SecretOriginDescription))
+        "(secret)"
+      else
+        value.render(concise.setJson(false))
+      s"$key=$v"
   }
 
   implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]

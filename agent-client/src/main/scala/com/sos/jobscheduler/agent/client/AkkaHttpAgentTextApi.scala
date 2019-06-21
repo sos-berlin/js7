@@ -70,6 +70,6 @@ object AkkaHttpAgentTextApi
   private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory
       .empty
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
-      .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
+      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "master.conf", secret = false))
 }

@@ -4,14 +4,16 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.configutils.ConfigsTest._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryDirectory
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConfigsTest extends FreeSpec {
-
+final class ConfigsTest extends FreeSpec
+{
   "Config syntax" in {
     assert(TestConfig.getString("string") == "STRING")
     intercept[ConfigException.Missing] { TestConfig.getString("missing") }
@@ -55,9 +57,22 @@ final class ConfigsTest extends FreeSpec {
     assert(TestConfig.ifPath("string") (path => TestConfig.getString(path)) == Some("STRING"))
     assert(TestConfig.ifPath("MISSING") (path => TestConfig.getString(path)) == None)
   }
+
+  "renderConfig" in {
+    withTemporaryDirectory("ConfigsTest") { dir =>
+      val file = dir / "test.conf"
+      val hidden = dir / "hidden.conf"
+      file := "KEY = VALUE"
+      hidden := "SECRET-KEY = SECRET-VALUE"
+      val config = parseConfigIfExists(dir / "test.conf", secret = false)
+        .withFallback(parseConfigIfExists(dir / "hidden.conf", secret = true))
+      assert(renderConfig(config) == s"KEY=VALUE ($file: 1)" :: "SECRET-KEY=(secret)" :: Nil)
+    }
+  }
 }
 
-object ConfigsTest {
+object ConfigsTest
+{
   private val TestConfig = ConfigFactory.parseString("""
     string = STRING
     int = 42

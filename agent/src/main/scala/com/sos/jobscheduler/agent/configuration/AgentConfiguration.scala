@@ -110,7 +110,8 @@ object AgentConfiguration {
   private[configuration] val DefaultName = if (isTest) "Agent" else "JobScheduler"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
+    JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"),
+    internal = true)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)
@@ -155,8 +156,8 @@ object AgentConfiguration {
     ConfigFactory.parseMap(Map(
         "jobscheduler.config-directory" -> configDirectory.toString
       ).asJava)
-      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
-      .withFallback(parseConfigIfExists(configDirectory / "agent.conf"))
+      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf", secret = true))
+      .withFallback(parseConfigIfExists(configDirectory / "agent.conf", secret = false))
 
   private def defaultLogDirectory(data: Path) = data / "logs"
 

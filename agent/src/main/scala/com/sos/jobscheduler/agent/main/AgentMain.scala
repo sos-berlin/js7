@@ -5,6 +5,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.configutils.Configs.logConfig
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -25,7 +26,9 @@ final class AgentMain
 
   def run(arguments: CommandLineArguments): Unit = {
     logger.info(s"JobScheduler Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
+    logConfig(agentConfiguration.config)
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", onJavaShutdown(agent)) {
         agent.terminated.awaitInfinite

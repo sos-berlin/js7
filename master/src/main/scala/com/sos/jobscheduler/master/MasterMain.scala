@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.configutils.Configs.logConfig
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -23,7 +24,9 @@ final class MasterMain
 
   def run(arguments: CommandLineArguments): Unit = {
     logger.info(s"JobScheduler Master ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.debug(arguments.toString)
     val masterConfiguration = MasterConfiguration.fromCommandLine(arguments)
+    logConfig(masterConfiguration.config)
     autoClosing(RunningMaster(masterConfiguration).awaitInfinite) { master =>
       import master.scheduler
       withShutdownHooks(masterConfiguration.config, "MasterMain", onJavaShutdown(master, _)) {

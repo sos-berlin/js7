@@ -53,6 +53,8 @@ with ConvertibleMultiPartialFunction[String, String] {
       throw new IllegalArgumentException("Unknown command line arguments: " + (unusedKeylessArguments map { o => s"#${o+1}" }) .mkString(" ") +
         unusedArguments.values.flatten.mkString(" "))
   }
+
+  override def toString = argMap.values.flatten.mkString(" ")
 }
 
 object CommandLineArguments
@@ -109,5 +111,6 @@ object CommandLineArguments
 
   final case class ValueOnly(value: String) extends Argument {
     def key = ""
+    override def toString = value
   }
 }

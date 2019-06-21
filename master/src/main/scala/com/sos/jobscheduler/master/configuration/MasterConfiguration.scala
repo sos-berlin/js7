@@ -67,7 +67,8 @@ object MasterConfiguration
         httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
 
   lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
+    JavaResource("com/sos/jobscheduler/master/configuration/master.conf"),
+    internal = true)
 
   def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)
@@ -116,6 +117,6 @@ object MasterConfiguration
 
   // Same code in AkkaHttpMasterTextApi.configDirectoryConfig
   private def configDirectoryConfig(configDirectory: Path): Config =
-    parseConfigIfExists(configDirectory / "private/private.conf")
-      .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
+    parseConfigIfExists(configDirectory / "private/private.conf", secret = true)
+      .withFallback(parseConfigIfExists(configDirectory / "master.conf", secret = false))
 }

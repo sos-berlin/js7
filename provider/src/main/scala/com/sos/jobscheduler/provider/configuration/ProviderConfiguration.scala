@@ -34,9 +34,9 @@ object ProviderConfiguration
         ).asJava)
         .withFallback(ConfigFactory.systemProperties)
         .withFallback(addConfig)
-        .withFallback(parseConfigIfExists(configDir / "private" / "private.conf"))
-        .withFallback(parseConfigIfExists(configDir / "provider.conf"))
-        .withFallback(Configs.loadResource(DefaultConfigResource))
+        .withFallback(parseConfigIfExists(configDir / "private" / "private.conf", secret = true))
+        .withFallback(parseConfigIfExists(configDir / "provider.conf", secret = false))
+        .withFallback(Configs.loadResource(DefaultConfigResource, internal = true))
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,
