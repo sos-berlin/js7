@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.WaitForCondition._
 import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
 import org.scalatest.FreeSpec
@@ -8,10 +10,10 @@ import org.scalatest.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
-final class WaitForConditionExclusiveTest extends FreeSpec {
-
+final class WaitForConditionExclusiveTest extends FreeSpec
+{
   "Warm-up" in {
-    realTimeIterator(Seq(now)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
+    for (_ <- 1 to 2) realTimeIterator(Seq(now + 10.ms)).next() // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
     meterElapsedTime { retryUntil(99.s, 1.s) { 7 } }
     intercept[IllegalStateException] { throw new IllegalStateException }
   }
@@ -53,13 +55,13 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
   }
 
   "realTimeIterator (time-sensitive test)" in {
-    meterElapsedTime { realTimeIterator(Seq(now + 10.s)) } should be < 300.ms // Bereitstellung soll nicht warten
+    meterElapsedTime { realTimeIterator(Seq(now + 10.s)) } should be < 1.s // Bereitstellung soll nicht warten
     val t0 = now
     val (t1, t2, t3) = (t0 + 500.ms, t0 + 1500.ms, t0 + 2000.ms)
     val i = realTimeIterator(Seq(t1, t2, t3))
-    meterElapsedTime { i.next() } .toMillis should be ((t1 - t0).toMillis +- 400)
-    meterElapsedTime { i.next() } .toMillis should be ((t2 - t1).toMillis +- 400)
-    meterElapsedTime { i.next() } .toMillis should be ((t3 - t2).toMillis +- 400)
+    meterElapsedTime { i.next() } .sideEffect(o => logger.info(o.pretty)).toMillis should be ((t1 - t0).toMillis +- 400)
+    meterElapsedTime { i.next() } .sideEffect(o => logger.info(o.pretty)).toMillis should be ((t2 - t1).toMillis +- 400)
+    meterElapsedTime { i.next() } .sideEffect(o => logger.info(o.pretty)).toMillis should be ((t3 - t2).toMillis +- 400)
   }
 
   "waitForCondition(TimeoutWithSteps) 0 steps (time-sensitive test)" in {
@@ -81,6 +83,8 @@ final class WaitForConditionExclusiveTest extends FreeSpec {
 
 private object WaitForConditionExclusiveTest
 {
+  private val logger = Logger(getClass)
+
   def meterElapsedTime(f: => Unit): FiniteDuration = {
     val start = System.nanoTime
     f

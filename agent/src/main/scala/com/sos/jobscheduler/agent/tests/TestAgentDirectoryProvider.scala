@@ -3,11 +3,13 @@ package com.sos.jobscheduler.agent.tests
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.silly.{SillySignature, SillySigner}
 import com.sos.jobscheduler.core.filebased.FileBasedSigner
@@ -24,14 +26,18 @@ trait TestAgentDirectoryProvider extends HasCloser
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>
       logger.debug(s"Deleting $dir")
-      deleteDirectoryRecursively(dir)
+      repeatUntilNoException(9.s, 10.ms) {  // For Windows
+        deleteDirectoryRecursively(dir)
+      }
     }
     try {
       createDirectories(agentDirectory / "config/private")
       PrivateConfResource.copyToFile(agentDirectory / "config/private/private.conf") withCloser delete
       provideSignature(agentDirectory / "config")
     } catch { case NonFatal(t) =>
-      deleteDirectoryRecursively(agentDirectory)
+      repeatUntilNoException(9.s, 10.ms) {  // For Windows
+        deleteDirectoryRecursively(agentDirectory)
+      }
       throw t
     }
     createDirectory(agentDirectory / "config" / "executables")
