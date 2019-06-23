@@ -2,6 +2,7 @@ package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
@@ -10,7 +11,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedShebang, isMac, isSolaris, isUnix, isWindows}
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.Stdout
@@ -29,7 +29,7 @@ final class ShellScriptProcessTest extends FreeSpec
     val envValue = "ENVVALUE"
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
-    val shellProcess = startShellScript(processConfig, name = "TEST", s"exit $exitCode")
+    val shellProcess = startShellScript(processConfig, name = "TEST", (if (isWindows) "@" else "") + s"exit $exitCode")
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)
@@ -83,7 +83,7 @@ final class ShellScriptProcessTest extends FreeSpec
         val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
         val killScriptOutputFile = createTempFile("test-", ".tmp")
         val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
-        killScriptFile := (if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
+        killScriptFile := (if (isWindows) s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
         closer.onClose {
           waitForCondition(15.s, 1.s) {
             RichProcess.tryDeleteFiles(stdFileMap.values)

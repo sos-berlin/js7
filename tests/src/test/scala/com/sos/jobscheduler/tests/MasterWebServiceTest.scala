@@ -525,7 +525,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         "TYPE": "FileBasedAdded",
         "path": "Workflow:/FOLDER/WORKFLOW-2",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B.sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING.sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -535,7 +535,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         "TYPE": "FileBasedAdded",
         "path": "Workflow:/WORKFLOW",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A.sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -608,7 +608,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A.sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/A$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -619,7 +619,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
           "TYPE": "FileBasedAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B.sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING.sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentRefPath\":\"/AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"/MISSING$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"

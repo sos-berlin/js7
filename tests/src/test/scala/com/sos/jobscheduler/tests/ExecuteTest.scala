@@ -71,7 +71,8 @@ final class ExecuteTest extends FreeSpec
 object ExecuteTest
 {
   private val TestAgentRefPath = AgentRefPath("/AGENT")
-  private val workflowNotation = """
+  private val ScriptProlog = if (isWindows) "@echo off\n" else ""
+  private val workflowNotation = s"""
     define workflow {
       execute executable="/SCRIPT-0a.cmd", agent="AGENT";
       execute executable="/SCRIPT-1.cmd", agent="AGENT", arguments={"return_code": "1"}, successReturnCodes=[1];
@@ -85,7 +86,7 @@ object ExecuteTest
           execute agent="AGENT", executable="/SCRIPT-3.cmd", arguments={"return_code": "3"}, successReturnCodes=[3];
         }
         define job cJob {
-          execute agent="AGENT", script=":\nexit 4", arguments={"return_code": "4"}, successReturnCodes=[4];
+          execute agent="AGENT", script="${ScriptProlog}exit 4", arguments={"return_code": "4"}, successReturnCodes=[4];
         }
       };
       job dJob, arguments={"return_code": "5"};
@@ -97,7 +98,7 @@ object ExecuteTest
         execute agent="AGENT", executable="/SCRIPT-2.cmd", arguments={"return_code": "2"}, successReturnCodes=[2];
       }
       define job dJob {
-        execute agent="AGENT", script="exit 5", successReturnCodes=[5];
+        execute agent="AGENT", script="${ScriptProlog}exit 5", successReturnCodes=[5];
       }
     }"""
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL",  workflowNotation).orThrow

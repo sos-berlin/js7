@@ -25,8 +25,8 @@ final class GenericSignatureVerifierTest extends FreeSpec
       file := PgpTest.publicKeyResource.contentBytes
 
       val verifier = GenericSignatureVerifier(ConfigFactory.parseString(
-        s"""jobscheduler.configuration.trusted-signature-keys.PGP = $file
-        """.stripMargin)).orThrow
+        s"""jobscheduler.configuration.trusted-signature-keys.PGP = "${file.getPath.replace("""\""", """\\""")}"""")
+      ).orThrow
       assert(verifier.verify(message, signature) == Valid(PgpTest.signerIds))
       assert(verifier.verify("TAMPERED", signature) == Invalid(TamperedWithSignedMessageProblem))
     }

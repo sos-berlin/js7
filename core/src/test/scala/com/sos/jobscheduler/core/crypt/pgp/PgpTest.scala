@@ -138,8 +138,8 @@ final class PgpTest extends FreeSpec
       }
 
       val string = new String(publicKeyAscii, UTF_8)
-      assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----\n")
-      assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----\n")
+      assert(string startsWith "-----BEGIN PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
+      assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
 
       val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyAscii.asResource), "PgpTest")
       assert(verifier.verify(TestMessage + "X", signature).isInvalid)

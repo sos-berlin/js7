@@ -21,6 +21,7 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
+import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
@@ -73,8 +74,9 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
     actorSystem.stop(testActor)
-    if (isWindows) sleep(1.second)
-    Files.delete(directoryProvider.dataDirectory / "state/agent--0.journal")
+    repeatUntilNoException(9.s, 10.ms) {  // Windows
+      Files.delete(directoryProvider.dataDirectory / "state/agent--0.journal")
+    }
   }
 
   "Shell script with big stdout and stderr" in {
@@ -179,6 +181,11 @@ private object OrderActorTest {
     (journalActor ? JournalActor.Input.StartWithoutRecovery(Some(eventWatch))) pipeTo self
     eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Some(999.s))) foreach self.!
     val runningSince = now
+
+    override def postStop(): Unit = {
+      eventWatch.close()
+      super.postStop()
+    }
 
     def receive = {
       case JournalActor.Output.Ready(_, _) =>

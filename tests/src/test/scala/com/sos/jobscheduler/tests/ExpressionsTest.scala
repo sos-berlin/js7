@@ -53,8 +53,9 @@ object ExpressionsTest {
 
   private val jobScript =
     if (isWindows)
-      """echo JOB-KEY=JOB-RESULT >>%SCHEDULER_RETURN_VALUES%
-        |@exit %SCHEDULER_PARAM_RETURN_CODE%
+      """@echo off
+        |echo JOB-KEY=JOB-RESULT >>%SCHEDULER_RETURN_VALUES%
+        |exit %SCHEDULER_PARAM_RETURN_CODE%
         |""".stripMargin
     else
       """echo JOB-KEY=JOB-RESULT >>"$SCHEDULER_RETURN_VALUES"

@@ -70,7 +70,9 @@ final class MasterAgentWithoutAuthenticationTest extends FreeSpec
         for (x <- Array("master", "agent")) {
           val keyFile = dir / x / "config/private/silly-signature.txt"
           keyFile := signature.string
-          dir / x / "config/private/private.conf" ++= s"""jobscheduler.configuration.trusted-signature-keys.Silly = "$keyFile"""" + "\n"
+          dir / x / "config/private/private.conf" ++=
+            "jobscheduler.configuration.trusted-signature-keys.Silly = " +
+              "\"" + keyFile.getPath.replace("""\""", """\\""") + "\"\n"
         }
         new FileBasedSigner(new SillySigner(signature), MasterFileBaseds.jsonCodec)
       }

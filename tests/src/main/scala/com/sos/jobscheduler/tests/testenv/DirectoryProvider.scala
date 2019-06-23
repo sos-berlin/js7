@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAny
@@ -16,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.scalautil.{FileUtils, HasCloser}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.core.crypt.pgp.PgpSigner
@@ -63,7 +64,15 @@ final class DirectoryProvider(
   suppressRepo: Boolean = false)
 extends HasCloser {
 
-  val directory = useDirectory getOrElse (createTempDirectory("test-") withCloser deleteDirectoryRecursively)
+  val directory = useDirectory
+    .getOrElse(
+      createTempDirectory("test-")
+        .withCloser { dir =>
+          repeatUntilNoException(10.s, 10.ms) {  // Windows
+            deleteDirectoryRecursively(dir)
+          }
+        })
+
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
