@@ -1,5 +1,6 @@
 import com.typesafe.sbt.GitPlugin.autoImport.git
 import java.nio.ByteBuffer
+import java.security.Security
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 import java.time.format.DateTimeFormatterBuilder
 import java.time.{Instant, OffsetDateTime}
@@ -13,6 +14,10 @@ object BuildUtils
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
   private val CommitHashLength = 7
+
+  if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
+    Security.setProperty("crypto.policy", "unlimited")
+  }
 
   val testParallelization: Int = {
     val factor = sys.props.get("test.parallel") match {
