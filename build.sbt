@@ -348,7 +348,7 @@ lazy val core = project.dependsOn(common, tester.jvm % "test")
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "org.bouncycastle" % "bcpg-jdk15on" % "1.60" ++
+      bouncyCastle ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
       log4j % "test"
