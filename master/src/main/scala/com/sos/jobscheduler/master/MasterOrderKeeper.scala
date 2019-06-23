@@ -130,6 +130,7 @@ with MainJournalingActor[Event]
 
   override def postStop() = {
     super.postStop()
+    eventWatch.close()
     logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
