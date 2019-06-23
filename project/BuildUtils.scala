@@ -15,10 +15,11 @@ object BuildUtils
   private val CommitHashLength = 7
 
   val testParallelization: Int = {
-    val factor = sys.props.get("test.parallel") getOrElse "1" match {
-      case "" => 1 * sys.runtime.availableProcessors
-      case o if o.last == 'x' => (o.dropRight(1).toDouble * sys.runtime.availableProcessors + 0.01).toInt
-      case o => o.toInt
+    val factor = sys.props.get("test.parallel") match {
+      case None => 1
+      case Some("") => 1 * sys.runtime.availableProcessors
+      case Some(o) if o.last == 'x' => (o.dropRight(1).toDouble * sys.runtime.availableProcessors + 0.01).toInt
+      case Some(o) => o.toInt
     }
     if (factor != 1) println(s"build.sbt: test.parallel=$factor")
     factor

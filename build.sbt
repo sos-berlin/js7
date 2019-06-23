@@ -29,7 +29,6 @@ import sbt.Keys.testOptions
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 val rootDirectory = Paths.get(".").toAbsolutePath
-ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml"
 
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o => new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
@@ -462,14 +461,15 @@ lazy val testSettings =
     Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name => !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
     StandardTest  / testOptions := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
     ExclusiveTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
+    ForkedTest / fork := true,
     ForkedTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
     ForkedTest / javaOptions ++= Seq("-Xmx100m", "-Xms20m"),
+    ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml",  // Does not work !!! "ERROR StatusLogger No Log4j 2 configuration file found"
     ForkedTest / testForkedParallel := testParallelization > 1,
     Test          / logBuffered := false,  // Recommended for ScalaTest
     StandardTest  / logBuffered := false,
     ExclusiveTest / logBuffered := false,
-    ForkedTest    / logBuffered := false,
-    fork in ForkedTest := true)
+    ForkedTest    / logBuffered := false)
 
 def isStandardTest(name: String): Boolean = !isExclusiveTest(name) && !isForkedTest(name)
 def isExclusiveTest(name: String): Boolean = name endsWith "ExclusiveTest"
