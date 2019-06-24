@@ -83,7 +83,7 @@ final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
          |jobscheduler.provider.master.password = "$loginPassword"
          """.stripMargin
 
-    directoryProvider.master.config / "private" / "private.conf" ++=
+    directoryProvider.master.configDir / "private" / "private.conf" ++=
      s"""jobscheduler.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"

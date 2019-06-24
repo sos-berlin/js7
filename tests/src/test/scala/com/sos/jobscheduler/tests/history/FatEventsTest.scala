@@ -44,12 +44,12 @@ final class FatEventsTest extends FreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(AAgentRefPath :: BAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("FatEventsTest"))) { provider =>
-      (provider.master.config / "private/private.conf").append("""
+      (provider.master.configDir / "private/private.conf").append("""
         |jobscheduler.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin )
       for (a <- provider.agents) a.writeExecutable(TestExecutablePath, DirectoryProvider.script(0.s))
 
-      def listJournalFiles = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").map(_.file.getFileName.toString)
+      def listJournalFiles = JournalFiles.listJournalFiles(provider.master.dataDir / "state" / "master").map(_.file.getFileName.toString)
 
       provider.runAgents() { runningAgents =>
         provider.runMaster() { master =>

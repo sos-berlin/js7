@@ -82,7 +82,7 @@ private[https] object HttpsTestBase
     }""").orThrow
 
   private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
-    (agent.config / "private/private.conf").append(
+    (agent.configDir / "private/private.conf").append(
       s"""jobscheduler.auth.users {
          |  Master = ${quoteString("plain:" + agent.password.string)}
          |}
@@ -91,7 +91,7 @@ private[https] object HttpsTestBase
   }
 
   private def provideMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
-    (master.config / "private/private.conf").append("""
+    (master.configDir / "private/private.conf").append("""
       |jobscheduler.auth.users {
       |  TEST-USER: "plain:TEST-PASSWORD"
       |}

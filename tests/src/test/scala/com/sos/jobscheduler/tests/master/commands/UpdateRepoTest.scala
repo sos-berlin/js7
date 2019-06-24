@@ -42,7 +42,7 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
   protected val fileBased = Nil
 
   override def beforeAll() = {
-    (directoryProvider.master.config / "private" / "private.conf") ++=
+    (directoryProvider.master.configDir / "private" / "private.conf") ++=
        """jobscheduler.auth.users {
          |  UpdateRepoTest {
          |    password = "plain:TEST-PASSWORD"

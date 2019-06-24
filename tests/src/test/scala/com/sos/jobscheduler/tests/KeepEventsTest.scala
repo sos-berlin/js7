@@ -46,8 +46,8 @@ final class KeepEventsTest extends FreeSpec {
         agent.terminate() await 99.s
       }
 
-      def masterJournalCount = JournalFiles.listJournalFiles(provider.master.data / "state" / "master").length
-      def agentJournalCount = JournalFiles.listJournalFiles(provider.agents(0).data / "state" / "master-Master").length
+      def masterJournalCount = JournalFiles.listJournalFiles(provider.master.dataDir / "state" / "master").length
+      def agentJournalCount = JournalFiles.listJournalFiles(provider.agents(0).dataDir / "state" / "master-Master").length
       assert(masterJournalCount == 2)
       assert(agentJournalCount == 2)
 

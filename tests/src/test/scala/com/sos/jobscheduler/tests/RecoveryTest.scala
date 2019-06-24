@@ -83,7 +83,7 @@ final class RecoveryTest extends FreeSpec {
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
           val Vector(Stamped(_, _, NoKey <-: AgentEvent.MasterRegistered(MasterId("Master")/*see default master.conf*/, _/*agentRunId*/))) =
-            readEvents(directoryProvider.agents(0).data / "state/agent--0.journal")
+            readEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>

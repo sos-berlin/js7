@@ -18,7 +18,7 @@ import scala.collection.mutable
 trait MasterAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
 
-  protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentConfig) await 99.s
+  protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
   protected final lazy val agent: RunningAgent = agents.head
   protected final lazy val master: RunningMaster = directoryProvider.startMaster(
      masterModule,

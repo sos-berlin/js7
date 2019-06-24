@@ -28,7 +28,7 @@ final class CoupleMasterTest extends FreeSpec with DirectoryProviderForScalaTest
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = TestWorkflow :: Nil
 
-  private lazy val agentStateDir = directoryProvider.agents.head.data / "state"
+  private lazy val agentStateDir = directoryProvider.agents.head.dataDir / "state"
   private lazy val firstJournalFile = agentStateDir / "master-Master--0.journal"
   private val orderGenerator = Iterator.from(1).map(i => FreshOrder(OrderId(i.toString), TestWorkflow.path))
   private var lastEventId = EventId.BeforeFirst

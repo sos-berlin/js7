@@ -15,8 +15,8 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
 
   protected val agentRefPaths = Nil
   protected val fileBased = Nil
-  private def configDirectory = directoryProvider.master.config
-  private def dataDirectory = directoryProvider.master.data
+  private def configDirectory = directoryProvider.master.configDir
+  private def dataDirectory = directoryProvider.master.dataDir
   private val httpsPort = findFreeTcpPort()
   override protected lazy val masterHttpPort = None
   override protected lazy val masterHttpsPort = Some(httpsPort)

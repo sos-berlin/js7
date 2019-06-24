@@ -77,7 +77,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
   import httpClient.materializer
 
   override def beforeAll() = {
-    directoryProvider.master.config / "master.conf" ++=
+    directoryProvider.master.configDir / "master.conf" ++=
       """jobscheduler.journal.sync = off
          jobscheduler.journal.delay = 0s
         |""".stripMargin
@@ -956,10 +956,10 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
 object MasterWebServiceTest
 {
   private def writeMasterConfiguration(master: DirectoryProvider.MasterTree): Unit = {
-    master.config / "master.conf" ++= """
+    master.configDir / "master.conf" ++= """
       |jobscheduler.webserver.test = true
       |""".stripMargin
-    (master.config / "private" / "private.conf").append("""
+    (master.configDir / "private" / "private.conf").append("""
       |jobscheduler.auth.users {
       |  TEST-USER {
       |    password = "plain:TEST-PASSWORD",

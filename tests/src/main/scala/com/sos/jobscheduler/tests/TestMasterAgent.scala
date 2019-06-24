@@ -70,11 +70,11 @@ object TestMasterAgent
 
   private def run(conf: Conf): Unit = {
     autoClosing(new DirectoryProvider(conf.agentRefPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
-      env.master.config / "master.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n"
-      env.agents foreach { _.config / "agent.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n" }
+      env.master.configDir / "master.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n"
+      env.agents foreach { _.configDir / "agent.conf" ++= "jobscheduler.webserver.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentRefPath <- conf.agentRefPaths) {
-          TestExecutablePath.toFile(env.agentToTree(agentRefPath).config / "executables").writeExecutable(
+          TestExecutablePath.toFile(env.agentToTree(agentRefPath).configDir / "executables").writeExecutable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello

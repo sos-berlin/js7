@@ -54,6 +54,7 @@ final class DirectoryProvider(
   fileBased: Seq[FileBased] = Nil,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
+  agentConfig: Config = ConfigFactory.empty,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   masterHttpsMutual: Boolean = false,
@@ -81,6 +82,7 @@ extends HasCloser {
         testName.fold("")(_ + "-") ++ o.name,
         https = agentHttps,
         mutualHttps = agentHttpsMutual,
+        agentConfig,
         provideHttpsCertificate = provideAgentHttpsCertificate,
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
@@ -92,7 +94,7 @@ extends HasCloser {
     master.createDirectoriesAndFiles()
     for (a <- agents) {
       a.createDirectoriesAndFiles()
-      (a.config / "private" / "private.conf").append(s"""
+      (a.configDir / "private" / "private.conf").append(s"""
          |jobscheduler.auth.users {
          |  Master = ${quoteString("plain:" + a.password.string)}
          |}
@@ -102,7 +104,7 @@ extends HasCloser {
          |}
          |""".stripMargin)
     }
-    (master.config / "private" / "private.conf").append(
+    (master.configDir / "private" / "private.conf").append(
       agentRefPaths.map(a =>
         "jobscheduler.auth.agents." + quoteString(a.string) + " = " + quoteString(agentToTree(a).password.string) + "\n"
       ).mkString +
@@ -180,10 +182,10 @@ extends HasCloser {
       a
     }
 
-  def startAgents(config: Config = ConfigFactory.empty): Future[Seq[RunningAgent]] =
-    Future.sequence(agents map (_.agentRefPath) map (startAgent(_, config)))
+  def startAgents(): Future[Seq[RunningAgent]] =
+    Future.sequence(agents map (_.agentRefPath) map startAgent)
 
-  def startAgent(agentRefPath: AgentRefPath, config: Config = ConfigFactory.empty): Future[RunningAgent] =
+  def startAgent(agentRefPath: AgentRefPath): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentRefPath).conf)
 
   def updateRepo(
@@ -202,10 +204,10 @@ extends HasCloser {
 
   private def useSignatureVerifier(verifier: SignatureVerifier): Unit = {
     val keyFile = "private/" + verifier.companion.recommendedKeyFileName
-    for (config <- master.config +: agents.map(_.config)) {
+    for (config <- master.configDir +: agents.map(_.configDir)) {
       config / keyFile := verifier.key
     }
-    for (conf <- master.config / "master.conf" +: agents.map(_.config / "agent.conf")) {
+    for (conf <- master.configDir / "master.conf" +: agents.map(_.configDir / "agent.conf")) {
       conf ++=
         s"""|jobscheduler.configuration.trusted-signature-keys {
            |  ${verifier.companion.typeName} = $${jobscheduler.config-directory}"/$keyFile"
@@ -221,28 +223,28 @@ object DirectoryProvider
 
   sealed trait Tree {
     val directory: Path
-    lazy val config = directory / "config"
-    lazy val data = directory / "data"
+    lazy val configDir = directory / "config"
+    lazy val dataDir = directory / "data"
 
     private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       createDirectory(directory)
-      createDirectory(config)
-      createDirectory(config / "private")
-      createDirectory(data)
+      createDirectory(configDir)
+      createDirectory(configDir / "private")
+      createDirectory(dataDir)
     }
   }
 
   final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
     def provideHttpsCertificate(): Unit = {
       // Keystore
-      (config / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
+      (configDir / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
 
       // Truststore
-      (config / "private/private.conf").append("""
+      (configDir / "private/private.conf").append("""
         |jobscheduler.https.truststore {
         |  store-password = "jobscheduler"
         |}""".stripMargin)
-      val trustStore = config / "private/https-truststore.p12"
+      val trustStore = configDir / "private/https-truststore.p12"
       trustStore.contentBytes = AgentTrustStoreResource.contentBytes
       for (o <- clientCertificate) importKeyStore(trustStore, o)
       // KeyStore passwords has been provided
@@ -250,29 +252,30 @@ object DirectoryProvider
   }
 
   final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, https: Boolean, mutualHttps: Boolean,
-    provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
+    config: Config, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
     val directory = rootDirectory / agentRefPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
+        config,
         httpPort = !https ? findFreeTcpPort(),
         httpsPort = https ? findFreeTcpPort(),
         mutualHttps = mutualHttps)
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + conf.http.head.address.getPort)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
-    lazy val executables = config / "executables"
+    lazy val executables = configDir / "executables"
 
     override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()
       createDirectory(executables)
       if (provideHttpsCertificate) {
-        (config / "private/https-keystore.p12").contentBytes = AgentKeyStoreResource.contentBytes
+        (configDir / "private/https-keystore.p12").contentBytes = AgentKeyStoreResource.contentBytes
         if (provideClientCertificate) {
-          (config / "private/private.conf").append("""
+          (configDir / "private/private.conf").append("""
             |jobscheduler.https.truststore {
             |  store-password = "jobscheduler"
             |}""".stripMargin)
-          (config / "private/https-truststore.p12").contentBytes = MasterTrustStoreResource.contentBytes
+          (configDir / "private/https-truststore.p12").contentBytes = MasterTrustStoreResource.contentBytes
         }
         // KeyStore passwords has been provided by DirectoryProvider (must happen early)
       }

@@ -28,6 +28,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected final lazy val directoryProvider = new DirectoryProvider(agentRefPaths,
     fileBased = fileBased,
     agentHttps = agentHttps, agentHttpsMutual = agentHttpsMutual,
+    agentConfig = agentConfig,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate, provideAgentClientCertificate = provideAgentClientCertificate,
     masterHttpsMutual = masterHttpsMutual, masterClientCertificate = masterClientCertificate,
     signer = signer,
