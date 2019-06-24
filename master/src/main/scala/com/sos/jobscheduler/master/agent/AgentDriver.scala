@@ -106,7 +106,7 @@ with ReceiveLoggingActor.WithStash
     // Close coupledClient to terminate waiting commands ???
     coupledClient.tryTake.runSyncUnsafe()
     client.logout()
-      .materialize  // Ignore errors
+      .onErrorHandle(_ => ())
       .guarantee(Task(client.close()))
       .runAsyncAndForget
     fetchEventsCancelable foreach (_.cancel())
@@ -241,7 +241,8 @@ with ReceiveLoggingActor.WithStash
             case Valid(Completed) => Task.pure(Left(lastEventId))
             case Invalid(InvalidSessionTokenProblem) =>
               coupledClient.tryTake >>
-              client.logout().materialize.delayResult(recouplePause.nextPause()) >>
+              client.logout().onErrorHandle(_ => ()) >>
+                Task.sleep(recouplePause.nextPause()) >>
                 Task.pure(Left(lastEventId))
             case Invalid(problem) =>
               Task.pure(Right(Invalid(problem)))
@@ -271,7 +272,7 @@ with ReceiveLoggingActor.WithStash
       Task.unit
     else
       coupledClient.tryTake/*force recoupling*/ >>
-        client.logout().materialize >>
+        client.logout().onErrorHandle(_ => ()) >>
           Task {
             client.close()
             client = newAgentClient()
@@ -292,7 +293,7 @@ with ReceiveLoggingActor.WithStash
         .flatMap {
           case Invalid(problem) =>
             for {
-              _ <- client.logout().materialize  // Ignore error
+              _ <- client.logout().onErrorHandle(_ => ())
               _ <- promiseTask[Completed] { promise => self ! Internal.OnCouplingFailed(problem, promise) }
               _ <- Task.sleep(recouplePause.nextPause())
             } yield Left(())
