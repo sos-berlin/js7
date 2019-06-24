@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -27,6 +28,8 @@ import scala.reflect.runtime.universe._
 final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 {
   override protected val masterConfig = ConfigFactory.parseString(
+    s"""jobscheduler.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
+  override protected val agentConfig = ConfigFactory.parseString(
     s"""jobscheduler.journal.simulate-sync = 10ms""")  // Avoid excessive syncs in case of test failure
   protected val agentRefPaths = TestAgentRefPath :: Nil
   protected val fileBased = Nil
@@ -168,7 +171,7 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
   "retryDelay" in {
     val workflowNotation = s"""
        |define workflow {
-       |  try (retryDelays=[1, 0]) execute executable="/FAIL-1$sh", agent="AGENT";
+       |  try (retryDelays=[2, 0]) execute executable="/FAIL-1$sh", agent="AGENT";
        |  catch if (catchCount < 4) retry else fail;
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
@@ -180,9 +183,10 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
     eventWatch.await[OrderStopped](_.key == orderId, after = afterEventId)
 
     val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
-    assert(stamped(1).timestamp - stamped(0).timestamp > 1.second)     // First retry after a second
-    assert(stamped(2).timestamp - stamped(1).timestamp < 0.9.second)   // Following retries immediately (0 seconds)
-    assert(stamped(3).timestamp - stamped(2).timestamp < 0.9.second)
+    logger.debug(0.to(2).map(i => (stamped(i+1).timestamp - stamped(i).timestamp).pretty).mkString(" "))
+    assert(stamped(1).timestamp - stamped(0).timestamp > 2.second)     // First retry after a second
+    assert(stamped(2).timestamp - stamped(1).timestamp < 1.5.second)   // Following retries immediately (0 seconds)
+    assert(stamped(3).timestamp - stamped(2).timestamp < 1.5.second)
   }
 
   "maxTries=3, special handling of 'catch retry'" in {
@@ -257,6 +261,8 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
   }
 }
 
-object RetryTest {
+object RetryTest
+{
   private val TestAgentRefPath = AgentRefPath("/AGENT")
+  private val logger = Logger(getClass)
 }
