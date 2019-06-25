@@ -109,15 +109,15 @@ object JavaResource {
   def apply(classLoader: ClassLoader, path: String): JavaResource =
     new JavaResource(classLoader, path)
 
-  /** Uses the caller's class ClassLoader. */
-  def apply(path: String): JavaResource = apply2(path)  //  macro apply_macro
+  def apply(path: String): JavaResource = JavaResource(classOf[JavaResource].getClassLoader, path)
 
-  def apply2(path: String): JavaResource = JavaResource(classOf[JavaResource].getClassLoader, path)
-
-  def apply_macro(c: scala.reflect.macros.blackbox.Context)(path: c.Expr[String]): c.Tree = {
-    import c.universe._
-    q"_root_.com.sos.jobscheduler.common.utils.JavaResource(this.getClass.getClassLoader, $path)"
-  }
+  ///** Uses the caller's class ClassLoader. */
+  //def apply(path: String): JavaResource = macro apply_macro
+  //
+  //def apply_macro(c: scala.reflect.macros.blackbox.Context)(path: c.Expr[String]): c.Tree = {
+  //  import c.universe._
+  //  q"_root_.com.sos.jobscheduler.common.utils.JavaResource(this.getClass.getClassLoader, $path)"
+  //}
 
   implicit def asResource(o: JavaResource): cats.effect.Resource[SyncIO, InputStream] =
     o.asResource
