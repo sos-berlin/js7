@@ -19,7 +19,7 @@ object Dependencies
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.12.0"
   val disciplineVersion = "0.8"  //"0.11.0"
-  val monixVersion = "3.0.0-RC2"
+  val monixVersion = "3.0.0-RC3"
   val monocleVersion = "1.5.0"
   val scalaJsDomVersion = "0.9.7"
   val sangriaVersion = "1.4.2"

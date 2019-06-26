@@ -32,7 +32,7 @@ object MonixUtils
         underlying.runToFuture.awaitInfinite
     }
 
-    implicit final class RichTaskTraversable[A, M[X] <: TraversableOnce[X]](private val underlying: M[Task[A]]) extends AnyVal
+    implicit final class RichTaskTraversable[A, M[X] <: Iterable[X]](private val underlying: M[Task[A]]) extends AnyVal
     {
       def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: CanBuildFrom[M[Task[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
         Task.sequence(underlying)(cbf).runToFuture await duration
