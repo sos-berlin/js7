@@ -59,8 +59,9 @@ addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts 
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestMasterAgent", "tests/runMain com.sos.jobscheduler.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project jobschedulerJS; compile; publishLocal")
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature"/*, "-Xlint"*/)  // -Yno-adapted-args?
-val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQD")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
+ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature"/*, "-Xlint"*/)  // -Yno-adapted-args?
+
+val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oNCHLPQF", "-W", "30", "30")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
