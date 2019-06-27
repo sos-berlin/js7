@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.web.master.api.graphql
 
+import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -77,7 +78,7 @@ trait GraphqlRoute extends MasterRouteProvider {
 
   private def standardGraphqlRoute: Route =
     htmlPreferred {
-      getFromResource(GraphiqlResource.path)
+      getFromResource(GraphiqlResource.path, `text/html(UTF-8)`, GraphiqlResource.classLoader)
     } ~
     get {
       parameters(("query", "operationName".?, "variables".?)) { (queryString, operationName, variables) =>
