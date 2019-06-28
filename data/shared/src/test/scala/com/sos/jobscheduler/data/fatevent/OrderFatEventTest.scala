@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.fatevent.OrderFatEvent._
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -100,6 +101,46 @@ final class OrderFatEventTest extends FreeSpec {
         (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99)),
       json"""{
         "TYPE": "OrderFinishedFat",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "/WORKFLOW",
+            "versionId": "VERSION"
+          },
+          "position": [ 99 ]
+        }
+      }"""
+    )
+  }
+
+  "OrderStoppedFat" in {
+    testJson[OrderFatEvent](
+      OrderStoppedFat(
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99),
+        Outcome.Failed(Some("ERROR MESSAGE"), ReturnCode(1), Map.empty)),
+      json"""{
+        "TYPE": "OrderStoppedFat",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "/WORKFLOW",
+            "versionId": "VERSION"
+          },
+          "position": [ 99 ]
+        },
+        "outcome": {
+          "TYPE": "Failed",
+          "message": "ERROR MESSAGE",
+          "returnCode": 1
+        }
+      }"""
+    )
+  }
+
+  "OrderCanceledFat" in {
+    testJson[OrderFatEvent](
+      OrderCanceledFat(
+        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(99)),
+      json"""{
+        "TYPE": "OrderCanceledFat",
         "workflowPosition": {
           "workflowId": {
             "path": "/WORKFLOW",

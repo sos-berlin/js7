@@ -31,6 +31,7 @@ sealed trait OrderEvent extends Event {
 object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
+  sealed trait OrderTerminated extends OrderEvent
 
   final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: Map[String, String] = Map.empty)
   extends OrderCoreEvent {
@@ -134,7 +135,7 @@ object OrderEvent {
   }
 
   final case class OrderFailed(outcome: Outcome.NotSucceeded)
-  extends OrderActorEvent
+  extends OrderActorEvent with OrderTerminated
 
   final case class OrderFailedInFork(outcome: Outcome.NotSucceeded)
   extends OrderActorEvent
@@ -180,7 +181,7 @@ object OrderEvent {
     //type State = Detached.type
   }
 
-  sealed trait OrderFinished extends OrderActorEvent
+  sealed trait OrderFinished extends OrderActorEvent with OrderTerminated
   case object OrderFinished extends OrderFinished {
     //type State = Finished
   }
@@ -190,7 +191,7 @@ object OrderEvent {
     * Master should have issued the event independendly. **/
   final case class OrderCancelationMarked(mode: CancelMode) extends OrderActorEvent
 
-  sealed trait OrderCanceled extends OrderActorEvent
+  sealed trait OrderCanceled extends OrderActorEvent with OrderTerminated
   case object OrderCanceled extends OrderCanceled
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
