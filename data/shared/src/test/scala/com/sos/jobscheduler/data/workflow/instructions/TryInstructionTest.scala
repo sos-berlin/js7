@@ -152,24 +152,24 @@ final class TryInstructionTest extends FreeSpec
 
   "flattenedBranchToWorkflow" in {
     assert(try_.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / Try_) -> try_.tryWorkflow) ::
-      ((Position(7) / Catch_) -> try_.catchWorkflow) :: Nil)
+      ((Position(7) / "try") -> try_.tryWorkflow) ::
+      ((Position(7) / "catch") -> try_.catchWorkflow) :: Nil)
   }
 
   "flattenedInstructions" in {
     assert(try_.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
-      Position(7) / Try_ % 0 -> try_.tryWorkflow.instructions(0),
-      Position(7) / Try_ % 1 -> ImplicitEnd(),
-      Position(7) / Catch_ % 0 -> try_.catchWorkflow.instructions(0),
-      Position(7) / Catch_ % 1 -> ImplicitEnd()))
+      Position(7) / "try" % 0 -> try_.tryWorkflow.instructions(0),
+      Position(7) / "try" % 1 -> ImplicitEnd(),
+      Position(7) / "catch" % 0 -> try_.catchWorkflow.instructions(0),
+      Position(7) / "catch" % 1 -> ImplicitEnd()))
   }
 
   "toCatchBranchId" in {
     assert(try_.toCatchBranchId("X") == None)
-    assert(try_.toCatchBranchId(Try_) == Some(Catch_))
+    assert(try_.toCatchBranchId("try+0") == Some(BranchId("catch+0")))
     assert(try_.toCatchBranchId("try+1") == Some(BranchId("catch+1")))
     assert(try_.toCatchBranchId("try+123") == Some(BranchId("catch+123")))
-    assert(try_.toCatchBranchId(Catch_) == None)
+    assert(try_.toCatchBranchId("catch+0") == None)
     assert(try_.toCatchBranchId("catch+1") == None)
   }
 

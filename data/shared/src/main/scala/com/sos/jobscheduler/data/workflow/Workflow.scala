@@ -344,7 +344,9 @@ extends FileBased
         instruction(nr)
 
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
-        instruction(nr).workflow(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap()
+        instruction(nr).workflow(branchId.normalized)
+          .map(_.instruction(Position(tail, tailNr)))
+          .getOrElse(Gap())
     }
 
   def instruction(nr: InstructionNr): Instruction =

@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Then, Try_, catch_, try_}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Then, catch_, try_}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -109,10 +109,10 @@ final class PositionTest extends FreeSpec {
   "tryCount" in {
     assert(Position(0).tryCount == 0)    // Not in a try/catch
     assert(Position(99).tryCount == 0)   // No instruction
-    assert((Position(1) / Try_ % 0).tryCount == 1)
+    assert((Position(1) / try_(0) % 0).tryCount == 1)
     assert((Position(1) / try_(1) % 0).tryCount == 2)
     assert((Position(1) / try_(2) % 0).tryCount == 3)
-    assert((Position(1) / Catch_ % 0).tryCount == 1)
+    assert((Position(1) / catch_(0) % 0).tryCount == 1)
     assert((Position(1) / catch_(1) % 0).tryCount == 2)
     assert((Position(1) / catch_(2) % 0).tryCount == 3)
   }
@@ -120,10 +120,10 @@ final class PositionTest extends FreeSpec {
   "catchCount" in {
     assert(Position(0).tryCount == 0)    // Not in a try/catch
     assert(Position(99).tryCount == 0)   // No instruction
-    assert((Position(1) / Try_ % 0).catchCount == 0)
+    assert((Position(1) / try_(0) % 0).catchCount == 0)
     assert((Position(1) / try_(1) % 0).catchCount == 1)
     assert((Position(1) / try_(2) % 0).catchCount == 2)
-    assert((Position(1) / Catch_ % 0).catchCount == 1)
+    assert((Position(1) / catch_(0) % 0).catchCount == 1)
     assert((Position(1) / catch_(1) % 0).catchCount == 2)
     assert((Position(1) / catch_(2) % 0).catchCount == 3)
   }
@@ -131,9 +131,9 @@ final class PositionTest extends FreeSpec {
   "nextRetryBranchPath" in {
     assert(Position(0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
     assert(Position(99).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert((Position(1) / Try_ % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / try_(0) % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
     assert((Position(1) / try_(1) % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert((Position(1) / Catch_ % 0).nextRetryBranchPath == Valid(Position(1) / try_(1)))
+    assert((Position(1) / catch_(0) % 0).nextRetryBranchPath == Valid(Position(1) / try_(1)))
     assert((Position(1) / catch_(1) % 0).nextRetryBranchPath == Valid(Position(1) / try_(2)))
     assert((Position(1) / catch_(2) % 0).nextRetryBranchPath == Valid(Position(1) / try_(3)))
   }

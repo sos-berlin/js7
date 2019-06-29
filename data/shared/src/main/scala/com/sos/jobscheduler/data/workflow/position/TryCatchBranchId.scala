@@ -11,7 +11,7 @@ private[workflow] object TryCatchBranchId
     case Try_ | Catch_ => Some(0)
     case BranchId.Named(NamePattern(nr)) =>
       val i = Integer.parseInt(nr)
-      (i >= 1) ? i
+      (i >= 0) ? i
     case _ => None
   }
 }
@@ -24,7 +24,7 @@ object TryBranchId
     case Try_ => Some(0)
     case BranchId.Named(NamePattern(nr)) =>
       val i = Integer.parseInt(nr)
-      (i >= 1) ? i
+      (i >= 0) ? i
     case _ => None
   }
 }
@@ -37,7 +37,7 @@ private[workflow] object CatchBranchId
     case Catch_ => Some(0)
     case BranchId.Named(NamePattern(nr)) =>
       val i = Integer.parseInt(nr)
-      (i >= 1) ? i
+      (i >= 0) ? i
     case _ => None
   }
 }

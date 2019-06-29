@@ -19,7 +19,7 @@ import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, Orde
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then, Try_}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -168,13 +168,13 @@ final class OrderEventSourceTest extends FreeSpec
                    Workflow.of(executeScript))) // 6/1:0
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))    // Job
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6) / Try_ % 0)) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6) / try_(0) % 0)) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(2)))    // Gap
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Valid(Position(3)))    // Job
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Valid(Position(4)))    // ExplicitEnd
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6) / Try_ % 0)) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6) / try_(0) % 0)) // success, next instruction was try
       assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Valid(Position(3)))    // failure
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6) / Try_ % 0))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6) / try_(0) % 0))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Valid(Position(7)))    // ImplicitEnd
       eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isInvalid
     }
@@ -320,33 +320,33 @@ final class OrderEventSourceTest extends FreeSpec
     "Fresh at try instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderMoved(Position(0) / Try_ % 0 / Try_ % 0)))
+        OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }
 
     "Ready at instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Ready)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderMoved(Position(0) / Try_ % 0 / Try_ % 0)))
+        OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }
 
     "Processed failed in inner try-block -> OrderCatched" in {
-      val pos = Position(0) / Try_ % 0 / Try_ % 0
+      val pos = Position(0) / try_(0) % 0 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(failed, Position(0) / Try_ % 0 / Catch_ % 0)))
+        OrderCatched(failed, Position(0) / try_(0) % 0 / catch_(0) % 0)))
     }
 
     "Processed failed in inner catch-block -> OrderCatched" in {
-      val pos = Position(0) / Try_ % 0 / Catch_ % 0
+      val pos = Position(0) / try_(0) % 0 / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(failed, Position(0) / Catch_ % 0)))
+        OrderCatched(failed, Position(0) / catch_(0) % 0)))
     }
 
     "Processed failed in outer catch-block -> OrderStopped" in {
-      val pos = Position(0) / Catch_ % 0
+      val pos = Position(0) / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
@@ -354,15 +354,15 @@ final class OrderEventSourceTest extends FreeSpec
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
-      val pos = Position(0) / Catch_ % 1 / Try_ % 0
+      val pos = Position(0) / catch_(0) % 1 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
-        OrderCatched(failed, Position(0) / Catch_ % 1 / Catch_ % 0)))
+        OrderCatched(failed, Position(0) / catch_(0) % 1 / catch_(0) % 0)))
     }
 
     "Processed failed in catch in catch -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 0), Order.Processed,
+      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / catch_(0) % 0), Order.Processed,
         historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderStopped(failed)))

@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, 
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, catch_, try_}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tests.RetryTest._
 import com.sos.jobscheduler.tests.testenv.MasterAgentForScalaTest
@@ -59,14 +59,14 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
-      OrderMoved(Position(0) / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0 / Then % 0 / Try_ % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
 
       OrderRetrying(Position(0) / try_(1) % 0),
 
@@ -103,56 +103,56 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
-      OrderMoved(Position(0) / Try_ % 0 / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0),
       OrderAttachable(TestAgentRefPath),
       OrderTransferredToAgent(TestAgentRefPath),
       OrderStarted,
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
-      OrderMoved(Position(0) / Try_ % 0 / Try_ % 1 / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(0) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / Catch_ % 0 / Then % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
 
-      OrderRetrying(Position(0) / Try_ % 0 / Try_ % 1 / try_(1) % 0),
-
-      OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / catch_(1) % 0 / Then % 0),
-
-      OrderRetrying(Position(0) / Try_ % 0 / Try_ % 1 / try_(2) % 0),
+      OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Try_ % 1 / catch_(2) % 0 / Else % 0),   // Retry limit reached
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / Catch_ % 0 / Then % 0),
+      OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
 
-      OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 0),
+      OrderProcessingStarted,
+      OrderProcessed(Outcome.Failed(ReturnCode(1))),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),   // Retry limit reached
+
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
+
+      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
-      OrderMoved(Position(0) / Try_ % 0 / try_(1) % 1 / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(0) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / Catch_ % 0 / Then % 0),
-      OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 1 / try_(1) % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
+      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
-      OrderRetrying(Position(0) / Try_ % 0 / try_(1) % 1 / try_(2) % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
+      OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(ReturnCode(1))),
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),  // Retry limit reached
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),  // Retry limit reached
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Try_ % 0 / catch_(1) % 0 / Else % 0),  // Retry limit reached
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),  // Retry limit reached
 
-      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / Catch_ % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(1)), Position(0) / catch_(0) % 0),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
@@ -200,10 +200,10 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
-      OrderMoved(Position(0) / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / Catch_ % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(0) % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0),
@@ -229,10 +229,10 @@ final class RetryTest extends FreeSpec with MasterAgentForScalaTest
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
-      OrderMoved(Position(0) / Try_ % 0),
+      OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / Catch_ % 0 / Then % 0),
+      OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / catch_(1) % 0 / Then % 0),

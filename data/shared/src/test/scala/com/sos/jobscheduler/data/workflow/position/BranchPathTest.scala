@@ -68,9 +68,11 @@ final class BranchPathTest extends FreeSpec
     assert(BranchPath.normalize(Position(0) / "X") == (Position(0) / "X"))
     assert(BranchPath.normalize(Position(0) / 0) == (Position(0) / 0))
     assert(BranchPath.normalize(Position(0) / "try") == (Position(0) / "try"))
+    assert(BranchPath.normalize(Position(0) / "try+0") == (Position(0) / "try"))
     assert(BranchPath.normalize(Position(0) / "try+1") == (Position(0) / "try"))
     assert(BranchPath.normalize(Position(0) / "try+123") == (Position(0) / "try"))
     assert(BranchPath.normalize(Position(0) / "catch") == (Position(0) / "catch"))
+    assert(BranchPath.normalize(Position(0) / "catch+0") == (Position(0) / "catch"))
     assert(BranchPath.normalize(Position(0) / "catch+123") == (Position(0) / "catch"))
   }
 }

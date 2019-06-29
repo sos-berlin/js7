@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.BranchId.Try_
+import com.sos.jobscheduler.data.workflow.position.BranchId.try_
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -32,24 +32,24 @@ final class TryExecutorTest extends FreeSpec
   "JSON" - {
     "try" in {
       testJson(TryExecutor.nextPosition(context, AOrder, tryInstruction).orThrow,
-        json"""[ 7, "try", 0 ]""")
+        json"""[ 7, "try+0", 0 ]""")
     }
 
     "catch" in {
-      testJson(Position(7) / BranchId.Catch_ % 0,
-        json"""[ 7, "catch", 0 ]""")
+      testJson(Position(7) / BranchId.catch_(0) % 0,
+        json"""[ 7, "catch+0", 0 ]""")
     }
   }
 
   "nextPosition" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
-      Valid(Some(Position(7) / Try_ % 0)))
+      Valid(Some(Position(7) / try_(0) % 0)))
   }
 
   "toEvent" in {
     assert(InstructionExecutor.toEvent(tryInstruction, AOrder, context) ==
       Valid(Some(
-        AOrder.id <-: OrderMoved(Position(7) / Try_ % 0))))
+        AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
   }
 }
 

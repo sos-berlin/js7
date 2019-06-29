@@ -32,14 +32,12 @@ object BranchId
 
   def try_(retry: Int): BranchId.Named = {
     require(retry >= 0)
-    if (retry == 0) Try_
-    else BranchId(Try_.string + "+" + retry)
+    BranchId(Try_.string + "+" + retry)
   }
 
   def catch_(retry: Int): BranchId.Named = {
     require(retry >= 0)
-    if (retry == 0) Catch_
-    else BranchId(Catch_.string + "+" + retry)
+    BranchId(Catch_.string + "+" + retry)
   }
 
   def nextTryBranchId(branchId: BranchId): Checked[Option[BranchId]] =
