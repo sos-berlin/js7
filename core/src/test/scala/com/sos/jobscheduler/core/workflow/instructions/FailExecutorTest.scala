@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.workflow.instructions
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.workflow.OrderContext
-import com.sos.jobscheduler.core.workflow.instructions.FailExecutor.forkPositionOf
 import com.sos.jobscheduler.core.workflow.instructions.FailExecutorTest._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -73,8 +72,8 @@ final class FailExecutorTest extends FreeSpec
       }
 
       "One fork's child order fails while the other has reached the end" in {
-        assert(FailExecutor.toEvent(context, Carrot, fail) ==
-          Valid(Some(ForkedOrder.id <-: OrderJoined(Outcome.succeeded))))
+        // Not handled by FailExecutor. OrderEventSource handles this.
+        assert(FailExecutor.toEvent(context, Carrot, fail) == Valid(None))
       }
 
       "One fork's child order ends while the other is in state FailedInFork" in {
@@ -82,13 +81,6 @@ final class FailExecutorTest extends FreeSpec
           Valid(Some(ForkedOrder.id <-: OrderJoined(Outcome.succeeded))))
       }
     }
-  }
-
-  "forkPositionOf" in {
-    assert(forkPositionOf(Position(1)).isInvalid)
-    assert(forkPositionOf(Position(1) / "fork+A" % 2) == Valid(Position(1)))
-    assert(forkPositionOf(Position(1) / "fork+A" % 2 / Then % 3) == Valid(Position(1)))
-    assert(forkPositionOf(Position(1) / "fork+A" % 2 / Then % 3 / "fork+B" % 4) == Valid(Position(1) / "fork+A" % 2 / Then % 3))
   }
 }
 

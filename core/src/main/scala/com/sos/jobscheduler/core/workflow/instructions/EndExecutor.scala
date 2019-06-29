@@ -15,23 +15,23 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
   type Instr = End
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: End) =
-    order.position.dropChild match {
-      case None =>
-        Valid(
+    Valid(
+      order.position.dropChild match {
+        case None =>
           for (order <- order.ifState[Order.Ready]) yield
             if (order.isAttached)
               order.id <-: OrderDetachable
             else
-              order.id <-: OrderFinished)
+              order.id <-: OrderFinished
 
       case Some(returnPosition) =>
         context.instruction(order.workflowId /: returnPosition) match {
           case fork: Fork =>
             ForkExecutor.tryJoinChildOrder(context, order, fork)
           case _ =>
-            Valid(Some(order.id <-: OrderMoved(returnPosition.increment)))
+            Some(order.id <-: OrderMoved(returnPosition.increment))
         }
-    }
+    })
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End) =
     Valid(

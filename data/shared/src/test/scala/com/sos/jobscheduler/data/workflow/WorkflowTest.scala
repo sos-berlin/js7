@@ -557,6 +557,26 @@ final class WorkflowTest extends FreeSpec {
 
     assert(tryWorkflow.findCatchPosition(Position(2)) == None)
   }
+
+  "findCatchPosition in fork, an exception barrier" in {
+    assert(TestWorkflow.findCatchPosition(Position(1) / Catch_ % 0).isEmpty)
+
+    val tryWorkflow = Workflow(
+      WorkflowPath("/TEST") ~ "VERSION",
+      Vector(
+        TryInstruction(                              // :0
+          tryWorkflow = Workflow.of(
+            Fork.of(                                 // :0/0:0
+              "🍋" -> Workflow.of(AExecute))),       // :0/0:0/0:0
+          catchWorkflow = Workflow.of(BExecute))))   // :0/0:0/1:0      catch0
+    val forkPosition = Position(0) / Try_ % 0
+    assert(tryWorkflow.instruction(forkPosition).isInstanceOf[Fork])
+    assert(tryWorkflow.findCatchPosition(forkPosition) == Some(Position(0) / Catch_ % 0))
+
+    val executePosition = forkPosition / "fork+🍋" % 0
+    assert(tryWorkflow.instruction(executePosition).isInstanceOf[Execute])
+    assert(tryWorkflow.findCatchPosition(executePosition) == None)  // Do not escape Fork!
+  }
 }
 
 private object WorkflowTest

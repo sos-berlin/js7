@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCatched, OrderDetachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTerminated, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -92,6 +92,61 @@ final class TryTest extends FreeSpec
           OrderDetachable,
           OrderTransferredToMaster,
           OrderFinished))
+      }
+    }
+  }
+
+  "fork - fail" in {
+    val workflow = WorkflowParser.parse(WorkflowPath("/TRY-IF") ~ "INITIAL",
+      s"""define workflow {
+         |  try {
+         |    fork {
+         |      "🥕": { execute executable="/OKAY$sh", agent="AGENT"; },
+         |      "🍋": { execute executable="/FAIL-1$sh", agent="AGENT"; },
+         |      "🌶": { if (true) execute executable="/FAIL-2$sh", agent="AGENT"; }
+         |    }
+         |    execute executable="/OKAY$sh", agent="AGENT";
+         |  } catch {
+         |    execute executable="/NEVER$sh", agent="AGENT";
+         |  }
+         |}""".stripMargin).orThrow
+    autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
+      for (a <- directoryProvider.agents) {
+        a.writeExecutable(ExecutablePath(s"/OKAY$sh"), ":")
+        a.writeExecutable(ExecutablePath(s"/FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(ExecutablePath(s"/FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(ExecutablePath(s"/NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
+      }
+      directoryProvider.run { (master, _) =>
+        val orderId = OrderId("🔴")
+        master.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        master.eventWatch.await[OrderTerminated](_.key == orderId)
+        checkEventSeq(orderId, master.eventWatch.all[OrderEvent], Vector(
+          OrderAdded(workflow.id),
+          OrderMoved(Position(0) / Try_ % 0),
+          OrderStarted,
+          OrderForked(Vector(
+            OrderForked.Child("🥕", OrderId("🔴/🥕")),
+            OrderForked.Child("🍋", OrderId("🔴/🍋")),
+            OrderForked.Child("🌶", OrderId("🔴/🌶")))),
+          OrderJoined(Outcome.Succeeded(ReturnCode(0))),
+          OrderMoved(Position(0) / "try" % 1),
+          OrderAttachable(TestAgentRefPath),
+          OrderTransferredToAgent(TestAgentRefPath),
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+          OrderMoved(Position(1)),
+          OrderDetachable,
+          OrderTransferredToMaster,
+          OrderFinished))
+        checkEventSeq(OrderId("🔴/🍋"), master.eventWatch.all[OrderEvent], Vector(
+          OrderAttachable(TestAgentRefPath),
+          OrderTransferredToAgent(TestAgentRefPath),
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.Failed(None,ReturnCode(1))),
+          OrderFailedInFork(Outcome.Failed(None,ReturnCode(1), Map.empty)),
+          OrderDetachable,
+          OrderTransferredToMaster))
       }
     }
   }

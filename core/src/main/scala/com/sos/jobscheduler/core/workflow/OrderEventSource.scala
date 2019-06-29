@@ -7,12 +7,12 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.core.problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
-import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
+import com.sos.jobscheduler.core.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderMoved, OrderStopped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfNonZeroReturnCodeGoto, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
@@ -27,48 +27,60 @@ final class OrderEventSource(
   private val context = new OrderContext {
     // This and idToOrder are mutable, do not use in Future !!!
     def idToOrder                                   = OrderEventSource.this.idToOrder
-    def childOrderEnded(order: Order[Order.State])  = OrderEventSource.this.childOrderEnded(order)
     def instruction(position: WorkflowPosition)     = OrderEventSource.this.instruction(position)
     def idToWorkflow(id: WorkflowId)                = OrderEventSource.this.idToWorkflow(id)
-  }
 
-  private def childOrderEnded(order: Order[Order.State]): Boolean =
-    order.parent flatMap idToOrder.lift match {
-      case Some(parentOrder) =>
-        lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
-          order.state == Order.Ready &&
-          order.position.dropChild.contains(parentOrder.position)
-        order.attachedState == parentOrder.attachedState &&
-          (endReached || order.isState[Order.FailedInFork])
-      case _ => false
-    }
+    def childOrderEnded(order: Order[Order.State]): Boolean =
+      order.parent flatMap idToOrder.lift match {
+        case Some(parentOrder) =>
+          lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
+            order.state == Order.Ready &&
+            order.position.dropChild.contains(parentOrder.position)
+          order.attachedState == parentOrder.attachedState &&
+            (endReached || order.isState[Order.FailedInFork])
+        case _ => false
+      }
+  }
 
   def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
-    val maybeEvent =
-      awokeEvent(order) orElse
-      canceledEvent(order) match {
-        case Some(event) =>
-          Valid(Some(order.id <-: event))
-        case None =>
-          InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-            case Valid(Some(oId <-: (moved: OrderMoved))) =>
-              applyMoveInstructions(oId, moved) map Some.apply
-
-            case Valid(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
-              assert(oId == orderId)
-              findCatchPosition(order) match {
-                case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
-                  applyMoveInstructions(order.withPosition(firstCatchPos))
-                    .flatMap (movedPos => Valid(Some(oId <-: OrderCatched(outcome, movedPos))))
-                case _ => Valid(Some(oId <-: OrderStopped(outcome)))
-              }
-
-            case o => o
-          }
-      }
-    invalidToEvent(order, maybeEvent)
+    if (order.isState[Order.Broken])
+      None  // Avoid issuing a second OrderBroken (will be a loop)
+    else
+      invalidToEvent(order, checkedNextEvent(order))
   }
+
+  private def checkedNextEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    joinedEvent(order) andThen {
+      case Some(o) => Valid(Some(o))
+      case None =>
+        awokeEvent(order) orElse canceledEvent(order) match {
+          case Some(event) => Valid(Some(order.id <-: event))
+          case None => checkedNextEvent2(order)
+        }
+    }
+
+  private def checkedNextEvent2(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
+      case Valid(Some(oId <-: (moved: OrderMoved))) =>
+        applyMoveInstructions(oId, moved) map Some.apply
+
+      case Valid(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
+        assert(oId == order.id)
+        findCatchPosition(order) match {
+          case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
+            applyMoveInstructions(order.withPosition(firstCatchPos))
+              .flatMap(movedPos => Valid(Some(oId <-: OrderCatched(outcome, movedPos))))
+          case _ =>
+            if (order.position.isInFork)
+              Valid(Some(oId <-: OrderFailedInFork(outcome)))
+            else
+              Valid(Some(oId <-: OrderStopped(outcome)))
+        }
+
+      case o => o
+    }
+
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
@@ -86,11 +98,11 @@ final class OrderEventSource(
   private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
   : Option[KeyedEvent[OrderActorEvent]] =
     checkedEvent match {
-      case Invalid(problem) if order.isOrderStoppedApplicable =>
-        Some(order.id <-: OrderStopped(Outcome.Disrupted(problem)))
-
-      case Invalid(problem) =>
-        Some(order.id <-: OrderBroken(problem))
+      case Invalid(problem)  =>
+        if (order.isOrderStoppedApplicable)
+          Some(order.id <-: OrderStopped(Outcome.Disrupted(problem)))
+        else
+          Some(order.id <-: OrderBroken(problem))
 
       case Valid(o) => o
     }
@@ -100,6 +112,18 @@ final class OrderEventSource(
       workflow <- idToWorkflow(order.workflowId).toOption
       position <- workflow.findCatchPosition(order.position)
     } yield position
+
+  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    if (order.isState[Order.FailedInFork])
+      order.forkPosition.flatMap(forkPosition =>
+        context.instruction(order.workflowId /: forkPosition) match {
+          case fork: Fork =>
+            Valid(ForkExecutor.tryJoinChildOrder(context, order, fork))
+          case _ =>
+            // Self-test
+            Invalid(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
+      })
+    else Valid(None)
 
   private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     order.ifState[Order.DelayedAfterError]

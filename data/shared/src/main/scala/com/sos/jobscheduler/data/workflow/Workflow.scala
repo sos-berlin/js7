@@ -328,9 +328,13 @@ extends FileBased
   /** Find catch instruction and return position of the first instruction. */
   def findCatchPosition(position: Position): Option[Position] =
     position.splitBranchAndNr flatMap { case (parent, branchId, _) =>
-      instruction(parent).toCatchBranchId(branchId) match {
-        case None => findCatchPosition(parent)
-        case Some(catchBranchId) => Some(parent / catchBranchId % 0)
+      instruction(parent) match {
+        case _: Fork => None  // Do not escape Fork!
+        case instr =>
+          instr.toCatchBranchId(branchId) match {
+            case None => findCatchPosition(parent)
+            case Some(catchBranchId) => Some(parent / catchBranchId % 0)
+          }
       }
     }
 

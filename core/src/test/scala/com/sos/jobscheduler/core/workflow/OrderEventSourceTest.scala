@@ -14,13 +14,13 @@ import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.expression.Expression.{Equal, LastReturnCode, NumericConstant}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Catch_, Else, Then, Try_}
-import com.sos.jobscheduler.data.workflow.position.Position
+import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -297,23 +297,24 @@ final class OrderEventSourceTest extends FreeSpec
     val workflow = WorkflowParser.parse(
        """define workflow {
          |  try {                                      // 0
-         |    try {                                    // 0/0#0
-         |      execute agent="/a", executable="/ex";  // 0/0#0/0#0
+         |    try {                                    // 0/0:0
+         |      execute agent="/a", executable="/ex";  // 0/0:0/0:0
          |    } catch {
-         |      execute agent="/a", executable="/ex";  // 0/0#0/1#0
+         |      execute agent="/a", executable="/ex";  // 0/0:0/1:0
          |    }
          |  } catch {
-         |    execute agent="/a", executable="/ex";    // 0/1#0
-         |    try {                                    // 0/1#1
-         |      execute agent="/a", executable="/ex";  // 0/1#1/0#0
+         |    execute agent="/a", executable="/ex";    // 0/1:0
+         |    try {                                    // 0/1:1
+         |      execute agent="/a", executable="/ex";  // 0/1:1/0:0
          |    } catch {
-         |      execute agent="/a", executable="/ex";  // 0/1#1/1#0
+         |      execute agent="/a", executable="/ex";  // 0/1:1/1:0
          |    }
          |  };
          |  execute agent="/a", executable="/ex";      // 1
          |}""".stripMargin).orThrow
 
-    def eventSource(order: Order[Order.State]) = new OrderEventSource(Map(workflow.id -> workflow).toChecked, Map(order.id -> order))
+    def eventSource(order: Order[Order.State]) =
+      new OrderEventSource(Map(workflow.id -> workflow).toChecked, Map(order.id -> order))
     val failed = Outcome.Failed(ReturnCode(7))
 
     "Fresh at try instruction -> OrderMoved" in {
@@ -329,29 +330,33 @@ final class OrderEventSourceTest extends FreeSpec
     }
 
     "Processed failed in inner try-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Try_ % 0 / Try_ % 0), Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
+      val pos = Position(0) / Try_ % 0 / Try_ % 0
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
+        historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderCatched(failed, Position(0) / Try_ % 0 / Catch_ % 0)))
     }
 
     "Processed failed in inner catch-block -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Try_ % 0 / Catch_ % 0), Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
+      val pos = Position(0) / Try_ % 0 / Catch_ % 0
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
+        historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderCatched(failed, Position(0) / Catch_ % 0)))
     }
 
     "Processed failed in outer catch-block -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 0), Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
+      val pos = Position(0) / Catch_ % 0
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
+        historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderStopped(failed)))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / Catch_ % 1 / Try_ % 0), Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
+      val pos = Position(0) / Catch_ % 1 / Try_ % 0
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
+        historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderCatched(failed, Position(0) / Catch_ % 1 / Catch_ % 0)))
     }
@@ -364,10 +369,58 @@ final class OrderEventSourceTest extends FreeSpec
     }
 
     "Processed failed not in try/catch -> OrderStopped" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: Position(1), Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed) :: Nil)
+      val pos = Position(1)
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
+        historicOutcomes = HistoricOutcome(pos, failed) :: Nil)
       assert(eventSource(order).nextEvent(order.id) == Some(order.id <-:
         OrderStopped(failed)))
+    }
+
+    "Try catch and fork" in {
+      val workflow = WorkflowParser.parse(
+         """define workflow {
+           |  try
+           |    fork {
+           |      "🥕": {
+           |        execute agent="/a", executable="/ex";   // 0/try:0/fork+🥕:0    // FAILS
+           |      },
+           |      "🍋": {
+           |        execute agent="/a", executable="/ex";   // 0/try:0/fork+🍋:0    // succeeds
+           |      }
+           |    }
+           |  catch {
+           |    execute agent="/a", executable="/ex";       // 0/catch:0
+           |  };
+           |  execute agent="/a", executable="/ex";         // 1
+           |}""".stripMargin).orThrow
+      var aChild: Order[Order.State] = {
+        val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
+        Order(OrderId("ORDER/🥕"), workflow.id /: pos, Order.Processed,
+          historicOutcomes = HistoricOutcome(pos, failed) :: Nil,
+          parent = Some(OrderId("ORDER")))
+      }
+      val bChild = {
+        val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 1   // End
+        Order(OrderId("ORDER/🍋"), workflow.id /: pos, Order.Ready,
+          historicOutcomes = HistoricOutcome(pos, failed) :: Nil,
+          parent = Some(OrderId("ORDER")))
+      }
+      val forkingOrder = Order(OrderId("ORDER"), workflow.id /: (Position(0) / BranchId.try_(0) % 0),  // Fork
+        Order.Forked(Vector(
+          Order.Forked.Child("🥕", aChild.id),
+          Order.Forked.Child("🍋", bChild.id))))
+      def liveEventSource = new OrderEventSource(Map(workflow.id -> workflow).toChecked, Map(
+        forkingOrder.id -> forkingOrder,
+        aChild.id -> aChild,
+        bChild.id -> bChild))
+
+      val event = OrderFailedInFork(failed)
+      assert(liveEventSource.nextEvent(aChild.id) == Some(aChild.id <-: event))
+      aChild = aChild.update(event).orThrow
+
+      assert(liveEventSource.nextEvent(aChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
+      assert(liveEventSource.nextEvent(bChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
+      assert(liveEventSource.nextEvent(forkingOrder.id) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
     }
   }
 }

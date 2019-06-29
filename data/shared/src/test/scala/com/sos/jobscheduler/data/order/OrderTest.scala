@@ -13,6 +13,7 @@ import com.sos.jobscheduler.data.order.Order.{Attached, AttachedState, Attaching
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
+import com.sos.jobscheduler.data.workflow.position.BranchId.Then
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
@@ -290,10 +291,10 @@ final class OrderTest extends FreeSpec
           case (_: OrderForked           , `detached` | `attached`) => _.isInstanceOf[Forked]
           case (_: OrderOffered          , `detached`             ) => _.isInstanceOf[Processed]
           case (_: OrderAwaiting         , `detached`             ) => _.isInstanceOf[Awaiting]
-          case (_: OrderFailed           , `detached`             ) => _.isInstanceOf[Failed]     // Fail instruction
-          case (_: OrderFailedInFork     , `detached` | `attached`) => _.isInstanceOf[FailedInFork] // Fail instruction
-          case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]      // Fail instruction
-          case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]    // Fail instruction
+          case (_: OrderFailed           , `detached`             ) => _.isInstanceOf[Failed]
+          case (_: OrderFailedInFork     , `detached` | `attached`) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched          , `detached` | `attached`) => _.isInstanceOf[Ready]
+          case (_: OrderStopped          , `detached` | `attached`) => _.isInstanceOf[Stopped]
           case (_: OrderRetrying         , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderFinished         , `detached`             ) => _.isInstanceOf[Finished]
           case (OrderCanceled            , `detached`             ) => _.isInstanceOf[Order.Canceled]
@@ -313,10 +314,11 @@ final class OrderTest extends FreeSpec
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
         cancelationMarkingAllowed[Processed] orElse {
-          case (_: OrderMoved  , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderStopped, `attached`             ) => _.isInstanceOf[Stopped]
-          case (_: OrderCatched, `attached`             ) => _.isInstanceOf[Ready]
-          case (_: OrderBroken , _                      ) => _.isInstanceOf[Broken]
+          case (_: OrderMoved       , `detached` | `attached`) => _.isInstanceOf[Ready]
+          case (_: OrderStopped     , `attached`             ) => _.isInstanceOf[Stopped]
+          case (_: OrderFailedInFork, `detached` | `attached`) => _.isInstanceOf[FailedInFork]
+          case (_: OrderCatched     , `attached`             ) => _.isInstanceOf[Ready]
+          case (_: OrderBroken      , _                      ) => _.isInstanceOf[Broken]
         })
     }
 
@@ -482,6 +484,13 @@ final class OrderTest extends FreeSpec
         assert(problem.toString contains "ORDER-ID")
       }
     }
+  }
+
+  "forkPositionOf" in {
+    assert(testOrder.withPosition(Position(1)).forkPosition.isInvalid)
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2).forkPosition == Valid(Position(1)))
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Valid(Position(1)))
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3 / "fork+B" % 4).forkPosition == Valid(Position(1) / "fork+A" % 2 / Then % 3))
   }
 
   "Error message when updated failed" in {

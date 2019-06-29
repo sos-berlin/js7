@@ -90,6 +90,14 @@ final class PositionTest extends FreeSpec {
     assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).forkPosition == Some(Position(1) / "fork+A" % 2))
   }
 
+  "isInFork" in {
+    assert(!Position(1).isInFork)
+    assert((Position(1) / "fork+A" % 2).isInFork)
+    assert((Position(1) / "fork+A" % 2 / Then % 3).isInFork)
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3).isInFork)
+    assert((Position(1) / "fork+A" % 2 / "fork+B" % 3 / Then % 4).isInFork)
+  }
+
   "fork Branch" in {
     assert(Position(1).forkBranch == Nil)
     assert((Position(1) / "fork+A" % 2).forkBranch == Position(1) / "fork+A")

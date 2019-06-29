@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.workflow.OrderContext
@@ -55,14 +54,12 @@ object ForkExecutor extends EventInstructionExecutor
       else
         None)
 
-  private[instructions] def tryJoinChildOrder(context: OrderContext, childOrder: Order[Order.State], fork: Fork)
-  : Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    //if (childOrder.attached forall fork.isJoinableOnAgent)
-    Valid(
-      if (childOrder.isAttached)
-        Some(childOrder.id <-: OrderDetachable)
-      else
-        childOrder.parent
-          .flatMap(context.idToOrder.lift)
-          .flatMap(parentOrder => toJoined(context, parentOrder)))
+  private[workflow] def tryJoinChildOrder(context: OrderContext, childOrder: Order[Order.State], fork: Fork)
+  : Option[KeyedEvent[OrderActorEvent]] =
+    if (childOrder.isAttached)
+      Some(childOrder.id <-: OrderDetachable)
+    else
+      childOrder.parent
+        .flatMap(context.idToOrder.lift)
+        .flatMap(parentOrder => toJoined(context, parentOrder))
 }

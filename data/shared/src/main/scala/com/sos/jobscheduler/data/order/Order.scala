@@ -55,6 +55,14 @@ final case class Order[+S <: Order.State](
   def position: Position =
     workflowPosition.position
 
+  def forkPosition: Checked[Position] = {
+    val forkBranchPath = position.branchPath.reverse.dropWhile(o => !o.branchId.isFork).reverse
+    if (forkBranchPath.isEmpty)
+      Invalid(Problem.pure(s"Order '${id.string}' is in state FailedInFork but not below a Fork instruction"))
+    else
+      Valid(forkBranchPath.init % forkBranchPath.last.nr)
+  }
+
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Invalid(Problem(
       s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: $event"))
@@ -87,7 +95,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderFailedInFork(outcome_) =>
-        check(isState[Ready] && (isDetached || isAttached),
+        check((isState[Ready] || isState[Processed]) && (isDetached || isAttached),
           copy(
             state = FailedInFork(outcome_),
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
