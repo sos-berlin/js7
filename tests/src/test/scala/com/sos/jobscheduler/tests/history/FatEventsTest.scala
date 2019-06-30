@@ -57,6 +57,15 @@ final class FatEventsTest extends FreeSpec
           master.addOrderBlocking(TestOrder)
           master.eventWatch.await[OrderFinished](_.key == TestOrder.id)
           assert(listJournalFiles == Vector("master--0.journal"))
+
+          val request = EventRequest.singleClass[FatEvent](after = EventId.BeforeFirst, timeout = Some(99.s), limit = 2)
+          val EventSeq.NonEmpty(stampedEvents) = master.httpApi.fatEvents(request) await 99.s
+          assert(stampedEvents.map(_.value).take(2) == Vector(
+            NoKey <-: MasterReadyFat(MasterId("Master"), ZoneId.systemDefault.getId),
+            OrderId("🔺") <-: OrderAddedFat(TestWorkflowId, None, Map("KEY" -> "VALUE"))))
+
+          val EventSeq.NonEmpty(stampedEvents1) = master.httpApi.fatEvents(request.copy[FatEvent](after = stampedEvents.head.eventId)) await 99.s
+          assert(stampedEvents1.head == stampedEvents(1))
         }
         var keepEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
@@ -71,8 +80,8 @@ final class FatEventsTest extends FreeSpec
           while (!finished) {
             rounds += 1
             val request = EventRequest.singleClass[FatEvent](after = lastEventId, timeout = Some(99.s), limit = 2)
-            val EventSeq.NonEmpty(stampeds) = master.httpApi.fatEvents(request) await 99.s
-            val chunk = stampeds take 2
+            val EventSeq.NonEmpty(stampedEvents) = master.httpApi.fatEvents(request) await 99.s
+            val chunk = stampedEvents take 2
             chunk foreach history.handleFatEvent
             lastEventId = chunk.last.eventId
             chunk collectFirst { case Stamped(eventId, _, KeyedEvent(_, _: OrderFinishedFat)) =>

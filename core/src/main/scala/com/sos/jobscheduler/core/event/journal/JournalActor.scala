@@ -277,7 +277,7 @@ extends Actor with Stash {
 
     val header = recoveredJournalHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
       totalRunningTime = recoveredJournalHeader().totalRunningTime + runningSince.elapsed)
-    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), observer(), simulateSync = conf.simulateSync)
+    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
     actorOf(

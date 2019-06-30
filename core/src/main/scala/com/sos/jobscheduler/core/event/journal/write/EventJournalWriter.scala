@@ -11,7 +11,7 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
@@ -22,7 +22,7 @@ private[journal] final class EventJournalWriter[E <: Event](
   journalMeta: JournalMeta[E],
   val file: Path,
   after: EventId,
-  protected val observer: Option[JournalingObserver],
+  observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration],
   withoutSnapshots: Boolean = false)
 extends JournalWriter[E](append = !withoutSnapshots)
@@ -102,8 +102,10 @@ private[journal] object EventJournalWriter
   private val TransactionByteString = ByteString(Transaction.asJson.compactPrint)
   private val CommitByteString = ByteString(Commit.asJson.compactPrint)
 
-  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId, observer: Option[JournalingObserver] = None) =
-    new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, observer, simulateSync = None, withoutSnapshots = true)
+  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId,
+    observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
+  =
+    new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, observer, simulateSync = None, withoutSnapshots = withoutSnapshots)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)
 }

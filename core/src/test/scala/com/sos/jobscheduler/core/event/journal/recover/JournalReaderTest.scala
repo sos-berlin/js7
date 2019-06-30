@@ -40,7 +40,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
   "Journal file with snapshot section only" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeader.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
@@ -56,7 +56,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
   "Journal file with open event section" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, observer = None, simulateSync = None)) { writer =>
+    autoClosing(new SnapshotJournalWriter(journalMeta, file, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeader.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)

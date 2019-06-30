@@ -33,7 +33,8 @@ private[watch] object TestData
   val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[TestEvent](
     KeyedSubtype[TestEvent])
 
-  def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta[E], after: EventId, snapshotObjects: Seq[Any]): Unit =
+  def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta[E], after: EventId, snapshotObjects: Seq[Any])
+  : Unit =
     autoClosing(SnapshotJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
       writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()

@@ -141,6 +141,18 @@ with JournalingObserver
     onEventsAdded(eventId = flushedPositionAndEventId.value)
   }
 
+  def snapshotObjectsFor(after: EventId) =
+    currentEventReaderOption match {
+      case Some(current) if current.tornEventId <= after =>
+        Some(current.tornEventId -> current.snapshotObjects)
+      case _ =>
+        historicJournalFileAfter(after)
+          .map { historyJournalFile =>
+            logger.debug(s"Reading snapshot from journal file '$historyJournalFile'")
+            historyJournalFile.afterEventId -> historyJournalFile.eventReader.snapshotObjects
+          }
+    }
+
   /**
     * @return `Task(None)` torn, `after` < `tornEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
@@ -183,13 +195,6 @@ with JournalingObserver
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented
-
-  def snapshotObjectsFor(after: EventId) =
-    historicJournalFileAfter(after)
-      .map { historyJournalFile =>
-        logger.debug(s"Reading snapshot from journal file '$historyJournalFile'")
-        historyJournalFile.afterEventId -> historyJournalFile.eventReader.snapshotObjects
-      }
 
   private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
     afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)

@@ -4,7 +4,6 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
-import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.data.event.Event
 import io.circe.syntax.EncoderOps
 import java.nio.file.{Files, Path}
@@ -18,7 +17,6 @@ private[journal] abstract class JournalWriter[E <: Event](append: Boolean)
 extends AutoCloseable {
 
   def file: Path
-  protected def observer: Option[JournalingObserver]
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
 

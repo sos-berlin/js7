@@ -249,13 +249,17 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
     withJournalMeta { journalMeta_ =>
       val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
 
-      // --0.journal with no snapshot objects
-      writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
       autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
-        val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
-        assert(eventId == EventId.BeforeFirst)
-        assert(iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))
-        iterator.close()
+        // --0.journal with no snapshot objects
+        writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
+        autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch), withoutSnapshots = false)) { writer =>
+          writer.beginEventSection()  // Notifies eventWatch about this journal file
+
+          val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
+          assert(eventId == EventId.BeforeFirst)
+          assert(iterator.toVector.map(_.isInstanceOf[JournalHeader]) == Vector(true))
+          iterator.close()
+        }
       }
 
       // --100.journal with some snapshot objects
