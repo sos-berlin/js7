@@ -24,7 +24,7 @@ object JavaMainLockfileSupport
         createDirectory(stateDirectory)
       }
       lock(stateDirectory resolve "lock") {
-        JavaMainSupport.runMain {
+        JavaMain.runMain {
           body(arguments)
         }
       }

@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import com.sos.jobscheduler.core.startup.JavaMainSupport.withShutdownHooks
+import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
 import java.time.LocalTime
 import scala.concurrent.duration._
 

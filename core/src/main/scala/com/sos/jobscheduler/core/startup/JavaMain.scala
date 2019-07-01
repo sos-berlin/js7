@@ -11,7 +11,7 @@ import com.typesafe.config.Config
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
-object JavaMainSupport
+object JavaMain
 {
   private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
   private val logger = Logger(getClass)

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
-import com.sos.jobscheduler.core.startup.JavaMainSupport.withShutdownHooks
+import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import java.time.LocalTime
 import monix.execution.Scheduler

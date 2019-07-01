@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.startup.JavaMainSupport.{runMain, withShutdownHooks}
+import com.sos.jobscheduler.core.startup.JavaMain.{runMain, withShutdownHooks}
 import com.sos.jobscheduler.core.startup.StartUp.logStartUp
 import com.sos.jobscheduler.provider.configuration.ProviderConfiguration
 import java.util.concurrent.CancellationException
