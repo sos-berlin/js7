@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTerminated, OrderTransferredToAgent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.Position
@@ -66,7 +66,7 @@ final class FailTest extends FreeSpec
   }
 
   "fail in fork" in {
-    runUntil[OrderTerminated]("""
+    runUntil[OrderStopped]("""
       |define workflow {
       |  fork {
       |    "🥕": { execute agent="/AGENT", executable="/test.cmd", successReturnCodes=[3] },
@@ -79,9 +79,8 @@ final class FailTest extends FreeSpec
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🔺/🥕")),
           OrderForked.Child("🍋", OrderId("🔺/🍋")))),
-        OrderJoined(Outcome.Succeeded(ReturnCode(0), Map.empty)),
-        OrderMoved(Position(1)),
-        OrderFinished),
+        OrderJoined(Outcome.Failed(ReturnCode(0))),
+        OrderStopped(Outcome.Failed(ReturnCode(0)))),
       OrderId("🔺/🍋") -> Vector(
         OrderFailedInFork(Outcome.Failed(None, ReturnCode(0)))))
   }

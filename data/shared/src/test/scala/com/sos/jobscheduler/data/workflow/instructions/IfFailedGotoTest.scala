@@ -10,15 +10,15 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class IfNonZeroReturnCodeGotoTest extends FreeSpec {
+final class IfFailedGotoTest extends FreeSpec {
 
   // For internal JobScheduler use only.
 
   "JSON" in {
     testJson[Instruction.Labeled](
-      IfNonZeroReturnCodeGoto(Label("A"), Some(SourcePos(1, 2))),
+      IfFailedGoto(Label("A"), Some(SourcePos(1, 2))),
       json"""{
-        "TYPE": "IfNonZeroReturnCodeGoto",
+        "TYPE": "IfFailedGoto",
         "to": "A",
         "sourcePos": [ 1, 2 ]
       }""")

@@ -11,8 +11,8 @@ import com.sos.jobscheduler.data.expression.PositionSearch
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript, JobKey}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Retry, TryInstruction}
-import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_, try_, Try_}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, Try_, catch_, try_}
 import com.sos.jobscheduler.data.workflow.position._
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -322,9 +322,9 @@ final class WorkflowTest extends FreeSpec {
     }
   }
 
-  "Missing Label for IfNonZeroReturnCodeGoto" in {
+  "Missing Label for IfFailedGoto" in {
     intercept[RuntimeException] {
-      Workflow.of(IfNonZeroReturnCodeGoto(Label("A")))
+      Workflow.of(IfFailedGoto(Label("A")))
     }
   }
 
@@ -355,7 +355,7 @@ final class WorkflowTest extends FreeSpec {
       (()  @: Goto(B))          -> true,
       (C   @: job)              -> true,
       (()  @: Goto(D))          -> true,   // reducible?
-      (()  @: IfNonZeroReturnCodeGoto(D))  -> false,  // reducible
+      (()  @: IfFailedGoto(D))  -> false,  // reducible
       (()  @: Goto(D))          -> false,  // reducible
       (D   @: job)              -> true,
       (()  @: Goto(END))        -> false,  // reducible

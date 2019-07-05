@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.Times._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -156,8 +156,8 @@ object WorkflowPrinter
         case Goto(label, _) =>
           sb ++= "goto "++= label.string ++= ";\n"
 
-        case IfNonZeroReturnCodeGoto(label, _) =>
-          sb ++= "ifNonZeroReturnCodeGoto " ++= label.string ++= ";\n"
+        case IfFailedGoto(label, _) =>
+          sb ++= "ifFailedGoto " ++= label.string ++= ";\n"
 
         case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
           sb ++= "if (" ++= predicate.toString ++= ") {\n"

@@ -18,7 +18,7 @@ object Instructions
     Subtype[Fork],
     Subtype[Offer],
     Subtype[If],
-    Subtype[IfNonZeroReturnCodeGoto],
+    Subtype[IfFailedGoto],
     Subtype[Retry],
     Subtype.named[TryInstruction]("Try"),
     Subtype[Goto],

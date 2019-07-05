@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -449,7 +449,7 @@ final class WorkflowParserTest extends FreeSpec {
     checkWithSourcePos("""
       define workflow {
         execute executable="/A", agent="/AGENT";
-        ifNonZeroReturnCodeGoto FAILURE;
+        ifFailedGoto FAILURE;
         execute executable="/B", agent="/AGENT";
         goto END;
         FAILURE: execute executable="/OnFailure", agent="/AGENT";
@@ -461,17 +461,17 @@ final class WorkflowParserTest extends FreeSpec {
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A")),
           sourcePos(33, 72)),
-        IfNonZeroReturnCodeGoto(Label("FAILURE"), sourcePos(82, 113)),
+        IfFailedGoto(Label("FAILURE"), sourcePos(82, 102)),
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B")),
-          sourcePos(123, 162)),
-        Goto(Label("END"), sourcePos(172, 180)),
+          sourcePos(112, 151)),
+        Goto(Label("END"), sourcePos(161, 169)),
         "FAILURE" @:
         Execute.Anonymous(
           WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/OnFailure")),
-          sourcePos(199, 246)),
+          sourcePos(188, 235)),
         "END" @:
-        ExplicitEnd(sourcePos(261, 264)))))
+        ExplicitEnd(sourcePos(250, 253)))))
   }
 
   //for (n <- sys.props.get("test.speed") map (_.toInt)) "Speed" - {

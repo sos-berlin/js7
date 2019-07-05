@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ExecutableScript}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPrinter.WorkflowShow
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfNonZeroReturnCodeGoto, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
@@ -215,7 +215,7 @@ final class WorkflowPrinterTest extends FreeSpec {
         WorkflowPath.NoId,
         Vector(
           Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/A"))),
-          IfNonZeroReturnCodeGoto(Label("FAILURE")),
+          IfFailedGoto(Label("FAILURE")),
           Execute.Anonymous(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/B"))),
           Goto(Label("END")),
           "FAILURE" @:
@@ -224,7 +224,7 @@ final class WorkflowPrinterTest extends FreeSpec {
           ExplicitEnd())),
       """define workflow {
         |  execute agent="/AGENT", executable="/A";
-        |  ifNonZeroReturnCodeGoto FAILURE;
+        |  ifFailedGoto FAILURE;
         |  execute agent="/AGENT", executable="/B";
         |  goto END;
         |  FAILURE: execute agent="/AGENT", executable="/OnFailure";

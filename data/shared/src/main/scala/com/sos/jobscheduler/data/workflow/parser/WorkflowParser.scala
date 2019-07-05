@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
 import com.sos.jobscheduler.data.workflow.parser.BasicParsers._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser.{booleanConstant, constantExpression, expression}
 import com.sos.jobscheduler.data.workflow.parser.Parsers.checkedParse
@@ -199,9 +199,9 @@ object WorkflowParser
           } yield try_
         })
 
-    private def ifNonZeroReturnCodeGotoInstruction[_: P] = P[IfNonZeroReturnCodeGoto](
-      (Index ~ keyword("ifNonZeroReturnCodeGoto") ~ w ~ label ~ hardEnd)
-        .map { case (start, n, end) => IfNonZeroReturnCodeGoto(n, sourcePos(start, end)) })
+    private def ifFailedGotoInstruction[_: P] = P[IfFailedGoto](
+      (Index ~ keyword("ifFailedGoto") ~ w ~ label ~ hardEnd)
+        .map { case (start, n, end) => IfFailedGoto(n, sourcePos(start, end)) })
 
     private def gotoInstruction[_: P] = P[Goto](
       Index ~ keyword("goto") ~ w ~ label ~ hardEnd
@@ -216,7 +216,7 @@ object WorkflowParser
         forkInstruction |
         gotoInstruction |
         ifInstruction |
-        ifNonZeroReturnCodeGotoInstruction |
+        ifFailedGotoInstruction |
         jobInstruction |
         retryInstruction |
         tryInstruction |

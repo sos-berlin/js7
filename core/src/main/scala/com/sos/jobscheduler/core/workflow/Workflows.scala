@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fail, Fork, Gap, Goto, If, IfFailedGoto, Retry, TryInstruction}
 
 /**
   * @author Joacim Zschimmer
@@ -40,7 +40,7 @@ object Workflows
           case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentRefPath =>
             o
 
-          case o @ _ @: (_: Fail |  _: End | _: IfNonZeroReturnCodeGoto | _: Goto | _: Retry) =>
+          case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry) =>
             o
 
           case Labeled(labels, instruction) =>

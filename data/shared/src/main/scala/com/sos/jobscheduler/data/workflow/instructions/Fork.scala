@@ -79,7 +79,7 @@ object Fork
     new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Checked[Branch] =
-    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto] || o.isInstanceOf[IfNonZeroReturnCodeGoto]))
+    if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
       Invalid(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
     else
       Valid(branch)

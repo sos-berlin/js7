@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import com.sos.jobscheduler.data.workflow.position.{BranchId, Position}
@@ -162,7 +162,7 @@ final class OrderEventSourceTest extends FreeSpec
                  Gap(),          // 2
         "C" @:   executeScript,  // 3
         "END" @: ExplicitEnd(),  // 4
-        "B" @:   IfNonZeroReturnCodeGoto("C"), // 5
+        "B" @:   IfFailedGoto("C"), // 5
                  TryInstruction(               // 6
                    Workflow.of(executeScript),  // 6/0:0
                    Workflow.of(executeScript))) // 6/1:0
@@ -183,7 +183,7 @@ final class OrderEventSourceTest extends FreeSpec
       val workflow = Workflow.of(
         "A" @: Goto("B"),           // 0
         "B" @: Goto("A"),           // 1
-        "C" @: IfNonZeroReturnCodeGoto("A"))   // 2
+        "C" @: IfFailedGoto("A"))   // 2
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 1 B: goto A --> 0 A: goto B")))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 0 A: goto B --> 1 B: goto A")))

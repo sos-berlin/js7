@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
-import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
@@ -214,7 +214,7 @@ extends FileBased
     copy(rawLabeledInstructions =
       rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
         case Seq(_ @: (jmp: JumpInstruction), Instruction.Labeled(maybeLabel, _)) if maybeLabel contains jmp.to => Nil
-        case Seq(_ @: IfNonZeroReturnCodeGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
+        case Seq(_ @: IfFailedGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
         case Seq(a, _) => a :: Nil
         case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?
       }.toVector ++

@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelationMarked, OrderCanceled, OrderCatched, OrderDetachable, OrderFailedCatchable, OrderFailedInFork, OrderMoved, OrderStopped}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfNonZeroReturnCodeGoto, Retry, TryInstruction}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
@@ -203,7 +203,7 @@ final class OrderEventSource(
         case Goto(label, _) =>
           workflow.labelToPosition(order.position.branchPath, label) map Some.apply
 
-        case IfNonZeroReturnCodeGoto(label, _) =>
+        case IfFailedGoto(label, _) =>
           if (order.lastOutcome.isFailed)
             workflow.labelToPosition(order.position.branchPath, label) map Some.apply
           else

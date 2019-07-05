@@ -33,11 +33,11 @@ final class InstructionsTest extends FreeSpec {
     "Goto" in {
     }
 
-    "IfNonZeroReturnCodeGoto" in {
+    "IfFailedGoto" in {
       testJson[Labeled](
-        IfNonZeroReturnCodeGoto(Label("A")),
+        IfFailedGoto(Label("A")),
         json"""{
-          "TYPE": "IfNonZeroReturnCodeGoto",
+          "TYPE": "IfFailedGoto",
           "to": "A"
         }""")
     }
