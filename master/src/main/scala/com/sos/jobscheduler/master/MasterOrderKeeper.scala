@@ -506,7 +506,7 @@ with MainJournalingActor[Event]
 
           case Some(orderEntry) =>
             val checkedFollowUps = orderProcessor.handleEvent(orderId <-: event)
-            for (followUps <- checkedFollowUps onProblem (p => logger.error(p)))  {
+            for (followUps <- checkedFollowUps onProblem (p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
                 case _: FollowUp.Processed if orderEntry.order.isAttached =>
 
@@ -543,7 +543,7 @@ with MainJournalingActor[Event]
       for (mode <- order.cancel) {
         if ((order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
           // On Recovery, CancelOrder is sent again, because orderEntry.cancelationMarkedOnAgent is lost
-          for ((_, _, agentEntry) <- checkedWorkflowJobAndAgentEntry(order) onProblem (p => logger.error(p))) {
+          for ((_, _, agentEntry) <- checkedWorkflowJobAndAgentEntry(order) onProblem (p => logger.error(p))) {  // TODO OrderBroken on error?
             agentEntry.actor ! AgentDriver.Input.CancelOrder(order.id, mode)
           }
         }
@@ -569,7 +569,7 @@ with MainJournalingActor[Event]
       case _: Order.Offering =>
         for (awaitingOrderId <- orderProcessor.offeredToAwaitingOrder(orderEntry.orderId);
              awaitingOrder <- orderRegister.checked(awaitingOrderId).onProblem(p => logger.warn(p.toString));
-             _ <- awaitingOrder.order.checkedState[Order.Awaiting].onProblem(p => logger.error(p.toString)))
+             _ <- awaitingOrder.order.checkedState[Order.Awaiting].onProblem(p => logger.error(p.toString)))  // TODO OrderBroken on error?
         {
           proceedWithOrderOnMaster(awaitingOrder)
         }
@@ -591,7 +591,7 @@ with MainJournalingActor[Event]
   }
 
   private def tryAttachOrderToAgent(order: Order[Order.FreshOrReady]): Unit =
-    for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {
+    for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
       if (order.isDetached && !orderProcessor.isOrderCancelable(order))
         persist(order.id <-: OrderAttachable(agentEntry.agentRefPath)) { stamped =>
           handleOrderEvent(stamped)
