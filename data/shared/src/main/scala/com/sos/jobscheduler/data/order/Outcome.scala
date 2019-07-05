@@ -54,7 +54,7 @@ object Outcome
   }
 
   final case class Succeeded(returnCode: ReturnCode, keyValues: Map[String, String] = Map.empty) extends Undisrupted {
-    def isSucceeded = returnCode.isSuccess
+    def isSucceeded = true
   }
   object Succeeded extends Undisrupted.Companion[Succeeded]
   {

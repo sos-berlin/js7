@@ -14,7 +14,7 @@ final class OutcomeTest extends FreeSpec {
 
   "isSucceeded" in {
     assert(Outcome.Succeeded(ReturnCode(0)).isSucceeded)
-    assert(Outcome.Succeeded(ReturnCode(1)).isFailed)
+    assert(Outcome.Succeeded(ReturnCode(1)).isSucceeded)
     assert(!Outcome.Disrupted(Problem("error")).isSucceeded)
     assert(Outcome.Disrupted(Problem("error")) == Outcome.Disrupted(Problem("error")))
     assert(!Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted).isSucceeded)
