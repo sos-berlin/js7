@@ -110,7 +110,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderCatched(outcome_, movedTo) =>
-        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && isAttached,
+        check(isState[Ready] && (isDetached || isAttached)  ||  isState[Processed] && (isAttached | isDetached),
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -207,7 +207,7 @@ final case class Order[+S <: Order.State](
 
   def isOrderStoppedApplicable =
     isState[FreshOrReady] && (isDetached || isAttached)  ||
-    isState[Processed] && isAttached
+    isState[Processed] && (isDetached || isAttached)
 
   def withInstructionNr(to: InstructionNr): Order[S] =
     withPosition(position.copy(nr = to))

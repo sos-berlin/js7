@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.job.{ExecutablePath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderDetachable, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.instructions.Fork
@@ -79,7 +79,7 @@ final class FailUncatchableTest extends FreeSpec
   }
 
   "fail in fork, fail first" in {
-    val events = runUntil[OrderFinished]("""
+    val events = runUntil[OrderStopped]("""
      |define workflow {
      |  fork {
      |    "🥕": {
@@ -99,9 +99,8 @@ final class FailUncatchableTest extends FreeSpec
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
-        OrderJoined(Outcome.succeeded),
-        OrderMoved(Position(1)),
-        OrderFinished))
+        OrderJoined(Outcome.Failed(ReturnCode(0))),
+        OrderStopped(Outcome.Failed(ReturnCode(0)))))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
@@ -126,7 +125,7 @@ final class FailUncatchableTest extends FreeSpec
   }
 
   "fail in fork, succeed first" in {
-    val events = runUntil[OrderFinished]("""
+    val events = runUntil[OrderStopped]("""
      |define workflow {
      |  fork {
      |    "🥕": {
@@ -146,9 +145,8 @@ final class FailUncatchableTest extends FreeSpec
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺/🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺/🍋")))),
-        OrderJoined(Outcome.succeeded),
-        OrderMoved(Position(1)),
-        OrderFinished))
+        OrderJoined(Outcome.Failed(ReturnCode(0))),
+        OrderStopped(Outcome.Failed(ReturnCode(0)))))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(

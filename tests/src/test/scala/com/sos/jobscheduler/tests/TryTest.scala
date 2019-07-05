@@ -105,9 +105,9 @@ final class TryTest extends FreeSpec
          |      "🍋": { execute executable="/FAIL-1$sh", agent="AGENT"; },
          |      "🌶": { if (true) execute executable="/FAIL-2$sh", agent="AGENT"; }
          |    }
-         |    execute executable="/OKAY$sh", agent="AGENT";
-         |  } catch {
          |    execute executable="/NEVER$sh", agent="AGENT";
+         |  } catch {
+         |    execute executable="/OKAY$sh", agent="AGENT";
          |  }
          |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
@@ -129,8 +129,8 @@ final class TryTest extends FreeSpec
             OrderForked.Child("🥕", OrderId("🔴/🥕")),
             OrderForked.Child("🍋", OrderId("🔴/🍋")),
             OrderForked.Child("🌶", OrderId("🔴/🌶")))),
-          OrderJoined(Outcome.Succeeded(ReturnCode(0))),
-          OrderMoved(Position(0) / "try+0" % 1),
+          OrderJoined(Outcome.Failed(ReturnCode(0))),
+          OrderCatched(Outcome.Failed(ReturnCode(0)), Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentRefPath),
           OrderTransferredToAgent(TestAgentRefPath),
           OrderProcessingStarted,

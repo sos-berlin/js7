@@ -38,7 +38,7 @@ final class OrderEventSourceTest extends FreeSpec
       Map(TestWorkflowId -> ForkWorkflow).toChecked,
       Map(disruptedOrder.id -> disruptedOrder))
     assert(eventSource.nextEvent(disruptedOrder.id) ==
-      Some(disruptedOrder.id <-: OrderMoved(Position(1))))  // Move to same InstructionNr, and set Order.Ready
+      Some(disruptedOrder.id <-: OrderMoved(disruptedOrder.position)))  // Move to same InstructionNr
   }
 
   "if" - {
@@ -418,9 +418,9 @@ final class OrderEventSourceTest extends FreeSpec
       assert(liveEventSource.nextEvent(aChild.id) == Some(aChild.id <-: event))
       aChild = aChild.update(event).orThrow
 
-      assert(liveEventSource.nextEvent(aChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
-      assert(liveEventSource.nextEvent(bChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
-      assert(liveEventSource.nextEvent(forkingOrder.id) == Some(forkingOrder.id <-: OrderJoined(Outcome.succeeded)))
+      assert(liveEventSource.nextEvent(aChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.Failed(ReturnCode(0)))))
+      assert(liveEventSource.nextEvent(bChild.id      ) == Some(forkingOrder.id <-: OrderJoined(Outcome.Failed(ReturnCode(0)))))
+      assert(liveEventSource.nextEvent(forkingOrder.id) == Some(forkingOrder.id <-: OrderJoined(Outcome.Failed(ReturnCode(0)))))
     }
   }
 }
@@ -433,8 +433,8 @@ object OrderEventSourceTest {
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode.Success)) :: Nil)
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode.StandardFailure)) :: Nil)
-  private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId, Order.Processed,
+    historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(ReturnCode.StandardFailure)) :: Nil)
+  private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil)
 
   private val executeScript = Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/executable")))

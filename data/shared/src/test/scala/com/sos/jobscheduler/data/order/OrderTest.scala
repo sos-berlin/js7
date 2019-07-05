@@ -315,9 +315,9 @@ final class OrderTest extends FreeSpec
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(ReturnCode(0))) :: Nil),
         cancelationMarkingAllowed[Processed] orElse {
           case (_: OrderMoved       , `detached` | `attached`) => _.isInstanceOf[Ready]
-          case (_: OrderStopped     , `attached`             ) => _.isInstanceOf[Stopped]
+          case (_: OrderStopped     , `detached` | `attached`) => _.isInstanceOf[Stopped]
           case (_: OrderFailedInFork, `detached` | `attached`) => _.isInstanceOf[FailedInFork]
-          case (_: OrderCatched     , `attached`             ) => _.isInstanceOf[Ready]
+          case (_: OrderCatched     , `detached` | `attached`) => _.isInstanceOf[Ready]
           case (_: OrderBroken      , _                      ) => _.isInstanceOf[Broken]
         })
     }
