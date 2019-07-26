@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.scalautil
 
 import scala.concurrent.Promise
 import scala.reflect.runtime.universe._
+import scala.util.Success
 
 /**
  * Variable which can be set only once. Thread-safe.
@@ -19,12 +20,13 @@ class SetOnce[A](name: String)
    */
   def apply() = getOrElse { throw new IllegalStateException(s"SetOnce[$name] promise has not been kept so far") }
 
-  final override def toString = toStringOr("(not yet set)")
+  final override def toString = toStringOr(s"SetOnce[$name](not yet set)")
 
   @inline final def toStringOr(or: => String): String =
     promise.future.value match {
       case None => or
-      case Some(o) => o.toString
+      case Some(Success(o)) => o.toString
+      case Some(o) => o.toString  // Never happens
     }
 
   @inline final def getOrElse[B >: A](els: => B): B =

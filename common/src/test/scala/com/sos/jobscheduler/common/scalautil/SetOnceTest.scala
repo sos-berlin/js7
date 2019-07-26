@@ -25,7 +25,7 @@ final class SetOnceTest extends FreeSpec
     assert(intercept[IllegalStateException] { a := 0 } .getMessage == "SetOnce[Int] has already been set")
     assert((for (i <- a) yield (i: Int) + 3) == Some(3))
     var r = 7
-    for (i <- a) r = a()
+    for (_ <- a) r = a()
     assert(r == 0)
   }
 
@@ -33,6 +33,13 @@ final class SetOnceTest extends FreeSpec
     val a = SetOnce[Int]
     assert((a getOrUpdate 1) == 1)
     assert((a getOrUpdate 2) == 1)
-    assert((a getOrUpdate sys.error("")) == 1)
+    assert((a getOrUpdate sys.error("lazy")) == 1)
+  }
+
+  "toString" in {
+    val a = SetOnce[Int]
+    assert(a.toString == "SetOnce[Int](not yet set)")
+    a := 7
+    assert(a.toString == "7")
   }
 }
