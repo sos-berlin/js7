@@ -1,5 +1,4 @@
 import sbt._
-import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
@@ -67,10 +66,4 @@ object Dependencies
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   val guava               = "com.google.guava" % "guava" % "27.1-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.62"
-
-  implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
-
-  implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
-    def %(configurations: String) = delegate map { _ % configurations }
-  }
 }
