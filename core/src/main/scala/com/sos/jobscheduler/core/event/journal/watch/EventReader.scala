@@ -30,7 +30,7 @@ extends AutoCloseable
   protected def flushedLength: Long
   protected def config: Config
 
-  private lazy val logger = Logger.withPrefix[EventReader[E]](journalFile.getFileName.toString)
+  private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
     size = config.getInt("jobscheduler.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("jobscheduler.journal.watch.index-factor")

@@ -45,7 +45,7 @@ extends Actor with Stash {
   import context.{actorOf, become, stop, watch}
   import journalMeta.snapshotJsonCodec
 
-  private val logger = Logger.withPrefix[JournalActor[_]](journalMeta.fileBase.getFileName.toString)
+  private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   private val runningSince = now
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate

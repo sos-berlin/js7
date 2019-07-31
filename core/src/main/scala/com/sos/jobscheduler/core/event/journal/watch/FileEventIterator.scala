@@ -26,7 +26,7 @@ private[watch] class FileEventIterator[E <: Event](
   flushedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
-  private val logger = Logger.withPrefix[FileEventIterator[E]](journalFile.getFileName.toString)
+  private val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   private val journalReader = new JournalReader(journalMeta, expectedJournalId, journalFile)
   private var nextEvent: Stamped[KeyedEvent[E]] = null
   private var closed = false

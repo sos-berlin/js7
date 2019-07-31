@@ -38,7 +38,7 @@ extends HasCloser with ClosedFuture {
   val startedAt = Timestamp.now
   private val runningSince = now
   val pidOption: Option[Pid] = processToPidOption(process)
-  private val logger = Logger.withPrefix[RichProcess](toString)
+  private val logger = Logger.withPrefix[this.type](toString)
   /**
    * UTF-8 encoded stdin.
    */

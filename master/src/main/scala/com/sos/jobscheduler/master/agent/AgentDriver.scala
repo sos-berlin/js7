@@ -56,7 +56,7 @@ final class AgentDriver private(agentRefPath: AgentRefPath,
 extends KeyedJournalingActor[MasterAgentEvent]
 with ReceiveLoggingActor.WithStash
 {
-  private val logger = Logger.withPrefix[AgentDriver](agentRefPath.string)
+  private val logger = Logger.withPrefix[this.type](agentRefPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
     masterConfiguration.config.optionAs[SecretString]("jobscheduler.auth.agents." + ConfigUtil.joinPath(agentRefPath.string))
       .map(password => UserAndPassword(masterConfiguration.masterId.toUserId, password))

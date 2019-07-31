@@ -36,7 +36,7 @@ final class JobActor private(conf: Conf)(implicit scheduler: Scheduler)
 extends Actor with Stash {
   import conf.{executablesDirectory, jobKey, newTaskRunner, temporaryDirectory, workflowJob}
 
-  private val logger = Logger.withPrefix[JobActor](jobKey.keyName)
+  private val logger = Logger.withPrefix[this.type](jobKey.keyName)
   private val orderToTask = mutable.Map[OrderId, Task]()
   private var waitingForNextOrder = false
   private var terminating = false

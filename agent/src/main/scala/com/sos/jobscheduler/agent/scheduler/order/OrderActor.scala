@@ -33,7 +33,7 @@ final class OrderActor private(orderId: OrderId, protected val journalActor: Act
   (implicit scheduler: Scheduler)
 extends KeyedJournalingActor[OrderEvent]
 {
-  private val logger = Logger.withPrefix[OrderActor](orderId.toString)
+  private val logger = Logger.withPrefix[this.type](orderId.toString)
   import conf.{charBufferSize, stdoutCommitDelay}
 
   private var order: Order[Order.State] = null
