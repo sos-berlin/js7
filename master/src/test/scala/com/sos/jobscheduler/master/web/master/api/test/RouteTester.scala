@@ -29,5 +29,9 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
-  protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = on")
+  protected val config = ConfigFactory.parseString(
+    """jobscheduler.webserver.verbose-error-messages = on
+      |jobscheduler.webserver.event.streaming.delay = 20ms
+      |jobscheduler.webserver.event.streaming.chunk-timeout = 1h
+      |""".stripMargin)
 }

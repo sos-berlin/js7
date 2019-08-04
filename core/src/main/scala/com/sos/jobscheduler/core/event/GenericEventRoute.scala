@@ -23,15 +23,15 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{accept, complet
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import com.sos.jobscheduler.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import com.sos.jobscheduler.common.akkahttp.HttpStatusCodeException
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.routeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import com.sos.jobscheduler.common.akkahttp.web.session.RouteProvider
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
+import com.sos.jobscheduler.common.http.JsonStreamingSupport._
+import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.GenericEventRoute._
@@ -44,6 +44,7 @@ import scala.collection.immutable.Seq
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 
 /**
   * @author Joacim Zschimmer
@@ -53,6 +54,9 @@ trait GenericEventRoute extends RouteProvider
   protected val closedObservable: Observable[Completed]
 
   private implicit def implicitScheduler: Scheduler = scheduler
+
+  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("jobscheduler.webserver.event.streaming.chunk-timeout").toFiniteDuration
+  private lazy val defaultStreamingDelay = config.getDuration("jobscheduler.webserver.event.streaming.delay").toFiniteDuration
 
   protected trait GenericEventRouteProvider
   {
@@ -119,7 +123,7 @@ trait GenericEventRoute extends RouteProvider
       }
 
     private def jsonSeqEvents(eventWatch: EventWatch[Event], streamingSupport: JsonEntityStreamingSupport): Route =
-      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout, defaultDelay = Duration.Zero) { request =>
+      eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
         implicit val x = streamingSupport
         implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
         val runningSince = now
@@ -158,7 +162,7 @@ trait GenericEventRoute extends RouteProvider
             `text/event-stream`,
             s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
-          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = DefaultJsonSeqChunkTimeout) { request =>
+          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout) { request =>
             optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader =>
               val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
@@ -194,7 +198,6 @@ trait GenericEventRoute extends RouteProvider
 object GenericEventRoute
 {
   private val logger = Logger(getClass)
-  private val DefaultJsonSeqChunkTimeout = 24.hours  // Renewed for each chunk
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =
     try java.lang.Long.parseLong(header.id)
