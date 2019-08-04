@@ -1,13 +1,15 @@
-package com.sos.jobscheduler.common.akkahttp
+package com.sos.jobscheduler.common.http
 
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
-import akka.http.scaladsl.model.{ContentType, HttpEntity, MediaType}
+import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.model.{ContentType, HttpEntity, MediaRange, MediaType}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import com.google.common.base.Ascii
 import com.sos.jobscheduler.base.circeutils.CirceUtils.implicits.CompactPrinter
+import com.sos.jobscheduler.base.utils.Ascii
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 
@@ -18,6 +20,13 @@ object JsonStreamingSupport
 {
   val `application/json-seq` = MediaType.customWithFixedCharset("application", "json-seq", `UTF-8`)  // https://tools.ietf.org/html/rfc7464
   val `application/x-ndjson` = MediaType.customWithFixedCharset("application", "x-ndjson", `UTF-8`)  // https://github.com/ndjson/ndjson-spec
+
+  /** Useable for HTTP request expecting a Checked[Observable] response. */
+  val StreamingJsonHeaders: List[Accept] =
+    Accept(
+      MediaRange.One(`application/x-ndjson`, 1.0f),   // For observed items
+      MediaRange.One(`application/json`, 0.9f)) ::    // For Problem response
+    Nil
 
   val JsonObjectMaxSize = 100*1000
   private val RS = ByteString(Ascii.RS)

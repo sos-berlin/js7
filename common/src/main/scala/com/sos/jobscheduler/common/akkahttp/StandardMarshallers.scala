@@ -11,8 +11,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport.AkkaObservable
 import com.sos.jobscheduler.common.http.CirceJsonSupport.jsonMarshaller
+import com.sos.jobscheduler.common.http.StreamingSupport.AkkaObservable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import monix.execution.Scheduler

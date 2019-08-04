@@ -10,7 +10,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
+import com.sos.jobscheduler.common.http.JsonStreamingSupport.{JsonSeqStreamingSupport, jsonSeqMarshaller}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import io.circe.Json

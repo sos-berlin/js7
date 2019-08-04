@@ -13,6 +13,8 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.SessionToken
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.Lazy
@@ -23,6 +25,8 @@ import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.{decodeResponse, encodeGzip}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.http.JsonStreamingSupport.StreamingJsonHeaders
+import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
@@ -50,6 +54,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
 
   def close() = for (o <- materializerLazy) o.shutdown()
+
+  def getLinesObservable[A: Decoder](uri: String) =
+    get_[HttpResponse](uri, StreamingJsonHeaders)
+      .map(_.entity.dataBytes
+        .toObservable
+        .flatMap(new ByteStringToLinesObservable)
+        .map(_.parseJsonCheckedAs[A].orThrow))
 
   def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)

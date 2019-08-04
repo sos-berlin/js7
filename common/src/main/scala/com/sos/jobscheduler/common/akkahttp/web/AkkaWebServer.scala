@@ -12,10 +12,10 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/json-seq`
 import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
+import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/json-seq`
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration

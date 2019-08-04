@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.akkahttp
+package com.sos.jobscheduler.common.http
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem

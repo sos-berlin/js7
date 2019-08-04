@@ -12,10 +12,10 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.core.message.ProblemCodeMessages
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}

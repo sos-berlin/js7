@@ -1,24 +1,16 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{HttpResponse, Uri}
-import com.sos.jobscheduler.agent.client.AgentClient._
+import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.data.{AgentApi, AgentTaskId}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.common.akkahttp.ByteStringToLinesObservable
-import com.sos.jobscheduler.common.akkahttp.JsonStreamingSupport.`application/x-ndjson`
-import com.sos.jobscheduler.common.akkahttp.StreamingSupport._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
@@ -78,12 +70,8 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
       get[Seq[Order[Order.State]]](agentUris.order.orders))
 
   final def mastersEventObservable[E <: Event](request: EventRequest[E]): Task[Checked[Observable[Stamped[KeyedEvent[E]]]]] =
-    liftProblem(get_[HttpResponse](agentUris.mastersEvents(request), StreamingJsonHeaders))
-      .map(
-        _.map(_.entity.dataBytes
-          .toObservable
-          .flatMap(new ByteStringToLinesObservable)
-          .map(_.parseJsonCheckedAs[Stamped[KeyedEvent[E]]].orThrow)))
+    liftProblem(
+      getLinesObservable[Stamped[KeyedEvent[E]]](agentUris.mastersEvents(request).toString))
 
   final def mastersEvents[E <: Event](request: EventRequest[E]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[E]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
@@ -101,11 +89,6 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
 
 object AgentClient
 {
-  private val StreamingJsonHeaders =
-    Accept(`application/x-ndjson`) ::
-    Accept(`application/json`) ::  // For Problem response
-    Nil
-
   def apply(agentUri: Uri, keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRef: => Option[TrustStoreRef] = None)(implicit actorSystem: ActorSystem): AgentClient = {
     val a = actorSystem
     def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)

@@ -3,6 +3,7 @@ package com.sos.jobscheduler.common.akkahttp
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
+import com.sos.jobscheduler.common.http.JsonStreamingSupport
 
 /**
   * @author Joacim Zschimmer

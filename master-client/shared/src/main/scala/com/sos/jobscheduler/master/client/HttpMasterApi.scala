@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.agent.AgentRef
-import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -12,6 +12,7 @@ import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
 import io.circe.{Decoder, ObjectEncoder}
 import monix.eval.Task
+import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -54,6 +55,13 @@ trait HttpMasterApi extends MasterApi with SessionApi
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.events[E](request),
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
+
+  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+    : Task[Observable[Stamped[KeyedEvent[E]]]] =
+    httpClient.getLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
+
+  final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E]): Task[Observable[EventId]] =
+    httpClient.getLinesObservable[EventId](uris.events(request, eventIdOnly = true))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =

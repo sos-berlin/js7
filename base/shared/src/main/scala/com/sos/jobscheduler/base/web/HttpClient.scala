@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.web
 
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
+import monix.reactive.Observable
 import scala.concurrent.duration.Duration
 
 /**
@@ -9,6 +10,8 @@ import scala.concurrent.duration.Duration
   */
 trait HttpClient
 {
+  def getLinesObservable[A: Decoder](uri: String): Task[Observable[A]]
+
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A]
 
   def post[A: Encoder, B: Decoder](uri: String, data: A, suppressSessionToken: Boolean = false): Task[B]

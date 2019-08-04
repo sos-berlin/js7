@@ -12,7 +12,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 /**
   * @author Joacim Zschimmer
   */
-class AkkaHttpMasterApi(
+final class AkkaHttpMasterApi(
   protected val baseUri: Uri,
   /** To provide a client certificate to server. */
   override protected val keyStoreRef: Option[KeyStoreRef] = None,
