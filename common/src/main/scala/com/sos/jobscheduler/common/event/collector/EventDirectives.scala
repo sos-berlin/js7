@@ -22,7 +22,7 @@ object EventDirectives {
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
   val MinimumDelay = 100.milliseconds
-  private val AkkaTimeoutTolerance = 5.seconds  // To let event reader timeout before Akka
+  private val AkkaTimeoutTolerance = 1.seconds  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =
@@ -116,10 +116,15 @@ object EventDirectives {
                       val eventRequest = EventRequest[E](eventClasses,
                         after = after,
                         timeout = timeoutAccess.map(_.timeoutAccess.timeout) match {
-                          case Some(o: FiniteDuration) => maybeTimeout.map(timeout => if (o > AkkaTimeoutTolerance) timeout - AkkaTimeoutTolerance else timeout)
+                          case Some(akkaTimeout: FiniteDuration) =>
+                            maybeTimeout.map(t =>
+                              if (akkaTimeout > AkkaTimeoutTolerance && t > akkaTimeout - AkkaTimeoutTolerance)
+                                t - AkkaTimeoutTolerance  // Requester's timeout before Akkas akka.http.server.request-timeout
+                              else t)
                           case _ => maybeTimeout
                         },
-                        delay = delay max MinimumDelay, limit = limit, tornOlder = tornOlder)
+                        delay = delay max (defaultDelay min MinimumDelay),
+                        limit = limit, tornOlder = tornOlder)
                       inner(Tuple1(eventRequest))
                     }
                   }

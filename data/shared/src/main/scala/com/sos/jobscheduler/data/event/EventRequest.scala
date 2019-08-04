@@ -26,11 +26,7 @@ extends SomeEventRequest[E]
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     builder += returnQueryParameter
-    timeout match {
-      case None => builder += "timeout" -> "infinite"
-      case Some(Duration.Zero) =>
-      case Some(o) => builder += "timeout" -> durationToString(o)
-    }
+    for (o <- timeout) builder += "timeout" -> durationToString(o)
     if (delay != DefaultDelay) builder += "delay" -> durationToString(delay)
     if (limit != DefaultLimit) builder += "limit" -> limit.toString
     for (o <- tornOlder) builder += "tornOlder" -> durationToString(o)
@@ -83,7 +79,7 @@ object EventRequest {
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
 
   private def durationToString(duration: FiniteDuration): String =
-    BigDecimal(duration.toNanos, scale = 9).toString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
+    BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
 }
 
 final case class ReverseEventRequest[E <: Event](
