@@ -5,8 +5,8 @@
       <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="${env:SCHEDULER_LOGS}/master.log"
-                             filePattern="${env:SCHEDULER_LOGS}/master-%d{yyyy-MM-dd}-%i.log.gz"
+                             fileName="${sys:jobscheduler.log4j.directory:-logs}/master.log"
+                             filePattern="${sys:jobscheduler.log4j.directory:-logs}/master-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
       <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
@@ -15,12 +15,14 @@
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
+      <defaultRolloverStrategy fileIndex="nomax"/>
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="INFO">
-      <appenderRef ref="stderr" level="INFO"/>
-      <appenderRef ref="file" level="INFO"/>
+    <root level="info">
+      <appenderRef level="info"  ref="stderr"/>
+      <appenderRef level="trace" ref="file"/>
     </root>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
   </loggers>
 </configuration>

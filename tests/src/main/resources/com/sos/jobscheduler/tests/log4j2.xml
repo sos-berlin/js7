@@ -5,8 +5,8 @@
       <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
-                             fileName="${env:SCHEDULER_LOGS}/test.log"
-                             filePattern="${env:SCHEDULER_LOGS}/test-%d{yyyy-MM-dd}-%i.log.gz">
+                             fileName="${sys:jobscheduler.log4j.directory:-logs}/test.log"
+                             filePattern="${sys:jobscheduler.log4j.directory:-logs}/test-%d{yyyy-MM-dd}-%i.log.gz">
     <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                    charset="UTF-8"/>
       <policies>

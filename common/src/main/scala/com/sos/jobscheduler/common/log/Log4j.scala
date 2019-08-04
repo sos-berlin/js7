@@ -9,8 +9,16 @@ import scala.util.Try
   */
 object Log4j {
 
-  private val logger = Logger(getClass)
+  private lazy val logger = Logger(getClass)
   private val isShutdown = AtomicBoolean(false)
+
+  def setDefaultConfiguration(resource: String): Unit = {
+    if (!sys.props.contains("log4j.configurationFile")) {
+      val uri = s"classpath:$resource"
+      System.setProperty("log4j.configurationFile", uri)
+      logger.debug(s"Default log4j.configurationFile=$uri")
+    }
+  }
 
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
