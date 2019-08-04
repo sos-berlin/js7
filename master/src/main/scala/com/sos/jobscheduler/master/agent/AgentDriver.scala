@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.agent
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import akka.http.scaladsl.model.Uri
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.flatMap._
+import cats.syntax.all._
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
@@ -324,10 +324,10 @@ with ReceiveLoggingActor.WithStash
       lastFetchAt = now
     } >>
       client.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.eventFetchTimeout)))
-        .materialize.map(o => Checked.fromTry(o).flatten)
-        .flatMap(checked =>
-          checked.traverse(eventObservable => consumeEvents(eventObservable)))
-        .map(_.flatten)
+        .materialize.flatMap(o =>
+        Checked.flattenTryChecked(o)
+          .traverse(consumeEvents)
+          .map(_.flatten))
         .executeWithOptions(_.enableAutoCancelableRunLoops)
 
   private def consumeEvents(eventObservable: Observable[Stamped[AnyKeyedEvent]]): Task[Checked[Completed]] =
