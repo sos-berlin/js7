@@ -134,4 +134,10 @@ object AkkaWebServer {
     /** Suffix for the bound log message, for example a security hint. */
     def boundMessageSuffix = ""
   }
+  object BoundRoute {
+    def apply(route: Route): BoundRoute =
+      new BoundRoute {
+        def webServerRoute = route
+      }
+  }
 }

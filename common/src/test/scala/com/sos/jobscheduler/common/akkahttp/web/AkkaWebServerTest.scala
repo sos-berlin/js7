@@ -61,12 +61,10 @@ final class AkkaWebServerTest extends FreeSpec with BeforeAndAfterAll
       WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
       WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef, mutual = false) :: Nil
 
-    def newRoute(binding: WebServerBinding) = new AkkaWebServer.BoundRoute {
-      def webServerRoute =
-        path("TEST") {
-          complete("OKAY")
-        }
-      }
+    def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(
+      path("TEST") {
+        complete("OKAY")
+      })
   }
 
   override def beforeAll(): Unit = {
