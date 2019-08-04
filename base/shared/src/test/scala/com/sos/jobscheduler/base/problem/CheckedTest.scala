@@ -48,6 +48,13 @@ final class CheckedTest extends FreeSpec
     assert(Checked.fromOption(none, Problem("PROBLEM")) == Invalid(Problem("PROBLEM")))
   }
 
+  "flattenTryChecked" in {
+    assert(Checked.flattenTryChecked(Success(Valid(1))) == Valid(1))
+    assert(Checked.flattenTryChecked(Success(Invalid(Problem("PROBLEM")))) == Invalid(Problem("PROBLEM")))
+    val throwable = new RuntimeException("EXCEPTION")
+    assert(Checked.flattenTryChecked(Failure(throwable)) == Invalid(Problem("EXCEPTION")))
+  }
+
   "fromTry" in {
     assert(Checked.fromTry(Success(1)) == Valid(1))
     val throwable = new RuntimeException("EXCEPTION")

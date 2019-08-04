@@ -29,6 +29,9 @@ object Checked
       case None => Invalid(problem)
     }
 
+  def flattenTryChecked[A](tryChecked: Try[Checked[A]]): Checked[A] =
+    fromTry(tryChecked).flatten
+
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match {
       case Success(o) => Valid(o)
