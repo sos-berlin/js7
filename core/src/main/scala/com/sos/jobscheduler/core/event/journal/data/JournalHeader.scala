@@ -2,14 +2,13 @@ package com.sos.jobscheduler.core.event.journal.data
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichJson, deriveCodec}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader._
@@ -82,7 +81,7 @@ object JournalHeader
   def checkedHeader(json: Json, journalFile: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
     for {
       header <-
-        json.as[JournalHeader].toSimpleChecked.mapProblem(problem =>
+        json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
             s"Not a valid JobScheduler journal file: $journalFile. Expected a JournalHeader instead of ${json.compactPrint}"
           ) |+| problem)
@@ -97,7 +96,7 @@ object JournalHeader
           s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFile"))
         else {
           for (o <- expectedJournalId) logger.debug(s"JournalHeader of file '${journalFile.getFileName}' is as expected, journalId=$o")
-          json.as[JournalHeader].toSimpleChecked
+          json.as[JournalHeader].toChecked
         }
     } yield header
 

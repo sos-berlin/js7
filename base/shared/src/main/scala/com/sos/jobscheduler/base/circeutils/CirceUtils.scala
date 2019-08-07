@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.base.circeutils
 
 import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
-import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
 import io.circe.syntax.EncoderOps
@@ -15,8 +16,8 @@ import shapeless.Lazy
 /**
   * @author Joacim Zschimmer
   */
-object CirceUtils {
-
+object CirceUtils
+{
   def toStringJsonCodec[A](from: String => A): CirceCodec[A] =
     stringJsonCodec(_.toString, from)
 
@@ -48,6 +49,16 @@ object CirceUtils {
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
+  implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal
+  {
+    /** Converts to Checked with rendered error message. */
+    def toChecked: Checked[R] =
+      underlying match {
+        case Left(t) => Invalid(Problem.pure("JSON " + t.show))
+        case Right(o) => Valid(o)
+      }
+  }
+
   implicit final class RichJsonObject(private val underlying: JsonObject) extends AnyVal
   {
     def ++(o: JsonObject): JsonObject =
@@ -68,7 +79,7 @@ object CirceUtils {
     def compactPrint: String =
       CompactPrinter.pretty(underlying)
 
-    def checkedAs[A: Decoder] = underlying.as[A].toSimpleChecked
+    def checkedAs[A: Decoder] = underlying.as[A].toChecked
 
     def intOrThrow: Int = {
       val number = numberOrThrow
@@ -124,10 +135,10 @@ object CirceUtils {
       parseJsonChecked flatMap (_.checkedAs[A])
 
     def parseJsonChecked: Checked[Json] =
-      io.circe.parser.parse(underlying).toSimpleChecked
+      io.circe.parser.parse(underlying).toChecked
 
     def parseJsonOrThrow: Json =
-      io.circe.parser.parse(underlying).orThrow
+      io.circe.parser.parse(underlying).toChecked.orThrow
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {

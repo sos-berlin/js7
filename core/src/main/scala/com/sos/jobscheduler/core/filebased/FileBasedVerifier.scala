@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.core.filebased
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, _}
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier._
 import com.sos.jobscheduler.data.crypt.{Signed, SignedString, SignerId}
@@ -20,7 +19,7 @@ final class FileBasedVerifier[A <: FileBased](signatureVerifier: SignatureVerifi
     for {
       signers <- signatureVerifier.verify(signedString)
       json <- signedString.string.parseJsonChecked
-      fileBased <- jsonDecoder.decodeJson(json).toSimpleChecked
+      fileBased <- jsonDecoder.decodeJson(json).toChecked
     } yield Verified(Signed(fileBased, signedString), signers)
 }
 

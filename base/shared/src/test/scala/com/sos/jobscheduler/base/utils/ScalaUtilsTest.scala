@@ -155,7 +155,7 @@ final class ScalaUtilsTest extends FreeSpec
     assert(pf.checked(2) == Invalid(Problem("No such key '2'")))
   }
 
-  "PartialFunction.toChecked" in {
+  "PartialFunction.toThrowableChecked" in {
     val pf: PartialFunction[Int, String] = {
       case 1 => "1"
     }
@@ -208,17 +208,17 @@ final class ScalaUtilsTest extends FreeSpec
     assert(Left[Throwable, Int](t).toImmediateFuture.failed.value.get.get eq t)
   }
 
-  "Either.toChecked" in {
-    assert(Right[Throwable, Int](7).toChecked == Valid(7))
+  "Either.toThrowableChecked" in {
+    assert(Right[Throwable, Int](7).toThrowableChecked == Valid(7))
     val t = new IllegalArgumentException
-    assert(Left[Throwable, Int](t).toChecked.swap.getOrElse(null).throwable eq t)
+    assert(Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null).throwable eq t)
   }
 
-  "Either.toSimpleChecked" in {
-    assert(Right[Throwable, Int](7).toSimpleChecked == Valid(7))
+  "Either.toMessageOnlyChecked" in {
+    assert(Right[Throwable, Int](7).toMessageOnlyChecked == Valid(7))
     val t = new IllegalArgumentException("EXCEPTION")
-    assert(Left[Throwable, Int](t).toSimpleChecked.swap.getOrElse(null).throwable ne t)
-    assert(Left[Throwable, Int](t).toSimpleChecked.swap.getOrElse(null).toString == "EXCEPTION")
+    assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).throwable ne t)
+    assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
   }
 
   "Either.orThrow" in {

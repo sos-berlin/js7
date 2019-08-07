@@ -2,18 +2,18 @@ package com.sos.jobscheduler.base.circeutils
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
-import io.circe.{Json, JsonObject}
+import io.circe.{Decoder, Json, JsonObject}
 import org.scalatest.FreeSpec
 import scala.collection.immutable._
 
 /**
   * @author Joacim Zschimmer
   */
-final class CirceUtilsTest extends FreeSpec {
-
+final class CirceUtilsTest extends FreeSpec
+{
   private case class A(a: Int, b: B)
   private case class B(string: String, array: Seq[Int], empty: Seq[Int])
 
@@ -79,17 +79,25 @@ final class CirceUtilsTest extends FreeSpec {
 
   "parseJsonChecked" in {
     assert("7".parseJsonChecked == Valid(Json.fromInt(7)))
-    assert("x".parseJsonChecked == Invalid(Problem("expected json value got 'x' (line 1, column 1)")))
+    assert("x".parseJsonChecked == Invalid(Problem("JSON ParsingFailure: expected json value got 'x' (line 1, column 1)")))
   }
 
   "parseJsonOrThrow" in {
     assert("7".parseJsonOrThrow == Json.fromInt(7))
-    intercept[io.circe.ParsingFailure] {
+    intercept[ProblemException] {
       "x".parseJsonOrThrow
     }
   }
 
   "JsonObject ++ JsonObject" in {
     assert(JsonObject("a" -> 1.asJson) ++ JsonObject("b" -> 2.asJson) == JsonObject("a" -> 1.asJson, "b" -> 2.asJson))
+  }
+
+  "toChecked decoding error" in {
+    case class A(number: Int)
+    val decoder: Decoder[A] = _.get[Int]("number") map A.apply
+    assert(decoder.decodeJson(json"""{ "number": 7 }""").toChecked == Valid(A(7)))
+    assert(decoder.decodeJson(json"""{ "number": true }""").toChecked == Invalid(Problem("JSON DecodingFailure at .number: Int")))
+    assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Invalid(Problem("JSON DecodingFailure at .number: Attempt to decode value on failed cursor")))
   }
 }

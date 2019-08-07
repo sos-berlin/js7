@@ -40,32 +40,34 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
   protected implicit def scheduler = Scheduler.global
   protected val config = ConfigFactory.parseString(
-    """jobscheduler.auth.users {}
-      |jobscheduler.auth.session {
-      |  timeout = 1 minute
-      |}
-      |
-      |jobscheduler.webserver {
-      |  verbose-error-messages = on
-      |  shutdown-timeout = 10s
-      |  auth {
-      |    realm = "TEST Server"
-      |    invalid-authentication-delay = 1s
-      |    loopback-is-public = off
-      |    get-is-public = on
-      |    public = off
-      |  }
-      |  log {
-      |    level = Debug
-      |    response = on
-      |  }
-      |  event {
-      |    streaming {
-      |      chunk-timeout = 24h
-      |      delay = 20ms
-      |    }
-      |  }
-      |}""".stripMargin)
+     """jobscheduler {
+       |  auth.users {}
+       |  auth.session {
+       |    timeout = 1 minute
+       |  }
+       |  akka.shutdown-timeout = 10s
+       |  webserver {
+       |    verbose-error-messages = on
+       |    shutdown-timeout = 10s
+       |    auth {
+       |      realm = "TEST Server"
+       |      invalid-authentication-delay = 1s
+       |      loopback-is-public = off
+       |      get-is-public = on
+       |      public = off
+       |    }
+       |    log {
+       |      level = Debug
+       |      response = on
+       |    }
+       |    event {
+       |      streaming {
+       |        chunk-timeout = 24h
+       |        delay = 20ms
+       |      }
+       |    }
+       |  }
+       |}""".stripMargin)
 
   protected val gateKeeper = new GateKeeper(GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
@@ -84,7 +86,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     protected implicit def actorSystem = GenericEventRouteTest.this.actorSystem
-    protected val config = ConfigFactory.empty
+    protected val config = GenericEventRouteTest.this.config
     protected val scheduler = GenericEventRouteTest.this.scheduler
     protected val bindings = WebServerBinding.Http(new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
     protected def newRoute(binding: WebServerBinding) = AkkaWebServer.BoundRoute(route)

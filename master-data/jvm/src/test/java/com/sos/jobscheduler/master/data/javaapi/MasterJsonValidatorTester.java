@@ -36,12 +36,12 @@ final class MasterJsonValidatorTester {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson("{" +
             "\"instructions\": 999" +
           "}");
-        assertEqual(maybeProblem.get().toString(), "C[A]: DownField(instructions)");
+        assertEqual(maybeProblem.get().toString(), "JSON DecodingFailure at .instructions: C[A]");
     }
 
     static void testInvalidJson() {
         Optional<Problem> maybeProblem = MasterJsonValidator.checkWorkflowJson("NO-JSON");
-        assertEqual(maybeProblem.get().toString(), "expected json value got 'NO-JSO...' (line 1, column 1)");
+        assertEqual(maybeProblem.get().toString(), "JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)");
     }
 
     static void testValidInstruction() {

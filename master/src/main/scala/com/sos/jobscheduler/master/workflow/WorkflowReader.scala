@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.master.workflow
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -25,5 +25,5 @@ object WorkflowReader extends FileBasedReader
   }
 
   override def convertFromJson(json: Json): Checked[Workflow] =
-    Workflow.topJsonDecoder.decodeJson(json).toSimpleChecked
+    Workflow.topJsonDecoder.decodeJson(json).toChecked
 }
