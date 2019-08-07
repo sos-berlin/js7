@@ -15,7 +15,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.Https.loadSSLContext
 import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerBinding
-import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/json-seq`
+import com.sos.jobscheduler.common.http.JsonStreamingSupport
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
@@ -80,7 +80,7 @@ trait AkkaWebServer extends AutoCloseable
     akkaHttp.bindAndHandle(boundRoute.webServerRoute, interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
       connectionContext,
       settings = ServerSettings(actorSystem)
-        .withParserSettings(ParserSettings(actorSystem) withCustomMediaTypes `application/json-seq`))
+        .withParserSettings(ParserSettings(actorSystem).withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)))
     .map { serverBinding =>
       logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
         (if (binding.mutual) ", client certificate is required" else "") +
