@@ -40,7 +40,7 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   private implicit val timeout = 99.seconds
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
-  protected val closedObservable = Observable.never
+  protected val shutdownObservable = Observable.never
   protected val eventWatch = new EventCollector.ForTest()(Scheduler.global)
   protected implicit def scheduler: Scheduler = Scheduler.global
 
@@ -103,41 +103,41 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
 
   "Fetch events with repeated GET requests" - {  // Similar to FatEventRouteTest
     "/event?limit=3&after=30 continue" in {
-      val stampeds = getEvents("/event?limit=3&after=30")
-      assert(stampeds.head.eventId == 40)
-      assert(stampeds.last.eventId == 60)
+      val stampedSeq = getEvents("/event?limit=3&after=30")
+      assert(stampedSeq.head.eventId == 40)
+      assert(stampedSeq.last.eventId == 60)
     }
 
     "/event?limit=3&after=60 continue" in {
-      val stampeds = getEvents("/event?limit=3&after=60")
-      assert(stampeds.head.eventId == 70)
-      assert(stampeds.last.eventId == 90)
+      val stampedSeq = getEvents("/event?limit=3&after=60")
+      assert(stampedSeq.head.eventId == 70)
+      assert(stampedSeq.last.eventId == 90)
     }
 
     "/event?limit=1&after=70 rewind in last chunk" in {
-      val stampeds = getEvents("/event?limit=3&after=70")
-      assert(stampeds.head.eventId ==  80)
-      assert(stampeds.last.eventId == 100)
+      val stampedSeq = getEvents("/event?limit=3&after=70")
+      assert(stampedSeq.head.eventId ==  80)
+      assert(stampedSeq.last.eventId == 100)
     }
 
     "/event?limit=3&after=80 continue" in {
-      val stampeds = getEvents("/event?limit=3&after=80")
-      assert(stampeds.head.eventId ==  90)
-      assert(stampeds.last.eventId == 110)
+      val stampedSeq = getEvents("/event?limit=3&after=80")
+      assert(stampedSeq.head.eventId ==  90)
+      assert(stampedSeq.last.eventId == 110)
     }
 
     "/event?limit=3&after=60 rewind to oldest" in {
-      val stampeds = getEvents("/event?limit=3&after=60")
-      assert(stampeds.head.eventId == 70)
-      assert(stampeds.last.eventId == 90)
+      val stampedSeq = getEvents("/event?limit=3&after=60")
+      assert(stampedSeq.head.eventId == 70)
+      assert(stampedSeq.last.eventId == 90)
     }
 
     "/event?limit=3&after=150 skip some events" in {
       val runningSince = now
-      val stampeds = getEvents("/event?delay=99&limit=3&after=150")
+      val stampedSeq = getEvents("/event?delay=99&limit=3&after=150")
       assert(runningSince.elapsed < 1.second)  // Events must have been returned immediately
-      assert(stampeds.head.eventId == 160)
-      assert(stampeds.last.eventId == 180)
+      assert(stampedSeq.head.eventId == 160)
+      assert(stampedSeq.last.eventId == 180)
     }
 
     "/event?after=180 no more events" in {
@@ -156,8 +156,8 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
-      val stampeds = getEvents("/event?timeout=30&after=180")
-      assert(stampeds == stamped :: Nil)
+      val stampedSeq = getEvents("/event?timeout=30&after=180")
+      assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay)
     }
 
@@ -167,8 +167,8 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
-      val stampeds = getEvents("/event?delay=0&timeout=30&after=190")
-      assert(stampeds == stamped :: Nil)
+      val stampedSeq = getEvents("/event?delay=0&timeout=30&after=190")
+      assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.MinimumDelay)
     }
 
@@ -178,19 +178,43 @@ final class EventRouteTest extends FreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventWatch.addStamped(stamped)
       }
-      val stampeds = getEvents("/event?delay=0.2&timeout=30&after=200")
-      assert(stampeds == stamped :: Nil)
+      val stampedSeq = getEvents("/event?delay=0.2&timeout=30&after=200")
+      assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + 200.millis)
     }
 
     "After truncated journal snapshot" in pending  // TODO Test torn event stream
   }
 
+  //"Fetch EventIds only" - {
+  //  "/event?return=EventId&limit=3&after=30" in {
+  //    val stampedSeq = getEvents("/event?limit=3&after=30")
+  //    assert(stampedSeq.head.eventId == 40)
+  //    assert(stampedSeq.last.eventId == 60)
+  //  }
+  //
+  //  "/event?return=EventId:OrderAdded&limit=3&after=60" in {
+  //    val stampedSeq = getEvents("/event?limit=3&after=60")
+  //    assert(stampedSeq.head.eventId == 70)
+  //    assert(stampedSeq.last.eventId == 90)
+  //  }
+  //
+  //  "/event?return=EventId:OrderFinished&limit=3&after=60" in {
+  //    assert(getEvents("/event?limit=3&after=60").isEmpty)
+  //  }
+  //
+  //  def getEventIds(uri: String): Seq[EventId] =
+  //    Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+  //      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
+  //      responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
+  //    }
+  //}
+
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getEventSeq(uri) match {
-      case EventSeq.NonEmpty(stampeds) =>
-        assert(stampeds.nonEmpty)
-        stampeds
+      case EventSeq.NonEmpty(stampedSeq) =>
+        assert(stampedSeq.nonEmpty)
+        stampedSeq
 
       case x => fail(s"Unexpected response: $x")
     }

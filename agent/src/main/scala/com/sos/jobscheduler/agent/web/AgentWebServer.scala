@@ -42,7 +42,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
     new AkkaWebServer.BoundRoute with CompleteRoute {
       private lazy val anonymousApi = api(CommandMeta.Anonymous)
 
-      protected val closedObservable = AgentWebServer.this.closedObservable
+      protected val shutdownObservable = AgentWebServer.this.closedObservable
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
 
       protected val gateKeeper = new GateKeeper(gateKeeperConfiguration,

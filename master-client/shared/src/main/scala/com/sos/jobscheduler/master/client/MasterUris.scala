@@ -23,14 +23,18 @@ final class MasterUris private(masterUri: String) {
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E]): String =
-    events_[E]("/event", request)
+  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false): String =
+    events_[E]("/event", request, eventIdOnly = eventIdOnly)
 
   def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
     events_[E]("/fatEvent", request)
 
-  def events_[E <: Event: ClassTag](path: String, request: EventRequest[E]): String =
-    api(path) + encodeQuery(request.toQueryParameters)
+  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E], eventIdOnly: Boolean = false): String =
+    api(path) + encodeQuery(
+      request.toQueryParameters.map {
+        case ("return", o) if eventIdOnly => "return" -> s"EventId:$o"
+        case o => o
+      })
 
   object order {
     def overview = api("/order")
