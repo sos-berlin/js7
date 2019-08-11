@@ -7,7 +7,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowableEither}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing

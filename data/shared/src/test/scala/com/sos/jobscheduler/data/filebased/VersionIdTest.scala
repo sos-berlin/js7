@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.ProblemException
@@ -21,8 +20,8 @@ final class VersionIdTest extends FreeSpec
   }
 
   "checked" in {
-    assert(VersionId.checked("1") == Valid(VersionId("1")))
-    assert(VersionId.checked("") == Invalid(EmptyStringProblem("VersionId")))
+    assert(VersionId.checked("1") == Right(VersionId("1")))
+    assert(VersionId.checked("") == Left(EmptyStringProblem("VersionId")))
     intercept[ProblemException] {
       VersionId("")
     }

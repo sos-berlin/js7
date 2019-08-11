@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
@@ -107,7 +106,7 @@ private[parser] object BasicParsers
       }))
 
   def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
-    keyValueConvert(name, parser)(Valid.apply[A])
+    keyValueConvert(name, parser)(Checked.apply[A])
 
   def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]): P[(String, B)] = {
     w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o)).map(name.->))
@@ -204,13 +203,13 @@ private[parser] object BasicParsers
       }
   }
 
-  def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Valid(a))
+  def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Right(a))
 
   def invalid[_: P](message: String): P[Nothing] = checkedToP(Problem.pure(message))
 
   def checkedToP[A](checked: Checked[A])(implicit ctx: P[_]): P[A] =
     checked match {
-      case Valid(a) => Pass(a)
-      case Invalid(problem) => Fail.opaque(problem.toString)
+      case Right(a) => Pass(a)
+      case Left(problem) => Fail.opaque(problem.toString)
     }
 }

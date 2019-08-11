@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.core.workflow
 
-import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.workflow.OrderEventHandler._
@@ -40,40 +38,40 @@ final class OrderEventHandler(
         for {
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.checkedExecute(previousOrder.position) flatMap {
-            case _: Execute.Anonymous => Valid(workflow.anonymousJobKey(previousOrder.workflowPosition))
+            case _: Execute.Anonymous => Right(workflow.anonymousJobKey(previousOrder.workflowPosition))
             case o: Execute.Named     => workflow.jobKey(previousOrder.position.branchPath, o.name)
           }
         } yield
           FollowUp.Processed(jobKey) :: Nil
 
       case event: OrderForked =>
-        Valid(previousOrder.newForkedOrders(event) map FollowUp.AddChild.apply)
+        Right(previousOrder.newForkedOrders(event) map FollowUp.AddChild.apply)
 
       case joined: OrderJoined =>
         previousOrder.state match {
           case o: Order.Forked =>
-            Valid(o.childOrderIds map FollowUp.Remove.apply)
+            Right(o.childOrderIds map FollowUp.Remove.apply)
 
           case Order.Awaiting(_) =>
             _offeredToAwaitingOrder -= previousOrder.castState[Order.Awaiting].state.offeredOrderId
-            Valid(Nil)  // Offering order is being kept
+            Right(Nil)  // Offering order is being kept
 
           case state =>
-            Invalid(Problem(s"Event $joined, but Order is in state $state"))
+            Left(Problem(s"Event $joined, but Order is in state $state"))
         }
 
       case event: OrderOffered =>
-        Valid(FollowUp.AddOffered(previousOrder.newPublishedOrder(event)) :: Nil)
+        Right(FollowUp.AddOffered(previousOrder.newPublishedOrder(event)) :: Nil)
 
       case OrderAwaiting(offeredOrderId) =>
         _offeredToAwaitingOrder(offeredOrderId) = _offeredToAwaitingOrder.getOrElse(offeredOrderId, Set.empty) + orderId
-        Valid(Nil)
+        Right(Nil)
 
       case _: OrderTerminated =>
-        Valid(FollowUp.Remove(orderId) :: Nil)
+        Right(FollowUp.Remove(orderId) :: Nil)
 
       case _ =>
-        Valid(Nil)
+        Right(Nil)
     }
 }
 

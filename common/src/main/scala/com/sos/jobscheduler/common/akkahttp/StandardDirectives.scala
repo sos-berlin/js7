@@ -7,7 +7,6 @@ import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.BuildInfo
@@ -29,7 +28,7 @@ object StandardDirectives
     new PathMatcher1[P] {
       def apply(path: Path) =
         uriPathToTypedPath[P](path) match {
-          case Valid(typedPath) => Matched(Path.Empty, Tuple1(typedPath))
+          case Right(typedPath) => Matched(Path.Empty, Tuple1(typedPath))
           case _ => Unmatched
         }
     }

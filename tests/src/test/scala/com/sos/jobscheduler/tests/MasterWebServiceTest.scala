@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader}
-import cats.data.Validated.Valid
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.data.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
@@ -13,7 +12,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
@@ -405,7 +404,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         val response = httpClient.post_[Json](s"$uri/master/api/order", order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Valid(Problem("OrderId must not contain reserved characters /")))
+          == Right(Problem("OrderId must not contain reserved characters /")))
         assert(response.header[Location].isEmpty)
       }
 
@@ -440,7 +439,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
         assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
-          == Valid(Problem("OrderId must not contain reserved characters /")))
+          == Right(Problem("OrderId must not contain reserved characters /")))
       }
     }
 

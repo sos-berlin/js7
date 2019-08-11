@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import java.nio.ByteBuffer
 import java.util.{Base64, UUID}
@@ -30,10 +28,10 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
       bytes <- Checked.catchNonFatal { Base64.getUrlDecoder.decode(base64String) }
       uuid <-
         if (bytes.size != 16)
-          Invalid(Problem(s"Not a Base64-encoded UUID: $base64String"))
+          Left(Problem(s"Not a Base64-encoded UUID: $base64String"))
         else {
           val buffer = ByteBuffer.wrap(bytes)
-          Valid(new UUID(buffer.getLong(0), buffer.getLong(8)))
+          Right(new UUID(buffer.getLong(0), buffer.getLong(8)))
         }
     } yield uuid
 }

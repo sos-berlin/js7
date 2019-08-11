@@ -7,7 +7,6 @@ import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -75,9 +74,9 @@ object StandardMarshallers
   implicit def checkedToResponseMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
     Marshaller {
       implicit ec => {
-        case Valid(a) =>
+        case Right(a) =>
           implicitly[ToResponseMarshaller[A]].apply(a)
-        case Invalid(problem) =>
+        case Left(problem) =>
           problemToResponseMarshaller(problem)
       }
     }

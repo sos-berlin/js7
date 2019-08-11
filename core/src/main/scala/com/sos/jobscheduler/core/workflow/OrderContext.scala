@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
@@ -26,9 +25,9 @@ trait OrderContext
   def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition): Checked[Instruction] =
     instruction(workflowPosition) match {
       case o if implicitClass[A] isAssignableFrom o.getClass =>
-        Valid(o.asInstanceOf[A])
+        Right(o.asInstanceOf[A])
       case o =>
-        Invalid(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
+        Left(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
           s"is expected at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
     }
 
@@ -38,7 +37,7 @@ trait OrderContext
 
   final def makeScope(order: Order[Order.State]): Scope =
     new Scope {
-      private lazy val catchCount = Valid(NumericValue(order.workflowPosition.position.catchCount))
+      private lazy val catchCount = Right(NumericValue(order.workflowPosition.position.catchCount))
 
       val symbolToValue = {
         case "catchCount" => catchCount
@@ -46,13 +45,13 @@ trait OrderContext
 
       val findValue = {
         case ValueSearch(ValueSearch.Argument, ValueSearch.KeyValue(name)) =>
-          Valid(order.arguments.get(name) map StringValue.apply)
+          Right(order.arguments.get(name) map StringValue.apply)
 
         case ValueSearch(ValueSearch.Argument, ValueSearch.ReturnCode) =>
-          Valid(None)
+          Right(None)
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.KeyValue(name)) =>
-          Valid(
+          Right(
             order.historicOutcomes.reverseIterator
               .collectFirst {
                 case HistoricOutcome(_, outcome: Outcome.Undisrupted) if outcome.keyValues.contains(name) =>
@@ -61,7 +60,7 @@ trait OrderContext
               .orElse(order.arguments.get(name)) map StringValue.apply)
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.ReturnCode) =>
-          Valid(Some(NumericValue(outcomeToReturnCode(order.lastOutcome).number)))
+          Right(Some(NumericValue(outcomeToReturnCode(order.lastOutcome).number)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           for {

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.agent
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -37,7 +36,7 @@ final class AgentRefReaderTest extends FreeSpec {
       expected += xmlAgent
 
       val typedSourceReader = new TypedSourceReader(dir, AgentRefReader :: Nil)
-      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Valid(expected.toSet))
+      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Right(expected.toSet))
     }
   }
 }

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -34,7 +33,7 @@ final class WorkflowParserTest extends FreeSpec {
         }
       }"""
     assert(WorkflowParser.parse(source)
-      == Invalid(Problem("""Expected known job name ('A' is unknown):6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
+      == Left(Problem("""Expected known job name ('A' is unknown):6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
   }
 
   "Execute anonymous" in {
@@ -143,7 +142,7 @@ final class WorkflowParserTest extends FreeSpec {
           execute executable="/my/executable", agent="/AGENT"
         }
       }""")
-      == Invalid(Problem("""Expected unique job definitions (duplicates: DUPLICATE):10:8, found """"")))
+      == Left(Problem("""Expected unique job definitions (duplicates: DUPLICATE):10:8, found """"")))
   }
 
   "Single instruction with relative job path" in {
@@ -381,7 +380,7 @@ final class WorkflowParserTest extends FreeSpec {
           try (retryDelays=[1, 2, 3]) fail;
           catch {}
         }""") ==
-        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
+        Left(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
     }
 
     "try with maxRetries but retry is missing" in {
@@ -390,7 +389,7 @@ final class WorkflowParserTest extends FreeSpec {
           try (maxTries=3) fail;
           catch {}
         }""") ==
-        Invalid(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
+        Left(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
     }
   }
 
@@ -516,16 +515,16 @@ final class WorkflowParserTest extends FreeSpec {
 
   private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
     val parsedWorkflow = WorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
-    assert(parsedWorkflow == Valid(workflow.copy(source = Some(source))))
+    assert(parsedWorkflow == Right(workflow.copy(source = Some(source))))
     val generatedSource = workflow.show
     assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
-      == Valid(workflow.copy(source = Some(generatedSource)).withoutSourcePos),
+      == Right(workflow.copy(source = Some(generatedSource)).withoutSourcePos),
       s"(generated source: $generatedSource)")
   }
 
   private def parse(workflowString: String): Workflow =
     WorkflowParser.parse(workflowString) match {
-      case Valid(workflow) => workflow
-      case Invalid(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
+      case Right(workflow) => workflow
+      case Left(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
     }
 }

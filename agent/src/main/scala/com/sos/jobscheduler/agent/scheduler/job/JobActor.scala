@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -50,11 +49,11 @@ extends Actor with Stash {
       } else if (isUnix && !Try(getPosixFilePermissions(file).contains(OWNER_EXECUTE)).getOrElse(true)) {
         logger.warn(s"Executable '$file' is not user executable")
       }
-      Valid(Executable(file, path.string, false))
+      Right(Executable(file, path.string, false))
 
     case script: ExecutableScript =>
       if (!conf.scriptInjectionAllowed)
-        Invalid(Problem.pure("Agent does not allow signed script jobs"))
+        Left(Problem.pure("Agent does not allow signed script jobs"))
       else
         Checked.catchNonFatal {
           val ext = if (isWindows) ".cmd" else ""
@@ -65,8 +64,8 @@ extends Actor with Stash {
   }
 
   checkedExecutable match {
-    case Invalid(problem) => logger.error(problem.toString)
-    case Valid(executable) => logger.debug(s"Ready - executable=$executable")
+    case Left(problem) => logger.error(problem.toString)
+    case Right(executable) => logger.debug(s"Ready - executable=$executable")
   }
 
   override def postStop() = {
@@ -85,9 +84,9 @@ extends Actor with Stash {
         sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")))
       else
         checkedExecutable match {
-          case Invalid(problem) =>
+          case Left(problem) =>
             sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem))  // Exception.toString is published !!!
-          case Valid(executable) =>
+          case Right(executable) =>
             if (!exists(executable.file)) {
               val msg = s"Executable '${executable.file}' is not accessible"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")

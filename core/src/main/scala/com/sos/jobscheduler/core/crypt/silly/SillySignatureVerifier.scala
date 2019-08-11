@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.crypt.silly
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignerId}
@@ -25,9 +24,9 @@ extends SignatureVerifier
 
   def verify(message: String, signature: SillySignature) =
     if (signature != requiredSignature)
-      Invalid(TamperedWithSignedMessageProblem)
+      Left(TamperedWithSignedMessageProblem)
     else
-      Valid(SillySignerId :: Nil)
+      Right(SillySignerId :: Nil)
 
   override def toString = s"SillySignatureVerifer(origin=$keyOrigin)"
 }
@@ -43,7 +42,7 @@ object SillySignatureVerifier extends SignatureVerifier.Companion
   private val SillySignerId = SignerId("Silly")
 
   def checked(publicKey: Seq[Byte], keyOrigin: String = "Silly") =
-    Valid(
+    Right(
       new SillySignatureVerifier(
         SillySignature(new String(publicKey.toArray, UTF_8)),
         keyOrigin = keyOrigin))

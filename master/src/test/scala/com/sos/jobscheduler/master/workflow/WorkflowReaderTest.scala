@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.workflow
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.http.CirceToYaml.ToYamlString
@@ -42,7 +41,7 @@ final class WorkflowReaderTest extends FreeSpec {
       expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("/TXT"))
 
       val typedSourceReader = new TypedSourceReader(dir, WorkflowReader :: Nil)
-      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Valid(expected.toSet))
+      assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Right(expected.toSet))
     }
   }
 }

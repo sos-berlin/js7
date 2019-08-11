@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -81,7 +80,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
         assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file) == Vector(journalMeta.file(120)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120))
 
-        eventWatch.keepEvents(after = 0) shouldEqual Invalid(ReverseKeepEventsProblem(0, 220))
+        eventWatch.keepEvents(after = 0) shouldEqual Left(ReverseKeepEventsProblem(0, 220))
       }
     }
   }

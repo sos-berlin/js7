@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.files
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -36,7 +35,7 @@ object JournalFile
 
     def checkedEventId(file: Path): Checked[EventId] =
       file.getFileName match {
-        case null => Invalid(EmptyStringProblem("File"))
+        case null => Left(EmptyStringProblem("File"))
         case filename =>
           val matcher = pattern.matcher(filename.toString)
           (matcher.matches ? matcher.group(1).toLong)

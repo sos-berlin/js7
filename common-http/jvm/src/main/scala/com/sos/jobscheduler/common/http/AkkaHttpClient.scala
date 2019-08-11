@@ -11,7 +11,6 @@ import akka.http.scaladsl.model.{ContentTypes, HttpHeader, HttpMethod, HttpReque
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.SessionToken
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.problem.Checked._
@@ -157,8 +156,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri) match {
-      case Valid(uri) => body(request.copy(uri = uri))
-      case Invalid(problem) => Task.raiseError(problem.throwable)
+      case Right(uri) => body(request.copy(uri = uri))
+      case Left(problem) => Task.raiseError(problem.throwable)
     }
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
@@ -177,9 +176,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     if (uri.scheme == baseUri.scheme &&
       uri.authority == baseUri.authority &&
        uri.path.toString.startsWith(uriPrefixPath))
-      Valid(uri)
+      Right(uri)
     else
-      Invalid(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
+      Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
 
   override def toString = s"AkkaHttpClient($baseUri)"
 }
@@ -196,18 +195,18 @@ object AkkaHttpClient
       case _ => false
     }
 
-  /** Lifts a Failure(HttpException#problem) to Success(Invalid(problem)). */
+  /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
     task.materialize.map {
       case Failure(t: HttpException) =>
         t.problem match {
           case None => Failure(t)
-          case Some(problem) => Success(Invalid(problem))
+          case Some(problem) => Success(Left(problem))
         }
       case Failure(t) =>
         Failure(t)
       case Success(a) =>
-        Success(Valid(a))
+        Success(Right(a))
     }
     .dematerialize
 

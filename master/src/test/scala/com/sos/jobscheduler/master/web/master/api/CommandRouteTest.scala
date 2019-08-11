@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master.web.master.api
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.core.command.CommandMeta
@@ -28,7 +27,7 @@ final class CommandRouteTest extends FreeSpec with RouteTester with CommandRoute
     command match {
       case MasterCommand.Terminate =>
         commandReceived = true
-        Task.pure(Valid(MasterCommand.Response.Accepted))
+        Task.pure(Right(MasterCommand.Response.Accepted))
 
       case _ =>
         fail()

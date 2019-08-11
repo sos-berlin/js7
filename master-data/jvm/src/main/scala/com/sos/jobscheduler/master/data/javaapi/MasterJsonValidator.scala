@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.master.data.javaapi
 
-import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, _}
-import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
@@ -22,8 +20,10 @@ final class MasterJsonValidator
 
   private def checkJson[A: Decoder](jsonString: String): Optional[Problem] =
     // catchNonFatal, because TypedJsonCodec throws
-    jsonString.parseJsonChecked >>= (o => Checked.catchNonFatal(o.as[A])) >>= (_.toChecked) match {
-      case Valid(_) => Optional.empty()
-      case Invalid(problem) => Optional.of(problem)
-    }
+    jsonString.parseJsonChecked
+      .flatMap(o => Checked.catchNonFatal(o.as[A]))
+      .flatMap(_.toChecked) match {
+        case Right(_) => Optional.empty()
+        case Left(problem) => Optional.of(problem)
+      }
 }

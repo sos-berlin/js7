@@ -52,7 +52,7 @@ object FileBasedId
     //def checked(string: String)(implicit P: TypedPath.Companion[P]): Checked[FileBasedId[P]] =
     //  string indexOf VersionSeparator match {
     //    case -1 => Problem(s"FileBasedIdPath without version (denoted by '$VersionSeparator')?: $string")
-    //    case i => Valid(new FileBasedId(P(string take i), VersionId(string drop i + 1)))
+    //    case i => Right(new FileBasedId(P(string take i), VersionId(string drop i + 1)))
     //  }
   }
 }

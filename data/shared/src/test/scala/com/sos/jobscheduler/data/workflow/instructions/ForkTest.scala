@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -78,9 +77,9 @@ final class ForkTest extends FreeSpec {
   }
 
   "workflow" in {
-    assert(fork.workflow("fork+A") == Valid(fork.branches(0).workflow))
-    assert(fork.workflow("fork+B") == Valid(fork.branches(1).workflow))
-    assert(fork.workflow(1).isInvalid)
+    assert(fork.workflow("fork+A") == Right(fork.branches(0).workflow))
+    assert(fork.workflow("fork+B") == Right(fork.branches(1).workflow))
+    assert(fork.workflow(1).isLeft)
   }
 
   "flattenedWorkflows" in {

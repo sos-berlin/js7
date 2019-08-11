@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.common.akkahttp.web.data
 
 import akka.http.scaladsl.model.Uri
+import cats.syntax.either._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.CatsUtils._
 import com.sos.jobscheduler.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import java.net.{InetAddress, InetSocketAddress}
 import scala.collection.immutable.Seq
@@ -52,7 +54,7 @@ object WebServerBinding {
 
     final lazy val localHttpUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Http)
     final lazy val localHttpsUri: Checked[Uri] = locallyUsableUri(WebServerBinding.Https)
-    final lazy val localUri: Uri = (localHttpUri findValid localHttpsUri).orThrow
+    final lazy val localUri: Uri = (localHttpUri.toValidated findValid localHttpsUri.toValidated).orThrow
 
     final def locallyUsableUri(scheme: WebServerBinding.Scheme): Checked[Uri] =
       webServerPorts.collectFirst { case o if o.scheme == scheme => toLocallyUsableUri(scheme, o.address) }

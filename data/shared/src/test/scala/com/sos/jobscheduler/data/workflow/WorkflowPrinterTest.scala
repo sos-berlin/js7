@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow
 
-import cats.data.Validated.Valid
 import cats.syntax.show._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
@@ -235,7 +234,7 @@ final class WorkflowPrinterTest extends FreeSpec {
 
   private def check(workflow: Workflow, source: String): Unit = {
     assert(workflow.show == source)
-    assert(WorkflowParser.parse(source).map(_.withoutSourcePos) == Valid(workflow.copy(source = Some(source)).withoutSourcePos))
+    assert(WorkflowParser.parse(source).map(_.withoutSourcePos) == Right(workflow.copy(source = Some(source)).withoutSourcePos))
   }
 }
 

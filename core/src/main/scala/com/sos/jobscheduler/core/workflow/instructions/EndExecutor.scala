@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.instructionToExecutor
 import com.sos.jobscheduler.data.order.Order
@@ -15,7 +14,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
   type Instr = End
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: End) =
-    Valid(
+    Right(
       order.position.dropChild match {
         case None =>
           for (order <- order.ifState[Order.Ready]) yield
@@ -34,7 +33,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
     })
 
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: End) =
-    Valid(
+    Right(
       for {
         returnPosition <- order.position.dropChild
         next <- instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {

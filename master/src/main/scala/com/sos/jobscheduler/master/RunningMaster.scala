@@ -4,6 +4,8 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.instances.either._
+import cats.syntax.flatMap._
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
@@ -14,6 +16,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
@@ -260,6 +263,7 @@ object RunningMaster
 
     def stampedRepo: Task[Stamped[Repo]] = {
       import masterConfiguration.akkaAskTimeout  // TODO May timeout while Master recovers
+      intelliJuseImport(akkaAskTimeout)
       Task.deferFuture(
         (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]])
     }

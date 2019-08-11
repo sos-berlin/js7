@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.data.expression.Expression
 import com.sos.jobscheduler.data.expression.Expression._
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
@@ -101,8 +100,8 @@ object ExpressionParser
   }
 
   private def namedValueKeyValue[_: P] = P[(String, Any)](
-    keyValueConvert("label", identifier)(o => Valid(NamedValue.ByLabel(o))) |
-    keyValueConvert("job", identifier)(o => Valid(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
+    keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
+    keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
     keyValue("default", expression))
 
   private def factorOnly[_: P] = P(

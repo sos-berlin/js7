@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problems.UnknownKeyProblem
@@ -64,9 +63,9 @@ extends FileBased
         Problem.pure(s"Unknown label '${jump.to}'")
     }
     if (problems.nonEmpty)
-      Invalid(Problem.Multiple(problems))
+      Left(Problem.Multiple(problems))
     else
-      Valid(this)
+      Right(this)
   }
 
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
@@ -75,11 +74,11 @@ extends FileBased
       checkJobReferences ++
       checkRetry() ++
       checkLabels
-    val problems = chk collect { case Invalid(problem) => problem }
+    val problems = chk collect { case Left(problem) => problem }
     if (problems.nonEmpty)
-      Invalid(Problem.Multiple(problems))
+      Left(Problem.Multiple(problems))
     else
-      Valid(this)
+      Right(this)
   }
 
   private def checkJobReferences: Seq[Checked[Unit]] =
@@ -92,7 +91,7 @@ extends FileBased
   private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
     instructions flatMap {
       case _: Retry =>
-        !inCatch thenList Invalid(Problem("Statement 'retry' is only allowed in a catch block"))
+        !inCatch thenList Left(Problem("Statement 'retry' is only allowed in a catch block"))
       case instr: If =>
         instr.workflows flatMap (_.checkRetry(inCatch))
       case instr: TryInstruction =>
@@ -108,7 +107,7 @@ extends FileBased
       .filter(_._2.lengthCompare(1) > 0)
       .mapValues(_.map(_._2))
       .map { case (label, positions) =>
-        Invalid(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
+        Left(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
       }
 
   def positionMatchesSearch(position: Position, search: PositionSearch): Boolean =
@@ -117,11 +116,11 @@ extends FileBased
   private def positionMatchesSearchNormalized(position: Position, search: PositionSearch): Boolean =
     search match {
       case PositionSearch.ByPrefix(name) =>
-        labelToPosition(Label(name)) == Valid(position) ||
+        labelToPosition(Label(name)) == Right(position) ||
           positionExecutesJob(position, WorkflowJob.Name(name))
 
       case PositionSearch.ByLabel(label) =>
-        labelToPosition(label) == Valid(position)
+        labelToPosition(label) == Right(position)
 
       case PositionSearch.ByWorkflowJob(jobName) =>
         positionExecutesJob(position, jobName)
@@ -148,8 +147,8 @@ extends FileBased
   //        case (position, Labeled(_, execute: Execute.Named)) if execute.name == jobName => Some(position)
   //        case _ => None
   //      }
-  //      if (positions.isEmpty) Invalid(Problem(s"Workflow does not execute a job '${jobName.string}'"))
-  //      else Valid(positions.toSet)
+  //      if (positions.isEmpty) Left(Problem(s"Workflow does not execute a job '${jobName.string}'"))
+  //      else Right(positions.toSet)
   //  }
 
   def labelToPosition(branchPath: BranchPath, label: Label): Checked[Position] =
@@ -193,7 +192,7 @@ extends FileBased
 
   private[workflow] def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
     branchPath match {
-      case Nil => Valid(this)
+      case Nil => Right(this)
       case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
     }
 
@@ -279,10 +278,10 @@ extends FileBased
   @tailrec
   def findJob(name: WorkflowJob.Name): Checked[WorkflowJob] =
     nameToJob.get(name) match {
-      case Some(job) => Valid(job)
+      case Some(job) => Right(job)
       case None =>
         outer match {
-          case None => Invalid(Problem(s"known job name ('$name' is unknown)"))  // TODO Fehlermeldung ist an fastparse angepasst, beginnnt "Expected "
+          case None => Left(Problem(s"known job name ('$name' is unknown)"))  // TODO Fehlermeldung ist an fastparse angepasst, beginnnt "Expected "
           case Some(o) => o.findJob(name)
         }
     }
@@ -294,11 +293,11 @@ extends FileBased
   private def jobKey(workflowBranchPath: WorkflowBranchPath, name: WorkflowJob.Name): Checked[JobKey] =
     nestedWorkflow(workflowBranchPath.branchPath) flatMap (w =>
       if (w.nameToJob contains name)
-        Valid(JobKey(workflowBranchPath, name))
+        Right(JobKey(workflowBranchPath, name))
       else
         workflowBranchPath.branchPath match {
           case Nil =>
-            Invalid(Problem(s"known job name ('$name' is unknown)"))
+            Left(Problem(s"known job name ('$name' is unknown)"))
           case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })
@@ -315,14 +314,14 @@ extends FileBased
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
     checkedExecute(position) flatMap {
-      case o: Execute.Anonymous => Valid(o.job)
+      case o: Execute.Anonymous => Right(o.job)
       case o: Execute.Named => nestedWorkflow(position.branchPath) flatMap (_.findJob(o.name))
     }
 
   def checkedExecute(position: Position): Checked[Execute] =
     instruction(position) match {
-      case o: Execute => Valid(o)
-      case o => Invalid(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+      case o: Execute => Right(o)
+      case o => Left(Problem(s"Expected 'Execute' at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
   /** Find catch instruction and return position of the first instruction. */

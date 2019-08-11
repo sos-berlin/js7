@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.expression.Expression
 import com.sos.jobscheduler.data.expression.Expression._
@@ -38,17 +37,17 @@ final class ExpressionParserTest extends FreeSpec
     //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), NamedValue.KeyValue("SOME-KEY")))
 
     "variable()" in {
-      assert(checkedParse("""variable("clé")""", expression(_)) == Valid(NamedValue.last("clé")))
-      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) == Valid(NamedValue.last("clé", StringConstant("DEFAULT"))))
-      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) == Valid(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
-      assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) == Valid(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("clé"))))
+      assert(checkedParse("""variable("clé")""", expression(_)) == Right(NamedValue.last("clé")))
+      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) == Right(NamedValue.last("clé", StringConstant("DEFAULT"))))
+      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) == Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
+      assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) == Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("clé"))))
     }
 
     "argument()" in {
       assert(checkedParse("""argument("clé")""", expression(_))
-        == Valid(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"))))
+        == Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"))))
       assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression(_))
-        == Valid(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"), Some(StringConstant("DEFAULT")))))
+        == Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"), Some(StringConstant("DEFAULT")))))
     }
   }
 
@@ -76,9 +75,9 @@ final class ExpressionParserTest extends FreeSpec
     testExpression(""" "ö" """.trim, StringConstant("ö"))
 
     "Invalid strings" in {
-      assert(checkedParse("''", expression(_)).isInvalid)
-      assert(checkedParse(""" "\" """.trim, expression(_)).isInvalid)
-      // We do not reject any string - assert(checkedParse(" \"\t\" ".trim, expression(_)).isInvalid)
+      assert(checkedParse("''", expression(_)).isLeft)
+      assert(checkedParse(""" "\" """.trim, expression(_)).isLeft)
+      // We do not reject any string - assert(checkedParse(" \"\t\" ".trim, expression(_)).isLeft)
     }
   }
 
@@ -161,33 +160,33 @@ final class ExpressionParserTest extends FreeSpec
 
   "Unknown numeric function" in {
     def parser[_: P] = expression ~ End
-    assert(checkedParse(""""123".toNumber""", parser(_)) == Valid(ToNumber(StringConstant("123"))))
-    assert(checkedParse(""""123".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
+    assert(checkedParse(""""123".toNumber""", parser(_)) == Right(ToNumber(StringConstant("123"))))
+    assert(checkedParse(""""123".UNKNOWN""", parser(_)) == Left(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
   }
 
   "Unknown boolean function" in {
     def parser[_: P] = expression ~ End
-    assert(checkedParse(""""true".toBoolean""", parser(_)) == Valid(ToBoolean(StringConstant("true"))))
-    assert(checkedParse(""""true".UNKNOWN""", parser(_)) == Invalid(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
+    assert(checkedParse(""""true".toBoolean""", parser(_)) == Right(ToBoolean(StringConstant("true"))))
+    assert(checkedParse(""""true".UNKNOWN""", parser(_)) == Left(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
       def parser[_: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Valid(expr))
-      assert(checkedParse(expr.toString, parser(_)) == Valid(expr), " - toString")
+      assert(checkedParse(exprString, parser(_)) == Right(expr))
+      assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
     }
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
     registerTest(exprString) {
       def parser[_: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Valid(expr))
-      assert(checkedParse(expr.toString, parser(_)) == Valid(expr), " - toString")
+      assert(checkedParse(exprString, parser(_)) == Right(expr))
+      assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
     }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     registerTest(exprString + " - should fail") {
       def parser[_: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Invalid(Problem(errorMessage)))
+      assert(checkedParse(exprString, parser(_)) == Left(Problem(errorMessage)))
     }
 }

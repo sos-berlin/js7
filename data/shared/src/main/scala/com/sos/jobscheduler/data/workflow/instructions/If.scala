@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -35,7 +34,7 @@ extends Instruction
 
   override def workflow(branchId: BranchId) =
     branchId match {
-      case BranchId.Then => Valid(thenWorkflow)
+      case BranchId.Then => Right(thenWorkflow)
       case BranchId.Else => elseWorkflow toChecked Problem.pure("This If has no 'else' branch")
       case _ => super.workflow(branchId)
     }

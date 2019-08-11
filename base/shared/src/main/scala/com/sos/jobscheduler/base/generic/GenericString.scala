@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.generic
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -62,7 +61,7 @@ object GenericString
   {
     override def checked(string: String): Checked[A] =
       if (string.nonEmpty) super.checked(string)
-      else Invalid(EmptyStringProblem(name))
+      else Left(EmptyStringProblem(name))
   }
 
   trait NameValidating[A <: GenericString] extends Checked_[A]

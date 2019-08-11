@@ -3,7 +3,6 @@ package com.sos.jobscheduler.agent.command
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, TakeSnapshot, Terminate}
@@ -43,7 +42,7 @@ extends Actor {
       sender() ! register.detailed
 
     case Internal.Respond(run, promise, response) =>
-      if (run.batchInternalId.isEmpty || response != Success(Valid(AgentCommand.Response.Accepted))) {
+      if (run.batchInternalId.isEmpty || response != Success(Right(AgentCommand.Response.Accepted))) {
         logger.debug(s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $response")
       }
       register.remove(run.internalId)
@@ -77,10 +76,10 @@ extends Actor {
         val singleResponseFutures = responses map (_.future)
         response.completeWith(
           Future.sequence(singleResponseFutures)
-            .map(checkedResponse => Valid(AgentCommand.Batch.Response(checkedResponse))))
+            .map(checkedResponse => Right(AgentCommand.Batch.Response(checkedResponse))))
 
       case NoOperation =>
-        response.success(Valid(AgentCommand.Response.Accepted))
+        response.success(Right(AgentCommand.Response.Accepted))
 
       case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: Terminate) =>
         agentHandle.executeCommand(command, meta.user.id, response)

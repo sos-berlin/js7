@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.BooleanConstant
@@ -92,7 +90,7 @@ object WorkflowParser
     private def anonymousWorkflowExecutable[_: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
-          keyValueConvert("executable", quotedString)(o => Valid(ExecutablePath(o))) |
+          keyValueConvert("executable", quotedString)(o => Right(ExecutablePath(o))) |
           keyValueConvert("script", constantExpression)(o =>
             Evaluator.Constant.eval(o).flatMap(_.asString).map(v => ExecutableScript(v.string))) |
           keyValue("agent", path[AgentRefPath]) |

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.agent
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.Problem
@@ -40,7 +39,7 @@ final class CommandQueueTest extends FreeSpec {
       protected def commandParallelism = 2
 
       protected def executeCommand(command: AgentCommand.Batch) =
-        Task(Valid(Batch.Response(Vector.fill(command.commands.size)(Valid(AgentCommand.Response.Accepted)))))
+        Task(Right(Batch.Response(Vector.fill(command.commands.size)(Right(AgentCommand.Response.Accepted)))))
 
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
         succeeded += queuedInputResponses
@@ -101,7 +100,7 @@ object CommandQueueTest {
   private val signedWorkflow: Signed[Workflow] = fileBasedSigner.toSigned(TestWorkflow)
 
   private def toQueuedInputResponse(order: Order[Order.FreshOrReady]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentRefPath, signedWorkflow), Valid(AgentCommand.Response.Accepted))
+    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentRefPath, signedWorkflow), Right(AgentCommand.Response.Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -27,11 +26,11 @@ extends Instruction
 {
   def checked: Checked[TryInstruction] =
     if (maxTries exists (_ < 1))
-      Invalid(InvalidMaxTriesProblem)
+      Left(InvalidMaxTriesProblem)
     else if ((retryDelays.isDefined || maxTries.isDefined) && !containsRetry(catchWorkflow))
-      Invalid(MissingRetryProblem)
+      Left(MissingRetryProblem)
     else
-      Valid(this)
+      Right(this)
 
   def withoutSourcePos = copy(
     sourcePos = None,
@@ -44,8 +43,8 @@ extends Instruction
 
   override def workflow(branchId: BranchId) =
     branchId match {
-      case TryBranchId(_) => Valid(tryWorkflow)
-      case CatchBranchId(_) => Valid(catchWorkflow)
+      case TryBranchId(_) => Right(tryWorkflow)
+      case CatchBranchId(_) => Right(catchWorkflow)
       case _ => super.workflow(branchId)
     }
 
@@ -94,8 +93,8 @@ object TryInstruction
 
   def toRetryIndex(branchId: BranchId): Checked[Int] =
     branchId match {
-      case TryCatchBranchId(i) => Valid(i)
-      case _ => Invalid(Problem(s"Invalid BranchId for Try instruction: $branchId"))
+      case TryCatchBranchId(i) => Right(i)
+      case _ => Left(Problem(s"Invalid BranchId for Try instruction: $branchId"))
     }
 
   private def containsRetry(workflow: Workflow): Boolean =

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.order
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
@@ -22,14 +21,14 @@ final case class OrderId private(string: String) extends GenericString
 
   def checkedNameSyntax: Checked[this.type] =
     if (string.isEmpty)
-      Invalid(Problem("OrderId must not be empty"))
+      Left(Problem("OrderId must not be empty"))
     else if (string.exists(ReservedCharacters))
-      Invalid(Problem("OrderId must not contain reserved characters " + ReservedCharacters.mkString(", ")))
+      Left(Problem("OrderId must not contain reserved characters " + ReservedCharacters.mkString(", ")))
     else
-      Valid(this)
+      Right(this)
     //firstProblem(string.stripPrefix("/").split('/').iterator map nameValidator.checked) match {
     //  case Some(problem) => problem withKey toString
-    //  case None => Valid(this)
+    //  case None => Right(this)
     //}
 }
 

@@ -1,13 +1,16 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.Applicative
-import cats.data.Validated
-import cats.data.Validated.{Invalid, Valid}
+import cats.instances.either._
+import cats.syntax.flatMap._
+import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import io.circe.{Decoder, Encoder, Json}
-import scala.collection.immutable.{Seq, VectorBuilder}
+import scala.collection.immutable.{Iterable, Seq, VectorBuilder}
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.util.control.NonFatal
@@ -21,12 +24,12 @@ object Checked
   val unit = Checked(())
   val completed = Checked(Completed)
 
-  def apply[A](a: A): Checked[A] = Valid(a)
+  def apply[A](a: A): Checked[A] = Right(a)
 
   def fromOption[A](a: Option[A], problem: Problem): Checked[A] =
     a match {
-      case Some(o) => Valid(o)
-      case None => Invalid(problem)
+      case None => Left(problem)
+      case Some(o) => Right(o)
     }
 
   def flattenTryChecked[A](tryChecked: Try[Checked[A]]): Checked[A] =
@@ -34,145 +37,159 @@ object Checked
 
   def fromTry[A](tried: Try[A]): Checked[A] =
     tried match {
-      case Success(o) => Valid(o)
-      case Failure(t) => Invalid(Problem.pure(t))
+      case Failure(t) => Left(Problem.pure(t))
+      case Success(o) => Right(o)
     }
 
   final def invalidIf(predicate: Boolean, problem: => Problem): Checked[Unit] =
-    if (predicate) Invalid(problem) else unit
+    if (predicate) Left(problem) else unit
 
   final def cond[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
-    Validated.cond(predicate, a, problem)
+    Either.cond(predicate, a, problem)
 
   def ifOr(predicate: Boolean, problem: Problem): Checked[Unit] =
-    if (predicate) unit else Invalid(problem)
+    if (predicate) unit else Left(problem)
 
   def catchNonFatal[A](f: => A): Checked[A] =
-    try Valid(f)
+    try Right(f)
     catch {
-      case NonFatal(t) => Invalid(Problem.pure(t))
+      case NonFatal(t) => Left(Problem.pure(t))
     }
 
   def catchProblem[A](f: => A): Checked[A] =
-    try Valid(f)
+    try Right(f)
     catch {
-      case e: ProblemException => Invalid(e.problem)
+      case e: ProblemException => Left(e.problem)
     }
 
-  //implicit def checkedEq[A: Eq]: Eq[Checked[A]] = (x, y) =>
-  //  (x, y) match {
-  //    case (Valid(xx), Valid(yy)) => xx === yy
-  //    case (Invalid(xx), Invalid(yy)) => xx === yy
-  //    case _ => false
-  //  }
-
-  /** `Checked[A[V] ] => A[Checked[V] ]`. */
-  def evert[A[_], V](checked: Checked[A[V]])(implicit A: Applicative[A]): A[Checked[V]] =
+  // Why does not Cats provide a `traverse` ???
+  def traverse[F[_]: Applicative, A, B](checked: Checked[A])(f: A => F[B]): F[Checked[B]] =
     checked match {
-      case Valid(a) => A.map(a)(Valid.apply)
-      case o @ Invalid(_) => A.pure(o)
+      case Left(problem) => Applicative[F].pure(Left(problem))
+      case Right(a) => Applicative[F].map(f(a))(Right.apply)
     }
 
-  implicit final class EvertChecked[A[_], V](private val underlying: Checked[A[V]]) extends AnyVal {
-    /** `Checked[A[V]``] => A[Checked[V]``]`. */
-    def evert(implicit A: Applicative[A]): A[Checked[V]] = Checked.evert(underlying)
+  /** `Checked[F[A] ] => F[Checked[A] ]`. */
+  def evert[F[_], A](checked: Checked[F[A]])(implicit A: Applicative[F]): F[Checked[A]] =
+    checked match {
+      case Left(problem) => A.pure(Left(problem))
+      case Right(r) => A.map(r)(Right.apply)
+    }
+
+  implicit final class EvertChecked[F[_], A](private val underlying: Checked[F[A]]) extends AnyVal {
+    /** `Checked[F[A]``] => F[Checked[A]``]`. */
+    def evert(implicit A: Applicative[F]): F[Checked[A]] = Checked.evert(underlying)
   }
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
-    /** `Checked` has `flatMap` but is not a `cats.FlatMap`.
-      * See documentation of `Validated#andThen`.
-      * This may be impure but allows for-comprehension. */
-    def >>=[B](f: A => Checked[B]): Checked[B] =
-      underlying andThen f
-
-    /** `Checked` has `flatMap` but is not a `cats.FlatMap`.
-      * See documentation of `Validated#andThen`.
-      * This may be impure but allows for-comprehension. */
-    def flatMap[B](f: A => Checked[B]): Checked[B] =
-      underlying andThen f
+    def traverse[F[_]: Applicative, B](f: A => F[B]): F[Checked[B]] =
+      Checked.traverse(underlying)(f)
 
     def withProblemKey(key: Any): Checked[A] =
       mapProblem (_ withKey key)
 
     def mapProblem(f: Problem => Problem): Checked[A] =
       underlying match {
-        case _: Valid[A] => underlying
-        case Invalid(problem) => Invalid(f(problem))
+        case Left(problem) => Left(f(problem))
+        case _: Right[Problem, A] => underlying
       }
 
     /** Converts the `Checked` into an `Option`, executing the `sideEffect` if `Invalid`.
       */
     def onProblem(sideEffect: Problem => Unit): Option[A] =
       underlying match {
-        case Invalid(problem) =>
+        case Left(problem) =>
           sideEffect(problem)
           None
-        case Valid(a) =>  Some(a)
+        case Right(a) =>  Some(a)
       }
 
     def onProblemHandle[B >: A](f: Problem => B): B =
       underlying match {
-        case Invalid(problem) => f(problem)
-        case Valid(a) => a
+        case Left(problem) => f(problem)
+        case Right(a) => a
       }
 
     def toEitherThrowable: Either[Throwable, A] =
       underlying match {
-        case Invalid(problem) => Left(problem.throwable)
-        case Valid(o) => Right(o)
+        case Left(problem) => Left(problem.throwable)
+        case Right(o) => Right(o)
       }
 
-    def toTry: Try[A] =
+    /** Different from Either's `toTry`. */
+    def asTry: Try[A] =
       underlying match {
-        case Invalid(problem) => Failure(problem.throwable)
-        case Valid(o) => Success(o)
+        case Left(problem) => Failure(problem.throwable)
+        case Right(o) => Success(o)
       }
 
     def toFuture: Future[A] =
       underlying match {
-        case Valid(o) => Future.successful(o)
-        case Invalid(problem) => Future.failed(problem.throwable)
+        case Left(problem) => Future.failed(problem.throwable)
+        case Right(o) => Future.successful(o)
       }
 
-    def orThrow: A = underlying match {
-      case Valid(a) => a
-      case Invalid(problem) => throw problem.throwable.appendCurrentStackTrace
-    }
+    def orElse[B >: A](other: => Checked[B]): Checked[B] =
+      underlying match {
+        case Left(aProblem) =>
+          other match {
+            case Left(bProblem) => /*aProblem |+|*/ bProblem
+            case Right(right) => Right(right)
+          }
+        case Right(right) => Right(right)
+      }
 
-    def orThrowWithoutStacktrace: A = underlying match {
-      case Valid(a) => a
-      case Invalid(problem) => throw problem.throwable
-    }
+    def orThrow: A =
+      underlying match {
+        case Left(problem) => throw problem.throwable.appendCurrentStackTrace
+        case Right(a) => a
+      }
+
+    def orThrowWithoutStacktrace: A =
+      underlying match {
+        case Left(problem) => throw problem.throwable
+        case Right(a) => a
+      }
   }
 
-  implicit final class CheckedFlattenOps[A](private val underlying: Checked[Checked[A]]) extends AnyVal {
-    def flatten: Checked[A] = underlying.flatMap(identity)
+  implicit final class RichCheckedIterable[A](private val underlying: Iterable[Checked[A]]) extends AnyVal {
+    def traverseAndCombineProblems[B](f: A => Checked[B]): Checked[Seq[B]] = {
+      val rightBuilder = Vector.newBuilder[B]
+      val leftBuilder = mutable.Buffer[Problem]()
+      underlying.map(
+        _.flatMap(f) match {
+          case Left(problem) => leftBuilder += problem
+          case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b
+        })
+      if (leftBuilder.nonEmpty) Left(leftBuilder.toVector.reduce(_ |+| _))
+      else Right(rightBuilder.result())
+    }
   }
 
   implicit final class CheckedOption[A](private val underlying: Option[A]) extends AnyVal {
     def toChecked(problem: => Problem): Checked[A] =
       underlying match {
-        case Some(a) => Valid(a)
-        case None => Invalid(problem)
+        case None => Left(problem)
+        case Some(a) => Right(a)
       }
   }
 
   implicit final class FailFastMap[A](private val underlying: TraversableOnce[A]) {
-    /** Like map(f).sequence, but fails fast. `E` does not accumulate. */
-    def failFastMap[B, E](f: A => Validated[E, B]): Validated[E, Seq[B]] = {
+    /** Like map(f).sequence, but fails fast. `L` does not accumulate. */
+    def failFastMap[B, L](f: A => Either[L, B]): Either[L, Seq[B]] = {
       val builder = new VectorBuilder[B]
-      var failed: Invalid[E] = null
+      var failed: Left[L, B] = null
       val it = underlying.toIterator
       while (failed == null && it.hasNext) {
         f(it.next()) match {
-          case Valid(b) => builder += b
-          case o @ Invalid(_) => failed = o
+          case o @ Left(_) => failed = o
+          case Right(b) => builder += b
         }
       }
       failed match {
-        case null => Valid(builder.result())
-        case o => o
+        case null => Right(builder.result())
+        case o => o.asInstanceOf[Left[L, Seq[B]]]
       }
     }
   }
@@ -180,16 +197,16 @@ object Checked
   object implicits {
     implicit def checkedJsonEncoder[A](implicit A: Encoder[A]): Encoder[Checked[A]] =
       checked => checked match {
-        case Valid(a) => A.apply(a)
-        case Invalid(problem) => Json.fromJsonObject(Problem.typedJsonEncoder.encodeObject(problem))
+        case Left(problem) => Json.fromJsonObject(Problem.typedJsonEncoder.encodeObject(problem))
+        case Right(a) => A.apply(a)
       }
 
     implicit def checkedJsonDecoder[A: Decoder]: Decoder[Checked[A]] = c =>
       for {
         typ <- c.get[Option[String]](TypedJsonCodec.TypeFieldName)
         result <- typ match {
-          case Some("Problem") => c.as[Problem] map Invalid.apply
-          case _ => c.as[A] map Valid.apply
+          case Some("Problem") => c.as[Problem] map Left.apply
+          case _ => c.as[A] map Right.apply
         }
       } yield result
   }

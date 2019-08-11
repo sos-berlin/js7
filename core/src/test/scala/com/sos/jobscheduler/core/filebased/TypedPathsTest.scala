@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -21,21 +20,21 @@ final class TypedPathsTest extends FreeSpec {
   "fileToTypedPathAndSourceType" in {
     val dir = Paths.get("DIR")
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Json))
+      Right(WorkflowPath("/folder/test") -> SourceType.Json))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.json") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Json))
+      Right(WorkflowPath("/folder/test") -> SourceType.Json))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath, AgentRefPath), dir, dir / "folder/test.workflow.yaml") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Yaml))
+      Right(WorkflowPath("/folder/test") -> SourceType.Yaml))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Txt))
+      Right(WorkflowPath("/folder/test") -> SourceType.Txt))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.job_chain.xml") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Xml))
+      Right(WorkflowPath("/folder/test") -> SourceType.Xml))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.wrong") ==
-      Invalid(Problem(s"File '...${separator}folder${separator}test.workflow.wrong' is not recognized as a configuration file")))
+      Left(Problem(s"File '...${separator}folder${separator}test.workflow.wrong' is not recognized as a configuration file")))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
-      Valid(WorkflowPath("/folder/test") -> SourceType.Json))
+      Right(WorkflowPath("/folder/test") -> SourceType.Json))
     assert(fileToTypedPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==
-      Invalid(InvalidNameProblem("WorkflowPath", "a@b")))
+      Left(InvalidNameProblem("WorkflowPath", "a@b")))
   }
 
   if (sys.props contains "test.speed") "speed" in {

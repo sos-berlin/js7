@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
@@ -155,12 +154,12 @@ final class CollectionsTest extends FreeSpec {
   "checkUniqueness" in {
     def r(o: Seq[A]) = o checkUniqueness { _.i }
 
-    assert(r(Seq[A]()) == Valid(Nil))
-    assert(r(Seq(a1, a2)) == Invalid(Problem("Unexpected duplicates: 1")))
+    assert(r(Seq[A]()) == Right(Nil))
+    assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 1")))
 
-    assert(Nil.checkUniqueness == Valid(Nil))
-    assert(List(1, 1).checkUniqueness == Invalid(Problem("Unexpected duplicates: 1")))
-    assert(List(1, 2).checkUniqueness == Valid(List(1, 2)))
+    assert(Nil.checkUniqueness == Right(Nil))
+    assert(List(1, 1).checkUniqueness == Left(Problem("Unexpected duplicates: 1")))
+    assert(List(1, 2).checkUniqueness == Right(List(1, 2)))
   }
 
   "toSeqMultiMap" in {
@@ -214,8 +213,8 @@ final class CollectionsTest extends FreeSpec {
   "Map" - {
     "toChecked" in {
       val m = Map(1 -> "A") toChecked (key => Problem(s"NO SUCH KEY: $key"))
-      assert(m(1) == Valid("A"))
-      assert(m(2) == Invalid(Problem("NO SUCH KEY: 2")))
+      assert(m(1) == Right("A"))
+      assert(m(2) == Left(Problem("NO SUCH KEY: 2")))
     }
 
     "withNoSuchKey" in {

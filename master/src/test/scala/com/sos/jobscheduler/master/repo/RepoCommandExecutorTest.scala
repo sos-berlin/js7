@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.repo
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
 import com.sos.jobscheduler.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -38,13 +37,13 @@ final class RepoCommandExecutorTest extends FreeSpec
   "replaceRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
     assert(repoCommandExecutor.replaceRepoCommandToEvents(repo, ReplaceRepo(v1, Nil), commandMeta)
-      == Invalid(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
+      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
   }
 
   "updateRepoCommandToEvents requires UpdateRepo permission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
     assert(repoCommandExecutor.updateRepoCommandToEvents(repo, UpdateRepo(v1), commandMeta)
-      == Invalid(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
+      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
   }
 
   "replaceRepoCommandToEvents" in {

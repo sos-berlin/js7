@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions.executable
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problem
@@ -32,14 +31,14 @@ final class WorkflowJobTest extends FreeSpec
 
   "Name" in {
     import WorkflowJob.Name
-    assert(Name.checked(Name.Anonymous.string) == Invalid(EmptyStringProblem("WorkflowJob.Name")))
-    assert(Name.checked("") == Invalid(EmptyStringProblem("WorkflowJob.Name")))
-    assert(Name.checked("/path") == Invalid(InvalidNameProblem("WorkflowJob.Name", "/path")))  // A WorkflowJob's name must not look like a JobPath
-    assert(Name.checked("TEST") == Valid(Name("TEST")))
+    assert(Name.checked(Name.Anonymous.string) == Left(EmptyStringProblem("WorkflowJob.Name")))
+    assert(Name.checked("") == Left(EmptyStringProblem("WorkflowJob.Name")))
+    assert(Name.checked("/path") == Left(InvalidNameProblem("WorkflowJob.Name", "/path")))  // A WorkflowJob's name must not look like a JobPath
+    assert(Name.checked("TEST") == Right(Name("TEST")))
   }
 
   "Anonymous AgentRef is rejected" in {
     assert(WorkflowJob.checked(AgentRefPath.Anonymous, ExecutablePath("/EXECUTABLE")) ==
-      Invalid(Problem("Anonymous AgentRef in Job?")))
+      Left(Problem("Anonymous AgentRef in Job?")))
   }
 }

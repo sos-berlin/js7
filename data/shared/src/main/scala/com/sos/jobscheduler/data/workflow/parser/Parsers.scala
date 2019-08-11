@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.parser
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import fastparse._
 
@@ -15,9 +14,9 @@ object Parsers
   : Checked[T] = {
     def complete(implicit ctx: P[_]): P[T] = parser(ctx) ~ End
     parse(string, complete(_)) match {
-      case Parsed.Success(expr, _) => Valid(expr)
-      case o: Parsed.Failure => Invalid(Problem.pure(o.trace().msg))
-      //case Parsed.Failure(lastParser, index, extra) => Invalid(Problem.pure(s"Error at position 0+$index: $lastParser - $extra"))
+      case Parsed.Success(expr, _) => Right(expr)
+      case o: Parsed.Failure => Left(Problem.pure(o.trace().msg))
+      //case Parsed.Failure(lastParser, index, extra) => Left(Problem.pure(s"Error at position 0+$index: $lastParser - $extra"))
     }
   }
 }

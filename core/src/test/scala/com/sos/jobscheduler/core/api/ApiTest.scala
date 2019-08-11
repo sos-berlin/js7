@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.api
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.api.Api.quoteString
 import com.sos.jobscheduler.data.workflow.parser.{ExpressionParser, Parsers}
 import fastparse.NoWhitespace._
@@ -23,14 +22,14 @@ final class ApiTest extends FreeSpec with GeneratorDrivenPropertyChecks
 
     "random strings" in {
       forAll { string: String =>
-        assert(parse(quoteString(string)) == Valid(string))
+        assert(parse(quoteString(string)) == Right(string))
       }
     }
 
     "Enumerated characters" in {
       for (i <- 0 to 0xFFFF) {
         val string = "" + i.toChar
-        assert(parse(quoteString(string)) == Valid(string))
+        assert(parse(quoteString(string)) == Right(string))
       }
     }
 

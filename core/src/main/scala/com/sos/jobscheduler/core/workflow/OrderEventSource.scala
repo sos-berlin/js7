@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
@@ -51,31 +50,31 @@ final class OrderEventSource(
   }
 
   private def checkedNextEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    joinedEvent(order) andThen {
-      case Some(o) => Valid(Some(o))
+    joinedEvent(order) flatMap {
+      case Some(o) => Right(Some(o))
       case None =>
         awokeEvent(order) orElse canceledEvent(order) match {
-          case Some(event) => Valid(Some(order.id <-: event))
+          case Some(event) => Right(Some(order.id <-: event))
           case None => checkedNextEvent2(order)
         }
     }
 
   private def checkedNextEvent2(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
-      case Valid(Some(oId <-: (moved: OrderMoved))) =>
+      case Right(Some(oId <-: (moved: OrderMoved))) =>
         applyMoveInstructions(oId, moved) map Some.apply
 
-      case Valid(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
+      case Right(Some(oId <-: OrderFailedCatchable(outcome))) =>  // OrderFailedCatchable is used internally only
         assert(oId == order.id)
         findCatchPosition(order) match {
           case Some(firstCatchPos) if !isMaxRetriesReached(order, firstCatchPos) =>
             applyMoveInstructions(order.withPosition(firstCatchPos))
-              .flatMap(movedPos => Valid(Some(oId <-: OrderCatched(outcome, movedPos))))
+              .flatMap(movedPos => Right(Some(oId <-: OrderCatched(outcome, movedPos))))
           case _ =>
             if (order.position.isInFork)
-              Valid(Some(oId <-: OrderFailedInFork(outcome)))
+              Right(Some(oId <-: OrderFailedInFork(outcome)))
             else
-              Valid(Some(oId <-: OrderStopped(outcome)))
+              Right(Some(oId <-: OrderStopped(outcome)))
         }
 
       case o => o
@@ -98,13 +97,13 @@ final class OrderEventSource(
   private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[Option[KeyedEvent[OrderActorEvent]]])
   : Option[KeyedEvent[OrderActorEvent]] =
     checkedEvent match {
-      case Invalid(problem)  =>
+      case Left(problem)  =>
         if (order.isOrderStoppedApplicable)
           Some(order.id <-: OrderStopped(Outcome.Disrupted(problem)))
         else
           Some(order.id <-: OrderBroken(problem))
 
-      case Valid(o) => o
+      case Right(o) => o
     }
 
   private def findCatchPosition(order: Order[Order.State]): Option[Position] =
@@ -118,12 +117,12 @@ final class OrderEventSource(
       order.forkPosition.flatMap(forkPosition =>
         context.instruction(order.workflowId /: forkPosition) match {
           case fork: Fork =>
-            Valid(ForkExecutor.tryJoinChildOrder(context, order, fork))
+            Right(ForkExecutor.tryJoinChildOrder(context, order, fork))
           case _ =>
             // Self-test
-            Invalid(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
+            Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
       })
-    else Valid(None)
+    else Right(None)
 
   private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     order.ifState[Order.DelayedAfterError]
@@ -136,24 +135,24 @@ final class OrderEventSource(
     else
       None
 
-  /** Returns a `Valid(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
+  /** Returns a `Right(Some(OrderCanceled | OrderCancelationMarked))` iff order is not already marked as cancelable. */
   def cancel(orderId: OrderId, mode: CancelMode, isAgent: Boolean): Checked[Option[OrderActorEvent]] =
     idToOrder.checked(orderId) flatMap (order =>
       if (order.parent.isDefined)
-        Invalid(CancelChildOrderProblem(orderId))
+        Left(CancelChildOrderProblem(orderId))
       else if (mode == CancelMode.NotStarted && order.isStarted)
-        Invalid(CancelStartedOrderProblem(orderId))
+        Left(CancelStartedOrderProblem(orderId))
       else if (order.cancel.nonEmpty)
-        Valid(None)  // Already marked as being canceled
+        Right(None)  // Already marked as being canceled
       else if (isAgent)
         if (isOrderCancelable(order, mode))
-          Valid(Some(OrderDetachable))
+          Right(Some(OrderDetachable))
         else
-          Valid(Some(OrderCancelationMarked(mode)))
+          Right(Some(OrderCancelationMarked(mode)))
       else if (order.isDetached && isOrderCancelable(order, mode))
-        Valid(Some(OrderCanceled))
+        Right(Some(OrderCanceled))
       else
-        Valid(Some(OrderCancelationMarked(mode))))
+        Right(Some(OrderCancelationMarked(mode))))
 
   def isOrderCancelable(order: Order[Order.State]): Boolean =
     order.cancel match {
@@ -186,15 +185,15 @@ final class OrderEventSource(
   @tailrec
   private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
-      case o @ Invalid(_) => o
-      case Valid(Some(position)) =>
+      case o @ Left(_) => o
+      case Right(Some(position)) =>
         if (visited contains position)
-          Invalid(Problem(s"${order.id} is in a workflow loop: " +
+          Left(Problem(s"${order.id} is in a workflow loop: " +
             visited.reverse.map(pos => pos + " " +
               idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toString.truncateWithEllipsis(50)).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
-      case Valid(None) => Valid(Some(order.position))
+      case Right(None) => Right(Some(order.position))
     }
 
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
@@ -207,7 +206,7 @@ final class OrderEventSource(
           if (order.lastOutcome.isFailed)
             workflow.labelToPosition(order.position.branchPath, label) map Some.apply
           else
-            Valid(Some(order.position.increment))
+            Right(Some(order.position.increment))
 
         case instr: Instruction =>
           InstructionExecutor.nextPosition(context, order, instr)
@@ -221,7 +220,7 @@ final class OrderEventSource(
         //        None
         //    })
 
-        case _ => Valid(None)
+        case _ => Right(None)
       }
   }
 

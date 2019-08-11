@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Terminate}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.TestCodeProblem
@@ -33,7 +32,7 @@ final class AgentCommandTest extends FreeSpec {
 
   "Batch.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.Batch.Response(Valid(AgentCommand.Response.Accepted) :: Invalid(TestCodeProblem(Map("ARG" -> "VALUE"))) :: Nil),
+      AgentCommand.Batch.Response(Right(AgentCommand.Response.Accepted) :: Left(TestCodeProblem(Map("ARG" -> "VALUE"))) :: Nil),
       json"""{
         "TYPE": "BatchResponse",
         "responses": [

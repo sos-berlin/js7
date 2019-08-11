@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.circeutils
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
 import com.sos.jobscheduler.base.problem.Checked._
@@ -54,8 +53,8 @@ object CirceUtils
     /** Converts to Checked with rendered error message. */
     def toChecked: Checked[R] =
       underlying match {
-        case Left(t) => Invalid(Problem.pure("JSON " + t.show))
-        case Right(o) => Valid(o)
+        case Left(t) => Left(Problem.pure("JSON " + t.show))
+        case Right(o) => Right(o)
       }
   }
 
@@ -144,8 +143,8 @@ object CirceUtils
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {
     def toDecoderResult(history: List[CursorOp]): Decoder.Result[A] =
       underlying match {
-        case Valid(o) => Right(o)
-        case Invalid(o) => Left(DecodingFailure(o.toString, history))  // Ignoring stacktrace ???
+        case Right(o) => Right(o)
+        case Left(o) => Left(DecodingFailure(o.toString, history))  // Ignoring stacktrace ???
       }
   }
 

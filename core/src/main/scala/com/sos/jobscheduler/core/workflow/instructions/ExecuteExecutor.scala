@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderFailedCatchable, OrderMoved}
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
@@ -15,7 +14,7 @@ object ExecuteExecutor extends EventInstructionExecutor
   type Instr = Execute
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Execute) =
-    Valid(
+    Right(
       // Order.Ready: Execution has to be started by the caller
       //order.ifState[Order.Fresh].map(order =>
       //  order.id <-: OrderStarted)

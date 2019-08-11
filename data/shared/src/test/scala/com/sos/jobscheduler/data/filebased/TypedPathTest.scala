@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
@@ -45,7 +44,7 @@ final class TypedPathTest extends FreeSpec
   }
 
   "check" in {
-    assert(APath.checked("x") == Invalid(Problem("APath must be an absolute path, not: x")))
+    assert(APath.checked("x") == Left(Problem("APath must be an absolute path, not: x")))
   }
 
   "name" in {
@@ -90,36 +89,36 @@ final class TypedPathTest extends FreeSpec
   }
 
   "fromFile" in {
-    assert(APath.fromFile("?/anonymous.a.json") == Some(Invalid(Problem("An anonymous APath is not allowed"))))
+    assert(APath.fromFile("?/anonymous.a.json") == Some(Left(Problem("An anonymous APath is not allowed"))))
     assert(APath.fromFile("x").isEmpty)
-    assert(APath.fromFile("x.a.json") == Some(Valid(APath("/x") -> SourceType.Json)))
-    assert(APath.fromFile("x.a.txt") == Some(Valid(APath("/x") -> SourceType.Txt)))
+    assert(APath.fromFile("x.a.json") == Some(Right(APath("/x") -> SourceType.Json)))
+    assert(APath.fromFile("x.a.txt") == Some(Right(APath("/x") -> SourceType.Txt)))
     assert(APath.fromFile("x.b.json") == None)
-    assert(BPath.fromFile("x.b.json") == Some(Valid(BPath("/x") -> SourceType.Json)))
-    assert(BPath.fromFile(".b.json") == Some(Invalid(Problem("BPath must not end with a slash: /"))))
+    assert(BPath.fromFile("x.b.json") == Some(Right(BPath("/x") -> SourceType.Json)))
+    assert(BPath.fromFile(".b.json") == Some(Left(Problem("BPath must not end with a slash: /"))))
   }
 
   "checked" in {
-    assert(APath.checked("/?/anonymous") == Invalid(Problem("An anonymous APath is not allowed")))
+    assert(APath.checked("/?/anonymous") == Left(Problem("An anonymous APath is not allowed")))
   }
 
   "officialSyntaxChecked" in {
-    assert(APath("/folder/a-b").officialSyntaxChecked == Valid(APath("/folder/a-b")))
-    assert(APath("/folder/a_b").officialSyntaxChecked == Valid(APath("/folder/a_b")))
-    assert(APath("/folder/a.b").officialSyntaxChecked == Valid(APath("/folder/a.b")))
-    assert(APath("/a@b/x@y").officialSyntaxChecked == Invalid(InvalidNameProblem("APath", "a@b")))  // Show only first problem
-    assert(APath.checked(s"/folder/a${VersionSeparator}b") == Invalid(InvalidNameProblem("APath", "/folder/a~b")))
+    assert(APath("/folder/a-b").officialSyntaxChecked == Right(APath("/folder/a-b")))
+    assert(APath("/folder/a_b").officialSyntaxChecked == Right(APath("/folder/a_b")))
+    assert(APath("/folder/a.b").officialSyntaxChecked == Right(APath("/folder/a.b")))
+    assert(APath("/a@b/x@y").officialSyntaxChecked == Left(InvalidNameProblem("APath", "a@b")))  // Show only first problem
+    assert(APath.checked(s"/folder/a${VersionSeparator}b") == Left(InvalidNameProblem("APath", "/folder/a~b")))
     //Shadowed: assert(APath(s"/folder/a${VersionSeparator}b").officialSyntaxChecked ==
-    //  Invalid(Problem("Problem with 'A:/folder/a%b': Invalid character or character combination in name 'a%b'")))
+    //  Left(Problem("Problem with 'A:/folder/a%b': Invalid character or character combination in name 'a%b'")))
   }
 
   "Internal" in {
-    assert(APath("/?/TEST").officialSyntaxChecked == Invalid(Problem("Internal path is not allowed here: A:/?/TEST")))
+    assert(APath("/?/TEST").officialSyntaxChecked == Left(Problem("Internal path is not allowed here: A:/?/TEST")))
   }
 
   "Anonymous" in {
     assert(APath.Anonymous == APath.unchecked("/?/anonymous"))
-    assert(APath.Anonymous.officialSyntaxChecked == Invalid(Problem("Internal path is not allowed here: A:/?/anonymous")))
+    assert(APath.Anonymous.officialSyntaxChecked == Left(Problem("Internal path is not allowed here: A:/?/anonymous")))
     assert(APath.NoId == APath.unchecked("/?/anonymous") ~ VersionId.unchecked("⊥"))
   }
 

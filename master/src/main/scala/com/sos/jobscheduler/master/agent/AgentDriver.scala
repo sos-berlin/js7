@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.agent
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import akka.http.scaladsl.model.Uri
-import cats.data.Validated.{Invalid, Valid}
+import cats.instances.all._
 import cats.syntax.all._
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -170,7 +170,7 @@ with ReceiveLoggingActor.WithStash
       promiseFuture[Checked[Completed]] { p =>
         context.parent ! Output.EventsFromAgent(newStampedEvents, p)
       } onComplete {
-        case Success(Valid(Completed)) =>
+        case Success(Right(Completed)) =>
           self ! Internal.EventsAccepted(stampedEvents.last.eventId, promise)
         case o => promise.complete(o)
       }
@@ -184,15 +184,15 @@ with ReceiveLoggingActor.WithStash
         })
         delayNextKeepEvents = true
       }
-      promise.success(Valid(Completed))
+      promise.success(Right(Completed))
 
     case Internal.FetchFinished(checkedCompleted) =>
       fetchEventsCancelable = None
       val delay = checkedCompleted match {
-        case Valid(Completed) | Invalid(CanceledProblem) =>
+        case Right(Completed) | Left(CanceledProblem) =>
           logger.debug(s"FetchFinished $checkedCompleted")
           conf.eventFetchDelay - lastFetchAt.elapsed
-        case Invalid(problem) =>
+        case Left(problem) =>
           logger.warn(s"Error when fetching events: $problem")
           recouplePause.nextPause()
       }
@@ -238,20 +238,20 @@ with ReceiveLoggingActor.WithStash
       coupleIfNeeded >>
         fetchEvents(after = after)
           .flatMap {
-            case Valid(Completed) => Task.pure(Left(lastEventId))
-            case Invalid(InvalidSessionTokenProblem) =>
+            case Right(Completed) => Task.pure(Left(lastEventId))
+            case Left(InvalidSessionTokenProblem) =>
               coupledClient.tryTake >>
               client.logout().onErrorHandle(_ => ()) >>
                 Task.sleep(recouplePause.nextPause()) >>
                 Task.pure(Left(lastEventId))
-            case Invalid(problem) =>
-              Task.pure(Right(Invalid(problem)))
+            case Left(problem) =>
+              Task.pure(Right(Left(problem)))
           })
     loop
       .executeWithOptions(_.enableAutoCancelableRunLoops)
       .doOnCancel(Task {
         logger.debug("Fetching canceled")
-        self ! Internal.FetchFinished(Invalid(CanceledProblem))
+        self ! Internal.FetchFinished(Left(CanceledProblem))
       })
       .materialize.map(o => Checked.fromTry(o).flatten)
       .map { checked =>
@@ -291,14 +291,14 @@ with ReceiveLoggingActor.WithStash
       } yield checkedResponse)
         .materialize.map(o => Checked.fromTry(o).flatten)
         .flatMap {
-          case Invalid(problem) =>
+          case Left(problem) =>
             for {
               _ <- client.logout().onErrorHandle(_ => ())
               _ <- promiseTask[Completed] { promise => self ! Internal.OnCouplingFailed(problem, promise) }
               _ <- Task.sleep(recouplePause.nextPause())
             } yield Left(())
 
-          case Valid(AgentCommand.Response.Accepted) =>
+          case Right(AgentCommand.Response.Accepted) =>
             for {
               _ <- coupledClient.tryPut(client)
               completed <- promiseTask[Completed] { promise => self ! Internal.OnCoupled(promise) }
@@ -325,10 +325,10 @@ with ReceiveLoggingActor.WithStash
     } >>
       client.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.eventFetchTimeout)))
         .materialize.flatMap(o =>
-        Checked.flattenTryChecked(o)
-          .traverse(consumeEvents)
-          .map(_.flatten))
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
+          Checked.flattenTryChecked(o)
+            .traverse(consumeEvents)
+            .map(_.flatten))
+          .executeWithOptions(_.enableAutoCancelableRunLoops)
 
   private def consumeEvents(eventObservable: Observable[Stamped[AnyKeyedEvent]]): Task[Checked[Completed]] =
     eventObservable
@@ -341,7 +341,7 @@ with ReceiveLoggingActor.WithStash
         promiseTask[Checked[Completed]] { promise =>
           self ! Internal.FetchedEvents(stampedEvents, promise)
         })
-      .collect { case o @ Invalid(_) => o }
+      .collect { case o @ Left(_) => o }
       .headOptionL
       .map {
         case None => Checked.completed

@@ -1,6 +1,9 @@
-package com.sos.jobscheduler.common.utils
+package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated
 import cats.effect.{Resource, SyncIO}
+import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.utils.StackTraces._
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 
@@ -22,4 +25,16 @@ object CatsUtils
         throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
       }
     })
+
+  implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal
+  {
+    def orThrow: A =
+      underlying.valueOr(t => throw t.appendCurrentStackTrace)
+  }
+
+  implicit final class RichProblemValidated[E <: Problem, A](private val underlying: Validated[E, A]) extends AnyVal
+  {
+    def orThrow: A =
+      underlying.valueOr(problem => throw problem.throwable.appendCurrentStackTrace)
+  }
 }

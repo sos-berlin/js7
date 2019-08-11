@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UT
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse, Uri}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.http.AkkaHttpClient.{HttpException, liftProblem}
@@ -38,8 +37,8 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
 
   "toCheckedAgentUri, checkAgentUri and apply, failing" - {
     for ((uri, None) <- Setting) s"$uri" in {
-      assert(agentClient.checkAgentUri(uri).isInvalid)
-      assert(agentClient.toCheckedAgentUri(uri).isInvalid)
+      assert(agentClient.checkAgentUri(uri).isLeft)
+      assert(agentClient.toCheckedAgentUri(uri).isLeft)
       assert(Await.result(agentClient.get_[HttpResponse](uri).runToFuture.failed, 99.seconds).getMessage
         contains "does not match")
     }
@@ -48,13 +47,13 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
   "normalizeAgentUri" - {
     for ((uri, Some(converted)) <- Setting) s"$uri" in {
       assert(agentClient.normalizeAgentUri(uri) == converted)
-      assert(agentClient.toCheckedAgentUri(uri) == Valid(converted))
+      assert(agentClient.toCheckedAgentUri(uri) == Right(converted))
     }
   }
 
   "liftProblem, HttpException#problem" - {
     "No Exception" in {
-      assert(liftProblem(Task(1)).runSyncUnsafe(99.seconds) == Valid(1))
+      assert(liftProblem(Task(1)).runSyncUnsafe(99.seconds) == Right(1))
     }
 
     "HttpException with problem" in {
@@ -65,7 +64,7 @@ final class AkkaHttpClientTest extends FreeSpec with BeforeAndAfterAll
         Uri("/URI"),
         jsonString)
       assert(e.problem == Some(problem))
-      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Invalid(problem))
+      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(problem))
     }
 
     "HttpException with broken problem" in {

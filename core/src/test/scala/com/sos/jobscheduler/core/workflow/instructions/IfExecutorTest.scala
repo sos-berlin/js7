@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
@@ -44,28 +43,28 @@ final class IfExecutorTest extends FreeSpec {
 
   "If true" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(true))) ==
-      Valid(Some(Position(7) / Then % 0)))
+      Right(Some(Position(7) / Then % 0)))
   }
 
   "If false" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(BooleanConstant(false))) ==
-      Valid(Some(Position(7) / Else % 0)))
+      Right(Some(Position(7) / Else % 0)))
   }
 
   "If false, no else branch" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, ifThen(BooleanConstant(false))) ==
-      Valid(Some(Position(8))))
+      Right(Some(Position(8))))
   }
 
   "Naned value comparison" in {
     val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Then % 0)))
-    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Valid(Some(Position(7) / Else % 0)))
+    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Right(Some(Position(7) / Then % 0)))
+    assert(InstructionExecutor.nextPosition(context, BOrder, ifThenElse(expr)) == Right(Some(Position(7) / Else % 0)))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Invalid(Problem("Not a valid number: X")))
+    assert(InstructionExecutor.nextPosition(context, AOrder, ifThenElse(expr)) == Left(Problem("Not a valid number: X")))
   }
 }
 

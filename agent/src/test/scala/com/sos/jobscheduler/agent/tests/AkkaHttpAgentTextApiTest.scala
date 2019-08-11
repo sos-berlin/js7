@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
-import cats.data.Validated.Valid
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AkkaHttpAgentTextApi
 import com.sos.jobscheduler.agent.command.CommandHandler
@@ -44,7 +43,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
       def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       Task {
         (command match {
-          case ExpectedTerminate => Valid(AgentCommand.Response.Accepted)
+          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
           case _ => fail()
         })
           .map(_.asInstanceOf[command.Response])

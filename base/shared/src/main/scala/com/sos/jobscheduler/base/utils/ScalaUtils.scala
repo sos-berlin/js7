@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.exceptions.PublicException
 import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
@@ -166,8 +164,8 @@ object ScalaUtils
     private def toChecked_(notFound: A => Problem): A => Checked[B] = {
       val lifted = underlying.lift
       key => lifted(key) match {
-        case Some(b) => Valid(b)
-        case None => Invalid(notFound(key))
+        case Some(b) => Right(b)
+        case None => Left(notFound(key))
       }
     }
 
@@ -201,8 +199,8 @@ object ScalaUtils
     }
   }
 
-  implicit final class RichEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
-    def toImmediateFuture: Future[R] =
+  implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
+    def toFuture: Future[R] =
       withStackTrace match {
         case Left(t) => Future.failed(t)
         case Right(o) => Future.successful(o)
@@ -217,15 +215,15 @@ object ScalaUtils
     /** Converts an `Either[Throwable, A]` to a Checked[A] with complete Throwable. */
     def toThrowableChecked: Checked[R] =
       underlying match {
-        case Left(t) => Invalid(Problem.pure(t.appendCurrentStackTrace))
-        case Right(o) => Valid(o)
+        case Left(t) => Left(Problem.pure(t.appendCurrentStackTrace))
+        case Right(o) => Right(o)
       }
 
     /** Converts an `Either[Throwable, A]` to a Checked[A] with the `Throwable`'s message only (toStringWithCauses). */
     def toMessageOnlyChecked: Checked[R] =
       underlying match {
-        case Left(t) => Invalid(Problem.pure(Option(t.getMessage) getOrElse t.toStringWithCauses))
-        case Right(o) => Valid(o)
+        case Left(t) => Left(Problem.pure(Option(t.getMessage) getOrElse t.toStringWithCauses))
+        case Right(o) => Right(o)
       }
 
     def withStackTrace: Either[Throwable, R] =
@@ -240,10 +238,6 @@ object ScalaUtils
           t.fillInStackTrace()
           Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
       }
-  }
-
-  implicit final class RichValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal {
-    def orThrow: A = underlying.valueOr(t => throw t.appendCurrentStackTrace)
   }
 
   /** Simple implementation (for tests), converts the string to an Array[Byte],

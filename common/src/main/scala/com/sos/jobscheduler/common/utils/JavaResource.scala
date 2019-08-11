@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.utils
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.effect.SyncIO
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
@@ -28,10 +27,10 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
 
   private lazy val checkedUrl: Checked[URL] =
     classLoader.getResource(path) match {
-      case null => Invalid(Problem(s"Unknown JavaResource '$path'"))
+      case null => Left(Problem(s"Unknown JavaResource '$path'"))
       case url =>
         logger.trace(s"Using JavaResource $url")
-        Valid(url)
+        Right(url)
     }
 
   def requireExistence() = {
@@ -81,7 +80,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
 
   def simpleName = new File(path).getName
 
-  def isValid = checkedUrl.isValid
+  def isValid = checkedUrl.isRight
 
   val asResource: cats.effect.Resource[SyncIO, InputStream] =
     cats.effect.Resource.fromAutoCloseable(SyncIO { openStream() })

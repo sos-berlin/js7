@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.core.workflow.OrderContext
@@ -43,12 +42,12 @@ final class TryExecutorTest extends FreeSpec
 
   "nextPosition" in {
     assert(InstructionExecutor.nextPosition(context, AOrder, tryInstruction) ==
-      Valid(Some(Position(7) / try_(0) % 0)))
+      Right(Some(Position(7) / try_(0) % 0)))
   }
 
   "toEvent" in {
     assert(InstructionExecutor.toEvent(tryInstruction, AOrder, context) ==
-      Valid(Some(
+      Right(Some(
         AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
   }
 }

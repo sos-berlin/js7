@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression._
@@ -65,9 +64,9 @@ final class IfTest extends FreeSpec
   }
 
   "workflow" in {
-    assert(if_.workflow(Then) == Valid(if_.thenWorkflow))
-    assert(if_.workflow(Else) == Valid(if_.elseWorkflow.get))
-    assert(if_.workflow("A").isInvalid)
+    assert(if_.workflow(Then) == Right(if_.thenWorkflow))
+    assert(if_.workflow(Else) == Right(if_.elseWorkflow.get))
+    assert(if_.workflow("A").isLeft)
   }
 
   "flattenedBranchToWorkflow" in {

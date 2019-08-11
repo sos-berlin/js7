@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -151,16 +150,16 @@ final class ScalaUtilsTest extends FreeSpec
     val pf: PartialFunction[Int, String] = {
       case 1 => "1"
     }
-    assert(pf.checked(1) == Valid("1"))
-    assert(pf.checked(2) == Invalid(Problem("No such key '2'")))
+    assert(pf.checked(1) == Right("1"))
+    assert(pf.checked(2) == Left(Problem("No such key '2'")))
   }
 
   "PartialFunction.toThrowableChecked" in {
     val pf: PartialFunction[Int, String] = {
       case 1 => "1"
     }
-    assert(pf.toChecked(1) == Valid("1"))
-    assert(pf.toChecked(2) == Invalid(Problem("No such key '2'")))
+    assert(pf.toChecked(1) == Right("1"))
+    assert(pf.toChecked(2) == Left(Problem("No such key '2'")))
   }
 
   "PartialFunction.getOrElse" in {
@@ -202,20 +201,20 @@ final class ScalaUtilsTest extends FreeSpec
     assert(mappedPf.applyOrElse(2, (i: Int) => s"else $i") == "else 2")
   }
 
-  "Either.toImmediateFuture" in {
-    assert(Right[Throwable, Int](7).toImmediateFuture.value.get.get == 7)
+  "Either.toFuture" in {
+    assert(Right[Throwable, Int](7).toFuture.value.get.get == 7)
     val t = new IllegalArgumentException
-    assert(Left[Throwable, Int](t).toImmediateFuture.failed.value.get.get eq t)
+    assert(Left[Throwable, Int](t).toFuture.failed.value.get.get eq t)
   }
 
   "Either.toThrowableChecked" in {
-    assert(Right[Throwable, Int](7).toThrowableChecked == Valid(7))
+    assert(Right[Throwable, Int](7).toThrowableChecked == Right(7))
     val t = new IllegalArgumentException
     assert(Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null).throwable eq t)
   }
 
   "Either.toMessageOnlyChecked" in {
-    assert(Right[Throwable, Int](7).toMessageOnlyChecked == Valid(7))
+    assert(Right[Throwable, Int](7).toMessageOnlyChecked == Right(7))
     val t = new IllegalArgumentException("EXCEPTION")
     assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).throwable ne t)
     assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
@@ -225,7 +224,7 @@ final class ScalaUtilsTest extends FreeSpec
     assert(Right[Throwable, Int](7).orThrow == 7)
     val t = new IllegalArgumentException
     intercept[IllegalArgumentException] {
-      Left[Throwable, Int](t).orThrow
+      (Left[Throwable, Int](t): Either[Throwable, Int]).orThrow
     } should be theSameInstanceAs (t)
   }
 

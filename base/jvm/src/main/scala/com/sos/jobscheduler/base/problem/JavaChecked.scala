@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import java.util.Optional
@@ -10,9 +9,9 @@ import java.util.Optional
   */
 final case class JavaChecked[A](checked: Checked[A])
 {
-  def isValid = checked.isValid
+  def isValid = checked.isRight
 
-  def isInvalid = checked.isInvalid
+  def isInvalid = checked.isLeft
 
   @throws[ProblemException]
   def get: A =
@@ -24,14 +23,14 @@ final case class JavaChecked[A](checked: Checked[A])
 
   def toOptional: Optional[A] =
     checked match {
-      case Valid(a) => Optional.of(a)
-      case Invalid(_) => Optional.empty[A]
+      case Right(a) => Optional.of(a)
+      case Left(_) => Optional.empty[A]
     }
 
   def problem: Optional[Problem] =
     checked match {
-      case Valid(_) => Optional.empty[Problem]
-      case Invalid(problem) => Optional.of(problem)
+      case Right(_) => Optional.empty[Problem]
+      case Left(problem) => Optional.of(problem)
     }
 }
 

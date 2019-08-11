@@ -1,13 +1,12 @@
 package com.sos.jobscheduler.tests.provider
 
-import cats.data.Validated.Invalid
 import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -135,7 +134,7 @@ final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Invalid(Problem("Duplicate VersionId '1'")))
+      assert(provider.updateMasterConfiguration(V1.some).await(99.seconds) == Left(Problem("Duplicate VersionId '1'")))
     }
 
     "An unknown and some invalid files" in {
@@ -147,7 +146,7 @@ final class ProviderTest extends FreeSpec with MasterAgentForScalaTest
       (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateMasterConfiguration(V2.some).await(99.seconds) ==
-        Invalid(Problem.Multiple(Set(
+        Left(Problem.Multiple(Set(
           TypedPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           FileBasedReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           FileBasedReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),

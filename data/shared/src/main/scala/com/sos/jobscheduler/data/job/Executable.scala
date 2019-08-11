@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.job
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.GenericString
@@ -27,9 +26,9 @@ object ExecutablePath extends GenericString.Checked_[ExecutablePath]
 
   override def checked(path: String) =
     if (path.isEmpty)
-      Invalid(EmptyStringProblem(name))
+      Left(EmptyStringProblem(name))
     else if (!path.startsWith("/") || path == "/" || path.contains('\\') || path.startsWith(".") || path.contains("/."))  // TODO Check for ".."
-      Invalid(InvalidNameProblem(name, path))
+      Left(InvalidNameProblem(name, path))
     else
       super.checked(path)
 }

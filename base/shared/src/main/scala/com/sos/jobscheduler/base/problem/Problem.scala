@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.data.Validated.Invalid
 import cats.syntax.semigroup._
 import cats.{Eq, Semigroup}
 import com.sos.jobscheduler.base.problem.Problem._
@@ -53,8 +52,8 @@ sealed trait Problem
 
 object Problem
 {
-  implicit def toInvalid[A](problem: Problem): Invalid[Problem] =
-    Invalid(problem)
+  implicit def toInvalid[A](problem: Problem): Left[Problem, A] =
+    Left(problem)
 
   def apply(messageFunction: => String): Problem =
     new Lazy(messageFunction)
@@ -205,7 +204,7 @@ object Problem
       None
   }
 
-  implicit val semigroup: Semigroup[Problem] = {
+  implicit val problemSemigroup: Semigroup[Problem] = {
     case (a: Problem, b: FromThrowable) =>
       Problem.fromLazyThrowable(new ProblemException(a, b.throwable) with NoStackTrace)
 
@@ -229,7 +228,7 @@ object Problem
       Multiple(a.problems.toVector :+ new Lazy(b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
   }
 
-  implicit val eqv: Eq[Problem] = Eq.fromUniversalEquals[Problem]
+  implicit val problemEq: Eq[Problem] = Eq.fromUniversalEquals[Problem]
 
   private def combineMessages(a: String, b: String) =
     if (b.trim.isEmpty)

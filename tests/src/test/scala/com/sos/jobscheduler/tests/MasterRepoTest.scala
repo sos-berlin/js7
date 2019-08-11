@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.process.Processes.{ShellFileExtension => sh}
@@ -38,7 +37,7 @@ final class MasterRepoTest extends FreeSpec {
 
           // Command is rejected due to duplicate VersionId
           assert(master.executeCommandAsSystemUser(UpdateRepo(V1)).await(99.s) ==
-            Invalid(Problem(s"Duplicate VersionId '${V1.string}'")))
+            Left(Problem(s"Duplicate VersionId '${V1.string}'")))
 
           // Add Workflow
           addWorkflowAndRunOrder(master, V2, BWorkflowPath, OrderId("B"))
@@ -65,7 +64,7 @@ final class MasterRepoTest extends FreeSpec {
 
           // Command is rejected due to duplicate VersionId
           assert(master.executeCommandAsSystemUser(UpdateRepo(V2)).await(99.s) ==
-            Invalid(Problem(s"Duplicate VersionId '${V2.string}'")))
+            Left(Problem(s"Duplicate VersionId '${V2.string}'")))
 
           // AWorkflowPath is still version V3
           runOrder(master, AWorkflowPath ~ V3, OrderId("A-3"))
@@ -76,7 +75,7 @@ final class MasterRepoTest extends FreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(master.addOrder(order).runToFuture.await(99.s) == Invalid(Problem(s"No such key 'Workflow:${path.string}'")))
+        assert(master.addOrder(order).runToFuture.await(99.s) == Left(Problem(s"No such key 'Workflow:${path.string}'")))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 

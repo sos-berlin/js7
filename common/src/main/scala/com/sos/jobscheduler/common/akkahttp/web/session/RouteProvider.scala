@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{Permission, SessionToken}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
@@ -79,10 +78,10 @@ trait RouteProvider extends ExceptionHandling
 
           case Some(sessionToken) =>
             onSuccess(sessionRegister.sessionFuture(!httpUser.isAnonymous ? httpUser, sessionToken)) {
-              case Invalid(problem) =>
+              case Left(problem) =>
                 completeUnauthenticatedLogin(Forbidden, problem)
 
-              case Valid(session) =>
+              case Right(session) =>
                 inner(Tuple1(Some(session)))
             }
           }

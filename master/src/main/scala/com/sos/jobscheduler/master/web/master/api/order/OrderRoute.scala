@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problem
@@ -51,8 +50,8 @@ trait OrderRoute extends MasterRouteProvider
                 case Right(order) =>
                   extractUri { uri =>
                     onSuccess(orderApi.addOrder(order).runToFuture) {
-                      case Invalid(problem) => complete(problem)
-                      case Valid(isNoDuplicate) =>
+                      case Left(problem) => complete(problem)
+                      case Right(isNoDuplicate) =>
                         respondWithHeader(Location(uri + "/" + order.id.string)) {
                           complete(
                             if (isNoDuplicate) Created

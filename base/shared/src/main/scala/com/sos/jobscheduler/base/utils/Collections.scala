@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import javax.annotation.Nullable
 import scala.annotation.tailrec
@@ -78,8 +77,8 @@ object Collections {
 
       def checkUniqueness[K](key: A => K): Checked[F[A]] =
         duplicateKeys(key) match {
-          case Some(duplicates) => Invalid(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
-          case None => Valid(delegate)
+          case Some(duplicates) => Left(Problem(s"Unexpected duplicates: ${duplicates.keys mkString ", "}"))
+          case None => Right(delegate)
         }
 
       def requireUniqueness: Traversable[A] =
@@ -167,7 +166,7 @@ object Collections {
 
   implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def toChecked(unknownKey: K => Problem): Map[K, Checked[V]] =
-      underlying mapValues Valid.apply withDefault unknownKey.andThen(Invalid.apply)
+      underlying mapValues Right.apply withDefault unknownKey.andThen(Left.apply)
 
     def withNoSuchKey(noSuchKey: K => Nothing): Map[K, V] =
       underlying withDefault (k => noSuchKey(k))

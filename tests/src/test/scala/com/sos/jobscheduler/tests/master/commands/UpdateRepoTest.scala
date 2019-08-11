@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.master.commands
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.User.UserDoesNotHavePermissionProblem
 import com.sos.jobscheduler.base.auth.{UpdateRepoPermission, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
@@ -62,7 +61,7 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
   "User requires permission 'UpdateRepo'" in {
     master.httpApi.login(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
     assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
-      Invalid(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateRepoPermission)))
+      Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateRepoPermission)))
 
     master.httpApi.login(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
   }
@@ -88,11 +87,11 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
 
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     assert(master.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Invalid(Problem("Has been deleted: Workflow:/WORKFLOW~3")))
+      Left(Problem("Has been deleted: Workflow:/WORKFLOW~3")))
 
     withClue("Tampered with configuration: ") {
       val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)
-      assert(executeCommand(updateRepo) == Invalid(TamperedWithSignedMessageProblem))
+      assert(executeCommand(updateRepo) == Left(TamperedWithSignedMessageProblem))
     }
   }
 
@@ -128,18 +127,18 @@ final class UpdateRepoTest extends FreeSpec with MasterAgentForScalaTest
   "MasterCommand.UpdateRepo with divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
     assert(executeCommand(UpdateRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Invalid(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+      == Left(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
   }
 
   "MasterCommand.ReplaceRepo with divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
     assert(executeCommand(ReplaceRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Invalid(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+      == Left(ObjectVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
   }
 
   private def executeCommand(cmd: MasterCommand): Checked[cmd.Response] =
-    master.httpApi.executeCommand(cmd).map(Valid.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined => Invalid(e.problem.get) }
+    master.httpApi.executeCommand(cmd).map(Right.apply)
+      .onErrorRecover { case e: HttpException if e.problem.isDefined => Left(e.problem.get) }
       .await(99.s)
 }
 

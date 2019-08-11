@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
 import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
@@ -40,7 +39,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
 
   "Requesting events of unregistered Master" in {
     assert(agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
-      Invalid(NoSuchMasterProblem(MasterId.fromUserId(TestUserAndPassword.userId))))
+      Left(NoSuchMasterProblem(MasterId.fromUserId(TestUserAndPassword.userId))))
   }
 
   "(RegisterAsMaster)" in {
@@ -49,7 +48,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Request events after known EventId" in {
-    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
+    val Right(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
     eventId = events.last.eventId
@@ -57,7 +56,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
 
   "Requesting events after unknown EventId returns Torn" in {
     // When Master requests events, the requested EventId (after=) must be known
-    val Valid(TearableEventSeq.Torn(0)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s)
+    val Right(TearableEventSeq.Torn(0)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s)
   }
 
   "Login again"  in {
@@ -66,8 +65,8 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Recoupling with changed AgentRunId fails" in {
-    assert(agentClient.commandExecute(CoupleMaster(AgentRunId(JournalId(randomUUID)), eventId)).await(99.s) == Invalid(MasterAgentMismatchProblem))
-    val Valid(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
+    assert(agentClient.commandExecute(CoupleMaster(AgentRunId(JournalId(randomUUID)), eventId)).await(99.s) == Left(MasterAgentMismatchProblem))
+    val Right(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
   }
@@ -78,13 +77,13 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
     agentClient.commandExecute(KeepEvents(eventId)).await(99.s).orThrow
 
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
-      Invalid(MasterRequiresUnknownEventIdProblem(EventId.BeforeFirst)))
+      Left(MasterRequiresUnknownEventIdProblem(EventId.BeforeFirst)))
   }
 
   "Recoupling with Master's last events deleted fails" in {
     val newerEventId = eventId + 1  // Assuming that no further Event has been issued
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, newerEventId)).await(99.s) ==
-      Invalid(MasterRequiresUnknownEventIdProblem(newerEventId)))
+      Left(MasterRequiresUnknownEventIdProblem(newerEventId)))
   }
 
   "Recouple" in {
@@ -92,13 +91,13 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Continue fetching events" in {
-    val Valid(EventSeq.Empty(lastEventId)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
+    val Right(EventSeq.Empty(lastEventId)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
     assert(lastEventId == eventId)
   }
 
   "Torn EventSeq" in {
     val tornEventId = eventId
-    val Valid(TearableEventSeq.Torn(`tornEventId`)) =
+    val Right(TearableEventSeq.Torn(`tornEventId`)) =
       agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId + 1)).await(99.s)
   }
 }

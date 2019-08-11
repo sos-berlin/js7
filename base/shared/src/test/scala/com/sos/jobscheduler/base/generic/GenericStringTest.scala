@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.generic
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.generic.GenericStringTest._
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
@@ -12,13 +11,13 @@ import org.scalatest.FreeSpec
 final class GenericStringTest extends FreeSpec
 {
   "NonEmpty.checked" in {
-    assert(NonEmptyA.checked("") == Invalid(EmptyStringProblem("NonEmptyA")))
+    assert(NonEmptyA.checked("") == Left(EmptyStringProblem("NonEmptyA")))
   }
 
   "NameValidating.checked" in {
-    assert(ValidatedA.checked("validated") == Valid(ValidatedA("validated")))
-    assert(ValidatedA.checked("") == Invalid(EmptyStringProblem("ValidatedA")))
-    assert(ValidatedA.checked("/") == Invalid(InvalidNameProblem(typeName = "ValidatedA", name = "/")))
+    assert(ValidatedA.checked("validated") == Right(ValidatedA("validated")))
+    assert(ValidatedA.checked("") == Left(EmptyStringProblem("ValidatedA")))
+    assert(ValidatedA.checked("/") == Left(InvalidNameProblem(typeName = "ValidatedA", name = "/")))
   }
 }
 

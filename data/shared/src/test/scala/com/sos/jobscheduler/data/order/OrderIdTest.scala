@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.order
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problem
 import org.scalatest.FreeSpec
@@ -11,12 +10,12 @@ import org.scalatest.FreeSpec
 final class OrderIdTest extends FreeSpec {
 
   "officialSyntaxChecked" in {
-    assert(OrderId.checked("") == Invalid(EmptyStringProblem("OrderId")))
-    assert(OrderId("a/b").checkedNameSyntax == Invalid(Problem("OrderId must not contain reserved characters /")))
+    assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))
+    assert(OrderId("a/b").checkedNameSyntax == Left(Problem("OrderId must not contain reserved characters /")))
 
-    assert(OrderId("a@b").checkedNameSyntax == Valid(OrderId("a@b")))
-    assert(OrderId("1").checkedNameSyntax == Valid(OrderId("1")))
-    assert(OrderId("A").checkedNameSyntax == Valid(OrderId("A")))
-    assert(OrderId("A-_.B").checkedNameSyntax == Valid(OrderId("A-_.B")))
+    assert(OrderId("a@b").checkedNameSyntax == Right(OrderId("a@b")))
+    assert(OrderId("1").checkedNameSyntax == Right(OrderId("1")))
+    assert(OrderId("A").checkedNameSyntax == Right(OrderId("A")))
+    assert(OrderId("A-_.B").checkedNameSyntax == Right(OrderId("A-_.B")))
   }
 }

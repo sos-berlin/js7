@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
@@ -280,9 +279,9 @@ final class WorkflowTest extends FreeSpec {
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked.orThrow
-    assert(workflow.labelToPosition(Nil, Label("A")) == Valid(Position(0)))
-    assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Invalid(UnknownKeyProblem("Label", "UNKNOWN")))
-    assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Valid(Position(1) / Then % 0))
+    assert(workflow.labelToPosition(Nil, Label("A")) == Right(Position(0)))
+    assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
+    assert(workflow.labelToPosition(Position(1) / Then, Label("B")) == Right(Position(1) / Then % 0))
   }
 
   "labelToPosition of whole workflow" in {
@@ -292,9 +291,9 @@ final class WorkflowTest extends FreeSpec {
         thenWorkflow = Workflow.of(
           "B" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked.orThrow
-    assert(workflow.labelToPosition(Label("A")) == Valid(Position(0)))
-    assert(workflow.labelToPosition(Label("B")) == Valid(Position(1) / Then % 0))
-    assert(workflow.labelToPosition(Label("UNKNOWN")) == Invalid(UnknownKeyProblem("Label", "UNKNOWN")))
+    assert(workflow.labelToPosition(Label("A")) == Right(Position(0)))
+    assert(workflow.labelToPosition(Label("B")) == Right(Position(1) / Then % 0))
+    assert(workflow.labelToPosition(Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
   }
 
   "Duplicate labels" in {
@@ -304,7 +303,7 @@ final class WorkflowTest extends FreeSpec {
         thenWorkflow = Workflow.of(
           "DUPLICATE" @: Execute(WorkflowJob(AgentRefPath("/AGENT"), ExecutablePath("/EXECUTABLE"))))))
       .completelyChecked ==
-      Invalid(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
+      Left(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
   }
 
   "Duplicate label in nested workflow" in {
@@ -329,17 +328,17 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "jobOption" in {
-    assert(TestWorkflow.checkedExecute(Position(0)) == Valid(AExecute))
-    assert(TestWorkflow.checkedExecute(Position(1)) == Invalid(Problem("Expected 'Execute' at workflow position 1 (not: If)")))
-    assert(TestWorkflow.checkedExecute(Position(2)) == Invalid(Problem("Expected 'Execute' at workflow position 2 (not: Fork)")))
-    assert(TestWorkflow.checkedExecute(Position(3)) == Valid(BExecute))
-    assert(TestWorkflow.checkedExecute(Position(4)) == Invalid(Problem("Expected 'Execute' at workflow position 4 (not: ImplicitEnd)")))
-    assert(TestWorkflow.checkedExecute(Position(999)) == Invalid(Problem("Expected 'Execute' at workflow position 999 (not: Gap)")))
+    assert(TestWorkflow.checkedExecute(Position(0)) == Right(AExecute))
+    assert(TestWorkflow.checkedExecute(Position(1)) == Left(Problem("Expected 'Execute' at workflow position 1 (not: If)")))
+    assert(TestWorkflow.checkedExecute(Position(2)) == Left(Problem("Expected 'Execute' at workflow position 2 (not: Fork)")))
+    assert(TestWorkflow.checkedExecute(Position(3)) == Right(BExecute))
+    assert(TestWorkflow.checkedExecute(Position(4)) == Left(Problem("Expected 'Execute' at workflow position 4 (not: ImplicitEnd)")))
+    assert(TestWorkflow.checkedExecute(Position(999)) == Left(Problem("Expected 'Execute' at workflow position 999 (not: Gap)")))
   }
 
   "workflowOption" in {
-    assert(TestWorkflow.nestedWorkflow(Nil) == Valid(TestWorkflow))
-    assert(TestWorkflow.nestedWorkflow(Position(2) / "fork+🥕") == Valid(
+    assert(TestWorkflow.nestedWorkflow(Nil) == Right(TestWorkflow))
+    assert(TestWorkflow.nestedWorkflow(Position(2) / "fork+🥕") == Right(
       TestWorkflow.instruction(2).asInstanceOf[Fork].workflow(BranchId("fork+🥕")).orThrow))
   }
 
@@ -414,37 +413,37 @@ final class WorkflowTest extends FreeSpec {
           Workflow.of(
             Execute.Named(AJobName/*undefined*/)))))
     "Unknown job" in {
-      assert(wrongWorkflow.completelyChecked == Invalid(Problem("known job name ('A' is unknown)")))
+      assert(wrongWorkflow.completelyChecked == Left(Problem("known job name ('A' is unknown)")))
     }
 
     "Known job" in {
       val workflow = wrongWorkflow.copy(nameToJob = Map(AJobName -> AJob))
-      assert(workflow.completelyChecked == Valid(workflow))
+      assert(workflow.completelyChecked == Right(workflow))
     }
 
     "retry is not allowed outside a catch block" - {
       "simple case" in {
-        assert(Workflow.of(Retry()).completelyChecked == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
+        assert(Workflow.of(Retry()).completelyChecked == Left(Problem("Statement 'retry' is only allowed in a catch block")))
       }
     }
 
     "in try" in {
       assert(Workflow.of(TryInstruction(Workflow.of(Retry()), Workflow.empty)).completelyChecked
-        == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
+        == Left(Problem("Statement 'retry' is only allowed in a catch block")))
     }
 
     "in catch" in {
-      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isValid)
+      assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Retry()))).completelyChecked.isRight)
     }
 
     "'if' in catch" in {
       assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(If(BooleanConstant(true), Workflow.of(Retry())))))
-        .completelyChecked.isValid)
+        .completelyChecked.isRight)
     }
 
     "'fork' is a barrier" in {
       assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork.of("A" -> Workflow.of(Retry())))))
-        .completelyChecked == Invalid(Problem("Statement 'retry' is only allowed in a catch block")))
+        .completelyChecked == Left(Problem("Statement 'retry' is only allowed in a catch block")))
     }
   }
 

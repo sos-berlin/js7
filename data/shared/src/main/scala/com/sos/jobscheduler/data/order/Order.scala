@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.order
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -58,21 +57,21 @@ final case class Order[+S <: Order.State](
   def forkPosition: Checked[Position] = {
     val forkBranchPath = position.branchPath.reverse.dropWhile(o => !o.branchId.isFork).reverse
     if (forkBranchPath.isEmpty)
-      Invalid(Problem.pure(s"Order '${id.string}' is in state FailedInFork but not below a Fork instruction"))
+      Left(Problem.pure(s"Order '${id.string}' is in state FailedInFork but not below a Fork instruction"))
     else
-      Valid(forkBranchPath.init % forkBranchPath.last.nr)
+      Right(forkBranchPath.init % forkBranchPath.last.nr)
   }
 
   def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
-    def inapplicable = Invalid(Problem(
+    def inapplicable = Left(Problem(
       s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}' ($attachedStateString) has received an inapplicable event: $event"))
 
     def check[A](okay: Boolean, updated: A) =
-      if (okay) Valid(updated) else inapplicable
+      if (okay) Right(updated) else inapplicable
 
     event match {
       case _: OrderAdded | _: OrderAttached =>
-        Invalid(Problem("OrderAdded and OrderAttached events are not handled by the Order itself"))
+        Left(Problem("OrderAdded and OrderAttached events are not handled by the Order itself"))
 
       case OrderStarted =>
         check(isState[Fresh] && (isDetached || isAttached),
@@ -174,7 +173,7 @@ final case class Order[+S <: Order.State](
           case Some(Attached(agentRefPath))
             if isState[Fresh] || isState[Ready] || isState[Forked] ||
                isState[StoppedWhileFresh] || isState[Stopped] || isState[FailedInFork] || isState[Broken] =>
-              Valid(copy(attachedState = Some(Detaching(agentRefPath))))
+              Right(copy(attachedState = Some(Detaching(agentRefPath))))
           case _ =>
             inapplicable
         }
@@ -269,17 +268,17 @@ final case class Order[+S <: Order.State](
   def attached: Checked[AgentRefPath] =
     attachedState match {
       case Some(Attached(agentRefPath)) =>
-        Valid(agentRefPath)
+        Right(agentRefPath)
       case o =>
-        Invalid(Problem(s"'$id' should be 'Attached', but is $o"))
+        Left(Problem(s"'$id' should be 'Attached', but is $o"))
     }
 
   def detaching: Checked[AgentRefPath] =
     attachedState match {
       case Some(Detaching(agentRefPath)) =>
-        Valid(agentRefPath)
+        Right(agentRefPath)
       case o =>
-        Invalid(Problem(s"'$id' should be Detaching, but is $o"))
+        Left(Problem(s"'$id' should be Detaching, but is $o"))
     }
 }
 

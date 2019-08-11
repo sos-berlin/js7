@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.configutils
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -15,8 +14,7 @@ import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.JavaConverters._
-import scala.collection.immutable.IndexedSeq
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{IndexedSeq, Seq}
 
 /**
   * @author Joacim Zschimmer
@@ -104,7 +102,7 @@ object Configs
 
     def checkedPath[A](path: String)(f: String => Checked[A]): Checked[A] =
       if (!underlying.hasPath(path))
-        Invalid(Problem(s"Missing configuration key '$path'"))
+        Left(Problem(s"Missing configuration key '$path'"))
       else
         f(path)
 

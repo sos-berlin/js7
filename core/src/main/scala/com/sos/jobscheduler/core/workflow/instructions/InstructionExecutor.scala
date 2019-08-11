@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.core.workflow.OrderContext
@@ -48,7 +47,7 @@ object InstructionExecutor
   def nextPosition(context: OrderContext, order: Order[Order.State], instruction: Instruction): Checked[Option[Position]] =
     instructionToExecutor(instruction) match {
       case executor: PositionInstructionExecutor => executor.nextPosition(context, order, instruction.asInstanceOf[executor.Instr])
-      case _ => Valid(None)
+      case _ => Right(None)
     }
 
   def toEvent(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[KeyedEvent[OrderActorEvent]]] =
@@ -56,7 +55,7 @@ object InstructionExecutor
       case exec: EventInstructionExecutor =>
         exec.toEvent(context, order, instruction.asInstanceOf[exec.Instr])
       case _ =>
-        Valid(None)
+        Right(None)
     }
 
   private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =

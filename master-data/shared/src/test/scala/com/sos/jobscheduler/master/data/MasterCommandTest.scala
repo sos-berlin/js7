@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.data
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -33,7 +32,7 @@ final class MasterCommandTest extends FreeSpec {
     }
 
     "BatchResponse" in {
-      testJson[MasterCommand.Response](Batch.Response(Valid(Response.Accepted) :: Invalid(Problem("PROBLEM")) :: Nil),
+      testJson[MasterCommand.Response](Batch.Response(Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Nil),
         json"""{
           "TYPE": "BatchResponse",
           "responses": [
@@ -48,9 +47,9 @@ final class MasterCommandTest extends FreeSpec {
     }
 
     "BatchResponse.toString" in {
-      val threeResponses = Valid(Response.Accepted) :: Invalid(Problem("PROBLEM")) :: Valid(Response.Accepted) :: Nil
+      val threeResponses = Right(Response.Accepted) :: Left(Problem("PROBLEM")) :: Right(Response.Accepted) :: Nil
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
-      assert(Batch.Response(threeResponses ::: Valid(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
+      assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
     }
   }
 

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.command
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -28,7 +27,7 @@ extends CommandExecutor[MasterCommand]
     logCommand(run)
     executeCommand2(command, meta, run.internalId, batchId)
       .map { checkedResponse =>
-        if (run.batchInternalId.isEmpty || checkedResponse != Valid(MasterCommand.Response.Accepted)) {
+        if (run.batchInternalId.isEmpty || checkedResponse != Right(MasterCommand.Response.Accepted)) {
           logger.debug(s"Response to ${run.idString} ${MasterCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $checkedResponse")
         }
         register.remove(run.internalId)
@@ -41,10 +40,10 @@ extends CommandExecutor[MasterCommand]
     command match {
       case Batch(commands) =>
         val tasks = for (c <- commands) yield executeCommand(c, meta, batchId orElse Some(id))
-        Task.sequence(tasks) map (checkedResponses => Valid(Batch.Response(checkedResponses)))
+        Task.sequence(tasks) map (checkedResponses => Right(Batch.Response(checkedResponses)))
 
       case NoOperation =>
-        Task.pure(Valid(MasterCommand.Response.Accepted))
+        Task.pure(Right(MasterCommand.Response.Accepted))
 
       case EmergencyStop =>
         Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")

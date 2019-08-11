@@ -10,7 +10,6 @@ import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, ExceptionHandler, Route}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.generic.Completed
@@ -82,10 +81,10 @@ trait GenericEventRoute extends RouteProvider
             authorizedUser(ValidUserPermission) { user =>
               routeTask(
                 eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map {
-                  case Invalid(problem) =>
+                  case Left(problem) =>
                     complete(problem)
 
-                  case Valid(eventWatch) =>
+                  case Right(eventWatch) =>
                     htmlPreferred {
                       oneShot(eventWatch)
                     } ~

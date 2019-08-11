@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.workflow.OrderContext
@@ -19,16 +18,16 @@ object FinishExecutor extends EventInstructionExecutor
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Finish) =
     order.state match {
       case _: Order.Fresh =>
-        Valid(Some(order.id <-: OrderStarted))
+        Right(Some(order.id <-: OrderStarted))
 
       case _: Order.Ready =>
         if (order.isAttached)
-          Valid(Some(order.id <-: OrderDetachable))
+          Right(Some(order.id <-: OrderDetachable))
         else
           order.position.forkBranchReversed match {
             case Nil =>
               // Not in a fork
-              Valid(Some(order.id <-: OrderFinished))
+              Right(Some(order.id <-: OrderFinished))
 
             case BranchPath.Segment(nr, branchId) :: reverseInit =>
               // In a fork
@@ -42,6 +41,6 @@ object FinishExecutor extends EventInstructionExecutor
               } yield Some(order.id <-: OrderMoved(endPos))
           }
 
-      case _ => Valid(None)
+      case _ => Right(None)
     }
 }

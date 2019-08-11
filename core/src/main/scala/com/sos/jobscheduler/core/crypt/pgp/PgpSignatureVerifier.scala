@@ -1,15 +1,13 @@
 package com.sos.jobscheduler.core.crypt.pgp
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.effect.{Resource, SyncIO}
 import cats.syntax.show._
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.SyncResource.ops._
 import com.sos.jobscheduler.common.scalautil.GuavaUtils.stringToInputStreamResource
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.utils.CatsUtils.bytesToInputStreamResource
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.crypt.pgp.PgpCommons.{RichPGPPublicKeyRingCollection, _}
 import com.sos.jobscheduler.core.problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -38,11 +36,11 @@ extends SignatureVerifier
 
   def key = publicKeyRingCollection.toArmoredAsciiBytes
 
-  /** Returns `Valid(message)` iff signature matches the message. */
+  /** Returns `Right(message)` iff signature matches the message. */
   def verify(message: String, signature: PgpSignature): Checked[Seq[SignerId]] =
     verify(stringToInputStreamResource(message), stringToInputStreamResource(signature.string))
 
-  /** Returns `Valid(userIds)` iff signature matches the message. */
+  /** Returns `Right(userIds)` iff signature matches the message. */
   private def verify(message: Resource[SyncIO, InputStream], signature: Resource[SyncIO, InputStream]): Checked[Seq[SignerId]] =
     for {
       pgpSignature <- readMutableSignature(signature)
@@ -54,9 +52,9 @@ extends SignatureVerifier
     publicKeyRingCollection.getPublicKey(signature.getKeyID) match {  // Public key is matched with the only 64-bit long key ID ???
       case null =>
         logger.debug(MessageSignedByUnknownProblem + ", no public key for " + signature.show)
-        Invalid(MessageSignedByUnknownProblem)
+        Left(MessageSignedByUnknownProblem)
       case publicKey =>
-        Valid(publicKey)
+        Right(publicKey)
     }
 
   private def verifyWithPublicKey(message: Resource[SyncIO, InputStream], pgpSignature: PGPSignature, publicKey: PGPPublicKey): Checked[Seq[SignerId]] = {
@@ -64,9 +62,9 @@ extends SignatureVerifier
     pgpSignature.init(contentVerifierBuilderProvider, publicKey)
     readMessage(message, pgpSignature.update(_, 0, _))
     if (!pgpSignature.verify())
-      Invalid(TamperedWithSignedMessageProblem)
+      Left(TamperedWithSignedMessageProblem)
     else
-      Valid(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
+      Right(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
   }
 
   override def toString = s"PgpSignatureVerifier(origin=$keyOrigin, ${publicKeyRingCollection.show})"
@@ -100,16 +98,16 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
         .flatMap {
           case o: PGPSignatureList =>
             if (o.size != 1)
-              Invalid(Problem(s"Unsupported PGP signature type: expected exactly one PGPSignature, not ${o.size}"))
+              Left(Problem(s"Unsupported PGP signature type: expected exactly one PGPSignature, not ${o.size}"))
             else
-              Valid(o.get(0))
+              Right(o.get(0))
 
           case null =>
-            Invalid(Problem("Not a valid PGP signature"))
+            Left(Problem("Not a valid PGP signature"))
 
           case o =>
             logger.warn(s"Unsupported PGP signature type: ${o.getClass.getName} $o")
-            Invalid(Problem("Unsupported PGP signature type"))
+            Left(Problem("Unsupported PGP signature type"))
         })
 
 

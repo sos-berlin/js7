@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions.executable
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -66,7 +65,7 @@ object WorkflowJob
     if (agentRefPath.isAnonymous)
       Problem.pure("Anonymous AgentRef in Job?")
     else
-      Valid(new WorkflowJob(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit))
+      Right(new WorkflowJob(agentRefPath, executable, defaultArguments, returnCodeMeaning, taskLimit))
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {

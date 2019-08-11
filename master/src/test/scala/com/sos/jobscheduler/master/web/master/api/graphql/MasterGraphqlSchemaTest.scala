@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.web.master.api.graphql
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -535,7 +534,7 @@ object MasterGraphqlSchemaTest
     def idTo[A <: FileBased: FileBased.Companion](id: A#Id) =
       Future.successful(id match {
         case FileBasedId(_: WorkflowPath, VersionId("1")) =>
-          Valid(Workflow(
+          Right(Workflow(
             WorkflowPath.NoId,
             Vector(
               Execute(WorkflowJob.Name("JOB")),

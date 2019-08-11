@@ -8,14 +8,13 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.base.time.ScalaTime._
 import io.circe.generic.semiauto.deriveEncoder
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -60,14 +59,14 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
     implicit val encoder = deriveEncoder[A]
 
     "Valid" in {
-      val response = Marshal(Valid(A(7)): Checked[A]).to[HttpResponse] await 99.s
+      val response = Marshal(Right(A(7)): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == OK)
       assert(response.entity.contentType == ContentTypes.`application/json`)
       assert(response.entity.toStrict(99.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json""" { "number": 7 } """)
     }
 
     "Invalid" in {
-      val response = Marshal(Invalid(Problem("PROBLEM")): Checked[A]).to[HttpResponse] await 99.s
+      val response = Marshal(Left(Problem("PROBLEM")): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == BadRequest)
       assert(response.entity.contentType == `text/plain(UTF-8)`)
       assert(response.entity.toStrict(99.seconds).await(99.s).data == ByteString("PROBLEM\n"))

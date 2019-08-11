@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.agent
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -64,10 +63,10 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       openRequestCount += 1
       executeCommand(Batch(inputs map inputToAgentCommand))
         .materialize foreach {
-          case Success(Valid(Batch.Response(responses))) =>
+          case Success(Right(Batch.Response(responses))) =>
             asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
 
-          case Success(Invalid(problem)) =>
+          case Success(Left(problem)) =>
             asyncOnBatchFailed(inputs, problem)
 
           case Failure(t) =>
@@ -94,11 +93,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
     responses.flatMap {
-      case QueuedInputResponse(input, Valid(AgentCommand.Response.Accepted)) =>
+      case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
         Some(input)
-      case QueuedInputResponse(_, Valid(o)) =>
+      case QueuedInputResponse(_, Right(o)) =>
         sys.error(s"Unexpected response from Agent: $o")
-      case QueuedInputResponse(input, Invalid(problem)) =>
+      case QueuedInputResponse(input, Left(problem)) =>
         // CancelOrder(NotStarted) fails if order has started !!!
         logger.error(s"Agent has rejected the command ${input.toShortString}: $problem")
         // Agent's state does not match master's state ???

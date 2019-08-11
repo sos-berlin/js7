@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.crypt.generic
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
@@ -27,8 +26,8 @@ final class GenericSignatureVerifierTest extends FreeSpec
       val verifier = GenericSignatureVerifier(ConfigFactory.parseString(
         s"""jobscheduler.configuration.trusted-signature-keys.PGP = "${file.getPath.replace("""\""", """\\""")}"""")
       ).orThrow
-      assert(verifier.verify(message, signature) == Valid(PgpTest.signerIds))
-      assert(verifier.verify("TAMPERED", signature) == Invalid(TamperedWithSignedMessageProblem))
+      assert(verifier.verify(message, signature) == Right(PgpTest.signerIds))
+      assert(verifier.verify("TAMPERED", signature) == Left(TamperedWithSignedMessageProblem))
     }
   }
 }

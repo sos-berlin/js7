@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
 import akka.util.ByteString
-import cats.data.Validated.{Invalid, Valid}
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
@@ -198,9 +197,9 @@ object FileUtils {
 
   def checkRelativePath(path: String): Checked[String] =
     if (path.isEmpty)
-      Invalid(Problem("Relative file path must not be empty"))
+      Left(Problem("Relative file path must not be empty"))
     else if (RelativePathRegex.pattern.matcher(path).find())
-      Invalid(Problem(s"Not a valid relative file path: $path"))
+      Left(Problem(s"Not a valid relative file path: $path"))
     else
-      Valid(path)
+      Right(path)
 }

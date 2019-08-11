@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.core.crypt.generic
 
 import cats.Applicative
-import cats.data.Validated._
+import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -56,29 +55,29 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
           case o: String =>
             val file = Paths.get(o)
             if (!Files.exists(file))
-              Invalid(Problem.pure(s"Signature key file '$file' for '$typeName' does not exists"))
+              Left(Problem.pure(s"Signature key file '$file' for '$typeName' does not exists"))
             else
               SignatureVerifiers.typeToSignatureVerifierCompanion(typeName)
                 .flatMap(_.checked(Files.readAllBytes(file).toVector, keyOrigin = file.toString))
           case _ =>
-            Invalid(Problem.pure(s"String expected as value for configuration key $configPath.$typeName"))
+            Left(Problem.pure(s"String expected as value for configuration key $configPath.$typeName"))
         })
       }
       .toVector.map {
-        case (k, Valid(v)) => Valid(k -> v)
-        case (_, Invalid(p)) => invalid(p): Checked[(String, SignatureVerifier)]
+        case (k, Right(v)) => Right(k -> v)
+        case (_, Left(p)) => Left(p): Checked[(String, SignatureVerifier)]
       }
       .sequence
       .map(_.toMap)
       .flatMap { typeToVerifier =>
         if (typeToVerifier.isEmpty)
-          Invalid(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
+          Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           for (verifier <- typeToVerifier.values.toVector.sortBy(_.companion.typeName)) {
             logger.info("Using trusted key for the signature type " +
               s"${verifier.companion.typeName}: $verifier")
           }
-          Valid(
+          Right(
             new GenericSignatureVerifier(
               typeToVerifier.toChecked(key => Problem(s"No trusted public key for signature type '$key'"))))
         }

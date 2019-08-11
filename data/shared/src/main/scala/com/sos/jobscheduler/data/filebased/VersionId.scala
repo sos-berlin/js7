@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked._
@@ -52,7 +51,7 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   override def checked(string: String): Checked[VersionId] =
     for {
       versionId <- super.checked(string) match {
-        case Valid(VersionId.Anonymous) => Invalid(Problem.pure("VersionId.Anonymous?"))
+        case Right(VersionId.Anonymous) => Left(Problem.pure("VersionId.Anonymous?"))
         case o => o
       }
     } yield versionId

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.position
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show.toShow
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
@@ -62,16 +61,16 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
   @tailrec
   def nextRetryBranchPath: Checked[BranchPath] =
     splitBranchAndNr match {
-      case None => Invalid(NoTryBlockProblem)
+      case None => Left(NoTryBlockProblem)
       case Some((parent, branchId @ TryCatchBranchId(_), _)) =>
         nextTryBranchId(branchId) match {
-          case Valid(None) => parent.nextRetryBranchPath
-          case Valid(Some(tryBranchId)) => Valid(parent / tryBranchId)
-          case o @ Invalid(_) => o
+          case Right(None) => parent.nextRetryBranchPath
+          case Right(Some(tryBranchId)) => Right(parent / tryBranchId)
+          case Left(l) => Left(l)
         }
       case Some((parent, BranchId.Then | BranchId.Else, _)) =>
         parent.nextRetryBranchPath
-      case _ => Invalid(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
+      case _ => Left(NoTryBlockProblem) // For example, Fork is a barrier. Retry may not be issued inside a Fork for a Try outside the Fork
     }
 
   def isInFork = forkPosition.isDefined

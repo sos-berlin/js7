@@ -6,7 +6,6 @@ import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.problems.AgentIsShuttingDownProblem
 import com.sos.jobscheduler.agent.web.common.AgentRouteProvider
@@ -40,7 +39,7 @@ trait CommandWebService extends AgentRouteProvider {
               completeTask {
                 val meta = CommandMeta(user, maybeSessionToken)
                 commandExecute(meta, command).map {
-                  case Invalid(problem @ AgentIsShuttingDownProblem) =>
+                  case Left(problem @ AgentIsShuttingDownProblem) =>
                     ToResponseMarshallable(ServiceUnavailable -> problem)
                   case checked =>
                     ToResponseMarshallable(checked)

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -53,7 +52,7 @@ extends Instruction
       case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
         val id = Branch.Id(name drop BranchId.ForkPrefix.length)
         branches.collectFirst { case Fork.Branch(`id`, workflow) => workflow }
-          .fold(super.workflow(branchId))(Valid.apply)
+          .fold(super.workflow(branchId))(Right.apply)
       case _ =>
         super.workflow(branchId)
     }
@@ -73,16 +72,16 @@ object Fork
     checked(branches, sourcePos).orThrow
 
   def checked(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Checked[Fork] =
-    Valid(new Fork(branches, sourcePos))
+    Right(new Fork(branches, sourcePos))
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Checked[Branch] =
     if (branch.workflow.instructions exists (o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
-      Invalid(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
+      Left(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
     else
-      Valid(branch)
+      Right(branch)
 
   final case class Branch(id: Branch.Id, workflow: Workflow)
   object Branch {

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.data.Validated.{Invalid, Valid}
+import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
@@ -59,8 +59,8 @@ trait TypedPath extends GenericString {
       withoutStartingSlash.split('/')
         .toVector.traverse(officialSyntaxNameValidator.checked(typeName = companion.name, _))
       match {
-        case Invalid(problem) => problem.head
-        case Valid(_) => Valid(this)
+        case Left(problem) => problem.head
+        case Right(_) => Right(this)
       }
 
   final def isAnonymous = this == companion.Anonymous

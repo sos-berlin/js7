@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.data
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
@@ -88,11 +87,11 @@ object JournalHeader
       header <-
         expectedJournalId match {
           case Some(expected) if expected != header.journalId =>
-            Invalid(JournalIdMismatchProblem(journalFile, expectedJournalId = expected, foundJournalId = header.journalId))
-          case _ => Valid(header)
+            Left(JournalIdMismatchProblem(journalFile, expectedJournalId = expected, foundJournalId = header.journalId))
+          case _ => Right(header)
         }
       header <-
-        if (header.version != Version) Invalid(Problem(
+        if (header.version != Version) Left(Problem(
           s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFile"))
         else {
           for (o <- expectedJournalId) logger.debug(s"JournalHeader of file '${journalFile.getFileName}' is as expected, journalId=$o")

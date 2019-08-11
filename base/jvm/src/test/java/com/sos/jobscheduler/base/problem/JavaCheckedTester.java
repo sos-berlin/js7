@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.problem;
 
-import cats.data.Validated;
+import scala.util.Left;
+import scala.util.Right;
 
 /**
  * @author Joacim Zschimmer
@@ -9,9 +10,9 @@ final class JavaCheckedTester
 {
     // Access to cryptic JobScheduler internals for this test only. Not an offical API.
     @SuppressWarnings({"unchecked","rawtypes"})
-    private static final JavaChecked<String> valid = new JavaChecked<>(new Validated.Valid("VALID"));
+    private static final JavaChecked<String> valid = new JavaChecked<>(new Right("VALID"));
     @SuppressWarnings({"unchecked","rawtypes"})
-    private static final JavaChecked<String> invalid = new JavaChecked<>(new Validated.Invalid(Problem$.MODULE$.pure("PROBLEM")));
+    private static final JavaChecked<String> invalid = new JavaChecked<>(new Left(Problem$.MODULE$.pure("PROBLEM")));
 
     private JavaCheckedTester() {}
 

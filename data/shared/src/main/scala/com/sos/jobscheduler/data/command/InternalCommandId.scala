@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.command
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.Problem
 import scala.util.{Failure, Success, Try}
@@ -21,8 +20,8 @@ object InternalCommandId extends GenericString.Checked_[InternalCommandId]
 
   override def checked(o: String) =
     Try(o.toLong) match {
-      case Failure(t) => Invalid(Problem.pure(t))
-      case Success(n) => Valid(new InternalCommandId(n))
+      case Failure(t) => Left(Problem.pure(t))
+      case Success(n) => Right(new InternalCommandId(n))
     }
 
   def newGenerator(): Iterator[InternalCommandId] =

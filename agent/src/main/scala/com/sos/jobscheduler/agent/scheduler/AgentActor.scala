@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
@@ -124,8 +123,8 @@ extends MainJournalingActor[AgentEvent] {
 
     case Input.GetEventWatch(masterId) =>
       masterToOrderKeeper.checked(masterId) match {
-        case Valid(entry) => entry.eventWatch.whenStarted.map(Valid.apply).runToFuture pipeTo sender()
-        case o @ Invalid(_) => sender() ! o
+        case Right(entry) => entry.eventWatch.whenStarted.map(Right.apply).runToFuture pipeTo sender()
+        case o @ Left(_) => sender() ! o
       }
 
     case msg: JobActor.Output.ReadyForOrder.type =>
@@ -159,7 +158,7 @@ extends MainJournalingActor[AgentEvent] {
         if (!terminating) {
           terminating = true
           terminateOrderKeepers(command) onComplete { ordersTerminated =>
-            response.complete(ordersTerminated map Valid.apply)
+            response.complete(ordersTerminated map Right.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination
             continueTermination()
           }
@@ -172,7 +171,7 @@ extends MainJournalingActor[AgentEvent] {
             response completeWith
               persist(AgentEvent.MasterRegistered(masterId, agentRunId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
                 update(event)
-                Valid(AgentCommand.RegisterAsMaster.Response(agentRunId))
+                Right(AgentCommand.RegisterAsMaster.Response(agentRunId))
               }
           case Some(entry) =>
             response.completeWith(
@@ -187,9 +186,9 @@ extends MainJournalingActor[AgentEvent] {
 
       case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type) =>
         masterToOrderKeeper.checked(masterId) match {
-          case Valid(entry) =>
+          case Right(entry) =>
             entry.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
-          case Invalid(problem) =>
+          case Left(problem) =>
             response.failure(problem.throwable)
         }
 

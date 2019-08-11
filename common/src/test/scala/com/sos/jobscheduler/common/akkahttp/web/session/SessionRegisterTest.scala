@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -32,8 +31,8 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
   }
 
   "session(unknown)" in {
-    assert(sessionRegister.session(unknownSessionToken, None).await(99.seconds).isInvalid)
-    assert(sessionRegister.session(unknownSessionToken, Some(AUser)).await(99.seconds).isInvalid)
+    assert(sessionRegister.session(unknownSessionToken, None).await(99.seconds).isLeft)
+    assert(sessionRegister.session(unknownSessionToken, Some(AUser)).await(99.seconds).isLeft)
   }
 
   "login" in {
@@ -44,12 +43,12 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     val someToken = SessionToken(SecretString("X"))
     for (user <- List(Some(AUser), None)) {
       assert(sessionRegister.session(sessionToken, user).await(99.seconds).map(o => o.copy(sessionInit = o.sessionInit.copy(sessionToken = someToken))) ==
-        Valid(MySession(SessionInit(1, someToken, AUser))))
+        Right(MySession(SessionInit(1, someToken, AUser))))
     }
   }
 
   "Changed UserId is rejected" in {
-    assert(sessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(InvalidSessionTokenProblem))
+    assert(sessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
   }
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
@@ -61,11 +60,11 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.Anonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
+    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Valid(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
-    assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Invalid(InvalidSessionTokenProblem))
+    assert(mySessionRegister.session(sessionToken, Some(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.Anonymous))))
+    assert(mySessionRegister.session(sessionToken, Some(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
     assert(mySessionRegister.session(sessionToken, None).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 
     mySystem.terminate() await 99.seconds
@@ -73,7 +72,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
 
   "logout" in {
     assert(sessionRegister.logout(sessionToken).await(99.seconds) == Completed)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isInvalid)
+    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isLeft)
   }
 
   "Session timeout" in {
@@ -82,11 +81,11 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest
     sessionToken = sessionRegister.login(AUser).await(99.seconds)
     val eternal = sessionRegister.login(BUser, isEternalSession = true).await(99.seconds)
     assert(sessionRegister.count.await(99.seconds) == 2)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isValid)
+    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isRight)
 
     testScheduler.tick(TestSessionTimeout + 1.second)
-    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isInvalid)
-    assert(sessionRegister.session(eternal, None).await(99.seconds).isValid)
+    assert(sessionRegister.session(sessionToken, None).await(99.seconds).isLeft)
+    assert(sessionRegister.session(eternal, None).await(99.seconds).isRight)
     assert(sessionRegister.count.await(99.seconds) == 1)
   }
 }

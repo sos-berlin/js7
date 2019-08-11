@@ -194,13 +194,13 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
   "checkRelativePath" - {
     "valid" in {
-      assert(checkRelativePath("relative").isValid)
+      assert(checkRelativePath("relative").isRight)
     }
 
     "invalid" - {
       for (invalid <- InvalidRelativePaths) {
         invalid in {
-          assert(checkRelativePath(invalid).isInvalid)
+          assert(checkRelativePath(invalid).isLeft)
         }
       }
     }

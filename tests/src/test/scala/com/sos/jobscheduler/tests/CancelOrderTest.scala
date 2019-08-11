@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
@@ -79,7 +78,7 @@ final class CancelOrderTest extends FreeSpec with MasterAgentForScalaTest
     master.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     // Master knows the order has started
     assert(master.executeCommandAsSystemUser(CancelOrder(order.id, CancelMode.NotStarted)).await(99.seconds) ==
-      Invalid(CancelStartedOrderProblem(OrderId("❌"))))
+      Left(CancelStartedOrderProblem(OrderId("❌"))))
   }
 
   "Cancel a started order between two jobs" in {
@@ -104,7 +103,7 @@ final class CancelOrderTest extends FreeSpec with MasterAgentForScalaTest
 
   "Cancel unknown order" in {
     assert(master.executeCommandAsSystemUser(CancelOrder(OrderId("UNKNOWN"), CancelMode.NotStarted)).await(99.seconds) ==
-      Invalid(UnknownOrderProblem(OrderId("UNKNOWN"))))
+      Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
   }
 
   "Cancel multiple orders with Batch" in {
@@ -112,7 +111,7 @@ final class CancelOrderTest extends FreeSpec with MasterAgentForScalaTest
     for (o <- orders) master.addOrderBlocking(o)
     for (o <- orders) master.eventWatch.await[OrderTransferredToAgent](_.key == o.id)
     val response = master.executeCommandAsSystemUser(Batch(for (o <- orders) yield CancelOrder(o.id, CancelMode.NotStarted))).await(99.seconds).orThrow
-    assert(response == Batch.Response(Vector.fill(orders.length)(Valid(Response.Accepted))))
+    assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
     for (o <- orders) master.eventWatch.await[OrderCanceled](_.key == o.id)
   }
 }

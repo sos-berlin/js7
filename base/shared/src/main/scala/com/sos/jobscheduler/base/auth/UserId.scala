@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.auth
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
@@ -22,11 +21,11 @@ object UserId extends GenericString.Checked_[UserId]
 
   override def checked(string: String) =
     if (string.isEmpty)
-      Invalid(EmptyStringProblem(name))
+      Left(EmptyStringProblem(name))
     else if (isValid(string))
-      Valid(new UserId(string))
+      Right(new UserId(string))
     else
-      Invalid(InvalidNameProblem(name, string))
+      Left(InvalidNameProblem(name, string))
 
   private def isValid(string: String): Boolean =
     string.nonEmpty &&

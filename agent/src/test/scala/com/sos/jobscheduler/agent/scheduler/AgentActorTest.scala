@@ -2,17 +2,16 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrders, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorTest._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
@@ -48,7 +47,7 @@ final class AgentActorTest extends FreeSpec {
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
-        val Valid(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
+        val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
           orderIds.map(orderId => Order(
             orderId,

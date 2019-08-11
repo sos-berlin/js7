@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -71,17 +70,17 @@ final class OrderAgentTest extends FreeSpec {
           def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
             agentClient.commandExecute(AttachOrder(order, TestAgentRefPath, signedWorkflow)).await(99.s)
 
-          attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Invalid(TamperedWithSignedMessageProblem)
+          attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Left(TamperedWithSignedMessageProblem)
 
-          attachOrder(SignedSimpleWorkflow) shouldEqual Valid(AgentCommand.Response.Accepted)
+          attachOrder(SignedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
           EventRequest.singleClass[OrderEvent](timeout = Some(10.s))
             .repeat(eventRequest => agentClient.mastersEvents(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
-          val Valid(processedOrder) = agentClient.order(order.id) await 99.s
+          val Right(processedOrder) = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
-          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual Valid(AgentCommand.Response.Accepted)
+          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual Right(AgentCommand.Response.Accepted)
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
           agentClient.commandExecute(AgentCommand.Terminate()).await(99.s).orThrow
         }
@@ -108,7 +107,7 @@ final class OrderAgentTest extends FreeSpec {
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
           agentClient.login(Some(TestUserAndPassword)) await 99.s
-          assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Valid(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(RegisterAsMaster).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,

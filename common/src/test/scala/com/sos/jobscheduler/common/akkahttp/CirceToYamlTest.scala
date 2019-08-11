@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.common.http.CirceToYaml._
 import io.circe.{Json, JsonObject}
@@ -38,11 +37,11 @@ final class CirceToYamlTest extends FreeSpec {
   }
 
   "yamlToJson" in {
-    assert(yamlToJson(yaml) == Valid(json))
+    assert(yamlToJson(yaml) == Right(json))
   }
 
   "yamlToJson, failed" in {
-    val Invalid(problem: YamlProblem) = yamlToJson("{ INVALID YAML")
+    val Left(problem: YamlProblem) = yamlToJson("{ INVALID YAML")
     assert(problem.toString ==
       """YAML error: while parsing a flow mapping
         | in 'string', line 1, column 1:

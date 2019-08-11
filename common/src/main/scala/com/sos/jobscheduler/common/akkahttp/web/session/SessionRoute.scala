@@ -2,7 +2,6 @@ package com.sos.jobscheduler.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directives._
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
@@ -29,7 +28,7 @@ trait SessionRoute extends RouteProvider {
           sessionTokenOption(httpUser) { tokenOption =>
             entity(as[SessionCommand]) { command =>
               onSuccess(execute(command, httpUser, tokenOption).runToFuture) {
-                case Invalid(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
+                case Left(problem @ (InvalidLoginProblem | AnonymousLoginProblem)) =>
                   completeUnauthenticatedLogin(Unauthorized, problem)
 
                 case checked =>
@@ -51,21 +50,21 @@ trait SessionRoute extends RouteProvider {
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)
-          .map { _: Completed => Valid(SessionCommand.Response.Accepted) }
+          .map { _: Completed => Right(SessionCommand.Response.Accepted) }
     }
 
   private def authenticateOrUseHttpUser(userAndPasswordOption: Option[UserAndPassword], httpUser: Session#User) =
     userAndPasswordOption match {
       case Some(userAndPassword) =>
         if (!httpUser.id.isAnonymous)
-          Invalid(Problem("Both command Login and HTTP header authentication?"))
+          Left(Problem("Both command Login and HTTP header authentication?"))
         else if (userAndPassword.userId.isAnonymous)
-          Invalid(AnonymousLoginProblem)
+          Left(AnonymousLoginProblem)
         else
           gateKeeper.authenticateUser(userAndPassword) toChecked InvalidLoginProblem
 
       case None =>
-        Valid(httpUser)  // Take authenticated user from HTTP header `Authorization` or Anonymous
+        Right(httpUser)  // Take authenticated user from HTTP header `Authorization` or Anonymous
     }
 }
 

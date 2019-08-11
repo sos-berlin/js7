@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.Timestamp
@@ -22,7 +21,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
 
   def toEvent(context: OrderContext, order: Order[Order.State], retry: Retry) =
     if (!order.isState[Order.Ready])
-      Valid(None)
+      Right(None)
     else
       order.workflowPosition.position.nextRetryBranchPath
         .flatMap(branchPath =>

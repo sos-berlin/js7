@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.expression
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
 /**
@@ -22,8 +21,8 @@ trait Scope
 object Scope
 {
   object Constant extends Scope {
-    val symbolToValue = _ => Invalid(ConstantExpressionRequiredProblem)
-    val findValue = _ => Invalid(ConstantExpressionRequiredProblem)
+    val symbolToValue = _ => Left(ConstantExpressionRequiredProblem)
+    val findValue = _ => Left(ConstantExpressionRequiredProblem)
   }
 
   case object ConstantExpressionRequiredProblem extends Problem.ArgumentlessCoded

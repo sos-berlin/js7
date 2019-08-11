@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.http
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.AnyJavaJsonCodecs.jsonToJava
 import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -42,13 +41,13 @@ object CirceToYaml
   def jsonToYaml(json: Json) = jsonToJava(json)
 
   def yamlToJson(yamlString: String): Checked[Json] =
-    try Valid(anyToJson(yaml.load(yamlString)))
+    try Right(anyToJson(yaml.load(yamlString)))
     catch {
       case e: org.yaml.snakeyaml.parser.ParserException =>
         YamlProblem(e.toStringWithCauses, e.getProblemMark.getLine, e.getProblemMark.getColumn)
 
       case NonFatal(t) =>
-        Invalid(Problem.pure(t))
+        Left(Problem.pure(t))
     }
 
   private val dumperOptions =

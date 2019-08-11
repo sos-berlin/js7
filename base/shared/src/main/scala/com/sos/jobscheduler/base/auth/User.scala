@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.auth
 
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.auth.User._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 
@@ -17,7 +16,7 @@ trait User
 
   final def checkPermission(requiredPermission: Permission): Checked[Unit] =
     if (!hasPermission(requiredPermission))
-      Invalid(UserDoesNotHavePermissionProblem(id, requiredPermission))
+      Left(UserDoesNotHavePermissionProblem(id, requiredPermission))
     else
       Checked.unit
 

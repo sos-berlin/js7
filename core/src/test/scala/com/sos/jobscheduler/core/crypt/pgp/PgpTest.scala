@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.crypt.pgp
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.show._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked.Ops
@@ -67,17 +66,17 @@ final class PgpTest extends FreeSpec
 
       "Signature by alien key is rejected" in {
         assert(verifier.verify(TestMessage + "X", AlienSignature)
-          == Invalid(MessageSignedByUnknownProblem))
+          == Left(MessageSignedByUnknownProblem))
       }
 
       "Changed message is rejected" in {
         val verified = verifier.verify(TestMessage + "X", TestSignature)
-        assert(verified == Invalid(TamperedWithSignedMessageProblem))
+        assert(verified == Left(TamperedWithSignedMessageProblem))
       }
 
       "Proper message is accepted" in {
         val verified = verifier.verify(TestMessage, TestSignature)
-        assert(verified == Valid(signerIds))
+        assert(verified == Right(signerIds))
       }
     }
 
@@ -104,8 +103,8 @@ final class PgpTest extends FreeSpec
 
       "Sign and verify" in {
         val signature = signer.sign(TestMessage)
-        assert(verifier.verify(TestMessage + "X", signature).isInvalid)
-        assert(verifier.verify(TestMessage, signature).isValid)
+        assert(verifier.verify(TestMessage + "X", signature).isLeft)
+        assert(verifier.verify(TestMessage, signature).isRight)
       }
     }
   }
@@ -126,8 +125,8 @@ final class PgpTest extends FreeSpec
 
     "verify" in {
       val verifier = new PgpSignatureVerifier(toPublicKeyRingCollection(secretKey.getPublicKey), "PgpTest")
-      assert(verifier.verify(TestMessage + "X", signature).isInvalid)
-      assert(verifier.verify(TestMessage, signature).isValid)
+      assert(verifier.verify(TestMessage + "X", signature).isLeft)
+      assert(verifier.verify(TestMessage, signature).isRight)
     }
 
     "writePublicKeyAsAscii" in {
@@ -142,8 +141,8 @@ final class PgpTest extends FreeSpec
       assert(string endsWith "-----END PGP PUBLIC KEY BLOCK-----" + System.lineSeparator)
 
       val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyAscii.asResource), "PgpTest")
-      assert(verifier.verify(TestMessage + "X", signature).isInvalid)
-      assert(verifier.verify(TestMessage, signature).isValid)
+      assert(verifier.verify(TestMessage + "X", signature).isLeft)
+      assert(verifier.verify(TestMessage, signature).isRight)
     }
   }
 }

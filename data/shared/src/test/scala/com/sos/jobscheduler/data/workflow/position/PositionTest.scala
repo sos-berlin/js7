@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.position
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
@@ -129,12 +128,12 @@ final class PositionTest extends FreeSpec {
   }
 
   "nextRetryBranchPath" in {
-    assert(Position(0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert(Position(99).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert((Position(1) / try_(0) % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert((Position(1) / try_(1) % 0).nextRetryBranchPath == Invalid(Problem("Retry, but not in a catch-block")))
-    assert((Position(1) / catch_(0) % 0).nextRetryBranchPath == Valid(Position(1) / try_(1)))
-    assert((Position(1) / catch_(1) % 0).nextRetryBranchPath == Valid(Position(1) / try_(2)))
-    assert((Position(1) / catch_(2) % 0).nextRetryBranchPath == Valid(Position(1) / try_(3)))
+    assert(Position(0).nextRetryBranchPath == Left(Problem("Retry, but not in a catch-block")))
+    assert(Position(99).nextRetryBranchPath == Left(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / try_(0) % 0).nextRetryBranchPath == Left(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / try_(1) % 0).nextRetryBranchPath == Left(Problem("Retry, but not in a catch-block")))
+    assert((Position(1) / catch_(0) % 0).nextRetryBranchPath == Right(Position(1) / try_(1)))
+    assert((Position(1) / catch_(1) % 0).nextRetryBranchPath == Right(Position(1) / try_(2)))
+    assert((Position(1) / catch_(2) % 0).nextRetryBranchPath == Right(Position(1) / try_(3)))
   }
 }

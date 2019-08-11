@@ -47,7 +47,7 @@ object AgentCommand extends CommonCommand.Companion
     final case class Response(responses: Seq[Checked[AgentCommand.Response]])
     extends AgentCommand.Response {
       override def toString = {
-        val succeeded = responses count (_.isValid)
+        val succeeded = responses count (_.isRight)
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
     }

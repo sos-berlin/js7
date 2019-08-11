@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.tests
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -45,7 +44,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
 
   "readFileBased with syntax errors and an alien file" in {
       assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
-        Invalid(Problem.Multiple(Set(
+        Left(Problem.Multiple(Set(
           Problem("""Problem with 'Workflow:/D' (txt) [Expected "define":1:1, found "ERROR"]"""),
           Problem("""Problem with 'Workflow:/E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
@@ -54,7 +53,7 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
   "Duplicate FileBased, Workflows are not checked" in {
     directory / "A.workflow.txt" := "DUPLICATE"
     assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)) ==
-      Invalid(Problem.Multiple(Set(
+      Left(Problem.Multiple(Set(
         Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}"),
         Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }
@@ -65,6 +64,6 @@ final class FileBasedReaderTest extends FreeSpec with BeforeAndAfterAll
     delete(directory / "E.workflow.json")
     delete(directory / "folder/test.alien.json")
     assert(typedSourceReader.readFileBaseds(DirectoryReader.files(directory)).map(_.toSet)
-      == Valid(Set(AWorkflow, BWorkflow, CWorkflow, AAgent, BAgent)))
+      == Right(Set(AWorkflow, BWorkflow, CWorkflow, AAgent, BAgent)))
   }
 }

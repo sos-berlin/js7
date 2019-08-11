@@ -8,15 +8,15 @@ import org.scalatest.FreeSpec
 final class UserIdTest extends FreeSpec {
 
   "Invalid UserId" in {
-    assert(UserId.checked("").isInvalid)
-    assert(UserId.checked("a?").isInvalid)
-    assert(UserId.checked("a?b").isInvalid)
-    assert(UserId.checked("a/b").isInvalid)
-    assert(UserId.checked("/root").isInvalid)
-    assert(UserId.checked(".").isInvalid)
-    assert(UserId.checked("..").isInvalid)
-    assert(UserId.checked(".hidden").isInvalid)
-    assert(UserId.checked("Master--100").isInvalid)  // "--" is used for history journal files
+    assert(UserId.checked("").isLeft)
+    assert(UserId.checked("a?").isLeft)
+    assert(UserId.checked("a?b").isLeft)
+    assert(UserId.checked("a/b").isLeft)
+    assert(UserId.checked("/root").isLeft)
+    assert(UserId.checked(".").isLeft)
+    assert(UserId.checked("..").isLeft)
+    assert(UserId.checked(".hidden").isLeft)
+    assert(UserId.checked("Master--100").isLeft)  // "--" is used for history journal files
   }
 
   "Valid UserId" in {

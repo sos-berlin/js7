@@ -61,7 +61,7 @@ object CommonCommand
         def productPrefix: String
 
         override def toString = {
-          val succeeded = responses.count(_.isValid)
+          val succeeded = responses.count(_.isRight)
           s"$productPrefix($succeeded succeeded and ${responses.size - succeeded} failed)"
         }
       }

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.position
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import io.circe.syntax.EncoderOps
@@ -42,9 +41,9 @@ object BranchId
 
   def nextTryBranchId(branchId: BranchId): Checked[Option[BranchId]] =
     branchId match {
-      case TryBranchId(_) => Valid(None)
-      case CatchBranchId(i) => Valid(Some(BranchId.try_(i + 1)))
-      case _ => Invalid(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
+      case TryBranchId(_) => Right(None)
+      case CatchBranchId(i) => Right(Some(BranchId.try_(i + 1)))
+      case _ => Left(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
     }
 
   def fork(branch: String) = BranchId(ForkPrefix + branch)

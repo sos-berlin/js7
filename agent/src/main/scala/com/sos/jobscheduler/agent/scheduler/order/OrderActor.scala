@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -217,11 +216,11 @@ extends KeyedJournalingActor[OrderEvent]
 
   private def handleEvent(event: OrderCoreEvent): Future[Completed] =
     order.update(event) match {
-      case Invalid(problem) =>
+      case Left(problem) =>
         logger.error(problem.toString)
         Future.successful(Completed)
 
-      case Valid(updated) =>
+      case Right(updated) =>
         becomeAsStateOf(updated)
         if (event.isInstanceOf[OrderCancelationMarked] && updated == order)  // Duplicate, already canceling with same CancelMode?
           Future.successful(Completed)

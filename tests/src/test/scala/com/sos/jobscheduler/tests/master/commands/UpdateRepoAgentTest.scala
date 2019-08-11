@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.master.commands
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
@@ -81,8 +80,8 @@ final class UpdateRepoAgentTest extends FreeSpec
   }
 
   private def executeCommand(master: RunningMaster, cmd: MasterCommand): Checked[cmd.Response] =
-    master.httpApi.executeCommand(cmd).map(Valid.apply)
-      .onErrorRecover { case e: HttpException if e.problem.isDefined => Invalid(e.problem.get) }
+    master.httpApi.executeCommand(cmd).map(Right.apply)
+      .onErrorRecover { case e: HttpException if e.problem.isDefined => Left(e.problem.get) }
       .await(99.seconds)
 }
 

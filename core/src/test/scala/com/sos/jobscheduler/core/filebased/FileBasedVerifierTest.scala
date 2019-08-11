@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.SecretString
@@ -40,7 +39,7 @@ final class FileBasedVerifierTest extends FreeSpec
     def check() = {
       val signedString = fileBasedSigner.sign(workflow)
       assert(signedString == fileBasedSigner.sign(workflow))
-      assert(fileBasedVerifier.verify(signedString) == Valid(FileBasedVerifier.Verified(Signed(workflow, signedString), signerIds)))
+      assert(fileBasedVerifier.verify(signedString) == Right(FileBasedVerifier.Verified(Signed(workflow, signedString), signerIds)))
     }
     try check()
     catch { case _: Throwable =>
@@ -51,7 +50,7 @@ final class FileBasedVerifierTest extends FreeSpec
 
   "Verify falsified" in {
     val tampered = fileBasedSigner.sign(workflow).copy("TAMPERED")
-    assert(fileBasedVerifier.verify(tampered) == Invalid(TamperedWithSignedMessageProblem))
+    assert(fileBasedVerifier.verify(tampered) == Left(TamperedWithSignedMessageProblem))
   }
 }
 

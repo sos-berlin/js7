@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
@@ -16,7 +15,7 @@ object OfferExecutor extends EventInstructionExecutor
   type Instr = Offer
 
   def toEvent(context: OrderContext, order: Order[Order.State], instruction: Offer) =
-    Valid(
+    Right(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
       .orElse(

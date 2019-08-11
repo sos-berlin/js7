@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.{Invalid, Valid}
+import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked._
@@ -74,10 +74,11 @@ final case class Repo private(
     }
 
   private def checkVersion(versionId: VersionId, signedFileBased: Iterable[Signed[FileBased]]): Checked[Vector[Signed[FileBased]]] =
-    signedFileBased.toVector.traverse(o => o.value.id.versionId match {
-      case `versionId` => Valid(o)
-      case _ => Invalid(ObjectVersionDoesNotMatchProblem(versionId, o.value.id))
-    })
+    signedFileBased.toVector.traverse(o =>
+      (o.value.id.versionId match {
+        case `versionId` => Right(o)
+        case _ => Left(ObjectVersionDoesNotMatchProblem(versionId, o.value.id))
+      }): Checked[Signed[FileBased]])
 
   private def toAddedOrChanged(signedFileBased: Signed[FileBased]): Option[RepoEvent.FileBasedEvent] = {
     val fileBased = signedFileBased.value
@@ -112,7 +113,7 @@ final case class Repo private(
   def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {
     var result = Checked(this)
     val iterator = events.iterator
-    while (result.isValid && iterator.hasNext) {
+    while (result.isRight && iterator.hasNext) {
       result = result flatMap (_.applyEvent(iterator.next()))
     }
     result
@@ -124,7 +125,7 @@ final case class Repo private(
         if (versions exists version.==)
           DuplicateVersionProblem(version)
         else
-          Valid(copy(versions = version :: versions))
+          Right(copy(versions = version :: versions))
 
       case event: FileBasedEvent =>
         if (versions.isEmpty)
@@ -140,10 +141,10 @@ final case class Repo private(
                 else if (fileBased.id.versionId != versionId)
                   EventVersionDoesNotMatchProblem(versionId, event)
                 else
-                  Valid(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString)))))
+                  Right(addEntry(fileBased.path, Some(Signed(fileBased withVersion versionId, signedString)))))
 
             case FileBasedDeleted(path) =>
-              Valid(addEntry(path, None))
+              Right(addEntry(path, None))
           }
     }
 
@@ -217,7 +218,7 @@ final case class Repo private(
   private[filebased] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
     versions.dropWhile(versionId.!=) match {
       case Nil => Problem(s"No such '$versionId'")
-      case _ :: tail => Valid(tail)
+      case _ :: tail => Right(tail)
     }
 
   def newVersionId(): VersionId =

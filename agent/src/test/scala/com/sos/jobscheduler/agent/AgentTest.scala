@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.AgentTest._
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -60,8 +59,8 @@ final class AgentTest extends FreeSpec with AgentTester
 
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentRefPath, fileBasedSigner.sign(TestWorkflow))).await(99.s)
-              == Valid(AgentCommand.Response.Accepted))
-            val Valid(eventWatch) = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
+              == Right(AgentCommand.Response.Accepted))
+            val Right(eventWatch) = agentApi.eventWatchForMaster(TestMasterId).await(99.seconds)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == Outcome.Succeeded(Map("WORKDIR" -> workingDirectory.toString)))
             agent.terminate() await 99.s

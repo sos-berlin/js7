@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
@@ -31,8 +30,8 @@ final class OrderRouteTest extends FreeSpec with RouteTester with OrderRoute {
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderApi = new OrderApi.WithCommands {
-    def addOrder(order: FreshOrder) = Task(Valid(order.id != DuplicateOrderId))
-    def addOrders(orders: Seq[FreshOrder]) = Task(Valid(Completed))
+    def addOrder(order: FreshOrder) = Task(Right(order.id != DuplicateOrderId))
+    def addOrders(orders: Seq[FreshOrder]) = Task(Right(Completed))
     def order(orderId: OrderId) = Task(TestOrders.get(orderId))
     def orders = Task(eventIdGenerator.stamp(TestOrders.values.toVector))
     def orderCount = Task(TestOrders.values.size)

@@ -1,10 +1,6 @@
 package com.sos.jobscheduler.provider
 
-import cats.data.Validated.{Invalid, Valid}
-import cats.instances.vector._
-import cats.syntax.apply._
-import cats.syntax.flatMap._
-import cats.syntax.traverse._
+import cats.implicits._
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.convert.As._
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
@@ -81,7 +77,7 @@ extends HasCloser with Observing
           masterApi.executeCommand(o) map ((_: MasterCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
-      if (response.isValid) {
+      if (response.isRight) {
         lastEntries := currentEntries
       }
       response
@@ -137,9 +133,9 @@ extends HasCloser with Observing
         if (!lastEntries.compareAndSet(last, currentEntries)) {
           val problem = Problem.pure("Provider has been concurrently used")
           logger.debug(problem.toString)
-          Invalid(problem)
+          Left(problem)
         } else
-          Valid(completed))
+          Right(completed))
 
   private lazy val loginUntilReachable: Task[Unit] =
     Task {
@@ -218,7 +214,7 @@ object Provider
         .flatMap(companion => companion.checked(Files.readAllBytes(keyFile), password))
         .map(messageSigner => new FileBasedSigner(messageSigner, MasterFileBaseds.jsonCodec))
     }.orThrow
-    Valid(new Provider(fileBasedSigner, conf))
+    Right(new Provider(fileBasedSigner, conf))
   }
 
   def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =

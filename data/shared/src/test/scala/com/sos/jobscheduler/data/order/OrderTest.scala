@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.order
 
-import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
@@ -429,13 +428,13 @@ final class OrderTest extends FreeSpec
           val maybeState = updated.map(_.state)
           val maybePredicate = toPredicate.lift((event, a))
           (maybeState, maybePredicate) match {
-            case (Valid(state), Some(predicate)) =>
+            case (Right(state), Some(predicate)) =>
               assert(predicate(state), s"- for  ${order.state} $a -> $event -> $state")
-            case (Valid(state), None) =>
+            case (Right(state), None) =>
               fail(s"Missing test case for ${order.state} $a -> $event -> $state")
-            case (Invalid(problem), Some(_)) =>
+            case (Left(problem), Some(_)) =>
               fail(s"Non-matching test case for ${order.state} $a -> $event -> ?  $problem")
-            case (Invalid(_), None) =>
+            case (Left(_), None) =>
           }
         }
       }
@@ -444,16 +443,16 @@ final class OrderTest extends FreeSpec
   "Operations" - {
     "attached" in {
       val agentRefPath = AgentRefPath("/A")
-      assert(testOrder.attached.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Attached(agentRefPath))) .attached == Valid(agentRefPath))
-      assert(testOrder.copy(attachedState = Some(Detaching(agentRefPath))).attached.isInvalid)
+      assert(testOrder.attached.isLeft)
+      assert(testOrder.copy(attachedState = Some(Attached(agentRefPath))) .attached == Right(agentRefPath))
+      assert(testOrder.copy(attachedState = Some(Detaching(agentRefPath))).attached.isLeft)
     }
 
     "detaching" in {
       val agentRefPath = AgentRefPath("/A")
-      assert(testOrder.detaching.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Attached(agentRefPath))) .detaching.isInvalid)
-      assert(testOrder.copy(attachedState = Some(Detaching(agentRefPath))).detaching == Valid(agentRefPath))
+      assert(testOrder.detaching.isLeft)
+      assert(testOrder.copy(attachedState = Some(Attached(agentRefPath))) .detaching.isLeft)
+      assert(testOrder.copy(attachedState = Some(Detaching(agentRefPath))).detaching == Right(agentRefPath))
     }
 
     "castState" in {
@@ -475,27 +474,27 @@ final class OrderTest extends FreeSpec
     "isAttaching" in {
       val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Ready,
         attachedState = Some(Detaching(AgentRefPath("/AGENT"))))
-      assert(order.detaching == Valid(AgentRefPath("/AGENT")))
+      assert(order.detaching == Right(AgentRefPath("/AGENT")))
 
       for (o <- Array(
             order.copy(attachedState = Some(Attached(AgentRefPath("/AGENT")))),
             order.copy(attachedState = None))) {
-        val problem = o.detaching.asInstanceOf[Invalid[Problem]].e
+        val problem = o.detaching.left.get
         assert(problem.toString contains "ORDER-ID")
       }
     }
   }
 
   "forkPositionOf" in {
-    assert(testOrder.withPosition(Position(1)).forkPosition.isInvalid)
-    assert(testOrder.withPosition(Position(1) / "fork+A" % 2).forkPosition == Valid(Position(1)))
-    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Valid(Position(1)))
-    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3 / "fork+B" % 4).forkPosition == Valid(Position(1) / "fork+A" % 2 / Then % 3))
+    assert(testOrder.withPosition(Position(1)).forkPosition.isLeft)
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2).forkPosition == Right(Position(1)))
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3).forkPosition == Right(Position(1)))
+    assert(testOrder.withPosition(Position(1) / "fork+A" % 2 / Then % 3 / "fork+B" % 4).forkPosition == Right(Position(1) / "fork+A" % 2 / Then % 3))
   }
 
   "Error message when updated failed" in {
     assert(testOrder.update(OrderDetachable) ==
-      Invalid(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready' (on Master) has received an inapplicable event: OrderDetachable")))
+      Left(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready' (on Master) has received an inapplicable event: OrderDetachable")))
   }
 
   if (sys.props contains "test.speed") "Speed" in {

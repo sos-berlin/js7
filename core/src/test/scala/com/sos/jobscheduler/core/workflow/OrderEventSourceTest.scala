@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits._
@@ -167,16 +166,16 @@ final class OrderEventSourceTest extends FreeSpec
                    Workflow.of(executeScript),  // 6/0:0
                    Workflow.of(executeScript))) // 6/1:0
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))    // Job
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(6) / try_(0) % 0)) // success, next instruction was try
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(2)))    // Gap
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Valid(Position(3)))    // Job
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Valid(Position(4)))    // ExplicitEnd
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6) / try_(0) % 0)) // success, next instruction was try
-      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Valid(Position(3)))    // failure
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6) / try_(0) % 0))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Valid(Position(7)))    // ImplicitEnd
-      eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isInvalid
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Position(0)))    // Job
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Right(Position(6) / try_(0) % 0)) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Right(Position(2)))    // Gap
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Right(Position(3)))    // Job
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Right(Position(4)))    // ExplicitEnd
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Right(Position(6) / try_(0) % 0)) // success, next instruction was try
+      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Right(Position(3)))    // failure
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Right(Position(6) / try_(0) % 0))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Right(Position(7)))    // ImplicitEnd
+      eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isLeft
     }
 
     "Jump loops are detected" in {
@@ -185,21 +184,21 @@ final class OrderEventSourceTest extends FreeSpec
         "B" @: Goto("A"),           // 1
         "C" @: IfFailedGoto("A"))   // 2
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 1 B: goto A --> 0 A: goto B")))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Invalid(Problem("Order:SUCCESS is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Valid(Position(3)))
-      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Invalid(Problem("Order:FAILED is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Left(Problem("Order:SUCCESS is in a workflow loop: 1 B: goto A --> 0 A: goto B")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Left(Problem("Order:SUCCESS is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Right(Position(3)))
+      assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Left(Problem("Order:FAILED is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
     }
 
     "Job, Fork" in {
       val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Valid(Position(0)))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Valid(Position(1)))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Position(0)))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Right(Position(1)))
     }
 
     "In forked order" in {
       val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder))
-      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1) / "fork+🥕" % 1) == Valid(Position(1) / "fork+🥕" % 1))
+      assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1) / "fork+🥕" % 1) == Right(Position(1) / "fork+🥕" % 1))
     }
   }
 
@@ -213,50 +212,50 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderStarted))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCanceled)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCanceled)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Right(Some(OrderCanceled)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(Some(OrderCanceled)))
       }
 
       "Fresh Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), attachedState = Some(Order.Attached(TestAgentRefPath)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderStarted))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.NotStarted))))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Right(Some(OrderCancelationMarked(CancelMode.NotStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
 
       "Ready Detached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready)
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: orderForked))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCanceled)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(Some(OrderCanceled)))
       }
 
       "Ready Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: orderForked))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderDetachable)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(Some(OrderDetachable)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
 
       "Processing Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == None)
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(Some(OrderCancelationMarked(CancelMode.FreshOrStarted))))
       }
     }
 
@@ -265,30 +264,30 @@ final class OrderEventSourceTest extends FreeSpec
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderCanceled))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(None))
       }
 
       "Ready Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, attachedState = Some(Order.Attached(TestAgentRefPath)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == Some(order.id <-: OrderDetachable))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(None))
       }
 
       "Processing Attached" in {
         val order = Order(OrderId("ORDER"), TestWorkflowId, Order.Processing, attachedState = Some(Order.Attached(TestAgentRefPath)), cancel = Some(CancelMode.FreshOrStarted))
         val eventSource = new OrderEventSource(Map(TestWorkflowId -> ForkWorkflow).toChecked, Map(order.id -> order))
         assert(eventSource.nextEvent(order.id) == None)
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Invalid(CancelStartedOrderProblem(order.id)))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Valid(None))
-        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Valid(None))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = true ) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.NotStarted    , isAgent = false) == Left(CancelStartedOrderProblem(order.id)))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = true ) == Right(None))
+        assert(eventSource.cancel(order.id, CancelMode.FreshOrStarted, isAgent = false) == Right(None))
       }
     }
   }
@@ -496,7 +495,7 @@ object OrderEventSourceTest {
 
     private def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderEvent]] = {
       val order = idToOrder(orderId)
-      if (order.detaching.isValid)
+      if (order.detaching.isRight)
         Some(order.id <-: OrderTransferredToMaster)
       else
         (order.state, workflow.instruction(order.position)) match {

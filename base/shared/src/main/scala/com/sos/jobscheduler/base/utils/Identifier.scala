@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.utils
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.generic.GenericString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
@@ -14,7 +13,7 @@ object Identifier
 {
   def checked(string: String): Checked[Identifier] =
     if (isIdentifier(string))
-      Valid(new Identifier(string))
+      Right(new Identifier(string))
     else
       Problem(s"Invalid character or character combination in identifier: $string")
 

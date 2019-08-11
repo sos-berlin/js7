@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.standards
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.GenericString.EmptyStringProblem
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Problems.InvalidNameProblem
@@ -13,11 +12,11 @@ class NameValidator(isAllowedChar: Char => Boolean = _ => false)
 {
   final def checked(typeName: String, name: String): Checked[String] =
     if (name.isEmpty)
-      Invalid(EmptyStringProblem(typeName))
+      Left(EmptyStringProblem(typeName))
     else if (isValid(name))
-      Valid(name)
+      Right(name)
     else
-      Invalid(InvalidNameProblem(typeName, name))
+      Left(InvalidNameProblem(typeName, name))
 
   final def isValid(string: String): Boolean =
     string.nonEmpty &&

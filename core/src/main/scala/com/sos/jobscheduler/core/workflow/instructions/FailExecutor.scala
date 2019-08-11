@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.workflow.instructions
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.core.workflow.OrderContext
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFailed, OrderFailedCatchable, OrderFailedInFork, OrderStarted}
 import com.sos.jobscheduler.data.order.{Order, Outcome}
@@ -16,11 +15,11 @@ object FailExecutor extends EventInstructionExecutor
   def toEvent(context: OrderContext, order: Order[Order.State], fail: Fail) =
     order.state match {
       case _: Order.Fresh =>
-        Valid(Some(order.id <-: OrderStarted))
+        Right(Some(order.id <-: OrderStarted))
 
       case _: Order.Ready =>
         lazy val maybeErrorMessage = fail.message
-          .map(o => context.makeScope(order).evalString(o).valueOr(_.toString))
+          .map(o => context.makeScope(order).evalString(o).fold(_.toString, identity))
         lazy val outcome = fail.returnCode match {
           case Some(returnCode) =>
             Outcome.Failed(maybeErrorMessage, returnCode)
@@ -29,7 +28,7 @@ object FailExecutor extends EventInstructionExecutor
             case o: Outcome.Succeeded => Outcome.Failed(maybeErrorMessage, o.returnCode, Map.empty)
           }
         }
-        Valid(Some(order.id <-: (
+        Right(Some(order.id <-: (
           if (!fail.uncatchable)
             OrderFailedCatchable(outcome)
           else if (order.position.isInFork)
@@ -39,6 +38,6 @@ object FailExecutor extends EventInstructionExecutor
           else
             OrderFailed(outcome))))
 
-      case _ => Valid(None)
+      case _ => Right(None)
     }
 }

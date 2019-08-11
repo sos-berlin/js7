@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.provider.scheduledorder
 
 import akka.util.ByteString
-import cats.data.Validated.Invalid
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
@@ -20,5 +19,5 @@ final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends FileBasedRea
     case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
   }
 
-  def convertFromJson(json: Json) = Invalid(Problem("ScheduledOrderGenerator does not yet support JSON (it is for development only, anyway)"))
+  def convertFromJson(json: Json) = Left(Problem("ScheduledOrderGenerator does not yet support JSON (it is for development only, anyway)"))
 }

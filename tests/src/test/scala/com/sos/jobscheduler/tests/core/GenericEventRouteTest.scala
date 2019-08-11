@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.core
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -85,7 +84,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
       def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec/*Example for test*/
-      def eventWatchFor(user: SimpleUser) = Task.pure(Valid(eventWatch))
+      def eventWatchFor(user: SimpleUser) = Task.pure(Right(eventWatch))
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 

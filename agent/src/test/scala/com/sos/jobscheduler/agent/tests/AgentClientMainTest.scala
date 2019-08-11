@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.tests
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -29,7 +28,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
         def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
           Task {
             (command match {
-              case ExpectedTerminate => Valid(AgentCommand.Response.Accepted)
+              case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
               case _ => fail()
             })
             .map(_.asInstanceOf[command.Response])

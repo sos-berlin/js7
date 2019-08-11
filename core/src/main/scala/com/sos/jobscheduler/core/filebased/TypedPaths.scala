@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.core.filebased
 
+import cats.instances.either._
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}

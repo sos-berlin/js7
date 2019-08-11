@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.akkahttp.https
 
-import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
@@ -28,7 +27,7 @@ object KeyStoreRef
 {
   def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
     config.checkedPath("jobscheduler.https.keystore.store-password")(path =>
-      Valid(
+      Right(
         KeyStoreRef(
           url = config.as[Path]("jobscheduler.https.keystore.file", default).toAbsolutePath.toURI.toURL,
           storePassword = config.as[SecretString](path),

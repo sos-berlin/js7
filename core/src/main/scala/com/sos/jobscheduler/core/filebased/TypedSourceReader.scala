@@ -1,10 +1,7 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.{Invalid, Valid}
-import cats.instances.vector._
-import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.files.DirectoryReader
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
@@ -26,13 +23,11 @@ final class TypedSourceReader(directory: Path, readers: Iterable[FileBasedReader
 
   def readFileBaseds(files: Seq[Path]): Checked[Seq[FileBased]] = {
     val checkedTypedFiles = files.map(toTypedFile)
-    TypedFile.checkUniqueness(checkedTypedFiles collect { case Valid(o) => o }) match {
-      case Invalid(problem) =>
-        Invalid(Problem.Multiple(checkedTypedFiles.collect { case Invalid(p) => p } :+ problem))
-      case Valid(_) =>
-        checkedTypedFiles.toVector.traverse(_
-          .map(readTypedSource)
-          .flatMap(toCheckedFileBased))
+    TypedFile.checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) match {
+      case Left(problem) =>
+        Left(Problem.Multiple(checkedTypedFiles.collect { case Left(p) => p } :+ problem))
+      case Right(_) =>
+        checkedTypedFiles.traverseAndCombineProblems(typedFile => toCheckedFileBased(readTypedSource(typedFile)))
     }
   }
 

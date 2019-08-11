@@ -3,7 +3,7 @@ package com.sos.jobscheduler.base.circeutils.typed
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{UnknownClassForJsonException, UnknownJsonTypeException}
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps

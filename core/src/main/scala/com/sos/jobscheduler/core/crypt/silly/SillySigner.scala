@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.crypt.silly
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.crypt.MessageSigner
@@ -37,7 +36,7 @@ object SillySigner extends MessageSigner.Companion
 
   def checked(privateKey: collection.Seq[Byte], password: SecretString = SecretString("")) =
     if (!password.string.isEmpty )
-      Invalid(Problem("Password for SillySigner must be empty"))
+      Left(Problem("Password for SillySigner must be empty"))
     else
-      Valid(new SillySigner(SillySignature(new String(privateKey.toArray, UTF_8))))
+      Right(new SillySigner(SillySignature(new String(privateKey.toArray, UTF_8))))
 }

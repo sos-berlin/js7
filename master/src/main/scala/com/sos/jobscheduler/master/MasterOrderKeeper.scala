@@ -2,13 +2,10 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.data.Validated.{Invalid, Valid}
 import cats.effect.SyncIO
-import cats.instances.future._
-import cats.instances.vector._
-import cats.syntax.flatMap._
-import cats.syntax.option._
-import cats.syntax.traverse._
+import cats.instances.all._
+import com.sos.jobscheduler.base.problem.Checked._
+import cats.syntax.all._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
@@ -203,7 +200,7 @@ with MainJournalingActor[Event]
     case Command.Execute(command, meta) =>
       val sender = this.sender()
       if (terminating)
-        sender ! Invalid(MasterIsTerminatingProblem)
+        sender ! Left(MasterIsTerminatingProblem)
       else
         executeMasterCommand(command, meta) onComplete {
           case Failure(t) => sender ! Status.Failure(t)
@@ -328,19 +325,19 @@ with MainJournalingActor[Event]
     command match {
       case MasterCommand.CancelOrder(orderId, mode) =>
         orderRegister.checked(orderId) map (_.order) match {
-          case Invalid(problem) =>
-            Future.successful(Invalid(problem))
+          case Left(problem) =>
+            Future.successful(Left(problem))
 
-          case Valid(order) =>
+          case Right(order) =>
             orderProcessor.cancel(order.id, mode, isAgent = false) match {
-              case invalid @ Invalid(_) =>
-                Future.successful(invalid)
-              case Valid(None) =>
-                Future.successful(Valid(MasterCommand.Response.Accepted))
-              case Valid(Some(event)) =>
+              case Left(problem) =>
+                Future.successful(Left(problem))
+              case Right(None) =>
+                Future.successful(Right(MasterCommand.Response.Accepted))
+              case Right(Some(event)) =>
                 persist(orderId <-: event) { stamped =>  // Event may be inserted between events coming from Agent
                   handleOrderEvent(stamped)
-                  Valid(MasterCommand.Response.Accepted)
+                  Right(MasterCommand.Response.Accepted)
                 }
             }
         }
@@ -367,22 +364,23 @@ with MainJournalingActor[Event]
             .map(_ => MasterCommand.Response.Accepted))
 
       case MasterCommand.EmergencyStop | MasterCommand.NoOperation | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
-        Future.successful(Invalid(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
+        Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case MasterCommand.TakeSnapshot =>
         import masterConfiguration.akkaAskTimeout  // We need several seconds or even minutes
+        intelliJuseImport(akkaAskTimeout)
         (journalActor ? JournalActor.Input.TakeSnapshot)
           .mapTo[JournalActor.Output.SnapshotTaken.type]
-          .map(_ => Valid(MasterCommand.Response.Accepted))
+          .map(_ => Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.Terminate =>
         journalActor ! JournalActor.Input.TakeSnapshot
         terminatingSince := now
-        Future.successful(Valid(MasterCommand.Response.Accepted))
+        Future.successful(Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>
         persist(MasterTestEvent, async = true)(_ =>
-          Valid(MasterCommand.Response.Accepted))
+          Right(MasterCommand.Response.Accepted))
     }
 
   private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {
@@ -391,7 +389,7 @@ with MainJournalingActor[Event]
 
     def updateAgents(diff: FileBaseds.Diff[AgentRefPath, AgentRef]): Seq[Checked[SyncIO[Unit]]] =
       deletionNotSupported(diff) :+
-        Valid(SyncIO {
+        Right(SyncIO {
           for (agentRef <- diff.added) registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
           for (agentRef <- diff.updated) {
             agentRegister.update(agentRef)
@@ -399,11 +397,11 @@ with MainJournalingActor[Event]
           }
         })
 
-    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-      diff.deleted.map(o => Invalid(Problem(s"Deletion of these configuration objects is not supported: $o")))
+    def deletionNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Left[Problem, Nothing]] =
+      diff.deleted.map(o => Left(Problem(s"Deletion of these configuration objects is not supported: $o")))
 
-    //def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Invalid[Problem]] =
-    //  diff.updated.map(o => Invalid(Problem(s"Change of these configuration objects is not supported: ${o.path}")))
+    //def changeNotSupported[P <: TypedPath, A <: FileBased](diff: FileBaseds.Diff[P, A]): Seq[Left[Problem]] =
+    //  diff.updated.map(o => Left(Problem(s"Change of these configuration objects is not supported: ${o.path}")))
 
     for {
       changedRepo <- repo.applyEvents(events)  // May return DuplicateVersionProblem
@@ -451,8 +449,8 @@ with MainJournalingActor[Event]
 
       case _ =>
         order.id.checkedNameSyntax match {
-          case Invalid(problem) => Future.successful(Invalid(problem))
-          case Valid(_) => addOrderWithUncheckedId(order)
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(_) => addOrderWithUncheckedId(order)
         }
     }
 
@@ -461,15 +459,15 @@ with MainJournalingActor[Event]
     orderRegister.get(order.id) match {
       case Some(_) =>
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
-        Future.successful(Valid(false))
+        Future.successful(Right(false))
 
       case None =>
         repo.idTo[Workflow](order.workflowId) match {
-          case Invalid(problem) => Future.successful(Invalid(problem))
-          case Valid(workflow) =>
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(workflow) =>
             persist/*Async?*/(order.id <-: OrderAdded(workflow.id, order.state.scheduledFor, order.arguments)) { stamped =>
               handleOrderEvent(stamped)
-              Valid(true)
+              Right(true)
             }
         }
     }
@@ -687,9 +685,9 @@ private[master] object MasterOrderKeeper {
         case _: OrderStdWritten =>
         case event: OrderCoreEvent =>
           _order.update(event) match {
-            case Invalid(problem) => logger.error(problem.toString)  // TODO Invalid event stored and ignored. Should we validate the event before persisting?
+            case Left(problem) => logger.error(problem.toString)  // TODO Invalid event stored and ignored. Should we validate the event before persisting?
               // TODO Mark order as unuseable (and try OrderBroken). No further actions on this order to avoid loop!
-            case Valid(o) => _order = o
+            case Right(o) => _order = o
           }
       }
   }

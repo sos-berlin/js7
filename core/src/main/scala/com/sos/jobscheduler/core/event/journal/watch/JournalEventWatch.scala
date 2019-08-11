@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
-import cats.data.Validated.Invalid
 import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
@@ -89,7 +88,7 @@ with JournalingObserver
         iterator.close()
         Checked.unit
       case None =>
-        Invalid(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
+        Left(MasterRequiresUnknownEventIdProblem(requiredEventId = eventId))
     }
 
   def tornEventId =
@@ -105,7 +104,7 @@ with JournalingObserver
   def keepEvents(after: EventId): Checked[Completed] = {
     val old = keepEventsAfter.get
     if (after < old)
-      Invalid(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = old))
+      Left(ReverseKeepEventsProblem(requestedAfter = after, currentAfter = old))
     else if (after == old)
       Checked.completed
     else if (!keepEventsAfter.compareAndSet(old, after))

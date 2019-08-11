@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.circeutils
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -78,8 +77,8 @@ final class CirceUtilsTest extends FreeSpec
   }
 
   "parseJsonChecked" in {
-    assert("7".parseJsonChecked == Valid(Json.fromInt(7)))
-    assert("x".parseJsonChecked == Invalid(Problem("JSON ParsingFailure: expected json value got 'x' (line 1, column 1)")))
+    assert("7".parseJsonChecked == Right(Json.fromInt(7)))
+    assert("x".parseJsonChecked == Left(Problem("JSON ParsingFailure: expected json value got 'x' (line 1, column 1)")))
   }
 
   "parseJsonOrThrow" in {
@@ -96,8 +95,8 @@ final class CirceUtilsTest extends FreeSpec
   "toChecked decoding error" in {
     case class A(number: Int)
     val decoder: Decoder[A] = _.get[Int]("number") map A.apply
-    assert(decoder.decodeJson(json"""{ "number": 7 }""").toChecked == Valid(A(7)))
-    assert(decoder.decodeJson(json"""{ "number": true }""").toChecked == Invalid(Problem("JSON DecodingFailure at .number: Int")))
-    assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Invalid(Problem("JSON DecodingFailure at .number: Attempt to decode value on failed cursor")))
+    assert(decoder.decodeJson(json"""{ "number": 7 }""").toChecked == Right(A(7)))
+    assert(decoder.decodeJson(json"""{ "number": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Int")))
+    assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Attempt to decode value on failed cursor")))
   }
 }

@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.ContentTypes.`text/html(UTF-8)`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.auth.ValidUserPermission
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -96,16 +95,16 @@ trait GraphqlRoute extends MasterRouteProvider {
           val operationName = body("operationName") flatMap (_.asString) orElse operationNameParam
           val checkedVariables = body("variables")
             .map(json => if (json.isNull) EmptyObject else json)
-            .map(Valid.apply)
+            .map(Right.apply)
             .orElse(variablesParam map (_.parseJsonChecked))
-            .getOrElse(Valid(EmptyObject))
+            .getOrElse(Right(EmptyObject))
 
           queryString match {
             case None => completeWithFailure("Missing query")
             case Some(q) =>
               checkedVariables match {
-                case Invalid(problem) => completeWithFailure(problem.toString)
-                case Valid(variables) =>
+                case Left(problem) => completeWithFailure(problem.toString)
+                case Right(variables) =>
                   executeGraphql(q, operationName, variables)
               }
           }

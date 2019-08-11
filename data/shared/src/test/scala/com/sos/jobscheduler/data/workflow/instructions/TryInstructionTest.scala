@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.expression.Expression.BooleanConstant
@@ -97,11 +96,11 @@ final class TryInstructionTest extends FreeSpec
           Workflow.empty,
           Workflow.empty,
           Some(1.second :: Nil))
-        == Invalid(TryInstruction.MissingRetryProblem))
+        == Left(TryInstruction.MissingRetryProblem))
     }
 
     "retry nested in if-then-try is okay" in {
-      val Valid(try_) = TryInstruction.checked(
+      val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
           If(BooleanConstant(true),
@@ -116,7 +115,7 @@ final class TryInstructionTest extends FreeSpec
     }
 
     "retry nested in if-else is okay" in {
-      val Valid(try_) = TryInstruction.checked(
+      val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
           If(BooleanConstant(true),
@@ -130,7 +129,7 @@ final class TryInstructionTest extends FreeSpec
     }
 
     "retry in try is not okay" in {
-      val Valid(try_) = TryInstruction.checked(
+      val Right(try_) = TryInstruction.checked(
         Workflow.empty,
         Workflow.of(
           If(BooleanConstant(true),
@@ -145,9 +144,9 @@ final class TryInstructionTest extends FreeSpec
   }
 
   "workflow" in {
-    assert(try_.workflow(Try_) == Valid(try_.tryWorkflow))
-    assert(try_.workflow(Catch_) == Valid(try_.catchWorkflow))
-    assert(try_.workflow("A").isInvalid)
+    assert(try_.workflow(Try_) == Right(try_.tryWorkflow))
+    assert(try_.workflow(Catch_) == Right(try_.catchWorkflow))
+    assert(try_.workflow("A").isLeft)
   }
 
   "flattenedBranchToWorkflow" in {

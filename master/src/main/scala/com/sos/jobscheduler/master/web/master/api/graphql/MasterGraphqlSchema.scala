@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.web.master.api.graphql
 
-import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.generic.{GenericInt, GenericString}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
@@ -82,7 +81,7 @@ private[graphql] object MasterGraphqlSchema
   }
 
   private def genericIntType[A <: GenericInt](description: String)(implicit A: GenericInt.Companion[A]): ScalarType[A] =
-    intEquivalentType[A](i => Valid(A(i)), _.number, A.name, description)
+    intEquivalentType[A](i => Right(A(i)), _.number, A.name, description)
 
   private def intEquivalentType[A](fromInt: Int => Checked[A], toInt: A => Int, name: String, description: String): ScalarType[A] = {
     val violation = valueCoercionViolation(s"'$name' string expected")
@@ -102,8 +101,8 @@ private[graphql] object MasterGraphqlSchema
 
   private def fromChecked[A, V <: Violation](checked: Checked[A], toViolation: String => V): Either[Violation, A] =
     checked match {
-      case Invalid(problem) => Left(toViolation(problem.toString))
-      case Valid(a) => Right(a)
+      case Left(problem) => Left(toViolation(problem.toString))
+      case Right(a) => Right(a)
     }
 
   private def valueCoercionViolation(message: String) = new ValueCoercionViolation(message) {}
