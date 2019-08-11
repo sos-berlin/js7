@@ -195,6 +195,12 @@ final class CheckedTest extends FreeSpec
     assert(Right(7.some).evert == Some(Right(7)))
   }
 
+  "valueOr" in {
+    assert(Right(1).orElse(sys.error("???")) == Right(1))
+    assert(Left(Problem("PROBLEM")).orElse(Right(1)) == Right(1))
+    assert(Left(Problem("FIRST")).orElse(Left(Problem("SECOND"))) == Left(Problem("SECOND")))
+  }
+
   "orElse" in {
     assert(Right(1).orElse(sys.error("???")) == Right(1))
     assert(Left(Problem("PROBLEM")).orElse(Right(1)) == Right(1))

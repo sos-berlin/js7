@@ -140,6 +140,14 @@ object Checked
         case Right(right) => Right(right)
       }
 
+    def valueOr[B >: A](orElse: Problem => B): B =
+      underlying match {
+        case Left(problem) => orElse(problem)
+        case Right(value) => value
+      }
+
+    def `orThrow 💥` = orThrow
+
     def orThrow: A =
       underlying match {
         case Left(problem) => throw problem.throwable.appendCurrentStackTrace
