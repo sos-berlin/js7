@@ -11,6 +11,7 @@ import monix.execution.{Cancelable, Scheduler}
 import org.scalatest.FreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration._
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
