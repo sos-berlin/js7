@@ -14,11 +14,12 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.test.TestActor._
+import com.sos.jobscheduler.core.event.journal.test.TestData.TestConfig
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.data.event.{JournalId, KeyedEvent, Stamped}
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import java.util.UUID
 import monix.execution.Scheduler
 import scala.collection.mutable
@@ -162,17 +163,6 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
 private[journal] object TestActor {
   intelliJuseImport(TestKeyedEventJsonCodec)
 
-  private val TestConfig = ConfigFactory.parseString("""
-     |jobscheduler.journal.sync = on
-     |jobscheduler.journal.delay = 0s
-     |jobscheduler.journal.sync-delay = 0s
-     |jobscheduler.journal.simulate-sync = 1ms
-     |jobscheduler.journal.snapshot.log-period = 10ms
-     |jobscheduler.journal.snapshot.log-actor-limit = 1
-     |jobscheduler.journal.event-buffer-size = 1000
-     |jobscheduler.journal.snapshot.period = 1h
-     |jobscheduler.journal.snapshot.when-bigger-than = 1G
-     |""".stripMargin)
   private val logger = Logger(getClass)
 
   object Input {

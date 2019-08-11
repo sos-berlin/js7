@@ -61,7 +61,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
 
       execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
-    assert(journalFileNames.length == 3)
+    assert(journalFileNames == Vector("test--0.journal", "test--1000065.journal", "test--1000066.journal"))
   }
 
   "Third run, recovering from journal, no events" in {

@@ -18,9 +18,9 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
+import com.sos.jobscheduler.core.event.journal.test.TestData.testJournalMeta
 import com.sos.jobscheduler.core.event.journal.test.TestJournalMixin._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.core.event.journal.test.TestMeta.testJournalMeta
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
@@ -123,7 +123,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   protected final def journalAggregates =
     (journalJsons collect {
-      case o if TestMeta.SnapshotJsonFormat canDeserialize o =>
+      case o if TestData.SnapshotJsonFormat canDeserialize o =>
         o.as[TestAggregate].orThrow
     }).toSet
 
