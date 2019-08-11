@@ -26,17 +26,18 @@ toSystemPath() {
 }
 
 if [ -z "$JOBSCHEDULER_HOME" ]; then :
-  export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
+  JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+  export JOBSCHEDULER_HOME
 fi
 
 declare JAVA_HOME
 declare -a classpath=()
 if isWindows; then
   pathSeparator=";"
-  classpath+=("$(cygpath -w "$JOBSCHEDULER_HOME/lib" || kill $$)/*")
+  classpath+=("$(cygpath -w "$JOBSCHEDULER_HOME/lib")/*")
   javaHome=""
-  [ -n "$JAVA_HOME" ] && javaHome="$(cygpath "$JAVA_HOME" || kill $$)"
-  #unused javaHome=$(dirname $(dirname $(readlink --canonicalize $(which java || kill $$))))
+  [ -n "$JAVA_HOME" ] && javaHome="$(cygpath "$JAVA_HOME")"
+  #unused javaHome=$(dirname $(dirname $(readlink --canonicalize $(which java))))
 else
   pathSeparator=":"
   classpath+=("$JOBSCHEDULER_HOME/lib/*")

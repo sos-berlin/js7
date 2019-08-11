@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-bin=$(cd "$(dirname -- "$0")" && pwd || kill $$)
+bin=$(cd "${0%/*}" && pwd)
 
 if test -d /var/opt/jobscheduler/agent; then
   "$bin"/kill-agent "$@"

@@ -3,7 +3,8 @@ set -e
 
 # JobScheduler Provider starter
 
-export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
+JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+export JOBSCHEDULER_HOME
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
 
@@ -67,13 +68,13 @@ if [ ! -d "$config" ]; then :
   echo "No such directory: -config-directory=$config"
   exit 1
 fi
-config="$(toSystemPath "$config" || kill $$)"
+config="$(toSystemPath "$config")"
 
 if [ ! -d "$data" ]; then :
   echo "No such directory: -data-directory=$data"
   exit 1
 fi
-data="$(toSystemPath "$data" || kill $$)"
+data="$(toSystemPath "$data")"
 
 logs="$data/logs"
 [ -d "$logs" ] || mkdir "$logs"
@@ -81,7 +82,7 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
-echo -e "\n-------\n$(date --iso-8601=ns)" >>$logs/stdouterr.log
+echo -e "\n-------\n$(date --iso-8601=ns)" >>"$logs/stdouterr.log"
 exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
 javaOptions+=("-Djobscheduler.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
@@ -94,7 +95,7 @@ if $log4jAsync; then :
 fi
 
 providerOptions+=("-config-directory=$config")
-normalizedData="$(toSystemPath "$data" || kill $$)"
+#normalizedData="$(toSystemPath "$data")"
 #providerOptions+=("-data-directory=$normalizedData")
 
 live="$config/live"
@@ -115,7 +116,7 @@ echo "${execute[@]}"
 
 pid=$!
 pidFile="$stateDir/pid"
-echo "$pid" >$pidFile
+echo "$pid" >"$pidFile"
 echo PID $pid
 
 terminate() {
@@ -126,7 +127,7 @@ terminate() {
 
 trap terminate SIGTERM SIGINT
 wait $pid || echo "JobScheduler Provider exited with exit code $?"
-rm $pidFile
+rm "$pidFile"
 trap - SIGTERM SIGINT
 
-echo -e "\n$(date --iso-8601=ns) JobScheduler Provider has been shut down" >>$logs/stdouterr.log
+echo -e "\n$(date --iso-8601=ns) JobScheduler Provider has been shut down" >>"$logs/stdouterr.log"

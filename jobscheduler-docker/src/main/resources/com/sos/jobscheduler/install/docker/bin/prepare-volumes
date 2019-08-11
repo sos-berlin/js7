@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-home="$(cd "$(dirname -- "$0")"/../bin/.. && pwd || kill $$)"
+home="$(cd "${0%/*}"/../bin/.. && pwd)"
 
 mkdir -p volumes/{master,provider,agent-1,agent-2}/config/private
 mkdir -p volumes/{master,provider,agent-1,agent-2}/data/{logs,state}

@@ -7,9 +7,9 @@ args=()
 argToRequest() {
   arg="$1"
   if [ "${arg:0:1}" = "{" ]; then
-    echo "$(argToPost "$arg")"
+    argToPost "$arg"
   else
-    echo "$(argToGet "$arg")"
+    argToGet "$arg"
   fi
 }
 
@@ -79,10 +79,10 @@ for arg in "${args[@]}"; do
 
   IFS=' ' read -r httpVersion status remainder <&3
   if [ "$status" != '200' ]; then
-    echo $status "$remainder"
+    echo "$status $remainder"
     echo
   fi
-  while IFS='' read -r line && [ "$line" != $(echo -e '\r') ]; do :; done <&3   # Skip headers
+  while IFS='' read -r line && [ "$line" != "$(echo -e '\r')" ]; do :; done <&3   # Skip headers
   cat <&3
   exec 3>&-
   if [ "$status" != '200' ]; then

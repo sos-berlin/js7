@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-. "$(cd "$(dirname -- "$0")" && pwd || kill $$)/internal/set-context.sh"
+. "${0%/*}/internal/set-context.sh"
 declare java classpathString
 
 "$java"\

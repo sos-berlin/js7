@@ -4,7 +4,7 @@ set -e
 [ -d "volumes/testMasterAgent" ] || mkdir volumes/testMasterAgent
 
 dir="$PWD/volumes/testMasterAgent"
-rm -rf "$dir"/*
+rm -rf "${dir:?}"/*
 docker run \
   --publish=127.0.0.1:4444:4444 \
   --publish=127.0.0.1:5000:5000 \

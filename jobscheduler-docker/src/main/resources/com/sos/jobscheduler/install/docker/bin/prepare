@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-installTgz=jobscheduler-*install-[0-9]*.tgz
+dockerTgz="$(ls jobscheduler-docker-[0-9]*.tgz)"
+installTgz=($(ls jobscheduler-*install-[0-9]*.tgz))
 
 for arg in "$@"; do :
   case "$arg" in
@@ -16,20 +17,10 @@ if [ -d build ] && [ ! -f build/bin/prepare ]; then :
   echo "Subdirectory build seems not to be created by jobscheduler-docker. Missing file build/bin/prepare. Exiting"
   exit 1
 fi
-dockerTgz="jobscheduler-docker-[0-9]*.tgz"
-ls $dockerTgz >/dev/null || {
-  echo "Missing file '$dockerTgz'"
-  exit 1
-}
-installTgz="jobscheduler-*install-[0-9]*.tgz"
-ls $installTgz >/dev/null || {
-  echo "Missing file '$installTgz'"
-  exit 1
-}
 
 rm -rf build
-tar xzf jobscheduler-docker-[0-9]*.tgz
-cp jobscheduler-*install-[0-9]*.tgz build/
+tar xzf "$dockerTgz"
+cp "${installTgz[@]}" build/
 build/bin/prepare-volumes
 
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .

@@ -7,7 +7,7 @@ masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
 agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys.asc
 agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys.asc
 
-if [ -s "$privateKeyFile" -a -s "$masterPublicKeyFile" ]; then
+if [ -s "$privateKeyFile" ] && [ -s "$masterPublicKeyFile" ]; then
   echo "PGP files exist already. Nothing to do"
 else
   which gpg >/dev/null || {
@@ -18,7 +18,7 @@ else
     gpg --homedir "$homedir" --export-secret-keys --armor --output="$privateKeyFile"
     gpg --homedir "$homedir" --export --armor --output="$masterPublicKeyFile"
   fi
-  if [ -s "$privateKeyFile" -a -s "$masterPublicKeyFile" ]; then
+  if [ -s "$privateKeyFile" ] && [ -s "$masterPublicKeyFile" ]; then
     :
   else
     mkdir -p gnupg

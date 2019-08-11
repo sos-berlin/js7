@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
+JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+export JOBSCHEDULER_HOME
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java
 

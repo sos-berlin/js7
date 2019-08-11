@@ -63,7 +63,7 @@ done
 }
 cd "$configDirectory"
 
-mkdir -p $(dirname "$trustStore")
+mkdir -p "${trustStore%/*}"
 rm -vf "$keyStore" "$trustStore" "$trustPem"
 
 keytool -genkey \
