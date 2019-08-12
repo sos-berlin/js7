@@ -17,7 +17,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingAct
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files
 import java.util.UUID.randomUUID
-import scala.concurrent.duration.{Deadline, Duration}
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
@@ -37,7 +37,7 @@ trait JournalRecoverer[E <: Event]
   private var _totalEventCount = 0L
   protected lazy val journalFileOption = JournalFiles.currentFile(journalMeta.fileBase).toOption
 
-  protected final def hasJournal = journalFileOption.isDefined
+  final def hasJournal = journalFileOption.isDefined
 
   final def recoverAll(): Unit =
     journalFileOption match {
