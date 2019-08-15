@@ -16,7 +16,7 @@ object Dependencies
   val fastparseVersion = "2.1.2"
   val circeVersion = "0.11.1"
   val scalaTestVersion = "3.0.5"
-  val simulacrumVersion = "0.12.0"
+  val simulacrumVersion = "0.19.0"
   val disciplineVersion = "0.8"  //"0.11.0"
   val monixVersion = "3.0.0-RC3"
   val monocleVersion = "1.5.0"

@@ -82,7 +82,7 @@ val commonSettings = Seq(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
-  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
+  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),  // For Scala 2.13 replace with: scalacOptions += "-Ymacro-annotations"
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   dependencyOverrides ++= {
@@ -223,7 +223,8 @@ lazy val data = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
-      "org.typelevel" %%% "discipline" % disciplineVersion % "test"
+      "org.typelevel" %%% "discipline" % disciplineVersion % "test" ++
+      "com.github.mpilquist" %% "simulacrum" % simulacrumVersion
   }
 
 lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, tester.jvm % "test")
