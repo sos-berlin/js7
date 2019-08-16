@@ -2,12 +2,13 @@ package com.sos.jobscheduler.master.agent
 
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
+import com.sos.jobscheduler.core.configuration.EventFetcherConf
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.typesafe.config.Config
 import scala.concurrent.duration.FiniteDuration
 
 final case class AgentDriverConfiguration(
-  eventFetchTimeout: FiniteDuration,
+  eventFetcher: EventFetcherConf,
   eventFetchDelay: FiniteDuration,
   eventBufferDelay: FiniteDuration,
   eventBufferLimit: Int,
@@ -23,7 +24,8 @@ object AgentDriverConfiguration
   def fromConfig(config: Config, journalConf: JournalConf): Checked[AgentDriverConfiguration] =
     Checked.catchNonFatal {
       new AgentDriverConfiguration(
-        eventFetchTimeout   = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration,
+        EventFetcherConf(
+          eventFetchTimeout = config.getDuration("jobscheduler.master.agent-driver.event-fetch-timeout").toFiniteDuration),
         eventFetchDelay     = config.getDuration("jobscheduler.master.agent-driver.event-fetch-delay").toFiniteDuration,
         eventBufferDelay    = config.getDuration("jobscheduler.master.agent-driver.event-buffer-delay").toFiniteDuration,
         eventBufferLimit    = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-limit"),

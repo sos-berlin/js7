@@ -280,7 +280,7 @@ with MainJournalingActor[Event]
 
             case _ =>
           }
-        completedPromise.success(Checked.completed)
+        completedPromise.success(Completed)
       }
 
     case AgentDriver.Output.OrdersDetached(orderIds) =>

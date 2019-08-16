@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
 import cats.effect.Resource
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -37,6 +38,13 @@ object MonixUtils
 
       def awaitInfinite(implicit s: Scheduler, A: TypeTag[A]): A =
         underlying.runToFuture.awaitInfinite
+    }
+
+    implicit class RichCheckedTask[A](private val underlying: Task[Checked[A]]) extends AnyVal
+    {
+      /** Converts a failed Task into a `Task[Right[Throwable]]`. */
+      def materializeIntoChecked: Task[Checked[A]] =
+        underlying.materialize.map(Checked.flattenTryChecked)
     }
 
     implicit final class RichTaskTraversable[A, M[X] <: Iterable[X]](private val underlying: M[Task[A]]) extends AnyVal
