@@ -147,7 +147,6 @@ extends MainJournalingActor[Event] with Stash {
 
   override def postStop() = {
     termination.close()
-    eventWatch.close()
     super.postStop()
     logger.debug("Stopped" + termination.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }

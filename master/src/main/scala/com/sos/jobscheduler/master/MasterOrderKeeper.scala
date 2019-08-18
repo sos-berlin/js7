@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.effect.SyncIO
 import cats.instances.all._
-import com.sos.jobscheduler.base.problem.Checked._
 import cats.syntax.all._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
@@ -127,7 +126,6 @@ with MainJournalingActor[Event]
 
   override def postStop() = {
     super.postStop()
-    eventWatch.close()
     logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 

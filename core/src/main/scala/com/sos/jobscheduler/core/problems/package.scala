@@ -41,4 +41,6 @@ package object problems
   final case class NoSuchMasterProblem(masterId: MasterId) extends Problem.Coded {
     def arguments = Map("masterId" -> masterId.string)
   }
+
+  final case object JobSchedulerIsShuttingDownProblem extends Problem.ArgumentlessCoded
 }

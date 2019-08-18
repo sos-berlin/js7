@@ -76,8 +76,8 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
   protected val gateKeeper = new GateKeeper(GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
   protected final val sessionRegister = SessionRegister.start[SimpleSession](
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
-  private val closedPromise = Promise[Completed]()
-  protected final lazy val shutdownObservable = Observable.fromFuture(closedPromise.future)
+  private val shuttingDownPromise = Promise[Completed]()
+  protected final lazy val shuttingDownFuture = shuttingDownPromise.future
 
   protected val eventWatch = new EventCollector.ForTest()
 
@@ -201,14 +201,14 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       assert(getLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
     }
 
-    "shutdownObservable completes observable" in {
+    "shuttingDownFuture completes observable" in {
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
         .foreach { _ => }
       sleep(10.ms)
       assert(!observableCompleted.isCompleted)
 
       // Shutdown service
-      closedPromise.success(Completed)
+      shuttingDownPromise.success(Completed)
       observableCompleted.await(1.s)
     }
   }

@@ -22,7 +22,6 @@ import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import monix.execution.Scheduler
-import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -38,8 +37,8 @@ trait AkkaWebServer extends AutoCloseable
   protected def bindings: Seq[WebServerBinding]
   protected def newRoute(binding: WebServerBinding): BoundRoute
 
-  private val closedPromise = Promise[Completed]()
-  protected final val closedObservable = Observable.fromFuture(closedPromise.future)
+  private val shuttingDownPromise = Promise[Completed]()
+  protected final val shuttingDownFuture = shuttingDownPromise.future
   private val akkaHttp = Http(actorSystem)
   private implicit val materializer = ActorMaterializer()
   private lazy val shutdownTimeout = config.getDuration("jobscheduler.webserver.shutdown-timeout").toFiniteDuration
@@ -90,7 +89,7 @@ trait AkkaWebServer extends AutoCloseable
   }
 
   def close() =
-    if (closedPromise.trySuccess(Completed)) {
+    if (shuttingDownPromise.trySuccess(Completed)) {
       // Now wait until (event) Observables has been closed?
       sleep(500.ms)  // Wait a short time to let event streams finish, to avoid connection reset
       try terminate() await shutdownTimeout + 1.s

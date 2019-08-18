@@ -35,12 +35,14 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters.AsScalaDuration
 import com.sos.jobscheduler.core.event.GenericEventRoute._
+import com.sos.jobscheduler.core.problems.JobSchedulerIsShuttingDownProblem
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe.syntax.EncoderOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -50,7 +52,7 @@ import scala.util.control.NonFatal
   */
 trait GenericEventRoute extends RouteProvider
 {
-  protected val shutdownObservable: Observable[Completed]
+  protected val shuttingDownFuture: Future[Completed]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -69,7 +71,10 @@ trait GenericEventRoute extends RouteProvider
 
     private val exceptionHandler = ExceptionHandler {
       case t: com.sos.jobscheduler.core.event.journal.watch.ClosedException if t.getMessage != null =>
-        complete(ServiceUnavailable -> Problem.pure(t.getMessage))
+        if (shuttingDownFuture.isCompleted)
+          complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
+        else
+          complete(ServiceUnavailable -> Problem.pure(t.getMessage))
       //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch
       //  complete(ServiceUnavailable -> Problem.pure(t.toString))
     }
@@ -151,7 +156,7 @@ trait GenericEventRoute extends RouteProvider
                     logger.warn(e.toStringWithCauses)
                     Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
                   }
-                val observable = (Observable.pure(head) ++ tail).takeUntil(shutdownObservable)
+                val observable = (Observable.pure(head) ++ tail).takeUntil(Observable.fromFuture(shuttingDownFuture))
                 if (eventIdOnly) {
                   implicit val y = jsonSeqMarshaller[EventId]
                   monixObservableToMarshallable(observable.map(_.eventId))

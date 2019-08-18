@@ -19,8 +19,9 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
+import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.{IOExecutor, Logger}
+import com.sos.jobscheduler.common.scalautil.{Closer, IOExecutor, Logger}
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.core.common.ActorRegister
@@ -50,7 +51,7 @@ private[agent] final class AgentActor @Inject private(
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
   keyedEventBus: StampedKeyedEventBus)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
@@ -227,6 +228,7 @@ extends MainJournalingActor[AgentEvent] {
   private def addOrderKeeper(masterId: MasterId, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(SnapshotJsonFormat, AgentKeyedEventJsonCodec, stateDirectory / s"master-$masterId")
     val recovered = OrderJournalRecoverer.recover(journalMeta, agentRunId.journalId, agentConfiguration)  // May take minutes !!!
+    recovered.closeWithCloser
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
