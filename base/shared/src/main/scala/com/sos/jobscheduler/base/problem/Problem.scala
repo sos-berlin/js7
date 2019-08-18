@@ -272,4 +272,9 @@ object Problem
         case None => Problem.pure(message)
         case Some(code) => StaticMessage(code, arguments, message)
       }
+
+  object IsThrowable {
+    def unapply(problem: Problem): Option[Throwable] =
+      problem.throwableOption
+  }
 }

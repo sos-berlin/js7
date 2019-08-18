@@ -180,6 +180,21 @@ final class ProblemTest extends FreeSpec
     }
   }
 
+  "Problem.IsThrowable" in {
+    Problem("PROBLEM") match {
+      case Problem.IsThrowable(_: IllegalStateException) => fail()
+      case _ =>
+    }
+    Problem.fromLazyThrowable(new IllegalStateException("TEST")) match {
+      case Problem.IsThrowable(_: IllegalStateException) =>
+      case _ => fail()
+    }
+    Problem.fromLazyThrowable(new IllegalArgumentException("TEST")) match {
+      case Problem.IsThrowable(_: IllegalStateException) => fail()
+      case _ =>
+    }
+  }
+
   private def catch_(problem: Problem): String =
     intercept[ProblemException] {
       throw problem.throwable
