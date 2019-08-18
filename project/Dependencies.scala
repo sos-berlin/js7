@@ -6,12 +6,12 @@ object Dependencies
 {
   val scalaVersion = "2.12.10"
 
-  val akkaVersion = "2.5.23"
+  val akkaVersion = "2.5.24"
   val akkaHttpVersion = "10.1.9"
-  val slf4jVersion = "1.7.26"  // See also plugins.sbt
-  val log4jVersion = "2.11.2"  // See also plugins.sbt
+  val slf4jVersion = "1.7.28"  // See also plugins.sbt
+  val log4jVersion = "2.12.1"  // See also plugins.sbt
   val catsVersion = "1.6.1"
-  val catsEffectVersion = "1.3.1"
+  val catsEffectVersion = "1.4.0"
   val kittensVersion = "1.2.1"
   val fastparseVersion = "2.1.2"
   val circeVersion = "0.11.1"
@@ -64,6 +64,6 @@ object Dependencies
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.24"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val guava               = "com.google.guava" % "guava" % "27.1-jre"
+  val guava               = "com.google.guava" % "guava" % "28.0-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.62"
 }
