@@ -223,7 +223,7 @@ extends Actor with Stash {
       }
       throw tt;
     }
-    logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o } flatMap (_.stamped))
+    logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o })
     for (NormallyWritten(keyedEvents, replyTo, sender, item) <- writtenBuffer) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
@@ -248,17 +248,20 @@ extends Actor with Stash {
           Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
   }
 
-  def logStored(flushed: Boolean, synced: Boolean, stamped: TraversableOnce[Stamped[AnyKeyedEvent]]) =
+  private def logStored(flushed: Boolean, synced: Boolean, iterator: Iterator[NormallyWritten]) =
     if (logger.underlying.isTraceEnabled) {
-      val iterator = stamped.toIterator
+      var i = totalEventCount + 1
       while (iterator.hasNext) {
-        val stamped = iterator.next()
-        val last =
-          if (iterator.hasNext | !synced & !flushed) "      "
-          else if (synced)
-            if (conf.simulateSync.isDefined) "(sync)" else "sync  "
-          else "flush "   // After the last one, the file buffer was flushed
-        logger.trace(s"${last}STORED ${stamped.eventId} ${stamped.value}")
+        val written = iterator.next()
+        for (stamped <- written.stamped) {
+          val last =
+            if (iterator.hasNext | !synced & !flushed) "      "
+            else if (synced)
+              if (conf.simulateSync.isDefined) "(sync)" else "sync  "
+            else "flush "   // After the last one, the file buffer was flushed
+          logger.trace(f"#$i ${last}STORED ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
+          i += 1
+        }
       }
     }
 
@@ -430,6 +433,7 @@ object JournalActor
     item: CallersItem)
   extends Written
   {
+    val since = now
     def eventCount = stamped.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
