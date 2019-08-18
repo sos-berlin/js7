@@ -134,7 +134,7 @@ trait GenericEventRoute extends RouteProvider
                   BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
             case EventSeq.Empty(_) =>
-              implicit val y = jsonSeqMarshaller[Unit]  // Dummy (?)
+              implicit val y = jsonSeqMarshaller[Unit]
               monixObservableToMarshallable(
                 Observable.empty[Unit])
 
