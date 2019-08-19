@@ -7,6 +7,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
+import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -33,6 +34,8 @@ import scala.concurrent.duration._
   */
 final class UpdateRepoAgentTest extends FreeSpec
 {
+  ScribeUtils.coupleScribeWithSlf4j()
+
   "MasterCommand.UpdateRepo" in {
     autoClosing(new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
       (provider.master.configDir / "private" / "private.conf") ++=
