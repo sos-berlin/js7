@@ -53,6 +53,7 @@ import scala.util.control.NonFatal
 final class DirectoryProvider(
   agentRefPaths: Seq[AgentRefPath],
   fileBased: Seq[FileBased] = Nil,
+  masterConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
@@ -64,8 +65,8 @@ final class DirectoryProvider(
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
   suppressRepo: Boolean = false)
-extends HasCloser {
-
+extends HasCloser
+{
   val directory = useDirectory
     .getOrElse(
       createTempDirectory("test-")
@@ -76,14 +77,14 @@ extends HasCloser {
         })
 
   val master = new MasterTree(directory / "master",
-    mutualHttps = masterHttpsMutual, clientCertificate = masterClientCertificate)
+    mutualHttps = masterHttpsMutual, masterConfig, clientCertificate = masterClientCertificate)
   val agentToTree: Map[AgentRefPath, AgentTree] =
     agentRefPaths.map { o => o ->
       new AgentTree(directory, o,
         testName.fold("")(_ + "-") ++ o.name,
+        agentConfig,
         https = agentHttps,
         mutualHttps = agentHttpsMutual,
-        agentConfig,
         provideHttpsCertificate = provideAgentHttpsCertificate,
         provideClientCertificate = provideAgentClientCertificate)
     }.toMap
@@ -145,22 +146,13 @@ extends HasCloser {
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    mutualHttps: Boolean = false)
-  : Task[RunningMaster] =
-    startMaster2(module, config, httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, fileBased = fileBased,
-      name = masterName)
-
-  private def startMaster2(
-    module: Module = EMPTY_MODULE,
-    config: Config = ConfigFactory.empty,
-    httpPort: Option[Int] = Some(findFreeTcpPort()),
-    httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
-    fileBased: Seq[FileBased] = Nil,
+    fileBased: Seq[FileBased] = fileBased,
     name: String = masterName)
-  : Task[RunningMaster] =
+  : Task[RunningMaster]
+  =
     Task.deferFuture(
-      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config,
+      RunningMaster(RunningMaster.newInjectorForTest(master.directory, module, config withFallback masterConfig,
         httpPort = httpPort, httpsPort = httpsPort, mutualHttps = mutualHttps, name = name)))
     .map { runningMaster =>
       if (!suppressRepo) {
@@ -237,7 +229,7 @@ object DirectoryProvider
     }
   }
 
-  final class MasterTree(val directory: Path, mutualHttps: Boolean, clientCertificate: Option[JavaResource]) extends Tree {
+  final class MasterTree(val directory: Path, mutualHttps: Boolean, config: Config, clientCertificate: Option[JavaResource]) extends Tree {
     def provideHttpsCertificate(): Unit = {
       // Keystore
       (configDir / "private/https-keystore.p12").contentBytes = MasterKeyStoreResource.contentBytes
@@ -254,8 +246,8 @@ object DirectoryProvider
     }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, https: Boolean, mutualHttps: Boolean,
-    config: Config, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
+  final class AgentTree(rootDirectory: Path, val agentRefPath: AgentRefPath, name: String, config: Config,
+    https: Boolean, mutualHttps: Boolean, provideHttpsCertificate: Boolean, provideClientCertificate: Boolean)
   extends Tree {
     val directory = rootDirectory / agentRefPath.name
     lazy val conf = AgentConfiguration.forTest(directory,
