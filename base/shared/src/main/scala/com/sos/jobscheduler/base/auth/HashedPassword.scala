@@ -30,12 +30,13 @@ object HashedPassword
   /** No clear-text password matches this unknown password. */
   val MatchesNothing = HashedPassword(SecretString("MatchesNothing"), _ => "")
   private val Empty = HashedPassword(SecretString(""), identity)
+  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   /** The empty clear-text password, differently hashed at each invocation. */
   def newEmpty = Empty.hashAgainRandom
 
   private def sha(string: String) = {
     val digest = MessageDigest.getInstance("SHA-256")  // Not thread-safe
-    Base64.getUrlEncoder.encodeToString(digest.digest(string.getBytes(UTF_8)))  // Convert bytes to String
+    toUrlBase64(digest.digest(string.getBytes(UTF_8)))  // Convert bytes to String
   }
 }

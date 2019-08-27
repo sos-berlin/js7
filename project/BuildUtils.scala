@@ -75,13 +75,14 @@ object BuildUtils
 
   /** Parses 2019-01-14T12:00:00Z and 2019-01-14T13:00:00+01:00. */
   private def parseInstant(s: String) = OffsetDateTime.parse(s, instantFormatter).toInstant
+  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   val buildId: String = {
     val uuid = UUID.randomUUID
     val buffer = ByteBuffer.wrap(new Array[Byte](16))
     buffer.putLong(uuid.getMostSignificantBits)
     buffer.putLong(uuid.getLeastSignificantBits)
-    Base64.getUrlEncoder.encodeToString(buffer.array) stripSuffix "=="
+    toUrlBase64(buffer.array)
   }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil

@@ -16,11 +16,13 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
   override def checked(string: String) =
     for (uuid <- base64ToUUID(string)) yield new Base64UUID(uuid, string)
 
+  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
+
   def uuidToBase64(uuid: UUID): String = {
     val buffer = ByteBuffer.wrap(new Array[Byte](16))
     buffer.putLong(uuid.getMostSignificantBits)
     buffer.putLong(uuid.getLeastSignificantBits)
-    Base64.getUrlEncoder.encodeToString(buffer.array) stripSuffix "=="
+    toUrlBase64(buffer.array)
   }
 
   def base64ToUUID(base64String: String): Checked[UUID] =
