@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.akkahttp.https.AkkaHttps.loadHttpsConnectionContext
@@ -34,13 +35,31 @@ with ProvideActorSystem
 
 object AkkaHttpMasterApi
 {
+  def apply(
+    baseUri: Uri,
+    keyStoreRef: Option[KeyStoreRef] = None,
+    trustStoreRef: Option[TrustStoreRef] = None)
+    (implicit actorSystem: ActorSystem)
+  : CommonAkka = {
+    val baseUri_ = baseUri
+    val actorSystem_ = actorSystem
+    val keyStoreRef_ = keyStoreRef
+    val trustStoreRef_ = trustStoreRef
+    new CommonAkka {
+      protected val actorSystem = actorSystem_
+      protected val baseUri = baseUri_
+      override protected def keyStoreRef = keyStoreRef_
+      override protected def trustStoreRef = trustStoreRef_
+    }
+  }
+
   trait CommonAkka extends HttpMasterApi with AkkaHttpClient
   {
     /** To provide a client certificate to server. */
     protected def keyStoreRef: Option[KeyStoreRef] = None
     /** To trust the server's certificate. */
     protected def trustStoreRef: Option[TrustStoreRef] = None
-    protected final val baseUriString = baseUri.toString
+    protected final lazy val baseUriString = baseUri.toString
 
     override protected final lazy val httpsConnectionContextOption =
       (keyStoreRef.nonEmpty || trustStoreRef.nonEmpty) ? loadHttpsConnectionContext(keyStoreRef, trustStoreRef)  // TODO None means HttpsConnectionContext? Or empty context?
