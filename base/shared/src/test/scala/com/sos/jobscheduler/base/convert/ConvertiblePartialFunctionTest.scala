@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.convert
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
+import com.sos.jobscheduler.base.problem.Problem
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
@@ -31,7 +32,11 @@ final class ConvertiblePartialFunctionTest extends FreeSpec {
 
   "checkedAs" in {
     assert(convertible[String, String]().checkedAs[Int]("KEY") == Left(MissingConfigurationKeyProblem("KEY")))
-    assert(convertible("KEY" -> "111").checkedAs[Int]("KEY") == Right(111))
+    convertible("KEY" -> "111").checkedAs[Int]("KEY")
+    intercept[IllegalArgumentException] {
+      // TODO checked[Option]As methods should not throw
+      assert(convertible("KEY" -> "TEXT").checkedAs[Int]("KEY") == Left(Problem("???")))
+    }
     assert(convertible[String, String]().checkedAs[Int]("KEY", Some(222)) == Right(222))
   }
 

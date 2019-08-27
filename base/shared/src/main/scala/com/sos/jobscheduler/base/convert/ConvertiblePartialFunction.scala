@@ -10,8 +10,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
   *
   * @author Joacim Zschimmer
   */
-trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
-
+trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V]
+{
   def as[W](key: K)(implicit convert: As[V, W]): W =
     wrappedConvert(convert.apply, renderKey(key))(apply(key))
 
@@ -23,6 +23,9 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
 
   def checkedAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Checked[W] =
     optionAs[W](key, default) toChecked MissingConfigurationKeyProblem(key.toString)
+
+  def checkedOptionAs[W](key: K)(implicit convert: As[V, W]): Checked[Option[W]] =
+    Right(lift(key) map wrappedConvert(convert.apply, renderKey(key)))
 
   def optionAs[W](key: K, default: => Option[W])(implicit convert: As[V, W]): Option[W] =
     optionAs(key)(convert) orElse default
