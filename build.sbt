@@ -208,6 +208,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
+      "com.lihaoyi" %%% "sourcecode" % "0.1.7" ++
       findbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
@@ -237,7 +238,6 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       scalaXml ++
-      scalactic ++
       scalaLogging ++
       javaxInject ++
       guice ++
