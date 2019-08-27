@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.{Event, EventRequest}
@@ -15,8 +16,8 @@ import scala.reflect.ClassTag
  *
  * @author Joacim Zschimmer
  */
-final class MasterUris private(masterUri: String) {
-
+final class MasterUris private(masterUri: String)
+{
   def overview = api()
 
   val command = api("/command")
@@ -31,10 +32,8 @@ final class MasterUris private(masterUri: String) {
 
   private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E], eventIdOnly: Boolean = false): String =
     api(path) + encodeQuery(
-      request.toQueryParameters.map {
-        case ("return", o) if eventIdOnly => "return" -> s"EventId:$o"
-        case o => o
-      })
+     (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
+       request.toQueryParameters)
 
   object order {
     def overview = api("/order")
@@ -83,8 +82,8 @@ final class MasterUris private(masterUri: String) {
   override def toString = masterUri
 }
 
-object MasterUris {
-
+object MasterUris
+{
   def apply(masterUri: String): MasterUris =
     new MasterUris(
       if (masterUri.isEmpty)

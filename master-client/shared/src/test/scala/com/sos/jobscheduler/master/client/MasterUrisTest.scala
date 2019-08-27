@@ -36,9 +36,9 @@ final class MasterUrisTest extends FreeSpec
 
     // return EventId only
     assert(masterUris.events(EventRequest.singleClass[Event](after = 7, timeout = Some(1.seconds)), eventIdOnly = true) ==
-      "http://example.com/master/api/event?return=EventId:Event&timeout=1&after=7")
+      "http://example.com/master/api/event?eventIdOnly=true&return=Event&timeout=1&after=7")
     assert(masterUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[FileBasedEvent]), after = 7, Some(1.second)), eventIdOnly = true) ==
-      "http://example.com/master/api/event?return=EventId:OrderEvent,FileBasedEvent&timeout=1&after=7")
+      "http://example.com/master/api/event?eventIdOnly=true&return=OrderEvent,FileBasedEvent&timeout=1&after=7")
   }
 
   "fatEvent" in {
