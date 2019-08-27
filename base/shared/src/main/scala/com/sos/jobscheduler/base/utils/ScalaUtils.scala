@@ -199,6 +199,16 @@ object ScalaUtils
     }
   }
 
+  implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal
+  {
+    // Will be no longer needed with Scala 2.13 !!!
+    def orElse[L1 >: L, R1 >: R](or: => Either[L1, R1]): Either[L1, R1] =
+      underlying match {
+        case Left(_) => or
+        case Right(o) => Right(o)
+      }
+  }
+
   implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
     def toFuture: Future[R] =
       withStackTrace match {

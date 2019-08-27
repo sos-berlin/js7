@@ -201,6 +201,13 @@ final class ScalaUtilsTest extends FreeSpec
     assert(mappedPf.applyOrElse(2, (i: Int) => s"else $i") == "else 2")
   }
 
+  "Either orElse" in {
+    assert((Left(1): Either[Int, Boolean]).orElse(Left("WINNER")) == Left("WINNER"))
+    assert((Left(1): Either[Int, Boolean]).orElse(Right("WINNER")) == Right("WINNER"))
+    assert((Right(true): Either[Int, Boolean]).orElse(Left("LOOSER")) == Right(true))
+    assert((Right(true): Either[Int, Boolean]).orElse(Right("LOOSER")) == Right(true))
+  }
+
   "Either.toFuture" in {
     assert(Right[Throwable, Int](7).toFuture.value.get.get == 7)
     val t = new IllegalArgumentException
