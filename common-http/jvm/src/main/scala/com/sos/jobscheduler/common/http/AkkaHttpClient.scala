@@ -19,6 +19,7 @@ import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.common.http.AkkaHttpClient._
@@ -200,11 +201,11 @@ object AkkaHttpClient
     task.materialize.map {
       case Failure(t: HttpException) =>
         t.problem match {
-          case None => Failure(t)
+          case None => Failure(t.appendCurrentStackTrace)
           case Some(problem) => Success(Left(problem))
         }
       case Failure(t) =>
-        Failure(t)
+        Failure(t.appendCurrentStackTrace)
       case Success(a) =>
         Success(Right(a))
     }
