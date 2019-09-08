@@ -161,8 +161,9 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
               } yield Right(completed)
           })}
 
-  private def pauseBeforeRecoupling =
-    Task.sleep(delaySinceLastFetch(recouplingPause.nextPause()))
+  private val pauseBeforeRecoupling =
+    Task { delaySinceLastFetch(recouplingPause.nextPause()) }
+      .flatMap(Task.sleep)
 }
 
 object EventFetcher
