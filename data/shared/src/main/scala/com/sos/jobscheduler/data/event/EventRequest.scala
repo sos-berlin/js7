@@ -18,14 +18,13 @@ final case class EventRequest[E <: Event](
   delay: FiniteDuration = DefaultDelay,
   limit: Int = DefaultLimit,
   tornOlder: Option[FiniteDuration] = None)
-extends SomeEventRequest[E]
 {
   require(eventClasses.nonEmpty, "Missing Event class")
   require(limit >= 0, "Limit must not be below zero")
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
-    builder += returnQueryParameter
+    builder += "return" -> (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
     for (o <- timeout) builder += "timeout" -> durationToString(o)
     if (delay != DefaultDelay) builder += "delay" -> durationToString(delay)
     if (limit != DefaultLimit) builder += "limit" -> limit.toString
@@ -33,6 +32,9 @@ extends SomeEventRequest[E]
     builder += "after" -> after.toString
     builder.result()
   }
+
+  def matchesClass(clazz: Class[_ <: Event]): Boolean =
+    eventClasses exists { _ isAssignableFrom clazz }
 
   /**
     * Helper to repeatedly fetch events until a condition (PartialFunction) is met.
@@ -80,40 +82,4 @@ object EventRequest {
 
   private def durationToString(duration: FiniteDuration): String =
     BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.reverse.dropWhile(_ == '0').reverse.stripSuffix(".")  // TODO Use ScalaTime.formatNumber
-}
-
-final case class ReverseEventRequest[E <: Event](
-  eventClasses: Set[Class[_ <: E]],
-  limit: Int,
-  after: EventId)
-extends SomeEventRequest[E] {
-  require(limit > 0, "Limit must not be below zero")
-
-  def toQueryParameters: Vector[(String, String)] = {
-    val builder = Vector.newBuilder[(String, String)]
-    if (eventClasses != Set(classOf[Event])) builder += returnQueryParameter
-    builder += "limit" -> (-limit).toString
-    if (after != EventId.BeforeFirst) builder += "after" -> after.toString
-    builder.result()
-  }
-}
-
-object ReverseEventRequest {
-  def apply[E <: Event: ClassTag](after: EventId = EventId.BeforeFirst, limit: Int): ReverseEventRequest[E] =
-    new ReverseEventRequest[E](Set(implicitClass[E]), after = after, limit = limit)
-}
-
-/**
-  * Common trait for both EventRequest and ReverseEventRequest.
-  */
-sealed trait SomeEventRequest[E <: Event] {
-  def eventClasses: Set[Class[_ <: E]]
-
-  def toQueryParameters: Vector[(String, String)]
-
-  protected def returnQueryParameter: (String, String) =
-    "return" -> (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
-
-  def matchesClass(clazz: Class[_ <: Event]): Boolean =
-    eventClasses exists { _ isAssignableFrom clazz }
 }

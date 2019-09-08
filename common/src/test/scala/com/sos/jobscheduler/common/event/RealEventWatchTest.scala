@@ -20,7 +20,6 @@ final class RealEventWatchTest extends FreeSpec {
     val eventWatch = new RealEventWatch[TestEvent] {
       protected def scheduler = Scheduler.global
       def tornEventId = 0
-      protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotObjectsFor(after: EventId) = None
       onEventsAdded(events.last.eventId)
@@ -67,8 +66,6 @@ object RealEventWatchTest {
     val tornEventId = 0
 
     def snapshotObjectsFor(after: EventId) = None
-
-    protected def reverseEventsAfter(after: EventId) = CloseableIterator.empty
 
     onEventsAdded(1)
 

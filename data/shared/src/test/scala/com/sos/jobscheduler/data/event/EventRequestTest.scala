@@ -34,11 +34,6 @@ final class EventRequestTest extends FreeSpec {
         Vector(
           "return" -> "AEvent",
           "after" -> "0"))
-    assert(ReverseEventRequest[AEvent](after = EventId(3), limit = 999).toQueryParameters ==
-      Vector(
-        "return" -> "AEvent",
-        "limit" -> "-999",
-        "after" -> "3"))
   }
 }
 

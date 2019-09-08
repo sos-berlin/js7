@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventWatch._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -30,8 +30,6 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   @VisibleForTesting
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
-
-  protected def reverseEventsAfter(after: EventId): CloseableIterator[Stamped[KeyedEvent[E]]]
 
   private lazy val sync = new Sync(initialLastEventId = tornEventId)  // Initialize not before whenStarted!
 
@@ -77,14 +75,11 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       .map(_.get).flatten
   }
 
-  final def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
+  final def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]] =
     request match {
       case request: EventRequest[E1] =>
         when[E1](request, predicate)
-
-      case request: ReverseEventRequest[E1] =>
-        Task(reverse[E1](request, predicate))
     }
 
   final def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
@@ -101,13 +96,11 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
           e.asInstanceOf[KeyedEvent[E1]]
       })
 
-  final def byKey[E1 <: E](request: SomeEventRequest[E1], key: E1#Key, predicate: E1 => Boolean)
+  final def byKey[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 => Boolean)
   : Task[TearableEventSeq[CloseableIterator, E1]] =
     request match {
       case request: EventRequest[E1] =>
         whenKey(request, key, predicate)
-      case request: ReverseEventRequest[E1] =>
-        Task(reverseForKey(request, key))
     }
 
   final def whenKeyedEvent[E1 <: E](request: EventRequest[E1], key: E1#Key, predicate: E1 => Boolean): Task[E1] =
@@ -181,32 +174,6 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       case None =>
         TearableEventSeq.Torn(after = tornEventId)
       }
-
-  protected final def reverse[E1 <: E](request: ReverseEventRequest[E1], predicate: KeyedEvent[E1] => Boolean)
-  : EventSeq[CloseableIterator, KeyedEvent[E1]] =
-    reverseEventsAfter(after = request.after)
-      .collect {
-        case stamped if request matchesClass stamped.value.event.getClass =>
-          stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
-      }
-      .filter(stamped => predicate(stamped.value))
-      .take(request.limit) match {
-        case stampeds if stampeds.nonEmpty => EventSeq.NonEmpty(stampeds)
-        case _ => EventSeq.Empty(lastAddedEventId)
-      }
-
-  protected final def reverseForKey[E1 <: E](request: ReverseEventRequest[E1], key: E1#Key, predicate: E1 => Boolean = (_: E1) => true)
-  : EventSeq.NonEmpty[CloseableIterator, E1] =
-    EventSeq.NonEmpty(
-      reverseEventsAfter(after = request.after).collect {
-        case stamped if request matchesClass stamped.value.event.getClass =>
-          stamped.asInstanceOf[Stamped[KeyedEvent[E1]]]
-      }
-      .collect {
-        case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) =>
-          Stamped(eventId, timestamp, event)
-      }
-      .take(request.limit))
 
   def lastAddedEventId: EventId =
     sync.lastAddedEventId

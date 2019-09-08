@@ -192,9 +192,6 @@ with JournalingObserver
       .dropRight(keepOpenCount)
       .foreach(_.evictEventReader())
 
-  protected def reverseEventsAfter(after: EventId) =
-    CloseableIterator.empty  // Not implemented
-
   private def historicJournalFileAfter(after: EventId): Option[HistoricJournalFile] =
     afterEventIdToHistoric.values.toVector.reverseIterator find (_.afterEventId <= after)
 

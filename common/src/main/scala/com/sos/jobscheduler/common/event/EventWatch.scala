@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.event
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.function1WithToString
 import com.sos.jobscheduler.common.event.EventWatch.Every
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -22,7 +22,7 @@ trait EventWatch[E <: Event] {
   def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Observable[Stamped[KeyedEvent[E1]]]
 
-  def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
+  def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
@@ -35,7 +35,7 @@ trait EventWatch[E <: Event] {
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
 
   def byKey[E1 <: E](
-    request: SomeEventRequest[E1],
+    request: EventRequest[E1],
     key: E1#Key,
     predicate: E1 => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E1]]

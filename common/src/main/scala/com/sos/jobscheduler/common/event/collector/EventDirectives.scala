@@ -6,9 +6,7 @@ import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import cats.syntax.option._
 import com.google.common.base.Splitter
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.event._
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -38,25 +36,6 @@ object EventDirectives {
   : Directive1[EventRequest[E]] =
     new Directive1[EventRequest[E]] {
       def tapply(inner: Tuple1[EventRequest[E]] => Route) =
-        someEventRequest[E](defaultAfter, defaultTimeout, defaultDelay, defaultReturnType)(keyedEventTypedJsonCodec, classTag) {
-          case request: EventRequest[E] => inner(Tuple1(request))
-          case _ => complete(Problem("Parameter limit must be positive here"))
-        }
-    }
-
-  def someEventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
-    someEventRequest[E](None)
-
-  def someEventRequest[E <: Event](
-    defaultAfter: Option[EventId] = None,
-    defaultTimeout: FiniteDuration = DefaultTimeout,
-    defaultDelay: FiniteDuration = DefaultDelay,
-    defaultReturnType: Option[String] = None)
-    (implicit keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E],
-      classTag: ClassTag[E])
-  : Directive1[SomeEventRequest[E]] =
-    new Directive1[SomeEventRequest[E]] {
-      def tapply(inner: Tuple1[SomeEventRequest[E]] => Route) =
         parameter("return".?) {
           _ orElse defaultReturnType match {
             case None => reject(ValidationRejection("Missing parameter return="))
@@ -94,13 +73,12 @@ object EventDirectives {
     defaultAfter: Option[EventId],
     defaultTimeout: FiniteDuration,
     defaultDelay: FiniteDuration,
-    inner: Tuple1[SomeEventRequest[E]] => Route)
+    inner: Tuple1[EventRequest[E]] => Route)
   : Route =
-    parameter("limit" ? Int.MaxValue) {
-      case 0 =>
-        reject(ValidationRejection("Invalid limit=0"))
-
-      case limit if limit > 0 =>
+    parameter("limit" ? Int.MaxValue) { limit =>
+      if (limit <= 0)
+        reject(ValidationRejection(s"Invalid limit=$limit"))
+      else
         parameter("after".as[EventId].?) {
           _ orElse defaultAfter match {
             case None => reject(ValidationRejection("Missing parameter after="))
@@ -131,11 +109,6 @@ object EventDirectives {
                 }
               }
           }
-        }
-
-      case limit if limit < 0 =>
-        parameter("after" ? EventId.BeforeFirst) { after =>
-          inner(Tuple1(ReverseEventRequest[E](eventClasses, after = after, limit = -limit)))
         }
     }
 }

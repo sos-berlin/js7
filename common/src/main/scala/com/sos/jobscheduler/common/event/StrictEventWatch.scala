@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.EventWatch.Every
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, SomeEventRequest, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -24,7 +24,7 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
   : Observable[Stamped[KeyedEvent[E1]]]
   = eventWatch.observe(request, predicate)
 
-  def read[E1 <: E](request: SomeEventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
+  def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
   = delegate(_.read(request, predicate))
 
@@ -40,7 +40,7 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
   = delegate(_.whenAny[E1](request, eventClasses, predicate))
 
   def byKey[E1 <: E](
-    request: SomeEventRequest[E1],
+    request: EventRequest[E1],
     key: E1#Key,
     predicate: E1 => Boolean = Every)
   : Task[TearableEventSeq[Seq, E1]]

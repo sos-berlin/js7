@@ -30,9 +30,6 @@ extends RealEventWatch[Event]
 
   def eventsAfter(after: EventId) =
     keyedEventQueue.after(after) map CloseableIterator.fromIterator
-
-  protected final def reverseEventsAfter(after: EventId) =
-    CloseableIterator.fromIterator(keyedEventQueue.reverseEvents(after = after))
 }
 
 object EventCollector
