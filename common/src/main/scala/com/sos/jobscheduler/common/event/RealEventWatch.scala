@@ -31,10 +31,10 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   @VisibleForTesting
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
 
-  private lazy val sync = new Sync(initialLastEventId = tornEventId)  // Initialize not before whenStarted!
+  private lazy val sync = new Sync(initial = tornEventId, o => "EventId " + EventId.toString(o))  // Initialize not before whenStarted!
 
   protected final def onEventsAdded(eventId: EventId): Unit =
-    sync.onEventAdded(eventId)
+    sync.onAdded(eventId)
 
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
   {
@@ -130,7 +130,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
     collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     whenStarted.flatMap (_ =>
-      sync.whenEventIsAvailable(after, deadline, delay)
+      sync.whenAvailable(after, deadline, delay)
         .flatMap (_ =>
           collectEventsSince(after, collect, limit) match {
             case eventSeq @ EventSeq.NonEmpty(iterator) =>
@@ -142,7 +142,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
                   val head = iterator.next()
                   if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
                     iterator.close()
-                    Task.pure(TearableEventSeq.Torn(sync.lastAddedEventId))  // Simulate a torn EventSeq
+                    Task.pure(TearableEventSeq.Torn(sync.last))  // Simulate a torn EventSeq
                   } else
                     Task.pure(EventSeq.NonEmpty(head +: iterator))
               }
@@ -176,7 +176,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
       }
 
   def lastAddedEventId: EventId =
-    sync.lastAddedEventId
+    sync.last
 
   /** TEST ONLY - Blocking. */
   @TestOnly
