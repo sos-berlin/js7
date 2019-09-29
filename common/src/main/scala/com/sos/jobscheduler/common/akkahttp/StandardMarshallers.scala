@@ -17,6 +17,7 @@ import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObser
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.language.implicitConversions
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
@@ -32,13 +33,13 @@ object StandardMarshallers
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
 
-  def closeableIteratorToMarshallable[A: ToEntityMarshaller](closeableIterator: CloseableIterator[A])
+  def closeableIteratorToMarshallable[A: ToEntityMarshaller: TypeTag](closeableIterator: CloseableIterator[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     // Detour through Monix Observable to handle stream close
     monixObservableToMarshallable(closeableIteratorToObservable(closeableIterator))
 
-  def monixObservableToMarshallable[A: ToEntityMarshaller](observable: Observable[A])
+  def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     logErrorToWebLog(observable.toAkkaSource)

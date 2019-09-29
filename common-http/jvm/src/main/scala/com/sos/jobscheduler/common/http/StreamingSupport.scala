@@ -3,17 +3,29 @@ package com.sos.jobscheduler.common.http
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
+import cats.effect.ExitCase
+import com.typesafe.scalalogging.Logger
+import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import scala.reflect.runtime.universe._
 
 /**
   * @author Joacim Zschimmer
   */
 object StreamingSupport
 {
+  private val logger = Logger("jobscheduler.common.http.StreamingSupport")
+
   implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal {
-    def toAkkaSource(implicit scheduler: Scheduler): Source[A, NotUsed] =
-      Source.fromPublisher(underlying.toReactivePublisher(scheduler))
+    def toAkkaSource(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
+      Source.fromPublisher(
+        underlying
+          .guaranteeCase {
+            case ExitCase.Completed => Task.unit
+            case exitCase => Task { logger.trace(s"Observable[${A.tpe}] toAkkaSource: $exitCase") }
+          }
+          .toReactivePublisher(scheduler))
   }
 
   implicit final class ObservableAkkaSource[Out, Mat](private val underlying: Source[Out, Mat]) extends AnyVal {
@@ -22,4 +34,3 @@ object StreamingSupport
         underlying.runWith(Sink.asPublisher(fanout = false)))
   }
 }
-
