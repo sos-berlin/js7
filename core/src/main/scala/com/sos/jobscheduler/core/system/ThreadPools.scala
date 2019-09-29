@@ -23,7 +23,7 @@ object ThreadPools
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = {
     case NonFatal(throwable) =>
-      logger.error(s"Uncaught exception in thread '${Thread.currentThread.getName}': ${throwable.toStringWithCauses}", throwable)
+      logger.error(s"Uncaught exception in thread ${Thread.currentThread.getId} '${Thread.currentThread.getName}': ${throwable.toStringWithCauses}", throwable)
     case throwable =>
       UncaughtExceptionReporter.default.reportFailure(throwable)
   }
