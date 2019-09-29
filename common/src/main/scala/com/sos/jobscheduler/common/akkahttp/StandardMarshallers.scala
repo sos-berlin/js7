@@ -5,6 +5,7 @@ import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToRespons
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType}
+import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -16,6 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
@@ -32,6 +34,18 @@ object StandardMarshallers
     Marshaller.withOpenCharset(`text/plain`) { (string, charset) =>
       HttpEntity(`text/plain` withCharset charset, ByteString.fromString(string, charset.nioCharset))
     }
+
+  implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
+    Unmarshaller.strict(stringToFiniteDuration)
+
+  implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
+    Unmarshaller.strict {
+      case "infinite" => Duration.Inf
+      case o => stringToFiniteDuration(o)
+    }
+
+  private def stringToFiniteDuration(string: String) =
+    (BigDecimal(string) * 1000).toLong.millis
 
   def closeableIteratorToMarshallable[A: ToEntityMarshaller: TypeTag](closeableIterator: CloseableIterator[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)

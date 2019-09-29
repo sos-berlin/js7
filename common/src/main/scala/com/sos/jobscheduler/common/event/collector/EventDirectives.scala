@@ -3,10 +3,10 @@ package com.sos.jobscheduler.common.event.collector
 import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
-import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import cats.syntax.option._
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.event._
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -15,8 +15,8 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-object EventDirectives {
-
+object EventDirectives
+{
   val DefaultTimeout = 0.seconds
   val DefaultDelay = 500.milliseconds
   val MinimumDelay = 100.milliseconds
@@ -55,18 +55,6 @@ object EventDirectives {
           }
         }
     }
-
-  private implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
-    Unmarshaller.strict(stringToFiniteDuration)
-
-  private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
-    Unmarshaller.strict {
-      case "infinite" => Duration.Inf
-      case o => stringToFiniteDuration(o)
-    }
-
-  private def stringToFiniteDuration(string: String) =
-    (BigDecimal(string) * 1000).toLong.millis
 
   private def eventRequestRoute[E <: Event](
     eventClasses: Set[Class[_ <: E]],
