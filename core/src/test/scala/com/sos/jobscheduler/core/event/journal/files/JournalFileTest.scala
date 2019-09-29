@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.files
 
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
@@ -8,6 +10,22 @@ import org.scalatest.FreeSpec
   */
 final class JournalFileTest extends FreeSpec
 {
+  "properLength" in {
+    val file = createTempFile("JournalFileTest-", ".tmp")
+    assert(JournalFile(0, file).properLength == 0)
+
+    file := "PROPER\nTWO\n"
+    assert(JournalFile(0, file).properLength == size(file))
+
+    file := "PROPER\nTWO"
+    assert(JournalFile(0, file).properLength == 7)
+
+    file := "EMPTY"
+    assert(JournalFile(0, file).properLength == 0)
+
+    delete(file)
+  }
+
   "toFile" in {
     assert(JournalFile.toFile(Paths.get("DIR/NAME"), 123) == Paths.get("DIR/NAME--123.journal"))
   }
