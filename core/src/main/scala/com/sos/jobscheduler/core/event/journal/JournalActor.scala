@@ -106,7 +106,7 @@ extends Actor with Stash {
 
     case Input.StartWithoutRecovery(observer_) =>  // Testing only
       observer := observer_
-      val header = JournalHeader.initial(JournalId(randomUUID))
+      val header = JournalHeader.initial(JournalId.random())
       recoveredJournalHeader := header
       eventWriter = newEventJsonWriter(withoutSnapshots = true)
       eventWriter.writeHeader(header)

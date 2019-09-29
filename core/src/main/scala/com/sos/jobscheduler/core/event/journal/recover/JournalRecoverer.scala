@@ -42,7 +42,7 @@ trait JournalRecoverer[E <: Event]
   final def recoverAll(): Unit =
     journalFileOption match {
       case None =>
-        val journalId = expectedJournalId getOrElse JournalId(randomUUID)
+        val journalId = expectedJournalId getOrElse JournalId.random()
         logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}' with journalId=${journalId.string} will be started")
         journalHeaderOnce := JournalHeader.initial(journalId)
 

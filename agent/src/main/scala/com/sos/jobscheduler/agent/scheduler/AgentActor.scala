@@ -38,7 +38,6 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, S
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
-import java.util.UUID.randomUUID
 import javax.inject.Inject
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -168,7 +167,7 @@ extends MainJournalingActor[AgentEvent] {
       case AgentCommand.RegisterAsMaster if !terminating =>
         masterToOrderKeeper.get(masterId) match {
           case None =>
-            val agentRunId = AgentRunId(JournalId(randomUUID))
+            val agentRunId = AgentRunId(JournalId.random())
             response completeWith
               persist(AgentEvent.MasterRegistered(masterId, agentRunId)) { case Stamped(_, _, KeyedEvent(NoKey, event)) =>
                 update(event)

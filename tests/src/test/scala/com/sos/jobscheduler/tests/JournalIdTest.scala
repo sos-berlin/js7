@@ -19,7 +19,6 @@ import com.sos.jobscheduler.tests.JournalIdTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider.script
 import com.sos.jobscheduler.tests.testenv.DirectoryProviderForScalaTest
 import io.circe.syntax.EncoderOps
-import java.util.UUID.randomUUID
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 
@@ -54,7 +53,7 @@ final class JournalIdTest extends FreeSpec with DirectoryProviderForScalaTest
     locally {
       val (headerLine, body) = firstJournalFileContent.splitAt(firstJournalFileContent indexOf '\n')
       val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
-      firstJournalFile := header.copy(journalId = JournalId(randomUUID)).asJson.compactPrint + body
+      firstJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
     }
 
     directoryProvider.runAgents() { _ =>
@@ -87,7 +86,7 @@ final class JournalIdTest extends FreeSpec with DirectoryProviderForScalaTest
       val secondJournalFileContent = secondJournalFile.contentString
       val (headerLine, body) = secondJournalFileContent.splitAt(secondJournalFileContent indexOf '\n')
       val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
-      secondJournalFile := header.copy(journalId = JournalId(randomUUID)).asJson.compactPrint + body
+      secondJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
     }
 
     directoryProvider.runAgents() { _ =>
