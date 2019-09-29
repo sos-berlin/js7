@@ -120,6 +120,17 @@ object Collections {
       }
     }
 
+    implicit final class RichIterator[A](private val underlying: Iterator[A]) extends AnyVal {
+      def takeWhileAndOne(predicate: A => Boolean): Iterator[A] = {
+        var firstNonMatching: Iterator[A] = Iterator.empty
+        underlying.takeWhile { a =>
+          val p = predicate(a)
+          if (!p) firstNonMatching = Iterator.single(a)
+          p
+        } ++ firstNonMatching
+      }
+    }
+
     implicit final class RichSet[A](private val delegate: Set[A]) extends AnyVal {
       def isDisjointWith(o: Set[A]): Boolean =
         delegate forall (k => !o.contains(k))
