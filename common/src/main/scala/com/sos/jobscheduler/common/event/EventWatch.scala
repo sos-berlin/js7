@@ -8,6 +8,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -15,7 +16,9 @@ import scala.reflect.runtime.universe._
 /**
   * @author Joacim Zschimmer
   */
-trait EventWatch[E <: Event] {
+trait EventWatch[E <: Event]
+{
+  def whenStarted: Future[this.type] = Future.successful(this)
 
   def strict: StrictEventWatch[E] = new StrictEventWatch(this)
 

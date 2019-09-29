@@ -75,8 +75,9 @@ trait GenericEventRoute extends RouteProvider
           complete(ServiceUnavailable -> JobSchedulerIsShuttingDownProblem)
         else
           complete(ServiceUnavailable -> Problem.pure(t.getMessage))
-      //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch
-      //  complete(ServiceUnavailable -> Problem.pure(t.toString))
+      case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
+        logger.debug(t.toStringWithCauses, t)
+        complete(ServiceUnavailable -> Problem.pure(t.toString))
     }
 
     final lazy val route: Route =
@@ -90,19 +91,22 @@ trait GenericEventRoute extends RouteProvider
                     complete(problem)
 
                   case Right(eventWatch) =>
-                    htmlPreferred {
+                    if (!eventWatch.whenStarted.isCompleted) logger.debug("Waiting for journal to become ready")
+                    onSuccess(eventWatch.whenStarted) { eventWatch =>
+                      htmlPreferred {
+                        oneShot(eventWatch)
+                      } ~
+                      accept(`application/x-ndjson`) {
+                        jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
+                      } ~
+                      accept(`application/json-seq`) {
+                        jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
+                      } ~
+                      accept(`text/event-stream`) {
+                        serverSentEvents(eventWatch)
+                      } ~
                       oneShot(eventWatch)
-                    } ~
-                    accept(`application/x-ndjson`) {
-                      jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
-                    } ~
-                    accept(`application/json-seq`) {
-                      jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
-                    } ~
-                    accept(`text/event-stream`) {
-                      serverSentEvents(eventWatch)
-                    } ~
-                    oneShot(eventWatch)
+                    }
                 })
             }
           }

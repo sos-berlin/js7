@@ -26,8 +26,6 @@ import scala.reflect.runtime.universe._
   */
 trait RealEventWatch[E <: Event] extends EventWatch[E]
 {
-  def whenStarted: Task[this.type] = Task.pure(this)
-
   @VisibleForTesting
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
 
@@ -129,9 +127,9 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[Deadline], delay: FiniteDuration,
     collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    whenStarted.flatMap (_ =>
+    Task.fromFuture(whenStarted).flatMap(_ =>
       sync.whenAvailable(after, deadline, delay)
-        .flatMap (_ =>
+        .flatMap(_ =>
           collectEventsSince(after, collect, limit) match {
             case eventSeq @ EventSeq.NonEmpty(iterator) =>
               maybeTornOlder match {

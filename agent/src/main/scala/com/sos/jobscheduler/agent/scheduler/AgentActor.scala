@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
+import cats.instances.future._
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
@@ -123,7 +124,7 @@ extends MainJournalingActor[AgentEvent] {
 
     case Input.GetEventWatch(masterId) =>
       masterToOrderKeeper.checked(masterId) match {
-        case Right(entry) => entry.eventWatch.whenStarted.map(Right.apply).runToFuture pipeTo sender()
+        case Right(entry) => entry.eventWatch.whenStarted.map(Right.apply) pipeTo sender()
         case o @ Left(_) => sender() ! o
       }
 
@@ -200,7 +201,7 @@ extends MainJournalingActor[AgentEvent] {
   private def checkMaster(masterId: MasterId, requiredAgentRunId: Option[AgentRunId], eventId: EventId): Future[Checked[Response.Accepted]] =
     for {
       checkedEntry <- Future.successful(masterToOrderKeeper.checked(masterId))
-      checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted).runToFuture
+      checkedEventWatch <- checkedEntry.traverse(_.eventWatch.whenStarted)
     } yield
       for {
         _ <- checkedEntry.flatMap(entry =>  Checked.cond(requiredAgentRunId.forall(_ == entry.agentRunId), (), MasterAgentMismatchProblem))

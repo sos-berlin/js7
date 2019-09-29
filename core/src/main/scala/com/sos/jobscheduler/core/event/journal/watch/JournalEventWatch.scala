@@ -54,8 +54,8 @@ with JournalingObserver
     currentEventReaderOption foreach (_.close())
   }
 
-  override def whenStarted: Task[this.type] =
-    Task.deferFuture(started.future)
+  override def whenStarted =
+    started.future
 
   private def currentEventReader =
     currentEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
