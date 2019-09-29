@@ -8,12 +8,13 @@ import akka.stream.Materializer
 import akka.util.ByteString
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
   */
-object AkkaHttpUtils {
-
+object AkkaHttpUtils
+{
   def encodeGzip(request: HttpRequest): HttpRequest =
     Gzip.encodeMessage(request.copy(headers = `Accept-Encoding`(gzip) :: request.headers.toList))
 
@@ -61,5 +62,20 @@ object AkkaHttpUtils {
       */
     def byteStringFuture(timeout: FiniteDuration)(implicit mat: Materializer, ec: ExecutionContext): Future[ByteString] =
       underlying.entity.byteStringFuture(99.seconds)
+  }
+
+  implicit final class ScodecByteString(private val underlying: ByteString) extends AnyVal {
+    def toByteVector: ByteVector =
+      if (underlying.isCompact)
+        ByteVector.view(underlying.asByteBuffer)
+      else {
+        val a = new Array[Byte](underlying.length)
+        underlying.copyToArray(a)
+        ByteVector.view(a)
+      }
+  }
+
+  implicit final class AkkaByteVector(private val underlying: ByteVector) extends AnyVal {
+    def toByteString = ByteString.fromArrayUnsafe(underlying.toArray)
   }
 }

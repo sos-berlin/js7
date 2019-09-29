@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.scalautil
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.FileWriteMode.APPEND
-import com.google.common.io.{Files => GuavaFiles}
+import com.google.common.io.{FileWriteMode, Files => GuavaFiles}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CompactPrinter
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
+import scodec.bits.ByteVector
 
 object FileUtils {
 
@@ -55,6 +56,9 @@ object FileUtils {
       def :=(byteString: Seq[Byte]): Unit =
         contentBytes = byteString
 
+      def :=(byteVector: ByteVector): Unit =
+        autoClosing(new FileOutputStream(delegate))(byteVector.copyToStream)
+
       def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
         contentString = jsonEncoder(a).pretty(CompactPrinter)
 
@@ -62,9 +66,14 @@ object FileUtils {
       def ++=(string: CharSequence): Unit =
         append(string)
 
+      def ++=(byteVector: ByteVector): Unit=
+        autoClosing(new FileOutputStream(delegate, true))(byteVector.copyToStream)
+
       /** Must be a relative path without backslashes or single or double dot directories. */
       def /(relative: String): Path =
         delegate resolve checkRelativePath(relative).orThrow
+
+      def byteVector: ByteVector = file.byteVector
 
       def byteString: ByteString = file.byteString
 
@@ -104,6 +113,8 @@ object FileUtils {
 
     implicit final class RichFile(private val delegate: File) extends AnyVal
     {
+      def byteVector: ByteVector = ByteVector(delegate.contentBytes)
+
       def byteString: ByteString = ByteString(delegate.contentBytes)
 
       def contentBytes: Array[Byte] = GuavaFiles.toByteArray(delegate)

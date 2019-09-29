@@ -208,6 +208,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
+      "org.scodec" %%% "scodec-bits" % "1.1.12" ++
       "com.lihaoyi" %%% "sourcecode" % "0.1.7" ++
       findbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"

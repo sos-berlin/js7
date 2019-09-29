@@ -13,12 +13,13 @@ import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scodec.bits.ByteVector
 
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
-
+final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll
+{
   private lazy val file = createTempFile("FileUtilTest-", ".tmp").toFile
   private lazy val path = file.toPath
 
@@ -112,6 +113,21 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
     ":= Seq[Byte]" in {
       path := Seq[Byte](1, 2)
       path.contentBytes shouldEqual Vector[Byte](1, 2)
+    }
+
+    ":= ByteVector" in {
+      val bytes = "A-Å".getBytes(UTF_8)
+      path := ByteVector(bytes)
+      assert(path.byteVector == ByteVector(bytes))
+      assert(path.contentBytes.toSeq == bytes.toSeq)
+    }
+
+    "+= ByteVector" in {
+      val complete = "A-Å-APPENDED".getBytes(UTF_8)
+      val bytes = "-APPENDED".getBytes(UTF_8)
+      path ++= ByteVector(bytes)
+      assert(path.byteVector == ByteVector(complete))
+      assert(path.contentBytes.toSeq == complete.toSeq)
     }
 
     ":= JSON" in {
