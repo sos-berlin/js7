@@ -175,8 +175,8 @@ object JournalTest {
       "totalRunningTime": 3600,
       "timestamp": "TIMESTAMP"
     }""",
-    json""""-------SNAPSHOTS-------"""",
-    json""""-------END OF SNAPSHOTS-------"""",
+    json""""-------SNAPSHOT-------"""",
+    json""""-------END OF SNAPSHOT-------"""",
     json""""-------EVENTS-------"""",
     json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
@@ -265,13 +265,13 @@ object JournalTest {
       "totalRunningTime" : 3600,
        "timestamp": "TIMESTAMP"
     }""",
-    json""""-------SNAPSHOTS-------"""",
+    json""""-------SNAPSHOT-------"""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-A", "string": "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-C", "string": "(C.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json"""{ "TYPE": "TestAggregate", "key": "TEST-D", "string": "DDD",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-    json""""-------END OF SNAPSHOTS-------"""",
+    json""""-------END OF SNAPSHOT-------"""",
     json""""-------EVENTS-------"""")
 }
