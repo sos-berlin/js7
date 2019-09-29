@@ -21,8 +21,15 @@ import scala.util.{Failure, Success, Try}
 object MonixUtils
 {
   private val logger = Logger(getClass)
+  private val FalseTask = Task.pure(false)
+  private val TrueTask = Task.pure(true)
 
   object ops {
+    implicit class RichTaskCompanion(private val underlying: Task.type) extends AnyVal {
+      def False = FalseTask
+      def True = TrueTask
+    }
+
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
       def await(duration: FiniteDuration)(implicit s: Scheduler, A: TypeTag[A]): A =
