@@ -248,11 +248,13 @@ final class ScalaTimeTest extends FreeSpec
     "elapsedOrZero" in {
       assert((Deadline.now + 2.s).elapsed < -1.s)
       assert((Deadline.now + 2.s).elapsedOrZero == 0.s)
+      assert((Deadline.now - 2.s).elapsedOrZero > 1.s)
     }
 
     "timeLeftOrZero" in {
       assert((Deadline.now - 2.s).timeLeft < -1.s)
       assert((Deadline.now - 2.s).timeLeftOrZero == 0.s)
+      assert((Deadline.now + 2.s).timeLeftOrZero > 1.s)
     }
   }
 
