@@ -15,7 +15,7 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-private[order] class StdouterrToEvent(
+private[order] final class StdouterrToEvent(
   orderActorContext: ActorContext,
   conf: Conf,
   writeEvent: (StdoutOrStderr, String) => Future[Accepted])
@@ -41,7 +41,7 @@ private[order] class StdouterrToEvent(
 
   def onBufferingStarted(): Unit =
     if (timer == null) {
-      val d = if ((lastEventAt + noDelayAfter).hasTimeLeft) Duration.Zero else delay
+      val d = if ((lastEventAt + noDelayAfter).isOverdue()) Duration.Zero else delay
       timer = scheduler.scheduleOnce(d) {
         self ! Stdouterr.FlushStdoutStderr
       }
