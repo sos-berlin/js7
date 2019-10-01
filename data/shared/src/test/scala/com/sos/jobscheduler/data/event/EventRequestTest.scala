@@ -14,8 +14,8 @@ final class EventRequestTest extends FreeSpec {
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent",
-          "timeout" -> "123",
           "delay" -> "0.5",
+          "timeout" -> "123",
           "limit" -> "999",
           "tornOlder" -> "10",
           "after" -> "3"))
@@ -27,12 +27,14 @@ final class EventRequestTest extends FreeSpec {
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent,BEvent",
+          "delay" -> "0",
           "timeout" -> "0",
           "after" -> "3"))
     assert(EventRequest.singleClass[AEvent](timeout = None)
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent",
+          "delay" -> "0",
           "after" -> "0"))
   }
 }

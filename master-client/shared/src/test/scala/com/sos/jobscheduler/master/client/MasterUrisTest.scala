@@ -30,22 +30,22 @@ final class MasterUrisTest extends FreeSpec
 
   "events" in {
     assert(masterUris.events(EventRequest.singleClass[OrderEvent](after = 7, timeout = Some(1230.millis))) ==
-      "http://example.com/master/api/event?return=OrderEvent&timeout=1.23&after=7")
+      "http://example.com/master/api/event?return=OrderEvent&delay=0&timeout=1.23&after=7")
     assert(masterUris.events(EventRequest.singleClass[OrderEvent](after = 7, timeout = Some(1230.millis), limit = 333)) ==
-      "http://example.com/master/api/event?return=OrderEvent&timeout=1.23&limit=333&after=7")
+      "http://example.com/master/api/event?return=OrderEvent&delay=0&timeout=1.23&limit=333&after=7")
 
     // return EventId only
     assert(masterUris.events(EventRequest.singleClass[Event](after = 7, timeout = Some(1.seconds)), eventIdOnly = true) ==
-      "http://example.com/master/api/event?eventIdOnly=true&return=Event&timeout=1&after=7")
+      "http://example.com/master/api/event?eventIdOnly=true&return=Event&delay=0&timeout=1&after=7")
     assert(masterUris.events(EventRequest[Event](Set(classOf[OrderEvent], classOf[FileBasedEvent]), after = 7, Some(1.second)), eventIdOnly = true) ==
-      "http://example.com/master/api/event?eventIdOnly=true&return=OrderEvent,FileBasedEvent&timeout=1&after=7")
+      "http://example.com/master/api/event?eventIdOnly=true&return=OrderEvent,FileBasedEvent&delay=0&timeout=1&after=7")
   }
 
   "fatEvent" in {
     assert(masterUris.fatEvents(EventRequest.singleClass[OrderFatEvent](after = 7, timeout = Some(1230.millis))) ==
-      "http://example.com/master/api/fatEvent?return=OrderFatEvent&timeout=1.23&after=7")
+      "http://example.com/master/api/fatEvent?return=OrderFatEvent&delay=0&timeout=1.23&after=7")
     assert(masterUris.fatEvents(EventRequest.singleClass[OrderFatEvent](after = 7, timeout = Some(1230.millis), limit = 333)) ==
-      "http://example.com/master/api/fatEvent?return=OrderFatEvent&timeout=1.23&limit=333&after=7")
+      "http://example.com/master/api/fatEvent?return=OrderFatEvent&delay=0&timeout=1.23&limit=333&after=7")
   }
 
   "order" - {

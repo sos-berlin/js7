@@ -20,13 +20,13 @@ final case class EventRequest[E <: Event](
   tornOlder: Option[FiniteDuration] = None)
 {
   require(eventClasses.nonEmpty, "Missing Event class")
-  require(limit >= 0, "Limit must not be below zero")
+  require(limit >= 0, s"EventRequest limit=$limit must not be below zero")
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
     builder += "return" -> (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
+    builder += "delay" -> durationToString(delay)
     for (o <- timeout) builder += "timeout" -> durationToString(o)
-    if (delay != DefaultDelay) builder += "delay" -> durationToString(delay)
     if (limit != DefaultLimit) builder += "limit" -> limit.toString
     for (o <- tornOlder) builder += "tornOlder" -> durationToString(o)
     builder += "after" -> after.toString
@@ -58,9 +58,10 @@ final case class EventRequest[E <: Event](
   }
 }
 
-object EventRequest {
-  val DefaultDelay = Duration.Zero
-  val DefaultLimit = Int.MaxValue
+object EventRequest
+{
+  private val DefaultDelay = Duration.Zero
+  private val DefaultLimit = Int.MaxValue
   val LongTimeout = 365.days
 
   /**
