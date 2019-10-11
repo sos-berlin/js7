@@ -91,6 +91,7 @@ val commonSettings = Seq(
     else {
       import Dependencies._
       cats ++
+        ("org.typelevel" %% "cats-core" % catsVersion) ++
         ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
         circe ++
         //("org.sangria-graphql" %% "sangria-marshalling-api" % sangriaVersion) ++  // sangria-circe uses an older version
