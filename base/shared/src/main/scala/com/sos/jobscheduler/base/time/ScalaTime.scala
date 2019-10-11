@@ -204,34 +204,40 @@ object ScalaTime
     //}
   }
 
-  @tailrec
-  def sleepUntil(until: Deadline): Unit = {
-    val duration = until.timeLeft
-    if (duration > Duration.Zero) {
-      sleep(duration)
-      sleepUntil(until)
+  def sleep(d: Duration): Unit = {
+    val nanos = d.toNanos
+    if (nanos > 0) {
+      sleepUntil2(nanos, System.nanoTime + nanos)
     }
   }
 
-  def sleep(d: Duration): Unit = sleep(d.toMillis)
-
-  def sleep(millis: Long) =
-    if (millis > 0) {
-      blocking {
-        val m = 1000*1000
-        val until = System.nanoTime() + millis * m
-        Thread.sleep(millis)
-        @tailrec def extraSleep(): Unit = {
-          val remainingNanos = until - System.nanoTime()
-          if (remainingNanos > 0) {
-            extraSleepCount += 1
-            Thread.sleep(remainingNanos / m, (remainingNanos % m).toInt)
-            extraSleep()
-          }
-        }
-        extraSleep()
-      }
+  def sleepUntil(until: Deadline): Unit = {
+    val nanos = until.timeLeft.toNanos
+    if (nanos > 0) {
+      sleepUntil2(nanos, until.time.toNanos)
     }
+  }
+
+  private def sleepUntil2(nanos: Long, until: Long): Unit =
+    blocking {
+      nanoSleep(nanos)
+      extraSleepUntil(until)
+    }
+
+  @tailrec
+  private def extraSleepUntil(until: Long): Unit = {
+    val remainingNanos = until - System.nanoTime
+    if (remainingNanos > 0) {
+      extraSleepCount += 1
+      nanoSleep(remainingNanos)
+      extraSleepUntil(until)
+    }
+  }
+
+  private def nanoSleep(nanos: Long) = {
+    val m = 1000*1000
+    Thread.sleep(nanos / m, (nanos % m).toInt)
+  }
 
   private def formatNumber(number: Double, divisor: Int, suffix: String) = {
     val result = new StringBuilder(11 + suffix.length)
