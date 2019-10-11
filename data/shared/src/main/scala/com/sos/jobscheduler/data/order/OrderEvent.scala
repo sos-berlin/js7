@@ -86,7 +86,7 @@ object OrderEvent {
     protected def chunk: String
 
     override def toString = getClass.simpleScalaName + "(" +
-      chunk.trim.truncateWithEllipsis(80, showLength = true).replace("\n", "\\n").replace("\r", "\\r") + ")"
+      chunk.truncateWithEllipsis(80, showLength = true).replace("\n", "\\n").replace("\r", "\\r") + ")"
   }
   object OrderStdWritten {
     def apply(t: StdoutOrStderr): String => OrderStdWritten =

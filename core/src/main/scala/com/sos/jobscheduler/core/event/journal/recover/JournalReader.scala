@@ -3,6 +3,7 @@ package com.sos.jobscheduler.core.event.journal.recover
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
@@ -242,5 +243,7 @@ extends AutoCloseable
 
 private[recover] object JournalReader {
   private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[Json])
-  extends RuntimeException(s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}: $message\n${positionAndJson.value.compactPrint}")
+  extends RuntimeException(
+    s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}:" +
+      s" $message - JSON=${positionAndJson.value.compactPrint.truncateWithEllipsis(50)}")
 }
