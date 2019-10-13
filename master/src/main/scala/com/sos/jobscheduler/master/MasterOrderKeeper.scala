@@ -26,6 +26,7 @@ import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
+import com.sos.jobscheduler.core.event.state.Recovered
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
 import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
@@ -67,7 +68,7 @@ import shapeless.tag
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
-  recovered_ : MasterJournalRecoverer.Recovered,
+  recovered_ : Recovered[MasterState, Event],
   masterConfiguration: MasterConfiguration,
   eventIdClock: EventIdClock,
   signatureVerifier: SignatureVerifier)
@@ -146,8 +147,8 @@ with MainJournalingActor[Event]
     case _ => stash()
   }
 
-  private def recover(recovered: MasterJournalRecoverer.Recovered) = {
-    for (masterState <- recovered.masterState) {
+  private def recover(recovered: Recovered[MasterState, Event]) = {
+    for (masterState <- recovered.maybeState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
       masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
@@ -643,7 +644,7 @@ private[master] object MasterOrderKeeper {
   }
 
   private object Internal {
-    final case class Recover(recovered: MasterJournalRecoverer.Recovered)
+    final case class Recover(recovered: Recovered[MasterState, Event])
     case object Ready
     case object AfterProceedEventsAdded
   }

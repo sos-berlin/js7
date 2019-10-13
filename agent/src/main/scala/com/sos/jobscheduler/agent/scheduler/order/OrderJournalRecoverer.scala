@@ -81,7 +81,7 @@ extends JournalRecoverer[Event] {
         }
     }
 
-  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with MasterJournalRecoverer
+  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with StateJournalRecoverer
     event match {
       case event: OrderForked =>
         for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {

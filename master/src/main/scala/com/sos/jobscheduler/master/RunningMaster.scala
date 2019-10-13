@@ -32,6 +32,8 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.state.{JournaledStateRecoverer, Recovered}
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.data.event.{Event, Stamped}
@@ -40,9 +42,11 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
+import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
@@ -184,7 +188,7 @@ object RunningMaster
       closer onClose { sessionTokenFile.delete() }
     }
 
-    private def startMasterOrderKeeper(recovered: MasterJournalRecoverer.Recovered)
+    private def startMasterOrderKeeper(recovered: Recovered[MasterState, Event])
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
@@ -210,7 +214,12 @@ object RunningMaster
       }
       createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
 
-      val recovered = MasterJournalRecoverer.recover(masterConfiguration)  // May take minutes !!!
+      // May take minutes !!!
+      val recovered = JournaledStateRecoverer.recover[MasterState, Event](
+        JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.journalFileBase),
+        () => new MasterStateBuilder,
+        masterConfiguration.config)
+
       val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(recovered)
 
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
