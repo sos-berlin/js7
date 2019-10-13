@@ -1,18 +1,14 @@
-package com.sos.jobscheduler.core.event
+package com.sos.jobscheduler.common.http
 
-import cats.instances.all._
-import cats.syntax.all._
+import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Problems.InvalidSessionTokenProblem
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
-import com.sos.jobscheduler.core.configuration.EventFetcherConf
-import com.sos.jobscheduler.core.event.EventFetcher._
-import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.common.http.RecouplingStreamReader._
+import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -22,35 +18,38 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
-abstract class EventFetcher[E, A, Api <: SessionApi](
-  toEventId: A => EventId,
+/** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
+abstract class RecouplingStreamReader[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
+  zeroIndex: I,
+  toIndex: V => I,
   maybeUserAndPassword: Option[UserAndPassword],
-  conf: EventFetcherConf)
+  conf: RecouplingStreamReaderConf)
   (implicit s: Scheduler)
 {
-  protected def couple(eventId: EventId): Task[Checked[Completed]]
+  protected def couple(index: I): Task[Checked[Completed]] =
+    Task.pure(Checked.completed)
 
-  protected def eventObservable(
-    api: Api,
-    after: EventId,
-    timeout: Option[FiniteDuration] = Some(conf.eventFetchTimeout))
-  : Task[Checked[Observable[A]]]
+  protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
-  protected def onCouplingFailed(problem: Problem): Task[Completed]
+  protected def onCouplingFailed(problem: Problem): Task[Completed] =
+    Task.pure(Completed)
 
-  protected def onCoupled: Task[Completed]
+  protected def onCoupled(api: Api): Task[Completed] =
+    Task.pure(Completed)
 
-  protected def logEvent(a: A): Unit
+  protected def eof(index: I) = false
 
-  private var sinceLastFetch = now - 1.hour
-  private val coupledApiMVar = MVar.empty[Task, Api]().runSyncUnsafe()
+  protected def logEvent(a: V): Unit = {}
+
+  private val coupledApiMVar = MVar.empty[Task, Api]().memoize
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
+  private var sinceLastFetch = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
-  final def observe(api: Api, after: EventId): Observable[A] = {
-    logger.debug(s"observe($api)")
-    if (inUse.getAndSet(true)) throw new IllegalStateException("EventFetcher can not be used concurrently")
+  final def observe(api: Api, after: I): Observable[V] = {
+    scribe.debug(s"observe($api)")
+    if (inUse.getAndSet(true)) throw new IllegalStateException("RecouplingStreamReader can not be used concurrently")
     Observable.fromTask(decouple) >>
       new ForApi(api).observeAgainAndAgain(after = after)
         .guarantee {
@@ -59,52 +58,58 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
   }
 
   final def decouple: Task[Completed] =
-    coupledApiMVar.tryTake.flatMap {
-      case None => Task.pure(Completed)
-      case Some(api) => api.logout().onErrorHandle(_ => Completed)
-    }
+    coupledApiMVar.flatMap(_.tryTake)
+      .flatMap {
+        case None => Task.pure(Completed)
+        case Some(api) => api.logout().onErrorHandle(_ => Completed)
+      }
 
-  final def invalidateCoupledApi(): Unit =
-    coupledApiMVar.tryTake.runSyncUnsafe()
+  final def invalidateCoupledApi: Task[Completed] =
+    coupledApiMVar.flatMap(_.tryTake)
+      .map(_ => Completed)
 
   final def coupledApi: Task[Api] =
-    coupledApiMVar.read
+    coupledApiMVar.flatMap(_.read)
 
   final def delaySinceLastFetch(delay: FiniteDuration): FiniteDuration =
     delay - sinceLastFetch.elapsed
 
   private final class ForApi(api: Api) {
-    @volatile private var lastEventId = EventId.BeforeFirst
+    @volatile private var lastIndex = zeroIndex
 
-    def observeAgainAndAgain(after: EventId) : Observable[A] = {
-      lastEventId = after
-      Observable.tailRecM(lastEventId)(after =>
-        Observable.pure(Right(observe(after))) ++ Observable.delay(Left(lastEventId))
+    def observeAgainAndAgain(after: I) : Observable[V] = {
+      lastIndex = after
+      Observable.tailRecM(lastIndex)(after =>
+        if (eof(after))
+          Observable.pure(Right(Observable.empty))
+        else
+          Observable.pure(Right(observe(after))) ++
+            Observable.evalDelayed(delaySinceLastFetch(conf.delay), Left(lastIndex))
       ).flatten
     }
 
-    private def observe(after: EventId): Observable[A] =
+    private def observe(after: I): Observable[V] =
       Observable.fromTask(tryEndlesslyToGetObservable(after))
         .flatten
         .map { a =>
-          lastEventId = toEventId(a)
+          lastIndex = toIndex(a)
           a
         }
 
     /** Retries until web request returns an Observable. */
-    private def tryEndlesslyToGetObservable(after: EventId): Task[Observable[A]] =
+    private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
         coupleIfNeeded >>
-          getObservable(after = after)
-            .materializeIntoChecked
+          getObservableX(after = after)
+            .materialize.map(Checked.flattenTryChecked)
             .flatMap {
               case Left(problem) =>
                 (problem match {
                   case InvalidSessionTokenProblem =>
-                    logger.debug(InvalidSessionTokenProblem.toString)
+                    scribe.debug(InvalidSessionTokenProblem.toString)
                     decouple
                   case _ =>
-                    logger.warn(problem.toString)
+                    scribe.warn(problem.toString)
                     Task.unit
                 }) >>
                   pauseBeforeRecoupling >>
@@ -113,21 +118,21 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
                 Task.pure(Right(observable))
             })
 
-    private def getObservable(after: EventId): Task[Checked[Observable[A]]] =
+    private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
         sinceLastFetch = now
       } >>
-        eventObservable(api, after = after)
+        getObservable(api, after = after)
           .map(_.map(_
-            .timeoutOnSlowUpstream(conf.eventFetchTimeout + TimeoutReserve)   // throws UpstreamTimeoutException
+            .timeoutOnSlowUpstream(conf.timeout + TimeoutReserve)   // throws UpstreamTimeoutException
             .onErrorRecoverWith {
               case t: UpstreamTimeoutException =>
-                logger.debug(t.toString)
+                scribe.debug(t.toString)
                 Observable.empty   // Let it look like end of stream
             }))
 
     private def coupleIfNeeded: Task[Completed] =
-      coupledApiMVar.tryRead.flatMap {
+      coupledApiMVar.flatMap(_.tryRead).flatMap {
         case Some(_) => Task.pure(Completed)
         case None => tryEndlesslyToCouple
       }
@@ -135,13 +140,13 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
     private def tryEndlesslyToCouple: Task[Completed] =
       Task.tailRecM(())(_ =>
         (for {
-          otherCoupledClient <- coupledApiMVar.tryRead
+          otherCoupledClient <- coupledApiMVar.flatMap(_.tryRead)
           _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
           _ <- Task { recouplingPause.onCouple() }
-          _ <- api.login(maybeUserAndPassword)
-          checkedCompleted <- couple(eventId = lastEventId)
+          _ <- if (api.hasSession) Task.unit else api.login(maybeUserAndPassword)
+          checkedCompleted <- couple(index = lastIndex)
         } yield checkedCompleted)
-          .materialize.map(o => Checked.fromTry(o).flatten)
+          .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
           .flatMap {
             case Left(problem) =>
               for {
@@ -152,12 +157,11 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
 
             case Right(Completed) =>
               for {
-                _ <- coupledApiMVar.tryPut(api)
+                _ <- coupledApiMVar.flatMap(_.tryPut(api))
                 _ <- Task {
                   recouplingPause.onCouplingSucceeded()
-                  logger.info(s"Coupled with $api")
                 }
-                completed <- onCoupled
+                completed <- onCoupled(api)
               } yield Right(completed)
           })}
 
@@ -166,10 +170,29 @@ abstract class EventFetcher[E, A, Api <: SessionApi](
       .flatMap(Task.sleep)
 }
 
-object EventFetcher
+object RecouplingStreamReader
 {
   private val TimeoutReserve = 10.s
-  private val logger = Logger(getClass)
+
+  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
+    zeroIndex: I,
+    toIndex: V => I,
+    api: Api,
+    maybeUserAndPassword: Option[UserAndPassword],
+    conf: RecouplingStreamReaderConf,
+    after: I,
+    getObservable: I => Task[Checked[Observable[V]]],
+    eof: I => Boolean = (_: I) => false)
+    (implicit s: Scheduler)
+  : Observable[V]
+  = {
+    val eof_ = eof
+    val getObservable_ = getObservable
+    new RecouplingStreamReader[I, V, Api](zeroIndex, toIndex, maybeUserAndPassword, conf) {
+      def getObservable(api: Api, after: I) = getObservable_(after)
+      override def eof(index: I) = eof_(index)
+    }.observe(api, after)
+  }
 
   private class RecouplingPause {
     // This class may be used asynchronously but not concurrently

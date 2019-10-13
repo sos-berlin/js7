@@ -15,10 +15,10 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.common.http.RecouplingStreamReader
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
-import com.sos.jobscheduler.core.event.EventFetcher
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.agent.{AgentRefPath, AgentRunId}
 import com.sos.jobscheduler.data.command.CancelMode
@@ -74,25 +74,29 @@ with ReceiveLoggingActor.WithStash
   private var delayNextKeepEvents = false
   private var delayCommandExecutionAfterErrorUntil = now
 
-  private val eventFetcher = new EventFetcher[Event, Stamped[AnyKeyedEvent], AgentClient](
-    _.eventId, agentUserAndPassword, conf.eventFetcher)
+  private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
+    zeroIndex = EventId.BeforeFirst,
+    _.eventId, agentUserAndPassword, conf.recouplingStreamReader)
   {
-    protected def couple(eventId: EventId) =
+    override protected def couple(eventId: EventId) =
       registerAsMasterIfNeeded >>
         client.commandExecute(AgentCommand.CoupleMaster(agentRunIdOnce(), eventId = eventId))
           .map(_.map((_: AgentCommand.Response.Accepted) => Completed))
 
-    protected def eventObservable(api: AgentClient, after: EventId, timeout: Option[FiniteDuration]) =
-      Task { logger.debug(s"mastersEventObservable(after=$after, timeout=$timeout)") } >>
-        api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = timeout))
+    protected def getObservable(api: AgentClient, after: EventId) =
+      Task { logger.debug(s"getObservable(after=$after)") } >>
+        api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.recouplingStreamReader.timeout)))
 
-    protected def onCouplingFailed(problem: Problem) =
+    override protected def onCouplingFailed(problem: Problem) =
       promiseTask[Completed] { promise => self ! Internal.OnCouplingFailed(problem, promise) }
 
-    protected def onCoupled =
-      promiseTask[Completed] { promise => self ! Internal.OnCoupled(promise) }
+    override protected def onCoupled(api: AgentClient) =
+      promiseTask[Completed] { promise =>
+        logger.info(s"Coupled with $api")
+        self ! Internal.OnCoupled(promise)
+      }
 
-    protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
+    override protected def logEvent(stampedEvent: Stamped[AnyKeyedEvent]) =
       AgentDriver.this.logEvent(stampedEvent)
   }
 
@@ -112,8 +116,10 @@ with ReceiveLoggingActor.WithStash
     protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = {
       if (problem == InvalidSessionTokenProblem) {
         // Force recoupling with new login
-        eventFetcher.invalidateCoupledApi()
-        currentFetchedFuture foreach (_.cancel())
+        eventFetcher.invalidateCoupledApi
+          .foreach { _ =>  // Asynchronous
+            currentFetchedFuture foreach (_.cancel())
+          }
       }
       self ! Internal.BatchFailed(inputs, problem)
     }
@@ -130,11 +136,12 @@ with ReceiveLoggingActor.WithStash
   }
 
   override def postStop() = {
-    eventFetcher.invalidateCoupledApi()
-    client.logout()
-      .onErrorHandle(_ => ())
-      .guarantee(Task(client.close()))
-      .runAsyncAndForget
+    eventFetcher.invalidateCoupledApi.materialize
+      .flatMap(_ =>
+        client.logout())
+          .onErrorHandle(_ => ())
+          .guarantee(Task(client.close()))
+          .runAsyncAndForget
     currentFetchedFuture foreach (_.cancel())
     keepEventsCancelable foreach (_.cancel())
     super.postStop()
@@ -234,7 +241,7 @@ with ReceiveLoggingActor.WithStash
       logger.debug(s"FetchFinished $tried")
       currentFetchedFuture = None
       (eventFetcher.decouple >>
-        Task.sleep(eventFetcher.delaySinceLastFetch(conf.eventFetchDelay))
+        Task.sleep(eventFetcher.delaySinceLastFetch(conf.recouplingStreamReader.delay))
       ).runToFuture
         .onComplete { _ =>
           tried match {
