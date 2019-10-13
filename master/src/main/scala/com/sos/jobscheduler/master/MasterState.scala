@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.common.event.EventBasedState
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.filebased.Repo
@@ -24,7 +23,6 @@ final case class MasterState(
   repo: Repo,
   agents: Seq[AgentSnapshot],
   orders: Seq[Order[Order.State]])
-extends EventBasedState
 {
   def toSnapshotObservable: Observable[Any] =
     Observable(masterMetaState) ++
