@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._

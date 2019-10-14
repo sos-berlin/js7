@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.core.common.jsonseq
+package com.sos.jobscheduler.common.event
 
 /**
   * @author Joacim Zschimmer

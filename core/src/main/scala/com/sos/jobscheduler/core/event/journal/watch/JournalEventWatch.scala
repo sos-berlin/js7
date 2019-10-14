@@ -7,9 +7,8 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
-import com.sos.jobscheduler.common.event.RealEventWatch
+import com.sos.jobscheduler.common.event.{PositionAnd, RealEventWatch}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._

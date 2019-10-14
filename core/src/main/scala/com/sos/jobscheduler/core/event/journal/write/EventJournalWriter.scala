@@ -2,8 +2,8 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, Transaction}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._

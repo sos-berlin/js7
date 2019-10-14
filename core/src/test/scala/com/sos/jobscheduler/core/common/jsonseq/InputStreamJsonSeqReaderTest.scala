@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.common.jsonseq
 
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReaderTest._
 import com.sos.jobscheduler.core.message.ProblemCodeMessages

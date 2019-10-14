@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.core.common.jsonseq.PositionAnd
+import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
