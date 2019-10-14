@@ -26,8 +26,6 @@ package object problems
     def arguments = Map("file" -> file)
   }
 
-  final case object FatEventServiceBusyProblem extends Problem.ArgumentlessCoded
-
   final case class ReverseKeepEventsProblem(requestedAfter: EventId, currentAfter: EventId) extends Problem.Coded {
     def arguments = Map(
       "requestedAfter" -> requestedAfter.toString,

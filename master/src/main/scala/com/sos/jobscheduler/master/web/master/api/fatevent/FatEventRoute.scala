@@ -15,13 +15,13 @@ import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.event.collector.EventDirectives.{DefaultTimeout, eventRequest}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.watch.ClosedException
-import com.sos.jobscheduler.core.problems.FatEventServiceBusyProblem
 import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import com.sos.jobscheduler.master.problems.FatEventServiceBusyProblem
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRoute._
 import java.util.concurrent.Executors.newSingleThreadExecutor
