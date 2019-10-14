@@ -31,7 +31,7 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
   private lazy val sync = new Sync(initial = tornEventId, o => "EventId " + EventId.toString(o))  // Initialize not before whenStarted!
 
-  protected final def onEventsAdded(eventId: EventId): Unit =
+  protected final def onEventsCommitted(eventId: EventId): Unit =
     sync.onAdded(eventId)
 
   final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
