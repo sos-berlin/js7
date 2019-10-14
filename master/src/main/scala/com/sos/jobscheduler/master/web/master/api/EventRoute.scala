@@ -6,8 +6,7 @@ import com.sos.jobscheduler.core.event.GenericEventRoute
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
-import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
+import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent, MasterKeyedEventJsonCodec}
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import monix.eval.Task
 
@@ -19,7 +18,7 @@ trait EventRoute extends MasterRouteProvider with GenericEventRoute
   protected def eventWatch: EventWatch[Event]
 
   protected final lazy val eventRoute = new GenericEventRouteProvider {
-    def keyedEventTypedJsonCodec = MasterJournalKeyedEventJsonCodec
+    def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec
     def eventWatchFor(user: SimpleUser) = Task.pure(Right(eventWatch))
     override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = EventRoute.isRelevantEvent(keyedEvent)
   }.route

@@ -42,11 +42,11 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
-import com.sos.jobscheduler.master.configuration.KeyedEventJsonCodecs.MasterJournalKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterSnapshots.SnapshotJsonCodec
+import com.sos.jobscheduler.master.data.events.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectory, exists}
@@ -216,7 +216,7 @@ object RunningMaster
 
       // May take minutes !!!
       val recovered = JournaledStateRecoverer.recover[MasterState, Event](
-        JournalMeta(SnapshotJsonCodec, MasterJournalKeyedEventJsonCodec, masterConfiguration.journalFileBase),
+        JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase),
         () => new MasterStateBuilder,
         masterConfiguration.config)
 

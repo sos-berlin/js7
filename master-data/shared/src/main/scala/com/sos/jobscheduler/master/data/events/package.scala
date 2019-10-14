@@ -16,5 +16,6 @@ package object events
       KeyedSubtype[RepoEvent],
       KeyedSubtype[MasterEvent],
       KeyedSubtype[MasterAgentEvent],
-      KeyedSubtype[OrderEvent])
+      KeyedSubtype[OrderEvent],
+      KeyedSubtype.singleEvent[AgentEventIdEvent])
 }
