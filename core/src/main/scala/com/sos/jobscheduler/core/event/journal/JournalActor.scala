@@ -248,18 +248,20 @@ extends Actor with Stash {
           Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
   }
 
-  private def logStored(flushed: Boolean, synced: Boolean, iterator: Iterator[NormallyWritten]) =
+  private def logStored(flushed: Boolean, synced: Boolean, writtenIterator: Iterator[NormallyWritten]) =
     if (logger.underlying.isTraceEnabled) {
       var i = totalEventCount + 1
-      while (iterator.hasNext) {
-        val written = iterator.next()
-        for (stamped <- written.stamped) {
+      while (writtenIterator.hasNext) {
+        val written = writtenIterator.next()
+        val stampedIterator = written.stamped.iterator
+        while (stampedIterator.hasNext) {
+          val stamped = stampedIterator.next()
           val last =
-            if (iterator.hasNext | !synced & !flushed) "      "
+            if (stampedIterator.hasNext || writtenIterator.hasNext || !flushed && !synced) "     "
             else if (synced)
-              if (conf.simulateSync.isDefined) "(sync)" else "sync  "
-            else "flush "   // After the last one, the file buffer was flushed
-          logger.trace(f"#$i ${last}STORED ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
+              if (conf.simulateSync.isDefined) "~sync" else "sync "
+            else "flush"   // After the last one, the file buffer was flushed
+          logger.trace(f"#$i $last ${written.opName} ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
           i += 1
         }
       }
