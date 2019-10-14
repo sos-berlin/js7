@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.data.Validated.Valid
 import cats.instances.all._
 import cats.syntax.all._
 import cats.{Applicative, Apply}

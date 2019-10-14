@@ -146,8 +146,6 @@ object Checked
         case Right(value) => value
       }
 
-    def `orThrow 💥` = orThrow
-
     def orThrow: A =
       underlying match {
         case Left(problem) => throw problem.throwable.appendCurrentStackTrace

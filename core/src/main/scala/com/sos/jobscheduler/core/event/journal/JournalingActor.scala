@@ -22,8 +22,8 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with SimpleStateActor {
-
+trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with SimpleStateActor
+{
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
 
@@ -34,9 +34,9 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
 
   become("receive")(receive)
 
-  final def persistedEventId = _persistedEventId
+  protected final def persistedEventId = _persistedEventId
 
-  final def persistedEventId_=(eventId: EventId) = _persistedEventId = eventId  // TODO Used for recovery, should not be mutable
+  protected final def persistedEventId_=(eventId: EventId) = _persistedEventId = eventId  // TODO Used for recovery, should not be mutable
 
   override protected def become(stateName: String)(receive: Receive) =
     super.become(stateName)(journaling orElse receive)
@@ -58,7 +58,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       self ! Persist(keyedEvent, callback, promise)
     }
 
-  private[event] final def persistKeyedEventAcceptEarly[EE <: E](
+  protected final def persistKeyedEventAcceptEarly[EE <: E](
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
     delay: FiniteDuration = Duration.Zero)
@@ -72,7 +72,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
           Deferred(async = true, () => promise.success(Accepted))))
     }
 
-  private[event] final def persistKeyedEvent[EE <: E, A](
+  protected final def persistKeyedEvent[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
     async: Boolean = false)(
@@ -83,7 +83,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       callback(events.head)
     }
 
-  private[event] final def persistKeyedEvents[EE <: E, A](
+  protected final def persistKeyedEvents[EE <: E, A](
     timestamped: Seq[Timestamped[EE]],
     transaction: Boolean = false,
     delay: FiniteDuration = Duration.Zero,
@@ -93,15 +93,15 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   : Future[A] =
     promiseFuture[A] { promise =>
       start(async = async)
-      if (logger.underlying.isTraceEnabled)
+      if (TraceLog && logger.underlying.isTraceEnabled)
         for (t <- timestamped) logger.trace(s"“$toString” Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
           delay = delay, alreadyDelayed = alreadyDelayed,
           EventsCallback(
             async = async,
-            events => promise.complete(
-              try Success(callback(events.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]]))
+            stampedSeq => promise.complete(
+              try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]]))
               catch { case NonFatal(t) =>
                 // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
                 logger.error(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
@@ -134,9 +134,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   protected[journal] def journaling: Receive = {
     case Persist(keyedEvent, callback, promise) =>
       promise.completeWith(
-        persistKeyedEvent(keyedEvent) { stamped =>
-          callback(stamped)
-        })
+        persistKeyedEvent(keyedEvent)(callback))
 
     case JournalActor.Output.Stored(stampedSeq, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
@@ -148,12 +146,12 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       }
       (stampedSeq, item) match {
         case (stamped, EventsCallback(_, callback)) =>
-          if (logger.underlying.isTraceEnabled) for (st <- stamped)
+          if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stamped)
             logger.trace(s"“$toString” Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
           callback(stamped.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]])
 
         case (Nil, Deferred(_, callback)) =>
-          logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
+          if (TraceLog) logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
           callback()
 
         case _ => sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
@@ -166,7 +164,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
       }
       item match {
         case Deferred(_, callback) =>
-          logger.trace(s"“$toString” Stored (events are written, not flushed)$stashingCountRemaining")
+          if (TraceLog) logger.trace(s"“$toString” Stored (events are written, not flushed)$stashingCountRemaining")
           callback()
 
         case _ => sys.error(s"JournalActor.Output.Accepted message does not match item '$item'")
@@ -228,9 +226,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging wit
   private case class Persist[A](keyedEvent: KeyedEvent[E], callback: Stamped[KeyedEvent[E]] => A, promise: Promise[A])
 }
 
-object JournalingActor {
+object JournalingActor
+{
   private val Inhibited = -1
   private val logger = Logger(getClass)
+  private val TraceLog = true
 
   object Input {
     private[journal] final case object GetSnapshot extends DeadLetterSuppression  // Actor may terminate

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.configuration.RecouplingStreamReaderConfs
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.typesafe.config.Config
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 final case class AgentDriverConfiguration(
   recouplingStreamReader: RecouplingStreamReaderConf,
@@ -23,10 +23,10 @@ object AgentDriverConfiguration
 {
   def fromConfig(config: Config, journalConf: JournalConf): Checked[AgentDriverConfiguration] =
     RecouplingStreamReaderConfs.fromConfig(config)
-      .flatMap(eventFetcher =>
+      .flatMap(recouplingStreamReader =>
         Checked.catchNonFatal {
           new AgentDriverConfiguration(
-            eventFetcher,
+            recouplingStreamReader,
             eventBufferDelay    = config.getDuration("jobscheduler.master.agent-driver.event-buffer-delay").toFiniteDuration,
             eventBufferLimit    = config.getInt     ("jobscheduler.master.agent-driver.event-buffer-limit"),
             commitDelay         = journalConf.delay,

@@ -27,7 +27,8 @@ object ScodecUtils
 
     def indexOf(byte: Byte, start: Long): Long = {
       var i = start
-      while (i < underlying.length) {
+      val length = underlying.length
+      while (i < length) {
         if (underlying.get(i) == byte) return i
         i += 1
       }

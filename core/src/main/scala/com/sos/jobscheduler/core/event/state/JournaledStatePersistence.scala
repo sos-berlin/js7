@@ -17,7 +17,6 @@ final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
   val/*???*/ journalActor: ActorRef @@ JournalActor.type)
   (implicit s: Scheduler, actorRefFactory: ActorRefFactory)
 {
-  //private val temporaryGlobalLockKeeper = new LockKeeper[Unit]  // FIXME lastState nach Schlüssel partitionieren und gezielt sperren, für parallele Events
   private val lockKeeper = new LockKeeper[E#Key]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
   private val persistPromise = Promise[PersistFunction[S, E]]()
   private val getStatePromise = Promise[Task[S]]()
