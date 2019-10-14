@@ -91,8 +91,10 @@ trait GenericEventRoute extends RouteProvider
                     complete(problem)
 
                   case Right(eventWatch) =>
-                    if (!eventWatch.whenStarted.isCompleted) logger.debug("Waiting for journal to become ready")
+                    val waitingSince = !eventWatch.whenStarted.isCompleted ? now
+                    if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
                     onSuccess(eventWatch.whenStarted) { eventWatch =>
+                      for (o <- waitingSince.map(_.elapsed)) logger.debug(s"Journal is ready after ${o.pretty}, continuing event web service")
                       htmlPreferred {
                         oneShot(eventWatch)
                       } ~
