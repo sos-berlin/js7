@@ -248,7 +248,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
     withJournalMeta { journalMeta_ =>
       val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
 
-      autoClosing(new JournalEventWatch[MyEvent](journalMeta, Some(journalId), JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
         writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
         autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, Some(eventWatch), withoutSnapshots = false)) { writer =>

@@ -11,7 +11,7 @@ import shapeless.tag.@@
 
 final class Recovered[S <: JournaledState[S, E], E <: Event](recoverer: JournaledStateRecoverer[S, E], config: Config)
 {
-  lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalHeader.journalId), config)
+  lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, config)
 
   def journalMeta: JournalMeta[E] =
     recoverer.journalMeta

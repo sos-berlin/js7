@@ -30,7 +30,7 @@ import scala.concurrent.Promise
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
-final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], config: Config)
+final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], config: Config)
 extends AutoCloseable
 with RealEventWatch[E]
 with JournalingObserver

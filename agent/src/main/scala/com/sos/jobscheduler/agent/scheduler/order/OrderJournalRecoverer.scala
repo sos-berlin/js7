@@ -116,7 +116,7 @@ private[agent] object OrderJournalRecoverer
   final class Recovered private[OrderJournalRecoverer](recoverer: OrderJournalRecoverer, config: Config)
   extends HasCloser
   {
-    lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, Some(recoverer.journalHeader.journalId), config)
+    lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, config)
       .closeWithCloser
 
     def journalMeta = recoverer.journalMeta
