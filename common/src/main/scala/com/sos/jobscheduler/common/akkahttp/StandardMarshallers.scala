@@ -56,9 +56,9 @@ object StandardMarshallers
   def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
-    logErrorToWebLog(observable.toAkkaSource)
+    logAkkaStreamErrorToWebLog(observable.toAkkaSource)
 
-  def logErrorToWebLog[A](source: Source[A, NotUsed]): Source[A, NotUsed] =
+  def logAkkaStreamErrorToWebLog[A](source: Source[A, NotUsed]): Source[A, NotUsed] =
     source.mapError { case throwable =>
       val msg = s"Exception in Akka stream: ${throwable.toStringWithCauses}"
       // This area the only messages logged

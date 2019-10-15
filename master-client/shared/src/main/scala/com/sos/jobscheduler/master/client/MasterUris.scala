@@ -1,14 +1,16 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.event.{Event, EventRequest}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 /**
@@ -24,16 +26,22 @@ final class MasterUris private(masterUri: String)
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false): String =
-    events_[E]("/event", request, eventIdOnly = eventIdOnly)
+  def events[E <: Event: ClassTag](request: EventRequest[E]): String =
+    events_[E]("/event", request)
 
   def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
     events_[E]("/fatEvent", request)
 
-  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E], eventIdOnly: Boolean = false): String =
-    api(path) + encodeQuery(
-     (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
-       request.toQueryParameters)
+  def events_[E <: Event: ClassTag](path: String, request: EventRequest[E]): String =
+    api(path) + encodeQuery(request.toQueryParameters)
+
+  def journal(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false, returnLength: Boolean = false): String =
+    api("/journal") + encodeQuery(
+      (returnLength.thenList("return" -> "length")) :::
+      ("timeout" -> timeout.toBigDecimal.bigDecimal.toPlainString) ::
+      (markEOF.thenList("markEOF" -> "true")) :::
+      ("file" -> fileEventId.toString) ::
+      ("position" -> position.toString) :: Nil)
 
   object order {
     def overview = api("/order")

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event
 
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.RealEventWatchTest._
@@ -9,12 +10,13 @@ import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
 import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventWatchTest extends FreeSpec {
-
+final class RealEventWatchTest extends FreeSpec
+{
   "tornOlder" in {
     val events = Stamped(1, 1 <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch[TestEvent] {
@@ -22,7 +24,9 @@ final class RealEventWatchTest extends FreeSpec {
       def tornEventId = 0
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotObjectsFor(after: EventId) = None
-      onEventsAdded(events.last.eventId)
+      def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
+        throw new NotImplementedError
+      onEventsCommitted(events.last.eventId)
     }
     val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runToFuture await 99.s
     assert(a == events)
@@ -41,7 +45,7 @@ final class RealEventWatchTest extends FreeSpec {
     var expectedNext = Stamped(1, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000
-    eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)))
+    eventWatch.observe(EventRequest.singleClass[TestEvent](limit = n, timeout = Some(99.s)), onlyLastOfChunk = false)
       .foreach { stamped =>
         assert(stamped == expectedNext)
         expectedNext = Stamped(stamped.eventId + 1, (stamped.value.key + 1) <-: TestEvent(stamped.value.event.number + 1))
@@ -67,13 +71,16 @@ object RealEventWatchTest {
 
     def snapshotObjectsFor(after: EventId) = None
 
-    onEventsAdded(1)
+    onEventsCommitted(1)
 
     def eventsAfter(after: EventId) =
       Some(CloseableIterator.fromIterator(
         Iterator.from(1) take EventsPerIteration map { i =>
-          onEventsAdded(after + i + 1)  // Announce following event
+          onEventsCommitted(after + i + 1)  // Announce following event
           toStampedEvent(after + i)
         }))
+
+    def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean) =
+      Left(Problem("EndlessEventWatch.observeFile is not implemented"))
   }
 }

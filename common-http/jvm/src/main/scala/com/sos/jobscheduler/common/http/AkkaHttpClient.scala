@@ -18,7 +18,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.session.HasSessionToken
 import com.sos.jobscheduler.base.utils.Lazy
 import com.sos.jobscheduler.base.utils.MonixAntiBlocking.executeOn
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichThrowable, RichThrowableEither}
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.base.web.HttpClient
@@ -30,9 +30,11 @@ import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Encoder}
 import monix.eval.Task
+import monix.reactive.Observable
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
@@ -55,12 +57,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
 
   def close() = for (o <- materializerLazy) o.shutdown()
 
-  def getLinesObservable[A: Decoder](uri: String) =
+  def getDecodedLinesObservable[A: Decoder](uri: String) =
+    getRawLinesObservable(uri)
+      .map(_.map(_.decodeUtf8.orThrow.parseJsonCheckedAs[A].orThrow))
+
+  def getRawLinesObservable(uri: String): Task[Observable[ByteVector]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.dataBytes
         .toObservable
-        .flatMap(new ByteStringToLinesObservable)
-        .map(_.parseJsonCheckedAs[A].orThrow))
+        .map(o => ByteVector.view(o.toArray))
+        .flatMap(new ByteVectorToLinesObservable))
 
   def get[A: Decoder](uri: String, timeout: Duration): Task[A] =
     get[A](uri, timeout, Nil)

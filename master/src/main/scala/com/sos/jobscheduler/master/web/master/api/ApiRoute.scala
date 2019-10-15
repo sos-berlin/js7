@@ -20,6 +20,7 @@ trait ApiRoute
 extends MasterRouteProvider
 with ApiRootRoute
 with EventRoute
+with JournalRoute
 with FatEventRoute
 with CommandRoute
 with GraphqlRoute
@@ -38,6 +39,7 @@ with SessionRoute
       pathPrefix(Segment) {
         case "session"     => sessionRoute
         case "event"       => eventRoute
+        case "journal"     => journalRoute
         case "command"     => commandRoute
         case "fatEvent"    => fatEventRoute
         case "order"       => orderRoute

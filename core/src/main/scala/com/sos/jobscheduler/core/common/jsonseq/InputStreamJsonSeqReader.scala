@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.common.jsonseq
 
 import akka.util.ByteString
+import cats.effect.Resource
 import com.google.common.base.Ascii.{LF, RS}
 import com.sos.jobscheduler.base.problem.ProblemException
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -11,8 +12,8 @@ import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader._
 import com.sos.jobscheduler.core.problems.JsonSeqFileClosedProblem
 import io.circe.Json
 import java.io.IOException
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
+import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 
 /**
@@ -26,8 +27,8 @@ import monix.execution.atomic.AtomicAny
   * @see http://ndjson.org/
   */
 final class InputStreamJsonSeqReader(inputStream_ : SeekableInputStream, name: String, blockSize: Int = BlockSize, withRS: Boolean = false)
-extends AutoCloseable {
-
+extends AutoCloseable
+{
   private val inAtomic = AtomicAny(inputStream_)
   private val block = new Array[Byte](blockSize)
   private var blockPos = 0L
@@ -35,7 +36,7 @@ extends AutoCloseable {
   private var blockRead = 0
   private val byteStringBuilder = ByteString.newBuilder
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
-  lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read)
+  lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 
   private def in = inAtomic.get match {
     case null => throw new ClosedException(name)
@@ -55,14 +56,14 @@ extends AutoCloseable {
   def read(): Option[PositionAnd[Json]] =
     synchronized {
       val pos = position
-      readByteString() map (o =>
-        io.circe.parser.parse(o.decodeString(UTF_8)) match {
-          case Left(failure) => throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " ("))
+      readRaw() map (o =>
+        io.circe.parser.parse(o.utf8String) match {
+          case Left(failure) => throwCorrupt2(lineNumber - 1, pos, failure.message.replace(" (line 1, ", " (").replace("\n", "\\n"))
           case Right(json) => PositionAnd(pos, json)
         })
     }
 
-  private def readByteString(): Option[ByteString] = {
+  def readRaw(): Option[ByteString] = {
     val startPosition = position
     var rsReached = false
     var lfReached = false
@@ -82,7 +83,7 @@ extends AutoCloseable {
       }
       val start = blockRead
       while (blockRead < blockLength && (block(blockRead) != LF || { lfReached = true; false })) { blockRead += 1 }
-      byteStringBuilder.putBytes(block, start, blockRead - start)
+      byteStringBuilder.putBytes(block, start, blockRead - start + (if (lfReached) 1 else 0))
       if (lfReached) {
         blockRead += 1
       }
@@ -143,6 +144,9 @@ object InputStreamJsonSeqReader
   private[jsonseq] val BlockSize = 4096
   private val logger = Logger(getClass)
 
+  def resource(file: Path): Resource[Task, InputStreamJsonSeqReader] =
+    Resource.fromAutoCloseable(Task(InputStreamJsonSeqReader.open(file)))
+
   def open(file: Path, blockSize: Int = BlockSize): InputStreamJsonSeqReader =
     new InputStreamJsonSeqReader(SeekableInputStream.openFile(file), name = file.getFileName.toString, blockSize)
 
@@ -152,5 +156,5 @@ object InputStreamJsonSeqReader
   }
 
   final class ClosedException private[InputStreamJsonSeqReader](file: String)
-    extends ProblemException(JsonSeqFileClosedProblem(file))
+  extends ProblemException(JsonSeqFileClosedProblem(file))
 }

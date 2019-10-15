@@ -29,7 +29,7 @@ object JsonStreamingSupport
       MediaRange.One(`application/json`, 0.9f)) ::    // For Problem response
     Nil
 
-  val JsonObjectMaxSize = 100*1000
+  val JsonObjectMaxSize = 100*1000  // TODO Maybe 10MB? For very big Workflows or snapshot objects
   private val RS = ByteString(Ascii.RS)
   private val LF = ByteString(Ascii.LF)
 

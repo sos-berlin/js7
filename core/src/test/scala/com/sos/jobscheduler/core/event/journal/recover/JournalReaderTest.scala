@@ -61,7 +61,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
       writer.beginSnapshotSection()
       writer.endSnapshotSection(sync = false)
     }
-    autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0)) { writer =>
+    autoClosing(new EventJournalWriter(journalMeta, file, after = 0, journalId, observer = None, simulateSync = None)) { writer =>
       writer.beginEventSection()
       writer.writeEvents(Stamped(1001, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
@@ -106,7 +106,7 @@ final class JournalReaderTest extends FreeSpec with TestJournalMixin
     "Committed transaction" in {
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(new EventJournalWriter(journalMeta, file, observer = None, simulateSync = None, after = 0, withoutSnapshots = true)) { writer =>
+      autoClosing(new EventJournalWriter(journalMeta, file, after = 0, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
         writer.writeHeader(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection()
         writer.writeEvents(first :: Nil)

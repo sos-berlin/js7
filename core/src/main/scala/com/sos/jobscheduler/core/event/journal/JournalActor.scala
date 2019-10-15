@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.{RichActorPath, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
-import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator}
+import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
@@ -20,7 +20,6 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalId
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.{Path, Paths}
-import java.util.UUID.randomUUID
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -40,8 +39,8 @@ final class JournalActor[E <: Event] private(
   scheduler: Scheduler,
   eventIdClock: EventIdClock,
   stopped: Promise[Stopped])
-extends Actor with Stash {
-
+extends Actor with Stash
+{
   import context.{actorOf, become, stop, watch}
   import journalMeta.snapshotJsonCodec
 
@@ -52,7 +51,7 @@ extends Actor with Stash {
   private var snapshotRequested = false
   private var snapshotSchedule: Cancelable = null
 
-  /** Originates from `JournalValue`, caculcated from recovered journal if not freshly initialized. */
+  /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private val recoveredJournalHeader = SetOnce[JournalHeader]
   private var observer = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter[E] = null
@@ -134,16 +133,17 @@ extends Actor with Stash {
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
       val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
       eventWriter.writeEvents(stampedEvents, transaction = transaction)
-      for (lastStamped <- stampedEvents.lastOption) {
-        lastWrittenEventId = lastStamped.eventId
+      val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
+      for (o <- lastFileLengthAndEventId) {
+        lastWrittenEventId = o.value
       }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
       if (acceptEarly) {
         reply(sender(), replyTo, Output.Accepted(callersItem))
-        writtenBuffer += AcceptEarlyWritten(stampedEvents.size, sender())
+        writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
         // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
       } else {
-        writtenBuffer += NormallyWritten(stampedEvents, replyTo, sender(), callersItem)
+        writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, "STORED", replyTo, sender(), callersItem)
       }
       forwardCommit((delay max conf.delay) - alreadyDelayed)
       if (stampedEvents.nonEmpty) {
@@ -223,8 +223,12 @@ extends Actor with Stash {
       }
       throw tt;
     }
+    for (lastFileLengthAndEventId <- writtenBuffer.flatMap(_.lastFileLengthAndEventId).lastOption) {
+      eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenBuffer.iterator.map(_.eventCount).sum)
+    }
     logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o })
-    for (NormallyWritten(keyedEvents, replyTo, sender, item) <- writtenBuffer) {
+    // AcceptEarlyWritten have already been replied.
+    for (NormallyWritten(keyedEvents, _, _, replyTo, sender, item) <- writtenBuffer) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
@@ -316,8 +320,8 @@ extends Actor with Stash {
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = lastWrittenEventId)
-    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, observer(), simulateSync = conf.simulateSync,
-      withoutSnapshots = withoutSnapshots)
+    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, recoveredJournalHeader().journalId,
+      observer(), simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots)
 
     Try { createSymbolicLink(symLink, file.getFileName) }
     writer
@@ -426,16 +430,20 @@ object JournalActor
 
   sealed trait Written {
     def eventCount: Int
+    def lastFileLengthAndEventId: Option[PositionAnd[EventId]]
+    def lastStamped: Option[Stamped[AnyKeyedEvent]]
+    val since = now
   }
 
   private case class NormallyWritten(
     stamped: Seq[Stamped[AnyKeyedEvent]],  // None means no-operation (for deferAsync)
+    lastFileLengthAndEventId: Option[PositionAnd[EventId]],
+    opName: String,
     replyTo: ActorRef,
     sender: ActorRef,
     item: CallersItem)
   extends Written
   {
-    val since = now
     def eventCount = stamped.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
@@ -443,6 +451,7 @@ object JournalActor
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)
-  private case class AcceptEarlyWritten(eventCount: Int, sender: ActorRef)
-  extends Written
+  private case class AcceptEarlyWritten(eventCount: Int, lastFileLengthAndEventId: Option[PositionAnd[EventId]], sender: ActorRef) extends Written {
+    def lastStamped = None
+  }
 }

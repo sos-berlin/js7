@@ -81,7 +81,7 @@ extends JournalRecoverer[Event] {
         }
     }
 
-  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with StateJournalRecoverer
+  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with JournaledStateRecoverer
     event match {
       case event: OrderForked =>
         for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {
@@ -119,9 +119,11 @@ private[agent] object OrderJournalRecoverer
     lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, config)
       .closeWithCloser
 
-    def journalMeta = recoverer.journalMeta
-    def journalId = recoverer.journalHeader.journalId
-    def agentState = recoverer.agentState
+    def journalMeta: JournalMeta[Event] =
+      recoverer.journalMeta
+
+    def agentState: AgentState =
+      recoverer.agentState
 
     def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type, actors: RecoveredJournalingActors)(implicit arf: ActorRefFactory) =
       recoverer.startJournalAndFinishRecovery(journalActor = journalActor, actors, Some(eventWatch))

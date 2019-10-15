@@ -35,7 +35,7 @@ private[watch] final class JournalIndex(torn: PositionAnd[EventId], size: Int)
         throw new IllegalArgumentException(s"JournalIndex: EventIds are in wrong order: ${EventId.toString(eventId)} ≥ ${EventId.toString(_highestEventId)}")
 
   def tryAddAfter(eventId: EventId, position: Long, n: Int = 1): Boolean = {
-    require(n >= 1, "JournalIndex.tryAddAfter")
+    require(n > 0, "JournalIndex.tryAddAfter")
     eventId > _highestEventId && {
       synchronized {
         eventId > _highestEventId && {

@@ -83,6 +83,10 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
     val newerEventId = eventId + 1  // Assuming that no further Event has been issued
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, newerEventId)).await(99.s) ==
       Left(MasterRequiresUnknownEventIdProblem(newerEventId)))
+
+    val unknownEventId = EventId(1)  // Assuming this is EventId has not been issued
+    assert(agentClient.commandExecute(CoupleMaster(agentRunId, unknownEventId)).await(99.s) ==
+      Left(MasterRequiresUnknownEventIdProblem(unknownEventId)))
   }
 
   "Recouple" in {
@@ -95,8 +99,16 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Torn EventSeq" in {
-    val tornEventId = eventId
-    val Right(TearableEventSeq.Torn(`tornEventId`)) =
-      agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId + 1)).await(99.s)
+    val Right(TearableEventSeq.Torn(tornEventId)) =
+      agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+    assert(tornEventId == eventId)
+  }
+
+  "Future event (not used by Master)" in {
+    // Master does not use this feature provided by GenericEventRoute
+    val futureEventId = eventId + 1
+    val Right(EventSeq.Empty(lastEventId)) =
+      agentClient.mastersEvents(EventRequest.singleClass[Event](after = futureEventId)).await(99.s)
+    assert(lastEventId == eventId)
   }
 }

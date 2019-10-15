@@ -22,13 +22,15 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class JournalReader[E <: Event](journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], journalFile: Path)
+final class JournalReader[E <: Event](journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], journalFile: Path)
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
   val journalHeader = closeOnError(jsonReader) {
-    JournalHeader.checkedHeader(jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"),
-      journalFile, expectedJournalId).orThrow
+    JournalHeader.checkedHeader(
+      jsonReader.read() map (_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty"),
+      journalFile, expectedJournalId
+    ).orThrow
   }
   val tornEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
@@ -215,8 +217,7 @@ extends AutoCloseable
           case EventFooter =>
             None
 
-          case _ =>
-            throw new CorruptJournalException("Missing event footer", journalFile, positionAndJson)
+          case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile, positionAndJson)
         }
     }
 

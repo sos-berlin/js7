@@ -8,6 +8,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.event.RealEventWatch._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.closeableIteratorToObservable
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -29,19 +30,21 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   @VisibleForTesting
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]]
 
-  private lazy val sync = new Sync(initial = tornEventId, o => "EventId " + EventId.toString(o))  // Initialize not before whenStarted!
+  // Lazy, initialize only after whenStarted has been called!
+  private lazy val committedEventIdSync = new EventSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
 
   protected final def onEventsCommitted(eventId: EventId): Unit =
-    sync.onAdded(eventId)
+    committedEventIdSync.onAdded(eventId)
 
-  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean): Observable[Stamped[KeyedEvent[E1]]] =
+  final def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean, onlyLastOfChunk: Boolean)
+  : Observable[Stamped[KeyedEvent[E1]]] =
   {
     val originalTimeout = request.timeout
     var deadline = none[Deadline]
 
     def next(lazyRequest: () => EventRequest[E1]): Task[(Option[Observable[Stamped[KeyedEvent[E1]]]], () => EventRequest[E1])] = {
       val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-      deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewd after every fetched event
+      deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
       if (request.limit <= 0)
         NoMoreObservable
       else
@@ -56,9 +59,10 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
 
           case EventSeq.NonEmpty(events) =>
             if (events.isEmpty) throw new IllegalStateException("EventSeq.NonEmpty(EMPTY)")  // Do not loop
+            val iterator = if (onlyLastOfChunk) lastOfIterator(events) else events
             var lastEventId = request.after
             var limit = request.limit
-            val observable = closeableIteratorToObservable(events)
+            val observable = closeableIteratorToObservable(iterator)
               .map { o =>
                 lastEventId = o.eventId
                 limit -= 1
@@ -127,54 +131,59 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
   private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[Deadline], delay: FiniteDuration,
     collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    Task.fromFuture(whenStarted).flatMap(_ =>
-      sync.whenAvailable(after, deadline, delay)
-        .flatMap(_ =>
-          collectEventsSince(after, collect, limit) match {
-            case eventSeq @ EventSeq.NonEmpty(iterator) =>
-              maybeTornOlder match {
-                case None => Task.pure(eventSeq)
-                case Some(tornOlder) =>
-                  // If the first event is not fresh, we have a read congestion.
-                  // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
-                  val head = iterator.next()
-                  if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
-                    iterator.close()
-                    Task.pure(TearableEventSeq.Torn(sync.last))  // Simulate a torn EventSeq
-                  } else
-                    Task.pure(EventSeq.NonEmpty(head +: iterator))
-              }
+    Task.fromFuture(whenStarted) >>
+      committedEventIdSync.whenAvailable(after, deadline, delay) >>
+      (collectEventsSince(after, collect, limit) match {
+        case eventSeq @ EventSeq.NonEmpty(iterator) =>
+          maybeTornOlder match {
+            case None => Task.pure(eventSeq)
+            case Some(tornOlder) =>
+              // If the first event is not fresh, we have a read congestion.
+              // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+              val head = iterator.next()
+              if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
+                iterator.close()
+                Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
+              } else
+                Task.pure(EventSeq.NonEmpty(head +: iterator))
+          }
 
-            case EventSeq.Empty(lastEventId) =>
-              if (deadline.forall(_.hasTimeLeft))
-                whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
-              else
-                Task.pure(EventSeq.Empty(lastEventId))
+        case EventSeq.Empty(lastEventId) =>
+          if (deadline.forall(_.hasTimeLeft))
+            whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
+          else
+            Task.pure(EventSeq.Empty(lastEventId))
 
-            case o: TearableEventSeq.Torn =>
-              Task.pure(o)
-          }))
+        case o: TearableEventSeq.Torn =>
+          Task.pure(o)
+      })
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
-  : TearableEventSeq[CloseableIterator, A] =
-    eventsAfter(after) match {
-      case Some(stampeds) =>
-        var lastEventId = after
-        val eventIterator = stampeds
-          .map { o => lastEventId = o.eventId; o }
-          .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
-          .take(limit)
-         if (eventIterator.isEmpty) {
-          eventIterator.close()
-          EventSeq.Empty(lastEventId)
-        } else
-          EventSeq.NonEmpty(eventIterator)
-      case None =>
-        TearableEventSeq.Torn(after = tornEventId)
+  : TearableEventSeq[CloseableIterator, A] = {
+    val last = lastAddedEventId
+    if (after > last) {
+      logger.debug(s"The future event requested is not yet available, lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
+      EventSeq.Empty(last)  // Future event requested is not yet available
+    } else
+      eventsAfter(after) match {
+        case Some(stampeds) =>
+          var lastEventId = after
+          val eventIterator = stampeds
+            .map { o => lastEventId = o.eventId; o }
+            .collect { case stamped if collect isDefinedAt stamped.value => stamped map collect }
+            .take(limit)
+           if (eventIterator.isEmpty) {
+            eventIterator.close()
+            EventSeq.Empty(lastEventId)
+          } else
+            EventSeq.NonEmpty(eventIterator)
+        case None =>
+          TearableEventSeq.Torn(after = tornEventId)
       }
+  }
 
   def lastAddedEventId: EventId =
-    sync.last
+    committedEventIdSync.last
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -199,6 +208,15 @@ trait RealEventWatch[E <: Event] extends EventWatch[E]
     when[E1](EventRequest.singleClass(), _ => true) await 99.s
 }
 
-object RealEventWatch {
+object RealEventWatch
+{
   private val NoMoreObservable = Task.pure((None, () => throw new NoSuchElementException/*dead code*/))
+  private val logger = Logger(getClass)
+
+  private def lastOfIterator[A <: AnyRef](iterator: CloseableIterator[A]): CloseableIterator[A] = {
+    var last = null.asInstanceOf[A]
+    while (iterator.hasNext) last = iterator.next()
+    iterator.close()
+    CloseableIterator.fromIterator(Option(last).iterator)
+  }
 }

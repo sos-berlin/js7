@@ -1,14 +1,16 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import akka.util.ByteString
 import com.google.common.annotations.VisibleForTesting
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.{CheckedOption, Ops}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.base.utils.{CloseableIterator, DuplicateKeyException}
 import com.sos.jobscheduler.common.event.{PositionAnd, RealEventWatch}
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch._
@@ -19,11 +21,12 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.io.IOException
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
+import monix.reactive.Observable
 import scala.annotation.tailrec
 import scala.collection.immutable.SortedMap
 import scala.concurrent.Promise
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Watches a complete journal consisting of n `JournalFile`.
@@ -37,13 +40,14 @@ with JournalingObserver
 {
   private val keepOpenCount = config.getInt("jobscheduler.journal.watch.keep-open")
   // Read journal file names from directory while constructing
+  private val journalId = SetOnce[JournalId]
   @volatile
   private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
       listJournalFiles(journalMeta.fileBase)
       .map(o => new HistoricJournalFile(o.afterEventId, o.file))
       .toKeyedMap(_.afterEventId)
-  private val started = Promise[this.type]()
+  private val startedPromise = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader[E]] = None
   private val keepEventsAfter = AtomicLong(EventId.BeforeFirst)
@@ -53,19 +57,19 @@ with JournalingObserver
     currentEventReaderOption foreach (_.close())
   }
 
-  override def whenStarted =
-    started.future
+  override def whenStarted = startedPromise.future
 
-  private def currentEventReader =
-    currentEventReaderOption getOrElse (throw new IllegalStateException(s"$toString: Journal is not yet ready"))
-
-  protected[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId]): Unit = {
+  /*protected[journal]*/ def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId], expectedJournalId: JournalId): Unit = {
+    journalId.toOption match {
+      case None => journalId := expectedJournalId
+      case Some(o) => require(expectedJournalId == o)
+    }
     synchronized {
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
       for (current <- currentEventReaderOption) {
         if (current.lastEventId != after)
-          throw new DuplicateKeyException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
+          throw new IllegalArgumentException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
         for (o <- afterEventIdToHistoric.get(current.tornEventId)) {
           o.closeAfterUse()  // In case last journal file had no events (and `after` remains), we exchange it
         }
@@ -74,12 +78,18 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, expectedJournalId, flushedLengthAndEventId, config))
+      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, Some(expectedJournalId), flushedLengthAndEventId, config))
     }
-    onEventsAdded(eventId = flushedLengthAndEventId.value)  // Notify about already written events
-    started.trySuccess(this)
+    onFileWritten(flushedLengthAndEventId.position)
+    onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
+    startedPromise.trySuccess(this)
     evictUnusedEventReaders()
   }
+
+  def onJournalingEnded(fileLength: EventId) =
+    for (o <- currentEventReaderOption) {
+      o.onJournalingEnded(fileLength)
+    }
 
   def checkEventId(eventId: EventId): Checked[Unit] =
     eventsAfter(eventId) match {
@@ -134,9 +144,14 @@ with JournalingObserver
     }
   }
 
-  protected[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
-    currentEventReader.onEventsAdded(flushedPositionAndEventId, n = n)
-    onEventsAdded(eventId = flushedPositionAndEventId.value)
+  def onFileWritten(flushedPosition: Long): Unit =
+    for (o <- currentEventReaderOption) {  // JournalHeader is written before onJournalingStarted
+      o.onFileWritten(flushedPosition)
+    }
+
+  def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+    currentEventReader.onEventsCommitted(positionAndEventId, n = n)
+    onEventsCommitted(positionAndEventId.value)
   }
 
   def snapshotObjectsFor(after: EventId) =
@@ -165,6 +180,8 @@ with JournalingObserver
     evictUnusedEventReaders()
     result
   }
+
+  override def toString = s"JournalEventWatch(${journalMeta.name})"
 
   private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
     historicJournalFileAfter(after) flatMap { historicJournalFile =>
@@ -198,6 +215,26 @@ with JournalingObserver
   private[watch] def historicFileEventIds: Set[EventId] =
     afterEventIdToHistoric.keySet
 
+  def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
+  : Checked[Observable[PositionAnd[ByteString]]] =
+    checkedCurrentEventReader  // TODO Implement for historic journal files, too
+      .flatMap(current =>
+        // Use defaults for manual request of the current journal file stream, just to show something
+        observeFile(
+          fileEventId = fileEventId getOrElse current.tornEventId,
+          position = position getOrElse current.committedLength,
+          timeout,
+          markEOF = markEOF,
+          onlyLastOfChunk = onlyLastOfChunk))
+
+  private def observeFile(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean, onlyLastOfChunk: Boolean)
+  : Checked[Observable[PositionAnd[ByteString]]] =
+    currentEventReaderOption
+      .filter(_.tornEventId == fileEventId)
+      .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
+      .toRight(Problem(s"Unknown journal file=$fileEventId"))
+      .map(_.observeFile(position, timeout, markEOF = markEOF, onlyLastOfChunk = onlyLastOfChunk))
+
   private def lastEventId =
     currentEventReaderOption match {
       case Some(o) => o.lastEventId
@@ -222,7 +259,9 @@ with JournalingObserver
     def eventReader: EventReader[E] =
       _eventReader.get match {
         case null =>
-          val r = new HistoricEventReader[E](journalMeta, expectedJournalId, tornEventId = afterEventId, file, config)
+          val r = new HistoricEventReader[E](journalMeta,
+            Some(journalId.getOrElse(throw new IllegalStateException(notYetStarted))),
+            tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
@@ -256,9 +295,17 @@ with JournalingObserver
 
     override def toString = file.getFileName.toString
   }
+
+  private def currentEventReader = checkedCurrentEventReader.orThrow
+
+  private def checkedCurrentEventReader: Checked[CurrentEventReader[E]] =
+    currentEventReaderOption.toChecked(Problem(notYetStarted))
+
+  private def notYetStarted = s"$toString: Journal is not yet ready"
 }
 
-object JournalEventWatch {
+object JournalEventWatch
+{
   private val logger = Logger(getClass)
 
   val TestConfig = ConfigFactory.parseString("""

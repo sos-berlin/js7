@@ -4,13 +4,16 @@ import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Duration
+import scodec.bits.ByteVector
 
 /**
   * @author Joacim Zschimmer
   */
 trait HttpClient
 {
-  def getLinesObservable[A: Decoder](uri: String): Task[Observable[A]]
+  def getDecodedLinesObservable[A: Decoder](uri: String): Task[Observable[A]]
+
+  def getRawLinesObservable(uri: String): Task[Observable[ByteVector]]
 
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Task[A]
 

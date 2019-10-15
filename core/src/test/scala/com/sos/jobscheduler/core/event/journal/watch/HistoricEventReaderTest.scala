@@ -20,7 +20,7 @@ final class HistoricEventReaderTest extends FreeSpec
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
       val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
-      autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After)) { writer =>
+      autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After, journalId)) { writer =>
         writer.writeHeader(JournalHeader.forTest(journalId, eventId = After))
         writer.beginEventSection()
         writer.writeEvents(TestEvents)

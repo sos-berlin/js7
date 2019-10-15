@@ -1,11 +1,14 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
 import com.sos.jobscheduler.base.utils.CloseableIterator
-import com.sos.jobscheduler.common.event.PositionAnd
+import com.sos.jobscheduler.common.event.{EventSync, PositionAnd}
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTaskCompanion
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
 import com.typesafe.config.Config
+import monix.eval.Task
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
@@ -18,22 +21,51 @@ private[watch] final class CurrentEventReader[E <: Event](
   protected val config: Config)
 extends EventReader[E]
 {
-  val tornEventId = flushedLengthAndEventId.value
   protected def isHistoric = false
-  final val journalFile = journalMeta.file(after = tornEventId)
+  val tornEventId = flushedLengthAndEventId.value
+  val journalFile = journalMeta.file(after = tornEventId)
+
+  /** May contain size(file) + 1 to allow EOF detection. */
+  private val flushedLengthSync = new EventSync(initial = 0, o => s"position $o")
+  @volatile private var journalingEnded = false
+  @volatile private var _committedLength = flushedLengthAndEventId.position
+  @volatile private var _lastEventId = flushedLengthAndEventId.value
+
+  // Initially, the file contains no events but a JournalHeader
+  flushedLengthSync.onAdded(flushedLengthAndEventId.position)
+
   protected def tornPosition = flushedLengthAndEventId.position
-  protected def flushedLength = _flushedLength
 
-  private var _flushedLength = flushedLengthAndEventId.position  // Initially, the file contains no events
-  private var _lastEventId = flushedLengthAndEventId.value
+  protected[journal] def committedLength = _committedLength
 
-  private[journal] def onEventsAdded(flushedPositionAndEventId: PositionAnd[EventId], n: Int): Unit = {
-    val PositionAnd(flushedPosition, eventId) = flushedPositionAndEventId
-    if (flushedPosition < _flushedLength)
-      throw new IllegalArgumentException(s"CurrentEventReader: Added file position $flushedPosition ${EventId.toString(eventId)} < flushedLength $flushedLength")
-    journalIndex.addAfter(eventId = flushedPositionAndEventId.value, position = flushedPositionAndEventId.position, n = n)
+  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) =
+    if (isFlushedAfterPosition(position))
+      Task.True
+    else
+      flushedLengthSync.whenAvailable(position, until = Some(until))
+
+  protected def isFlushedAfterPosition(position: Long) =
+    journalingEnded || position < flushedLengthSync.last
+
+  protected def isEOF(position: Long) =
+    journalingEnded && position >= committedLength
+
+  private[journal] def onJournalingEnded(fileLength: EventId) = {
+    flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
+    _committedLength = fileLength
+    journalingEnded = true
+  }
+
+  private[journal] def onFileWritten(flushedPosition: Long): Unit =
+    if (flushedPosition > flushedLengthSync.last) {
+      flushedLengthSync.onAdded(flushedPosition)
+    }
+
+  private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+    val PositionAnd(pos, eventId) = positionAndEventId
+    journalIndex.addAfter(eventId = eventId, position = pos, n = n)
+    _committedLength = pos
     _lastEventId = eventId
-    _flushedLength = flushedPosition
   }
 
   protected def reverseEventsAfter(after: EventId) =

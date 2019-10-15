@@ -16,7 +16,6 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.{JournalActor, KeyedJournalingActor}
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files
-import java.util.UUID.randomUUID
 import scala.concurrent.duration.Deadline
 
 /**

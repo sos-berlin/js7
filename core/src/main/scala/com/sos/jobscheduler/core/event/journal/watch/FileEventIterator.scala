@@ -23,7 +23,7 @@ private[watch] class FileEventIterator[E <: Event](
   val journalFile: Path,
   expectedJournalId: Option[JournalId],
   tornEventId: EventId,
-  flushedLength: () => Long)
+  committedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[E]]]
 {
   private val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
@@ -70,7 +70,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
         })
 
   final def hasNext = nextEvent != null ||
-    journalReader.position < flushedLength() && {
+    journalReader.position < committedLength() && {
       nextEvent = journalReader.nextEvent().orNull
       nextEvent != null
     }

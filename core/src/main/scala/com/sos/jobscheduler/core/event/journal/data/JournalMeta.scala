@@ -12,3 +12,6 @@ final case class JournalMeta[E <: Event](
   implicit val eventJsonCodec: KeyedEventTypedJsonCodec[E],
   /** Path without extension, like "/directory/test". */
   fileBase: Path)
+{
+  val name = fileBase.getFileName.toString
+}

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.SessionApi
+import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.base.web.HttpClient
 import com.sos.jobscheduler.data.agent.AgentRef
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -16,6 +17,7 @@ import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
+import scodec.bits.ByteVector
 
 trait HttpMasterApi extends MasterApi with SessionApi
 {
@@ -58,10 +60,28 @@ trait HttpMasterApi extends MasterApi with SessionApi
 
   final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
     : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    httpClient.getLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
+    httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
   final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E]): Task[Observable[EventId]] =
-    httpClient.getLinesObservable[EventId](uris.events(request, eventIdOnly = true))
+    httpClient.getDecodedLinesObservable[EventId](uris.events(request))
+
+  /** Observable for a journal file.
+    * @param fileEventId denotes the journal file
+    * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
+    */
+  final def journalObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false,
+    returnLength: Boolean = false)
+  : Task[Observable[ByteVector]] =
+    httpClient.getRawLinesObservable(
+      uris.journal(fileEventId = fileEventId, position = position, timeout, markEOF = markEOF, returnLength = returnLength))
+
+  /** Observable for the growing flushed (and maybe synced) length of a journal file.
+    * @param fileEventId denotes the journal file
+    * @param markEOF prepend every line with a space and return a last line "TIMEOUT\n" in case of timeout
+    */
+  final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
+    journalObservable(fileEventId, position, timeout, markEOF, returnLength = true)
+      .map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
   final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =

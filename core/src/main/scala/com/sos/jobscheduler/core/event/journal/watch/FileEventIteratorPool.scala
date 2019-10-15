@@ -19,7 +19,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](
   expectedJournalId: Option[JournalId],
   journalFile: Path,
   tornEventId: EventId,
-  flushedLength: () => Long)
+  committedLength: () => Long)
 {
   private val freeIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
   private val lentIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
@@ -68,7 +68,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](
     synchronized {
       if (closed()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
-      val result = new FileEventIterator[E](journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, flushedLength) {
+      val result = new FileEventIterator[E](journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, committedLength) {
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
 

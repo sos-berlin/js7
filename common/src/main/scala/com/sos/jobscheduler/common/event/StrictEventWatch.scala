@@ -20,9 +20,9 @@ import scala.reflect.runtime.universe._
   */
 final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
 {
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = (_: KeyedEvent[E1]) => true)
+  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = (_: KeyedEvent[E1]) => true, onlyLastOfChunk: Boolean)
   : Observable[Stamped[KeyedEvent[E1]]]
-  = eventWatch.observe(request, predicate)
+  = eventWatch.observe(request, predicate, onlyLastOfChunk)
 
   def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
   : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]

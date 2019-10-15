@@ -5,6 +5,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds._
 import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 
 /**
   * @author Joacim Zschimmer

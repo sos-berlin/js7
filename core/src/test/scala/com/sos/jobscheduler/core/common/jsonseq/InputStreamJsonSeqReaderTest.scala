@@ -109,7 +109,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
 
     "Missing separators" in {
       assert(expectException(s"$rs{}{}\n", withRS = true).toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}' (column 3)")
+        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
     }
 
     "Invalid JSON" in {
@@ -121,7 +121,7 @@ final class InputStreamJsonSeqReaderTest extends FreeSpec
   "Corrupt data, without RS" - {
     "Missing separators" in {
       assert(expectException("{}{}\n").toStringWithCauses ==
-        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}' (column 3)")
+        "JSON sequence is corrupt at line 1: expected whitespace or eof got '{}\\n' (column 3)")
     }
 
     "Invalid JSON" in {

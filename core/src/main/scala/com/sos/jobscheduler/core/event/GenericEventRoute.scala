@@ -17,6 +17,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
@@ -83,8 +84,8 @@ trait GenericEventRoute extends RouteProvider
     final lazy val route: Route =
       get {
         pathEnd {
-          handleExceptions(exceptionHandler) {
-            authorizedUser(ValidUserPermission) { user =>
+          authorizedUser(ValidUserPermission) { user =>
+            handleExceptions(exceptionHandler) {
               routeTask(
                 eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map {
                   case Left(problem) =>
@@ -156,7 +157,7 @@ trait GenericEventRoute extends RouteProvider
                     request = request.copy[Event](
                       after = head.eventId,
                       limit = request.limit - 1,
-                      delay = request.delay - runningSince.elapsedOrZero),
+                      delay = (request.delay - runningSince.elapsed) min Duration.Zero),
                     predicate = isRelevantEvent)
                   .onErrorRecoverWith { case NonFatal(e) =>
                     logger.warn(e.toStringWithCauses)
@@ -186,7 +187,7 @@ trait GenericEventRoute extends RouteProvider
               val req = lastEventIdHeader.fold(request)(header =>
                 request.copy[Event](after = toLastEventId(header)))
               val mutableJsonPrinter = CompactPrinter.copy(reuseWriters = true)
-              val source = logErrorToWebLog(
+              val source = logAkkaStreamErrorToWebLog(
                 eventWatch.observe(req, predicate = isRelevantEvent)
                   .map(stamped => ServerSentEvent(
                     data = stamped.asJson.pretty(mutableJsonPrinter),

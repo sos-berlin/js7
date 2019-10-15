@@ -198,7 +198,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
     }
 
     "Fetch EventIds" in {
-      assert(getLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
+      assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
     }
 
     "shuttingDownFuture completes observable" in {
@@ -215,15 +215,15 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
   private def getEventObservable(eventRequest: EventRequest[Event])
   : Observable[Stamped[KeyedEvent[Event]]] =
-    api.getLinesObservable[Stamped[KeyedEvent[Event]]](
+    api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
       "/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)
     ).await(99.s)
 
   private def getEventsByUri(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
-    getLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
+    getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
 
-  private def getLinesObservable[A: Decoder: TypeTag](uri: String): Seq[A] =
-    Observable.fromTask(api.getLinesObservable[A](uri))
+  private def getDecodedLinesObservable[A: Decoder: TypeTag](uri: String): Seq[A] =
+    Observable.fromTask(api.getDecodedLinesObservable[A](uri))
       .flatten
       .toListL
       .await(99.s)

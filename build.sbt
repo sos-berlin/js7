@@ -269,7 +269,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
 
 lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(base, tester % "test")
+  .dependsOn(data, base, tester % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {

@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.data.agent.AgentSnapshot
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer

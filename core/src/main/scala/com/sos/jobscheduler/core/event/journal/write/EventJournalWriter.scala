@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, E
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import scala.collection.immutable.Seq
@@ -22,6 +22,7 @@ private[journal] final class EventJournalWriter[E <: Event](
   journalMeta: JournalMeta[E],
   val file: Path,
   after: EventId,
+  journalId: JournalId,
   observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration],
   withoutSnapshots: Boolean = false)
@@ -35,14 +36,16 @@ with AutoCloseable
   private var _lastEventId = after
   private var eventsStarted = false
   private var _eventWritten = false
-  private var notFlushedCount = 0
 
   def closeProperly(sync: Boolean): Unit =
     try if (eventsStarted) endEventSection(sync = sync)
     finally close()
 
-  override def close(): Unit = {
+  override def close() = {
     super.close()
+    for (r <- observer) {
+      r.onJournalingEnded(jsonWriter.fileLength)
+    }
     for (o <- statistics.debugString) logger.debug(o)
   }
 
@@ -52,7 +55,7 @@ with AutoCloseable
     flush(sync = false)
     eventsStarted = true
     for (r <- observer) {
-      r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId))
+      r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId), journalId)
     }
   }
 
@@ -71,7 +74,6 @@ with AutoCloseable
         try ByteString(stamped.asJson.compactPrint)
         catch { case t: Exception => throw new SerializationException(t) }
       jsonWriter.write(byteString)
-      notFlushedCount += stampedEvents.length
     }
     if (ta) jsonWriter.write(CommitByteString)
   }
@@ -86,13 +88,20 @@ with AutoCloseable
   override def flush(sync: Boolean): Unit = {
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
-    if (notFlushedCount > 0) for (r <- observer) {
-      r.onEventsAdded(PositionAnd(jsonWriter.fileLength, _lastEventId), n = notFlushedCount)
-      notFlushedCount = 0
+    for (r <- observer) {
+      r.onFileWritten(jsonWriter.fileLength)
+    }
+  }
+
+  def onCommitted(lengthAndEventId: PositionAnd[EventId], n: Int): Unit = {
+    for (r <- observer) {
+      r.onEventsCommitted(lengthAndEventId, n)
     }
   }
 
   def isEventWritten = _eventWritten
+
+  def fileLengthAndEventId = PositionAnd(fileLength, _lastEventId)
 
   override def toString = s"EventJournalWriter(${file.getFileName})"
 }
@@ -102,10 +111,11 @@ private[journal] object EventJournalWriter
   private val TransactionByteString = ByteString(Transaction.asJson.compactPrint)
   private val CommitByteString = ByteString(Commit.asJson.compactPrint)
 
-  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId,
+  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
   =
-    new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, observer, simulateSync = None, withoutSnapshots = withoutSnapshots)
+    new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, journalId, observer,
+      simulateSync = None, withoutSnapshots = withoutSnapshots)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)
 }

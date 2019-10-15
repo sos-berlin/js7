@@ -1,9 +1,12 @@
 package com.sos.jobscheduler.core.event.journal.watch
 
+import com.sos.jobscheduler.common.scalautil.MonixUtils.ops.RichTaskCompanion
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
+import monix.eval.Task
+import scala.concurrent.duration.Deadline
 
 /**
   * @author Joacim Zschimmer
@@ -18,8 +21,18 @@ extends AutoCloseable
 with EventReader[E]
 {
   protected def isHistoric = true
-  protected val flushedLength = Files.size(journalFile)
 
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = iteratorPool.firstEventPosition
+
+  protected lazy val committedLength = Files.size(journalFile)
+
+  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) =
+    Task.True/*EOF counts as data*/
+
+  protected def isFlushedAfterPosition(position: Long) =
+    true
+
+  protected def isEOF(position: Long) =
+    position >= committedLength
 }
