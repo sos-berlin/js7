@@ -14,16 +14,15 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
-import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.Recovered
@@ -32,6 +31,7 @@ import com.sos.jobscheduler.core.problems.UnknownOrderProblem
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.agent.{AgentRef, AgentRefPath, AgentRunId}
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.crypt.Signed
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -46,6 +46,7 @@ import com.sos.jobscheduler.data.workflow.position.WorkflowPosition
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.master.MasterOrderKeeper._
 import com.sos.jobscheduler.master.agent.{AgentDriver, AgentDriverConfiguration}
+import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
@@ -55,26 +56,27 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
-import monix.execution.Scheduler
+import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
-import shapeless.tag
+import scala.util.control.NoStackTrace
+import scala.util.{Failure, Success, Try}
+import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
+  protected val journalActor: ActorRef @@ JournalActor.type,
+  cluster: Cluster,
   recovered_ : Recovered[MasterState, Event],
+  recoveredClusterState: ClusterState,
   masterConfiguration: MasterConfiguration,
-  eventIdClock: EventIdClock,
   signatureVerifier: SignatureVerifier)
-  (implicit
-    keyedEventBus: StampedKeyedEventBus,
-    scheduler: Scheduler)
+  (implicit scheduler: Scheduler)
 extends Stash
 with MainJournalingActor[Event]
 {
@@ -83,11 +85,7 @@ with MainJournalingActor[Event]
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
-  private val journalMeta = recovered_.journalMeta
   private val eventWatch = recovered_.eventWatch
-  protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, masterConfiguration.journalConf, keyedEventBus, scheduler, eventIdClock),
-    "Journal")))
   private var runningSince = now  // Will be overwritten after recovery
   private var masterMetaState = MasterMetaState(masterConfiguration.masterId, Timestamp.now, Duration.Zero)
   private var repo = Repo(MasterFileBaseds.jsonCodec)
@@ -122,11 +120,13 @@ with MainJournalingActor[Event]
     }
   }
 
-  self ! Internal.Recover(recovered_)
+  watch(journalActor)
+  self ! Internal.StartClusterNode(recovered_)
   // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
     super.postStop()
+    cluster.stop()
     logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
@@ -136,14 +136,51 @@ with MainJournalingActor[Event]
     persistedEventId,
     masterMetaState.copy(totalRunningTime = masterMetaState.totalRunningTime + runningSince.elapsed),
     repo,
-    agents = Nil,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
-    orderRegister.values.map(_.order).toImmutableSeq)
+    pathToAgent = Map.empty,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
+    orderRegister.mapValues(_.order).toMap)
 
   def receive = {
-    case Internal.Recover(recovered) =>
+    case Internal.StartClusterNode(recovered) =>
+      val clusterFuture = cluster
+        .start(recovered_, recoveredClusterState)
+        .map(_.orThrow)
+        .onCancelRaiseError(new StartingClusterCanceledException)
+        .runToFuture
+      become("startingCluster")(startingCluster(clusterFuture))
+      // TODO MasterCommand.Terminate --> clusterFuture.cancel()
+      clusterFuture onComplete { tried =>
+        self ! Internal.ClusterStarted(recovered, tried)
+      }
+
+    case _ => stash()
+  }
+
+  private def startingCluster(cancelableCluster: Cancelable): Receive = {
+    case Internal.ClusterStarted(recovered, Success(ClusterFollowUp.BecomeActive)) =>
       recover(recovered)
       become("Recovering")(recovering)
       unstashAll()
+
+    case Internal.ClusterStarted(_, Success(ClusterFollowUp.Terminate)) =>
+      context.stop(self)
+
+    case Internal.ClusterStarted(_, Failure(_: StartingClusterCanceledException)) =>
+      context.stop(self)
+
+    case Internal.ClusterStarted(_, Failure(throwable)) =>
+      throw throwable.appendCurrentStackTrace
+
+    case Command.Execute(MasterCommand.Terminate, meta) =>
+      if (terminating) {
+        sender ! Left(MasterIsTerminatingProblem)
+      } else {
+        logger.debug("cancelableCluster.cancel()")
+        cancelableCluster.cancel()
+        // TODO  journalActor ! JournalActor.Input.TakeSnapshot
+        terminatingSince := now
+        sender() ! Right(MasterCommand.Response.Accepted)
+      }
+
     case _ => stash()
   }
 
@@ -621,7 +658,8 @@ with MainJournalingActor[Event]
   override def toString = "MasterOrderKeeper"
 }
 
-private[master] object MasterOrderKeeper {
+private[master] object MasterOrderKeeper
+{
   private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
 
   private val logger = Logger(getClass)
@@ -644,7 +682,8 @@ private[master] object MasterOrderKeeper {
   }
 
   private object Internal {
-    final case class Recover(recovered: Recovered[MasterState, Event])
+    final case class StartClusterNode(recovered: Recovered[MasterState, Event])
+    final case class ClusterStarted(recovered: Recovered[MasterState, Event], followUp: Try[ClusterFollowUp])
     case object Ready
     case object AfterProceedEventsAdded
   }
@@ -690,4 +729,6 @@ private[master] object MasterOrderKeeper {
           }
       }
   }
+
+  private class StartingClusterCanceledException extends Exception with NoStackTrace
 }

@@ -4,9 +4,11 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterNodeRole}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.RepoEvent.VersionAdded
 import com.sos.jobscheduler.data.filebased.VersionId
@@ -31,8 +33,8 @@ final class MasterStateTest extends FreeSpec
     EventId(1001),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), 1.hour),
     Repo(MasterFileBaseds.jsonCodec).applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
-    AgentSnapshot(AgentRefPath("/AGENT"), None, 7) :: Nil,
-    Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil)
+    (AgentSnapshot(AgentRefPath("/AGENT"), None, 7) :: Nil).toKeyedMap(_.agentRefPath),
+    (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 
   //"toSnapshot is equivalent to toSnapshotObservable" in {
   //  assert(masterState.toSnapshots == masterState.toSnapshotObservable.toListL.runToFuture.await(9.s))
@@ -40,7 +42,8 @@ final class MasterStateTest extends FreeSpec
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
     assert(masterState ==
-      MasterState.fromIterator(masterState.eventId, masterState.toSnapshotObservable.toListL.runToFuture.await(9.s).iterator))
+      MasterState.fromIterator(masterState.eventId, ClusterNodeId("NOT-USED"), ClusterNodeRole.Primary/*unused*/,
+        masterState.toSnapshotObservable.toListL.runToFuture.await(9.s).iterator))
   }
 
   "toSnapshotObservable JSON" in {

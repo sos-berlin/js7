@@ -3,8 +3,11 @@ package com.sos.jobscheduler.master.data
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.command.CancelMode
+import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
+import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -12,7 +15,16 @@ import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
-final class MasterCommandTest extends FreeSpec {
+final class MasterCommandTest extends FreeSpec
+{
+  "AppointBackupNode" in {
+    testJson[MasterCommand](AppointBackupNode(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+      json"""{
+        "TYPE": "AppointBackupNode",
+        "nodeId": "NODE-ID",
+        "uri": "http://example.com"
+      }""")
+  }
 
   "Batch" - {
     "Batch" in {
@@ -72,6 +84,25 @@ final class MasterCommandTest extends FreeSpec {
           }
         }""")
     }
+  }
+
+  "PassiveNodeFollows" in {
+    testJson[MasterCommand](
+      PassiveNodeFollows(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+      json"""{
+        "TYPE": "PassiveNodeFollows",
+        "passiveNodeId": "NODE-ID",
+        "activeUri": "http://example.com"
+      }""")
+  }
+
+  "PassiveNodeFollowsResponse" in {
+    testJson[MasterCommand.Response](
+      PassiveNodeFollows.Response(EventId(123)),
+      json"""{
+        "TYPE": "PassiveNodeFollowsResponse",
+        "eventId": 123
+      }""")
   }
 
   "ReplaceRepo" in {

@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
-import cats.data.EitherT
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.PersistFunction
@@ -33,21 +32,11 @@ final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
   def persistEvent[E1 <: E](stateToEvent: S => Checked[E1])(key: E1#Key): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] =
     persistEvent[E1](key, stateToEvent)
 
-  /** `E1` is must given explicitly. */
+  /** `E1` must be given explicitly. */
   def persistEvent[E1 <: E](key: E1#Key, stateToEvent: S => Checked[E1]): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] =
     lockKeeper.lock(key).use(_ =>
-    //temporaryGlobalLockKeeper.lock(()).use(_ =>
-      unsafePersistEvent(
+      persistEventRaw(
         stateToEvent.andThen(_.map(KeyedEvent(key, _)))))
-
-  /** Unsafe because key is not locked. */
-  private def unsafePersistEvent[E1 <: E](stateToEvent: S => Checked[KeyedEvent[E1]]): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] =
-    (for {
-        stampedAndCheckedUpdatedState <- EitherT(persistEventRaw(stateToEvent))
-        (stamped, updatedState) = stampedAndCheckedUpdatedState
-      } yield
-        stamped -> updatedState
-    ).value
 
   private def persistEventRaw[E1 <: E](stateToEvent: S => Checked[KeyedEvent[E1]]): Task[Checked[(Stamped[KeyedEvent[E1]], S)]] =
     persistTask.flatMap(

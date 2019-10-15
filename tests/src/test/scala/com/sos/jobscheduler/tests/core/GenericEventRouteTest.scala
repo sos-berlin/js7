@@ -12,13 +12,14 @@ import com.sos.jobscheduler.common.akkahttp.web.session.{SessionRegister, Simple
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.http.AkkaHttpClient.HttpException
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.event.GenericEventRoute
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -79,7 +80,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
   private val shuttingDownPromise = Promise[Completed]()
   protected final lazy val shuttingDownFuture = shuttingDownPromise.future
 
-  protected val eventWatch = new EventCollector.ForTest()
+  protected val eventWatch = new EventCollector.ForTest()  // TODO Use real JournalEventWatch
 
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
@@ -114,7 +115,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
     super.afterAll()
   }
 
-  "Read event stream with getLinesObservable" - {
+  "Read event stream with getDecodedLinesObservable" - {
     "empty, timeout=0" in {
       val observable = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(0.s)))
       assert(observable.toListL.await(99.s) == Nil)
@@ -199,6 +200,22 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
 
     "Fetch EventIds" in {
       assert(getDecodedLinesObservable[EventId]("/event?eventIdOnly=true&limit=3&after=30") == 40 :: 50 :: 60 :: Nil)
+    }
+
+    "Fetching EventIds with after=unknown-EventId is rejected" in {
+      val isKnownEventId = TestEvents.map(_.eventId).toSet
+      for (unknown <- 1L to (TestEvents.last.eventId) if !isKnownEventId(unknown)) withClue(s"EventId $unknown: ") {
+        val t = intercept[HttpException] {
+          getDecodedLinesObservable[EventId](s"/event?eventIdOnly=true&timeout=1&after=$unknown")
+        }
+        assert(t.problem contains EventSeqTornProblem(unknown, 0))
+      }
+    }
+
+    "Fetching EventIds with after=future-event is accepted" in {
+      val t = now
+      val result = getDecodedLinesObservable[EventId](s"/event?eventIdOnly=true&timeout=0.1&after=${TestEvents.last.eventId + 1}")
+      assert(result.isEmpty && t.elapsed > 0.1.second)
     }
 
     "shuttingDownFuture completes observable" in {

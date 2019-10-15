@@ -30,8 +30,8 @@ final class ApiRootRouteTest extends FreeSpec with RouteTester with ApiRootRoute
     EventId(1001),
     MasterMetaState(MasterId("MASTER-ID"), Timestamp("2019-05-24T12:00:00Z"), 1.hour),
     Repo(MasterFileBaseds.jsonCodec),
-    Nil,
-    Nil))
+    Map.empty,
+    Map.empty))
 
   private def route: Route =
     pathSegment("api") {

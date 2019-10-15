@@ -37,18 +37,11 @@ extends AutoCloseable
   protected def journalFile: Path
   protected def tornEventId: EventId
   protected def tornPosition: Long
-
-  /** Must be constant if `isHistoric`. */
-  protected def committedLength: Long
-
-  /** EOF counts as data.
-    * @return false on timeout */
-  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline): Task[Boolean]
-
   protected def isFlushedAfterPosition(position: Long): Boolean
-
+  protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
-
+  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline): Task[Boolean]
+  /** Must be constant if `isHistoric`. */
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
@@ -179,18 +172,18 @@ extends AutoCloseable
                 }
                 if (markEOF && isEOF(lastPosition)) {
                   iterator = iterator
-                    .map {
-                      case o @ PositionAnd(_, EndOfJournalFileMarker) => sys.error(s"Journal file must not contain a line like $o")
-                      case o => o
+                    .map { o =>
+                      if (o.value == EndOfJournalFileMarker) sys.error(s"Journal file must not contain a line like $o")
+                      o
                     } ++ {
                       eofMarked = true
                       Iterator.single(PositionAnd(lastPosition, EndOfJournalFileMarker))
                     }
                 }
-                Observable.fromIteratorUnsafe(iterator map Right.apply) ++
+                Observable.fromIteratorUnsafe(iterator.map(line => Right(line))) ++
                   Observable.fromIterable(
                     ((lastPosition > position/*something read*/ && !eofMarked) ?
-                      Left(lastPosition)))  // continue tailRecM
+                      Left(lastPosition)))
               })
       }
 

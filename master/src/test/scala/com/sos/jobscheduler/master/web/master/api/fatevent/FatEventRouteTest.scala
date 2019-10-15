@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.event.collector.{EventCollector, EventDirectives}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.crypt.silly.SillySigner
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
@@ -34,7 +35,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.web.master.api.fatevent.FatEventRouteTest._
 import com.sos.jobscheduler.master.web.master.api.test.RouteTester
-import java.nio.file.Paths
+import java.nio.file.Files
 import java.util.UUID.randomUUID
 import monix.execution.Scheduler
 import org.scalatest.{Args, FreeSpec}
@@ -49,7 +50,13 @@ import scala.util.{Failure, Success}
   */
 final class FatEventRouteTest extends FreeSpec with RouteTester with FatEventRoute
 {
-  protected val masterConfiguration = MasterConfiguration.forTest(Paths.get("/tmp/FatEventRouteTest/not-used"))
+  private lazy val configAndDataDirectory = Files.createTempDirectory("FatEventRouteTest-")
+  protected val masterConfiguration = MasterConfiguration.forTest(configAndDataDirectory)
+
+  override def afterAll(): Unit = {
+    deleteDirectoryRecursively(configAndDataDirectory)
+    super.afterAll()
+  }
 
   override protected def runTest(testName: String, args: Args) = {
     logger.debug("-" * 50)

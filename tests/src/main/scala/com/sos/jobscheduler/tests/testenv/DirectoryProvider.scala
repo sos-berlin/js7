@@ -220,6 +220,7 @@ object DirectoryProvider
     val directory: Path
     lazy val configDir = directory / "config"
     lazy val dataDir = directory / "data"
+    lazy val stateDir = dataDir / "state"
 
     private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       createDirectory(directory)

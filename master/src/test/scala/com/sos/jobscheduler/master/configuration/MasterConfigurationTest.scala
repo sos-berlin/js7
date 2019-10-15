@@ -2,33 +2,60 @@ package com.sos.jobscheduler.master.configuration
 
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.core.event.journal.JournalConf
+import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterNodeRole}
 import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.master.cluster.ClusterConf
 import com.sos.jobscheduler.master.configuration.MasterConfiguration.DefaultConfig
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
-import java.nio.file.Paths
+import java.nio.file.Files.{createDirectories, createTempDirectory, delete, exists}
 import java.time.ZoneId
-import org.scalatest.FreeSpec
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
   */
-final class MasterConfigurationTest extends FreeSpec {
+final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
+{
+  private lazy val directory = createTempDirectory("MasterConfigurationTest-")
 
-  private val configuration = MasterConfiguration.fromCommandLine(CommandLineArguments(
-    Vector("-config-directory=CONFIG", "-data-directory=DATA")))
+  override def beforeAll() = {
+    createDirectories(directory / "DATA" / "state")
+  }
+
+  override def afterAll() = {
+    delete(directory / "DATA/state/ClusterNodeId")
+    delete(directory / "DATA/state")
+    delete(directory / "DATA")
+  }
+
+  private lazy val configuration = MasterConfiguration.fromCommandLine(CommandLineArguments(
+    Vector(s"-config-directory=$directory/CONFIG", s"-data-directory=$directory/DATA")))
+
+  "state/ClusterNodeId file has implicitly been created" in {
+    configuration
+    assert(exists(directory / "DATA/state/ClusterNodeId"))
+  }
 
   "Empty argument list" in {
     assert(configuration.copy(config = DefaultConfig) == MasterConfiguration(
       masterId = MasterId("Master"),
-      dataDirectory = Paths.get("DATA").toAbsolutePath,
-      configDirectory = Paths.get("CONFIG").toAbsolutePath,
+      dataDirectory = (directory / "DATA").toAbsolutePath,
+      configDirectory = (directory /"CONFIG").toAbsolutePath,
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
       journalConf = JournalConf.fromConfig(DefaultConfig),
+      clusterConf = ClusterConf(
+        ClusterNodeRole.Primary,
+        ClusterNodeId((directory / "DATA/state/ClusterNodeId").contentString),
+        RecouplingStreamReaderConf(
+          timeout = 50.seconds,
+          delay = 1.seconds)),
       name = MasterConfiguration.DefaultName,
       config = DefaultConfig))
   }
@@ -55,6 +82,6 @@ final class MasterConfigurationTest extends FreeSpec {
 
   private def conf(args: String*) =
     MasterConfiguration.fromCommandLine(
-      CommandLineArguments(Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args),
+      CommandLineArguments(Vector(s"-config-directory=$directory/CONFIG", s"-data-directory=$directory/DATA") ++ args),
       ConfigFactory.parseString("user.name = MasterConfigurationTest"/*Will be overridden*/))
 }

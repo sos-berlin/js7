@@ -25,14 +25,11 @@ with EventReader[E]
   /** Position of the first event in `journalFile`. */
   protected lazy val tornPosition = iteratorPool.firstEventPosition
 
+  protected def isFlushedAfterPosition(position: Long) = true
+
+  protected def isEOF(position: Long) = position >= committedLength
+
   protected lazy val committedLength = Files.size(journalFile)
 
-  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) =
-    Task.True/*EOF counts as data*/
-
-  protected def isFlushedAfterPosition(position: Long) =
-    true
-
-  protected def isEOF(position: Long) =
-    position >= committedLength
+  protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) = Task.True/*EOF counts as data*/
 }

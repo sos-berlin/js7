@@ -7,6 +7,7 @@ import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -21,9 +22,14 @@ import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
-final class MasterStateBuilder extends JournalStateBuilder[MasterState, Event]
+final class MasterStateBuilder(myNodeId: ClusterNodeId, clusterNodeRole: ClusterNodeRole)
+extends JournalStateBuilder[MasterState, Event]
 {
   private val masterMetaState = SetOnce[MasterMetaState]
+  private var _clusterState: ClusterState = clusterNodeRole match {
+    case ClusterNodeRole.Primary => ClusterState.Sole(myNodeId)
+    case ClusterNodeRole.Backup(activeUri) => ClusterState.InitialBackupNode(activeUri)
+  }
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
@@ -40,6 +46,9 @@ final class MasterStateBuilder extends JournalStateBuilder[MasterState, Event]
 
     case o: MasterMetaState =>
       masterMetaState := o
+
+    case o: ClusterState.Snapshot =>
+      _clusterState = o.clusterState
   }
 
   def onAllSnapshotsAdded() = {
@@ -81,6 +90,9 @@ final class MasterStateBuilder extends JournalStateBuilder[MasterState, Event]
       }
 
     case Stamped(_, _, KeyedEvent(_, MasterTestEvent)) =>
+
+    case Stamped(_, _, KeyedEvent(_: NoKey, e: ClusterEvent)) =>
+      _clusterState = _clusterState.applyEvent(e).orThrow
   }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
@@ -107,6 +119,9 @@ final class MasterStateBuilder extends JournalStateBuilder[MasterState, Event]
       eventId = eventId,
       masterMetaState(),
       repo,
-      pathToAgent.values.toImmutableSeq, idToOrder.values.toImmutableSeq)
+      pathToAgent.toMap,
+      idToOrder.toMap)
+
+  def clusterState = _clusterState
 }
 

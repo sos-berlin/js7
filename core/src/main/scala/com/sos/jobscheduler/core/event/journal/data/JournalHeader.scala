@@ -43,7 +43,7 @@ final case class JournalHeader private[data](
 
 object JournalHeader
 {
-  private[data] val Version = "0.24"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  private[data] val Version = "0.25"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
   private val logger = Logger(getClass)
 
   def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =

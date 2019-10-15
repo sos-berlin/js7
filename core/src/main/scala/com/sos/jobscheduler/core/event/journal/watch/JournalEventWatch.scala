@@ -145,7 +145,7 @@ with JournalingObserver
   }
 
   def onFileWritten(flushedPosition: Long): Unit =
-    for (o <- currentEventReaderOption) {  // JournalHeader is written before onJournalingStarted
+    for (o <- currentEventReaderOption) {
       o.onFileWritten(flushedPosition)
     }
 

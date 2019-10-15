@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.common.akkahttp.web.data.WebServerPort
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
@@ -13,9 +14,11 @@ import com.sos.jobscheduler.common.utils.Tests.isTest
 import com.sos.jobscheduler.core.configuration.CommonConfiguration
 import com.sos.jobscheduler.core.event.journal.JournalConf
 import com.sos.jobscheduler.data.master.MasterId
+import com.sos.jobscheduler.master.cluster.ClusterConf
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
-import java.nio.file.Path
+import java.nio.file.Files.createDirectory
+import java.nio.file.{Files, Path}
 import java.time.ZoneId
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -31,6 +34,7 @@ final case class MasterConfiguration(
   timeZone: ZoneId,
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
+  clusterConf: ClusterConf,
   name: String,
   config: Config)
 extends CommonConfiguration
@@ -55,16 +59,19 @@ object MasterConfiguration
     httpsPort: Option[Int] = None,
     mutualHttps: Boolean = false,
     name: String = DefaultName
-  ) =
+  ) = {
+    val data = configAndData / "data"
+    if (!Files.exists(data)) createDirectory(data)
     fromDirectories(
       configDirectory = configAndData / "config",
-      dataDirectory = configAndData / "data",
+      dataDirectory = data,
       config,
       name = name)
     .copy(
       webServerPorts =
         httpPort.map(o => WebServerPort.Http(new InetSocketAddress("127.0.0.1", o))) ++:
         httpsPort.map(o => WebServerPort.Https(new InetSocketAddress("127.0.0.1", o), mutual = mutualHttps)).toList)
+  }
 
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/master/configuration/master.conf"),
@@ -88,6 +95,8 @@ object MasterConfiguration
     name: String
   ): MasterConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
+    val stateDir = dataDir / "state"
+    if (!Files.exists(stateDir)) createDirectory(stateDir) // Side-effect for ClusterNodeId file !!!
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, extraDefaultConfig)
     new MasterConfiguration(
@@ -99,6 +108,7 @@ object MasterConfiguration
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("jobscheduler.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
+      clusterConf = ClusterConf.fromConfigAndFile(config, stateDir / "ClusterNodeId").orThrow,
       name = name,
       config = config)
   }

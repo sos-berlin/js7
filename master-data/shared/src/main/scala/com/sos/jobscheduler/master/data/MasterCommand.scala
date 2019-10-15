@@ -7,7 +7,9 @@ import com.sos.jobscheduler.base.problem.Checked.implicits.{checkedJsonDecoder, 
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.command.{CancelMode, CommonCommand}
+import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
@@ -108,6 +110,19 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
+  final case class AppointBackupNode(nodeId: ClusterNodeId, uri: Uri)
+  extends MasterCommand {
+    type Response = Response.Accepted
+  }
+
+  final case class PassiveNodeFollows(passiveNodeId: ClusterNodeId, activeUri: Uri)
+  extends MasterCommand {
+    type Response = PassiveNodeFollows.Response
+  }
+  object PassiveNodeFollows {
+    final case class Response(eventId: EventId) extends MasterCommand.Response
+  }
+
   sealed trait Response
 
   object Response {
@@ -116,10 +131,12 @@ object MasterCommand extends CommonCommand.Companion
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
-      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
+      Subtype.named(deriveCodec[PassiveNodeFollows.Response], "PassiveNodeFollowsResponse"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
+    Subtype(deriveCodec[AppointBackupNode]),
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
     Subtype(deriveCodec[ReplaceRepo]),
@@ -128,6 +145,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(IssueTestEvent),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
+    Subtype(deriveCodec[PassiveNodeFollows]),
     Subtype(TakeSnapshot),
     Subtype(Terminate))
 }

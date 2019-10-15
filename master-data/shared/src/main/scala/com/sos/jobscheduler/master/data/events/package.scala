@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.data
 
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -16,6 +17,7 @@ package object events
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[RepoEvent],
       KeyedSubtype[MasterEvent],
+      KeyedSubtype[ClusterEvent],
       KeyedSubtype[MasterAgentEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype.singleEvent[AgentEventIdEvent])

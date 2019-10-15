@@ -33,7 +33,9 @@ final class MasterCommandExecutorTest extends FreeSpec
         case _ => Task.pure(Left(Problem("COMMAND NOT IMPLEMENTED")))
       }
   }
-  private val commandExecutor = new MasterCommandExecutor(otherCommandExecutor)
+
+  private val commandExecutor = new MasterCommandExecutor(otherCommandExecutor,
+    cluster = () => throw new NotImplementedError)
 
   "NoOperation" in {
     assert(commandExecutor.executeCommand(NoOperation, meta).await(99.seconds) == Right(Response.Accepted))

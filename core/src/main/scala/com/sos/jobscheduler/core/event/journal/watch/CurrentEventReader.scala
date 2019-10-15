@@ -31,12 +31,13 @@ extends EventReader[E]
   @volatile private var _committedLength = flushedLengthAndEventId.position
   @volatile private var _lastEventId = flushedLengthAndEventId.value
 
-  // Initially, the file contains no events but a JournalHeader
-  flushedLengthSync.onAdded(flushedLengthAndEventId.position)
-
   protected def tornPosition = flushedLengthAndEventId.position
 
   protected[journal] def committedLength = _committedLength
+
+  protected def isEOF(position: Long) = journalingEnded && position >= committedLength
+
+  flushedLengthSync.onAdded(flushedLengthAndEventId.position)   // Initially, the file contains no events — required???
 
   protected def whenDataAvailableAfterPosition(position: Long, until: Deadline) =
     if (isFlushedAfterPosition(position))
@@ -46,9 +47,6 @@ extends EventReader[E]
 
   protected def isFlushedAfterPosition(position: Long) =
     journalingEnded || position < flushedLengthSync.last
-
-  protected def isEOF(position: Long) =
-    journalingEnded && position >= committedLength
 
   private[journal] def onJournalingEnded(fileLength: EventId) = {
     flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection

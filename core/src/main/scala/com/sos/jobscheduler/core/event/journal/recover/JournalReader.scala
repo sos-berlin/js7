@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichJson, _}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -197,6 +197,9 @@ extends AutoCloseable
             @tailrec def loop(): Unit =
               read() match {
                 case None =>
+                  // TODO In case a passive cluster node continues reading replicated data after a truncated transaction,
+                  //  the transaction buffer should not be cleared.
+                  //  Or seek(position before transaction) ?
                   transaction.clear() // File ends before transaction is committed.
                 case Some(PositionAnd(_, Commit)) =>
                   transaction.commit()

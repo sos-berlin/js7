@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web.master.api
 import com.sos.jobscheduler.base.auth.SimpleUser
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.event.GenericEventRoute
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.order.OrderEvent
@@ -31,7 +32,7 @@ object EventRoute
 
   private def isRelevantEvent(event: Event): Boolean =
     event match {
-      case _: RepoEvent | _: MasterEvent | _: MasterAgentEvent | _: OrderEvent => true
+      case _: RepoEvent | _: MasterEvent | _: MasterAgentEvent | _: OrderEvent | _: ClusterEvent => true
       case _ => false
     }
 }

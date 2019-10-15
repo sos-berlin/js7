@@ -63,7 +63,7 @@ trait HttpMasterApi extends MasterApi with SessionApi
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
   final def eventIdObservable[E <: Event: ClassTag](request: EventRequest[E]): Task[Observable[EventId]] =
-    httpClient.getDecodedLinesObservable[EventId](uris.events(request))
+    httpClient.getDecodedLinesObservable[EventId](uris.events(request, eventIdOnly = true, onlyLastOfChunk = true))
 
   /** Observable for a journal file.
     * @param fileEventId denotes the journal file

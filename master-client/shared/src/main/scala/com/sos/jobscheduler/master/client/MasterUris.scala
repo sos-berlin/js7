@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -26,14 +26,20 @@ final class MasterUris private(masterUri: String)
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E]): String =
-    events_[E]("/event", request)
+  def events[E <: Event: ClassTag](request: EventRequest[E], eventIdOnly: Boolean = false, onlyLastOfChunk: Boolean = false)
+  : String =
+    events_[E]("/event", request, eventIdOnly = eventIdOnly, onlyLastOfChunk = onlyLastOfChunk)
 
   def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E]): String =
     events_[E]("/fatEvent", request)
 
-  def events_[E <: Event: ClassTag](path: String, request: EventRequest[E]): String =
-    api(path) + encodeQuery(request.toQueryParameters)
+  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E],
+    eventIdOnly: Boolean = false, onlyLastOfChunk: Boolean = false)
+  : String =
+    api(path) + encodeQuery(
+     (eventIdOnly thenVector ("eventIdOnly" -> "true")) ++
+     (onlyLastOfChunk thenVector ("onlyLastOfChunk" -> "true")) ++
+       request.toQueryParameters)
 
   def journal(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false, returnLength: Boolean = false): String =
     api("/journal") + encodeQuery(

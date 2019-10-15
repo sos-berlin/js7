@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -16,6 +17,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -62,6 +64,8 @@ extends Actor with Stash
   private var commitDeadline: Deadline = null
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
+  private var acknowledgedEventCount = 0L
+  private var requireClusterAcknowledge = false
 
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
@@ -138,14 +142,22 @@ extends Actor with Stash
         lastWrittenEventId = o.value
       }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-      if (acceptEarly) {
+      if (acceptEarly && !requireClusterAcknowledge/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
         reply(sender(), replyTo, Output.Accepted(callersItem))
         writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
         // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
       } else {
         writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, "STORED", replyTo, sender(), callersItem)
       }
-      forwardCommit((delay max conf.delay) - alreadyDelayed)
+      stampedEvents.headOption match {
+        case Some(Stamped(_, _, KeyedEvent(_, event: ClusterEvent.FollowingStarted))) =>
+          // Commit now to let FollowingStarted event take effect on following events (otherwise deadlock)
+          commit()
+          logger.debug(s"$event: Start requiring acknowledges from passive cluster node")
+          requireClusterAcknowledge = true
+        case _ =>
+          forwardCommit((delay max conf.delay) - alreadyDelayed)
+      }
       if (stampedEvents.nonEmpty) {
         scheduleNextSnapshot()
       }
@@ -179,8 +191,14 @@ extends Actor with Stash
         }
       }
 
+    case Input.FollowerAcknowledged(eventId) =>
+      // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
+      // We take only complete Written blocks as acknowledged.
+      sender() ! Completed
+      onCommitAcknowledged(n = writtenBuffer.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
+
     case Input.Terminate =>
-      commit()
+      commit(terminating = true)
       stop(self)
 
     case Input.AwaitAndTerminate =>  // For testing
@@ -212,10 +230,11 @@ extends Actor with Stash
   }
 
   /** Flushes and syncs the already written events to disk, then notifying callers and EventBus. */
-  private def commit(): Unit = {
+  private def commit(terminating: Boolean = false): Unit = {
     commitDeadline = null
+
     try eventWriter.flush(sync = conf.syncOnCommit)
-    catch { case NonFatal(t) =>
+    catch { case NonFatal(t) if !terminating =>
       val tt = t.appendCurrentStackTrace
       writtenBuffer foreach {
         case w: NormallyWritten => reply(sender(), w.replyTo, Output.StoreFailure(tt))  // TODO Failing flush is fatal
@@ -223,17 +242,33 @@ extends Actor with Stash
       }
       throw tt;
     }
-    for (lastFileLengthAndEventId <- writtenBuffer.flatMap(_.lastFileLengthAndEventId).lastOption) {
-      eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenBuffer.iterator.map(_.eventCount).sum)
-    }
     logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o })
+    totalEventCount += writtenBuffer.iterator.map(_.eventCount).sum
+    if (!terminating) {
+      if (!requireClusterAcknowledge)  {
+        onCommitAcknowledged(writtenBuffer.length)
+      } else {
+        // TODO self ! timedout
+      }
+    }
+  }
+
+  private def onCommitAcknowledged(n: Int): Unit = {
+    for (lastFileLengthAndEventId <- writtenBuffer.take(n).flatMap(_.lastFileLengthAndEventId).lastOption) {
+      if (requireClusterAcknowledge) {
+        val lastWritten = writtenBuffer(n - 1)
+        val i = totalEventCount - writtenBuffer.iterator.drop(writtenBuffer.length - n + 1).map(_.eventCount).sum
+        logger.trace(f"#$i Acknowledged ${lastWritten.since.elapsed.pretty}%-7s ${lastFileLengthAndEventId.value}, ${i - acknowledgedEventCount} events")
+        acknowledgedEventCount = i
+      }
+      eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenBuffer.iterator.take(n).map(_.eventCount).sum)
+    }
     // AcceptEarlyWritten have already been replied.
-    for (NormallyWritten(keyedEvents, _, _, replyTo, sender, item) <- writtenBuffer) {
+    for (NormallyWritten(keyedEvents, _, _, replyTo, sender, item) <- writtenBuffer take n) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
-    totalEventCount += writtenBuffer.iterator.map(_.eventCount).sum
-    writtenBuffer.clear()
+    writtenBuffer.remove(0, n)
   }
 
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
@@ -367,7 +402,7 @@ extends Actor with Stash
 
 object JournalActor
 {
-  private val TmpSuffix = ".tmp"
+  private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
   private val DispatcherName = "jobscheduler.journal.dispatcher"  // Config setting; name is used for thread names
 
   def props[E <: Event](
@@ -401,6 +436,7 @@ object JournalActor
       alreadyDelayed: FiniteDuration,
       item: CallersItem)
     final case object TakeSnapshot
+    final case class FollowerAcknowledged(eventId: EventId)
     final case object Terminate
     final case object AwaitAndTerminate
     private[journal] case object GetState

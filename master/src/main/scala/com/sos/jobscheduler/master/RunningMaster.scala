@@ -32,15 +32,18 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.state.{JournaledStateRecoverer, Recovered}
+import com.sos.jobscheduler.core.event.state.{JournaledStatePersistence, Recovered}
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.core.startup.StartUp
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
+import com.sos.jobscheduler.master.cluster.Cluster
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -188,17 +191,19 @@ object RunningMaster
       closer onClose { sessionTokenFile.delete() }
     }
 
-    private def startMasterOrderKeeper(recovered: Recovered[MasterState, Event])
+    private def startMasterOrderKeeper(journalActor: ActorRef @@ JournalActor.type, cluster: Cluster,
+      recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState)
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
             _ => Props {
               new MasterOrderKeeper(
+                journalActor,
+                cluster,
                 recovered,
+                recoveredClusterState,
                 masterConfiguration,
-                injector.instance[EventIdClock],
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)(
-                injector.instance[StampedKeyedEventBus],
                 scheduler)
             },
             "MasterOrderKeeper",
@@ -214,13 +219,22 @@ object RunningMaster
       }
       createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
 
+      val journalMeta = JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase)
       // May take minutes !!!
-      val recovered = JournaledStateRecoverer.recover[MasterState, Event](
-        JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase),
-        () => new MasterStateBuilder,
-        masterConfiguration.config)
+      val (recovered, recoveredClusterState) = MasterJournalRecoverer.recover(journalMeta, masterConfiguration)
+      recovered.closeWithCloser
 
-      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(recovered)
+      val journalActor = tag[JournalActor.type](actorSystem.actorOf(
+        JournalActor.props(recovered.journalMeta, masterConfiguration.journalConf, injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
+        "Journal"))
+      val cluster = new Cluster(
+        journalMeta,
+        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor)(scheduler, actorSystem),
+        masterConfiguration.clusterConf,
+        journalActorAskTimeout = masterConfiguration.akkaAskTimeout,
+        actorSystem)
+
+      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(journalActor, cluster, recovered, recoveredClusterState)
 
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
       val orderKeeperCommandExecutor = new CommandExecutor[MasterCommand] {
@@ -229,7 +243,7 @@ object RunningMaster
             (orderKeeper ? MasterOrderKeeper.Command.Execute(command, meta))(masterConfiguration.akkaAskTimeout)
               .mapTo[Checked[command.Response]])
       }
-      val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor)
+      val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor, () => cluster)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
       val masterState = getMasterState(orderKeeper, masterConfiguration.akkaAskTimeout)
 
