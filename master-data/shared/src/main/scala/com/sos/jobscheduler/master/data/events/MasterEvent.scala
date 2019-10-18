@@ -26,9 +26,12 @@ object MasterEvent
   final case class MasterReady(timezone: String, totalRunningTime: FiniteDuration)
   extends MasterEvent
 
+  case object MasterShutDown  extends MasterEvent
+
   case object MasterTestEvent extends MasterEvent
 
   implicit val jsonCodec: TypedJsonCodec[MasterEvent] = TypedJsonCodec(
     Subtype[MasterReady],
+    Subtype(MasterShutDown),
     Subtype(MasterTestEvent))
 }

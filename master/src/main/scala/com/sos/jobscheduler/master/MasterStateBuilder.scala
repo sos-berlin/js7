@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
 import com.sos.jobscheduler.data.master.MasterFileBaseds
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCanceled, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
@@ -18,7 +18,7 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
@@ -89,10 +89,13 @@ extends JournalStateBuilder[MasterState, Event]
         case _: OrderStdWritten =>
       }
 
+    case Stamped(_, _, KeyedEvent(_, MasterShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, MasterTestEvent)) =>
 
     case Stamped(_, _, KeyedEvent(_: NoKey, e: ClusterEvent)) =>
       _clusterState = _clusterState.applyEvent(e).orThrow
+
+    case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
   }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer

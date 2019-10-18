@@ -20,6 +20,13 @@ final class MasterEventTest extends FreeSpec
       }""")
   }
 
+  "MasterShutDown" in {
+    testJson[MasterEvent](MasterShutDown,
+      json"""{
+        "TYPE": "MasterShutDown"
+      }""")
+  }
+
   "MasterTestEvent" in {
     testJson[MasterEvent](MasterTestEvent,
       json"""{

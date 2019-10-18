@@ -53,7 +53,7 @@ import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
+import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
 import monix.execution.{Cancelable, Scheduler}
@@ -343,13 +343,13 @@ with MainJournalingActor[Event]
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
-          journalActor ! JournalActor.Input.Terminate
+          shutDownEventAndStopJournaling()
       }
 
     case Terminated(a) if agentRegister contains a =>
       agentRegister -= a
       if (agentRegister.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
+        shutDownEventAndStopJournaling()
       }
 
     case Terminated(`journalActor`) =>
@@ -658,6 +658,12 @@ with MainJournalingActor[Event]
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
+
+  private def shutDownEventAndStopJournaling(): Unit =
+    // The event forces the cluster to acknowledge this event and the snapshot taken
+    persist(NoKey <-: MasterShutDown) { _ =>
+      journalActor ! JournalActor.Input.Terminate
+    }
 
   override def toString = "MasterOrderKeeper"
 }
