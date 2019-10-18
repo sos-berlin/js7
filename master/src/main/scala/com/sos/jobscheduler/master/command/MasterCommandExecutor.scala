@@ -44,9 +44,6 @@ extends CommandExecutor[MasterCommand]
         val tasks = for (c <- commands) yield executeCommand(c, meta, batchId orElse Some(id))
         Task.sequence(tasks) map (checkedResponses => Right(Batch.Response(checkedResponses)))
 
-      case NoOperation =>
-        Task.pure(Right(MasterCommand.Response.Accepted))
-
       case EmergencyStop =>
         Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
 

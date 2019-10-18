@@ -399,7 +399,11 @@ with MainJournalingActor[Event]
             .unsafeRunSync()  // Persist events!
             .map(_ => MasterCommand.Response.Accepted))
 
-      case MasterCommand.EmergencyStop | MasterCommand.NoOperation | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
+      case MasterCommand.NoOperation =>
+        // NoOperation completes only after MasterOrderKeeper has become ready (can be used to await readiness)
+        Future.successful(Right(MasterCommand.Response.Accepted))
+
+      case MasterCommand.EmergencyStop | _: MasterCommand.Batch =>       // For completeness. RunningMaster has handled the command already
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case MasterCommand.TakeSnapshot =>

@@ -30,7 +30,10 @@ final class MasterCommandExecutorTest extends FreeSpec
         case (`cancelOrder`, `meta`) =>
           canceled += 1
           Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
-        case _ => Task.pure(Left(Problem("COMMAND NOT IMPLEMENTED")))
+        case (NoOperation, `meta`) =>
+          Task.pure(Right(Response.Accepted.asInstanceOf[command.Response]))
+        case _ =>
+          Task.pure(Left(Problem("COMMAND NOT IMPLEMENTED")))
       }
   }
 
