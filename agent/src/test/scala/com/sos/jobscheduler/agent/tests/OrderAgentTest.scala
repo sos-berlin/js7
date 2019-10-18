@@ -24,9 +24,9 @@ import com.sos.jobscheduler.core.filebased.FileBasedSigner
 import com.sos.jobscheduler.core.problems.TamperedWithSignedMessageProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.crypt.SignedString
-import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
-import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.position.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
@@ -74,7 +74,7 @@ final class OrderAgentTest extends FreeSpec {
 
           attachOrder(SignedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
-          EventRequest.singleClass[OrderEvent](timeout = Some(10.s))
+          EventRequest.singleClass[Event](timeout = Some(10.s))
             .repeat(eventRequest => agentClient.mastersEvents(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
@@ -120,7 +120,7 @@ final class OrderAgentTest extends FreeSpec {
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
           while (
-            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
+            agentClient.mastersEvents(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
               case EventSeq.NonEmpty(stampeds) =>
                 ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
                 ready != awaitedOrderIds

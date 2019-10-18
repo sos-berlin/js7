@@ -19,7 +19,7 @@ extends HasCloser
   lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, config)
     .closeWithCloser
 
-  def journalMeta: JournalMeta[E] =
+  def journalMeta: JournalMeta =
     recoverer.journalMeta
 
   def maybeState: Option[S] =

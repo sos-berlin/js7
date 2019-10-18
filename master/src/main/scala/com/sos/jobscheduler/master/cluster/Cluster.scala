@@ -27,7 +27,7 @@ import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 
 final class Cluster(
-  journalMeta: JournalMeta[Event],
+  journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[ClusterState, ClusterEvent],
   conf: ClusterConf,
   journalActorAskTimeout: Timeout,

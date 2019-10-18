@@ -33,9 +33,9 @@ import scala.concurrent.duration.FiniteDuration
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   * @author Joacim Zschimmer
   */
-final class JournalEventWatch[E <: Event](val journalMeta: JournalMeta[E], config: Config)
+final class JournalEventWatch(val journalMeta: JournalMeta, config: Config)
 extends AutoCloseable
-with RealEventWatch[E]
+with RealEventWatch
 with JournalingObserver
 {
   private val keepOpenCount = config.getInt("jobscheduler.journal.watch.keep-open")
@@ -49,7 +49,7 @@ with JournalingObserver
       .toKeyedMap(_.afterEventId)
   private val startedPromise = Promise[this.type]()
   @volatile
-  private var currentEventReaderOption: Option[CurrentEventReader[E]] = None
+  private var currentEventReaderOption: Option[CurrentEventReader[Event]] = None
   private val keepEventsAfter = AtomicLong(EventId.BeforeFirst)
 
   def close() = {
@@ -78,7 +78,7 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      currentEventReaderOption = Some(new CurrentEventReader[E](journalMeta, Some(expectedJournalId), flushedLengthAndEventId, config))
+      currentEventReaderOption = Some(new CurrentEventReader[Event](journalMeta, Some(expectedJournalId), flushedLengthAndEventId, config))
     }
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
@@ -170,7 +170,7 @@ with JournalingObserver
     * @return `Task(None)` torn, `after` < `tornEventId`
     *         `Task(Some(Iterator.empty))` if no events are available for now
     */
-  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
+  def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] = {
     val result = currentEventReaderOption match {
       case Some(current) if current.tornEventId <= after =>
         current.eventsAfter(after)
@@ -183,7 +183,7 @@ with JournalingObserver
 
   override def toString = s"JournalEventWatch(${journalMeta.name})"
 
-  private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] =
+  private def historicEventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] =
     historicJournalFileAfter(after) flatMap { historicJournalFile =>
       var last = after
       historicJournalFile.eventReader.eventsAfter(after) map { events =>
@@ -245,9 +245,9 @@ with JournalingObserver
   private final class HistoricJournalFile(
     val afterEventId: EventId,
     val file: Path,
-    initialEventReader: Option[EventReader[E]] = None)
+    initialEventReader: Option[EventReader] = None)
   {
-    private val _eventReader = AtomicAny[EventReader[E]](initialEventReader.orNull)
+    private val _eventReader = AtomicAny[EventReader](initialEventReader.orNull)
 
     def closeAfterUse(): Unit =
       for (r <- Option(_eventReader.get)) r.closeAfterUse()
@@ -256,10 +256,10 @@ with JournalingObserver
       for (r <- Option(_eventReader.get)) r.close()
 
     @tailrec
-    def eventReader: EventReader[E] =
+    def eventReader: EventReader =
       _eventReader.get match {
         case null =>
-          val r = new HistoricEventReader[E](journalMeta,
+          val r = new HistoricEventReader(journalMeta,
             Some(journalId.getOrElse(throw new IllegalStateException(notYetStarted))),
             tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
@@ -298,7 +298,7 @@ with JournalingObserver
 
   private def currentEventReader = checkedCurrentEventReader.orThrow
 
-  private def checkedCurrentEventReader: Checked[CurrentEventReader[E]] =
+  private def checkedCurrentEventReader: Checked[CurrentEventReader[Event]] =
     currentEventReaderOption.toChecked(Problem(notYetStarted))
 
   private def notYetStarted = s"$toString: Journal is not yet ready"

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 
 object MasterJournalRecoverer
 {
-  def recover(journalMeta: JournalMeta[Event], masterConfiguration: MasterConfiguration): (Recovered[MasterState, Event], ClusterState) = {
+  def recover(journalMeta: JournalMeta, masterConfiguration: MasterConfiguration): (Recovered[MasterState, Event], ClusterState) = {
     var masterStateBuilder: MasterStateBuilder = null
     val recovered = JournaledStateRecoverer.recover[MasterState, Event](
       journalMeta,

@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
-import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import monix.eval.Task
@@ -45,6 +44,6 @@ extends AgentApi
     commandHandler.typedExecute(AgentCommand.GetOrders, meta)
       .map(_.map(_.orders))
 
-  def eventWatchForMaster(masterId: MasterId): Task[Checked[EventWatch[Event]]] =
+  def eventWatchForMaster(masterId: MasterId): Task[Checked[EventWatch]] =
     agentHandle.eventWatch(masterId)
 }

@@ -28,7 +28,7 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.job.{ExecutablePath, JobKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
@@ -156,7 +156,7 @@ private object OrderActorTest {
 
     private val journalMeta = JournalMeta(
       snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
-      eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]),
+      eventJsonCodec = KeyedEvent.typedJsonCodec[Event](KeyedSubtype[OrderEvent]),
       dir / "data" / "state" / "agent")
 
     private val journalActor = actorOf(

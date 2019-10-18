@@ -9,7 +9,6 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor.Command
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.event.EventWatch
-import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.master.MasterId
 import monix.eval.Task
 import scala.concurrent.Promise
@@ -24,9 +23,9 @@ final class AgentHandle(actor: ActorRef)(implicit askTimeout: Timeout) {
   : Unit =
     actor ! AgentActor.Input.ExternalCommand(userId, command, response)
 
-  def eventWatch(masterId: MasterId): Task[Checked[EventWatch[Event]]] =
+  def eventWatch(masterId: MasterId): Task[Checked[EventWatch]] =
     Task.deferFuture(
-      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[Checked[EventWatch[Event]]])
+      (actor ? AgentActor.Input.GetEventWatch(masterId)).mapTo[Checked[EventWatch]])
 
   def overview: Task[AgentOverview] =
     Task.deferFuture(

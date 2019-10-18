@@ -39,7 +39,7 @@ import scala.concurrent.duration._
   */
 trait FatEventRoute extends MasterRouteProvider
 {
-  protected def eventWatch: EventWatch[Event]
+  protected def eventWatch: EventWatch
   protected def masterConfiguration: MasterConfiguration
 
   private implicit val fatScheduler = Scheduler(

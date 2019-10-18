@@ -114,7 +114,7 @@ final class MasterClusterTest extends FreeSpec
       def assertEqualJournalFiles(n: Int): Unit = {
         val journalFiles = listJournalFiles(primary.master.stateDir / "master")
         // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
-        waitForCondition(3.s, 10.ms) { listJournalFiles(backup.master.stateDir / "master").size == journalFiles.size }
+        waitForCondition(9.s, 10.ms) { listJournalFiles(backup.master.stateDir / "master").size == journalFiles.size }
         assert(journalFiles.size == n)
         for (primaryFile <- journalFiles.map(_.file)) {
           withClue(s"$primaryFile: ") {

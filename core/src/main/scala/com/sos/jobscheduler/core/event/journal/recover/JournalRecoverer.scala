@@ -22,12 +22,12 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-trait JournalRecoverer[E <: Event]
+trait JournalRecoverer
 {
-  protected def journalMeta: JournalMeta[E]
+  protected def journalMeta: JournalMeta
   protected def expectedJournalId: Option[JournalId]
   protected def recoverSnapshot: PartialFunction[Any, Unit]
-  protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
+  protected def recoverEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
   protected def onAllSnapshotRecovered(): Unit = {}
 
   private val stopwatch = new Stopwatch
@@ -60,7 +60,7 @@ trait JournalRecoverer[E <: Event]
         }
     }
 
-  private def recoverSnapshots(journalReader: JournalReader[E]): Unit =
+  private def recoverSnapshots(journalReader: JournalReader): Unit =
     for (snapshot <- journalReader.nextSnapshotsWithoutJournalHeader()) {
       wrapException(s"Error recovering snapshot ${snapshot.getClass.scalaName}") {
         snapshotCount += 1
@@ -68,7 +68,7 @@ trait JournalRecoverer[E <: Event]
       }
     }
 
-  private def recoverEvents(journalReader: JournalReader[E]): Unit =
+  private def recoverEvents(journalReader: JournalReader): Unit =
     for (stampedEvent <- journalReader.nextEvents()) {
       wrapException(s"Error while recovering event ${EventId.toString(stampedEvent.eventId)} ${stampedEvent.value.toShortString}") {
         eventCount += 1
@@ -99,7 +99,7 @@ trait JournalRecoverer[E <: Event]
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[E](journalActor, recoveredActors, journalingObserver, expectedJournalId,
+    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, journalingObserver, expectedJournalId,
       recoveredJournalHeader)
 
   final def journalId = maybeJournalHeader.map(_.journalId)

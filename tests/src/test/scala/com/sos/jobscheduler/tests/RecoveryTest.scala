@@ -83,7 +83,7 @@ final class RecoveryTest extends FreeSpec {
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
           val Vector(Stamped(_, _, NoKey <-: AgentEvent.MasterRegistered(MasterId("Master")/*see default master.conf*/, _/*agentRunId*/))) =
-            readEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
+            readAgentEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
@@ -130,12 +130,18 @@ final class RecoveryTest extends FreeSpec {
       for (agent <- agents) agent.injector.instance[ActorSystem].terminate() await 99.s
     }
 
-  private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
+  private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] =
     autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader =>
-      UntilNoneIterator(reader.read).toVector map (_.value) collect {
-        case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) =>
-          json.as[Stamped[KeyedEvent[AgentEvent]]].orThrow
-      }
+      UntilNoneIterator(reader.read).toVector
+        .map(_.value)
+        .collect {
+          case json if AgentEvent.KeyedEventJsonCodec.canDeserialize(json) =>
+            import AgentEvent.KeyedEventJsonCodec
+            json.as[Stamped[KeyedEvent[Event]]].orThrow
+        }
+        .collect {
+          case o @ Stamped(_, _, KeyedEvent(_, _: AgentEvent)) => o.asInstanceOf[Stamped[KeyedEvent[AgentEvent]]]  // Ignore SnapshotTaken
+        }
     }
 }
 

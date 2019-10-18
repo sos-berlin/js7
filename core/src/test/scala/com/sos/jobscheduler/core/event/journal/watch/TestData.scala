@@ -6,8 +6,10 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import java.nio.file.Path
 import java.util.UUID
 import scala.collection.immutable.Seq
@@ -30,26 +32,29 @@ private[watch] object TestData
     Subtype(AEvent),
     Subtype(BEvent))
 
-  val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[TestEvent](
+  val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
+    KeyedSubtype[JournalEvent],
     KeyedSubtype[TestEvent])
 
-  def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta[E], after: EventId, snapshotObjects: Seq[Any]): Path =
-    autoClosing(SnapshotJournalWriter.forTest[E](journalMeta, after = after)) { writer =>
+  def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta, after: EventId, snapshotObjects: Seq[Any]): Path =
+    autoClosing(SnapshotJournalWriter.forTest(journalMeta, after = after)) { writer =>
       writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
         writer.writeSnapshot(ByteString(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
       }
-      writer.endSnapshotSection(sync = false)
+      writer.endSnapshotSection()
+      writer.beginEventSection(sync = false)
+      writer.writeEvent(Stamped(after + 1, NoKey <-: SnapshotTaken))
       writer.file
     }
 
-  def writeJournal[E <: Event](journalMeta: JournalMeta[E], after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[E]]],
+  def writeJournal(journalMeta: JournalMeta, after: EventId, stampedEvents: Seq[Stamped[KeyedEvent[Event]]],
     journalId: JournalId = this.journalId): Path
   =
-    autoClosing(EventJournalWriter.forTest[E](journalMeta, after = after, journalId)) { writer =>
+    autoClosing(EventJournalWriter.forTest(journalMeta, after = after, journalId)) { writer =>
       writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
-      writer.beginEventSection()
+      writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents take 1)
       writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)
       writer.writeEvents(stampedEvents drop 3)

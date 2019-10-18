@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.web
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
+import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
 import com.sos.jobscheduler.agent.data.problems.MasterAgentMismatchProblem
 import com.sos.jobscheduler.agent.tests.AgentTester
 import com.sos.jobscheduler.agent.tests.TestAgentDirectoryProvider._
@@ -13,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalId, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.problems.MasterRequiresUnknownEventIdProblem
 import monix.execution.Scheduler
@@ -31,9 +32,10 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   private val agentClient = AgentClient(agent.localUri).closeWithCloser
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
+  private var snapshotEventId = EventId.BeforeFirst
 
   "(Login)"  in {
-      agentClient.login(Some(TestUserAndPassword)).await(99.s)
+    agentClient.login(Some(TestUserAndPassword)).await(99.s)
   }
 
   "Requesting events of unregistered Master" in {
@@ -50,6 +52,11 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
     val Right(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
+  }
+
+  "AgentReadyForMaster" in {
+    val Right(EventSeq.NonEmpty(events)) = agentClient.mastersEvents(
+      EventRequest[Event](Set(classOf[AgentReadyForMaster]), after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     eventId = events.last.eventId
   }
 
@@ -71,8 +78,15 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   }
 
   "Recoupling with Agent's last events deleted fails" in {
-    // Delete fetched events:
+    // Take snapshot, then delete old journal files
+    snapshotEventId = eventId
     agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
+    val Right(EventSeq.NonEmpty(stampedEvents)) = agentClient.mastersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
+    assert(stampedEvents.size == 1)
+    assert(stampedEvents.head.value.event == JournalEvent.SnapshotTaken)
+    eventId = stampedEvents.head.eventId
+
+    // Delete old journal files
     agentClient.commandExecute(KeepEvents(eventId)).await(99.s).orThrow
 
     assert(agentClient.commandExecute(CoupleMaster(agentRunId, EventId.BeforeFirst)).await(99.s) ==
@@ -101,7 +115,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   "Torn EventSeq" in {
     val Right(TearableEventSeq.Torn(tornEventId)) =
       agentClient.mastersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
-    assert(tornEventId == eventId)
+    assert(tornEventId == snapshotEventId)
   }
 
   "Future event (not used by Master)" in {

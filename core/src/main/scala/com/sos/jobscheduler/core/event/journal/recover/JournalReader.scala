@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReader[E <: Event](journalMeta: JournalMeta[E], expectedJournalId: Option[JournalId], journalFile: Path)
+final class JournalReader(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path)
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
@@ -40,15 +40,15 @@ extends AutoCloseable
 
   private object transaction
   {
-    private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]] = null
+    private var buffer: ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]] = null
     private var next = 0
 
     def begin(): Unit = {
       require(!isInTransaction)
-      buffer = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[E]]]]
+      buffer = new mutable.ArrayBuffer[PositionAnd[Stamped[KeyedEvent[Event]]]]
     }
 
-    def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[E]]]): Unit = {
+    def add(positionAndStamped: PositionAnd[Stamped[KeyedEvent[Event]]]): Unit = {
       require(isInTransaction)
       buffer += positionAndStamped
     }
@@ -62,7 +62,7 @@ extends AutoCloseable
     def clear(): Unit =
       buffer = null
 
-    def readNext(): Stamped[KeyedEvent[E]] = {
+    def readNext(): Stamped[KeyedEvent[Event]] = {
       require(isInTransaction)
       val stamped = buffer(next).value
       if (next > 1) buffer(next - 1) = null  // Keep last event for positionAndEventId, free older entry
@@ -142,10 +142,10 @@ extends AutoCloseable
     transaction.clear()
   }
 
-  def nextEvents(): Iterator[Stamped[KeyedEvent[E]]] =
+  def nextEvents(): Iterator[Stamped[KeyedEvent[Event]]] =
     untilNoneIterator(nextEvent())
 
-  def nextEvent(): Option[Stamped[KeyedEvent[E]]] = {
+  def nextEvent(): Option[Stamped[KeyedEvent[Event]]] = {
     val result =
       if (transaction.isInTransaction)
         Some(readNextCommitted())
@@ -157,7 +157,7 @@ extends AutoCloseable
     result
   }
 
-  private def nextEvent2(): Option[Stamped[KeyedEvent[E]]] =
+  private def nextEvent2(): Option[Stamped[KeyedEvent[Event]]] =
     if (!eventHeaderRead)
       jsonReader.read() match {
         case Some(PositionAnd(_, EventHeader)) =>
@@ -172,7 +172,7 @@ extends AutoCloseable
       nextEvent3()
 
   @tailrec
-  private def nextEvent3(): Option[Stamped[KeyedEvent[E]]] =
+  private def nextEvent3(): Option[Stamped[KeyedEvent[Event]]] =
     jsonReader.read() match {
       case None => None
       case Some(positionAndJson) =>
@@ -224,13 +224,13 @@ extends AutoCloseable
         }
     }
 
-  private def readNextCommitted(): Stamped[KeyedEvent[E]] =
+  private def readNextCommitted(): Stamped[KeyedEvent[Event]] =
     transaction.readNext()
 
   private def deserialize(json: Json) = {
     import journalMeta.eventJsonCodec
     intelliJuseImport(eventJsonCodec)
-    json.as[Stamped[KeyedEvent[E]]].toChecked.orThrow
+    json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
   }
 
   def eventId = positionAndEventId.value

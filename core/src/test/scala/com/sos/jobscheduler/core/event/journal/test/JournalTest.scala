@@ -26,7 +26,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
     withTestActor() { (actorSystem, actor) =>
       for ((key, cmd) <- testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
       assert(journalAggregates.isEmpty)
-      assert(journalKeyedEvents == testEvents("TEST"))
+      assert(journalKeyedTestEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"))
@@ -42,7 +42,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"))
 
-      execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s  // 1000066
+      execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s  // 1000068
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       assert({
@@ -55,13 +55,13 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
         TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD")))
-      assert(journalKeyedEvents.isEmpty)
+      assert(journalKeyedTestEvents.isEmpty)
 
       assert(journalJsons(directory / "test--0.journal") == FirstJournal)  // Archived journal for history
 
       execute(actorSystem, actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
-    assert(journalFileNames == Vector("test--0.journal", "test--1000065.journal", "test--1000066.journal"))
+    assert(journalFileNames == Vector("test--0.journal", "test--1000066.journal", "test--1000068.journal"))
   }
 
   "Third run, recovering from journal, no events" in {
@@ -73,9 +73,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
     assert(journalFileNames.length == 4)
   }
 
-  "After adding no events, journal file is reused (rewritten) because of unchanged after-EventId" in {
+  "With each snapshot a JournalWritten event is written to increment the EventId and force a new journal file" in {
     withTestActor() { (_, _) => }
-    assert(journalFileNames.length == 4)  // Unchanged
+    assert(journalFileNames.length == 5)
   }
 
   "acceptEarly" in {
@@ -95,7 +95,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ACc"))
     }
-    assert(journalFileNames.length == 4)  // Unchanged
+    assert(journalFileNames.length == 6)
   }
 
   "Massive parallel" - {
@@ -117,7 +117,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         (executed ++ disturbed) await 99.s
         info(s"$n actors, event-buffer-size=$eventBufferSize " + stopwatch.itemsPerSecondString(n, "commands"))
         assert(journalAggregates.isEmpty)
-        val prefixToKeyedEvents = journalKeyedEvents groupBy { _.key.split("-").head }
+        val prefixToKeyedEvents = journalKeyedTestEvents groupBy { _.key.split("-").head }
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
         for (p <- prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
@@ -178,77 +178,78 @@ object JournalTest {
     json""""-------SNAPSHOT-------"""",
     json""""-------END OF SNAPSHOT-------"""",
     json""""-------EVENTS-------"""",
-    json"""{ "eventId": 1000000, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
+    json"""{ "eventId": 1000000, "TYPE": "SnapshotTaken" }""",
+    json"""{ "eventId": 1000001, "key": "TEST-A", "TYPE": "Added", "string": "(A.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-    json"""{ "eventId": 1000001, "key": "TEST-B", "TYPE": "Added", "string": "(B.Add)",
+    json"""{ "eventId": 1000002, "key": "TEST-B", "TYPE": "Added", "string": "(B.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
-    json"""{ "eventId": 1000002, "key": "TEST-C", "TYPE": "Added", "string": "(C.Add)",
+    json"""{ "eventId": 1000003, "key": "TEST-C", "TYPE": "Added", "string": "(C.Add)",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json""""TRANSACTION"""",
-    json"""{ "eventId": 1000003, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-    json"""{ "eventId": 1000004, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000005, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-    json"""{ "eventId": 1000006, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000007, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000004, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000005, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000006, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000007, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
     json"""{ "eventId": 1000008, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-    json"""{ "eventId": 1000009, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000010, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000011, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000012, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000009, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000010, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000011, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000012, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000013, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
     json""""COMMIT"""",
-    json"""{ "eventId": 1000013, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-    json"""{ "eventId": 1000014, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000015, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-    json"""{ "eventId": 1000016, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000017, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000014, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000015, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000016, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000017, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
     json"""{ "eventId": 1000018, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-    json"""{ "eventId": 1000019, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000020, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000021, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000022, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000023, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-    json"""{ "eventId": 1000024, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
-    json"""{ "eventId": 1000025, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000026, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
-    json"""{ "eventId": 1000027, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-    json"""{ "eventId": 1000028, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-    json"""{ "eventId": 1000029, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000030, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-    json"""{ "eventId": 1000031, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000032, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000019, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000020, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000021, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000022, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000023, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000024, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000025, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
+    json"""{ "eventId": 1000026, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000027, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
+    json"""{ "eventId": 1000028, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000029, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000030, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000031, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000032, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
     json"""{ "eventId": 1000033, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-    json"""{ "eventId": 1000034, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000035, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000036, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000037, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
-    json"""{ "eventId": 1000038, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000039, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-    json"""{ "eventId": 1000040, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
-    json"""{ "eventId": 1000041, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000042, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000043, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-    json"""{ "eventId": 1000044, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
-    json"""{ "eventId": 1000045, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000046, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
-    json"""{ "eventId": 1000047, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000048, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000034, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000035, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000036, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000037, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000038, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
+    json"""{ "eventId": 1000039, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000040, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000041, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
+    json"""{ "eventId": 1000042, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000043, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000044, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000045, "key": "TEST-A", "TYPE": "Appended", "char": "(" }""",
+    json"""{ "eventId": 1000046, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000047, "key": "TEST-A", "TYPE": "Appended", "char": "." }""",
+    json"""{ "eventId": 1000048, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
     json"""{ "eventId": 1000049, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
-    json"""{ "eventId": 1000050, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000051, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000052, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000053, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
-    json"""{ "eventId": 1000054, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000055, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-    json"""{ "eventId": 1000056, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
-    json"""{ "eventId": 1000057, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
-    json"""{ "eventId": 1000058, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
-    json"""{ "eventId": 1000059, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
-    json"""{ "eventId": 1000060, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
-    json"""{ "eventId": 1000061, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
-    json"""{ "eventId": 1000062, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
-    json"""{ "eventId": 1000063, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
-    json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
-    json"""{ "eventId": 1000065, "key": "TEST-B", "TYPE": "Removed" }""",
+    json"""{ "eventId": 1000050, "key": "TEST-A", "TYPE": "Appended", "char": "p" }""",
+    json"""{ "eventId": 1000051, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000052, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000053, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000054, "key": "TEST-A", "TYPE": "Appended", "char": "N" }""",
+    json"""{ "eventId": 1000055, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000056, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000057, "key": "TEST-A", "TYPE": "Appended", "char": "t" }""",
+    json"""{ "eventId": 1000058, "key": "TEST-A", "TYPE": "Appended", "char": "e" }""",
+    json"""{ "eventId": 1000059, "key": "TEST-A", "TYPE": "Appended", "char": "d" }""",
+    json"""{ "eventId": 1000060, "key": "TEST-A", "TYPE": "Appended", "char": "A" }""",
+    json"""{ "eventId": 1000061, "key": "TEST-A", "TYPE": "Appended", "char": "s" }""",
+    json"""{ "eventId": 1000062, "key": "TEST-A", "TYPE": "Appended", "char": "y" }""",
+    json"""{ "eventId": 1000063, "key": "TEST-A", "TYPE": "Appended", "char": "n" }""",
+    json"""{ "eventId": 1000064, "key": "TEST-A", "TYPE": "Appended", "char": "c" }""",
+    json"""{ "eventId": 1000065, "key": "TEST-A", "TYPE": "Appended", "char": ")" }""",
+    json"""{ "eventId": 1000066, "key": "TEST-B", "TYPE": "Removed" }""",
     json""""-------END OF EVENTS-------"""",
   )
 
@@ -259,8 +260,8 @@ object JournalTest {
       "softwareVersion": "2.0.0-SNAPSHOT",
       "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
-      "eventId": 1000066,
-      "totalEventCount": 67,
+      "eventId": 1000068,
+      "totalEventCount": 69,
       "startedAt" : "STARTED-AT",
       "totalRunningTime" : 3600,
        "timestamp": "TIMESTAMP"
@@ -273,5 +274,7 @@ object JournalTest {
     json"""{ "TYPE": "TestAggregate", "key": "TEST-D", "string": "DDD",
       "a": "X", "b": "X", "c": "X", "d": "X", "e": "X", "f": "X", "g": "X", "h": "X", "i": "X", "j": "X", "k": "X", "l": "X", "m": "X", "n": "X", "o": "X", "p": "X", "q": "X", "r": "X" }""",
     json""""-------END OF SNAPSHOT-------"""",
-    json""""-------EVENTS-------"""")
+    json""""-------EVENTS-------"""",
+    json"""{ "eventId": 1000069, "TYPE": "SnapshotTaken" }""",
+  )
 }

@@ -24,7 +24,7 @@ import com.sos.jobscheduler.core.event.journal.watch.TestData.{writeJournal, wri
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.core.problems.ReverseKeepEventsProblem
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import io.circe._
 import io.circe.syntax._
 import java.nio.file.Files
@@ -201,9 +201,10 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
 
     "Second onJournalingStarted (snapshot)" in {
       withJournalMeta { journalMeta =>
-        autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
-          autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch))) { writer =>
-            writer.beginEventSection()
+        autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+          autoClosing(EventJournalWriter.forTest(journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch))) { writer =>
+            writer.beginEventSection(sync = false)
+            writer.onJournalingStarted()
             val stampedSeq =
               Stamped(1, "1" <-: A1) ::
               Stamped(2, "1" <-: B1) ::
@@ -215,8 +216,9 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
           }
           assert(eventWatch.historicFileEventIds == Set[EventId]())
 
-          autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = 3, journalId, Some(eventWatch))) { writer =>
-            writer.beginEventSection()
+          autoClosing(EventJournalWriter.forTest(journalMeta, after = 3, journalId, Some(eventWatch))) { writer =>
+            writer.beginEventSection(sync = false)
+            writer.onJournalingStarted()
             val stampedSeq =
               Stamped(4, "2" <-: A2) ::
               Stamped(5, "1" <-: B2) :: Nil
@@ -289,11 +291,11 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
     withJournalMeta { journalMeta_ =>
       val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
 
-      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
         writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
-        autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
-          writer.beginEventSection()  // Notifies eventWatch about this journal file
+        autoClosing(EventJournalWriter.forTest(journalMeta, after = EventId.BeforeFirst, journalId, Some(eventWatch), withoutSnapshots = false)) { writer =>
+          writer.onJournalingStarted()  // Notifies eventWatch about this journal file
 
           val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
           assert(eventId == EventId.BeforeFirst)
@@ -306,7 +308,7 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       val snapshotObjects = List[Any](ASnapshot("ONE"), ASnapshot("TWO"))
       val after = EventId(100)
       val file = writeJournalSnapshot(journalMeta, after = after, snapshotObjects)
-      autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         eventWatch.onJournalingStarted(journalMeta.file(after), PositionAnd(Files.size(file), after), journalId)
         locally {
           val Some((eventId, iterator)) = eventWatch.snapshotObjectsFor(EventId.BeforeFirst)
@@ -357,24 +359,24 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, n = 2)
       waitForCondition(99.s, 10.ms) { jsons.size == 4 }
-      assert(jsons(2).as[Stamped[KeyedEvent[MyEvent]]] == Right(Stamped(1, "1" <-: A1)))
-      assert(jsons(3).as[Stamped[KeyedEvent[MyEvent]]] == Right(Stamped(2, "2" <-: B1)))
+      assert(jsons(2).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(1, "1" <-: A1)))
+      assert(jsons(3).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(2, "2" <-: B1)))
 
       writer.writeEvents(Stamped(3, "3" <-: A1) :: Nil)
       writer.flush(sync = false)  // TODO Flush sollte hier nicht erforderlich sein!
       writer.onCommitted(writer.fileLengthAndEventId, 1)
       waitForCondition(99.s, 10.ms) { jsons.size == 5 }
-      assert(jsons(4).as[Stamped[KeyedEvent[MyEvent]]] == Right(Stamped(3, "3" <-: A1)))
+      assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3, "3" <-: A1)))
     }
   }
 
-  private def withJournalEventWatch(lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) => Unit): Unit = {
+  private def withJournalEventWatch(lastEventId: EventId)(body: (EventJournalWriter, JournalEventWatch) => Unit): Unit = {
     withJournalMeta { journalMeta =>
       withJournal(journalMeta, lastEventId)(body)
     }
   }
 
-  private def withJournalMeta(body: JournalMeta[MyEvent] => Unit): Unit =
+  private def withJournalMeta(body: JournalMeta => Unit): Unit =
     withTemporaryDirectory("JournalEventWatchTest") { directory =>
       val journalMeta = JournalMeta(
         TypedJsonCodec(),  // No snapshots
@@ -383,11 +385,12 @@ final class JournalEventWatchTest extends FreeSpec with BeforeAndAfterAll
       body(journalMeta)
     }
 
-  private def withJournal(journalMeta: JournalMeta[MyEvent], lastEventId: EventId)(body: (EventJournalWriter[MyEvent], JournalEventWatch[MyEvent]) => Unit): Unit =
-    autoClosing(new JournalEventWatch[MyEvent](journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
-      autoClosing(EventJournalWriter.forTest[MyEvent](journalMeta, after = lastEventId, journalId, Some(eventWatch))) { writer =>
+  private def withJournal(journalMeta: JournalMeta, lastEventId: EventId)(body: (EventJournalWriter, JournalEventWatch) => Unit): Unit =
+    autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
+      autoClosing(EventJournalWriter.forTest(journalMeta, after = lastEventId, journalId, Some(eventWatch))) { writer =>
         writer.writeHeader(JournalHeader.forTest(journalId, eventId = lastEventId))
-        writer.beginEventSection()
+        writer.beginEventSection(sync = false)
+        writer.onJournalingStarted()
         body(writer, eventWatch)
         writer.endEventSection(sync = false)
       }
@@ -398,12 +401,12 @@ private object JournalEventWatchTest
 {
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 
-  private val MyEvents1: List[Stamped[KeyedEvent[MyEvent]]] =
+  private val MyEvents1: List[Stamped[KeyedEvent[Event]]] =
     Stamped(110, "A1" <-: A1) ::
     Stamped(120, "A2" <-: A2) ::
     Nil
 
-  private val MyEvents2: List[Stamped[KeyedEvent[MyEvent]]] =
+  private val MyEvents2: List[Stamped[KeyedEvent[Event]]] =
     Stamped(210, "B1" <-: B1) ::
     Stamped(220, "B2" <-: B2) ::
     Nil
@@ -429,7 +432,8 @@ private object JournalEventWatchTest
   private implicit val B1Codec = CirceUtils.singletonCodec(B1)
   private implicit val B2Codec = CirceUtils.singletonCodec(B2)
 
-  private implicit val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[MyEvent](
+  private implicit val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](
+    KeyedSubtype[JournalEvent],
     KeyedSubtype.singleEvent[A1.type],
     KeyedSubtype.singleEvent[A2.type],
     KeyedSubtype.singleEvent[B1.type],

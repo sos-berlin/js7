@@ -16,7 +16,7 @@ import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{JournalEvent, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
@@ -28,10 +28,10 @@ import shapeless.tag.@@
   * @author Joacim Zschimmer
   */
 private final class OrderJournalRecoverer(
-  protected val journalMeta: JournalMeta[Event],
+  protected val journalMeta: JournalMeta,
   journalId: JournalId,
   agentConfiguration: AgentConfiguration)
-extends JournalRecoverer[Event] {
+extends JournalRecoverer {
 
   protected val expectedJournalId = Some(journalId)
 
@@ -60,6 +60,8 @@ extends JournalRecoverer[Event] {
       handleEvent(orderId, event)
 
     case Stamped(_, _, KeyedEvent(_, _: AgentMasterEvent.AgentReadyForMaster)) =>
+
+    case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
   }
 
   private def handleEvent(orderId: OrderId, event: OrderEvent) =
@@ -107,7 +109,7 @@ extends JournalRecoverer[Event] {
 
 private[agent] object OrderJournalRecoverer
 {
-  def recover(journalMeta: JournalMeta[Event], journalId: JournalId, agentConfiguration: AgentConfiguration): Recovered = {
+  def recover(journalMeta: JournalMeta, journalId: JournalId, agentConfiguration: AgentConfiguration): Recovered = {
     val recoverer = new OrderJournalRecoverer(journalMeta, journalId, agentConfiguration)
     recoverer.recoverAll()
     recoverer.result(agentConfiguration.config)
@@ -119,7 +121,7 @@ private[agent] object OrderJournalRecoverer
     lazy val eventWatch = new JournalEventWatch(recoverer.journalMeta, config)
       .closeWithCloser
 
-    def journalMeta: JournalMeta[Event] =
+    def journalMeta: JournalMeta =
       recoverer.journalMeta
 
     def agentState: AgentState =

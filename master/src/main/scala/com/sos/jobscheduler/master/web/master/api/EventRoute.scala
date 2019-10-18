@@ -16,7 +16,7 @@ import monix.eval.Task
   */
 trait EventRoute extends MasterRouteProvider with GenericEventRoute
 {
-  protected def eventWatch: EventWatch[Event]
+  protected def eventWatch: EventWatch
 
   protected final lazy val eventRoute = new GenericEventRouteProvider {
     def keyedEventTypedJsonCodec = MasterKeyedEventJsonCodec

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.HistoricEventReaderTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestEvent, TestKeyedEventJsonCodec, journalId}
+import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, BEvent, TestKeyedEventJsonCodec, journalId}
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter
 import com.sos.jobscheduler.data.event.Stamped
 import org.scalatest.FreeSpec
@@ -18,11 +18,11 @@ final class HistoricEventReaderTest extends FreeSpec
 {
   "eventsAfter" in {
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>
-      val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
+      val journalMeta = JournalMeta(TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
-      autoClosing(EventJournalWriter.forTest[TestEvent](journalMeta, after = After, journalId)) { writer =>
+      autoClosing(EventJournalWriter.forTest(journalMeta, after = After, journalId)) { writer =>
         writer.writeHeader(JournalHeader.forTest(journalId, eventId = After))
-        writer.beginEventSection()
+        writer.beginEventSection(sync = false)
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)
       }

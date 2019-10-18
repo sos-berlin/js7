@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.core.event.journal.write
 
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import java.text.NumberFormat
 import java.util.Locale
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class EventStatisticsCounter extends StatisticsCounter
+private[journal] final class EventStatisticsCounter(initialEventCount: Int) extends StatisticsCounter
 {
-  private var events = 0
+  private var events = initialEventCount
   private var commits = 0
 
   def countEventsToBeCommitted(eventCount: Int): Unit =

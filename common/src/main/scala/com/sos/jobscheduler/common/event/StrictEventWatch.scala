@@ -18,69 +18,69 @@ import scala.reflect.runtime.universe._
   *
   * @author Joacim Zschimmer
   */
-final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
+final class StrictEventWatch(eventWatch: EventWatch)
 {
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = (_: KeyedEvent[E1]) => true, onlyLastOfChunk: Boolean)
-  : Observable[Stamped[KeyedEvent[E1]]]
+  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true, onlyLastOfChunk: Boolean)
+  : Observable[Stamped[KeyedEvent[E]]]
   = eventWatch.observe(request, predicate, onlyLastOfChunk)
 
-  def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
+  def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
   = delegate(_.read(request, predicate))
 
-  def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
+  def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
   = delegate(_.when(request, predicate))
 
-  def whenAny[E1 <: E](
-    request: EventRequest[E1],
-    eventClasses: Set[Class[_ <: E1]],
-    predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E1]]]
-  = delegate(_.whenAny[E1](request, eventClasses, predicate))
+  def whenAny[E <: Event](
+    request: EventRequest[E],
+    eventClasses: Set[Class[_ <: E]],
+    predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
+  = delegate(_.whenAny[E](request, eventClasses, predicate))
 
-  def byKey[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[TearableEventSeq[Seq, E1]]
+  def byKey[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[TearableEventSeq[Seq, E]]
   = delegate(_.byKey(request, key, predicate))
 
-  def whenKeyedEvent[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[E1]
+  def whenKeyedEvent[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[E]
   = eventWatch.whenKeyedEvent(request, key, predicate)
 
-  def whenKey[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[TearableEventSeq[Seq, E1]]
+  def whenKey[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[TearableEventSeq[Seq, E]]
   = delegate(_.whenKey(request, key, predicate))
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag](
-    predicate: KeyedEvent[E1] => Boolean = Every,
+  def await[E <: Event: ClassTag](
+    predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.seconds)
-    (implicit s: Scheduler, E1: TypeTag[E1])
-  : Vector[Stamped[KeyedEvent[E1]]]
+    (implicit s: Scheduler, E: TypeTag[E])
+  : Vector[Stamped[KeyedEvent[E]]]
   = eventWatch.await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E1 <: E: ClassTag: TypeTag](key: E1#Key)(implicit s: Scheduler): Seq[E1] =
-    keyedEvents[E1] collect {
+  def keyedEvents[E <: Event: ClassTag: TypeTag](key: E#Key)(implicit s: Scheduler): Seq[E] =
+    keyedEvents[E] collect {
       case o if o.key == key => o.event
     }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E1 <: E: ClassTag: TypeTag](implicit s: Scheduler): Seq[KeyedEvent[E1]] =
-    eventWatch.all[E1].strict match {
+  def keyedEvents[E <: Event: ClassTag: TypeTag](implicit s: Scheduler): Seq[KeyedEvent[E]] =
+    eventWatch.all[E].strict match {
       case EventSeq.NonEmpty(stamped) => stamped map (_.value)
       case EventSeq.Empty(_) => Nil
       case TearableEventSeq.Torn(eventId) => throw new TornException(after = EventId(0), tornEventId = eventId)
@@ -88,11 +88,11 @@ final class StrictEventWatch[E <: Event](eventWatch: EventWatch[E])
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag](implicit s: Scheduler, E1: TypeTag[E1]): TearableEventSeq[Seq, KeyedEvent[E1]] =
-    eventWatch.all[E1].strict
+  def all[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E]): TearableEventSeq[Seq, KeyedEvent[E]] =
+    eventWatch.all[E].strict
 
   @inline
-  private def delegate[A](body: EventWatch[E] => Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
+  private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
     body(eventWatch) map (_.strict)
 
   def tornEventId = eventWatch.tornEventId

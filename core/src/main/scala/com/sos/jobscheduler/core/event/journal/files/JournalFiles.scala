@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.EventId
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Path}
 import scala.collection.JavaConverters._
@@ -34,7 +34,7 @@ object JournalFiles
       }
   }
 
-  implicit final class JournalMetaOps[E <: Event](private val underlying: JournalMeta[E]) extends AnyVal
+  implicit final class JournalMetaOps(private val underlying: JournalMeta) extends AnyVal
   {
     def file(after: EventId): Path =
       JournalFile.toFile(underlying.fileBase, after)

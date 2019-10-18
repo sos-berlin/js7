@@ -18,17 +18,17 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-private[watch] class FileEventIterator[E <: Event](
-  journalMeta: JournalMeta[E],
+private[watch] class FileEventIterator(
+  journalMeta: JournalMeta,
   val journalFile: Path,
   expectedJournalId: Option[JournalId],
   tornEventId: EventId,
   committedLength: () => Long)
-extends CloseableIterator[Stamped[KeyedEvent[E]]]
+extends CloseableIterator[Stamped[KeyedEvent[Event]]]
 {
   private val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
   private val journalReader = new JournalReader(journalMeta, expectedJournalId, journalFile)
-  private var nextEvent: Stamped[KeyedEvent[E]] = null
+  private var nextEvent: Stamped[KeyedEvent[Event]] = null
   private var closed = false
 
   closeOnError(journalReader) {
@@ -75,7 +75,7 @@ extends CloseableIterator[Stamped[KeyedEvent[E]]]
       nextEvent != null
     }
 
-  final def next(): Stamped[KeyedEvent[E]] =
+  final def next(): Stamped[KeyedEvent[Event]] =
     if (nextEvent != null) {
       val r = nextEvent
       nextEvent = null

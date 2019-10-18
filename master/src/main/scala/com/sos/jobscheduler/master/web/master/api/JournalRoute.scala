@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.http.JsonStreamingSupport.`application/x-ndjs
 import com.sos.jobscheduler.common.http.StreamingSupport._
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators
-import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.web.common.MasterRouteProvider
 import com.sos.jobscheduler.master.web.master.api.JournalRoute._
 import monix.execution.Scheduler
@@ -28,7 +28,7 @@ import monix.execution.Scheduler
   */
 trait JournalRoute extends MasterRouteProvider
 {
-  protected def eventWatch: EventWatch[Event]
+  protected def eventWatch: EventWatch
   protected def scheduler: Scheduler
 
   private lazy val defaultJsonSeqChunkTimeout = config.getDuration("jobscheduler.webserver.event.streaming.chunk-timeout").toFiniteDuration

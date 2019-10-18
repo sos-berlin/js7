@@ -21,7 +21,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.test.TestData.testJournalMeta
 import com.sos.jobscheduler.core.event.journal.test.TestJournalMixin._
 import com.sos.jobscheduler.core.event.journal.test.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.typesafe.config.{Config, ConfigFactory}
 import io.circe.Json
 import io.circe.syntax.EncoderOps
@@ -115,11 +115,13 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     promise.future
   }
 
-  protected final def journalKeyedEvents =
-    journalJsons collect {
-      case o if TestKeyedEventJsonCodec canDeserialize o =>
-        o.as[Stamped[KeyedEvent[TestEvent]]].map(_.value).orThrow
-    }
+  protected final def journalKeyedTestEvents: Vector[KeyedEvent[TestEvent]] =
+    journalJsons
+      .collect {
+        case o if TestKeyedEventJsonCodec canDeserialize o =>
+          o.as[Stamped[KeyedEvent[Event]]].map(_.value).orThrow
+      }
+      .collect { case KeyedEvent(k: String, e: TestEvent) => k <-: e }  // Ignore JournalEvent.SnapshotTaken
 
   protected final def journalAggregates =
     (journalJsons collect {

@@ -21,7 +21,7 @@ import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistenceTest._
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import com.typesafe.config.ConfigFactory
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
@@ -54,13 +54,12 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
   private val keys = for (o <- 'A' to 'D') yield NumberKey(o.toString)
   private val expectedThingCollection = NumberThingCollection(
     Vector(
-        NumberThing(NumberKey("ONE"), 0),
-        NumberThing(NumberKey("TWO"), 0))
-      .toKeyedMap(_.key) ++
-    keys.toVector
-      .map(key => key -> NumberThing(key, n * 1000))
-      .toMap)
-
+      NumberThing(NumberKey("ONE"), 0),
+      NumberThing(NumberKey("TWO"), 0)
+    ).toKeyedMap(_.key) ++
+      keys.toVector
+        .map(key => key -> NumberThing(key, n * 1000))
+        .toMap)
 
   "First run" - {
     lazy val runningPersistence = new RunningPersistence
@@ -98,7 +97,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
     }
 
     "currentState" in {
-      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 1 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -115,7 +114,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
     }
 
     "currentState" in {
-      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 1 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 3 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -137,10 +136,9 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
         JournaledStatePersistenceTest.this.journalMeta,
         () => TestStateBuilder,
         JournalEventWatch.TestConfig)
-      implicit val a = actorSystem
-      val persistence = new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
-      persistence
+      implicit val a = actorSystem
+      new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
     }
 
     def stop() = {
@@ -174,9 +172,11 @@ private object JournaledStatePersistenceTest
     def onAllSnapshotsAdded(): Unit =
       _state = TestState(EventId.BeforeFirst, NumberThingCollection(numberThings.toMap))
 
-    def addEvent: PartialFunction[Stamped[KeyedEvent[TestEvent]], Unit] = {
+    def addEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {
       case Stamped(_, _, KeyedEvent(k: NumberKey, e: NumberEvent)) =>
         _state = _state.applyEvent(k <-: e).orThrow
+
+      case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
     }
 
     def state(eventId: EventId) =
@@ -184,7 +184,7 @@ private object JournaledStatePersistenceTest
   }
 
   private def testJournalMeta(fileBase: Path) =
-    new JournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec, fileBase)
+    new JournalMeta(SnapshotJsonFormat, TestKeyedEventJsonCodec, fileBase)
 
   final case class NumberThing(key: NumberKey, number: Int) {
     def update(event: NumberEvent): Checked[NumberThing] =
@@ -280,7 +280,8 @@ private object JournaledStatePersistenceTest
     Subtype(deriveCodec[NumberThing]),
     Subtype(deriveCodec[StringThing]))
 
-  private implicit val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[TestEvent](
+  private implicit val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
+    KeyedSubtype[JournalEvent],
     KeyedSubtype[NumberEvent])
 
   implicit val jsonFormat = TypedJsonCodec[TestEvent](

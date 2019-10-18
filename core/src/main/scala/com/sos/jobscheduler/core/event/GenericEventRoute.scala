@@ -64,7 +64,7 @@ trait GenericEventRoute extends RouteProvider
   {
     implicit protected def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event]
 
-    protected def eventWatchFor(user: Session#User): Task[Checked[EventWatch[Event]]]
+    protected def eventWatchFor(user: Session#User): Task[Checked[EventWatch]]
 
     protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
 
@@ -116,7 +116,7 @@ trait GenericEventRoute extends RouteProvider
         }
       }
 
-    private def oneShot(eventWatch: EventWatch[Event]): Route =
+    private def oneShot(eventWatch: EventWatch): Route =
       eventDirective(eventWatch.lastAddedEventId) { request =>
         intelliJuseImport(jsonOrYamlMarshaller)
         completeTask(
@@ -133,7 +133,7 @@ trait GenericEventRoute extends RouteProvider
           })
       }
 
-    private def jsonSeqEvents(eventWatch: EventWatch[Event], streamingSupport: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch, streamingSupport: JsonEntityStreamingSupport): Route =
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
         parameter("eventIdOnly" ? false) { eventIdOnly =>
           def myPredicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
@@ -179,7 +179,7 @@ trait GenericEventRoute extends RouteProvider
         }
       }
 
-    private def serverSentEvents(eventWatch: EventWatch[Event]): Route =
+    private def serverSentEvents(eventWatch: EventWatch): Route =
       parameter("v" ? BuildInfo.buildId) { requestedBuildId =>
         if (requestedBuildId != BuildInfo.buildId)
           complete(HttpEntity(

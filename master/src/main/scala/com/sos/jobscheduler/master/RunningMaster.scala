@@ -72,7 +72,7 @@ import shapeless.tag.@@
  * @author Joacim Zschimmer
  */
 final class RunningMaster private(
-  val eventWatch: StrictEventWatch[Event],
+  val eventWatch: StrictEventWatch,
   commandExecutor: MasterCommandExecutor,
   webServer: MasterWebServer,
   val fileBasedApi: MainFileBasedApi,

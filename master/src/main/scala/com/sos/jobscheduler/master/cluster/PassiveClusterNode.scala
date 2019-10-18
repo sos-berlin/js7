@@ -3,29 +3,29 @@ package com.sos.jobscheduler.master.cluster
 import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
-import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{EndOfJournalFileMarker, EventHeader}
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EndOfJournalFileMarker
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.Recovered
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
+import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
 import com.sos.jobscheduler.master.data.MasterCommand
-import io.circe.Json
 import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
 import java.nio.file.Files.move
@@ -43,8 +43,8 @@ import scodec.bits.ByteVector
 final class PassiveClusterNode private(
   myNodeId: ClusterNodeId,
   activeUri: Uri,
-  journalMeta: JournalMeta[Event],
-  eventWatch: JournalEventWatch[Event],
+  journalMeta: JournalMeta,
+  eventWatch: JournalEventWatch,
   recouplingStreamReaderConf: RecouplingStreamReaderConf)
   (implicit actorSystem: ActorSystem)
 {
@@ -97,7 +97,7 @@ final class PassiveClusterNode private(
     recoveredPositionAndFile: PositionAnd[Path],
     recoveredEventId: EventId,
     masterApi: HttpMasterApi,
-    eventWatch: JournalEventWatch[Event])
+    eventWatch: JournalEventWatch)
     (implicit scheduler: Scheduler)
   : Task[ClusterFollowUp.Terminate.type]
   = {
@@ -112,7 +112,7 @@ final class PassiveClusterNode private(
     positionAndFile: PositionAnd[Path],
     eventId: EventId,
     masterApi: HttpMasterApi,
-    eventWatch: JournalEventWatch[Event])
+    eventWatch: JournalEventWatch)
     (implicit scheduler: Scheduler)
   : Task[(JournalId, EventId)]
   =
@@ -122,6 +122,7 @@ final class PassiveClusterNode private(
       lazy val continueReplicatingMsg = s"Continue replicating events into journal file ${file.getName()}"
       assert(recoveredJournalId.isEmpty == (fileLengthAndEventId == PositionAnd(0L, EventId.BeforeFirst)))
       var isReplicatingSnapshotSection = fileLengthAndEventId.position == 0
+      var inTransaction = false
       val maybeTmpFile = isReplicatingSnapshotSection ? Paths.get(file.toString + TmpSuffix)
       maybeTmpFile match {
         case Some(tmpFile) => logger.info(s"Replicating snapshot into journal file ${tmpFile.getName()}")
@@ -135,9 +136,8 @@ final class PassiveClusterNode private(
       var eof = false
       var replicatedLength = 0L
       observeJournalFile(masterApi, fileEventId = fileLengthAndEventId.value, position = fileLengthAndEventId.position,
-        pos => eof && pos >= replicatedLength)
-        //.takeWhile(_ != MasterUris.EndOfJournalFileMarker)  // End of stream means timeout, so end of file is specially marked
-        .scan((0L, ByteVector.empty))((s, line) => (s._1 + line.length, line))
+        pos => eof && pos >= replicatedLength
+      ).scan((0L, ByteVector.empty))((s, line) => (s._1 + line.length, line))
         .flatMap { case (fileLength, line) =>
           if (line == EndOfJournalFileMarker) {
             eof = true
@@ -145,11 +145,8 @@ final class PassiveClusterNode private(
           } else {
             replicatedLength = fileLength
             out.write(line.toByteBuffer)
-            val json = line.utf8String.parseJsonChecked.orThrow
-            for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
-              lastEventId = eventId
-            }
-            for (tmpFile <- maybeTmpFile if isReplicatingSnapshotSection && json == EventHeader) {
+            val json = line.decodeUtf8.orThrow.parseJsonChecked.orThrow
+            for (tmpFile <- maybeTmpFile if isReplicatingSnapshotSection && json.asObject.flatMap(_(TypedJsonCodec.TypeFieldName)).contains(SnapshotTaken.TypeNameJson)) {
               isReplicatingSnapshotSection = false
               out.close()
               move(tmpFile, file, ATOMIC_MOVE)
@@ -159,24 +156,26 @@ final class PassiveClusterNode private(
             }
             if (isReplicatingSnapshotSection) {
               if (replicatedJournalId.isEmpty) {
-                for (
-                  o <- json.asObject if o("TYPE") contains Json.fromString("JobScheduler.Journal");
-                  journalId <- Json.fromJsonObject(o).as[JournalHeader].map(_.journalId))
-                {
-                  replicatedJournalId := journalId
-                }
+                // The first line must be a JournalHeader
+                replicatedJournalId := json.as[JournalHeader].map(_.journalId).orThrow
               }
             } else {
               eventWatch.onFileWritten(fileLength)
-              for (
-                o <- json.asObject;
-                eventIdJson <- o("eventId");
-                eventIdNumber <- eventIdJson.asNumber;
-                eventId <- eventIdNumber.toLong.toChecked(Problem(s"Not a long integer: eventId=$eventIdNumber")))
-              {
-                // TODO Transaktion berücksichtigen
-                //  Klasse mit JournalFile-Zustand, die auch von EventReader genutzt werden kann
-                eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
+              for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
+                lastEventId = eventId
+                if (!inTransaction) {
+                  // TODO Transaktion berücksichtigen
+                  //  Klasse mit JournalFile-Zustand, die auch von JournalReader genutzt werden kann
+                  //logger.debug(s"### eventWatch.onEventsCommitted(PositionAnd($fileLength, $eventId), 1)")
+                  eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
+                }
+              }
+              if (json == JournalSeparators.Transaction) {
+                inTransaction = true
+              } else if (inTransaction && json == JournalSeparators.Commit) {
+                inTransaction = false
+                //logger.debug(s"### eventWatch.onEventsCommitted(PositionAnd($fileLength, $lastEventId), 1)")
+                eventWatch.onEventsCommitted(PositionAnd(fileLength, lastEventId), 1)
               }
             }
             Observable.pure(
@@ -239,7 +238,7 @@ object PassiveClusterNode
     recoveredClusterState: ClusterState,
     myNodeId: ClusterNodeId,
     activeUri: Uri,
-    journalMeta: JournalMeta[Event],
+    journalMeta: JournalMeta,
     recouplingStreamReaderConf: RecouplingStreamReaderConf,
     actorSystem: ActorSystem)
     (implicit s: Scheduler)

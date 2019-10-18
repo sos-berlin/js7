@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import com.sos.jobscheduler.data.event.{KeyedEventTypedJsonCodec, NoKeyEvent}
+import com.sos.jobscheduler.data.event.{Event, JournalEvent, KeyedEventTypedJsonCodec, NoKeyEvent}
 import com.sos.jobscheduler.data.master.MasterId
 
 /**
@@ -25,6 +25,7 @@ object AgentEvent
   implicit val jsonCodec: TypedJsonCodec[AgentEvent] = TypedJsonCodec[AgentEvent](
     Subtype(CirceUtils.deriveCodec[MasterRegistered])
   )
-  implicit val KeyedEventJsonCodec: KeyedEventTypedJsonCodec[AgentEvent] = KeyedEventTypedJsonCodec[AgentEvent](
+  implicit val KeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
+    KeyedSubtype[JournalEvent],
     KeyedSubtype[AgentEvent])
 }

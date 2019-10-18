@@ -7,9 +7,9 @@ import com.sos.jobscheduler.data.event.{Event, JournaledState}
 import com.typesafe.config.Config
 
 private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Event](
-  val journalMeta: JournalMeta[E],
+  val journalMeta: JournalMeta,
   newStateBuilder: () => JournalStateBuilder[S, E])
-extends JournalRecoverer[E]
+extends JournalRecoverer
 {
   protected val expectedJournalId = None
   private val stateBuilder = newStateBuilder()
@@ -30,7 +30,7 @@ extends JournalRecoverer[E]
 object JournaledStateRecoverer
 {
   def recover[S <: JournaledState[S, E], E <: Event](
-    journalMeta: JournalMeta[E],
+    journalMeta: JournalMeta,
     newBuilder: () => JournalStateBuilder[S, E],
     config: Config)
   : Recovered[S, E] = {

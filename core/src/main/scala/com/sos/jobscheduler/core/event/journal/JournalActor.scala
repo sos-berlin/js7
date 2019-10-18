@@ -18,7 +18,7 @@ import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOp
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.{Path, Paths}
@@ -28,14 +28,14 @@ import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.util.control.NonFatal
+import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[E <: Event] private(
-  journalMeta: JournalMeta[E],
+final class JournalActor private(
+  journalMeta: JournalMeta,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
@@ -56,8 +56,8 @@ extends Actor with Stash
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private val recoveredJournalHeader = SetOnce[JournalHeader]
   private var observer = SetOnce[Option[JournalingObserver]]
-  private var eventWriter: EventJournalWriter[E] = null
-  private var snapshotWriter: SnapshotJournalWriter[E] = null
+  private var eventWriter: EventJournalWriter = null
+  private var snapshotWriter: SnapshotJournalWriter = null
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
@@ -65,7 +65,7 @@ extends Actor with Stash
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
   private var acknowledgedEventCount = 0L
-  private var requireClusterAcknowledge = false
+  private var requireClusterAcknowledgement = false
 
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
@@ -111,8 +111,10 @@ extends Actor with Stash
       observer := observer_
       val header = JournalHeader.initial(JournalId.random())
       recoveredJournalHeader := header
-      eventWriter = newEventJsonWriter(withoutSnapshots = true)
+      eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
       eventWriter.writeHeader(header)
+      eventWriter.beginEventSection(sync = conf.syncOnCommit)
+      eventWriter.onJournalingStarted()
       unstashAll()
       becomeReady()
       sender() ! Output.Ready(header, runningSince)
@@ -127,7 +129,6 @@ extends Actor with Stash
   private def becomeReady(): Unit = {
     become(ready)
     logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
-    eventWriter.beginEventSection()
   }
 
   private def ready: Receive = receiveTerminatedOrGet orElse {
@@ -135,26 +136,26 @@ extends Actor with Stash
       handleRegisterMe()
 
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
-      val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent.asInstanceOf[KeyedEvent[E]], t.timestamp)
+      val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
       eventWriter.writeEvents(stampedEvents, transaction = transaction)
       val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
       for (o <- lastFileLengthAndEventId) {
         lastWrittenEventId = o.value
       }
       // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-      if (acceptEarly && !requireClusterAcknowledge/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
+      if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
         reply(sender(), replyTo, Output.Accepted(callersItem))
         writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
         // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
       } else {
-        writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, "STORED", replyTo, sender(), callersItem)
+        writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
       }
       stampedEvents.headOption match {
         case Some(Stamped(_, _, KeyedEvent(_, event: ClusterEvent.FollowingStarted))) =>
           // Commit now to let FollowingStarted event take effect on following events (otherwise deadlock)
           commit()
           logger.debug(s"$event: Start requiring acknowledges from passive cluster node")
-          requireClusterAcknowledge = true
+          requireClusterAcknowledgement = true
         case _ =>
           forwardCommit((delay max conf.delay) - alreadyDelayed)
       }
@@ -186,16 +187,13 @@ extends Actor with Stash
       } else {
         val sender = this.sender()
         becomeTakingSnapshotThen() { _ =>
-          becomeReady()  // Writes EventHeader
+          becomeReady()
           if (sender != self) sender ! Output.SnapshotTaken
         }
       }
 
     case Input.FollowerAcknowledged(eventId) =>
-      // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
-      // We take only complete Written blocks as acknowledged.
-      sender() ! Completed
-      onCommitAcknowledged(n = writtenBuffer.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
+      onFollowerAcknowledged(eventId)
 
     case Input.Terminate =>
       commit(terminating = true)
@@ -245,7 +243,7 @@ extends Actor with Stash
     logStored(flushed = true, synced = conf.syncOnCommit, writtenBuffer.iterator collect { case o: NormallyWritten => o })
     totalEventCount += writtenBuffer.iterator.map(_.eventCount).sum
     if (!terminating) {
-      if (!requireClusterAcknowledge)  {
+      if (!requireClusterAcknowledgement)  {
         onCommitAcknowledged(writtenBuffer.length)
       } else {
         // TODO self ! timedout
@@ -253,18 +251,32 @@ extends Actor with Stash
     }
   }
 
+  private def onFollowerAcknowledged(eventId: EventId): Unit = {
+    if (eventId > lastWrittenEventId) {
+      val t = new RuntimeException(s"Passive cluster node acknowledged future event ${EventId.toString(eventId)}," +
+        s" but lastWrittenEventId=${EventId.toString(lastWrittenEventId)}") with NoStackTrace
+      logger.error(t.toString)
+      sender() ! akka.actor.Status.Failure(t)
+    } else {
+      sender() ! Completed
+      // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
+      // We take only complete Written blocks as acknowledged.
+      onCommitAcknowledged(n = writtenBuffer.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
+    }
+  }
+
   private def onCommitAcknowledged(n: Int): Unit = {
     for (lastFileLengthAndEventId <- writtenBuffer.take(n).flatMap(_.lastFileLengthAndEventId).lastOption) {
-      if (requireClusterAcknowledge) {
+      if (requireClusterAcknowledgement) {
         val lastWritten = writtenBuffer(n - 1)
         val i = totalEventCount - writtenBuffer.iterator.drop(writtenBuffer.length - n + 1).map(_.eventCount).sum
-        logger.trace(f"#$i Acknowledged ${lastWritten.since.elapsed.pretty}%-7s ${lastFileLengthAndEventId.value}, ${i - acknowledgedEventCount} events")
+        logger.trace(f"#$i Acknowledged ${lastWritten.since.elapsed.pretty}%-7s ${lastFileLengthAndEventId.value} ${i - acknowledgedEventCount} events")
         acknowledgedEventCount = i
       }
       eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenBuffer.iterator.take(n).map(_.eventCount).sum)
     }
     // AcceptEarlyWritten have already been replied.
-    for (NormallyWritten(keyedEvents, _, _, replyTo, sender, item) <- writtenBuffer take n) {
+    for (NormallyWritten(keyedEvents, _, replyTo, sender, item) <- writtenBuffer take n) {
       reply(sender, replyTo, Output.Stored(keyedEvents, item))
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
@@ -287,7 +299,7 @@ extends Actor with Stash
           Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
   }
 
-  private def logStored(flushed: Boolean, synced: Boolean, writtenIterator: Iterator[NormallyWritten]) =
+  private def logStored(flushed: Boolean, synced: Boolean, writtenIterator: Iterator[LoggableWritten]) =
     if (logger.underlying.isTraceEnabled) {
       var i = totalEventCount + 1
       while (writtenIterator.hasNext) {
@@ -300,13 +312,14 @@ extends Actor with Stash
             else if (synced)
               if (conf.simulateSync.isDefined) "~sync" else "sync "
             else "flush"   // After the last one, the file buffer was flushed
-          logger.trace(f"#$i $last ${written.opName} ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
+          logger.trace(f"#$i $last STORED ${written.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
           i += 1
         }
       }
     }
 
   private def becomeTakingSnapshotThen()(andThen: JournalHeader => Unit) = {
+    val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
     val file = journalMeta.file(after = lastWrittenEventId)
     logger.info(s"Starting new journal file '${file.getFileName}' with a snapshot")
 
@@ -321,27 +334,43 @@ extends Actor with Stash
 
     val header = recoveredJournalHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
       totalRunningTime = recoveredJournalHeader().totalRunningTime + runningSince.elapsed)
-    snapshotWriter = new SnapshotJournalWriter[E](journalMeta, toSnapshotTemporary(file), simulateSync = conf.simulateSync)
+    snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
+      simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
     actorOf(
       Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, conf, scheduler) }
         .withDispatcher(DispatcherName),
       uniqueActorName("SnapshotTaker"))
-    become(takingSnapshot(commander = sender(), () => andThen(header)))
+    become(takingSnapshot(snapshotTaken, commander = sender(), () => andThen(header)))
   }
 
-  private def takingSnapshot(commander: ActorRef, andThen: () => Unit): Receive = {
+  private def takingSnapshot(snapshotTaken: Stamped[KeyedEvent[JournalEvent.SnapshotTaken]], commander: ActorRef, andThen: () => Unit): Receive = {
     case SnapshotTaker.Output.Finished(Failure(t)) =>
       throw t.appendCurrentStackTrace
 
     case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) =>
-      snapshotWriter.endSnapshotSection(sync = conf.syncOnCommit)
-      snapshotWriter.close()
-      val file = journalMeta.file(after = lastWrittenEventId)
+      snapshotWriter.endSnapshotSection()
+      // Write a SnapshotTaken event to increment EventId and force a new filename
+      snapshotWriter.beginEventSection(sync = false)
+      val (fileLengthBeforeEvents, fileEventId) = (snapshotWriter.fileLength, lastWrittenEventId)
+
+      snapshotWriter.writeEvent(snapshotTaken)
+      snapshotWriter.flush(sync = conf.syncOnCommit)
+      lastWrittenEventId = snapshotTaken.eventId
+      totalEventCount += 1
+      logStored(flushed = false, synced = false, Iterator(LoggableWritten(snapshotTaken :: Nil,
+        Timestamp.now - snapshotTaken.timestamp/*wall-time, not real-time will be logged*/)))
+      snapshotWriter.closeAndLog()
+
+      val file = journalMeta.file(after = fileEventId)
       move(snapshotWriter.file, file, ATOMIC_MOVE)
       snapshotWriter = null
-      eventWriter = newEventJsonWriter()
+
+      eventWriter = newEventJsonWriter(after = fileEventId)
+      eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
+      eventWriter.onInitialEventsWritten(eventId = lastWrittenEventId, n = 1)
+
       deleteObsoleteJournalFiles()
       unstashAll()
       andThen()
@@ -350,13 +379,13 @@ extends Actor with Stash
       stash()
   }
 
-  private def newEventJsonWriter(withoutSnapshots: Boolean = false) = {
+  private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
     val symLink = Paths.get(journalMeta.fileBase + "-journal")  // We preserve the suffix ".journal" for the real journal files
     Try { if (exists(symLink)) delete(symLink) }
 
-    val file = journalMeta.file(after = lastWrittenEventId)
-    val writer = new EventJournalWriter[E](journalMeta, file, after = lastWrittenEventId, recoveredJournalHeader().journalId,
-      observer(), simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots)
+    val file = journalMeta.file(after = after)
+    val writer = new EventJournalWriter(journalMeta, file, after = after, recoveredJournalHeader().journalId,
+      observer(), simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
 
     Try { createSymbolicLink(symLink, file.getFileName) }
     writer
@@ -406,7 +435,7 @@ object JournalActor
   private val DispatcherName = "jobscheduler.journal.dispatcher"  // Config setting; name is used for thread names
 
   def props[E <: Event](
-    journalMeta: JournalMeta[E],
+    journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
@@ -471,19 +500,32 @@ object JournalActor
     val since = now
   }
 
+  private sealed trait LoggableWritten {
+    def stamped: Seq[Stamped[AnyKeyedEvent]]
+    def elapsed: Duration
+  }
+  private object LoggableWritten {
+    def apply(_stamped: Seq[Stamped[AnyKeyedEvent]], _elapsed: FiniteDuration) =
+      new LoggableWritten {
+        def stamped = _stamped
+        def elapsed = _elapsed
+      }
+  }
+
   private case class NormallyWritten(
-    stamped: Seq[Stamped[AnyKeyedEvent]],  // None means no-operation (for deferAsync)
+    stamped: Seq[Stamped[AnyKeyedEvent]],
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
-    opName: String,
     replyTo: ActorRef,
     sender: ActorRef,
     item: CallersItem)
-  extends Written
+  extends Written with LoggableWritten
   {
     def eventCount = stamped.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
       stamped.reverseIterator.buffered.headOption
+
+    def elapsed = since.elapsed
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)

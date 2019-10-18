@@ -2,10 +2,11 @@ package com.sos.jobscheduler.core.event.journal.write
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, Transaction}
+import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, Transaction}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
 import com.sos.jobscheduler.core.event.journal.write.EventJournalWriter._
@@ -18,23 +19,20 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class EventJournalWriter[E <: Event](
-  journalMeta: JournalMeta[E],
+private[journal] final class EventJournalWriter(
+  protected val journalMeta: JournalMeta,
   val file: Path,
   after: EventId,
   journalId: JournalId,
   observer: Option[JournalingObserver],
   protected val simulateSync: Option[FiniteDuration],
-  withoutSnapshots: Boolean = false)
-extends JournalWriter[E](append = !withoutSnapshots)
+  withoutSnapshots: Boolean = false,
+  initialEventCount: Int = 0)
+extends JournalWriter(after = after, append = !withoutSnapshots)
 with AutoCloseable
 {
-  import journalMeta.eventJsonCodec
-
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
-  protected val statistics = new EventStatisticsCounter
-  private var _lastEventId = after
-  private var eventsStarted = false
+  protected val statistics = new EventStatisticsCounter(initialEventCount)
   private var _eventWritten = false
 
   def closeProperly(sync: Boolean): Unit =
@@ -43,41 +41,41 @@ with AutoCloseable
 
   override def close() = {
     super.close()
-    for (r <- observer) {
-      r.onJournalingEnded(jsonWriter.fileLength)
+    for (o <- observer) {
+      o.onJournalingEnded(jsonWriter.fileLength)
     }
     for (o <- statistics.debugString) logger.debug(o)
   }
 
-  def beginEventSection(): Unit = {
-    if (eventsStarted) throw new IllegalStateException("EventJournalWriter: duplicate beginEventSection()")
-    jsonWriter.write(ByteString(EventHeader.compactPrint))
-    flush(sync = false)
-    eventsStarted = true
-    for (r <- observer) {
-      r.onJournalingStarted(file, PositionAnd(jsonWriter.fileLength, _lastEventId), journalId)
+  def onJournalingStarted(fileLengthBeforeEvents: Long = jsonWriter.fileLength): Unit = {
+    assertThat(fileLengthBeforeEvents <= jsonWriter.fileLength)
+    for (o <- observer) {
+      o.onJournalingStarted(file, PositionAnd(fileLengthBeforeEvents, lastWrittenEventId), journalId)
+      o.onFileWritten(fileLengthBeforeEvents)
     }
   }
 
-  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[E]]], transaction: Boolean = false): Unit = {
+  /** For SnapshotTaken event written with SnapshotJournalWriter. */
+  def onInitialEventsWritten(eventId: EventId, n: Int): Unit = {
+    for (o <- observer) {
+      o.onFileWritten(jsonWriter.fileLength)
+      o.onEventsCommitted(PositionAnd(jsonWriter.fileLength, eventId), n)
+      // Initially written events are not counted in statistics
+    }
+  }
+
+  def writeEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], transaction: Boolean = false): Unit = {
     // TODO Rollback writes in case of error (with seek?)
     if (!eventsStarted) throw new IllegalStateException
     _eventWritten = true
     statistics.countEventsToBeCommitted(stampedEvents.size)
     val ta = transaction && stampedEvents.lengthCompare(1) > 0
     if (ta) jsonWriter.write(TransactionByteString)
-    for (stamped <- stampedEvents) {
-      if (stamped.eventId <= _lastEventId)
-        throw new IllegalArgumentException(s"EventJournalWriter.writeEvent with EventId ${EventId.toString(stamped.eventId)} <= lastEventId ${EventId.toString(_lastEventId)}")
-      _lastEventId = stamped.eventId
-      val byteString =
-        try ByteString(stamped.asJson.compactPrint)
-        catch { case t: Exception => throw new SerializationException(t) }
-      jsonWriter.write(byteString)
-    }
+    stampedEvents foreach writeEvent
     if (ta) jsonWriter.write(CommitByteString)
   }
 
+  // Event section begin has been written by SnapshotJournalWriter
   def endEventSection(sync: Boolean): Unit = {
     if (!eventsStarted) throw new IllegalStateException
     jsonWriter.write(ByteString(EventFooter.compactPrint))
@@ -101,7 +99,7 @@ with AutoCloseable
 
   def isEventWritten = _eventWritten
 
-  def fileLengthAndEventId = PositionAnd(fileLength, _lastEventId)
+  def fileLengthAndEventId = PositionAnd(fileLength, lastWrittenEventId)
 
   override def toString = s"EventJournalWriter(${file.getFileName})"
 }
@@ -111,10 +109,10 @@ private[journal] object EventJournalWriter
   private val TransactionByteString = ByteString(Transaction.asJson.compactPrint)
   private val CommitByteString = ByteString(Commit.asJson.compactPrint)
 
-  def forTest[E <: Event](journalMeta: JournalMeta[E], after: EventId, journalId: JournalId,
+  def forTest(journalMeta: JournalMeta, after: EventId, journalId: JournalId,
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
   =
-    new EventJournalWriter[E](journalMeta, journalMeta.file(after), after, journalId, observer,
+    new EventJournalWriter(journalMeta, journalMeta.file(after), after, journalId, observer,
       simulateSync = None, withoutSnapshots = withoutSnapshots)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)

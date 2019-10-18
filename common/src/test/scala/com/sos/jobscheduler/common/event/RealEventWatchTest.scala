@@ -19,7 +19,7 @@ final class RealEventWatchTest extends FreeSpec
 {
   "tornOlder" in {
     val events = Stamped(1, 1 <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
-    val eventWatch = new RealEventWatch[TestEvent] {
+    val eventWatch = new RealEventWatch {
       protected def scheduler = Scheduler.global
       def tornEventId = 0
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
@@ -66,7 +66,7 @@ object RealEventWatchTest {
 
   private def toStampedEvent(i: Long) = Stamped(i, i <-: TestEvent(i))
 
-  private class EndlessEventWatch extends RealEventWatch[TestEvent] {
+  private class EndlessEventWatch extends RealEventWatch {
     val tornEventId = 0
 
     def snapshotObjectsFor(after: EventId) = None

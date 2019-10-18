@@ -29,7 +29,7 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[TestEvent], journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
+private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
 
   private implicit val executionContext = context.dispatcher
 
@@ -53,11 +53,11 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta[
     }
   }
 
-  private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {
+  private class MyJournalRecoverer extends JournalActorRecoverer {
     protected val sender = TestActor.this.sender()
     protected val journalMeta = TestActor.this.journalMeta
     protected val expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
-    protected def newJournalEventWatch = new JournalEventWatch[TestEvent](journalMeta, JournalEventWatch.TestConfig)
+    protected def newJournalEventWatch = new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)
 
     protected def snapshotToKey = {
       case a: TestAggregate => a.key

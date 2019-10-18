@@ -7,19 +7,19 @@ import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.core.event.journal.data.RecoveredJournalingActors
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, JournalEvent, KeyedEvent, Stamped}
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
-
+private[journal] trait JournalActorRecoverer extends JournalRecoverer
+{
   protected implicit def sender: ActorRef
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
   protected def snapshotToKey: Any => Any
-  protected def isDeletedEvent: E => Boolean
-  protected def newJournalEventWatch: JournalEventWatch[E]
+  protected def isDeletedEvent: Event => Boolean
+  protected def newJournalEventWatch: JournalEventWatch
 
   private val keyToActor = mutable.Map[Any, ActorRef]()
 
@@ -37,10 +37,12 @@ private[journal] trait JournalActorRecoverer[E <: Event] extends JournalRecovere
             sys.error(s"Uncoverable event for a new key in journal '${journalFileOption getOrElse journalMeta.fileBase}': $stamped"))
         case Some(a) =>
           a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO OutOfMemoryError
-          if (isDeletedEvent(event.asInstanceOf[E])) {
+          if (isDeletedEvent(event.asInstanceOf[Event])) {
             keyToActor -= key
           }
         }
+
+    case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
   }
 
   protected def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {

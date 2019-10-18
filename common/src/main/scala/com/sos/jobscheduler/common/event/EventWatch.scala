@@ -18,44 +18,44 @@ import scala.reflect.runtime.universe._
 /**
   * @author Joacim Zschimmer
   */
-trait EventWatch[E <: Event]
+trait EventWatch
 {
   def whenStarted: Future[this.type] = Future.successful(this)
 
-  def strict: StrictEventWatch[E] = new StrictEventWatch(this)
+  def strict: StrictEventWatch = new StrictEventWatch(this)
 
-  def observe[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every, onlyLastOfChunk: Boolean = false)
-  : Observable[Stamped[KeyedEvent[E1]]]
+  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every, onlyLastOfChunk: Boolean = false)
+  : Observable[Stamped[KeyedEvent[E]]]
 
-  def read[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
+  def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
-  def when[E1 <: E](request: EventRequest[E1], predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
+  def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
-  def whenAny[E1 <: E](
-    request: EventRequest[E1],
-    eventClasses: Set[Class[_ <: E1]],
-    predicate: KeyedEvent[E1] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E1]]]
+  def whenAny[E <: Event](
+    request: EventRequest[E],
+    eventClasses: Set[Class[_ <: E]],
+    predicate: KeyedEvent[E] => Boolean = Every)
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
 
-  def byKey[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, E1]]
+  def byKey[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[TearableEventSeq[CloseableIterator, E]]
 
-  def whenKeyedEvent[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[E1]
+  def whenKeyedEvent[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[E]
 
-  def whenKey[E1 <: E](
-    request: EventRequest[E1],
-    key: E1#Key,
-    predicate: E1 => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, E1]]
+  def whenKey[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean = Every)
+  : Task[TearableEventSeq[CloseableIterator, E]]
 
   /** Returns None as last element iff timeout has been elapsed. */
   def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
@@ -66,16 +66,16 @@ trait EventWatch[E <: Event]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E1 <: E: ClassTag: TypeTag](
-    predicate: KeyedEvent[E1] => Boolean = Every,
+  def await[E <: Event: ClassTag: TypeTag](
+    predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.seconds)
     (implicit s: Scheduler)
-  : Vector[Stamped[KeyedEvent[E1]]]
+  : Vector[Stamped[KeyedEvent[E]]]
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E1 <: E: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E1]]
+  def all[E <: Event: ClassTag: TypeTag](implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]]
 
   def tornEventId: EventId
 

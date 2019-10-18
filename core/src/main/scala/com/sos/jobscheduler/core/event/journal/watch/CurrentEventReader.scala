@@ -14,12 +14,12 @@ import scala.concurrent.duration.Deadline
   * @author Joacim Zschimmer
   */
 private[watch] final class CurrentEventReader[E <: Event](
-  protected val journalMeta: JournalMeta[E],
+  protected val journalMeta: JournalMeta,
   protected val expectedJournalId: Option[JournalId],
   /** Length and after-EventId of initialized and empty journal. */
   flushedLengthAndEventId: PositionAnd[EventId],
   protected val config: Config)
-extends EventReader[E]
+extends EventReader
 {
   protected def isHistoric = false
   val tornEventId = flushedLengthAndEventId.value

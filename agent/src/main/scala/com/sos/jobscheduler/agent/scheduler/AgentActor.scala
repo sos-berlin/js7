@@ -35,7 +35,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActo
 import com.sos.jobscheduler.core.problems.NoSuchMasterProblem
 import com.sos.jobscheduler.data.agent.AgentRunId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -84,7 +84,7 @@ extends MainJournalingActor[AgentEvent] {
     logger.debug("Stopped")
   }
 
-  private class MyJournalRecoverer extends JournalRecoverer[AgentEvent] {
+  private class MyJournalRecoverer extends JournalRecoverer {
     protected val sender = AgentActor.this.sender()
     protected val journalMeta = AgentActor.this.journalMeta
     protected val expectedJournalId = None
@@ -95,8 +95,10 @@ extends MainJournalingActor[AgentEvent] {
     }
 
     def recoverEvent = {
-      case Stamped(_, _, KeyedEvent(NoKey, event: AgentEvent)) =>
+      case Stamped(_, _, KeyedEvent(_: NoKey, event: AgentEvent)) =>
         update(event)
+
+      case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
     }
   }
 
@@ -276,6 +278,6 @@ object AgentActor {
     override def -=(a: ActorRef) = super.-=(a)
   }
   object MasterRegister {
-    final case class Entry(masterId: MasterId, agentRunId: AgentRunId, eventWatch: JournalEventWatch[Event], actor: ActorRef)
+    final case class Entry(masterId: MasterId, agentRunId: AgentRunId, eventWatch: JournalEventWatch, actor: ActorRef)
   }
 }

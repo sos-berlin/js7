@@ -29,8 +29,8 @@ import scala.concurrent.duration.Duration
 /**
   * @author Joacim Zschimmer
   */
-final class KeepEventsTest extends FreeSpec {
-
+final class KeepEventsTest extends FreeSpec
+{
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentRefPath :: Nil, TestWorkflow :: Nil, testName = Some("KeepEventsTest"))) { provider =>
       for ((_, tree) <- provider.agentToTree) {
@@ -55,11 +55,11 @@ final class KeepEventsTest extends FreeSpec {
         provider.runMaster() { master =>
           val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(finished.size == 1)
-          assert(masterJournalCount == 2)
-          assert(agentJournalCount == 2)
+          assert(masterJournalCount == 3)
+          assert(agentJournalCount == 3)
 
           master.executeCommandAsSystemUser(MasterCommand.KeepEvents(finished.head.eventId)).await(99.s).orThrow
-          assert(masterJournalCount == 1)
+          assert(masterJournalCount == 2)
 
           // Master sends KeepOrder after some events from Agent have arrived. So we start an order.
           master.addOrderBlocking(TestOrder)

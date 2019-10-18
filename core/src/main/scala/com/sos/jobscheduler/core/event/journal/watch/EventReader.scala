@@ -27,11 +27,11 @@ import scala.concurrent.duration.{Deadline, FiniteDuration}
 /**
   * @author Joacim Zschimmer
   */
-private[watch] trait EventReader[E <: Event]
+private[watch] trait EventReader
 extends AutoCloseable
 {
   /** `committedLength` does not grow if `isOwnJournalIndex`. */
-  protected def journalMeta: JournalMeta[E]
+  protected def journalMeta: JournalMeta
   protected def expectedJournalId: Option[JournalId]
   protected def isHistoric: Boolean
   protected def journalFile: Path
@@ -66,7 +66,7 @@ extends AutoCloseable
   /**
     * @return None if torn
     */
-  final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[E]]]] = {
+  final def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]] = {
     val indexPositionAndEventId = journalIndex.positionAndEventIdAfter(after)
     import indexPositionAndEventId.position
     val iterator = iteratorPool.borrowIterator()
@@ -87,7 +87,7 @@ extends AutoCloseable
     }
   }
 
-  private final class MyIterator(iterator_ : FileEventIterator[E], after: EventId) extends CloseableIterator[Stamped[KeyedEvent[E]]] {
+  private final class MyIterator(iterator_ : FileEventIterator, after: EventId) extends CloseableIterator[Stamped[KeyedEvent[Event]]] {
     private val iteratorAtomic = AtomicAny(iterator_)
     @volatile private var eof = false
 

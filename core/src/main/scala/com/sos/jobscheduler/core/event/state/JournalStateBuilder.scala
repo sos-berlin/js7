@@ -8,7 +8,7 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
 
   def onAllSnapshotsAdded(): Unit
 
-  def addEvent: PartialFunction[Stamped[KeyedEvent[E]], Unit]
+  def addEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
   def state(eventId: EventId): S
 }

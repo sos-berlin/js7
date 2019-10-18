@@ -7,9 +7,9 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-final case class JournalMeta[E <: Event](
+final case class JournalMeta(
   snapshotJsonCodec: TypedJsonCodec[Any],
-  implicit val eventJsonCodec: KeyedEventTypedJsonCodec[E],
+  implicit val eventJsonCodec: KeyedEventTypedJsonCodec[Event],
   /** Path without extension, like "/directory/test". */
   fileBase: Path)
 {

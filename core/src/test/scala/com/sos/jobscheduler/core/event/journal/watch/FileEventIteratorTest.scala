@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils
 import com.sos.jobscheduler.core.event.journal.data.{JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorTest._
-import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
+import com.sos.jobscheduler.core.event.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import com.sos.jobscheduler.data.event.{EventId, Stamped}
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files
@@ -21,11 +21,11 @@ final class FileEventIteratorTest extends FreeSpec
 {
   "FileEventIterator" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
-      val journalMeta = new JournalMeta[TestEvent](TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
+      val journalMeta = JournalMeta(TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
       val journalFile = journalMeta.file(after = After)
-      writeJournal[TestEvent](journalMeta, after = After, TestEvents)
+      writeJournal(journalMeta, after = After, TestEvents)
 
-      val iterator = new FileEventIterator[TestEvent](journalMeta, journalFile, Some(journalId), tornEventId = After,
+      val iterator = new FileEventIterator(journalMeta, journalFile, Some(journalId), tornEventId = After,
         () => Files.size(journalFile))
       iterator.firstEventPosition  // Must be called before reading
       iterator.next()

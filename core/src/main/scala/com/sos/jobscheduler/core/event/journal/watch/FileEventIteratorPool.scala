@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.watch.FileEventIteratorPool._
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
+import com.sos.jobscheduler.data.event.{EventId, JournalId}
 import java.nio.file.Path
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -14,21 +14,21 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[watch] final class FileEventIteratorPool[E <: Event](
-  journalMeta: JournalMeta[E],
+private[watch] final class FileEventIteratorPool(
+  journalMeta: JournalMeta,
   expectedJournalId: Option[JournalId],
   journalFile: Path,
   tornEventId: EventId,
   committedLength: () => Long)
 {
-  private val freeIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
-  private val lentIterators = mutable.ArrayBuffer[FileEventIterator[E]]()
+  private val freeIterators = mutable.ArrayBuffer[FileEventIterator]()
+  private val lentIterators = mutable.ArrayBuffer[FileEventIterator]()
   private val closed = AtomicBoolean(false)
 
   def close(): Unit =
     synchronized {
       if (!closed.getAndSet(true)) {
-        val (availables, lent): (Set[FileEventIterator[E]], Set[FileEventIterator[E]]) =
+        val (availables, lent): (Set[FileEventIterator], Set[FileEventIterator]) =
           synchronized {
             (freeIterators.toSet, lentIterators.toSet)
           }
@@ -49,12 +49,12 @@ private[watch] final class FileEventIteratorPool[E <: Event](
     finally returnIterator(iterator)   // JsonSeqReader is positioned after tornEventId
   }
 
-  def borrowIterator(): FileEventIterator[E] = {
+  def borrowIterator(): FileEventIterator = {
     if (closed()) throw new ClosedException(journalFile)
     tryBorrowIterator() getOrElse newIterator()
   }
 
-  private def tryBorrowIterator(): Option[FileEventIterator[E]] =
+  private def tryBorrowIterator(): Option[FileEventIterator] =
     synchronized {
       freeIterators.nonEmpty ? {
         val iterator = freeIterators.remove(freeIterators.size - 1)  // LIFO
@@ -64,11 +64,11 @@ private[watch] final class FileEventIteratorPool[E <: Event](
       }
     }
 
-  private def newIterator(): FileEventIterator[E] =
+  private def newIterator(): FileEventIterator =
     synchronized {
       if (closed()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
-      val result = new FileEventIterator[E](journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, committedLength) {
+      val result = new FileEventIterator(journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, committedLength) {
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
 
@@ -87,7 +87,7 @@ private[watch] final class FileEventIteratorPool[E <: Event](
       result
     }
 
-  def returnIterator(iterator: FileEventIterator[E]): Unit = {
+  def returnIterator(iterator: FileEventIterator): Unit = {
     lazy val PositionAnd(position, eventId) = iterator.positionAndEventId
     logger.trace(s"returnIterator $iterator eventId=$eventId position=$position")
     synchronized {

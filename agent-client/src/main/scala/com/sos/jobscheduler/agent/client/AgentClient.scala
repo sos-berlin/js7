@@ -27,8 +27,8 @@ import scala.collection.immutable.Seq
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
-
+trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient
+{
   protected def httpClient = this
 
   def baseUri: Uri
@@ -69,11 +69,11 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
     liftProblem(
       get[Seq[Order[Order.State]]](agentUris.order.orders))
 
-  final def mastersEventObservable[E <: Event](request: EventRequest[E]): Task[Checked[Observable[Stamped[KeyedEvent[E]]]]] =
+  final def mastersEventObservable(request: EventRequest[Event]): Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
-      getDecodedLinesObservable[Stamped[KeyedEvent[E]]](agentUris.mastersEvents(request).toString))
+      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.mastersEvents(request).toString))
 
-  final def mastersEvents[E <: Event](request: EventRequest[E]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[E]]]] = {
+  final def mastersEvents(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
@@ -81,7 +81,7 @@ trait AgentClient extends AgentApi with SessionApi with AkkaHttpClient {
     //  case _ => akka configured default value
     //}
     liftProblem(
-      get[TearableEventSeq[Seq, KeyedEvent[E]]](agentUris.mastersEvents(request)))
+      get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.mastersEvents(request)))
   }
 
   override def toString = s"AgentClient($baseUri)"

@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 
 /** Remembers two `FatState` of (1) last requested and (2) last returned EventId.
   */
-private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: EventWatch[Event])
+private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: EventWatch)
 {
   // May be accessed by multiple clients simultaneously
   @volatile

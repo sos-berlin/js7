@@ -27,5 +27,5 @@ private[event] object TestData
     Subtype[TestAggregate])
 
   def testJournalMeta(fileBase: Path) =
-    new JournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec, fileBase)
+    new JournalMeta(SnapshotJsonFormat, TestKeyedEventJsonCodec, fileBase)
 }

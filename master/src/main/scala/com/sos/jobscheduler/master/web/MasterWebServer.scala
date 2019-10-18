@@ -12,7 +12,6 @@ import com.sos.jobscheduler.common.scalautil.Closer
 import com.sos.jobscheduler.common.scalautil.Closer.ops.RichClosersAutoCloseable
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.filebased.FileBasedApi
-import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.command.MasterCommandExecutor
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -33,7 +32,7 @@ final class MasterWebServer private(
   commandExecutor: MasterCommandExecutor,
   masterState: Task[MasterState],
   sessionRegister: SessionRegister[SimpleSession],
-  eventWatch: EventWatch[Event],
+  eventWatch: EventWatch,
   protected val config: Config,
   injector: Injector,
   implicit protected val actorSystem: ActorSystem,
@@ -84,7 +83,7 @@ object MasterWebServer
   {
     def apply(fileBasedApi: FileBasedApi, orderApi: OrderApi.WithCommands,
       commandExecutor: MasterCommandExecutor, masterState: Task[MasterState],
-      eventWatch: EventWatch[Event])
+      eventWatch: EventWatch)
     : MasterWebServer =
       new MasterWebServer(
         masterConfiguration, gateKeeperConfiguration,
