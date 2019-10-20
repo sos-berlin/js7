@@ -131,28 +131,39 @@ trait RealEventWatch extends EventWatch
   private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[Deadline], delay: FiniteDuration,
     collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    Task.fromFuture(whenStarted) >>
-      committedEventIdSync.whenAvailable(after, deadline, delay) >>
-      (collectEventsSince(after, collect, limit) match {
-        case eventSeq @ EventSeq.NonEmpty(iterator) =>
-          maybeTornOlder match {
-            case None => Task.pure(eventSeq)
-            case Some(tornOlder) =>
-              // If the first event is not fresh, we have a read congestion.
-              // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
-              val head = iterator.next()
-              if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
-                iterator.close()
-                Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
-              } else
-                Task.pure(EventSeq.NonEmpty(head +: iterator))
-          }
+    Task.fromFuture(whenStarted)
+      .flatMap(_ => committedEventIdSync.whenAvailable(after, deadline, delay))
+      .flatMap(eventArrived =>
+        collectEventsSince(after, collect, limit) match {
+          case eventSeq @ EventSeq.NonEmpty(iterator) =>
+            maybeTornOlder match {
+              case None => Task.pure(eventSeq)
+              case Some(tornOlder) =>
+                // If the first event is not fresh, we have a read congestion.
+                // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+                val head = iterator.next()
+                if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
+                  iterator.close()
+                  Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
+                } else
+                  Task.pure(EventSeq.NonEmpty(head +: iterator))
+            }
 
-        case EventSeq.Empty(lastEventId) =>
-          if (deadline.forall(_.hasTimeLeft))
-            whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
-          else
-            Task.pure(EventSeq.Empty(lastEventId))
+          case empty @ EventSeq.Empty(lastEventId) =>
+            if (deadline.forall(_.hasTimeLeft())) {
+              val preventOverheating =
+                if (lastEventId < committedEventIdSync.last) {
+                  // May happen due to race condition?
+                  logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
+                    s" timeout=${deadline.fold("")(_.timeLeft.pretty)}) last=${committedEventIdSync.last} => $eventArrived," +
+                    s" unexpected $empty, delaying ${AvoidOverheatingDelay.pretty}")
+                  AvoidOverheatingDelay
+                } else
+                  Duration.Zero
+              whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
+                .delayExecution(preventOverheating)
+            } else
+              Task.pure(EventSeq.Empty(lastEventId))
 
         case o: TearableEventSeq.Torn =>
           Task.pure(o)
@@ -210,6 +221,7 @@ trait RealEventWatch extends EventWatch
 
 object RealEventWatch
 {
+  private val AvoidOverheatingDelay = 10.ms
   private val NoMoreObservable = Task.pure((None, () => throw new NoSuchElementException/*dead code*/))
   private val logger = Logger(getClass)
 
