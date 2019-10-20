@@ -19,10 +19,11 @@
   </appenders>
   <loggers>
     <root level="info">
-      <appenderRef ref="stderr" level="off"/>
-      <appenderRef ref="file"   level="trace" />
+      <appenderRef level="off"   ref="stderr"/>
+      <appenderRef level="trace" ref="file"/>
     </root>
     <logger level="debug" name="jobscheduler"/>
-    <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
+    <logger level="debug" name="jobscheduler.core.event.journal.JournalActor"/>
+    <logger level="debug" name="jobscheduler.common.event.RealEventWatch"/>
   </loggers>
 </configuration>
