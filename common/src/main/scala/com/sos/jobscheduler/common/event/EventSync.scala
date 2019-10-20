@@ -33,7 +33,7 @@ final class EventSync(initial: Long, valueToString: Long => String)
   /**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
-  def whenAvailable(after: Long, until: Option[Deadline], delay: FiniteDuration = Duration.Zero): Task[Boolean] = {
+  def whenAvailable(after: Long, until: Option[Deadline], delay: FiniteDuration = Duration.Zero): Task[Boolean] =
     if (after < _last)
       Task.True  // Event already waiting
     else if (until.exists(_.hasElapsed))
@@ -43,25 +43,24 @@ final class EventSync(initial: Long, valueToString: Long => String)
         .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
       until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
     }
-  }
 
   private def whenAvailable2(after: Long, until: Option[Deadline]): Task[Boolean] =
     Task.tailRecM(()) { _ =>
-        synchronized {
-          if (after < _last)
-            Task.pure(Right(true))
-          else {
-            val promise = valueToPromise.get(after) match {
-              case Some(o) => o
-              case None =>
-                val p = Promise[Boolean]()
-                valueToPromise.put(after, p)
-                p
-            }
-            Task.fromFuture(promise.future) >>
-              Task.pure(Left(()))  // Check again
+      synchronized {
+        if (after < _last)
+          Task.pure(Right(true))
+        else {
+          val promise = valueToPromise.get(after) match {
+            case Some(o) => o
+            case None =>
+              val p = Promise[Boolean]()
+              valueToPromise.put(after, p)
+              p
           }
+          Task.fromFuture(promise.future) >>
+            Task.pure(Left(()))  // Check again
         }
+      }
     }
 
   def last = _last

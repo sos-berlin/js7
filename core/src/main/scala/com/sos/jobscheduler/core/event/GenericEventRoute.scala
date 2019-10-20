@@ -100,10 +100,10 @@ trait GenericEventRoute extends RouteProvider
                         oneShot(eventWatch)
                       } ~
                       accept(`application/x-ndjson`) {
-                        jsonSeqEvents(eventWatch, NdJsonStreamingSupport)
+                        jsonSeqEvents(eventWatch)(NdJsonStreamingSupport)
                       } ~
                       accept(`application/json-seq`) {
-                        jsonSeqEvents(eventWatch, JsonSeqStreamingSupport)
+                        jsonSeqEvents(eventWatch)(JsonSeqStreamingSupport)
                       } ~
                       accept(`text/event-stream`) {
                         serverSentEvents(eventWatch)
@@ -133,22 +133,21 @@ trait GenericEventRoute extends RouteProvider
           })
       }
 
-    private def jsonSeqEvents(eventWatch: EventWatch, streamingSupport: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch)(implicit streamingSupport: JsonEntityStreamingSupport): Route =
       eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
         parameter("eventIdOnly" ? false) { eventIdOnly =>
-          def myPredicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
+          def predicate(ke: KeyedEvent[Event]) = eventIdOnly || isRelevantEvent(ke)
           parameter("onlyLastOfChunk" ? false) { onlyLastOfChunk =>
-            implicit val x = streamingSupport
             val runningSince = now
             completeTask(
               // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-              eventWatch.when(request, predicate = myPredicate).map {
+              eventWatch.when(request, predicate).map {
                 case TearableEventSeq.Torn(eventId) =>
                   ToResponseMarshallable(
                     BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
                 case EventSeq.Empty(_) =>
-                  implicit val y = jsonSeqMarshaller[Unit]
+                  implicit val x = jsonSeqMarshaller[Unit]
                   monixObservableToMarshallable(
                     Observable.empty[Unit])
 
@@ -156,11 +155,11 @@ trait GenericEventRoute extends RouteProvider
                   val head = autoClosing(closeableIterator)(_.next())
                   val tail = eventWatch  // Continue with an Observable, skipping the already read event
                     .observe(
-                      request = request.copy[Event](
+                      request.copy[Event](
                         after = head.eventId,
                         limit = request.limit - 1,
                         delay = (request.delay - runningSince.elapsed) min Duration.Zero),
-                      predicate = myPredicate,
+                      predicate,
                       onlyLastOfChunk = onlyLastOfChunk)
                     .onErrorRecoverWith { case NonFatal(e) =>
                       logger.warn(e.toStringWithCauses)
@@ -168,10 +167,10 @@ trait GenericEventRoute extends RouteProvider
                     }
                   val observable = (Observable.pure(head) ++ tail).takeUntil(Observable.fromFuture(shuttingDownFuture))
                   if (eventIdOnly) {
-                    implicit val y = jsonSeqMarshaller[EventId]
+                    implicit val x = jsonSeqMarshaller[EventId]
                     monixObservableToMarshallable(observable.map(_.eventId))
                   } else {
-                    implicit val y = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
+                    implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
                     monixObservableToMarshallable(observable)
                   }
                 })

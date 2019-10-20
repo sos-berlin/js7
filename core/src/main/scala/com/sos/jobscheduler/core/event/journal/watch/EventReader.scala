@@ -161,8 +161,7 @@ extends AutoCloseable
                   val maybeLine = jsonSeqReader.readRaw()
                   lastPosition = jsonSeqReader.position
                   maybeLine.map(PositionAnd(lastPosition, _))
-                }
-                iterator = iterator.takeWhileAndOne(_ => isFlushedAfterPosition(lastPosition))
+                }.takeWhileAndOne(_ => isFlushedAfterPosition(lastPosition))
                 if (onlyLastOfChunk) {
                   // TODO Optimierung: Bei onlyLastOfChunk interessiert nur die geschriebene Dateilänge.
                   //  Dann brauchen wir die Datei nicht zu lesen, sondern nur die geschriebene Dateilänge zurückzugeben.
@@ -180,7 +179,7 @@ extends AutoCloseable
                       Iterator.single(PositionAnd(lastPosition, EndOfJournalFileMarker))
                     }
                 }
-                Observable.fromIteratorUnsafe(iterator.map(line => Right(line))) ++
+                Observable.fromIteratorUnsafe(iterator map Right.apply) ++
                   Observable.fromIterable(
                     ((lastPosition > position/*something read*/ && !eofMarked) ?
                       Left(lastPosition)))
