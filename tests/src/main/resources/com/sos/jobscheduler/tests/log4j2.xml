@@ -9,17 +9,17 @@
                              filePattern="${sys:jobscheduler.log4j.directory:-logs}/test-%d{yyyy-MM-dd}-%i.log.gz">
     <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                    charset="UTF-8"/>
-      <policies>
-        <onStartupTriggeringPolicy/>
-        <timeBasedTriggeringPolicy/>
-        <sizeBasedTriggeringPolicy size="1GB"/>
-      </policies>
-    </rollingRandomAccessFile>
+    <policies>
+      <onStartupTriggeringPolicy/>
+      <timeBasedTriggeringPolicy/>
+      <sizeBasedTriggeringPolicy size="1GB"/>
+    </policies>
+  </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="DEBUG">
-      <appenderRef ref="stderr" level="WARN"/>
-      <appenderRef ref="file"   level="INFO"/>
+    <root level="debug">
+      <appenderRef level="warn" ref="stderr"/>
+      <appenderRef level="info" ref="file"/>
     </root>
   </loggers>
 </configuration>
