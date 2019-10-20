@@ -26,9 +26,10 @@ build/bin/prepare-volumes
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .
 
 docker-compose down
-# Let Docker not accumulate old images:
 docker-compose rm -v
-docker-compose build
+# Let Docker not accumulate old images:
+docker rmi jobscheduler &>/dev/null || true
+docker-compose build --parallel
 
 echo
 echo Start with: docker-compose up
