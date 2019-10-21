@@ -10,7 +10,7 @@
                              append="true"
                              immediateFlush="${sys:jobscheduler.log4j.immediateFlush:-true}">
       <!-- append=true is required to let forked tests append. -->
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
+      <patternLayout pattern="%d{EE} %d{HH:mm:ss.nnnnnn} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
