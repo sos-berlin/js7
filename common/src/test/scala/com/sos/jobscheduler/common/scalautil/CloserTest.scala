@@ -12,6 +12,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -40,9 +41,9 @@ final class CloserTest extends FreeSpec
   "Multiple exceptions" in {
     val closer = new Closer
     val ctx = new Context
-    closer.register(new ctx.TestCloseable(Some(new RuntimeException("A"))))
-    closer.register(new ctx.TestCloseable(Some(new RuntimeException("B"))))
-    closer.register(new ctx.TestCloseable(Some(new RuntimeException("C"))))
+    closer.register(new ctx.TestCloseable(Some(new TestException("A"))))
+    closer.register(new ctx.TestCloseable(Some(new TestException("B"))))
+    closer.register(new ctx.TestCloseable(Some(new TestException("C"))))
     val e = intercept[RuntimeException] {
       closer.close()
     }
@@ -54,9 +55,9 @@ final class CloserTest extends FreeSpec
   "Fatal exception has priority" in {
     val closer = new Closer
     val ctx = new Context
-    closer.register(new ctx.TestCloseable(Some(new RuntimeException("A"))))
+    closer.register(new ctx.TestCloseable(Some(new TestException("A"))))
     closer.register(new ctx.TestCloseable(Some(new OutOfMemoryError)))
-    closer.register(new ctx.TestCloseable(Some(new RuntimeException("C"))))
+    closer.register(new ctx.TestCloseable(Some(new TestException("C"))))
     val e = intercept[OutOfMemoryError] {
       closer.close()
     }
@@ -159,4 +160,6 @@ object CloserTest {
       def isClosed = closed.get
     }
   }
+
+  private final class TestException(message: String) extends RuntimeException(message) with NoStackTrace
 }

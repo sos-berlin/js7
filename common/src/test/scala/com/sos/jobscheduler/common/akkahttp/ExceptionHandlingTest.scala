@@ -11,12 +11,13 @@ import com.sos.jobscheduler.common.akkahttp.ExceptionHandlingTest._
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with ExceptionHandling {
-
+final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with ExceptionHandling
+{
   protected val config = ConfigFactory.parseString("jobscheduler.webserver.verbose-error-messages = true")
 
   protected def actorSystem = system
@@ -77,7 +78,7 @@ final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with 
     post("/") ~>
       seal {
         complete {
-          throw new StandardPublicException("PUBLIC MESSAGE")
+          throw new StandardPublicException("PUBLIC MESSAGE") with NoStackTrace
         }
       } ~>
         check {
@@ -89,6 +90,7 @@ final class ExceptionHandlingTest extends FreeSpec with ScalatestRouteTest with 
   private def post(path: String) = Post("/") ~> Accept(`application/json`)
 }
 
-object ExceptionHandlingTest {
-  private class TestException(message: String) extends RuntimeException(message)
+object ExceptionHandlingTest
+{
+  private class TestException(message: String) extends RuntimeException(message) with NoStackTrace
 }

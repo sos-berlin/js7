@@ -7,12 +7,13 @@ import com.sos.jobscheduler.common.tcp.TcpToRequestResponseTest._
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Future
+import scala.util.control.NoStackTrace
 
 /**
  * @author Joacim Zschimmer
  */
-final class TcpToRequestResponseTest extends FreeSpec with BeforeAndAfterAll {
-
+final class TcpToRequestResponseTest extends FreeSpec with BeforeAndAfterAll
+{
   private lazy val actorSystem = newActorSystem(getClass.getSimpleName)
 
   override protected def afterAll() = {
@@ -68,8 +69,8 @@ private object TcpToRequestResponseTest {
 
   private def executeRequest(request: ByteString) =
     request match {
-      case ExecutionError => throw new RuntimeException("TEST EXECUTION")
-      case Error => Future.failed(new RuntimeException("TEST"))
+      case ExecutionError => throw new RuntimeException("TEST EXECUTION") with NoStackTrace
+      case Error => Future.failed(new RuntimeException("TEST") with NoStackTrace)
       case _ => Future.successful(requestToResponse(request))
     }
 
