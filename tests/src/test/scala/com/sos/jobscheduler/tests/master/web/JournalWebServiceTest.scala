@@ -80,7 +80,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
     assert(replicated.utf8String == master0.contentString)  // Compare strings for a legible error message
     assert(replicated == master0.byteVector)
 
-    waitForCondition(99.s, 10.ms)(observedLengths.last.stripSuffix("\n").toLong == Files.size(master0))
+    waitForCondition(99.s, 10.ms)(observedLengths.lastOption.map(_.stripSuffix("\n").toLong) contains Files.size(master0))
     assert(observedLengths.last.stripSuffix("\n").toLong == Files.size(master0))
 
     // After a snapshot (a new journal file is started),
