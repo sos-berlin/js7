@@ -13,7 +13,7 @@ import fastparse.NoWhitespace._
 import fastparse._
 import org.scalactic.source
 import org.scalatest.FreeSpec
-import org.scalatest.prop.PropertyChecks._
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer

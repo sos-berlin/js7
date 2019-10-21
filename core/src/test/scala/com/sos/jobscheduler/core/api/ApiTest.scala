@@ -5,12 +5,12 @@ import com.sos.jobscheduler.data.workflow.parser.{ExpressionParser, Parsers}
 import fastparse.NoWhitespace._
 import fastparse.{End, P}
 import org.scalatest.FreeSpec
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer
   */
-final class ApiTest extends FreeSpec with GeneratorDrivenPropertyChecks
+final class ApiTest extends FreeSpec
 {
   "quoteString" - {
     "explicit cases" in {

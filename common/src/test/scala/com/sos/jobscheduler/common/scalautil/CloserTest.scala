@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import monix.execution.atomic.AtomicBoolean
 import org.mockito.Mockito.{never, verify}
 import org.scalatest.FreeSpec
-import org.scalatest.mockito.MockitoSugar.mock
+import org.scalatestplus.mockito.MockitoSugar.mock
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global

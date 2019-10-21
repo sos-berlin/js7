@@ -5,7 +5,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import java.util.UUID
 import org.scalacheck.Gen
 import org.scalatest.FreeSpec
-import org.scalatest.prop.PropertyChecks._
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
 /**
   * @author Joacim Zschimmer
