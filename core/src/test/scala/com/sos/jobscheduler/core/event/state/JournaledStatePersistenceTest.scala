@@ -26,8 +26,8 @@ import com.typesafe.config.ConfigFactory
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
+import java.util.concurrent.Executors
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
@@ -40,6 +40,7 @@ import shapeless.tag
   */
 final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
+  private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected def config = TestConfig
   protected lazy val directory = createTempDirectory("JournaledStatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
@@ -47,6 +48,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
   override def afterAll() = {
     close()
     deleteDirectoryRecursively(directory)
+    scheduler.shutdown()
     super.afterAll()
   }
 
