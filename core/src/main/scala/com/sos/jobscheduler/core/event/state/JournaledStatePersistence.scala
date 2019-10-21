@@ -9,12 +9,13 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.language.higherKinds
+import scala.reflect.runtime.universe._
 import shapeless.tag.@@
 
 final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
   initialState: S,
   val/*???*/ journalActor: ActorRef @@ JournalActor.type)
-  (implicit s: Scheduler, actorRefFactory: ActorRefFactory)
+  (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory)
 {
   private val lockKeeper = new LockKeeper[E#Key]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
   private val persistPromise = Promise[PersistFunction[S, E]]()

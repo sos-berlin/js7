@@ -9,6 +9,7 @@ import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamp
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
+import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
 private[state] final class StateJournalingActor[S <: JournaledState[S, E], E <: Event](
@@ -16,7 +17,7 @@ private[state] final class StateJournalingActor[S <: JournaledState[S, E], E <: 
   protected val journalActor: ActorRef,
   persistPromise: Promise[PersistFunction[S, E]],
   getStatePromise: Promise[Task[S]])
-  (implicit s: Scheduler)
+  (implicit S: TypeTag[S], s: Scheduler)
 extends MainJournalingActor[E]
 {
   private var state: S = initialState
@@ -57,6 +58,9 @@ extends MainJournalingActor[E]
           stamped -> updated
       }
 
+
+  override lazy val toString = s"StateJournalingActor[${S.tpe.toString.replaceAll("""^.*\.""", "")}]"
+
   private case class Persist(stateToEvent: S => Checked[KeyedEvent[E]], promise: Promise[Checked[(Stamped[KeyedEvent[E]], S)]])
 }
 
@@ -69,7 +73,7 @@ private[state] object StateJournalingActor
     journalActor: ActorRef,
     persistPromise: Promise[PersistFunction[S, E]],
     getStatePromise: Promise[Task[S]])
-    (implicit s: Scheduler)
+    (implicit S: TypeTag[S], s: Scheduler)
   =
     Props { new StateJournalingActor(initialState, journalActor, persistPromise, getStatePromise) }
 
