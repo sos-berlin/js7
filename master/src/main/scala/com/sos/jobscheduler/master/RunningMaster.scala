@@ -179,8 +179,8 @@ object RunningMaster
     // Lazy vals to allow earlier logStartUp message
     private implicit lazy val closer = injector.instance[Closer]
     private lazy val masterConfiguration = injector.instance[MasterConfiguration]
-    private lazy val actorSystem = injector.instance[ActorSystem]
-    implicit private lazy val scheduler = injector.instance[Scheduler]
+    private implicit lazy val actorSystem = injector.instance[ActorSystem]
+    private implicit lazy val scheduler = injector.instance[Scheduler]
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
       val sessionTokenFile = masterConfiguration.stateDirectory / "session-token"
@@ -208,7 +208,7 @@ object RunningMaster
             },
             "MasterOrderKeeper",
             onStopped = _ => Success(Completed)
-          )(actorSystem)
+          )
       (tag[MasterOrderKeeper.type](actor), whenCompleted)
     }
 
@@ -229,7 +229,7 @@ object RunningMaster
         "Journal"))
       val cluster = new Cluster(
         journalMeta,
-        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor)(scheduler, actorSystem),
+        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor),
         masterConfiguration.clusterConf,
         journalActorAskTimeout = masterConfiguration.akkaAskTimeout,
         actorSystem)

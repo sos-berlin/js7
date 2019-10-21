@@ -41,8 +41,6 @@ private[journal] trait JournalActorRecoverer extends JournalRecoverer
             keyToActor -= key
           }
         }
-
-    case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
   }
 
   protected def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {

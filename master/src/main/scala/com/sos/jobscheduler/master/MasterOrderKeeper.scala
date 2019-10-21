@@ -421,6 +421,10 @@ with MainJournalingActor[Event]
       case MasterCommand.IssueTestEvent =>
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
+
+      case (_: MasterCommand.AppointBackupNode) | (_: MasterCommand.PassiveNodeFollows) =>
+        // Handled by MasterCommandExecutor
+        Future.failed(new NotImplementedError)
     }
 
   private def readConfiguration(events: Seq[RepoEvent]): Checked[SyncIO[Future[Completed]]] = {

@@ -54,7 +54,7 @@ private[state] final class LockKeeper[K](implicit s: Scheduler)
       }
     }
 
-  override def toString = {
+  override def toString =
     "LogKeeper(" +
       synchronized {
         (for ((key, queue) <- keyMap) yield
@@ -63,7 +63,6 @@ private[state] final class LockKeeper[K](implicit s: Scheduler)
         ).mkString(", ")
       } +
       ")"
-  }
 
   private case class GlobalEntry(key: Any, promise: Promise[Token])
 
