@@ -71,7 +71,11 @@ trait AkkaWebServer extends AutoCloseable
       https,
       ConnectionContext.https(
         loadSSLContext(Some(https.keyStoreRef), https.trustStoreRef),
-        clientAuth = https.mutual ? TLSClientAuth.Need))
+        clientAuth = https.mutual ? TLSClientAuth.Need,
+        sslConfig = None,
+        enabledCipherSuites = None,
+        enabledProtocols = None,
+        sslParameters = None))
   }
 
   private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] = {
