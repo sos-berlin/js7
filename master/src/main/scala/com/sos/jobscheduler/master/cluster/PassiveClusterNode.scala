@@ -164,8 +164,6 @@ final class PassiveClusterNode private(
               for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
                 lastEventId = eventId
                 if (!inTransaction) {
-                  // TODO Transaktion berücksichtigen
-                  //  Klasse mit JournalFile-Zustand, die auch von JournalReader genutzt werden kann
                   //logger.debug(s"### eventWatch.onEventsCommitted(PositionAnd($fileLength, $eventId), 1)")
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
                 }
@@ -193,7 +191,6 @@ final class PassiveClusterNode private(
         }
         // TODO EventId des letzten Events aus Journaldatei lesen (beim Replizieren kann das letzte und einzige Event verstümmelt sein).
         //  Oder einen neuen Webservice befragen?
-        //.map(_ => ClusterFollowUp.Terminate)  // TODO
     }
 
   private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long, eof: Long => Boolean)
@@ -213,19 +210,9 @@ final class PassiveClusterNode private(
         AkkaHttpClient.liftProblem(
           api.journalObservable(fileEventId = fileEventId, position = after, recouplingStreamReaderConf.timeout, markEOF = true)
             .map(_
-              //.map(throwOnServerTimeout)
-              // Return the line with the position after it
               .scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
           eof = eof,
     ).map(_.value)  // Return the line without position
-
-  //private def throwOnServerTimeout(line: ByteVector): ByteVector =
-  //  if (line startsWith MasterUris.JournalNoTimeoutPrefix)  // Proper content lines are prepended with a space
-  //    line drop 1
-  //  else if (line == MasterUris.JournalTimeoutLine)
-  //    throw new ServerTimeoutException
-  //  else
-  //    sys.error(s"Unrecognized response from journal web service: ${line.utf8StringTruncateAt(50)}")
 }
 
 object PassiveClusterNode
