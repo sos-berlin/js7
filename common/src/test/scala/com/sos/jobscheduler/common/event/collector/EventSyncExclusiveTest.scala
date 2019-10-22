@@ -50,7 +50,7 @@ final class EventSyncExclusiveTest extends FreeSpec
   }
 
   "timeout" in {
-    val tick = 200.milliseconds
+    val tick = 100.milliseconds
     val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
     for (eventId <- 1L to 3L) {
       withClue(s"#$eventId") {
