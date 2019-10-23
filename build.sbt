@@ -159,11 +159,12 @@ lazy val `jobscheduler-install` = project
     universalPluginSettings,
     topLevelDirectory in Universal := Some(s"jobscheduler-${version.value}"),
     mappings in Universal :=
-      ((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
+      (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
         NativePackagerHelper.contentOf((master / Compile / classDirectory).value / "com/sos/jobscheduler/master/installation") ++
         NativePackagerHelper.contentOf((provider / Compile / classDirectory).value / "com/sos/jobscheduler/provider/installation") ++
         NativePackagerHelper.contentOf((agent  / Compile / classDirectory).value / "com/sos/jobscheduler/agent/installation") ++
-        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "com/sos/jobscheduler/core/installation"))
+        NativePackagerHelper.contentOf((core   / Compile / classDirectory).value / "com/sos/jobscheduler/core/installation")
+      ).toVector.sortBy(_._2))
 
 lazy val `jobscheduler-docker` = project
   .settings(commonSettings)
