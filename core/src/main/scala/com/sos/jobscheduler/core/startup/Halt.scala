@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 /**
   * @author Joacim Zschimmer
   */
-object Shutdown
+object Halt
 {
   private val logger = Logger(getClass)
 

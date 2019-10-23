@@ -147,7 +147,7 @@ with MainJournalingActor[Event]
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
       become("startingCluster")(startingCluster(clusterFuture))
-      // TODO MasterCommand.Terminate --> clusterFuture.cancel()
+      // TODO MasterCommand.Shutdown --> clusterFuture.cancel()
       clusterFuture onComplete { tried =>
         self ! Internal.ClusterStarted(recovered, tried)
       }
@@ -170,7 +170,7 @@ with MainJournalingActor[Event]
     case Internal.ClusterStarted(_, Failure(throwable)) =>
       throw throwable.appendCurrentStackTrace
 
-    case Command.Execute(MasterCommand.Terminate, meta) =>
+    case Command.Execute(MasterCommand.Shutdown, meta) =>
       if (terminating) {
         sender ! Left(MasterIsTerminatingProblem)
       } else {
@@ -413,7 +413,7 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.Terminate =>
+      case MasterCommand.Shutdown =>
         journalActor ! JournalActor.Input.TakeSnapshot
         terminatingSince := now
         Future.successful(Right(MasterCommand.Response.Accepted))

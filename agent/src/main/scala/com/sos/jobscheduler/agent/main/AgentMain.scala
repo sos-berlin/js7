@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.main
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Shutdown
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs.logConfig
@@ -10,8 +10,8 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
-import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import com.sos.jobscheduler.core.startup.JavaMain.withShutdownHooks
+import com.sos.jobscheduler.core.startup.JavaMainLockfileSupport.lockAndRunMain
 import java.time.LocalTime
 import scala.concurrent.duration._
 
@@ -44,7 +44,7 @@ final class AgentMain
     logger.warn("Trying to terminate JobScheduler Agent Server due to Java shutdown")
     import agent.scheduler
     val sigkillAfter = agent.config.getDuration("jobscheduler.termination.sigkill-after").toFiniteDuration
-    agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter))).runAsyncAndForget
+    agent.executeCommand(Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(sigkillAfter))).runAsyncAndForget
     agent.terminated await timeout
     agent.close()
   }

@@ -110,7 +110,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
 
   private def trySigtermProcesses() =
     if (isWindows) {
-      logger.debug("Terminate: Under Windows, SIGTERM is ignored")
+      logger.debug("Shutdown: Under Windows, SIGTERM is ignored")
     } else {
       sendSignalToAllProcesses(SIGTERM)
     }

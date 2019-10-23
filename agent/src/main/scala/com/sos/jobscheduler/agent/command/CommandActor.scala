@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, TakeSnapshot, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Shutdown, TakeSnapshot}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.{CommandMeta, CommandRegister, CommandRun}
-import com.sos.jobscheduler.core.startup.Shutdown
+import com.sos.jobscheduler.core.startup.Halt
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -81,11 +81,11 @@ extends Actor {
       case NoOperation =>
         response.success(Right(AgentCommand.Response.Accepted))
 
-      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: Terminate) =>
+      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: Shutdown) =>
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop =>
-        Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW")
+        Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW")
     }
 }
 

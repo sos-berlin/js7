@@ -57,7 +57,7 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  case object EmergencyStop extends TerminateOrAbort {
+  case object EmergencyStop extends ShutdownOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
   }
@@ -93,16 +93,16 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  sealed trait TerminateOrAbort extends AgentCommand
+  sealed trait ShutdownOrAbort extends AgentCommand
 
-  final case class Terminate(
+  final case class Shutdown(
     sigtermProcesses: Boolean = false,
     sigkillProcessesAfter: Option[FiniteDuration] = None)
-  extends TerminateOrAbort {
+  extends ShutdownOrAbort {
     type Response = Response.Accepted
   }
 
-  object Terminate {
+  object Shutdown {
     val MaxDuration = 31 * 24.h
   }
 
@@ -157,7 +157,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype(deriveCodec[CoupleMaster]),
-      Subtype(deriveCodec[Terminate]),
+      Subtype(deriveCodec[Shutdown]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),

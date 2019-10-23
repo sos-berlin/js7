@@ -82,7 +82,7 @@ final class OrderAgentTest extends FreeSpec {
           assert(processedOrder == toExpectedOrder(order))
           agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual Right(AgentCommand.Response.Accepted)
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
-          agentClient.commandExecute(AgentCommand.Terminate()).await(99.s).orThrow
+          agentClient.commandExecute(AgentCommand.Shutdown()).await(99.s).orThrow
         }
       }
     }
@@ -131,7 +131,7 @@ final class OrderAgentTest extends FreeSpec {
           agentClient.commandExecute(Batch(orders map { o => DetachOrder(o.id) })).await(99.s).orThrow
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
-          agentClient.commandExecute(AgentCommand.Terminate()).await(99.s).orThrow
+          agentClient.commandExecute(AgentCommand.Shutdown()).await(99.s).orThrow
         }
       }
     }

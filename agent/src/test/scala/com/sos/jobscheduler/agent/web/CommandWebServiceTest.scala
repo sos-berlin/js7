@@ -46,9 +46,9 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
       commandRoute
     }
 
-  "Terminate" in {
+  "Shutdown" in {
     val json = json"""{
-        "TYPE": "Terminate",
+        "TYPE": "Shutdown",
         "sigtermProcesses": false,
         "sigkillProcessesAfter": 999
       }"""
@@ -101,6 +101,6 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 }
 
 private object CommandWebServiceTest {
-  private val TestCommand = Terminate(sigkillProcessesAfter = Some(999.seconds))
-  private val TestCommandWhileShuttingDown = Terminate(sigkillProcessesAfter = Some(777.seconds))
+  private val TestCommand = Shutdown(sigkillProcessesAfter = Some(999.seconds))
+  private val TestCommandWhileShuttingDown = Shutdown(sigkillProcessesAfter = Some(777.seconds))
 }

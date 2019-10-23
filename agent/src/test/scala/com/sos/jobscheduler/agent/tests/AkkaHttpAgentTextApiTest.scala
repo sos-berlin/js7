@@ -71,7 +71,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
   "Unauthorized when credentials are missing" in {
     autoClosing(newTextAgentClient(_ => ())) { client =>
       interceptUnauthorized {
-        client.executeCommand("""{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
+        client.executeCommand("""{ TYPE: Shutdown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       }
     }
   }
@@ -90,7 +90,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
     val output = mutable.Buffer[String]()
     autoClosing(newTextAgentClient(output += _)) { client =>
       client.login(Some(TestUserId -> Password)) await 99.s
-      client.executeCommand("""{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
+      client.executeCommand("""{ TYPE: Shutdown, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
       client.getApi("")
     }
     assert(output.size == 3)
@@ -121,7 +121,7 @@ extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider wi
 }
 
 private object AkkaHttpAgentTextApiTest {
-  private val ExpectedTerminate = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
+  private val ExpectedTerminate = AgentCommand.Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
   private val TestUserId = TestUserAndPassword.userId
   private val Password = TestUserAndPassword.password
 

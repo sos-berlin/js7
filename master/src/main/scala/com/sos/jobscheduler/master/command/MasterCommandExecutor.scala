@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
-import com.sos.jobscheduler.core.startup.Shutdown
+import com.sos.jobscheduler.core.startup.Halt
 import com.sos.jobscheduler.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import com.sos.jobscheduler.master.cluster.Cluster
 import com.sos.jobscheduler.master.command.MasterCommandExecutor._
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.data.MasterCommand.{Batch, EmergencyStop, NoOperation}
+import com.sos.jobscheduler.master.data.MasterCommand.{Batch, EmergencyStop}
 import monix.eval.Task
 
 /**
@@ -45,7 +45,7 @@ extends CommandExecutor[MasterCommand]
         Task.sequence(tasks) map (checkedResponses => Right(Batch.Response(checkedResponses)))
 
       case EmergencyStop =>
-        Shutdown.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
+        Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
 
       case MasterCommand.AppointBackupNode(nodeId, uri) =>
         cluster().appointBackupNode(nodeId, uri)

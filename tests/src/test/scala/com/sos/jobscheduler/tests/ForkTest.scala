@@ -73,7 +73,7 @@ final class ForkTest extends FreeSpec with MasterAgentForScalaTest
 
     master.terminate() await 99.s
     // Kill SLOW job
-    agents(0).executeCommand(AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
+    agents(0).executeCommand(AgentCommand.Shutdown(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
     agents(0).terminated await 99.s
   }
 }

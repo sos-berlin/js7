@@ -83,7 +83,7 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  case object Terminate extends MasterCommand {
+  case object Shutdown extends MasterCommand {
     type Response = Response.Accepted
   }
 
@@ -147,5 +147,5 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[PassiveNodeFollows]),
     Subtype(TakeSnapshot),
-    Subtype(Terminate))
+    Subtype(Shutdown))
 }

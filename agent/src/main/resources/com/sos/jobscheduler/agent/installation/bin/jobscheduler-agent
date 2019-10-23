@@ -12,7 +12,7 @@ httpPort=4445
 agentOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4Async=false
-terminateCommand='{ "TYPE": "Terminate", "sigtermProcesses": false }'
+terminateCommand='{ "TYPE": "Shutdown", "sigtermProcesses": false }'
 
 for arg in "$@"; do
   case "$arg" in
@@ -121,7 +121,7 @@ echo "PID $pid"
 
 terminate() {
   echo
-  echo Terminate JobScheduler Agent Server
+  echo Shutdown JobScheduler Agent Server
   # Add some seconds to start Java with AgentClientMain
   terminateTimeout=30
   if [ "$SHELL" = "/bin/bash" ]; then
