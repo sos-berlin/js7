@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderProcessed
 import com.sos.jobscheduler.data.order.Outcome
 import com.sos.jobscheduler.data.workflow.instructions.ReturnCodeMeaning
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -76,7 +76,7 @@ object WorkflowJob
   }
 
   /** To be used in Workflow with known WorkflowId. */
-  implicit val jsonEncoder: ObjectEncoder[WorkflowJob] = workflowJob =>
+  implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
     JsonObject.fromIterable(
       //(workflowJob.jobKey match {
       //  case JobKey.Named(_, jobName) => ("jobName" -> jobName.asJson) :: Nil

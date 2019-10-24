@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
@@ -404,7 +404,7 @@ object Order {
     Subtype(Canceled),
     Subtype[Broken])
 
-  implicit val jsonEncoder: ObjectEncoder[Order[State]] = order =>
+  implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(
       "id" -> order.id.asJson,
       "arguments" -> (order.arguments.nonEmpty ? order.arguments).asJson,
@@ -428,7 +428,7 @@ object Order {
     } yield
       Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, cancel)
 
-  implicit val FreshOrReadyOrderJsonEncoder: ObjectEncoder[Order[FreshOrReady]] = o => jsonEncoder.encodeObject(o)
+  implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[FreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[FreshOrReady]] = cursor =>
     jsonDecoder(cursor) flatMap {
       o => o.ifState[FreshOrReady] match {

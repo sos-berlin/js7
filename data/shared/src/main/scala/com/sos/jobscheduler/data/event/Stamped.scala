@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.event.Stamped._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.mutable
 
 /**
@@ -32,7 +32,7 @@ object Stamped
       fa.copy(value = f(fa.value))
   }
 
-  implicit def jsonEncoder[A: Encoder]: ObjectEncoder[Stamped[A]] =
+  implicit def jsonEncoder[A: Encoder]: Encoder.AsObject[Stamped[A]] =
     stamped => {
       val fields = mutable.Buffer[(String, Json)]()
       fields += "eventId" -> Json.fromLong(stamped.eventId)

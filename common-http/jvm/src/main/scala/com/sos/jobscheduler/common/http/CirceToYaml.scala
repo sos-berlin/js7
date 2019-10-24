@@ -36,7 +36,7 @@ object CirceToYaml
   }
 
   def toYamlString(json: Json, flowStyle: FlowStyle): String =
-    yaml.dumpAs(yaml.load(printer.pretty(json)), Tag.MAP, flowStyle)
+    yaml.dumpAs(yaml.load(printer.print(json)), Tag.MAP, flowStyle)
 
   def jsonToYaml(json: Json) = jsonToJava(json)
 

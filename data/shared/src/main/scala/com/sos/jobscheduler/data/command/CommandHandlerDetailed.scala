@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.command
 
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import io.circe.{Decoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 import scala.collection.immutable.Seq
 
 /**
@@ -12,6 +12,6 @@ final case class CommandHandlerDetailed[C <: CommonCommand](commandRuns: Seq[Com
 
 object CommandHandlerDetailed
 {
-  implicit def jsonCodec[C <: CommonCommand: ObjectEncoder: Decoder]: CirceObjectCodec[CommandHandlerDetailed[C]] =
+  implicit def jsonCodec[C <: CommonCommand: Encoder.AsObject: Decoder]: CirceObjectCodec[CommandHandlerDetailed[C]] =
     deriveCodec[CommandHandlerDetailed[C]]
 }

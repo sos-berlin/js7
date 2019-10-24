@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.data.event.EventSeq.{Empty, NonEmpty}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
 
@@ -40,7 +40,7 @@ object TearableEventSeq {
     }
   }
 
-  implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder.AsObject: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](
       Subtype[EventSeq[Seq, E]],
       Subtype(deriveCodec[Torn]))
@@ -62,13 +62,13 @@ object EventSeq {
     override def toString = s"EventSeq.Empty($lastEventId)"
   }
 
-  implicit def nonEmptyJsonEncoder[E: ObjectEncoder]: ObjectEncoder[NonEmpty[Seq, E]] =
+  implicit def nonEmptyJsonEncoder[E: Encoder.AsObject]: Encoder.AsObject[NonEmpty[Seq, E]] =
     eventSeq => JsonObject.singleton("stamped", eventSeq.stamped.asJson)
 
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
     _.get[Seq[Stamped[E]]]("stamped") map NonEmpty.apply
 
-  implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder.AsObject: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
     TypedJsonCodec[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
       Subtype(deriveCodec[Empty]))

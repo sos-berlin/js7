@@ -10,7 +10,7 @@ import org.scalatest.Assertions._
   */
 object CirceJsonTester {
   private val printer = Printer.noSpaces.copy(dropNullValues = true/*drops None*/)
-  private val prettyPrinter = Printer.spaces2.copy(preserveOrder = true, colonLeft = "", lrbracketsEmpty = "")
+  private val prettyPrinter = Printer.spaces2.copy(colonLeft = "", lrbracketsEmpty = "")
 
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit =
     testJson(a, parseJson(jsonString))
@@ -18,9 +18,9 @@ object CirceJsonTester {
   def testJson[A: Encoder: Decoder](a: A, json: => Json): Unit = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
-    if (asJson != json) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(json))}")
+    if (asJson != json) fail(s"${prettyPrinter.print(normalize(asJson))} did not equal ${prettyPrinter.print(normalize(json))}")
     assert(a == rightOrThrow(json.as[A]))
-    val reparsed = parseJson(printer.pretty(asJson))
+    val reparsed = parseJson(printer.print(asJson))
     assert(reparsed == json)
     assert(reparsed == asJson)
   }

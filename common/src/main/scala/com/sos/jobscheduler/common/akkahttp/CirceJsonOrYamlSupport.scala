@@ -34,7 +34,7 @@ object CirceJsonOrYamlSupport
   private def jsonMarshaller[A](implicit encoder: Encoder[A]): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(`application/json`) { value =>
       val string = logException(s"jsonMarhaller(${encoder.getClass.getName})") {
-        CompactPrinter.pretty(value.asJson)
+        CompactPrinter.print(value.asJson)
       }
       HttpEntity.Strict(`application/json`, ByteString(string))
     }

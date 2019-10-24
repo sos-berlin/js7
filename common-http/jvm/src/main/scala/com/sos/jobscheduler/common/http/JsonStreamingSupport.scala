@@ -45,6 +45,6 @@ object JsonStreamingSupport
 
   def jsonSeqMarshaller[A: Encoder](implicit streamingSupport: JsonEntityStreamingSupport): ToEntityMarshaller[A] =
     Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
-      HttpEntity.Strict(streamingSupport.contentType, ByteString(CompactPrinter.pretty(value.asJson))))
+      HttpEntity.Strict(streamingSupport.contentType, ByteString(CompactPrinter.print(value.asJson))))
 }
 

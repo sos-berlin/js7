@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.crypt.SignedString
 import com.sos.jobscheduler.data.event.NoKeyEvent
 import io.circe.syntax._
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -26,7 +26,7 @@ object RepoEvent {
   object FileBasedAddedOrChanged {
     def unapply(o: FileBasedAddedOrChanged) = Some((o.path, o.signed))
 
-    private[RepoEvent] def jsonEncoder: ObjectEncoder[FileBasedAddedOrChanged] = o =>
+    private[RepoEvent] def jsonEncoder: Encoder.AsObject[FileBasedAddedOrChanged] = o =>
       JsonObject("signed" -> o.signed.asJson)
 
     private[RepoEvent] def jsonDecoder(implicit x: Decoder[FileBased]): Decoder[(FileBased, SignedString)] = c =>
@@ -45,7 +45,7 @@ object RepoEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 
-  implicit def jsonCodec(implicit w: ObjectEncoder[FileBased], x: Decoder[FileBased], y: Encoder[TypedPath], z: Decoder[TypedPath])
+  implicit def jsonCodec(implicit w: Encoder.AsObject[FileBased], x: Decoder[FileBased], y: Encoder[TypedPath], z: Decoder[TypedPath])
   : TypedJsonCodec[RepoEvent] = TypedJsonCodec(
       Subtype(deriveCodec[VersionAdded]),
       Subtype(deriveCodec[FileBasedAdded]),

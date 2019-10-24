@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.workflow.instructions.TryInstruction._
 import com.sos.jobscheduler.data.workflow.position.{BranchId, CatchBranchId, TryBranchId, TryCatchBranchId}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -105,7 +105,7 @@ object TryInstruction
       case _ => false
     }
 
-  implicit val jsonEncoder: ObjectEncoder[TryInstruction] =
+  implicit val jsonEncoder: Encoder.AsObject[TryInstruction] =
     o => JsonObject(
       "try" -> o.tryWorkflow.asJson,
       "catch" -> o.catchWorkflow.asJson,

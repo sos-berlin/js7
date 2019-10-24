@@ -63,7 +63,7 @@ object Outcome
     protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Succeeded =
       new Succeeded(returnCode, keyValues)
 
-    implicit val jsonEncoder: ObjectEncoder[Succeeded] =
+    implicit val jsonEncoder: Encoder.AsObject[Succeeded] =
       o => JsonObject.fromIterable(
         ("returnCode" -> o.returnCode.asJson) ::
           o.keyValues.nonEmpty.thenList("keyValues" -> o.keyValues.asJson))
@@ -90,7 +90,7 @@ object Outcome
     protected def newInstance(returnCode: ReturnCode, keyValues: Map[String, String]): Failed =
       Failed(errorMessage = None, returnCode, keyValues)
 
-    implicit val jsonEncoder: ObjectEncoder[Failed] =
+    implicit val jsonEncoder: Encoder.AsObject[Failed] =
       o => JsonObject.fromIterable(
         ("message" -> o.errorMessage.asJson) ::
         ("returnCode" -> o.returnCode.asJson) ::

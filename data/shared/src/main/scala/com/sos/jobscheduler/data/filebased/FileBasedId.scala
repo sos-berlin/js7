@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.filebased
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.filebased.FileBasedId._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.language.implicitConversions
 
 /**
@@ -36,7 +36,7 @@ object FileBasedId
   implicit def ordering[P <: TypedPath]: Ordering[FileBasedId[P]] =
     Ordering.by(o => (o.path, o.versionId))
 
-  implicit def jsonEncoder[P <: TypedPath: Encoder]: ObjectEncoder[FileBasedId[P]] =
+  implicit def jsonEncoder[P <: TypedPath: Encoder]: Encoder.AsObject[FileBasedId[P]] =
     o => JsonObject(
       "path" -> (!o.path.isAnonymous ? o.path).asJson,
       "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)

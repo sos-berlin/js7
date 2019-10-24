@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.workflow.instructions.Fork
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.collection.immutable.Seq
 
 /**
@@ -39,7 +39,7 @@ object OrderEvent {
     //type State = FreshOrReady
   }
   object OrderAdded {
-    private[OrderEvent] implicit val jsonCodec: ObjectEncoder[OrderAdded] =
+    private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,

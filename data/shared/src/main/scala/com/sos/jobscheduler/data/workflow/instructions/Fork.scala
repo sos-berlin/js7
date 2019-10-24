@@ -100,7 +100,7 @@ object Fork
   }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]
-  implicit val jsonEncoder: ObjectEncoder[Fork] =
+  implicit val jsonEncoder: Encoder.AsObject[Fork] =
     o => JsonObject(
       "branches" -> o.branches.asJson,
       "sourcePos" -> o.sourcePos.asJson)

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -30,7 +30,7 @@ object FreshOrder
   def fromOrder(order: Order[Order.Fresh]): FreshOrder =
     new FreshOrder(order.id, order.workflowId.path, order.state.scheduledFor, order.arguments)
 
-  implicit val jsonCodec: ObjectEncoder[FreshOrder] =
+  implicit val jsonCodec: Encoder.AsObject[FreshOrder] =
     o => JsonObject(
       "id" -> o.id.asJson,
       "workflowPath" -> o.workflowPath.asJson,

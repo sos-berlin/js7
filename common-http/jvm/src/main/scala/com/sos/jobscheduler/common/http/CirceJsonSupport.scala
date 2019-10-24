@@ -17,7 +17,7 @@ object CirceJsonSupport
 
   implicit final def jsonJsonMarshaller(implicit printer: Printer = CompactPrinter): ToEntityMarshaller[Json] =
     Marshaller.withFixedContentType(`application/json`) { json =>
-      HttpEntity(`application/json`, printer.pretty(json))
+      HttpEntity(`application/json`, printer.print(json))
     }
 
   implicit final def unmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.reuseIfEqual
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +23,7 @@ object AgentRef extends FileBased.Companion[AgentRef]
   type ThisFileBased = AgentRef
   type Path = AgentRefPath
 
-  implicit val jsonEncoder: ObjectEncoder[AgentRef] = agent =>
+  implicit val jsonEncoder: Encoder.AsObject[AgentRef] = agent =>
     agent.id.asJsonObject ++
       JsonObject(
         "uri" -> Json.fromString(agent.uri))

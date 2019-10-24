@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.SecretString
-import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -27,7 +27,7 @@ object SessionCommand
     final case class LoggedIn(sessionToken: SessionToken) extends SessionCommand.Response
 
     object LoggedIn {
-      implicit val jsonEncoder: ObjectEncoder[LoggedIn] =
+      implicit val jsonEncoder: Encoder.AsObject[LoggedIn] =
         o => JsonObject("sessionToken" -> Json.fromString(o.sessionToken.secret.string))
 
       implicit val jsonDecoder: Decoder[LoggedIn] =
@@ -43,7 +43,7 @@ object SessionCommand
     type Response = SessionCommand.Response.Accepted
   }
   object Logout {
-    implicit val jsonEncoder: ObjectEncoder[Logout] =
+    implicit val jsonEncoder: Encoder.AsObject[Logout] =
       o => JsonObject("sessionToken" -> Json.fromString(o.sessionToken.secret.string))
 
     implicit val jsonDecoder: Decoder[Logout] =

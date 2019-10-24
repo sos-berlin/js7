@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.position.{Position, WorkflowPosition, _}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +38,7 @@ object JobKey
     def keyName = s"$workflowBranchPath:${jobName.string}"
   }
 
-  implicit val jsonEncoder: ObjectEncoder[JobKey] = {
+  implicit val jsonEncoder: Encoder.AsObject[JobKey] = {
     case Anonymous(WorkflowPosition(workflowId, position)) =>
       JsonObject(
         "workflowId" -> workflowId.asJson,

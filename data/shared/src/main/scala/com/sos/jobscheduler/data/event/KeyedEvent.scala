@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 import scala.reflect.ClassTag
 
 /**
@@ -33,7 +33,7 @@ object KeyedEvent {
 
   def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
-  implicit def jsonEncoder[E <: Event](implicit eventEncoder: ObjectEncoder[E], keyEncoder: Encoder[E#Key]): ObjectEncoder[KeyedEvent[E]] =
+  implicit def jsonEncoder[E <: Event](implicit eventEncoder: Encoder.AsObject[E], keyEncoder: Encoder[E#Key]): Encoder.AsObject[KeyedEvent[E]] =
     keyedEvent => {
       val jsonObject = keyedEvent.event.asJsonObject
       keyedEvent.key match {

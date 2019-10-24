@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.fatevent.OrderFatEvent
 import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
-import io.circe.{Decoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
@@ -20,10 +20,10 @@ trait MasterApi {
 
   def overview: Task[MasterOverview]
 
-  def events[E <: Event: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  def events[E <: Event: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
     : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
 
-  def fatEvents[E <: OrderFatEvent: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  def fatEvents[E <: OrderFatEvent: ClassTag](eventRequest: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
     : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
 
   def ordersOverview: Task[OrdersOverview]

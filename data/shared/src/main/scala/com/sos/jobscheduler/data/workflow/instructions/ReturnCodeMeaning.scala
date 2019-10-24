@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.data.job.ReturnCode
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -30,7 +30,7 @@ object ReturnCodeMeaning {
     def of(returnCodes: Int*) = new Failure(returnCodes.map(ReturnCode.apply).toSet)
   }
 
-  implicit val jsonEncoder: ObjectEncoder[ReturnCodeMeaning] = {
+  implicit val jsonEncoder: Encoder.AsObject[ReturnCodeMeaning] = {
     case Success(o) => JsonObject.singleton("success", o.asJson)
     case Failure(o) => JsonObject.singleton("failure", o.asJson)
   }

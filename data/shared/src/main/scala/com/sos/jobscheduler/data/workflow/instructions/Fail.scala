@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +23,7 @@ extends Instruction
 
 object Fail
 {
-  implicit val jsonEncoder: ObjectEncoder[Fail] =
+  implicit val jsonEncoder: Encoder.AsObject[Fail] =
     o => JsonObject(
       "message" -> o.message.asJson,
       "returnCode" -> o.returnCode.asJson,

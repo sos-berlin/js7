@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.position._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Json, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json}
 import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
@@ -59,7 +59,7 @@ object Instruction {
     def labelString = maybeLabel.map(o => s"$o: ").mkString
   }
   object Labeled {
-    implicit def jsonEncoder(implicit instrEncoder: ObjectEncoder[Instruction]): ObjectEncoder[Labeled] = {
+    implicit def jsonEncoder(implicit instrEncoder: Encoder.AsObject[Instruction]): Encoder.AsObject[Labeled] = {
       case Labeled(None, instruction) =>
         instruction.asJsonObject
       case Labeled(maybeLabel, instruction) =>

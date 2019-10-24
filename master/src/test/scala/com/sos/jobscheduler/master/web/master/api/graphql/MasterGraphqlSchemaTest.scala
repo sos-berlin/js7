@@ -483,7 +483,7 @@ final class MasterGraphqlSchemaTest extends FreeSpec
     testGraphql(query, Json.obj(), expectedResult)
 
   private def testGraphql(query: Document, variables: Json, expectedResult: Json): Unit =
-    assert(CompactPrinter.pretty(executeGraphql(query, variables) await 99.s).parseJsonOrThrow == expectedResult)
+    assert(CompactPrinter.print(executeGraphql(query, variables) await 99.s).parseJsonOrThrow == expectedResult)
 
   private def executeGraphql(query: Document, variables: Json): Future[Json] =
     Executor.execute(MasterGraphqlSchema.schema, query, TestContext, variables = variables)

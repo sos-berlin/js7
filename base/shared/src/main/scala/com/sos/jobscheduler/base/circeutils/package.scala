@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base
 
-import io.circe.{Decoder, Encoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 
 /**
   * @author Joacim Zschimmer
@@ -8,5 +8,5 @@ import io.circe.{Decoder, Encoder, ObjectEncoder}
 package object circeutils {
 
   type CirceCodec[A] = Encoder[A] with Decoder[A]
-  type CirceObjectCodec[A] = ObjectEncoder[A] with Decoder[A]
+  type CirceObjectCodec[A] = Encoder.AsObject[A] with Decoder[A]
 }

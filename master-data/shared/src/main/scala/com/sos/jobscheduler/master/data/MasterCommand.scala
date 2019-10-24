@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Seq
 
 /**
@@ -48,7 +48,7 @@ object MasterCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
   object CancelOrder {
-    implicit val jsonEncoder: ObjectEncoder[CancelOrder] = o =>
+    implicit val jsonEncoder: Encoder.AsObject[CancelOrder] = o =>
       JsonObject.fromIterable(
         ("orderId" -> o.orderId.asJson) ::
           (o.mode != CancelMode.Default).thenList("mode" -> o.mode.asJson))

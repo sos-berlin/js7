@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.source.SourcePos
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 
 /**
   * @author Joacim Zschimmer
@@ -29,7 +29,7 @@ object Execute
     override def toString = s"execute $name"
   }
   object Named {
-    implicit val jsonEncoder: ObjectEncoder[Named] = named =>
+    implicit val jsonEncoder: Encoder.AsObject[Named] = named =>
       JsonObject.fromIterable(
         ("jobName" -> named.name.asJson) ::
         named.defaultArguments.nonEmpty.thenList("defaultArguments" -> named.defaultArguments.asJson) :::

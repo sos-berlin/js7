@@ -6,9 +6,9 @@ import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.generic.decoding.DerivedDecoder
-import io.circe.generic.encoding.DerivedObjectEncoder
+import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
+import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
 import scala.collection.immutable.{ListMap, Seq}
 import shapeless.Lazy
 
@@ -29,9 +29,9 @@ object CirceUtils
   def stringDecoder[A](from: String => A): Decoder[A] =
     _.as[String] map from
 
-  def objectCodec[A <: AnyRef: ObjectEncoder: Decoder]: CirceObjectCodec[A] =
-    new ObjectEncoder[A] with Decoder[A] {
-      def encodeObject(a: A) = implicitly[ObjectEncoder[A]].encodeObject(a)
+  def objectCodec[A <: AnyRef: Encoder.AsObject: Decoder]: CirceObjectCodec[A] =
+    new Encoder.AsObject[A] with Decoder[A] {
+      def encodeObject(a: A) = implicitly[Encoder.AsObject[A]].encodeObject(a)
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
@@ -41,7 +41,7 @@ object CirceUtils
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
-  val CompactPrinter = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/, preserveOrder = true/*maybe slow but readable*/)
+  val CompactPrinter = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/)
   val PrettyPrinter = Printer.spaces2.copy(dropNullValues = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
 
   object implicits {
@@ -64,19 +64,19 @@ object CirceUtils
       JsonObject.fromIterable(underlying.toIterable ++ o.toIterable)
 
     def toPrettyString: String =
-      PrettyPrinter.pretty(Json.fromJsonObject(underlying))
+      PrettyPrinter.print(Json.fromJsonObject(underlying))
 
     def compactPrint: String =
-      CompactPrinter.pretty(Json.fromJsonObject(underlying))
+      CompactPrinter.print(Json.fromJsonObject(underlying))
   }
 
   implicit final class RichJson(private val underlying: Json) extends AnyVal
   {
     def toPrettyString: String =
-      PrettyPrinter.pretty(underlying)
+      PrettyPrinter.print(underlying)
 
     def compactPrint: String =
-      CompactPrinter.pretty(underlying)
+      CompactPrinter.print(underlying)
 
     def checkedAs[A: Decoder] = underlying.as[A].toChecked
 
@@ -148,14 +148,14 @@ object CirceUtils
       }
   }
 
-  final def deriveCodec[A](implicit encode: Lazy[DerivedObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceObjectCodec[A] =
-    new ObjectEncoder[A] with Decoder[A] {
+  final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceObjectCodec[A] =
+    new Encoder.AsObject[A] with Decoder[A] {
       def encodeObject(a: A) = encode.value.encodeObject(a)
       def apply(c: HCursor) = decode.value.tryDecode(c)
     }
 
   def singletonCodec[A](singleton: A): CirceObjectCodec[A] =
-    new ObjectEncoder[A] with Decoder[A] {
+    new Encoder.AsObject[A] with Decoder[A] {
       def encodeObject(a: A) = JsonObject.empty
 
       def apply(c: HCursor) = Right(singleton)

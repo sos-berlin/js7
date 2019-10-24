@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview, MasterSnapshots}
-import io.circe.{Decoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.immutable.Seq
@@ -52,13 +52,13 @@ trait HttpMasterApi extends MasterApi with SessionApi
   final def orders: Task[Stamped[Seq[Order[Order.State]]]] =
     httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
 
-  final def events[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def events[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.events[E](request),
       timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
 
-  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
     : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
 
@@ -83,7 +83,7 @@ trait HttpMasterApi extends MasterApi with SessionApi
     journalObservable(fileEventId, position, timeout, markEOF, returnLength = true)
       .map(_.map(_.decodeUtf8.orThrow.stripSuffix("\n").toLong))
 
-  final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
+  final def fatEvents[E <: FatEvent: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
     httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.fatEvents[E](request),

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import io.circe.{Decoder, ObjectEncoder}
+import io.circe.{Decoder, Encoder}
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -19,6 +19,6 @@ object CommandRunOverview
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  implicit def jsonCodec[C <: CommonCommand: ObjectEncoder: Decoder]: CirceObjectCodec[CommandRunOverview[C]] =
+  implicit def jsonCodec[C <: CommonCommand: Encoder.AsObject: Decoder]: CirceObjectCodec[CommandRunOverview[C]] =
     deriveCodec[CommandRunOverview[C]]
 }

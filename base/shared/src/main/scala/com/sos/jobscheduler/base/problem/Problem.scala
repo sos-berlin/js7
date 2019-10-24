@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
 import scala.util.control.NoStackTrace
@@ -244,7 +244,7 @@ object Problem
     else
       prefix + "\n & "
 
-  implicit val jsonEncoder: ObjectEncoder[Problem] = problem =>
+  implicit val jsonEncoder: Encoder.AsObject[Problem] = problem =>
     JsonObject.fromIterable(
       ("message" -> Json.fromString(problem.messageWithCause/*Not value.message, JSON differs from Scala*/)) :: (
         problem match {
@@ -257,7 +257,7 @@ object Problem
             Nil
         }))
 
-  val typedJsonEncoder: ObjectEncoder[Problem] = {
+  val typedJsonEncoder: Encoder.AsObject[Problem] = {
     val typeField = "TYPE" -> Json.fromString("Problem")
     problem => typeField +: jsonEncoder.encodeObject(problem)
   }

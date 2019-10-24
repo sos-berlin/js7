@@ -19,7 +19,7 @@ import com.sos.jobscheduler.data.workflow.instructions.executable.WorkflowJob
 import com.sos.jobscheduler.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
 import com.sos.jobscheduler.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.annotation.tailrec
 import scala.collection.immutable.{IndexedSeq, Seq}
 
@@ -445,7 +445,7 @@ object Workflow extends FileBased.Companion[Workflow] {
       (labeledInstructions.last.instruction.isInstanceOf[End] ||
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
-  implicit val jsonEncoder: ObjectEncoder[Workflow] = {
+  implicit val jsonEncoder: Encoder.AsObject[Workflow] = {
     case Workflow(id, instructions, namedJobs, source, _) =>
       id.asJsonObject ++
         JsonObject(
