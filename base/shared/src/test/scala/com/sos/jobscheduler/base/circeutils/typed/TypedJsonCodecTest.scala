@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.circeutils.typed
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec.{UnknownClassForJsonException, UnknownJsonTypeException}
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -13,8 +13,8 @@ import org.scalatest.Matchers._
 /**
   * @author Joacim Zschimmer
   */
-final class TypedJsonCodecTest extends FreeSpec {
-
+final class TypedJsonCodecTest extends FreeSpec
+{
   "encode and decode" in {
     testJson[A](A0     , json"""{ "TYPE": "A0" }""")
     testJson[A](A1(7)  , json"""{ "TYPE": "A1", "int": 7 }""")
@@ -62,6 +62,15 @@ final class TypedJsonCodecTest extends FreeSpec {
     intercept[NoSuchElementException] {
       AJsonCodec.typeName(Other)
     } .getMessage shouldEqual "key not found: class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$Other$"
+  }
+
+  "isOfType, isOfType" in {
+    val a1Json = json"""{ "TYPE":  "A1"}"""
+    val xJson = json"""{ "TYPE":  "X"}"""
+    assert(a1Json.isOfType[A, A1])
+    assert(!xJson.isOfType[A, A1])
+    assert(AJsonCodec.isOfType[A1](a1Json))
+    assert(!AJsonCodec.isOfType[A1](xJson))
   }
 }
 

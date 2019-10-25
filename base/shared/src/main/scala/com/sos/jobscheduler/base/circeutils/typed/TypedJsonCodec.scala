@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import scala.reflect.ClassTag
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 
 /**
   * @author Joacim Zschimmer
@@ -17,6 +18,9 @@ extends Encoder.AsObject[A] with Decoder[A]
 {
   private val _classToName: Map[Class[_ <: A], String] =
     nameToClass.map(o => o._2 -> o._1).toMap
+
+  private val classToNameJson: Map[Class[_ <: A], Json/*String*/] =
+    Map()/*force eagerness*/ ++ _classToName.mapValues(Json.fromString)
 
   /** Union. */
   def |[B](other: TypedJsonCodec[B]): TypedJsonCodec[Any] = {
@@ -57,9 +61,13 @@ extends Encoder.AsObject[A] with Decoder[A]
     classToEncoder.keySet collect {
       case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[A1]]
     }
+
+  def isOfType[A1 <: A: ClassTag](json: Json): Boolean =
+    json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[A1])
 }
 
-object TypedJsonCodec {
+object TypedJsonCodec
+{
   val TypeFieldName = "TYPE"
 
   def typeName[A: ClassTag]: String =
@@ -74,6 +82,11 @@ object TypedJsonCodec {
       subtypes.flatMap(_.classToEncoder).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
       subtypes.flatMap(_.nameToDecoder).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)),
       subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
+  }
+
+  implicit final class TypedJson(private val underlying: Json) extends AnyVal {
+    def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
+      implicitly[TypedJsonCodec[A]].isOfType[A1](underlying)
   }
 
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])
