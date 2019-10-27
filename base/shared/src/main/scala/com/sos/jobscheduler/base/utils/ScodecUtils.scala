@@ -1,6 +1,10 @@
 package com.sos.jobscheduler.base.utils
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import io.circe.{Decoder, Json}
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.charset.StandardCharsets.UTF_8
 import scodec.bits.ByteVector
@@ -34,5 +38,12 @@ object ScodecUtils
       }
       -1
     }
+
+    def parseJsonAs[A: Decoder]: Checked[A] =
+      parseJson flatMap (_.checkedAs[A])
+
+    def parseJson: Checked[Json] =
+      underlying.decodeUtf8.toThrowableChecked
+        .flatMap(string => io.circe.parser.parse(string).toChecked)
   }
 }
