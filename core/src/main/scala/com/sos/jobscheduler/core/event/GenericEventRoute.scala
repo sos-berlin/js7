@@ -183,7 +183,7 @@ trait GenericEventRoute extends RouteProvider
         if (requestedBuildId != BuildInfo.buildId)
           complete(HttpEntity(
             `text/event-stream`,
-            s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).pretty(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
+            s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).printWith(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
         else
           eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout) { request =>
             optionalHeaderValueByType[`Last-Event-ID`](()) { lastEventIdHeader =>
@@ -193,7 +193,7 @@ trait GenericEventRoute extends RouteProvider
               val source = logAkkaStreamErrorToWebLog(
                 eventWatch.observe(req, predicate = isRelevantEvent)
                   .map(stamped => ServerSentEvent(
-                    data = stamped.asJson.pretty(mutableJsonPrinter),
+                    data = stamped.asJson.printWith(mutableJsonPrinter),
                     id = Some(stamped.eventId.toString)))
                   .toAkkaSource)
               complete(source)

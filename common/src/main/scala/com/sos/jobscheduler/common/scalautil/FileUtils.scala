@@ -60,7 +60,7 @@ object FileUtils {
         autoClosing(new FileOutputStream(delegate))(byteVector.copyToStream)
 
       def :=[A](a: A)(implicit jsonEncoder: Encoder[A]): Unit =
-        contentString = jsonEncoder(a).pretty(CompactPrinter)
+        contentString = jsonEncoder(a).printWith(CompactPrinter)
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: CharSequence): Unit =
