@@ -51,7 +51,7 @@ final class Cluster(
     Task {
       recoveredClusterState match {
         case state: Sole if state.activeNodeId == conf.nodeId =>
-          Task.pure(Right(ClusterFollowUp.BecomeActive))
+          Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
 
         //case state: AwaitCoupling if state.passiveNodeId == conf.nodeId =>
         //  ???

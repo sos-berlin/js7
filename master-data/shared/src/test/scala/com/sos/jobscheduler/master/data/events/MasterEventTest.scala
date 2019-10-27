@@ -21,9 +21,10 @@ final class MasterEventTest extends FreeSpec
   }
 
   "MasterShutDown" in {
-    testJson[MasterEvent](MasterShutDown,
+    testJson[MasterEvent](MasterShutDown(clusterSwitchOver = false),
       json"""{
-        "TYPE": "MasterShutDown"
+        "TYPE": "MasterShutDown",
+        "clusterSwitchOver": false
       }""")
   }
 

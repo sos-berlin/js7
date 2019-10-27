@@ -207,9 +207,14 @@ final class MasterCommandTest extends FreeSpec
   }
 
   "Shutdown" in {
-    testJson[MasterCommand](Shutdown,
+    testJson[MasterCommand](Shutdown(),
       json"""{
         "TYPE": "Shutdown"
+      }""")
+    testJson[MasterCommand](Shutdown(clusterSwitchOver = true),
+      json"""{
+        "TYPE": "Shutdown",
+        "clusterSwitchOver": true
       }""")
   }
 

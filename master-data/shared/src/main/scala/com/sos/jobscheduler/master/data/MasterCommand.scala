@@ -83,8 +83,16 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  case object Shutdown extends MasterCommand {
+  final case class Shutdown(clusterSwitchOver: Boolean = false) extends MasterCommand {
     type Response = Response.Accepted
+  }
+  object Shutdown {
+    implicit val jsonEncoder: Encoder.AsObject[Shutdown] =
+      o => JsonObject.fromIterable(o.clusterSwitchOver ? ("clusterSwitchOver" -> Json.fromBoolean(true)))
+    implicit val jsonDecoder: Decoder[Shutdown] =
+      cursor => for {
+        clusterSwitchOver <- cursor.get[Option[Boolean]]("clusterSwitchOver").map(_ getOrElse false)
+      } yield Shutdown(clusterSwitchOver = clusterSwitchOver)
   }
 
   case object TakeSnapshot extends MasterCommand {
@@ -147,5 +155,5 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[PassiveNodeFollows]),
     Subtype(TakeSnapshot),
-    Subtype(Shutdown))
+    Subtype[Shutdown])
 }

@@ -104,7 +104,7 @@ extends AutoCloseable
         case None =>
           logger.debug("terminate")
           for {
-            _ <- executeCommandAsSystemUser(MasterCommand.Shutdown) map (_.orThrow)
+            _ <- executeCommandAsSystemUser(MasterCommand.Shutdown()) map (_.orThrow)
             t <- Task.fromFuture(terminated)
           } yield t
       }
@@ -200,7 +200,7 @@ object RunningMaster
               new MasterOrderKeeper(
                 journalActor,
                 cluster,
-                recovered,
+                recovered.eventWatch,
                 recoveredClusterState,
                 masterConfiguration,
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)(
@@ -209,6 +209,7 @@ object RunningMaster
             "MasterOrderKeeper",
             onStopped = _ => Success(Completed)
           )
+      actor ! MasterOrderKeeper.Input.Start(recovered)
       (tag[MasterOrderKeeper.type](actor), whenCompleted)
     }
 

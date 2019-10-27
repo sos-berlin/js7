@@ -24,6 +24,7 @@ import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecoverer
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
 import com.sos.jobscheduler.core.event.state.Recovered
 import com.sos.jobscheduler.core.filebased.{FileBasedVerifier, FileBaseds, Repo}
@@ -72,7 +73,7 @@ import shapeless.tag.@@
 final class MasterOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster,
-  recovered_ : Recovered[MasterState, Event],
+  eventWatch: JournalEventWatch,
   recoveredClusterState: ClusterState,
   masterConfiguration: MasterConfiguration,
   signatureVerifier: SignatureVerifier)
@@ -85,7 +86,6 @@ with MainJournalingActor[Event]
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
-  private val eventWatch = recovered_.eventWatch
   private var runningSince = now  // Will be overwritten after recovery
   private var masterMetaState = MasterMetaState(masterConfiguration.masterId, Timestamp.now, Duration.Zero)
   private var repo = Repo(MasterFileBaseds.jsonCodec)
@@ -97,7 +97,7 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private val terminatingSince = SetOnce[Deadline]
+  private val terminatingSince = SetOnce[(MasterCommand.Shutdown, Deadline)]
 
   private def terminating = terminatingSince.isDefined
 
@@ -121,13 +121,11 @@ with MainJournalingActor[Event]
   }
 
   watch(journalActor)
-  self ! Internal.StartClusterNode(recovered_)
-  // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
     super.postStop()
     cluster.stop()
-    logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+    logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o._2.elapsed.pretty})"))
   }
 
   protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
@@ -140,44 +138,42 @@ with MainJournalingActor[Event]
     orderRegister.mapValues(_.order).toMap)
 
   def receive = {
-    case Internal.StartClusterNode(recovered) =>
+    case Input.Start(recovered) =>
       val clusterFuture = cluster
-        .start(recovered_, recoveredClusterState)
+        .start(recovered, recoveredClusterState)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
       become("startingCluster")(startingCluster(clusterFuture))
-      // TODO MasterCommand.Shutdown --> clusterFuture.cancel()
       clusterFuture onComplete { tried =>
-        self ! Internal.ClusterStarted(recovered, tried)
+        self ! Internal.ClusterStarted(tried)
       }
 
     case _ => stash()
   }
 
   private def startingCluster(cancelableCluster: Cancelable): Receive = {
-    case Internal.ClusterStarted(recovered, Success(ClusterFollowUp.BecomeActive)) =>
+    case Internal.ClusterStarted(Success(ClusterFollowUp.BecomeActive(recovered))) =>
       recover(recovered)
       become("Recovering")(recovering)
       unstashAll()
 
-    case Internal.ClusterStarted(_, Success(ClusterFollowUp.Terminate)) =>
+    case Internal.ClusterStarted(Success(ClusterFollowUp.Terminate)) =>
       context.stop(self)
 
-    case Internal.ClusterStarted(_, Failure(_: StartingClusterCanceledException)) =>
+    case Internal.ClusterStarted(Failure(_: StartingClusterCanceledException)) =>
       context.stop(self)
 
-    case Internal.ClusterStarted(_, Failure(throwable)) =>
+    case Internal.ClusterStarted(Failure(throwable)) =>
       throw throwable.appendCurrentStackTrace
 
-    case Command.Execute(MasterCommand.Shutdown, meta) =>
+    case Command.Execute(shutdown: MasterCommand.Shutdown, meta) =>
       if (terminating) {
         sender ! Left(MasterIsTerminatingProblem)
       } else {
         logger.debug("cancelableCluster.cancel()")
         cancelableCluster.cancel()
-        // TODO  journalActor ! JournalActor.Input.TakeSnapshot
-        terminatingSince := now
+        terminatingSince := (shutdown, now)
         sender() ! Right(MasterCommand.Response.Accepted)
       }
 
@@ -338,18 +334,19 @@ with MainJournalingActor[Event]
       }
 
     case JournalActor.Output.SnapshotTaken =>
-      if (terminating) {
+      for ((shutdown, since) <- terminatingSince) {
         // TODO termination wie in AgentOrderKeeper, dabei AgentDriver ordentlich beenden
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
-          shutDownEventAndStopJournaling()
+          shutDownEventAndStopJournaling(clusterSwitchOver = shutdown.clusterSwitchOver)
       }
 
     case Terminated(a) if agentRegister contains a =>
       agentRegister -= a
       if (agentRegister.isEmpty) {
-        shutDownEventAndStopJournaling()
+        // clusterSwitchOver should be defined (otherwise we have an error)
+        shutDownEventAndStopJournaling(clusterSwitchOver = terminatingSince.fold(true)(_._1.clusterSwitchOver))
       }
 
     case Terminated(`journalActor`) =>
@@ -413,9 +410,9 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.Shutdown =>
+      case shutdown: MasterCommand.Shutdown =>
         journalActor ! JournalActor.Input.TakeSnapshot
-        terminatingSince := now
+        terminatingSince := (shutdown, now)
         Future.successful(Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>
@@ -663,9 +660,9 @@ with MainJournalingActor[Event]
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
-  private def shutDownEventAndStopJournaling(): Unit =
+  private def shutDownEventAndStopJournaling(clusterSwitchOver: Boolean): Unit =
     // The event forces the cluster to acknowledge this event and the snapshot taken
-    persist(NoKey <-: MasterShutDown) { _ =>
+    persist(NoKey <-: MasterShutDown(clusterSwitchOver = clusterSwitchOver)) { _ =>
       journalActor ! JournalActor.Input.Terminate
     }
 
@@ -677,6 +674,10 @@ private[master] object MasterOrderKeeper
   private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
 
   private val logger = Logger(getClass)
+
+  object Input {
+    final case class Start(recovered: Recovered[MasterState, Event])
+  }
 
   sealed trait Command
   object Command {
@@ -696,8 +697,7 @@ private[master] object MasterOrderKeeper
   }
 
   private object Internal {
-    final case class StartClusterNode(recovered: Recovered[MasterState, Event])
-    final case class ClusterStarted(recovered: Recovered[MasterState, Event], followUp: Try[ClusterFollowUp])
+    final case class ClusterStarted(followUp: Try[ClusterFollowUp])
     case object Ready
     case object AfterProceedEventsAdded
   }
