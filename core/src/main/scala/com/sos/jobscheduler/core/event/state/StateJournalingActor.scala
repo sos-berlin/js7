@@ -20,7 +20,8 @@ private[state] final class StateJournalingActor[S <: JournaledState[S, E], E <: 
   (implicit S: TypeTag[S], s: Scheduler)
 extends MainJournalingActor[E]
 {
-  private var state: S = initialState
+  // Will be accesses asynchronously via `getStatePromise`
+  @volatile private var state: S = initialState
 
   protected def snapshots = state.toSnapshotObservable.toListL.runToFuture
 
@@ -57,7 +58,6 @@ extends MainJournalingActor[E]
           state = updated
           stamped -> updated
       }
-
 
   override lazy val toString = s"StateJournalingActor[${S.tpe.toString.replaceAll("""^.*\.""", "")}]"
 

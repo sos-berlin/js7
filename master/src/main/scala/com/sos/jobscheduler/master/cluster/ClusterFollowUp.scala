@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.cluster
 
-import com.sos.jobscheduler.core.event.state.Recovered
+import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.master.MasterState
 

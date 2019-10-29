@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
@@ -34,7 +35,7 @@ extends JournalStateBuilder[MasterState, Event]
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
 
-  def addSnapshot = {
+  protected def onAddSnapshot = {
     case order: Order[Order.State] =>
       idToOrder.insert(order.id -> order)
 
@@ -57,7 +58,7 @@ extends JournalStateBuilder[MasterState, Event]
     idToOrder --= removed
   }
 
-  def addEvent = {
+  protected def onAddEvent = {
     case Stamped(_, _, KeyedEvent(_: NoKey, _: MasterEvent.MasterReady)) =>
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
@@ -89,7 +90,7 @@ extends JournalStateBuilder[MasterState, Event]
         case _: OrderStdWritten =>
       }
 
-    case Stamped(_, _, KeyedEvent(_, MasterShutDown)) =>
+    case Stamped(_, _, KeyedEvent(_, _: MasterShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, MasterTestEvent)) =>
 
     case Stamped(_, _, KeyedEvent(_: NoKey, e: ClusterEvent)) =>
@@ -117,7 +118,9 @@ extends JournalStateBuilder[MasterState, Event]
       case _ =>
     }
 
-  def state(eventId: EventId) =
+  override def isDefined = masterMetaState.isDefined
+
+  def state =
     MasterState(
       eventId = eventId,
       masterMetaState(),

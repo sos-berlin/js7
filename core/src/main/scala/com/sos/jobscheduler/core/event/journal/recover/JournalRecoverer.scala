@@ -19,6 +19,8 @@ import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, KeyedEvent, S
 import java.nio.file.{Files, Path}
 import scala.concurrent.duration._
 
+// TODO Replace this class by JournalStateRecoverer
+
 /**
   * @author Joacim Zschimmer
   */
@@ -43,8 +45,7 @@ trait JournalRecoverer
   final def recoverAll(): Unit =
     journalFileOption match {
       case None =>
-        val journalId = expectedJournalId getOrElse JournalId.random()
-        logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}' with journalId=${journalId.string} will be started")
+        logger.info(s"No journal to recover - a new journal '${journalMeta.fileBase.getFileName}'${expectedJournalId.fold("")(o => s" with journalId=$o")} will be started")
 
       case Some(file) =>
         logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
@@ -99,8 +100,7 @@ trait JournalRecoverer
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, journalingObserver, expectedJournalId,
-      recoveredJournalHeader)
+    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, journalingObserver, expectedJournalId, recoveredJournalHeader)
 
   final def journalId = maybeJournalHeader.map(_.journalId)
 
@@ -134,7 +134,7 @@ trait JournalRecoverer
 object JournalRecoverer {
   private val logger = Logger(getClass)
 
-  private def startJournalAndFinishRecovery[E <: Event](
+  private[recover] def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors,
     observer: Option[JournalingObserver],

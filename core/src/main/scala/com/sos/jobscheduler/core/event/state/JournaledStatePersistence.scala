@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.state.StateJournalingActor.PersistFunction
 import com.sos.jobscheduler.data.event.{Event, JournaledState, KeyedEvent, Stamped}
@@ -16,15 +17,20 @@ final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
   initialState: S,
   val/*???*/ journalActor: ActorRef @@ JournalActor.type)
   (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory)
+extends AutoCloseable
 {
   private val lockKeeper = new LockKeeper[E#Key]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
   private val persistPromise = Promise[PersistFunction[S, E]]()
   private val getStatePromise = Promise[Task[S]]()
   private val persistTask: Task[PersistFunction[S, E]] = Task.fromFuture(persistPromise.future)
-  private val getStateTask: Task[S] = Task.fromFuture(getStatePromise.future).flatten
+  private[state] val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
 
-  actorRefFactory.actorOf(
-    StateJournalingActor.props[S, E](initialState, journalActor, persistPromise, getStatePromise))
+  private val actor = actorRefFactory.actorOf(
+    StateJournalingActor.props[S, E](initialState, journalActor, persistPromise, getStatePromise),
+    encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+
+  def close(): Unit =
+    actorRefFactory.stop(actor)
 
   def persistKeyedEvent(keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistEvent(key = keyedEvent.key, _ => Right(keyedEvent.event))
@@ -44,6 +50,4 @@ final class JournaledStatePersistence[S <: JournaledState[S, E], E <: Event](
       _(stateToEvent)
         .map(_.map { case (e, s) => e.asInstanceOf[Stamped[KeyedEvent[E1]]] -> s }))
 
-  private[state] def currentState: Task[S] =
-    getStateTask
 }

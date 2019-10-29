@@ -115,7 +115,7 @@ extends AutoCloseable
     val json = positionAndJson.value
     if (!snapshotHeaderRead)
       json match {
-        case EventHeader =>  // Journal file has no snapshot section?
+        case EventHeader =>  // Journal file does not have a snapshot section?
           eventHeaderRead = true
           None
         case SnapshotHeader =>

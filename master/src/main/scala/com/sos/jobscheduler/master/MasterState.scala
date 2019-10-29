@@ -138,7 +138,7 @@ object MasterState
   def fromIterator(eventId: EventId, clusterNodeId: ClusterNodeId, clusterNodeRole: ClusterNodeRole, snapshotObjects: Iterator[Any])
   : MasterState = {
     val builder = new MasterStateBuilder(clusterNodeId, clusterNodeRole)
-    snapshotObjects foreach builder.addSnapshot.orElse { case _: JournalHeader => }
-    builder.state(eventId = eventId)
+    snapshotObjects foreach builder.addSnapshot
+    builder.state.copy(eventId = eventId)
   }
 }

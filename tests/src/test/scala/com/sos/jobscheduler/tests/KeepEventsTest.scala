@@ -46,28 +46,28 @@ final class KeepEventsTest extends FreeSpec
         agent.terminate() await 99.s
       }
 
-      def masterJournalCount = JournalFiles.listJournalFiles(provider.master.dataDir / "state" / "master").length
-      def agentJournalCount = JournalFiles.listJournalFiles(provider.agents(0).dataDir / "state" / "master-Master").length
-      assert(masterJournalCount == 2)
-      assert(agentJournalCount == 2)
+      def masterJournalFiles = JournalFiles.listJournalFiles(provider.master.dataDir / "state" / "master")
+      def agentJournalFiles = JournalFiles.listJournalFiles(provider.agents(0).dataDir / "state" / "master-Master")
+      assert(masterJournalFiles.size == 2)
+      assert(agentJournalFiles.size == 2)
 
       provider.runAgents() { _ =>
         provider.runMaster() { master =>
           val finished = master.eventWatch.await[OrderFinished](predicate = _.key == TestOrder.id)
           assert(finished.size == 1)
-          assert(masterJournalCount == 3)
-          assert(agentJournalCount == 3)
+          assert(masterJournalFiles.size == 3)
+          assert(agentJournalFiles.size == 3)
 
           master.executeCommandAsSystemUser(MasterCommand.KeepEvents(finished.head.eventId)).await(99.s).orThrow
-          assert(masterJournalCount == 2)
+          assert(masterJournalFiles.size == 2)
 
           // Master sends KeepOrder after some events from Agent have arrived. So we start an order.
           master.addOrderBlocking(TestOrder)
           val added2 = master.eventWatch.await[OrderAdded](after = finished.head.eventId, predicate = _.key == TestOrder.id)
           val finished2 = master.eventWatch.await[OrderFinished](after = finished.head.eventId, predicate = _.key == TestOrder.id)
           // Master send AgentCommand.KeepEvents asynchronously, not waiting for response. So we wait a little.
-          waitForCondition(5.s, 10.ms) { agentJournalCount == 1 }
-          assert(agentJournalCount == 1)
+          waitForCondition(5.s, 10.ms) { agentJournalFiles.size == 1 }
+          assert(agentJournalFiles.size == 1)
 
           // Start a new journal file, then KeepEvent, then fetch events
           master.executeCommandAsSystemUser(MasterCommand.KeepEvents(added2.head.eventId)).await(99.s).orThrow

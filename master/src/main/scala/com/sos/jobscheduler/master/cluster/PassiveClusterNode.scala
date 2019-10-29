@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.cluster
 import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
@@ -16,12 +16,12 @@ import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.EndOfJournalFileMarker
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
+import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.core.event.state.Recovered
 import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
-import com.sos.jobscheduler.data.event.{Event, EventId, JournalId}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.PassiveClusterNode._
@@ -50,47 +50,25 @@ final class PassiveClusterNode private(
 {
   def run(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState): Task[ClusterFollowUp.Terminate.type] =
     Task.deferAction { implicit scheduler =>
-      // Cut file after recovered position (garbled record only)
-      for (PositionAnd(position, file) <- recovered.positionAndFile) {
-        if (Files.exists(file) && position < Files.size(file)) {
-          autoClosing(new RandomAccessFile(file, "w")) { f =>
-            f.setLength(position)
-          }
-        }
+      for (PositionAnd(length, file) <- recovered.positionAndFile) {
+        cutJournalFile(file, length)
       }
-
-      // TODO Nach jedem Event (JSON-Feld "eventId" lesen!), dabei Transaktion beachten:
-      //  - recovered.eventWatch.onEventsCommitted
-      //  - recovered.eventWatch.onFileWritten
-      //  - Dabei State aktualisieren
-      //  - JournalReader (berücksichtigt Transaktionen)
-      //    --> onEventsCommitted, onFileWritten (?)
-      //    --> recoverer.updateState
       val recoveredPositionAndFile = recovered.positionAndFile getOrElse PositionAnd(0L, journalMeta.file(EventId.BeforeFirst))
       Resource.fromAutoCloseable(Task {
         AkkaHttpMasterApi(baseUri = activeUri.string)
       }).use(activeNode =>
         Task.parMap2(
           activeNode.executeCommand(MasterCommand.PassiveNodeFollows(myNodeId, activeUri)),   // TODO Retry until success
-          replicateJournalFiles(recovered.journalId, recoveredPositionAndFile, recovered.eventId, activeNode, eventWatch)
+          replicateJournalFiles(recovered.journalHeader.map(_.journalId), recoveredPositionAndFile, recovered.eventId, activeNode, eventWatch)
         )((_: MasterCommand.PassiveNodeFollows.Response, followUp) => followUp))
     }
 
-  /* TODO
-      - Direkter Zugriff auf Journaldateien
-      - Welche ist die letzte Journaldatei?  --> fileEventId
-      - Wenn der letzte Satz in der Journaldatei unvollständig ist (Zeilenende fehlt)
-        - Satz abschneiden, damit wir ganze JSON-Werte aus dem Stream lesen und EventId darin erkennen können
-      - Länge der Journaldatei --> position
-      - Journaldatei direkt beschreiben mit flush (und sync?)
-      - Wenn Ende des Streams erreicht ist:
-        - EventId des letzten Events ermitteln
-          - Das ist der letzte ByteVector, der ein JSON-Objekt ist, also mit '{' beginnt
-            - Regel: JSON-Objekt im Journal nach EventHeader ist immer ein Event
-            - Letzter Satz kann unvollständig sein (nach Abbruch)
-          - Also den merken und am Ende des Streams inspizieren
-          - Dann haben wir die nächste fileEventId
-   */
+  private def cutJournalFile(file: Path, length: Long): Unit =
+    if (Files.exists(file) && length < Files.size(file)) {
+      autoClosing(new RandomAccessFile(file, "w")) { f =>
+        f.setLength(length)
+      }
+    }
 
   private def replicateJournalFiles(
     recoveredJournalId: Option[JournalId],
@@ -144,9 +122,10 @@ final class PassiveClusterNode private(
             Observable.empty
           } else {
             replicatedLength = fileLength
-            out.write(line.toByteBuffer)
             val json = line.decodeUtf8.orThrow.parseJsonChecked.orThrow
-            for (tmpFile <- maybeTmpFile if isReplicatingSnapshotSection && json.asObject.flatMap(_(TypedJsonCodec.TypeFieldName)).contains(SnapshotTaken.TypeNameJson)) {
+            out.write(line.toByteBuffer)
+            for (tmpFile <- maybeTmpFile if isReplicatingSnapshotSection && json.isOfType[JournalEvent, SnapshotTaken.type]) {
+              // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
               isReplicatingSnapshotSection = false
               out.close()
               move(tmpFile, file, ATOMIC_MOVE)

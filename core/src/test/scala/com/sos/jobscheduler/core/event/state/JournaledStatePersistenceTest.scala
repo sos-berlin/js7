@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer
 import com.sos.jobscheduler.core.event.journal.test.TestData
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
@@ -120,11 +121,12 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
     }
 
     "Stop" in {
-       runningPersistence.stop()
+      runningPersistence.stop()
     }
   }
 
   private class RunningPersistence {
+    private var journalStatePersistence: JournaledStatePersistence[TestState, TestEvent] = null
     private lazy val journalStopped = Promise[JournalActor.Stopped]()
 
     private lazy val journalActor = tag[JournalActor.type](
@@ -134,17 +136,18 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
           journalStopped)))
 
     def start() = {
-      val recovered = JournaledStateRecoverer.recover[TestState, TestEvent](
-        JournaledStatePersistenceTest.this.journalMeta,
-        () => TestStateBuilder,
-        JournalEventWatch.TestConfig)
+      val recovered = JournaledStateRecoverer.recover(journalMeta, new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
-      new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
+      journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
+      journalStatePersistence
     }
 
     def stop() = {
       (journalActor ? JournalActor.Input.TakeSnapshot)(99.seconds) await 99.seconds
+      if (journalStatePersistence != null) {
+        journalStatePersistence.close()
+      }
       journalActor ! JournalActor.Input.Terminate
       journalStopped.future await 99.s
     }
@@ -160,12 +163,12 @@ private object JournaledStatePersistenceTest
      |}
      |""".stripMargin))
 
-  private val TestStateBuilder = new JournalStateBuilder[TestState, TestEvent]
+  private class TestStateBuilder extends JournalStateBuilder[TestState, TestEvent]
   {
     private val numberThings = mutable.Map[NumberKey, NumberThing]()
     private var _state = TestState.empty
 
-    def addSnapshot = {
+    protected def onAddSnapshot = {
       case numberThing: NumberThing =>
         if (numberThings.contains(numberThing.key)) throw Problem(s"Duplicate NumberThing: ${numberThing.key}").throwable
         numberThings += numberThing.key -> numberThing
@@ -174,14 +177,14 @@ private object JournaledStatePersistenceTest
     def onAllSnapshotsAdded(): Unit =
       _state = TestState(EventId.BeforeFirst, NumberThingCollection(numberThings.toMap))
 
-    def addEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {
+    protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {
       case Stamped(_, _, KeyedEvent(k: NumberKey, e: NumberEvent)) =>
         _state = _state.applyEvent(k <-: e).orThrow
 
       case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
     }
 
-    def state(eventId: EventId) =
+    def state =
       _state.copy(eventId = eventId)
   }
 

@@ -34,7 +34,8 @@ import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.state.{JournaledStatePersistence, Recovered}
+import com.sos.jobscheduler.core.event.journal.recover.Recovered
+import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
 import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
@@ -230,7 +231,7 @@ object RunningMaster
         "Journal"))
       val cluster = new Cluster(
         journalMeta,
-        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor),
+        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor).closeWithCloser,
         masterConfiguration.clusterConf,
         journalActorAskTimeout = masterConfiguration.akkaAskTimeout,
         actorSystem)

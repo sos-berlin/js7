@@ -12,7 +12,8 @@ import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
-import com.sos.jobscheduler.core.event.state.{JournaledStatePersistence, Recovered}
+import com.sos.jobscheduler.core.event.journal.recover.Recovered
+import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, InitialBackupNode, Sole}
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
