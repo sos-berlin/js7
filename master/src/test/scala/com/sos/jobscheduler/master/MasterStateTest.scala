@@ -8,7 +8,6 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterNodeRole}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.RepoEvent.VersionAdded
 import com.sos.jobscheduler.data.filebased.VersionId
@@ -42,8 +41,8 @@ final class MasterStateTest extends FreeSpec
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
     assert(masterState ==
-      MasterState.fromIterator(masterState.eventId, ClusterNodeId("NOT-USED"), ClusterNodeRole.Primary/*unused*/,
-        masterState.toSnapshotObservable.toListL.runToFuture.await(9.s).iterator))
+      MasterState.fromIterator(masterState.toSnapshotObservable.toListL.runToFuture.await(9.s).iterator)
+        .copy(eventId = masterState.eventId))
   }
 
   "toSnapshotObservable JSON" in {

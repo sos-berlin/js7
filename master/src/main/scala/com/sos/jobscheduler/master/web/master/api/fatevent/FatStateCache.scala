@@ -5,7 +5,6 @@ import com.sos.jobscheduler.base.utils.CloseableIterator
 import com.sos.jobscheduler.common.event.EventWatch
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterNodeRole}
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.fatevent.FatEvent
 import com.sos.jobscheduler.data.master.MasterId
@@ -51,7 +50,8 @@ private[fatevent] final class FatStateCache(masterId: MasterId, eventWatch: Even
   private def recoverFatState(after: EventId): Option[FatState] =
     eventWatch.snapshotObjectsFor(after = after) map { case (eventId, snapshotObjectsCloseableIterator) =>
       val masterState = autoClosing(snapshotObjectsCloseableIterator) { _ =>
-        MasterState.fromIterator(eventId, ClusterNodeId("Fat-unused-ClusterNodeId"), ClusterNodeRole.Primary/*unused*/, snapshotObjectsCloseableIterator)
+        MasterState.fromIterator(snapshotObjectsCloseableIterator)
+          .copy(eventId = eventId)
       }
       FatState(masterId, masterState.eventId, masterState.repo, masterState.orders.map(o => o.id -> o).toMap)
     }

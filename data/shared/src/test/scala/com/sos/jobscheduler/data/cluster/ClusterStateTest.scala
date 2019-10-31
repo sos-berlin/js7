@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Sole}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Empty, PreparedToBeCoupled, Sole}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -12,47 +12,67 @@ import org.scalatest.FreeSpec
 final class ClusterStateTest extends FreeSpec
 {
   "JSON" - {
+    "Empty" in {
+      testJson[ClusterState](
+        Empty,
+        json"""{
+          "TYPE": "Empty"
+        }""")
+    }
+
     "Sole" in {
       testJson[ClusterState](
-        Sole(ClusterNodeId("A")),
-          json"""{
-            "TYPE": "Sole",
-            "activeNodeId": "A"
-          }""")
+        Sole(ClusterNodeId("NODE-ID")),
+        json"""{
+          "TYPE": "Sole",
+          "nodeId": "NODE-ID"
+        }""")
     }
 
     "AwaitingAppointment" in {
       testJson[ClusterState](
-        AwaitingAppointment(ClusterNodeId("A"), Uri("http://A"), ClusterNodeId("B")),
+        AwaitingAppointment(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE")),
           json"""{
             "TYPE": "AwaitingAppointment",
-            "activeNodeId": "A",
+            "activeNodeId": "ACTIVE",
             "activeUri": "http://A",
-            "passiveNodeId": "B"
+            "passiveNodeId": "PASSIVE"
           }""")
     }
 
     "AwaitingFollower" in {
       testJson[ClusterState](
-        AwaitingFollower(ClusterNodeId("A"), ClusterNodeId("B"), Uri("http://B")),
-          json"""{
-            "TYPE": "AwaitingFollower",
-            "activeNodeId": "A",
-            "passiveNodeId": "B",
-            "passiveUri": "http://B"
-          }""")
+        AwaitingFollower(ClusterNodeId("ACTIVE"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        json"""{
+          "TYPE": "AwaitingFollower",
+          "activeNodeId": "ACTIVE",
+          "passiveNodeId": "PASSIVE",
+          "passiveUri": "http://B"
+        }""")
+    }
+
+    "PreparedToBeCoupled" in {
+      testJson[ClusterState](
+        PreparedToBeCoupled(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        json"""{
+          "TYPE": "PreparedToBeCoupled",
+          "activeNodeId": "ACTIVE",
+          "activeUri": "http://A",
+          "passiveNodeId": "PASSIVE",
+          "passiveUri": "http://B"
+        }""")
     }
 
     "Coupled" in {
       testJson[ClusterState](
-        Coupled(ClusterNodeId("A"), Uri("http://A"), ClusterNodeId("B"), Uri("http://B")),
-          json"""{
-            "TYPE": "Coupled",
-            "activeNodeId": "A",
-            "activeUri": "http://A",
-            "passiveNodeId": "B",
-            "passiveUri": "http://B"
-          }""")
+        Coupled(ClusterNodeId("ACTIVE"), Uri("http://A"), ClusterNodeId("PASSIVE"), Uri("http://B")),
+        json"""{
+          "TYPE": "Coupled",
+          "activeNodeId": "ACTIVE",
+          "activeUri": "http://A",
+          "passiveNodeId": "PASSIVE",
+          "passiveUri": "http://B"
+        }""")
     }
   }
 }

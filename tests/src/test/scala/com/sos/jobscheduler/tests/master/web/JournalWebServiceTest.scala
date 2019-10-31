@@ -89,6 +89,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
     assert(master0.contentString endsWith s"${JournalSeparators.EventFooter}\n")
 
     whenReplicated await 9.s
+    waitForCondition(10.s, 10.ms)(replicated endsWith EndOfJournalFileMarker)
     assert(replicated.utf8String == master0.contentString ++ EndOfJournalFileMarker.utf8String)  // Compare strings for legible error message
     assert(replicated == master0.byteVector ++ EndOfJournalFileMarker)
 

@@ -21,6 +21,7 @@ import com.sos.jobscheduler.core.event.journal.test.TestData
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalConf}
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistenceTest._
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import com.typesafe.config.ConfigFactory
@@ -79,21 +80,21 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
     }
 
     "persistEvent" in {
-      assert(persistence.persistEvent(_ => Right(NumberAdded))(NumberKey("TWO")).runSyncUnsafe().isRight)
+      assert(persistence.persistEvent[NumberEvent](NumberKey("TWO"))(_ => Right(NumberAdded)).runSyncUnsafe().isRight)
     }
 
     "Concurrent update" in {
       val updated = keys
         .map(key =>
-          persistence.persistEvent(_ =>
-            Right(NumberAdded))(key).runToFuture: Future[Checked[(Stamped[KeyedEvent[NumberAdded.type]], TestState)]])
+          persistence.persistKeyedEvent(key <-: NumberAdded)
+            .runToFuture: Future[Checked[(Stamped[KeyedEvent[TestEvent]], TestState)]])
         .await(99.s)
       assert(updated.collectFirst { case Left(problem) => problem }.isEmpty)
 
       val keyFutures = for (key <- keys) yield
         Future {
           for (i <- 0 until n) yield
-            persistence.persistEvent(_ => Right(NumberSlowlyIncremented(i * 1000)))(key)
+            persistence.persistKeyedEvent(key <-: NumberSlowlyIncremented(i * 1000))
               .runToFuture.await(99.s)
         }
       assert(keyFutures.await(99.s).flatten.collectFirst { case Left(problem) => problem }.isEmpty)
@@ -186,6 +187,8 @@ private object JournaledStatePersistenceTest
 
     def state =
       _state.copy(eventId = eventId)
+
+    def clusterState = ClusterState.Empty
   }
 
   private def testJournalMeta(fileBase: Path) =
@@ -219,10 +222,11 @@ private object JournaledStatePersistenceTest
     def withEventId(eventId: EventId) =
       copy(eventId = eventId)
 
-    def applyEvent: PartialFunction[KeyedEvent[TestEvent], Checked[TestState]] = {
+    def applyEvent(keyedEvent: KeyedEvent[TestEvent]) = keyedEvent match {
       case KeyedEvent(key: NumberKey, event: NumberEvent) =>
         for (o <- numberThingCollection.applyEvent(key <-: event)) yield
           copy(numberThingCollection = o)
+      case _ => eventNotApplicable(keyedEvent)
     }
 
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
@@ -248,7 +252,6 @@ private object JournaledStatePersistenceTest
         }
     }
   }
-
 
   final case class StringThing(key: StringKey, string: String)
 

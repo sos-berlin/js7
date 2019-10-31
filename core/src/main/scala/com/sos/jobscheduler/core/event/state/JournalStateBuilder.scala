@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder._
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, Stamped}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -27,6 +28,8 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   def isDefined = true
 
   def state: S
+
+  def clusterState: ClusterState
 
   def addSnapshot(snapshot: Any): Unit =
     snapshot match {

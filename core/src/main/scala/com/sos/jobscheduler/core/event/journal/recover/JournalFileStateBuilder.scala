@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
-import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererState.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Start}
+import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererState.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Initial}
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.data.event.{Event, JournalId, JournaledState, KeyedEvent, Stamped}
 import io.circe.Json
@@ -19,9 +19,10 @@ import scala.collection.mutable.ArrayBuffer
   */
 final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   journalMeta: JournalMeta,
-  journalFile: Path,
+  journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
-  builder: JournalStateBuilder[S, E])
+  val builder: JournalStateBuilder[S, E])
+extends ClusterStateBuilder
 {
   private var recovererState = JournalRecovererState()
 
@@ -47,8 +48,8 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def put(json: Json): Unit =
     recovererState match {
-      case Start =>
-        builder.addSnapshot(JournalHeader.checkedHeader(json, journalFile, expectedJournalId).orThrow)
+      case Initial =>
+        builder.addSnapshot(JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow)
         recovererState = AfterHeader
 
       case AfterHeader =>
@@ -96,13 +97,24 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   private def addEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
     builder.addEvent(stamped)
 
+  def recoveredJournalHeader = builder.recoveredJournalHeader
+
+  def eventId = builder.eventId
+
+  def state = builder.state
+
+  def clusterState = builder.clusterState
+
+  def totalRunningTime = builder.totalRunningTime
+
   def result: S =
     recovererState match {
       case InEventsSection | AfterEventsSection =>
         builder.state
-      case _ => throw new IllegalStateException(s"Journal file '$journalFile' is truncated in state '$recovererState'")
+      case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$recovererState'")
     }
 
+  def isAcceptingEvents = recovererState.isAcceptingEvents
 
   private def deserialize(json: Json): Stamped[KeyedEvent[E]] = {
     import journalMeta.eventJsonCodec

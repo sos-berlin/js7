@@ -14,11 +14,12 @@ import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
-import com.sos.jobscheduler.data.cluster.ClusterState.{Coupled, InitialBackupNode, Sole}
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
+import com.sos.jobscheduler.data.cluster.ClusterState.{AwaitingAppointment, AwaitingFollower, Coupled, Empty, Sole}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole, ClusterState}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest}
 import com.sos.jobscheduler.master.MasterState
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
 import com.sos.jobscheduler.master.cluster.Cluster._
@@ -47,24 +48,24 @@ final class Cluster(
       o.cancel()
     }
 
-  def start(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState)
-  : Task[Checked[ClusterFollowUp]] =
+  def start(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState): Task[Checked[ClusterFollowUp]] =
     Task {
       recoveredClusterState match {
-        case state: Sole if state.activeNodeId == conf.nodeId =>
+        case Empty =>
+          conf.role match {
+            case ClusterNodeRole.Primary =>
+              Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
+            case ClusterNodeRole.Backup(activeUri) =>
+              PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, activeUri, journalMeta, conf, actorSystem)
+                .map(Right.apply)
+          }
+
+        case state: Sole if state.nodeId == conf.nodeId =>
           Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
-
-        //case state: AwaitCoupling if state.passiveNodeId == conf.nodeId =>
-        //  ???
-
-        case InitialBackupNode(activeUri) =>
-          //recovered.startJournal(journalActor) >>
-          PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, activeUri, journalMeta, conf.recouplingStreamReader, actorSystem)
-            .map(Right.apply)
 
         case state: Coupled if state.passiveNodeId == conf.nodeId =>
           ???
-          PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, state.activeUri, journalMeta, conf.recouplingStreamReader, actorSystem)
+          PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, state.activeUri, journalMeta, conf, actorSystem)
             .map(Right.apply)
 
         case _ =>
@@ -74,22 +75,49 @@ final class Cluster(
       .executeWithOptions(_.enableAutoCancelableRunLoops)
 
   def appointBackupNode(nodeId: ClusterNodeId, uri: Uri): Task[Checked[Completed]] =
-    persistence.persistKeyedEvent(NoKey <-: ClusterEvent.BackupNodeAppointed(nodeId, uri))
-      .map(_.map(_ => Completed))
+    persistence.persistTransaction(NoKey)(state =>
+      Right(becomeSoleIfEmpty(state) :::
+        BackupNodeAppointed(nodeId, uri) ::
+        (state match {
+          case _: AwaitingAppointment => ClusterCoupled :: Nil
+          case _ => Nil
+        }))
+    ).map(_.map { case (stampedEvents, state) =>
+      proceed(state, stampedEvents.last.eventId)
+      Completed
+    })
 
   def passiveNodesFollows(passiveNodeId: ClusterNodeId, activeUri: Uri): Task[Checked[EventId]] =
-    persistence.persistKeyedEvent(NoKey <-: ClusterEvent.FollowingStarted(passiveNodeId, activeUri))
-      .map(_.map {
-        case (Stamped(eventId, _, _), state: ClusterState.Coupled) =>
-          proceed(state, eventId)
-          eventId
-        case (Stamped(eventId, _, _), _) =>
-          eventId
-      })
+    persistence.persistTransaction(NoKey)(state =>
+      Right(becomeSoleIfEmpty(state) :::
+        FollowingStarted(passiveNodeId, activeUri) ::
+        (state match {
+          case _: AwaitingFollower => ClusterCoupled :: Nil
+          case _ => Nil
+        }))
+    ).map(_.map { case (stampedEvents, state) =>
+      val eventId = stampedEvents.last.eventId
+      proceed(state, eventId)
+      eventId
+    })
+
+  private def becomeSoleIfEmpty(state: ClusterState): List[BecameSole] =
+    state match {
+      case Empty => BecameSole(conf.nodeId) :: Nil
+      case _ => Nil
+    }
+
+  def switchOver(): Task[Checked[Completed]] =
+    persistence.persistEvent[ClusterEvent](NoKey) {
+      case Coupled(active, _, passive, _) if active == conf.nodeId =>
+        Right(SwitchedOver(passive))
+      case state =>
+        Left(Problem(s"Not switching over because Cluster is not in state Coupled: $state"))
+    }.map(_.map(_ => Completed))
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
     state match {
-      case state: ClusterState.Coupled =>
+      case state: Coupled =>
         if (!fetchingEvents.getAndSet(true)) {
           fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveNodeId, state.passiveUri, after = eventId)
             .runToFuture

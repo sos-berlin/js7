@@ -77,24 +77,24 @@ object JournalHeader
       Subtype.named(deriveCodec[JournalHeader], "JobScheduler.Journal"))
   }
 
-  def checkedHeader(json: Json, journalFile: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
+  def checkedHeader(json: Json, journalFileForInfo: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
     for {
       header <-
         json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
-            s"Not a valid JobScheduler journal file: $journalFile. Expected a JournalHeader instead of ${json.compactPrint}"
+            s"Not a valid JobScheduler journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}"
           ) |+| problem)
       header <-
         expectedJournalId match {
           case Some(expected) if expected != header.journalId =>
-            Left(JournalIdMismatchProblem(journalFile, expectedJournalId = expected, foundJournalId = header.journalId))
+            Left(JournalIdMismatchProblem(journalFileForInfo, expectedJournalId = expected, foundJournalId = header.journalId))
           case _ => Right(header)
         }
       header <-
         if (header.version != Version) Left(Problem(
-          s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFile"))
+          s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
         else {
-          for (o <- expectedJournalId) logger.debug(s"JournalHeader of file '${journalFile.getFileName}' is as expected, journalId=$o")
+          for (o <- expectedJournalId) logger.debug(s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
           json.as[JournalHeader].toChecked
         }
     } yield header

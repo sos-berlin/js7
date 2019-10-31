@@ -9,12 +9,22 @@ sealed trait ClusterEvent extends NoKeyEvent
 
 object ClusterEvent
 {
+  final case class BecameSole(activeNodeId: ClusterNodeId)
+  extends ClusterEvent
+
   final case class BackupNodeAppointed(nodeId: ClusterNodeId, uri: Uri)
   extends ClusterEvent
 
-  //final case class BackupNodeUriChanged(nodeId: ClusterNodeId, uri: Uri) extends ClusterEvent
-
   final case class FollowingStarted(passiveNodeId: ClusterNodeId, activeUri: Uri)
+  extends ClusterEvent
+
+  sealed trait ClusterCoupled
+  extends ClusterEvent
+
+  case object ClusterCoupled
+  extends ClusterCoupled
+
+  final case class SwitchedOver(nodeId: ClusterNodeId)
   extends ClusterEvent
 
   //final case class Decoupled(passiveNodeId: ClusterNodeId) extends ClusterEvent
@@ -38,6 +48,8 @@ object ClusterEvent
   //final case class MajorityFor(active: ClusterNodeId) extends ClusterEvent
 
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
+    Subtype(deriveCodec[BecameSole]),
     Subtype(deriveCodec[BackupNodeAppointed]),
-    Subtype(deriveCodec[FollowingStarted]))
+    Subtype(deriveCodec[FollowingStarted]),
+    Subtype(ClusterCoupled))
 }

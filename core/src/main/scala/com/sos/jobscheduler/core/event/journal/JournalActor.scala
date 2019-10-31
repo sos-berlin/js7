@@ -150,11 +150,11 @@ extends Actor with Stash
       } else {
         writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
       }
-      stampedEvents.headOption match {
-        case Some(Stamped(_, _, KeyedEvent(_, event: ClusterEvent.FollowingStarted))) =>
-          // Commit now to let FollowingStarted event take effect on following events (otherwise deadlock)
+      stampedEvents.lastOption match {
+        case Some(Stamped(_, _, KeyedEvent(_, ClusterEvent.ClusterCoupled))) =>
+          // Commit now to let ClusterCoupled event take effect on following events (avoids deadlock)
           commit()
-          logger.debug(s"$event: Start requiring acknowledges from passive cluster node")
+          logger.info(s"ClusterCoupled: Start requiring acknowledges from passive cluster node")
           requireClusterAcknowledgement = true
         case _ =>
           forwardCommit((delay max conf.delay) - alreadyDelayed)
@@ -292,11 +292,10 @@ extends Actor with Stash
       journalingActors -= a
 
     case Input.GetState =>
-      sender() ! (
-        if (eventWriter == null)
-          Output.State(isFlushed = false, isSynced = false)
-        else
-          Output.State(isFlushed = eventWriter.isFlushed, isSynced = eventWriter.isSynced))
+      sender() ! Output.State(
+        isFlushed = eventWriter != null && eventWriter.isFlushed,
+        isSynced = eventWriter != null && eventWriter.isSynced,
+        isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
   }
 
   private def logStored(flushed: Boolean, synced: Boolean, writtenIterator: Iterator[LoggableWritten]) =
@@ -311,7 +310,7 @@ extends Actor with Stash
             if (stampedIterator.hasNext || writtenIterator.hasNext || !flushed && !synced) "     "
             else if (synced)
               if (conf.simulateSync.isDefined) "~sync" else "sync "
-            else "flush"   // After the last one, the file buffer was flushed
+            else "flush"   // After the last one, the file buffer was flushed                 d
           logger.trace(f"#$i $last STORED ${written.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value}")
           i += 1
         }
@@ -468,7 +467,7 @@ object JournalActor
     final case class FollowerAcknowledged(eventId: EventId)
     final case object Terminate
     final case object AwaitAndTerminate
-    private[journal] case object GetState
+    case object GetState
   }
 
   private[journal] trait Timestamped {
@@ -484,7 +483,7 @@ object JournalActor
     //final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
-    private[journal] final case class State(isFlushed: Boolean, isSynced: Boolean)
+    final case class State(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }
 
   final case class Stopped(keyedEventJournalingActorCount: Int)

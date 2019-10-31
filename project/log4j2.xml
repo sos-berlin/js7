@@ -23,7 +23,7 @@
       <appenderRef level="trace" ref="file"/>
     </root>
     <logger level="debug" name="jobscheduler"/>
-    <logger level="debug" name="jobscheduler.core.event.journal.JournalActor"/>
+    <logger level="trace" name="jobscheduler.core.event.journal.JournalActor"/>
     <logger level="debug" name="jobscheduler.common.event.RealEventWatch"/>
   </loggers>
 </configuration>

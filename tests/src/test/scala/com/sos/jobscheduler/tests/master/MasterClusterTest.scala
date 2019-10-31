@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests.master
 
+import akka.util.Timeout
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
@@ -79,6 +80,8 @@ import org.scalatest.FreeSpec
 */
 final class MasterClusterTest extends FreeSpec
 {
+  private implicit val akkaTimeout = Timeout(88.s)
+
   "test" in {
     //if (!sys.props.contains("MasterClusterTest")) pending
     withCloser { implicit closer =>
@@ -105,9 +108,13 @@ final class MasterClusterTest extends FreeSpec
       val backupAgents = backup.startAgents() await 99.s
       val backupMaster = backup.startMaster() await 99.s
       val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
+      primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
+      assert(!primaryMaster.actorState.await(99.s).isRequiringClusterAcknowledgement)
       primaryMaster.executeCommandAsSystemUser(MasterCommand.AppointBackupNode(backupNodeId, Uri(backupMaster.localUri.toString)))
         .await(99.s).orThrow
-      primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
+      primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
+      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+      assert(primaryMaster.actorState.await(99.s).isRequiringClusterAcknowledgement)
 
       runOrder(OrderId("🔺"))
 

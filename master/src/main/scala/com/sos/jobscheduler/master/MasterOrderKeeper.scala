@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
+import cats.data.EitherT
 import cats.effect.SyncIO
 import cats.instances.all._
 import cats.syntax.all._
@@ -56,6 +57,7 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -208,6 +210,7 @@ with MainJournalingActor[Event]
     case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
       runningSince = runningSince_
       orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
+      become("becomingReady")(becomingReady)
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
@@ -216,6 +219,10 @@ with MainJournalingActor[Event]
         self ! Internal.Ready
       )
 
+    case _ => stash()
+  }
+
+  private def becomingReady: Receive = {
     case Internal.Ready =>
       logger.info("Ready")
       become("Ready")(ready)
@@ -661,7 +668,26 @@ with MainJournalingActor[Event]
 
   private def shutDownEventAndStopJournaling(clusterSwitchOver: Boolean): Unit =
     // The event forces the cluster to acknowledge this event and the snapshot taken
-    persist(NoKey <-: MasterShutDown(clusterSwitchOver = clusterSwitchOver)) { _ =>
+    (for {
+        _ <- EitherT(
+              if (clusterSwitchOver)
+                cluster.switchOver() map {
+                  case Left(problem) =>
+                    logger.warn(s"Failed to switch over: $problem")
+                    Right(Completed)
+                  case o => o
+                }
+             else
+                Task.pure(Checked(Completed)))
+        x <- EitherT(
+              persistKeyedEventTask(NoKey <-: MasterShutDown(clusterSwitchOver = clusterSwitchOver))(_ => Completed)
+                .map(Checked.apply))
+      } yield x
+    ).value.runAsync { x =>
+      x match {
+        case Right(Right(Completed)) =>
+        case other => logger.error(s"While shutting down: $other")
+      }
       journalActor ! JournalActor.Input.Terminate
     }
 

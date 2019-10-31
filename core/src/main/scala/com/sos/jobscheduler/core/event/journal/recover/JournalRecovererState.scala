@@ -15,13 +15,15 @@ private[recover] sealed trait JournalRecovererState
   //    case _ => Left(Problem(s"Unexpected line in journal file while in JournalRecovererState $toString: ${json.compactPrint.truncateWithEllipsis(50)}"))
   //  }
   //}
+
+  def isAcceptingEvents = false
 }
 
 private[recover] object JournalRecovererState
 {
-  def apply(): JournalRecovererState = Start
+  def apply(): JournalRecovererState = Initial
 
-  case object Start extends JournalRecovererState
+  case object Initial extends JournalRecovererState
 
   case object AfterHeader extends JournalRecovererState
 
@@ -29,11 +31,15 @@ private[recover] object JournalRecovererState
 
   case object AfterSnapshotSection extends JournalRecovererState
 
-  case object InEventsSection extends JournalRecovererState
+  case object InEventsSection extends JournalRecovererState {
+    override def isAcceptingEvents = true
+  }
+
+  case object InTransaction extends JournalRecovererState {
+    override def isAcceptingEvents = true
+  }
 
   case object AfterEventsSection extends JournalRecovererState
-
-  case object InTransaction extends JournalRecovererState
 
   case object EndOfFile extends JournalRecovererState
 }

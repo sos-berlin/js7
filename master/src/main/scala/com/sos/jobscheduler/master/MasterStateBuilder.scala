@@ -3,12 +3,11 @@ package com.sos.jobscheduler.master
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.SetOnce
-import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole, ClusterState}
+import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -23,14 +22,11 @@ import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, Mast
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
 
-final class MasterStateBuilder(myNodeId: ClusterNodeId, clusterNodeRole: ClusterNodeRole)
+final class MasterStateBuilder
 extends JournalStateBuilder[MasterState, Event]
 {
   private val masterMetaState = SetOnce[MasterMetaState]
-  private var _clusterState: ClusterState = clusterNodeRole match {
-    case ClusterNodeRole.Primary => ClusterState.Sole(myNodeId)
-    case ClusterNodeRole.Backup(activeUri) => ClusterState.InitialBackupNode(activeUri)
-  }
+  private var _clusterState: ClusterState = ClusterState.Empty
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()

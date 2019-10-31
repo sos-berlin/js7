@@ -1,13 +1,12 @@
 package com.sos.jobscheduler.master
 
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.agent.AgentRefPath
-import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId, ClusterNodeRole}
+import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -40,7 +39,7 @@ extends JournaledState[MasterState, Event]
     Observable.fromIterable(agents) ++
     Observable.fromIterable(orders)
 
-  def applyEvent: PartialFunction[KeyedEvent[Event], Checked[MasterState]] = {
+  def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
     case KeyedEvent(_: NoKey, _: MasterEvent.MasterReady) =>
       Right(this)  // TODO MasterReady not handled ?
 
@@ -114,6 +113,8 @@ extends JournaledState[MasterState, Event]
       Right(this)
       //for (o <- clusterState.applyEvent(e))
       //  yield copy(clusterState = o)
+
+    case _ => eventNotApplicable(keyedEvent)
   }
 
   def withEventId(eventId: EventId) =
@@ -135,10 +136,10 @@ object MasterState
 
   private val logger = Logger(getClass)
 
-  def fromIterator(eventId: EventId, clusterNodeId: ClusterNodeId, clusterNodeRole: ClusterNodeRole, snapshotObjects: Iterator[Any])
+  def fromIterator(snapshotObjects: Iterator[Any])
   : MasterState = {
-    val builder = new MasterStateBuilder(clusterNodeId, clusterNodeRole)
+    val builder = new MasterStateBuilder
     snapshotObjects foreach builder.addSnapshot
-    builder.state.copy(eventId = eventId)
+    builder.state
   }
 }
