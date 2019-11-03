@@ -107,7 +107,7 @@ final class Cluster(
       case _ => Nil
     }
 
-  def switchOver(): Task[Checked[Completed]] =
+  def switchOver: Task[Checked[Completed]] =
     persistence.persistEvent[ClusterEvent](NoKey) {
       case Coupled(active, _, passive, _) if active == conf.nodeId =>
         Right(SwitchedOver(passive))

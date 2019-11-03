@@ -106,7 +106,7 @@ extends AutoCloseable
         case None =>
           logger.debug("terminate")
           for {
-            _ <- executeCommandAsSystemUser(MasterCommand.Shutdown()) map (_.orThrow)
+            _ <- executeCommandAsSystemUser(MasterCommand.Shutdown) map (_.orThrow)
             t <- Task.fromFuture(terminated)
           } yield t
       }

@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.filebased.{TypedPath, VersionId}
 import com.sos.jobscheduler.data.master.MasterFileBaseds.typedPathJsonDecoder
 import com.sos.jobscheduler.data.order.OrderId
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Decoder, Encoder, JsonObject}
 import scala.collection.immutable.Seq
 
 /**
@@ -83,16 +83,8 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  final case class Shutdown(clusterSwitchOver: Boolean = false) extends MasterCommand {
+  final case object Shutdown extends MasterCommand {
     type Response = Response.Accepted
-  }
-  object Shutdown {
-    implicit val jsonEncoder: Encoder.AsObject[Shutdown] =
-      o => JsonObject.fromIterable(o.clusterSwitchOver ? ("clusterSwitchOver" -> Json.fromBoolean(true)))
-    implicit val jsonDecoder: Decoder[Shutdown] =
-      cursor => for {
-        clusterSwitchOver <- cursor.get[Option[Boolean]]("clusterSwitchOver").map(_ getOrElse false)
-      } yield Shutdown(clusterSwitchOver = clusterSwitchOver)
   }
 
   case object TakeSnapshot extends MasterCommand {
@@ -131,6 +123,11 @@ object MasterCommand extends CommonCommand.Companion
     final case class Response(eventId: EventId) extends MasterCommand.Response
   }
 
+  case object SwitchoverToBackup
+  extends MasterCommand {
+    type Response = Response.Accepted
+  }
+
   sealed trait Response
 
   object Response {
@@ -154,6 +151,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[PassiveNodeFollows]),
-    Subtype(TakeSnapshot),
-    Subtype[Shutdown])
+    Subtype(Shutdown),
+    Subtype(SwitchoverToBackup),
+    Subtype(TakeSnapshot))
 }

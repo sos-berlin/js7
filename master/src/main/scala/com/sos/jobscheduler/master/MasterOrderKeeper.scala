@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master
 
 import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.data.EitherT
 import cats.effect.SyncIO
 import cats.instances.all._
 import cats.syntax.all._
@@ -57,7 +56,6 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
-import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -98,9 +96,9 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private val terminatingSince = SetOnce[(MasterCommand.Shutdown, Deadline)]
+  private val shuttingDownSince = SetOnce[Deadline]
 
-  private def terminating = terminatingSince.isDefined
+  private def shuttingDown = shuttingDownSince.isDefined
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -126,7 +124,7 @@ with MainJournalingActor[Event]
   override def postStop() = {
     super.postStop()
     cluster.stop()
-    logger.debug("Stopped" + terminatingSince.fold("")(o => s" (terminated in ${o._2.elapsed.pretty})"))
+    logger.debug("Stopped" + shuttingDownSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
@@ -168,13 +166,13 @@ with MainJournalingActor[Event]
     case Internal.ClusterStarted(Failure(throwable)) =>
       throw throwable.appendCurrentStackTrace
 
-    case Command.Execute(shutdown: MasterCommand.Shutdown, meta) =>
-      if (terminating) {
-        sender ! Left(MasterIsTerminatingProblem)
+    case Command.Execute(MasterCommand.Shutdown, _) =>
+      if (shuttingDown) {
+        sender ! Left(MasterIsShuttingDownProblem)
       } else {
         logger.debug("cancelableCluster.cancel()")
         cancelableCluster.cancel()
-        terminatingSince := (shutdown, now)
+        shuttingDownSince := now
         sender() ! Right(MasterCommand.Response.Accepted)
       }
 
@@ -237,8 +235,8 @@ with MainJournalingActor[Event]
 
     case Command.Execute(command, meta) =>
       val sender = this.sender()
-      if (terminating)
-        sender ! Left(MasterIsTerminatingProblem)
+      if (shuttingDown)
+        sender ! Left(MasterIsShuttingDownProblem)
       else
         executeMasterCommand(command, meta) onComplete {
           case Failure(t) => sender ! Status.Failure(t)
@@ -249,14 +247,14 @@ with MainJournalingActor[Event]
       sender() ! Stamped(persistedEventId, repo)
 
     case Command.AddOrder(order) =>
-      if (terminating)
-        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+      if (shuttingDown)
+        sender ! Status.Failure(MasterIsShuttingDownProblem.throwable)
       else
         addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.AddOrders(orders) =>
-      if (terminating)
-        sender ! Status.Failure(MasterIsTerminatingProblem.throwable)
+      if (shuttingDown)
+        sender ! Status.Failure(MasterIsShuttingDownProblem.throwable)
       else
         addOrders(orders).pipeTo(sender())
 
@@ -340,23 +338,23 @@ with MainJournalingActor[Event]
       }
 
     case JournalActor.Output.SnapshotTaken =>
-      for ((shutdown, since) <- terminatingSince) {
+      if (shuttingDown) {
         // TODO termination wie in AgentOrderKeeper, dabei AgentDriver ordentlich beenden
         if (agentRegister.nonEmpty)
           agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
         else
-          shutDownEventAndStopJournaling(clusterSwitchOver = shutdown.clusterSwitchOver)
+          shutDownEventAndStopJournaling()
       }
 
     case Terminated(a) if agentRegister contains a =>
       agentRegister -= a
       if (agentRegister.isEmpty) {
         // clusterSwitchOver should be defined (otherwise we have an error)
-        shutDownEventAndStopJournaling(clusterSwitchOver = terminatingSince.fold(true)(_._1.clusterSwitchOver))
+        shutDownEventAndStopJournaling()
       }
 
     case Terminated(`journalActor`) =>
-      if (!terminating) logger.error("JournalActor terminated")
+      if (!shuttingDown) logger.error("JournalActor terminated")
       context.stop(self)
   }
 
@@ -416,9 +414,9 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case shutdown: MasterCommand.Shutdown =>
+      case MasterCommand.Shutdown =>
         journalActor ! JournalActor.Input.TakeSnapshot
-        terminatingSince := (shutdown, now)
+        shuttingDownSince := now
         Future.successful(Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>
@@ -583,7 +581,7 @@ with MainJournalingActor[Event]
   }
 
   private def proceedWithOrder(orderEntry: OrderEntry): Unit =
-    if (!terminating) {
+    if (!shuttingDown) {
       val order = orderEntry.order
       for (mode <- order.cancel) {
         if ((order.isAttaching || order.isAttached) && !orderEntry.cancelationMarkedOnAgent) {
@@ -666,37 +664,24 @@ with MainJournalingActor[Event]
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
-  private def shutDownEventAndStopJournaling(clusterSwitchOver: Boolean): Unit =
+  private def shutDownEventAndStopJournaling(): Unit =
     // The event forces the cluster to acknowledge this event and the snapshot taken
-    (for {
-        _ <- EitherT(
-              if (clusterSwitchOver)
-                cluster.switchOver() map {
-                  case Left(problem) =>
-                    logger.warn(s"Failed to switch over: $problem")
-                    Right(Completed)
-                  case o => o
-                }
-             else
-                Task.pure(Checked(Completed)))
-        x <- EitherT(
-              persistKeyedEventTask(NoKey <-: MasterShutDown(clusterSwitchOver = clusterSwitchOver))(_ => Completed)
-                .map(Checked.apply))
-      } yield x
-    ).value.runAsync { x =>
-      x match {
-        case Right(Right(Completed)) =>
-        case other => logger.error(s"While shutting down: $other")
+    persistKeyedEventTask(NoKey <-: MasterShutDown)(_ => Completed)
+      .map(Checked.apply)
+      .runAsync { x =>
+        x match {
+          case Right(Right(Completed)) =>
+          case other => logger.error(s"While shutting down: $other")
+        }
+        journalActor ! JournalActor.Input.Terminate
       }
-      journalActor ! JournalActor.Input.Terminate
-    }
 
   override def toString = "MasterOrderKeeper"
 }
 
 private[master] object MasterOrderKeeper
 {
-  private val MasterIsTerminatingProblem = Problem.pure("Master is terminating")
+  private val MasterIsShuttingDownProblem = Problem.pure("Master is shutting down")
 
   private val logger = Logger(getClass)
 

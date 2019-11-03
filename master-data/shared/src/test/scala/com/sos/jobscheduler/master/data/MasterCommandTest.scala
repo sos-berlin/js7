@@ -199,6 +199,13 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
+  "SwitchoverToBackup" in {
+    testJson[MasterCommand](SwitchoverToBackup,
+      json"""{
+        "TYPE": "SwitchoverToBackup"
+      }""")
+  }
+
   "TakeSnapshot" in {
     testJson[MasterCommand](TakeSnapshot,
       json"""{
@@ -207,14 +214,9 @@ final class MasterCommandTest extends FreeSpec
   }
 
   "Shutdown" in {
-    testJson[MasterCommand](Shutdown(),
+    testJson[MasterCommand](Shutdown,
       json"""{
         "TYPE": "Shutdown"
-      }""")
-    testJson[MasterCommand](Shutdown(clusterSwitchOver = true),
-      json"""{
-        "TYPE": "Shutdown",
-        "clusterSwitchOver": true
       }""")
   }
 
