@@ -121,7 +121,7 @@ echo PID $pid
 
 terminate() {
   echo
-  echo Shutdown JobScheduler Provider
+  echo ShutDown JobScheduler Provider
   kill $pid
 }
 

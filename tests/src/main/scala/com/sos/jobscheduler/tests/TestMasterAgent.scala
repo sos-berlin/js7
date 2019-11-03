@@ -2,7 +2,7 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Shutdown
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -98,7 +98,7 @@ object TestMasterAgent
             JavaShutdownHook.add("TestMasterAgent") {
               print('\n')
               (for (agent <- agents) yield {
-                agent.executeCommand(Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+                agent.executeCommand(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
                 val r = agent.terminated
                 agent.close()
                 r
@@ -154,7 +154,7 @@ object TestMasterAgent
             })
             master.terminated await 365 * 24.h
             master.close()
-            for (agent <- agents) agent.executeCommand(AgentCommand.Shutdown())
+            for (agent <- agents) agent.executeCommand(AgentCommand.ShutDown())
           }
         }
       }

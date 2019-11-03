@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.client.SimpleAgentClient
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Shutdown}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
 import com.sos.jobscheduler.agent.tests.AgentTester
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -59,5 +59,5 @@ extends FreeSpec with ScalaFutures with AgentTester {
 }
 
 private object AgentClientCommandMarshallingTest {
-  private val ExpectedTerminate = Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(123.seconds))
+  private val ExpectedTerminate = ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(123.seconds))
 }

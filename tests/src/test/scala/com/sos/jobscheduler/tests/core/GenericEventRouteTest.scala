@@ -224,7 +224,7 @@ final class GenericEventRouteTest extends FreeSpec with BeforeAndAfterAll with P
       sleep(10.ms)
       assert(!observableCompleted.isCompleted)
 
-      // Shutdown service
+      // ShutDown service
       shuttingDownPromise.success(Completed)
       observableCompleted.await(1.s)
     }

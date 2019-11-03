@@ -95,14 +95,14 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait ShutdownOrAbort extends AgentCommand
 
-  final case class Shutdown(
+  final case class ShutDown(
     sigtermProcesses: Boolean = false,
     sigkillProcessesAfter: Option[FiniteDuration] = None)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
   }
 
-  object Shutdown {
+  object ShutDown {
     val MaxDuration = 31 * 24.h
   }
 
@@ -157,7 +157,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(NoOperation),
       Subtype(RegisterAsMaster),
       Subtype(deriveCodec[CoupleMaster]),
-      Subtype(deriveCodec[Shutdown]),
+      Subtype(deriveCodec[ShutDown]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),

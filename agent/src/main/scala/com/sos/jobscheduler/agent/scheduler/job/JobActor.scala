@@ -116,7 +116,7 @@ extends Actor with Stash {
       handleIfReadyForOrder()
 
     case Input.Terminate(sigtermProcesses, sigkillProcessesAfter) =>
-      logger.debug("Shutdown")
+      logger.debug("ShutDown")
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)

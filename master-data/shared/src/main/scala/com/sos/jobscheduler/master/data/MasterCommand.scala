@@ -83,7 +83,7 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   /** Shut down the Master properly. */
-  final case object Shutdown extends MasterCommand {
+  final case object ShutDown extends MasterCommand {
     type Response = Response.Accepted
   }
 
@@ -151,7 +151,7 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[PassiveNodeFollows]),
-    Subtype(Shutdown),
+    Subtype(ShutDown),
     Subtype(SwitchoverToBackup),
     Subtype(TakeSnapshot))
 }

@@ -82,7 +82,7 @@ extends MainJournalingActor[Event] with Stash {
   private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
 
   private object termination {
-    private var terminateCommand: Option[AgentCommand.Shutdown] = None
+    private var terminateCommand: Option[AgentCommand.ShutDown] = None
     private var snapshotTaken = false
     private var stillTerminatingSchedule: Option[Cancelable] = None
     private var terminatingOrders = false
@@ -92,7 +92,7 @@ extends MainJournalingActor[Event] with Stash {
 
     def terminating = terminateCommand.isDefined
 
-    def start(terminate: AgentCommand.Shutdown): Unit =
+    def start(terminate: AgentCommand.ShutDown): Unit =
       if (!terminating) {
         terminateCommand = Some(terminate)
         since := now
@@ -193,8 +193,8 @@ extends MainJournalingActor[Event] with Stash {
         logger.info("Ready")
       }
 
-    case _: AgentCommand.Shutdown =>
-      logger.info("Command 'Shutdown' terminates Agent while recovering")
+    case _: AgentCommand.ShutDown =>
+      logger.info("Command 'ShutDown' terminates Agent while recovering")
       context.stop(self)
       sender() ! AgentCommand.Response.Accepted
 
@@ -206,7 +206,7 @@ extends MainJournalingActor[Event] with Stash {
     case Input.ExternalCommand(cmd, response) =>
       response.completeWith(processCommand(cmd))
 
-    case terminate: AgentCommand.Shutdown =>
+    case terminate: AgentCommand.ShutDown =>
       termination.start(terminate)
       sender() ! AgentCommand.Response.Accepted
 

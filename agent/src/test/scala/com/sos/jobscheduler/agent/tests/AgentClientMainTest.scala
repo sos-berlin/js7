@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.tests
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Shutdown
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.agent.tests.AgentClientMainTest._
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
@@ -42,7 +42,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
 
   "main" in {
     val output = mutable.Buffer[String]()
-    val commandYaml = """{ TYPE: Shutdown, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
+    val commandYaml = """{ TYPE: ShutDown, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
     AgentClientMain.run(List(s"-data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
@@ -71,6 +71,6 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
 }
 
 private object AgentClientMainTest {
-  private val ExpectedTerminate = Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
+  private val ExpectedTerminate = ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
 }
 

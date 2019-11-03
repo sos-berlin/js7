@@ -4,7 +4,7 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Shutdown
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -80,7 +80,7 @@ object TestDockerExample
       JavaShutdownHook.add("TestDockerExample") {
         print('\n')
         (for (agent <- agents) yield {
-          agent.executeCommand(Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
+          agent.executeCommand(ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
           val r = agent.terminated
           agent.close()
           r
@@ -93,7 +93,7 @@ object TestDockerExample
       //??? master.executeCommandAsSystemUser(MasterCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
       master.terminated await 365 * 24.h
       master.close()
-      for (agent <- agents) agent.executeCommand(AgentCommand.Shutdown())
+      for (agent <- agents) agent.executeCommand(AgentCommand.ShutDown())
       agents map (_.terminated) await 60.s
       agents foreach (_.close())
     }

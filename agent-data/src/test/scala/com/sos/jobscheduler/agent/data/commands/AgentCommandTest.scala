@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Shutdown}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.TestCodeProblem
 import com.sos.jobscheduler.data.agent.AgentRefPath
@@ -87,19 +87,19 @@ final class AgentCommandTest extends FreeSpec {
       }""")
   }
 
-  "Shutdown" - {
+  "ShutDown" - {
     "JSON without sigkillProcessesAfter" in {
-      check(AgentCommand.Shutdown(sigtermProcesses = true),
+      check(AgentCommand.ShutDown(sigtermProcesses = true),
         json"""{
-          "TYPE": "Shutdown",
+          "TYPE": "ShutDown",
           "sigtermProcesses": true
         }""")
     }
 
     "JSON with sigkillProcessesAfter" in {
-      check(AgentCommand.Shutdown(sigtermProcesses = true, sigkillProcessesAfter = Some(30.seconds)),
+      check(AgentCommand.ShutDown(sigtermProcesses = true, sigkillProcessesAfter = Some(30.seconds)),
         json"""{
-          "TYPE": "Shutdown",
+          "TYPE": "ShutDown",
           "sigtermProcesses": true,
           "sigkillProcessesAfter": 30
         }""")
@@ -179,9 +179,9 @@ final class AgentCommandTest extends FreeSpec {
     assert(
       Batch(
         DetachOrder(OrderId("A")) :: DetachOrder(OrderId("A")) ::
-        Shutdown() ::
+        ShutDown() ::
         NoOperation :: NoOperation :: NoOperation :: Nil
-      ).toString == "Batch(2×DetachOrder, Shutdown, 3×NoOperation)")
+      ).toString == "Batch(2×DetachOrder, ShutDown, 3×NoOperation)")
   }
 
   private def check(command: AgentCommand, json: Json): Unit =

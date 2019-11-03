@@ -157,7 +157,7 @@ extends MainJournalingActor[AgentEvent] {
     import externalCommand.{command, response, userId}
     val masterId = MasterId.fromUserId(userId)
     command match {
-      case command: AgentCommand.Shutdown =>
+      case command: AgentCommand.ShutDown =>
         if (!terminating) {
           terminating = true
           terminateOrderKeepers(command) onComplete { ordersTerminated =>
@@ -215,7 +215,7 @@ extends MainJournalingActor[AgentEvent] {
       journalActor ! JournalActor.Input.Terminate
     }
 
-  private def terminateOrderKeepers(terminate: AgentCommand.Shutdown): Future[AgentCommand.Response.Accepted] =
+  private def terminateOrderKeepers(terminate: AgentCommand.ShutDown): Future[AgentCommand.Response.Accepted] =
     Future.sequence(
       for (a <- masterToOrderKeeper.values.map(_.actor)) yield
         (a ? terminate).mapTo[AgentCommand.Response.Accepted])

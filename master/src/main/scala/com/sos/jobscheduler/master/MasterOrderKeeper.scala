@@ -166,7 +166,7 @@ with MainJournalingActor[Event]
     case Internal.ClusterStarted(Failure(throwable)) =>
       throw throwable.appendCurrentStackTrace
 
-    case Command.Execute(MasterCommand.Shutdown, _) =>
+    case Command.Execute(MasterCommand.ShutDown, _) =>
       if (shuttingDown) {
         sender ! Left(MasterIsShuttingDownProblem)
       } else {
@@ -414,7 +414,7 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.Shutdown =>
+      case MasterCommand.ShutDown =>
         journalActor ! JournalActor.Input.TakeSnapshot
         shuttingDownSince := now
         Future.successful(Right(MasterCommand.Response.Accepted))

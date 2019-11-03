@@ -68,7 +68,7 @@ extends AutoCloseable {
     else {
       logger.debug("terminate")
       for {
-        _ <- directExecuteCommand(AgentCommand.Shutdown(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
+        _ <- directExecuteCommand(AgentCommand.ShutDown(sigtermProcesses = true, sigkillProcessesAfter = sigkillProcessesAfter))
         t <- Task.fromFuture(terminated)
       } yield t
     }

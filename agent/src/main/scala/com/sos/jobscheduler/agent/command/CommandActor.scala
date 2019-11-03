@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, Shutdown, TakeSnapshot}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Batch, CoupleMaster, EmergencyStop, NoOperation, OrderCommand, RegisterAsMaster, Response, ShutDown, TakeSnapshot}
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
@@ -81,7 +81,7 @@ extends Actor {
       case NoOperation =>
         response.success(Right(AgentCommand.Response.Accepted))
 
-      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: Shutdown) =>
+      case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: CoupleMaster | _: TakeSnapshot.type | _: ShutDown) =>
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop =>

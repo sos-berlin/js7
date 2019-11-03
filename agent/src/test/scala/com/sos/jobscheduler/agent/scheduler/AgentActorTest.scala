@@ -63,7 +63,7 @@ final class AgentActorTest extends FreeSpec {
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         for (orderId <- orderIds)
           eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
-        executeCommand(AgentCommand.Shutdown()) await 99.s
+        executeCommand(AgentCommand.ShutDown()) await 99.s
       }
     }
   }

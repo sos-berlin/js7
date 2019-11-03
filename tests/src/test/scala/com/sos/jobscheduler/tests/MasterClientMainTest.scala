@@ -65,9 +65,9 @@ final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with Ma
     //assert(output.head contains "Connection refused")
   }
 
-  "Shutdown" in {
+  "ShutDown" in {
     val output = mutable.Buffer[String]()
-    val commandYaml = """{ TYPE: Shutdown }"""
+    val commandYaml = """{ TYPE: ShutDown }"""
     MasterClientMain.run(
       s"-config-directory=$configDirectory" :: s"-data-directory=$dataDirectory" ::
         s"https://localhost:$httpsPort" ::

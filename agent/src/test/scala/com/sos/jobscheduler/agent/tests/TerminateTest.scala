@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.tests
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.Akkas.newAgentActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, Shutdown}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsMaster, ShutDown}
 import com.sos.jobscheduler.agent.tests.TerminateTest._
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
@@ -40,7 +40,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
     super.beforeAll()
   }
 
-  "Shutdown" in {
+  "ShutDown" in {
     implicit val actorSystem = newAgentActorSystem("TerminateTest")
     closer onClose actorSystem.terminate()
 
@@ -70,7 +70,7 @@ final class TerminateTest extends FreeSpec with AgentTester {
     sleep(2.s)
     assert(!whenStepEnded.isCompleted)
 
-    client.commandExecute(Shutdown(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
+    client.commandExecute(ShutDown(sigkillProcessesAfter = Some(0.seconds))).await(99.s).orThrow
     val stepEnded = whenStepEnded await 99.s
     assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Undisrupted].isFailed })
     agent.terminated await 99.s

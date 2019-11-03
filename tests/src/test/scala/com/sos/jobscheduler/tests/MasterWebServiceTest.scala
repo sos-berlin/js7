@@ -921,8 +921,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Ma
         }""")
     }
 
-    "Shutdown" in {
-      val cmd = json"""{ "TYPE": "Shutdown" }"""
+    "ShutDown" in {
+      val cmd = json"""{ "TYPE": "ShutDown" }"""
       val headers = RawHeader("X-JobScheduler-Session", sessionToken) :: Nil
       testJson(
         httpClient.postWithHeaders[Json, Json](s"$uri/master/api/command", cmd, headers) await 99.s,

@@ -213,10 +213,10 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
-  "Shutdown" in {
-    testJson[MasterCommand](Shutdown,
+  "ShutDown" in {
+    testJson[MasterCommand](ShutDown,
       json"""{
-        "TYPE": "Shutdown"
+        "TYPE": "ShutDown"
       }""")
   }
 

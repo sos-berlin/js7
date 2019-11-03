@@ -14,7 +14,7 @@ httpPort=4444
 masterOptions=()
 javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
-terminateCommand='{ "TYPE": "Shutdown" }'
+terminateCommand='{ "TYPE": "ShutDown" }'
 
 for arg in "$@"; do :
   case "$arg" in
@@ -120,11 +120,11 @@ echo PID $pid
 
 terminate() {
   echo
-  echo Shutdown JobScheduler Master
+  echo ShutDown JobScheduler Master
   # Add some seconds to start Java with MasterClientMain
   terminateTimeout=30
   if [ "$SHELL" = "/bin/bash" ]; then
-    "$JOBSCHEDULER_HOME/bin/jobscheduler-client" -data-directory="$data" '{ "TYPE": "Shutdown" }' &
+    "$JOBSCHEDULER_HOME/bin/jobscheduler-client" -data-directory="$data" '{ "TYPE": "ShutDown" }' &
   else
     "$java" -Xmx50m \
       -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
