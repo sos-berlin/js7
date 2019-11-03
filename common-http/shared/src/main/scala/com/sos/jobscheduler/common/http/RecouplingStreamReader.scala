@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.session.SessionApi
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.RecouplingStreamReader._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
-import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicBoolean
@@ -41,7 +40,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   protected def logEvent(a: V): Unit = {}
 
-  private val coupledApiMVar = MVar.empty[Task, Api]().memoize
+  private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
   private var sinceLastTry = now - 1.hour
@@ -57,19 +56,21 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
         }
   }
 
+  final def terminate: Task[Completed] =
+    decouple >> coupledApiVar.terminate
+
   final def decouple: Task[Completed] =
-    coupledApiMVar.flatMap(_.tryTake)
+    coupledApiVar.tryTake
       .flatMap {
         case None => Task.pure(Completed)
         case Some(api) => api.logout().onErrorHandle(_ => Completed)
       }
 
   final def invalidateCoupledApi: Task[Completed] =
-    coupledApiMVar.flatMap(_.tryTake)
-      .map(_ => Completed)
+    coupledApiVar.invalidate
 
   final def coupledApi: Task[Api] =
-    coupledApiMVar.flatMap(_.read)
+    coupledApiVar.read
 
   final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
     Task.defer {
@@ -138,7 +139,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
             }))
 
     private def coupleIfNeeded: Task[Completed] =
-      coupledApiMVar.flatMap(_.tryRead).flatMap {
+      coupledApiVar.tryRead.flatMap {
         case Some(_) => Task.pure(Completed)
         case None => tryEndlesslyToCouple
       }
@@ -146,7 +147,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
     private def tryEndlesslyToCouple: Task[Completed] =
       Task.tailRecM(())(_ =>
         (for {
-          otherCoupledClient <- coupledApiMVar.flatMap(_.tryRead)
+          otherCoupledClient <- coupledApiVar.tryRead
           _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
           _ <- Task { recouplingPause.onCouple() }
           _ <- if (api.hasSession) Task.unit else api.login(maybeUserAndPassword)
@@ -163,7 +164,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
             case Right(Completed) =>
               for {
-                _ <- coupledApiMVar.flatMap(_.tryPut(api))
+                _ <- coupledApiVar.tryPut(api)
                 _ <- Task {
                   recouplingPause.onCouplingSucceeded()
                 }
@@ -173,11 +174,11 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
   private val pauseBeforeRecoupling =
     Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
-
 }
 
 object RecouplingStreamReader
 {
+  val TerminatedProblem = Problem.pure("Agent API has been terminated")
   private val TimeoutReserve = 10.s
   private val PauseGranularity = 500.ms
 

@@ -73,6 +73,7 @@ with ReceiveLoggingActor.WithStash
   private var keepEventsCancelable: Option[Cancelable] = None
   private var delayNextKeepEvents = false
   private var delayCommandExecutionAfterErrorUntil = now
+  private var isTerminating = false
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     zeroIndex = EventId.BeforeFirst,
@@ -88,7 +89,9 @@ with ReceiveLoggingActor.WithStash
         api.mastersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(conf.recouplingStreamReader.timeout)))
 
     override protected def onCouplingFailed(problem: Problem) =
-      promiseTask[Completed] { promise => self ! Internal.OnCouplingFailed(problem, promise) }
+      promiseTask[Completed] {
+        promise => self ! Internal.OnCouplingFailed(problem, promise)
+      }
 
     override protected def onCoupled(api: AgentClient) =
       promiseTask[Completed] { promise =>
@@ -151,7 +154,7 @@ with ReceiveLoggingActor.WithStash
     AgentClient(uri, masterConfiguration.keyStoreRefOption, masterConfiguration.trustStoreRefOption)(context.system)
 
   def receive: Receive = {
-    case input: Input with Queueable if sender() == context.parent =>
+    case input: Input with Queueable if sender() == context.parent && !isTerminating =>
       commandQueue.enqueue(input)
       scheduler.scheduleOnce(conf.commandBatchDelay) {
         self ! Internal.CommandQueueReady  // (Even with commandBatchDelay == 0) delay maySend() such that Queueable pending in actor's mailbox can be queued
@@ -176,7 +179,14 @@ with ReceiveLoggingActor.WithStash
       client = newAgentClient(uri)
       self ! Internal.FetchEvents
 
-    case Input.Terminate => context.stop(self)
+    case Input.Terminate =>
+      // Wait until all pending Agent commands are responded, and do not accept further commands
+      logger.debug("Terminate")
+      isTerminating = true
+      currentFetchedFuture foreach (_.cancel())
+      commandQueue.terminate()
+      eventFetcher.terminate.runAsyncAndForget  // Rejects current commands waiting for coupling
+      stopIfTerminated()
 
     case Internal.FetchEvents =>
       assert(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
@@ -251,7 +261,9 @@ with ReceiveLoggingActor.WithStash
         }
 
     case Internal.KeepEvents(agentEventId) =>
-      commandQueue.enqueue(KeepEventsQueueable(agentEventId))
+      if (!isTerminating) {
+        commandQueue.enqueue(KeepEventsQueueable(agentEventId))
+      }
 
     case Internal.CommandQueueReady =>
       commandQueue.maySend()
@@ -275,11 +287,17 @@ with ReceiveLoggingActor.WithStash
         keepEventsCancelable foreach (_.cancel())
         keepEventsCancelable = None
       }
+      stopIfTerminated()
 
     case Internal.BatchFailed(inputs, problem) =>
-      logger.warn(s"Command batch failed: $problem")
+      if (problem == RecouplingStreamReader.TerminatedProblem) {
+        logger.debug(s"Command batch failed: $problem")
+      } else {
+        logger.warn(s"Command batch failed: $problem")
+      }
       delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
       commandQueue.handleBatchFailed(inputs)
+      stopIfTerminated()
   }
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
@@ -296,7 +314,7 @@ with ReceiveLoggingActor.WithStash
 
   protected def observeAndConsumeEventsUntilCanceled: Task[Completed] =
     eventFetcher.observe(client, after = lastEventId)
-      .map { a => logEvent(a); a }
+      //.map { a => logEvent(a); a }
       .bufferTimedAndCounted(
         conf.eventBufferDelay max conf.commitDelay,
         maxCount = conf.eventBufferLimit)  // ticks
@@ -337,6 +355,12 @@ with ReceiveLoggingActor.WithStash
         agentRunIdOnce := agentRunId
 
       case _ => sys.error(s"Unexpected event: $event")
+    }
+
+  private def stopIfTerminated() =
+    if (commandQueue.isTerminated) {
+      logger.debug("Stop")
+      context.stop(self)
     }
 
   override def toString = s"AgentDriver($agentRefPath)"

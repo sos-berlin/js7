@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.agent
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Batch
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.master.agent.AgentDriver.{Input, KeepEventsQueueable, Queueable}
 import com.sos.jobscheduler.master.agent.CommandQueue._
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
@@ -25,6 +26,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   private val executingInputs = mutable.Set[Queueable]()
   private var freshReconnected = true  // After connect, send a single command first. Start queueing first after one successful response.
   private var openRequestCount = 0
+  private var isTerminating = false
 
   private object queue {
     private val queue = mutable.Queue[Queueable]()
@@ -50,30 +52,42 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     freshReconnected = true
 
   final def enqueue(input: Queueable): Unit = {
+    assertThat(!isTerminating)
     queue.enqueue(input)
     if (queue.size == batchSize || freshReconnected) {
       maySend()
     }
   }
 
-  final def maySend(): Unit = {
-    lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
-    if (openRequestCount < commandParallelism && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
-      executingInputs ++= inputs
-      openRequestCount += 1
-      executeCommand(Batch(inputs map inputToAgentCommand))
-        .materialize foreach {
-          case Success(Right(Batch.Response(responses))) =>
-            asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
-
-          case Success(Left(problem)) =>
-            asyncOnBatchFailed(inputs, problem)
-
-          case Failure(t) =>
-            asyncOnBatchFailed(inputs, Problem.pure(t))
-        }
+  final def terminate(): Unit = {
+    if (executingInputs.nonEmpty) {
+      logger.info(s"Waiting for responses to AgentCommands: ${executingInputs.map(_.toShortString).mkString(", ")}")
     }
+    isTerminating = true
   }
+
+  final def isTerminated =
+    isTerminating && executingInputs.isEmpty
+
+  final def maySend(): Unit =
+    if (!isTerminating) {
+      lazy val inputs = queue.iterator.filterNot(executingInputs).take(batchSize).toVector
+      if (openRequestCount < commandParallelism && (!freshReconnected || openRequestCount == 0) && inputs.nonEmpty) {
+        executingInputs ++= inputs
+        openRequestCount += 1
+        executeCommand(Batch(inputs map inputToAgentCommand))
+          .materialize foreach {
+            case Success(Right(Batch.Response(responses))) =>
+              asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
+
+            case Success(Left(problem)) =>
+              asyncOnBatchFailed(inputs, problem)
+
+            case Failure(t) =>
+              asyncOnBatchFailed(inputs, Problem.pure(t))
+          }
+      }
+    }
 
   private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
