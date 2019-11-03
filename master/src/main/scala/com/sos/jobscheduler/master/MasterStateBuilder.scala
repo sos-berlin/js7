@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import scala.collection.mutable
@@ -64,7 +64,8 @@ extends JournalStateBuilder[MasterState, Event]
       event match {
         case AgentRegisteredMaster(agentRunId) =>
           pathToAgent.insert(agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))
-        case _ =>
+
+        case _: AgentReady | _: AgentCouplingFailed =>
       }
 
     case Stamped(_, _, KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId))) =>

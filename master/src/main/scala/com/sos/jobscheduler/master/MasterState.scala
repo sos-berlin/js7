@@ -17,7 +17,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.MasterState._
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
 import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
-import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
+import com.sos.jobscheduler.master.data.events.MasterAgentEvent.{AgentCouplingFailed, AgentReady, AgentRegisteredMaster}
 import com.sos.jobscheduler.master.data.events.MasterEvent.MasterTestEvent
 import com.sos.jobscheduler.master.data.events.{MasterAgentEvent, MasterEvent}
 import monix.reactive.Observable
@@ -57,8 +57,8 @@ extends JournaledState[MasterState, Event]
               pathToAgent = pathToAgent +
                 (agentRefPath -> AgentSnapshot(agentRefPath, Some(agentRunId), eventId = EventId.BeforeFirst))))
 
-        case _ =>
-          Right(this)  // ???
+        case _: AgentReady | _: AgentCouplingFailed =>
+          Right(this)
       }
 
     case KeyedEvent(a: AgentRefPath, AgentEventIdEvent(agentEventId)) =>

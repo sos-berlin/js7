@@ -29,7 +29,6 @@ import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.agent.AgentDriver._
 import com.sos.jobscheduler.master.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.agent.AgentSnapshot
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
 import com.typesafe.config.ConfigUtil
@@ -131,7 +130,7 @@ with ReceiveLoggingActor.WithStash
   protected def key = agentRefPath  // Only one version is active at any time
   protected def recoverFromSnapshot(snapshot: Any) = throw new NotImplementedError
   protected def recoverFromEvent(event: MasterAgentEvent) = throw new NotImplementedError
-  protected def snapshot = Some(AgentSnapshot(agentRefPath, agentRunIdOnce.toOption, lastEventId))
+  protected def snapshot = None  // MasterOrderKeeper provides the AgentSnapshot
 
   override def preStart() = {
     super.preStart()
@@ -330,14 +329,18 @@ with ReceiveLoggingActor.WithStash
   private def registerAsMasterIfNeeded: Task[Completed] =
     if (agentRunIdOnce.nonEmpty)
       Task.pure(Completed)
-    else
+    else {
+      val parent = context.parent
       client.commandExecute(AgentCommand.RegisterAsMaster)
         .map(_.map(_.agentRunId).orThrowWithoutStacktrace/*TODO Safe original Problem, package in special ProblemException and let something like Problem.pure don't _wrap_ the Problem?*/)
         .flatMap(agentRunId =>
-          persistTask(AgentRegisteredMaster(agentRunId)) { stamped =>
-            update(stamped.value.event)
+          persistTask(AgentRegisteredMaster(agentRunId)) { _ =>
+            // asynchronous
+            agentRunIdOnce := agentRunId
+            parent ! Output.RegisteredAtAgent(agentRunId)
             Completed
           })
+    }
 
   private object logEvent {
     // This object is used asynchronously
@@ -348,14 +351,6 @@ with ReceiveLoggingActor.WithStash
         logger.trace(s"#$i $stampedEvent")
       }
   }
-
-  private def update(event: MasterAgentEvent): Unit =
-    event match {
-      case AgentRegisteredMaster(agentRunId) =>
-        agentRunIdOnce := agentRunId
-
-      case _ => sys.error(s"Unexpected event: $event")
-    }
 
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
@@ -399,6 +394,7 @@ private[master] object AgentDriver
   }
 
   object Output {
+    final case class RegisteredAtAgent(agentRunId: AgentRunId)
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
     final case class OrdersDetached(orderIds: Set[OrderId])
     final case class OrdersCancelationMarked(orderIds: Set[OrderId])

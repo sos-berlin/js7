@@ -10,7 +10,6 @@ object MasterJournalRecoverer
 {
   def recover(journalMeta: JournalMeta, config: Config): (Recovered[MasterState, Event], ClusterState) = {
     val stateBuilder = new MasterStateBuilder
-
     val recovered = JournaledStateRecoverer.recover[MasterState, Event](journalMeta, stateBuilder, config)
     (recovered, stateBuilder.clusterState)
   }

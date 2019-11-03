@@ -50,7 +50,7 @@ import com.sos.jobscheduler.master.cluster.{Cluster, ClusterFollowUp}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.MasterSnapshots.MasterMetaState
-import com.sos.jobscheduler.master.data.agent.AgentEventIdEvent
+import com.sos.jobscheduler.master.data.agent.{AgentEventIdEvent, AgentSnapshot}
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentReady
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
@@ -96,9 +96,69 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
-  private val shuttingDownSince = SetOnce[Deadline]
 
-  private def shuttingDown = shuttingDownSince.isDefined
+  private object shutdown {
+    val since = SetOnce[Deadline]
+    private var stillShuttingDownCancelable: Option[Cancelable] = None
+    private var terminatingAgentDrivers = false
+    private var takingSnapshot = false
+    private var snapshotTaken = false
+    private var terminatingJournal = false
+
+    def shuttingDown = since.isDefined
+
+    def start(): Unit =
+      if (!shuttingDown) {
+        since := now
+        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
+        stillShuttingDownCancelable = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+          self ! Internal.StillShuttingDown
+        })
+        continue()
+      }
+
+    def close() =
+      stillShuttingDownCancelable.foreach(_.cancel())
+
+    def onStillShuttingDown() =
+      logger.info(s"Still shutting down, waiting for ${agentRegister.runningActorCount} AgentDrivers" +
+        (if (!snapshotTaken) " and the snapshot" else ""))
+
+    def onSnapshotTaken(): Unit =
+      if (shuttingDown) {
+        snapshotTaken = true
+        continue()
+      }
+
+    def continue() =
+      if (since.isDefined) {
+        logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${if (snapshotTaken) ", snapshot taken" else ""}")
+        if (!terminatingAgentDrivers) {
+          terminatingAgentDrivers = true
+          agentRegister.values foreach {
+            _.actor ! AgentDriver.Input.Terminate
+          }
+        }
+        if (agentRegister.runningActorCount == 0 && !takingSnapshot) {
+          takingSnapshot = true
+          journalActor ! JournalActor.Input.TakeSnapshot
+        }
+        if (snapshotTaken && !terminatingJournal) {
+          // The event forces the cluster to acknowledge this event and the snapshot taken
+          terminatingJournal = true
+          persistKeyedEventTask(NoKey <-: MasterShutDown)(_ => Completed)
+            .map(Checked.apply)
+            .runAsync { x =>
+              x match {
+                case Right(Right(Completed)) =>
+                case other => logger.error(s"While shutting down: $other")
+              }
+              journalActor ! JournalActor.Input.Terminate
+            }
+        }
+      }
+  }
+  import shutdown.shuttingDown
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -124,7 +184,7 @@ with MainJournalingActor[Event]
   override def postStop() = {
     super.postStop()
     cluster.stop()
-    logger.debug("Stopped" + shuttingDownSince.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+    logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
@@ -133,7 +193,7 @@ with MainJournalingActor[Event]
     persistedEventId,
     masterMetaState.copy(totalRunningTime = masterMetaState.totalRunningTime + runningSince.elapsed),
     repo,
-    pathToAgent = Map.empty,  // AgentDriver provides the AgentSnapshot  // agentRegister.values.map(entry => AgentSnapshot(entry.agentRefPath, entry.agentRunId, entry.lastAgentEventId)),
+    pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
     orderRegister.mapValues(_.order).toMap)
 
   def receive = {
@@ -167,14 +227,9 @@ with MainJournalingActor[Event]
       throw throwable.appendCurrentStackTrace
 
     case Command.Execute(MasterCommand.ShutDown, _) =>
-      if (shuttingDown) {
-        sender ! Left(MasterIsShuttingDownProblem)
-      } else {
-        logger.debug("cancelableCluster.cancel()")
-        cancelableCluster.cancel()
-        shuttingDownSince := now
-        sender() ! Right(MasterCommand.Response.Accepted)
-      }
+      logger.debug("cancelableCluster.cancel()")
+      cancelableCluster.cancel()
+      sender() ! Right(MasterCommand.Response.Accepted)
 
     case _ => stash()
   }
@@ -270,6 +325,12 @@ with MainJournalingActor[Event]
     case Command.GetState =>
       sender() ! masterState
 
+    case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
+      val agentEntry = agentRegister(sender())
+      if (agentEntry.agentRunId.isEmpty) {
+        agentEntry.agentRunId := agentRunId
+      }
+
     case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
@@ -338,20 +399,14 @@ with MainJournalingActor[Event]
       }
 
     case JournalActor.Output.SnapshotTaken =>
-      if (shuttingDown) {
-        // TODO termination wie in AgentOrderKeeper, dabei AgentDriver ordentlich beenden
-        if (agentRegister.nonEmpty)
-          agentRegister.values foreach { _.actor ! AgentDriver.Input.Terminate }
-        else
-          shutDownEventAndStopJournaling()
-      }
+      shutdown.onSnapshotTaken()
+
+    case Internal.StillShuttingDown =>
+      shutdown.onStillShuttingDown()
 
     case Terminated(a) if agentRegister contains a =>
-      agentRegister -= a
-      if (agentRegister.isEmpty) {
-        // clusterSwitchOver should be defined (otherwise we have an error)
-        shutDownEventAndStopJournaling()
-      }
+      agentRegister(a).actorTerminated = true
+      shutdown.continue()
 
     case Terminated(`journalActor`) =>
       if (!shuttingDown) logger.error("JournalActor terminated")
@@ -415,8 +470,7 @@ with MainJournalingActor[Event]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.ShutDown =>
-        journalActor ! JournalActor.Input.TakeSnapshot
-        shuttingDownSince := now
+        shutdown.start()
         Future.successful(Right(MasterCommand.Response.Accepted))
 
       case MasterCommand.IssueTestEvent =>
@@ -483,6 +537,9 @@ with MainJournalingActor[Event]
         journalActor = journalActor),
       encodeAsActorName("Agent-" + agent.path.withoutStartingSlash)))
     val entry = AgentEntry(agent, actor)
+    agentRunId foreach { o =>
+      entry.agentRunId := o
+    }
     agentRegister.insert(agent.path -> entry)
     entry
   }
@@ -664,18 +721,6 @@ with MainJournalingActor[Event]
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     repo.idTo[Workflow](workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
-  private def shutDownEventAndStopJournaling(): Unit =
-    // The event forces the cluster to acknowledge this event and the snapshot taken
-    persistKeyedEventTask(NoKey <-: MasterShutDown)(_ => Completed)
-      .map(Checked.apply)
-      .runAsync { x =>
-        x match {
-          case Right(Right(Completed)) =>
-          case other => logger.error(s"While shutting down: $other")
-        }
-        journalActor ! JournalActor.Input.Terminate
-      }
-
   override def toString = "MasterOrderKeeper"
 }
 
@@ -710,6 +755,7 @@ private[master] object MasterOrderKeeper
     final case class ClusterStarted(followUp: Try[ClusterFollowUp])
     case object Ready
     case object AfterProceedEventsAdded
+    case object StillShuttingDown
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {
@@ -718,17 +764,23 @@ private[master] object MasterOrderKeeper
 
     def update(agentRef: AgentRef): Unit = {
       val oldEntry = apply(agentRef.path)
-      val entry = oldEntry.copy(agentRef = agentRef)
-      super.update(agentRef.path -> entry)
+      super.update(agentRef.path -> oldEntry.copy(agentRef = agentRef))
     }
+
+    def runningActorCount = values.count(o => !o.actorTerminated)
   }
 
   private case class AgentEntry(
     agentRef: AgentRef,
     actor: ActorRef,
-    var lastAgentEventId: EventId = EventId.BeforeFirst)
+    var lastAgentEventId: EventId = EventId.BeforeFirst,
+    agentRunId: SetOnce[AgentRunId] = SetOnce[AgentRunId],
+    var actorTerminated: Boolean = false)
   {
     def agentRefPath = agentRef.path
+
+    def toSnapshot =
+      AgentSnapshot(agentRefPath, agentRunId.toOption, lastAgentEventId)
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)
@@ -748,7 +800,7 @@ private[master] object MasterOrderKeeper
         case event: OrderCoreEvent =>
           _order.update(event) match {
             case Left(problem) => logger.error(problem.toString)  // TODO Invalid event stored and ignored. Should we validate the event before persisting?
-              // TODO Mark order as unuseable (and try OrderBroken). No further actions on this order to avoid loop!
+              // TODO Mark order as unusable (and try OrderBroken). No further actions on this order to avoid loop!
             case Right(o) => _order = o
           }
       }
