@@ -234,6 +234,23 @@ final class ScalaTimeTest extends FreeSpec
       assert(123999999.µs.withMillis(456) == 123456.ms)
       assert(-123999999.µs.withMillis(456) == -123456.ms)
     }
+
+    "roundUpToNext" in {
+      assert(0.s.roundUpToNext(1.s) == 0.s)
+      assert(1.ns.roundUpToNext(1.s) == 1.s)
+      assert(1000.ns.roundUpToNext(1.µs) == 1.µs)
+      assert(1001.ns.roundUpToNext(1.µs) == 2.µs)
+      assert(1999.ns.roundUpToNext(1.µs) == 2.µs)
+      assert(2000.ns.roundUpToNext(1.µs) == 2.µs)
+      assert(1234.ns.roundUpToNext(10.ns) == 1240.ns)
+
+      assert(-1.ns.roundUpToNext(1.µs) == -1.µs)
+      assert(-999.ns.roundUpToNext(1.µs) == -1.µs)
+      assert(-1000.ns.roundUpToNext(1.µs) == -1.µs)
+      assert(-1999.ns.roundUpToNext(1.µs) == -2.µs)
+      assert(-2000.ns.roundUpToNext(1.µs) == -2.µs)
+      assert(-1234.ns.roundUpToNext(10.ns) == -1240.ns)
+    }
   }
 
   "RichDeadline" - {

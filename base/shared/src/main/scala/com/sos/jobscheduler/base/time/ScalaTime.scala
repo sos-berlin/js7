@@ -172,6 +172,13 @@ object ScalaTime
         Duration(delegate.toSeconds, SECONDS) + milliseconds.ms
       else
         Duration(delegate.toSeconds, SECONDS) - milliseconds.ms
+
+    def roundUpToNext(granularity: FiniteDuration): FiniteDuration = {
+      val nanos = delegate.toNanos
+      val sgn = if (nanos >= 0) 1 else -1
+      val gran = granularity.toNanos
+      Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
+    }
   }
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
