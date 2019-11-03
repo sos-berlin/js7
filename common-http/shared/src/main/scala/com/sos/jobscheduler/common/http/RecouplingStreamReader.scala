@@ -44,7 +44,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   private val coupledApiMVar = MVar.empty[Task, Api]().memoize
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
-  private var sinceLastFetch = now - 1.hour
+  private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] = {
@@ -71,8 +71,13 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
   final def coupledApi: Task[Api] =
     coupledApiMVar.flatMap(_.read)
 
-  final def delaySinceLastFetch(delay: FiniteDuration): FiniteDuration =
-    delay - sinceLastFetch.elapsed
+  final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
+    Task.defer {
+      Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity) >>
+        Task {
+          sinceLastTry = now  // update asynchonously
+        }
+    }
 
   private final class ForApi(api: Api) {
     @volatile private var lastIndex = zeroIndex
@@ -84,7 +89,8 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
           Observable.pure(Right(Observable.empty))
         else
           Observable.pure(Right(observe(after))) ++
-            Observable.evalDelayed(delaySinceLastFetch(conf.delay), Left(lastIndex))
+            (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
+              Observable.delay(Left(lastIndex)))
       ).flatten
     }
 
@@ -120,7 +126,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
 
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
-        sinceLastFetch = now
+        sinceLastTry = now
       } >>
         getObservable(api, after = after)
           .map(_.map(_
@@ -166,13 +172,14 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
           })}
 
   private val pauseBeforeRecoupling =
-    Task { delaySinceLastFetch(recouplingPause.nextPause()) }
-      .flatMap(Task.sleep)
+    Task.defer(pauseBeforeNextTry(recouplingPause.nextPause()))
+
 }
 
 object RecouplingStreamReader
 {
   private val TimeoutReserve = 10.s
+  private val PauseGranularity = 500.ms
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi](
     zeroIndex: I,

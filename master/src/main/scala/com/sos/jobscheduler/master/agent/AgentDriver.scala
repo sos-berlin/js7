@@ -241,7 +241,7 @@ with ReceiveLoggingActor.WithStash
       logger.debug(s"FetchFinished $tried")
       currentFetchedFuture = None
       (eventFetcher.decouple >>
-        Task.sleep(eventFetcher.delaySinceLastFetch(conf.recouplingStreamReader.delay))
+        eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay)
       ).runToFuture
         .onComplete { _ =>
           tried match {
