@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.Show
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import io.circe.syntax.EncoderOps
-import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 
 /**
   * @author Joacim Zschimmer
@@ -34,7 +34,7 @@ package object position
   implicit val branchPathShow: Show[BranchPath] =
     _.map(p => s"${p.nr.number}/${p.branchId}").mkString(InstructionNr.Prefix)
 
-  implicit val jsonEncoder: ArrayEncoder[BranchPath] = _.asJsonArray
+  implicit val jsonEncoder: Encoder.AsArray[BranchPath] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[BranchPath] =
     cursor => cursor.as[List[Json]] flatMap (parts =>

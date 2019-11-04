@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.workflow.position.BranchId.nextTryBranchId
 import com.sos.jobscheduler.data.workflow.position.BranchPath.Segment
 import com.sos.jobscheduler.data.workflow.position.Position._
 import io.circe.syntax.EncoderOps
-import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import scala.annotation.tailrec
 import scala.collection.immutable.IndexedSeq
 
@@ -112,7 +112,7 @@ object Position
   def apply(nr: Int): Position =
     Position(Nil, nr)
 
-  implicit val jsonEncoder: ArrayEncoder[Position] = _.asJsonArray
+  implicit val jsonEncoder: Encoder.AsArray[Position] = _.asJsonArray
 
   implicit val jsonDecoder: Decoder[Position] =
     cursor => cursor.as[List[Json]] flatMap (parts =>

@@ -22,7 +22,7 @@ object WorkflowPosition
   implicit def apply(workflowId: WorkflowId): WorkflowPosition =
     WorkflowPosition(workflowId, Position(InstructionNr.First))
 
-  //implicit val jsonEncoder: ArrayEncoder[WorkflowPosition] =
+  //implicit val jsonEncoder: Encoder.AsArray[WorkflowPosition] =
   //  absolute => absolute.workflowId.asJson +: Position.jsonEncoder.encodeArray(absolute.position)
   //  //absolute => Json.fromString(absolute.workflowId.string) +: Position.jsonEncoder.encodeArray(absolute.position)
   //
