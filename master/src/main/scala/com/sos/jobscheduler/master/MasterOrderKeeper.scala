@@ -3,8 +3,11 @@ package com.sos.jobscheduler.master
 import akka.actor.{ActorRef, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.effect.SyncIO
-import cats.instances.all._
-import cats.syntax.all._
+import cats.instances.either._
+import cats.instances.future._
+import cats.instances.vector._
+import cats.syntax.flatMap._
+import cats.syntax.traverse._
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
@@ -334,14 +337,14 @@ with MainJournalingActor[Event]
     case AgentDriver.Output.EventsFromAgent(stampeds, completedPromise) =>
       val agentEntry = agentRegister(sender())
       import agentEntry.agentRefPath
-      var lastAgentEventId = none[EventId]
+      var lastAgentEventId: Option[EventId] = None
       var masterStamped: Seq[Timestamped[Event]] = stampeds.flatMap {
         case stamped @ Stamped(agentEventId, timestamp, keyedEvent) =>
           if (agentEventId <= lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)) {
             logger.debug(s"AgentDriver ${agentEntry.agentRefPath} has returned old (<= ${lastAgentEventId.getOrElse(agentEntry.lastAgentEventId)}) event: $stamped")
             None
           } else {
-            lastAgentEventId = agentEventId.some
+            lastAgentEventId = Some(agentEventId)
             keyedEvent match {
               case KeyedEvent(_, _: OrderCancelationMarked) =>  // We (the Master) issue our own OrderCancelationMarked
                 None

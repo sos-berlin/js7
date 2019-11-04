@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.agent
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props}
 import akka.http.scaladsl.model.Uri
-import cats.syntax.all._
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent
@@ -305,7 +304,7 @@ with ReceiveLoggingActor.WithStash
       case Some(fetchedFuture) =>
         fetchedFuture.cancel()
         Task.fromFuture(fetchedFuture)
-          .recover { case t =>
+          .onErrorRecover { case t =>
             logger.warn(t.toStringWithCauses)
             Completed
           }

@@ -1,7 +1,14 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.instances.all._
-import cats.syntax.all._
+import cats.instances.either._
+import cats.instances.int._
+import cats.instances.list._
+import cats.instances.option._
+import cats.syntax.apply._
+import cats.syntax.either._
+import cats.syntax.option._
+import cats.syntax.semigroup._
+import cats.syntax.traverse._
 import cats.{Applicative, Apply}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
