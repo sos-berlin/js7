@@ -30,6 +30,7 @@ docker-compose rm -v
 # Let Docker not accumulate old images:
 docker rmi jobscheduler &>/dev/null || true
 docker-compose build --parallel
+docker-compose up --no-start
 
 echo
-echo Start with: docker-compose up
+echo Start with: docker-compose start
