@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.cluster
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted}
+import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -41,6 +41,14 @@ final class ClusterEventTest extends FreeSpec
     testJson[ClusterEvent](ClusterCoupled,
       json"""{
         "TYPE": "ClusterCoupled"
+      }""")
+  }
+
+  "SwitchedOver" in {
+    testJson[ClusterEvent](SwitchedOver(ClusterNodeId("NODE-ID")),
+      json"""{
+        "TYPE": "SwitchedOver",
+        "nodeId": "NODE-ID"
       }""")
   }
 }

@@ -41,6 +41,7 @@ import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Workflow
 import javax.inject.Inject
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
 
@@ -61,7 +62,7 @@ extends MainJournalingActor[AgentEvent] {
 
   private val journalMeta = JournalMeta(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec, stateDirectory / "agent")
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props(journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler),
+    JournalActor.props(journalMeta, now, agentConfiguration.journalConf, keyedEventBus, scheduler),
     "Journal")))
   private val masterToOrderKeeper = new MasterRegister
   private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow

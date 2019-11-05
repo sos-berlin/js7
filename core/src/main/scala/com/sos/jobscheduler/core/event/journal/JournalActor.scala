@@ -36,6 +36,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class JournalActor private(
   journalMeta: JournalMeta,
+  runningSince: Deadline,
   conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
@@ -47,7 +48,6 @@ extends Actor with Stash
   import journalMeta.snapshotJsonCodec
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
-  private val runningSince = now
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
   private var snapshotRequested = false
@@ -66,6 +66,7 @@ extends Actor with Stash
   private var totalEventCount = 0L
   private var acknowledgedEventCount = 0L
   private var requireClusterAcknowledgement = false
+  private var switchedOver = false
 
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
 
@@ -79,7 +80,9 @@ extends Actor with Stash
       snapshotWriter.close()
       delete(snapshotWriter.file)
     }
-    closeEventWriter()
+    if (eventWriter != null) {
+      eventWriter.close()
+    }
     logger.debug("Stopped")
     super.postStop()
   }
@@ -136,31 +139,42 @@ extends Actor with Stash
       handleRegisterMe()
 
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, callersItem) =>
-      val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
-      eventWriter.writeEvents(stampedEvents, transaction = transaction)
-      val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
-      for (o <- lastFileLengthAndEventId) {
-        lastWrittenEventId = o.value
-      }
-      // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-      if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
-        reply(sender(), replyTo, Output.Accepted(callersItem))
-        writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
-        // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
+      if (switchedOver) {
+        logger.error(s"Event but journal has been switched over: ${timestamped.headOption.map(_.keyedEvent)}")
+        reply(sender(), replyTo, Output.StoreFailure(new IllegalStateException("Journal has been switched over")))
       } else {
-        writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
-      }
-      stampedEvents.lastOption match {
-        case Some(Stamped(_, _, KeyedEvent(_, ClusterEvent.ClusterCoupled))) =>
-          // Commit now to let ClusterCoupled event take effect on following events (avoids deadlock)
-          commit()
-          logger.info(s"ClusterCoupled: Start requiring acknowledges from passive cluster node")
-          requireClusterAcknowledgement = true
-        case _ =>
-          forwardCommit((delay max conf.delay) - alreadyDelayed)
-      }
-      if (stampedEvents.nonEmpty) {
-        scheduleNextSnapshot()
+        val stampedEvents = for (t <- timestamped) yield eventIdGenerator.stamp(t.keyedEvent, t.timestamp)
+        eventWriter.writeEvents(stampedEvents, transaction = transaction)
+        val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
+        for (o <- lastFileLengthAndEventId) {
+          lastWrittenEventId = o.value
+        }
+        // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
+        if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
+          reply(sender(), replyTo, Output.Accepted(callersItem))
+          writtenBuffer += AcceptEarlyWritten(stampedEvents.size, lastFileLengthAndEventId, sender())
+          // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logStored(flushed = false, synced = false, stampedEvents)
+        } else {
+          writtenBuffer += NormallyWritten(stampedEvents, lastFileLengthAndEventId, replyTo, sender(), callersItem)
+        }
+        stampedEvents.lastOption match {
+          case Some(Stamped(_, _, KeyedEvent(_, ClusterEvent.ClusterCoupled))) =>
+            // Commit now to let ClusterCoupled event take effect on following events (avoids deadlock)
+            commit()
+            logger.info(s"ClusterCoupled: Start requiring acknowledges from passive cluster node")
+            requireClusterAcknowledgement = true
+          case Some(Stamped(_, _, KeyedEvent(_, _: ClusterEvent.SwitchedOver))) =>
+            commit()
+            logger.info(s"SwitchedOver: stopping journal")
+            switchedOver = true  // No more events are accepted
+            // Await acknowledge from other node
+            // TODO Stop or restart JournalActor?
+          case _ =>
+            forwardCommit((delay max conf.delay) - alreadyDelayed)
+        }
+        if (stampedEvents.nonEmpty) {
+          scheduleNextSnapshot()
+        }
       }
 
     case Internal.Commit(level) =>
@@ -180,7 +194,7 @@ extends Actor with Stash
         requestSnapshot()
       }
 
-    case Input.TakeSnapshot =>
+    case Input.TakeSnapshot if !switchedOver =>
       snapshotRequested = false
       if (!eventWriter.isEventWritten) {
         if (sender() != self) sender() ! Output.SnapshotTaken
@@ -197,14 +211,17 @@ extends Actor with Stash
 
     case Input.Terminate =>
       commit(terminating = true)
+      closeEventWriter()
       stop(self)
 
     case Input.AwaitAndTerminate =>  // For testing
-      if (journalingActors.isEmpty)
+      if (journalingActors.isEmpty) {
+        closeEventWriter()
         stop(self)
-      else
+      } else
         become(receiveTerminatedOrGet andThen { _ =>
           if (journalingActors.isEmpty) {
+            closeEventWriter()
             stop(self)
           }
         })
@@ -435,13 +452,14 @@ object JournalActor
 
   def props[E <: Event](
     journalMeta: JournalMeta,
+    runningSince: Deadline,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
     scheduler: Scheduler,
     eventIdClock: EventIdClock = EventIdClock.Default,
     stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(journalMeta, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
+    Props { new JournalActor(journalMeta, runningSince, conf, keyedEventBus, scheduler, eventIdClock, stopped) }
       .withDispatcher(DispatcherName)
 
   private def toSnapshotTemporary(file: Path) = file resolveSibling file.getFileName + TmpSuffix

@@ -21,9 +21,9 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   journalMeta: JournalMeta,
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
-  val builder: JournalStateBuilder[S, E])
-extends ClusterStateBuilder
+  newBuilder: () => JournalStateBuilder[S, E])
 {
+  private val builder = newBuilder()
   private var recovererState = JournalRecovererState()
 
   private object transaction
@@ -44,6 +44,11 @@ extends ClusterStateBuilder
       buffer = null
 
     private def isInTransaction = buffer != null
+  }
+
+  def startWithState(recovererState: JournalRecovererState, journalHeader: Option[JournalHeader], state: S): Unit = {
+    this.recovererState = recovererState
+    builder.initializeState(journalHeader, state)
   }
 
   def put(json: Json): Unit =
@@ -76,14 +81,14 @@ extends ClusterStateBuilder
             transaction.begin()
             recovererState = InTransaction
           case _ =>
-            addEvent(deserialize(json))
+            builder.addEvent(deserialize(json))
        }
 
       case InTransaction =>
         if (json == Commit) {
           recovererState = InEventsSection
           for (stamped <- transaction.buffer) {
-            addEvent(stamped)
+            builder.addEvent(stamped)
           }
           transaction.clear()
         } else {
@@ -94,8 +99,7 @@ extends ClusterStateBuilder
         throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$recovererState': ${json.compactPrint.truncateWithEllipsis(100)}")
     }
 
-  private def addEvent(stamped: Stamped[KeyedEvent[Event]]): Unit =
-    builder.addEvent(stamped)
+  def journalHeader = builder.journalHeader
 
   def recoveredJournalHeader = builder.recoveredJournalHeader
 
@@ -115,6 +119,8 @@ extends ClusterStateBuilder
     }
 
   def isAcceptingEvents = recovererState.isAcceptingEvents
+
+  def logStatistics() = builder.logStatistics()
 
   private def deserialize(json: Json): Stamped[KeyedEvent[E]] = {
     import journalMeta.eventJsonCodec

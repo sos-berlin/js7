@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Assertions.assertThat
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.data.cluster.ClusterEvent.{BackupNodeAppointed, BecameSole, ClusterCoupled, FollowingStarted, SwitchedOver}
 import com.sos.jobscheduler.data.cluster.ClusterState._
 import com.sos.jobscheduler.data.common.Uri
@@ -57,7 +58,7 @@ extends JournaledState[ClusterState, ClusterEvent]
     this  // EventId brauchen wir nicht ???
 
   def toSnapshotObservable =
-    Observable.pure(Snapshot(this))
+    Observable.fromIterable((this != Empty) ? Snapshot(this))
 }
 
 object ClusterState

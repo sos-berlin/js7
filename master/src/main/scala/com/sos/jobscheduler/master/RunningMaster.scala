@@ -33,7 +33,7 @@ import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
-import com.sos.jobscheduler.core.event.journal.data.JournalMeta
+import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
 import com.sos.jobscheduler.core.filebased.{FileBasedApi, Repo}
@@ -59,6 +59,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
@@ -228,11 +229,13 @@ object RunningMaster
 
       val journalMeta = JournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec, masterConfiguration.journalFileBase)
       // May take minutes !!!
-      val (recovered, recoveredClusterState) = MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
+      val recovered = MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       recovered.closeWithCloser
-
+      val recoveredClusterState = recovered.maybeState.fold[ClusterState](ClusterState.Empty)(_.clusterState)
+      val runningSince = now
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
-        JournalActor.props(recovered.journalMeta, masterConfiguration.journalConf, injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
+        JournalActor.props(recovered.journalMeta, runningSince,
+          masterConfiguration.journalConf, injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdClock]),
         "Journal"))
       val cluster = new Cluster(
         journalMeta,
@@ -253,13 +256,15 @@ object RunningMaster
       val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor, () => cluster)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
       val masterState = getMasterState(orderKeeper, masterConfiguration.akkaAskTimeout)
+      val totalRunningTime = getRecoveredJournalHeader(orderKeeper, masterConfiguration.akkaAskTimeout)
+        .map(_.totalRunningTime + runningSince.elapsed)
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
         .andThen { case _ => closer.close() }  // Close automatically after termination
 
       val webServer = injector.instance[MasterWebServer.Factory].apply(
-        fileBasedApi, orderApi, commandExecutor, masterState, recovered.eventWatch)
+        fileBasedApi, orderApi, commandExecutor, masterState, totalRunningTime, recovered.eventWatch)
           .closeWithCloser
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
@@ -327,5 +332,11 @@ object RunningMaster
     implicit def t = akkaAskTimeout
     Task.deferFuture(
       (orderKeeper ? MasterOrderKeeper.Command.GetState).mapTo[MasterState])
+  }
+
+  private def getRecoveredJournalHeader(orderKeeper: ActorRef, akkaAskTimeout: Timeout): Task[JournalHeader] = {
+    implicit def t = akkaAskTimeout
+    Task.deferFuture(
+      (orderKeeper ? MasterOrderKeeper.Command.GetRecoveredJournalHeader).mapTo[JournalHeader])
   }
 }

@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
-import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.core.workflow.Recovering.followUpRecoveredSnapshots
@@ -25,11 +24,21 @@ import scala.collection.mutable
 final class MasterStateBuilder
 extends JournalStateBuilder[MasterState, Event]
 {
-  private val masterMetaState = SetOnce[MasterMetaState]
+  private var masterMetaState = MasterMetaState.Undefined
   private var _clusterState: ClusterState = ClusterState.Empty
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val pathToAgent = mutable.Map[AgentRefPath, AgentSnapshot]()
+
+  protected def onInitializeState(state: MasterState): Unit = {
+    masterMetaState = state.masterMetaState
+    _clusterState = state.clusterState
+    repo = state.repo
+    idToOrder.clear()
+    idToOrder ++= state.idToOrder
+    pathToAgent.clear()
+    pathToAgent ++= state.pathToAgent
+  }
 
   protected def onAddSnapshot = {
     case order: Order[Order.State] =>
@@ -42,7 +51,7 @@ extends JournalStateBuilder[MasterState, Event]
       pathToAgent.insert(snapshot.agentRefPath -> snapshot)
 
     case o: MasterMetaState =>
-      masterMetaState := o
+      masterMetaState = o
 
     case o: ClusterState.Snapshot =>
       _clusterState = o.clusterState
@@ -55,6 +64,11 @@ extends JournalStateBuilder[MasterState, Event]
   }
 
   protected def onAddEvent = {
+    case Stamped(_, _, KeyedEvent(_: NoKey, MasterEvent.MasterInitialized(masterId, startedAt))) =>
+      masterMetaState = masterMetaState.copy(
+        masterId = masterId,
+        startedAt = startedAt)
+
     case Stamped(_, _, KeyedEvent(_: NoKey, _: MasterEvent.MasterReady)) =>
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
@@ -115,12 +129,11 @@ extends JournalStateBuilder[MasterState, Event]
       case _ =>
     }
 
-  override def isDefined = masterMetaState.isDefined
-
   def state =
     MasterState(
       eventId = eventId,
-      masterMetaState(),
+      masterMetaState,
+      _clusterState,
       repo,
       pathToAgent.toMap,
       idToOrder.toMap)

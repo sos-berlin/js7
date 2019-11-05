@@ -10,18 +10,20 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
+import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
+import scala.concurrent.duration.Duration
 
 private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Event](
   protected val file: Path,
   expectedJournalId: Option[JournalId],
   journalMeta: JournalMeta,
-  journalFileStateBuilder: JournalFileStateBuilder[S, E])
+  newJournalFileStateBuilder: () => JournalFileStateBuilder[S, E])
 {
-  protected def stateBuilder = journalFileStateBuilder.builder
+  private val journalFileStateBuilder = newJournalFileStateBuilder()
 
   private var _journalHeader = SetOnce[JournalHeader]
   private var _position = 0L
@@ -34,13 +36,10 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
         journalFileStateBuilder.put(json)
         _position = jsonReader.position
       }
-      _journalHeader := stateBuilder.journalHeader
-      stateBuilder.logStatistics()
+      journalFileStateBuilder.journalHeader foreach { _journalHeader := _ }
+      journalFileStateBuilder.logStatistics()
     }
   }
-
-  def journalHeader: JournalHeader =
-    _journalHeader()
 
   def position: Long = _position
 }
@@ -51,7 +50,7 @@ object JournaledStateRecoverer
 
   def recover[S <: JournaledState[S, E], E <: Event](
     journalMeta: JournalMeta,
-    stateBuilder: JournalStateBuilder[S, E],
+    newStateBuilder: () => JournalStateBuilder[S, E],
     config: Config)
   : Recovered[S, E] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
@@ -59,17 +58,27 @@ object JournaledStateRecoverer
       journalMeta,
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None,
-      stateBuilder)
+      newStateBuilder)
+    val eventWatch = new JournalEventWatch(journalMeta, config)  // Closed with `Recovered#close`
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta, journalFileStateBuilder)
+        val recoverer = new JournaledStateRecoverer(file, expectedJournalId = None, journalMeta, () => journalFileStateBuilder)
         recoverer.recoverAll()
-        new Recovered(journalMeta, journalFileStateBuilder, config,
-          Some(PositionAnd(recoverer.position, file)), journalFileStateBuilder.recoveredJournalHeader, Some(journalFileStateBuilder.state))
+        Recovered(
+          journalMeta,
+          eventId = journalFileStateBuilder.eventId,
+          journalFileStateBuilder.totalRunningTime,
+          Some(PositionAnd(recoverer.position, file)),
+          journalFileStateBuilder.journalHeader,
+          journalFileStateBuilder.recoveredJournalHeader,
+          Some(journalFileStateBuilder.state),
+          newStateBuilder,
+          eventWatch,
+          config)
 
       case None =>
-        new Recovered(journalMeta, journalFileStateBuilder, config, None, None, None)
+        Recovered(journalMeta, eventId = EventId.BeforeFirst, Duration.Zero, None, None, None, None, newStateBuilder, eventWatch, config)
     }
   }
 }

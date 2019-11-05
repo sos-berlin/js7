@@ -273,7 +273,7 @@ object FatEventRouteTest
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/test") ~ TestVersionId,
     Execute(WorkflowJob(TestAgentRefId.path, ExecutablePath("/executable"))))
-  private val masterMetaState = MasterMetaState(MasterId("FatEventRouteTest"), Timestamp.now, 1.hour)
+  private val masterMetaState = MasterMetaState(MasterId("FatEventRouteTest"), Timestamp.now)
   private val InitialEvents =
     //Stamped(EventId(1), NoKey <-: MasterReady("UTC", 0.s)) ::  // Not required
     Stamped(EventId(2), NoKey <-: VersionAdded(TestVersionId)) ::

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master
 
-import akka.actor.{ActorRef, Stash, Status, Terminated}
+import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.effect.SyncIO
 import cats.instances.either._
@@ -13,19 +13,21 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.ScalaTime._
-import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.core.command.CommandMeta
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
+import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.journal.recover.{JournalRecoverer, Recovered}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
 import com.sos.jobscheduler.core.event.journal.{JournalActor, MainJournalingActor}
@@ -59,12 +61,14 @@ import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.data.events.MasterEvent.{MasterShutDown, MasterTestEvent}
 import com.sos.jobscheduler.master.repo.RepoCommandExecutor
 import java.time.ZoneId
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
+import monix.reactive.Observable
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
@@ -89,7 +93,7 @@ with MainJournalingActor[Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(masterConfiguration.config, masterConfiguration.journalConf).orThrow
   private var runningSince = now  // Will be overwritten after recovery
-  private var masterMetaState = MasterMetaState(masterConfiguration.masterId, Timestamp.now, Duration.Zero)
+  private var masterMetaState = MasterMetaState.Undefined
   private var repo = Repo(MasterFileBaseds.jsonCodec)
   private val repoCommandExecutor = new RepoCommandExecutor(new FileBasedVerifier(signatureVerifier, MasterFileBaseds.jsonCodec))
   private val agentRegister = new AgentRegister
@@ -99,6 +103,7 @@ with MainJournalingActor[Event]
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val suppressOrderIdCheckFor = masterConfiguration.config.optionAs[String]("jobscheduler.TEST-ONLY.suppress-order-id-check-for")
+  private var recoveredJournalHeader = SetOnce[JournalHeader]
 
   private object shutdown {
     val since = SetOnce[Deadline]
@@ -134,7 +139,7 @@ with MainJournalingActor[Event]
       }
 
     def continue() =
-      if (since.isDefined) {
+      if (shuttingDown) {
         logger.trace(s"shutdown.continue: ${agentRegister.runningActorCount} AgentDrivers${if (snapshotTaken) ", snapshot taken" else ""}")
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
@@ -150,10 +155,9 @@ with MainJournalingActor[Event]
           // The event forces the cluster to acknowledge this event and the snapshot taken
           terminatingJournal = true
           persistKeyedEventTask(NoKey <-: MasterShutDown)(_ => Completed)
-            .map(Checked.apply)
-            .runAsync { x =>
-              x match {
-                case Right(Right(Completed)) =>
+            .runToFuture.onComplete { tried =>
+              tried match {
+                case Success(Completed) =>
                 case other => logger.error(s"While shutting down: $other")
               }
               journalActor ! JournalActor.Input.Terminate
@@ -162,6 +166,42 @@ with MainJournalingActor[Event]
       }
   }
   import shutdown.shuttingDown
+
+  private var switchover: Option[Switchover] = None
+
+  private final class Switchover(promise: Promise[Checked[Completed]]) {
+    val since = now
+    private var stillSwitchingOverCancelable: Option[Cancelable] = None
+    private var terminatingJournal = false
+
+    stillSwitchingOverCancelable = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+      self ! Internal.StillSwitchingOver
+    })
+    agentRegister.values foreach {
+      _.actor ! AgentDriver.Input.Terminate
+    }
+    continue()
+
+    def close() =
+      stillSwitchingOverCancelable foreach { _.cancel() }
+
+    def onStillSwitchingOver() =
+      logger.info(s"Still switching over, waiting for ${agentRegister.runningActorCount} AgentDrivers")
+
+    def continue() = {
+      logger.trace(s"switchover.continue: ${agentRegister.runningActorCount} AgentDrivers")
+      if (agentRegister.runningActorCount == 0 && !terminatingJournal) {
+        terminatingJournal = true
+        val whenSwitchedOver = cluster.switchOver.runToFuture
+        whenSwitchedOver.onComplete {
+          case Success(Right(Completed)) =>
+            journalActor ! JournalActor.Input.Terminate
+          case other => logger.error(s"While switching over: $other")
+        }
+        promise.completeWith(whenSwitchedOver)
+      }
+    }
+  }
 
   private object afterProceedEvents {
     private val events = mutable.Buffer[KeyedEvent[OrderEvent]]()
@@ -187,22 +227,32 @@ with MainJournalingActor[Event]
   override def postStop() = {
     super.postStop()
     cluster.stop()
+    shutdown.close()
+    switchover foreach { _.close() }
     logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
-  protected def snapshots = masterState.toSnapshotObservable.toListL.runToFuture
+  protected def snapshots = Observable.fromTask(masterState)
+    .flatMap(_.toSnapshotObservable)
+    .flatMap {
+      case _: ClusterState.Snapshot => Observable.empty  // `Cluster.persistence` provides the snapshot
+      case o => Observable.pure(o)
+    }
+    .toListL.runToFuture
 
-  private def masterState = MasterState(
-    persistedEventId,
-    masterMetaState.copy(totalRunningTime = masterMetaState.totalRunningTime + runningSince.elapsed),
-    repo,
-    pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
-    orderRegister.mapValues(_.order).toMap)
+  private def masterState: Task[MasterState] =
+    cluster.currentState.map(clusterState => MasterState(
+      persistedEventId,
+      masterMetaState,
+      clusterState,
+      repo,
+      pathToAgent = agentRegister.values.map(entry => entry.agentRefPath -> entry.toSnapshot).toMap,
+      orderRegister.mapValues(_.order).toMap))
 
   def receive = {
     case Input.Start(recovered) =>
       val clusterFuture = cluster
-        .start(recovered, recoveredClusterState)
+        .start(recovered, recoveredClusterState, recovered.maybeState getOrElse MasterState.Undefined)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
@@ -215,7 +265,8 @@ with MainJournalingActor[Event]
   }
 
   private def startingCluster(cancelableCluster: Cancelable): Receive = {
-    case Internal.ClusterStarted(Success(ClusterFollowUp.BecomeActive(recovered))) =>
+    case Internal.ClusterStarted(Success(ClusterFollowUp.BecomeActive(recovered_))) =>
+      val recovered = recovered_.asInstanceOf[Recovered[MasterState, Event]]
       recover(recovered)
       become("Recovering")(recovering)
       unstashAll()
@@ -241,7 +292,8 @@ with MainJournalingActor[Event]
     for (masterState <- recovered.maybeState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
-      masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
+      masterMetaState = masterState.masterMetaState
+      //masterMetaState = masterState.masterMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       setRepo(masterState.repo)
       val pathToAgentSnapshot = masterState.agents.toKeyedMap(_.agentRefPath)
       for (agentRef <- repo.currentFileBaseds collect { case o: AgentRef => o }) {
@@ -264,6 +316,7 @@ with MainJournalingActor[Event]
 
   private def recovering: Receive = {
     case JournalRecoverer.Output.JournalIsReady(journalHeader, runningSince_) =>
+      recoveredJournalHeader := journalHeader
       runningSince = runningSince_
       orderRegister.values.toVector/*copy*/ foreach proceedWithOrder  // Any ordering when continuing orders???
       become("becomingReady")(becomingReady)
@@ -271,9 +324,18 @@ with MainJournalingActor[Event]
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${orderRegister.size} Orders, ${repo.typedCount[Workflow]} Workflows and ${repo.typedCount[AgentRef]} AgentRefs recovered")
       }
-      persist(MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))(_ =>
+      persistMultiple(
+        (!masterMetaState.isDefined ?
+          (NoKey <-: MasterEvent.MasterInitialized(masterConfiguration.masterId, journalHeader.startedAt))
+        ) ++ Some(NoKey <-: MasterEvent.MasterReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
+      ) { stampedEvents =>
+        stampedEvents.map(_.value) foreach {
+           case KeyedEvent(NoKey, MasterEvent.MasterInitialized(masterId, startedAt)) =>
+             masterMetaState = masterMetaState.copy(masterId = masterId, startedAt = startedAt)
+           case _ =>
+         }
         self ! Internal.Ready
-      )
+      }
 
     case _ => stash()
   }
@@ -306,13 +368,13 @@ with MainJournalingActor[Event]
 
     case Command.AddOrder(order) =>
       if (shuttingDown)
-        sender ! Status.Failure(MasterIsShuttingDownProblem.throwable)
+        sender() ! Status.Failure(MasterIsShuttingDownProblem.throwable)
       else
         addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.AddOrders(orders) =>
       if (shuttingDown)
-        sender ! Status.Failure(MasterIsShuttingDownProblem.throwable)
+        sender() ! Status.Failure(MasterIsShuttingDownProblem.throwable)
       else
         addOrders(orders).pipeTo(sender())
 
@@ -326,7 +388,10 @@ with MainJournalingActor[Event]
       sender() ! (orderRegister.size: Int)
 
     case Command.GetState =>
-      sender() ! masterState
+      masterState.runToFuture pipeTo sender()
+
+    case Command.GetRecoveredJournalHeader =>
+      sender() ! Try(recoveredJournalHeader()).fold(akka.actor.Status.Failure.apply, identity[JournalHeader])
 
     case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
       val agentEntry = agentRegister(sender())
@@ -407,12 +472,16 @@ with MainJournalingActor[Event]
     case Internal.StillShuttingDown =>
       shutdown.onStillShuttingDown()
 
+    case Internal.StillSwitchingOver =>
+      switchover foreach { _.onStillSwitchingOver() }
+
     case Terminated(a) if agentRegister contains a =>
       agentRegister(a).actorTerminated = true
       shutdown.continue()
+      switchover foreach { _.continue() }
 
     case Terminated(`journalActor`) =>
-      if (!shuttingDown) logger.error("JournalActor terminated")
+      if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
       context.stop(self)
   }
 
@@ -471,6 +540,22 @@ with MainJournalingActor[Event]
         (journalActor ? JournalActor.Input.TakeSnapshot)
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
+
+      case MasterCommand.SwitchOverToBackup =>
+        if (switchover.isDefined)
+          Future.successful(Left(Problem("Already switching over")))
+        else
+          promiseFuture[Checked[Completed]] { promise =>
+            val so = new Switchover(promise)
+            switchover = Some(so)
+            promise.future onComplete {
+              case Success(Right(Completed)) =>
+              case other => // asynchronous
+                logger.error(s"SwitchOverToBackup: $other")
+                switchover = None
+                so.close()
+            }
+          }.map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
       case MasterCommand.ShutDown =>
         shutdown.start()
@@ -747,6 +832,7 @@ private[master] object MasterOrderKeeper
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
     final case object GetState extends Command
+    final case object GetRecoveredJournalHeader extends Command
   }
 
   sealed trait Reponse
@@ -758,7 +844,8 @@ private[master] object MasterOrderKeeper
     final case class ClusterStarted(followUp: Try[ClusterFollowUp])
     case object Ready
     case object AfterProceedEventsAdded
-    case object StillShuttingDown
+    case object StillShuttingDown extends DeadLetterSuppression
+    case object StillSwitchingOver extends DeadLetterSuppression
   }
 
   private class AgentRegister extends ActorRegister[AgentRefPath, AgentEntry](_.actor) {

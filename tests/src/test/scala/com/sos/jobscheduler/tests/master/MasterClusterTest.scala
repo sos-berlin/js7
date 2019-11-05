@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closer.ops._
 import com.sos.jobscheduler.common.scalautil.Closer.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -15,7 +16,7 @@ import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.job.ExecutablePath
-import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
@@ -23,8 +24,11 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.tests.master.MasterClusterTest._
 import com.sos.jobscheduler.tests.testenv.DirectoryProvider
 import com.typesafe.config.ConfigFactory
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.FreeSpec
+import scala.util.Try
 
 /*
     Kommando AddClusterNode
@@ -82,8 +86,7 @@ final class MasterClusterTest extends FreeSpec
 {
   private implicit val akkaTimeout = Timeout(88.s)
 
-  "test" in {
-    //if (!sys.props.contains("MasterClusterTest")) pending
+  "Cluster replicates journal files properly" in {
     withCloser { implicit closer =>
       val primary = new DirectoryProvider(
         agentRefPath :: Nil,
@@ -91,7 +94,7 @@ final class MasterClusterTest extends FreeSpec
         testName = Some("MasterClusterTest-Primary"),
         masterConfig = ConfigFactory.parseString("jobscheduler.webserver.auth.loopback-is-public = on"))
       primary.closeWithCloser
-      val primaryAgents = primary.startAgents() await 99.s
+      val agents = primary.startAgents() await 99.s
       val primaryMaster = primary.startMaster() await 99.s
       primary.agents.head.writeExecutable(ExecutablePath("/TEST.cmd"), shellScript)
 
@@ -105,7 +108,6 @@ final class MasterClusterTest extends FreeSpec
         masterConfig = ConfigFactory.parseString(s"""
           jobscheduler.webserver.auth.loopback-is-public = on
           jobscheduler.master.cluster.primary-uri = "${primaryMaster.localUri}" """))
-      val backupAgents = backup.startAgents() await 99.s
       val backupMaster = backup.startMaster() await 99.s
       val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
@@ -141,18 +143,58 @@ final class MasterClusterTest extends FreeSpec
       assertEqualJournalFiles(2)
 
       primaryMaster.terminate() await 99.s
-      primaryAgents.map(_.terminate()) await 99.s
+      agents.map(_.terminate()) await 99.s
 
       backupMaster.terminate() await 99.s
-      backupAgents.map(_.terminate()) await 99.s
 
       assertEqualJournalFiles(3)
+    }
+  }
+
+  "Switchover" in {
+    withCloser { implicit closer =>
+      val primary = new DirectoryProvider(
+        agentRefPath :: Nil,
+        workflow :: Nil,
+        testName = Some("MasterClusterTest-Primary"),
+        masterConfig = ConfigFactory.parseString("jobscheduler.webserver.auth.loopback-is-public = on"))
+      primary.closeWithCloser
+      val agents = primary.startAgents() await 99.s
+      val primaryMaster = primary.startMaster() await 99.s
+      primary.agents.head.writeExecutable(ExecutablePath("/TEST.cmd"), "sleep 3")
+
+      val backup = new DirectoryProvider(Nil, Nil, testName = Some("MasterClusterTest-Backup"),
+        masterConfig = ConfigFactory.parseString(s"""
+          jobscheduler.webserver.auth.loopback-is-public = on
+          jobscheduler.master.cluster.primary-uri = "${primaryMaster.localUri}" """))
+
+      // Replicate credentials required for agents
+      Files.copy(primary.master.configDir / "private" / "private.conf", backup.master.configDir / "private" / "private.conf", REPLACE_EXISTING)
+      val backupMaster = backup.startMaster() await 99.s
+      val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
+      primaryMaster.executeCommandAsSystemUser(MasterCommand.AppointBackupNode(backupNodeId, Uri(backupMaster.localUri.toString)))
+        .await(99.s).orThrow
+      primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
+      val orderId = OrderId("🔷")
+      primaryMaster.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+      primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+      backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+      primaryMaster.executeCommandAsSystemUser(MasterCommand.SwitchOverToBackup).await(99.s).orThrow
+      primaryMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
+      Try(primaryMaster.terminated.await(99.s)).failed foreach { t => logger.error(s"Master terminated. $t")}   // Erstmal beendet sich der Master nach SwitchOver
+
+      backupMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
+      backupMaster.eventWatch.await[OrderFinished](_.key == orderId)
+
+      backupMaster.terminate() await 99.s
+      agents.map(_.terminate()) await 99.s
     }
   }
 }
 
 object MasterClusterTest
 {
+  private val logger = Logger(getClass)
   private val agentRefPath = AgentRefPath("/AGENT")
   private val workflow = WorkflowParser.parse(
     WorkflowPath("/WORKFLOW"),

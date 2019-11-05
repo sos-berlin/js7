@@ -62,7 +62,7 @@ with JournalingObserver
   /*protected[journal]*/ def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId], expectedJournalId: JournalId): Unit = {
     journalId.toOption match {
       case None => journalId := expectedJournalId
-      case Some(o) => require(expectedJournalId == o)
+      case Some(o) => require(expectedJournalId == o, s"JournalId $journalId does not match expected $expectedJournalId")
     }
     synchronized {
       val after = flushedLengthAndEventId.value

@@ -19,13 +19,18 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   private var _eventCount = 0L
   private val _journalHeader = SetOnce[JournalHeader]
 
+  def initializeState(journalHeader: Option[JournalHeader], state: S): Unit = {
+    journalHeader foreach { _journalHeader := _ }
+    onInitializeState(state)
+  }
+
+  protected def onInitializeState(state: S): Unit
+
   protected def onAddSnapshot: PartialFunction[Any, Unit]
 
   def onAllSnapshotsAdded(): Unit
 
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
-
-  def isDefined = true
 
   def state: S
 
@@ -63,6 +68,10 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
     }
   }
 
+  /** Journal file's JournalHeader. */
+  final def journalHeader = _journalHeader.toOption
+
+  /** Calculated next JournalHeader. */
   final def recoveredJournalHeader: Option[JournalHeader] =
     _journalHeader.map(o => o.copy(
       eventId = eventId,
@@ -71,8 +80,6 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
       totalRunningTime = totalRunningTime))
 
   final def eventId = _eventId
-
-  final def journalHeader = _journalHeader()
 
   final def snapshotCount = _snapshotCount
 

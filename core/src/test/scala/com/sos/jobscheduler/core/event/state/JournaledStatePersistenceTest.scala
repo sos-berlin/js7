@@ -33,6 +33,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
@@ -132,12 +133,12 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
 
     private lazy val journalActor = tag[JournalActor.type](
       actorSystem.actorOf(
-        JournalActor.props(journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
+        JournalActor.props(journalMeta, now, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
           new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
           journalStopped)))
 
     def start() = {
-      val recovered = JournaledStateRecoverer.recover(journalMeta, new TestStateBuilder, JournalEventWatch.TestConfig)
+      val recovered = JournaledStateRecoverer.recover(journalMeta, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
       journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
@@ -169,13 +170,15 @@ private object JournaledStatePersistenceTest
     private val numberThings = mutable.Map[NumberKey, NumberThing]()
     private var _state = TestState.empty
 
+    protected def onInitializeState(state: TestState) = throw new NotImplementedError
+
     protected def onAddSnapshot = {
       case numberThing: NumberThing =>
         if (numberThings.contains(numberThing.key)) throw Problem(s"Duplicate NumberThing: ${numberThing.key}").throwable
         numberThings += numberThing.key -> numberThing
     }
 
-    def onAllSnapshotsAdded(): Unit =
+    def onAllSnapshotsAdded() =
       _state = TestState(EventId.BeforeFirst, NumberThingCollection(numberThings.toMap))
 
     protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {

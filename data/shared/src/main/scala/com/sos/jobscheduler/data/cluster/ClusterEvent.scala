@@ -51,5 +51,6 @@ object ClusterEvent
     Subtype(deriveCodec[BecameSole]),
     Subtype(deriveCodec[BackupNodeAppointed]),
     Subtype(deriveCodec[FollowingStarted]),
-    Subtype(ClusterCoupled))
+    Subtype(ClusterCoupled),
+    Subtype(deriveCodec[SwitchedOver]))
 }

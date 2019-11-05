@@ -123,7 +123,7 @@ object MasterCommand extends CommonCommand.Companion
     final case class Response(eventId: EventId) extends MasterCommand.Response
   }
 
-  case object SwitchoverToBackup
+  case object SwitchOverToBackup
   extends MasterCommand {
     type Response = Response.Accepted
   }
@@ -152,6 +152,6 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KeepEvents]),
     Subtype(deriveCodec[PassiveNodeFollows]),
     Subtype(ShutDown),
-    Subtype(SwitchoverToBackup),
+    Subtype(SwitchOverToBackup),
     Subtype(TakeSnapshot))
 }

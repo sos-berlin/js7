@@ -30,7 +30,7 @@ extends AutoCloseable
   private val persistPromise = Promise[PersistFunction[S, E]]()
   private val getStatePromise = Promise[Task[S]]()
   private val persistTask: Task[PersistFunction[S, E]] = Task.fromFuture(persistPromise.future)
-  private[state] val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
+  val currentState: Task[S] = Task.fromFuture(getStatePromise.future).flatten
 
   private val actor = actorRefFactory.actorOf(
     StateJournalingActor.props[S, E](initialState, journalActor, persistPromise, getStatePromise),

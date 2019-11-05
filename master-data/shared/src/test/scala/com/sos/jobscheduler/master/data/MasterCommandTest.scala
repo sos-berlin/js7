@@ -199,10 +199,10 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
-  "SwitchoverToBackup" in {
-    testJson[MasterCommand](SwitchoverToBackup,
+  "SwitchOverToBackup" in {
+    testJson[MasterCommand](SwitchOverToBackup,
       json"""{
-        "TYPE": "SwitchoverToBackup"
+        "TYPE": "SwitchOverToBackup"
       }""")
   }
 

@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.master.MasterId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.data.agent.AgentSnapshot
 import com.sos.jobscheduler.master.data.events.MasterAgentEvent.AgentRegisteredMaster
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -21,19 +20,19 @@ object MasterSnapshots
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  final case class MasterMetaState(
-    masterId: MasterId,
-    startedAt: Timestamp,
-    totalRunningTime: FiniteDuration)
+  final case class MasterMetaState(masterId: MasterId, startedAt: Timestamp)
+  {
+    def isDefined = this != MasterMetaState.Undefined
+  }
 
   object MasterMetaState {
-    val Undefined = MasterMetaState(MasterId("UNDEFINED-MASTERID"), Timestamp.ofEpochMilli(0), Duration.Zero)
+    val Undefined = MasterMetaState(MasterId("UNDEFINED-MASTER-ID"), Timestamp.ofEpochMilli(0))
   }
 
   val SnapshotJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
       Subtype(deriveCodec[MasterMetaState]),
-      Subtype(deriveCodec[ClusterState.Snapshot]),
+      Subtype.named(deriveCodec[ClusterState.Snapshot], "ClusterStateSnapshot"),
       Subtype[AgentRegisteredMaster],  // These events describe complete objects
       Subtype[RepoEvent],  // These events describe complete objects
       Subtype[AgentSnapshot],  // TODO case class AgentState(eventId: EventId)

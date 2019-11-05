@@ -24,6 +24,7 @@ import java.util.UUID
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -36,7 +37,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta,
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalActor = context.watch(context.actorOf(
-    JournalActor.props(journalMeta, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
+    JournalActor.props(journalMeta, now, JournalConf.fromConfig(config withFallback TestConfig), new StampedKeyedEventBus, Scheduler.global,
       new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/),
       journalStopped),
     "Journal"))

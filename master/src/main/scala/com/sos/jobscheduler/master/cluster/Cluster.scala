@@ -48,7 +48,7 @@ final class Cluster(
       o.cancel()
     }
 
-  def start(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState): Task[Checked[ClusterFollowUp]] =
+  def start(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState, recoveredState: MasterState): Task[Checked[ClusterFollowUp]] =
     Task {
       recoveredClusterState match {
         case Empty =>
@@ -56,7 +56,7 @@ final class Cluster(
             case ClusterNodeRole.Primary =>
               Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
             case ClusterNodeRole.Backup(activeUri) =>
-              PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, activeUri, journalMeta, conf, actorSystem)
+              PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, conf.nodeId, activeUri, journalMeta, conf, actorSystem)
                 .map(Right.apply)
           }
 
@@ -65,7 +65,7 @@ final class Cluster(
 
         case state: Coupled if state.passiveNodeId == conf.nodeId =>
           ???
-          PassiveClusterNode.run(recovered, recoveredClusterState, conf.nodeId, state.activeUri, journalMeta, conf, actorSystem)
+          PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, conf.nodeId, state.activeUri, journalMeta, conf, actorSystem)
             .map(Right.apply)
 
         case _ =>
@@ -109,10 +109,10 @@ final class Cluster(
 
   def switchOver: Task[Checked[Completed]] =
     persistence.persistEvent[ClusterEvent](NoKey) {
-      case Coupled(active, _, passive, _) if active == conf.nodeId =>
-        Right(SwitchedOver(passive))
+      case coupled: Coupled if coupled.activeNodeId == conf.nodeId =>
+        Right(SwitchedOver(coupled.passiveNodeId))
       case state =>
-        Left(Problem(s"Not switching over because Cluster is not in state Coupled: $state"))
+        Left(Problem(s"Not switching over because Cluster is not in state Coupled(active=${conf.nodeId}): $state"))
     }.map(_.map(_ => Completed))
 
   private def proceed(state: ClusterState, eventId: EventId): Unit =
@@ -183,6 +183,9 @@ final class Cluster(
   private def isAbsoluteMajority(n: Int) =
     n > votingAgentRefPaths.size / 2
   */
+
+  def currentState: Task[ClusterState] =
+    persistence.currentState
 }
 
 object Cluster
