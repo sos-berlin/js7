@@ -14,6 +14,7 @@ import scala.reflect.ClassTag
   */
 final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
   val name: String,
+  val printName: String,
   val classToEncoder: Map[Class[_], Encoder.AsObject[KeyedEvent[_ <: E]]],
   val nameToDecoder: Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: E]]]],
   val nameToClass: Map[String, Class[_ <: E]])
@@ -31,6 +32,7 @@ with Decoder[KeyedEvent[E]] {
 
     new KeyedEventTypedJsonCodec[Event](
       name = "Event",
+      printName = s"$printName|${other.printName}",
       classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]] ++
         other.classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]],
       nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]] ++
@@ -63,6 +65,8 @@ with Decoder[KeyedEvent[E]] {
       Some(implicitClass[E])
     else
       nameToClass.get(name)
+
+  override def toString = s"KeyedEventTypedJsonCodec[$printName]"
 }
 
 object KeyedEventTypedJsonCodec {
@@ -70,6 +74,7 @@ object KeyedEventTypedJsonCodec {
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) = {
     val cls = implicitClass[E]
     new KeyedEventTypedJsonCodec[E](
+      cls.simpleScalaName,
       cls.simpleScalaName,
       subtypes.flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]])).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
       subtypes.flatMap(_.nameToDecoder.mapValuesStrict (decoder =>

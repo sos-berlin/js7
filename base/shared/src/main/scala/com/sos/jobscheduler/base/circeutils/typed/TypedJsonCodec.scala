@@ -5,12 +5,12 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import scala.reflect.ClassTag
-import com.sos.jobscheduler.base.utils.ScalaUtils._
 
 /**
   * @author Joacim Zschimmer
   */
 final class TypedJsonCodec[A](
+  val printName: String,
   val classToEncoder: Map[Class[_], Encoder.AsObject[_ <: A]],
   val nameToDecoder: Map[String, Decoder[_ <: A]],
   val nameToClass: Map[String, Class[_ <: A]])
@@ -32,6 +32,7 @@ extends Encoder.AsObject[A] with Decoder[A]
     if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of TypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new TypedJsonCodec[Any](
+      s"$printName|${other.printName}",
       classToEncoder ++ other.classToEncoder,
       nameToDecoder ++ other.nameToDecoder,
       nameToClass ++ other.nameToClass)
@@ -64,6 +65,8 @@ extends Encoder.AsObject[A] with Decoder[A]
 
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =
     json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[A1])
+
+  override def toString = s"TypedJsonCodec[$printName]"
 }
 
 object TypedJsonCodec
@@ -79,6 +82,7 @@ object TypedJsonCodec
   def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] = {
     val cls = implicitClass[A]
     new TypedJsonCodec[A](
+      implicitClass[A].simpleScalaName,
       subtypes.flatMap(_.classToEncoder).uniqueToMap withDefault (o => throw new UnknownClassForJsonException(o, cls)),
       subtypes.flatMap(_.nameToDecoder).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)),
       subtypes.flatMap(_.nameToClass).uniqueToMap withDefault (o => throw new UnknownJsonTypeException(o, cls)))
