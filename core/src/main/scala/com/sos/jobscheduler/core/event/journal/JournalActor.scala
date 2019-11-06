@@ -310,7 +310,7 @@ extends Actor with Stash
       onJournalingActorTerminated(a)
 
     case Terminated(a) =>
-      // Under JournalTest, Actor TEST-B (removed) may send Terminated() twice since mergine SnapshotTaker actor into JournalActor ???
+      // ??? Under JournalTest, Actor TEST-B, after removed, may send Terminated() twice since SnapshotTaker actor has been merged into JournalActor
       logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
       //unhandled(msg)
 
