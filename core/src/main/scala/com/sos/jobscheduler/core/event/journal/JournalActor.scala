@@ -1,12 +1,14 @@
 package com.sos.jobscheduler.core.event.journal
 
-import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
+import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props, Stash, Terminated}
+import akka.util.ByteString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.akkautils.Akkas.{RichActorPath, uniqueActorName}
+import com.sos.jobscheduler.common.akkautils.Akkas.RichActorPath
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.{EventIdClock, EventIdGenerator, PositionAnd}
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
@@ -16,7 +18,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor._
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, RecoveredJournalingActors}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
 import com.sos.jobscheduler.core.event.journal.watch.JournalingObserver
-import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
+import com.sos.jobscheduler.core.event.journal.write.{EventJournalWriter, ParallelExecutingPipeline, SnapshotJournalWriter}
 import com.sos.jobscheduler.data.cluster.ClusterEvent
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, JournalEvent, JournalId, KeyedEvent, Stamped}
 import java.nio.file.Files.{createSymbolicLink, delete, exists, move}
@@ -25,11 +27,11 @@ import java.nio.file.{Path, Paths}
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
+import scala.concurrent.{Promise, blocking}
+import scala.util.Try
 import scala.util.control.{NoStackTrace, NonFatal}
-import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -44,8 +46,7 @@ final class JournalActor private(
   stopped: Promise[Stopped])
 extends Actor with Stash
 {
-  import context.{actorOf, become, stop, watch}
-  import journalMeta.snapshotJsonCodec
+  import context.{become, stop, watch}
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
@@ -218,13 +219,14 @@ extends Actor with Stash
       if (journalingActors.isEmpty) {
         closeEventWriter()
         stop(self)
-      } else
+      } else {
         become(receiveTerminatedOrGet andThen { _ =>
           if (journalingActors.isEmpty) {
             closeEventWriter()
             stop(self)
           }
         })
+      }
   }
 
   private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
@@ -305,8 +307,12 @@ extends Actor with Stash
 
   private def receiveTerminatedOrGet: Receive = {
     case Terminated(a) if journalingActors contains a =>
-      logger.trace(s"Terminated: ${a.path.pretty}")
-      journalingActors -= a
+      onJournalingActorTerminated(a)
+
+    case Terminated(a) =>
+      // Under JournalTest, Actor TEST-B (removed) may send Terminated() twice since mergine SnapshotTaker actor into JournalActor ???
+      logger.error(s"Unknown actor has terminated: ${a.path.pretty}")
+      //unhandled(msg)
 
     case Input.GetState =>
       sender() ! Output.State(
@@ -354,45 +360,101 @@ extends Actor with Stash
       simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
-    actorOf(
-      Props { new SnapshotTaker(snapshotWriter.writeSnapshot, journalingActors.toSet, snapshotJsonCodec, conf, scheduler) }
-        .withDispatcher(DispatcherName),
-      uniqueActorName("SnapshotTaker"))
-    become(takingSnapshot(snapshotTaken, commander = sender(), () => andThen(header)))
+    takeSnapshot(
+      snapshotWriter,
+      journalingActors.toSet,
+      () => onSnapshotFinished(snapshotTaken, () => andThen(header)))
   }
 
-  private def takingSnapshot(snapshotTaken: Stamped[KeyedEvent[JournalEvent.SnapshotTaken]], commander: ActorRef, andThen: () => Unit): Receive = {
-    case SnapshotTaker.Output.Finished(Failure(t)) =>
-      throw t.appendCurrentStackTrace
-
-    case SnapshotTaker.Output.Finished(Success(_/*snapshotCount*/)) =>
-      snapshotWriter.endSnapshotSection()
-      // Write a SnapshotTaken event to increment EventId and force a new filename
-      snapshotWriter.beginEventSection(sync = false)
-      val (fileLengthBeforeEvents, fileEventId) = (snapshotWriter.fileLength, lastWrittenEventId)
-
-      snapshotWriter.writeEvent(snapshotTaken)
-      snapshotWriter.flush(sync = conf.syncOnCommit)
-      lastWrittenEventId = snapshotTaken.eventId
-      totalEventCount += 1
-      logStored(flushed = false, synced = false, Iterator(LoggableWritten(snapshotTaken :: Nil,
-        Timestamp.now - snapshotTaken.timestamp/*wall-time, not real-time will be logged*/)))
-      snapshotWriter.closeAndLog()
-
-      val file = journalMeta.file(after = fileEventId)
-      move(snapshotWriter.file, file, ATOMIC_MOVE)
-      snapshotWriter = null
-
-      eventWriter = newEventJsonWriter(after = fileEventId)
-      eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
-      eventWriter.onInitialEventsWritten(eventId = lastWrittenEventId, n = 1)
-
-      deleteObsoleteJournalFiles()
-      unstashAll()
+  private def takeSnapshot(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit =
+    if (journalingActors.isEmpty) {
       andThen()
+    } else {
+      val snapshotRunningSince = now
+      val logProgressCancelable = scheduler.scheduleWithFixedDelay(conf.snapshotLogProgressPeriod, conf.snapshotLogProgressPeriod) {
+        self ! Internal.LogSnapshotProgress
+      }
+      val remaining = mutable.Set.empty ++ journalingActors
+      val pipeline = new ParallelExecutingPipeline[ByteString](snapshotWriter.writeSnapshot)(scheduler)
 
-    case _ =>
-      stash()
+      for (a <- journalingActors) {
+        a ! JournalingActor.Input.GetSnapshot  // DeadLetter when actor just now terminates (a terminating JournalingActor must not have a snapshot)
+      }
+      context.become {
+        case JournalingActor.Output.GotSnapshot(snapshots) =>
+          try blocking {  // blockingAdd blocks
+            for (snapshot <- snapshots) {
+              pipeline.blockingAdd { ByteString(journalMeta.snapshotJsonCodec(snapshot).compactPrint) }   // TODO Crash with SerializationException like EventSnapshotWriter
+              logger.trace(s"Stored $snapshot")  // Without sync
+            }
+            onDone(sender())
+          } catch { case NonFatal(t) =>
+            logger.error(t.toStringWithCauses)
+            throw t.appendCurrentStackTrace  // Crash JournalActor !!!
+          }
+
+        case Terminated(a) if journalingActors contains a =>
+          onJournalingActorTerminated(a)
+          if (remaining contains a) {
+            logger.debug(s"${a.path.pretty} terminated while taking snapshot")
+            onDone(a)
+          }
+
+        case Internal.LogSnapshotProgress =>
+          val limit = remaining.size min conf.snapshotLogProgressActorLimit
+          logger.info(s"Writing journal snapshot for ${snapshotRunningSince.elapsed.pretty}, ${remaining.size} snapshot elements remaining" +
+            (if (limit == remaining.size) "" else s" (showing $limit actors)") +
+            ":")
+          for (o <- remaining take limit) {
+            logger.info(s"... awaiting snapshot element from actor ${o.path.pretty}")
+          }
+
+        case _ => stash()
+      }
+
+      def onDone(actor: ActorRef): Unit = {
+        remaining -= actor
+        if (remaining.isEmpty) {
+          logProgressCancelable.cancel()
+          pipeline.flush()
+          unstashAll()
+          andThen()
+        }
+      }
+    }
+
+  private def onSnapshotFinished(
+    snapshotTaken: Stamped[KeyedEvent[JournalEvent.SnapshotTaken]],
+    andThen: () => Unit
+  ): Unit = {
+    snapshotWriter.endSnapshotSection()
+    // Write a SnapshotTaken event to increment EventId and force a new filename
+    snapshotWriter.beginEventSection(sync = false)
+    val (fileLengthBeforeEvents, fileEventId) = (snapshotWriter.fileLength, lastWrittenEventId)
+
+    snapshotWriter.writeEvent(snapshotTaken)
+    snapshotWriter.flush(sync = conf.syncOnCommit)
+    lastWrittenEventId = snapshotTaken.eventId
+    totalEventCount += 1
+    logStored(flushed = false, synced = false, Iterator(LoggableWritten(snapshotTaken :: Nil,
+      Timestamp.now - snapshotTaken.timestamp/*wall-time, not real-time will be logged*/)))
+    snapshotWriter.closeAndLog()
+
+    val file = journalMeta.file(after = fileEventId)
+    move(snapshotWriter.file, file, ATOMIC_MOVE)
+    snapshotWriter = null
+
+    eventWriter = newEventJsonWriter(after = fileEventId)
+    eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
+    eventWriter.onInitialEventsWritten(eventId = lastWrittenEventId, n = 1)
+
+    deleteObsoleteJournalFiles()
+    andThen()
+  }
+
+  private def onJournalingActorTerminated(a: ActorRef): Unit = {
+    logger.trace(s"Terminated: ${a.path.pretty}")
+    journalingActors -= a
   }
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
@@ -407,7 +469,7 @@ extends Actor with Stash
     writer
   }
 
-  def closeEventWriter(): Unit = {
+  private def closeEventWriter(): Unit = {
     if (eventWriter != null) {
       eventWriter.closeProperly(sync = conf.syncOnCommit)
       eventWriter = null
@@ -508,6 +570,7 @@ object JournalActor
 
   private object Internal {
     final case class Commit(writtenLevel: Int)
+    case object LogSnapshotProgress extends DeadLetterSuppression
   }
 
   sealed trait Written {

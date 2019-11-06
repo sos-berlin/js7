@@ -15,7 +15,7 @@ private[journal] trait StatisticsCounter
 
   private var flushes = 0
   private var flushNanos = 0L
-  protected var syncs = 0
+  private var syncs = 0
   private var syncNanos = 0L
 
   final def beforeFlush(): Unit =

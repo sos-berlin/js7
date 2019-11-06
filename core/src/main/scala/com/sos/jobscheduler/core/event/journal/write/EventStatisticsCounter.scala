@@ -32,8 +32,8 @@ private[journal] final class EventStatisticsCounter(initialEventCount: Int) exte
             val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
             factorFormat.setMaximumFractionDigits(1)
             factorFormat.setGroupingUsed(false)  // For MacOS
-            factorFormat.format(commits.toDouble / flushCount) + s" commits/flush" +
-              (if (syncs < 10) "" // syncOnCommit?
+            (if (flushCount > 0) factorFormat.format(commits.toDouble / flushCount) + s" commits/flush" else "") +
+              (if (syncCount < 10) "" // syncOnCommit?
                else ", " +
                 factorFormat.format(commits.toDouble / syncCount) + s" commits/sync, " +
                 factorFormat.format(events.toDouble / syncCount) + s" events/sync")
