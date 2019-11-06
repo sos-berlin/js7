@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests.master
 
+import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
@@ -11,6 +12,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.core.event.journal.JournalActor
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
@@ -111,12 +113,17 @@ final class MasterClusterTest extends FreeSpec
       val backupMaster = backup.startMaster() await 99.s
       val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
-      assert(!primaryMaster.actorState.await(99.s).isRequiringClusterAcknowledgement)
+
+      def journalActorState = (primaryMaster.actorSystem.actorSelection("user/Journal") ? JournalActor.Input.GetState)
+        .mapTo[JournalActor.Output.State]
+        .await(99.s)
+
+      assert(!journalActorState.isRequiringClusterAcknowledgement)
       primaryMaster.executeCommandAsSystemUser(MasterCommand.AppointBackupNode(backupNodeId, Uri(backupMaster.localUri.toString)))
         .await(99.s).orThrow
       primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
-      assert(primaryMaster.actorState.await(99.s).isRequiringClusterAcknowledgement)
+      assert(journalActorState.isRequiringClusterAcknowledgement)
 
       runOrder(OrderId("🔺"))
 

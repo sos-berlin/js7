@@ -75,7 +75,6 @@ import shapeless.tag.@@
  */
 final class RunningMaster private(
   val eventWatch: StrictEventWatch,
-  journalActor: ActorRef @@ JournalActor.type,
   commandExecutor: MasterCommandExecutor,
   webServer: MasterWebServer,
   val fileBasedApi: MainFileBasedApi,
@@ -133,10 +132,6 @@ extends AutoCloseable
   @TestOnly
   def addOrderBlocking(order: FreshOrder): Boolean =
     orderApi.addOrder(order).runToFuture.await(99.s).orThrow
-
-  def actorState(implicit timeout: Timeout): Task[JournalActor.Output.State] =
-    Task.deferFutureAction(implicit s =>
-      (journalActor ? JournalActor.Input.GetState).mapTo[JournalActor.Output.State])
 
   val localUri: Uri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
@@ -271,8 +266,7 @@ object RunningMaster
           .closeWithCloser
       masterConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", _ + "/master")
       for (_ <- webServer.start()) yield
-        new RunningMaster(recovered.eventWatch.strict, journalActor,
-          commandExecutor, webServer, fileBasedApi, orderApi,
+        new RunningMaster(recovered.eventWatch.strict, commandExecutor, webServer, fileBasedApi, orderApi,
           terminated, closer, injector)
     }
   }
