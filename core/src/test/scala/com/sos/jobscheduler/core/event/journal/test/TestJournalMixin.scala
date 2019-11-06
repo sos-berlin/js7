@@ -165,6 +165,7 @@ private[journal] object TestJournalMixin
 {
   private val logger = Logger(getClass)
   private val TestConfig = ConfigFactory.parseString("""
+     |jobscheduler.akka.actor-logging = true
      |jobscheduler.journal.dispatcher {
      |  type = PinnedDispatcher
      |}

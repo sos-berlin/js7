@@ -160,6 +160,7 @@ private object JournaledStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(ConfigFactory.parseString("""
+     |jobscheduler.akka.actor-logging = true
      |jobscheduler.journal.dispatcher {
      |  type = PinnedDispatcher
      |}

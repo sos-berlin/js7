@@ -13,6 +13,13 @@ trait ReceiveLoggingActor extends SimpleStateActor
 
   protected[ReceiveLoggingActor] def isLoggingEnabled = isReceiveLoggingEnabled && logger.underlying.isDebugEnabled(Logger.Actor)
 
+  override def postStop() = {
+    if (isLoggingEnabled) {
+      logger.debug(Logger.Actor, s"${context.self.path.pretty} stopped")
+    }
+    super.postStop()
+  }
+
   abstract override protected def become(state: String)(recv: Receive): Unit =
     if (isLoggingEnabled) {
       logger.debug(Logger.Actor, s"${context.self.path.pretty} becomes $state")

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.generic.Accepted
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import com.sos.jobscheduler.common.akkautils.SimpleStateActor
+import com.sos.jobscheduler.common.akkautils.ReceiveLoggingActor
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
@@ -22,7 +22,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with SimpleStateActor
+trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 {
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
