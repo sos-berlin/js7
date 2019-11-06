@@ -127,6 +127,7 @@ extends KeyedJournalingActor[TestEvent] {
         aggregate = TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
 
       case TestEvent.Removed =>
+        logger.debug("Removed, stopping now")
         aggregate = null
         context.stop(self)
 
