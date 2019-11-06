@@ -11,6 +11,7 @@ import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.{Applicative, Apply}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.generic.JsonCodec
@@ -211,6 +212,11 @@ final class CheckedTest extends FreeSpec
     assert(Right(1).orElse(sys.error("???")) == Right(1))
     assert(Left(Problem("PROBLEM")).orElse(Right(1)) == Right(1))
     assert(Left(Problem("FIRST")).orElse(Left(Problem("SECOND"))) == Left(Problem("SECOND")))
+  }
+
+  "toCompleted" in {
+    assert(Left(Problem("PROBLEM")).toCompleted == Left(Problem("PROBLEM")))
+    assert(Right(1).toCompleted == Right(Completed))
   }
 
   "orThrow" in {

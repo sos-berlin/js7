@@ -146,6 +146,12 @@ object Checked
         case Right(value) => value
       }
 
+    def toCompleted: Either[Problem, Completed] =
+      underlying match {
+        case Right(_) => Right(Completed)
+        case Left(problem) => Left(problem)
+      }
+
     def orThrow: A =
       underlying match {
         case Left(problem) => throw problem.throwable.appendCurrentStackTrace
