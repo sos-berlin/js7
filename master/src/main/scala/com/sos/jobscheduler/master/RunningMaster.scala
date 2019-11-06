@@ -89,6 +89,9 @@ extends AutoCloseable
   val config: Config = injector.instance[Config]
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
 
+  @TestOnly
+  lazy val actorSystem = injector.instance[ActorSystem]
+
   val terminated: Future[Completed] =
     for (o <- terminated1) yield {
       close()
@@ -138,7 +141,7 @@ extends AutoCloseable
   val localUri: Uri = webServer.localUri
   lazy val httpApi: HttpMasterApi = new AkkaHttpMasterApi.CommonAkka {
       protected def baseUri = localUri
-      protected def actorSystem = injector.instance[ActorSystem]
+      protected def actorSystem = RunningMaster.this.actorSystem
     } closeWithCloser closer
 
   def close() = closer.close()

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.web
 
-import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{CoupleMaster, KeepEvents, RegisterAsMaster, TakeSnapshot}
 import com.sos.jobscheduler.agent.data.event.AgentMasterEvent.AgentReadyForMaster
@@ -28,7 +27,7 @@ final class MastersEventWebServiceTest extends FreeSpec with AgentTester
   protected val akkaAskTimeout = 99.s
 
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
-  implicit private lazy val actorSystem = agent.injector.instance[ActorSystem]
+  implicit private lazy val actorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri).closeWithCloser
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst

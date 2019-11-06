@@ -50,6 +50,8 @@ extends AutoCloseable {
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val localUri: Uri = webServer.localUri
+  @TestOnly
+  lazy val actorSystem = injector.instance[ActorSystem]
 
   val terminated: Future[Completed] =
     for (o <- terminated1) yield {

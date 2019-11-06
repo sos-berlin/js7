@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, Props}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.ShutDown
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
@@ -114,7 +114,7 @@ object TestMasterAgent
                 master.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at))).runAsyncAndForget  // No error checking
               }
             }
-            master.injector.instance[ActorSystem].actorOf(Props {
+            master.actorSystem.actorOf(Props {
               new Actor {
                 master.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
                 master.injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)

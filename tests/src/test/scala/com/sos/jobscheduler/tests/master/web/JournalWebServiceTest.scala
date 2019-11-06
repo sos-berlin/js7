@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests.master.web
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
@@ -38,7 +37,7 @@ final class JournalWebServiceTest extends FreeSpec with BeforeAndAfterAll with M
   protected val agentRefPaths = agentRefPath :: Nil
   protected val fileBased = workflow :: Nil
   private lazy val uri = master.localUri
-  private lazy val masterApi = AkkaHttpMasterApi(uri)(master.injector.instance[ActorSystem]).closeWithCloser
+  private lazy val masterApi = AkkaHttpMasterApi(uri)(master.actorSystem).closeWithCloser
 
   override protected val masterConfig = ConfigFactory.parseString("""
     jobscheduler.auth.users {
