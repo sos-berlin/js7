@@ -77,7 +77,7 @@ final class RecoveryTest extends FreeSpec {
           runAgents(directoryProvider) { _ =>
             master.addOrderBlocking(order1)
             master.addOrderBlocking(QuickOrder)
-            lastEventId = lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+            /*lastEventId =*/ lastEventIdOf(master.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
             master.addOrderBlocking(order2)
             lastEventId = lastEventIdOf(master.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
