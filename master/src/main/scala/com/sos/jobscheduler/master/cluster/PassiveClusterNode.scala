@@ -48,11 +48,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
 {
   import recovered.{eventWatch, newStateBuilder}
 
-  def run(
-    recoveredState: S,
-    recoveredClusterState: ClusterState
-  ): Task[ClusterFollowUp] =
-    // .positionAndFile, recovered.recoveredJournalHeader.map(_.journalId), recovered.eventId,
+  def run(recoveredState: S, recoveredClusterState: ClusterState): Task[ClusterFollowUp] =
     Task.deferAction { implicit scheduler =>
       for (PositionAnd(length, file) <- recovered.positionAndFile) {
         cutJournalFile(file, length)

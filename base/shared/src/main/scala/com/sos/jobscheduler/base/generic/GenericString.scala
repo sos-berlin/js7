@@ -70,7 +70,7 @@ object GenericString
       NameValidator.checked(typeName = name, name = string) flatMap super.checked
   }
 
-  final case class EmptyStringProblem(name: String) extends Problem.Coded {
-    def arguments = Map("name" -> name)
+  final case class EmptyStringProblem(typeName: String) extends Problem.Coded {
+    def arguments = Map("type" -> typeName)
   }
 }

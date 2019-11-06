@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.master.cluster
 
-import com.sos.jobscheduler.base.problem.Checked
+import cats.syntax.semigroup._
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
@@ -22,17 +24,25 @@ object ClusterConf
 {
   def fromConfigAndFile(config: Config, nodeIdFile: Path): Checked[ClusterConf] =
     for {
-      role <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.primary-uri")
-        .map(_.fold[ClusterNodeRole](Primary)(Backup.apply))
-      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-    } yield {
-      val nodeId = {
-        val file = nodeIdFile
-        if (!exists(file)) {
-          file := SecretStringGenerator.newSecretString().string  // Side effect !!!
+      role <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.other-node-is-primary.uri")
+        .flatMap {
+          case Some(uri) => Right(Backup(uri))
+          case None =>
+            for {
+              uri <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.other-node-is-backup.uri")
+              nodeId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.other-node-is-backup.id")
+            } yield Primary(nodeId, uri)
         }
-        ClusterNodeId(file.contentString.stripLineEnd/*In case it has been edited*/)
-      }
-      new ClusterConf(role, nodeId, recouplingStreamReaderConf)
-    }
+      recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
+      id <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.id")
+      nodeId <-
+        id.fold {
+          val file = nodeIdFile
+          if (!exists(file)) {
+            file := SecretStringGenerator.newSecretString().string // Side effect !!!
+          }
+          ClusterNodeId.checked(file.contentString.stripLineEnd /*In case it has been edited*/)
+            .mapProblem(Problem(s"File '$file' does not contain a valid ClusterNodeId:") |+| _)
+        }(Right.apply)
+    } yield new ClusterConf(role, nodeId, recouplingStreamReaderConf)
 }

@@ -3,12 +3,13 @@ set -e
 
 home="$(cd "${0%/*}"/../bin/.. && pwd)"
 
-mkdir -p volumes/{master,provider,agent-1,agent-2}/config/private
-mkdir -p volumes/{master,provider,agent-1,agent-2}/data/{logs,state}
+mkdir -p volumes/{master,backup-master,provider,agent-1,agent-2}/config/private
+mkdir -p volumes/{master,backup-master,provider,agent-1,agent-2}/data/{logs,state}
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent-{1,2}/config/executables
 
-cp -Rn "$home"/volumes . || true
+cp -Rnv "$home"/volumes . || true
+cp -nv volumes/master/config/private/* volumes/backup-master/config/private || true
 
 chmod go-wrx volumes/*/config/private
 chmod -R +x volumes/agent-*/config/executables/*

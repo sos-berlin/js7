@@ -43,4 +43,5 @@ fi
 for a in volumes/agent-*; do
   cp "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys.asc"
 done
+cp -nv volumes/master/config/private/trusted-pgp-keys.asc volumes/backup-master/config/private/trusted-pgp-keys.asc
 ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys.asc

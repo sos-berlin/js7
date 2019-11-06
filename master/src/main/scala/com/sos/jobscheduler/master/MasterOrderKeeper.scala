@@ -343,6 +343,10 @@ with MainJournalingActor[Event]
   private def becomingReady: Receive = {
     case Internal.Ready =>
       logger.info("Ready")
+      cluster.automaticallyAppointConfiguredBackupNode().runToFuture onComplete {
+        case Success(Right(Completed)) =>
+        case error => logger.error(s"Appointment of configured cluster backup-node failed: $error")
+      }
       become("Ready")(ready)
       unstashAll()
 

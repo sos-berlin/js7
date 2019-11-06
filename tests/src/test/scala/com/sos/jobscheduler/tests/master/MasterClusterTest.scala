@@ -109,7 +109,7 @@ final class MasterClusterTest extends FreeSpec
       val backup = new DirectoryProvider(Nil, Nil, testName = Some("MasterClusterTest-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
           jobscheduler.webserver.auth.loopback-is-public = on
-          jobscheduler.master.cluster.primary-uri = "${primaryMaster.localUri}" """))
+          jobscheduler.master.cluster.other-node-is-primary.uri = "${primaryMaster.localUri}" """))
       val backupMaster = backup.startMaster() await 99.s
       val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
@@ -173,7 +173,7 @@ final class MasterClusterTest extends FreeSpec
       val backup = new DirectoryProvider(Nil, Nil, testName = Some("MasterClusterTest-Backup"),
         masterConfig = ConfigFactory.parseString(s"""
           jobscheduler.webserver.auth.loopback-is-public = on
-          jobscheduler.master.cluster.primary-uri = "${primaryMaster.localUri}" """))
+          jobscheduler.master.cluster.other-node-is-primary.uri = "${primaryMaster.localUri}" """))
 
       // Replicate credentials required for agents
       Files.copy(primary.master.configDir / "private" / "private.conf", backup.master.configDir / "private" / "private.conf", REPLACE_EXISTING)
@@ -196,6 +196,10 @@ final class MasterClusterTest extends FreeSpec
       backupMaster.terminate() await 99.s
       agents.map(_.terminate()) await 99.s
     }
+  }
+
+  "Backup node appointment is configurable in master.conf" in {
+    pending   // Test not written, beacuse this feature is provided for internal manual tests only
   }
 }
 

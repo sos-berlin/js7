@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-rm -rf volumes/{master,provider,agent-1,agent-2}/data/*
+rm -rf volumes/{master,backup-master,provider,agent-1,agent-2}/data/*
 rm -rf volumes/testMasterAgent/master/data/*
 rm -rf volumes/testMasterAgent/AGENT-*/data/*

@@ -5,7 +5,7 @@
 #
 # (export UID && docker-compose build)
 
-version: "3"
+version: "3.2"
 
 services:
   master:
@@ -25,6 +25,26 @@ services:
     volumes:
       - ./volumes/master/config:/var/opt/jobscheduler/master/config:ro
       - ./volumes/master/data:/var/opt/jobscheduler/master/data:delegated
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  backup-master:
+    build:
+      context: build
+      args:
+        - UID
+    image: jobscheduler
+    container_name: jobscheduler-backup-master
+    command: ["master", "-J-Xmx200m"]
+    hostname: master
+    networks:
+    - default
+    ports:
+    - "127.0.0.1:4445:4444"
+    working_dir: /var/opt/jobscheduler/master/data
+    volumes:
+      - ./volumes/backup-master/config:/var/opt/jobscheduler/master/config:ro
+      - ./volumes/backup-master/data:/var/opt/jobscheduler/master/data:delegated
     stop_grace_period: 30s
     restart: unless-stopped
 

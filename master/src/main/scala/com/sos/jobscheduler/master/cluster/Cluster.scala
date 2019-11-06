@@ -7,6 +7,7 @@ import akka.util.Timeout
 import cats.effect.Resource
 import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -53,9 +54,10 @@ final class Cluster(
       recoveredClusterState match {
         case Empty =>
           conf.role match {
-            case ClusterNodeRole.Primary =>
+            case _: ClusterNodeRole.Primary =>
               Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
             case ClusterNodeRole.Backup(activeUri) =>
+              logger.info(s"Starting as a cluster backup node for primary node at $activeUri")
               PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, conf.nodeId, activeUri, journalMeta, conf, actorSystem)
                 .map(Right.apply)
           }
@@ -73,6 +75,18 @@ final class Cluster(
       }
     }.flatten
       .executeWithOptions(_.enableAutoCancelableRunLoops)
+
+  def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
+    conf.role match {
+      case ClusterNodeRole.Primary(Some(nodeId), Some(uri)) =>
+        persistence.persistTransaction(NoKey) {
+          case state @ (ClusterState.Empty | _: ClusterState.Sole | _: ClusterState.AwaitingAppointment) =>
+            Right(becomeSoleIfEmpty(state) ::: BackupNodeAppointed(nodeId, uri) :: Nil)
+          case _ =>
+            Right(Nil)
+        }.map(_.toCompleted)
+      case _ => Task.pure(Right(Completed))
+    }
 
   def appointBackupNode(nodeId: ClusterNodeId, uri: Uri): Task[Checked[Completed]] =
     persistence.persistTransaction(NoKey)(state =>

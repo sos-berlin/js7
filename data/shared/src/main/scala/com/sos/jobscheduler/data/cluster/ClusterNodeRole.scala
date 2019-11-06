@@ -6,6 +6,11 @@ sealed trait ClusterNodeRole
 
 object ClusterNodeRole
 {
-  case object Primary extends ClusterNodeRole
-  final case class Backup(initialActiveUri: Uri) extends ClusterNodeRole
+  final case class Primary(
+    backupNodeId: Option[ClusterNodeId] = None,
+    backupUri: Option[Uri] = None)
+  extends ClusterNodeRole
+
+  final case class Backup(primaryUri: Uri)
+  extends ClusterNodeRole
 }

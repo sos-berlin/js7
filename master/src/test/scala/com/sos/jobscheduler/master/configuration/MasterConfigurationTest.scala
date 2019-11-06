@@ -51,7 +51,7 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
       akkaAskTimeout = 60.seconds,
       journalConf = JournalConf.fromConfig(DefaultConfig),
       clusterConf = ClusterConf(
-        ClusterNodeRole.Primary,
+        ClusterNodeRole.Primary(),
         ClusterNodeId((directory / "DATA/state/ClusterNodeId").contentString),
         RecouplingStreamReaderConf(
           timeout = 55.seconds,
