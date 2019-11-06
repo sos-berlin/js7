@@ -32,7 +32,7 @@ final class CancelOrderTest extends FreeSpec with MasterAgentForScalaTest
   protected val fileBased = SingleJobWorkflow :: TwoJobsWorkflow :: Nil
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(1.s))
+    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(2.s))
     super.beforeAll()
   }
 

@@ -17,7 +17,9 @@ import scala.concurrent.duration._
 trait RouteTester extends ScalatestRouteTest with ExceptionHandling {
   this: Suite =>
 
-  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
+  /** For RouteTest responseAs[]. */
+  private implicit val routeTestDuration: Duration = 9.seconds
+  private implicit val routeTestTimeout = RouteTestTimeout(9.seconds)
 
   protected final lazy val gateKeeper = new GateKeeper(
     GateKeeper.Configuration.fromConfig(
