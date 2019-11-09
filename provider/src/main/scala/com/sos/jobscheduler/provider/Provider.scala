@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.convert.As._
 import com.sos.jobscheduler.base.generic.{Completed, SecretString}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import com.sos.jobscheduler.common.http.AkkaHttpClient
@@ -62,7 +61,7 @@ extends HasCloser with Observing
       .guarantee(Task(masterApi.close()))
       .memoize
 
-  protected val relogin: Task[Unit] =
+  protected val relogin: Task[Completed] =
     masterApi.logout().onErrorHandle(_ => ()) >>
       masterApi.login(userAndPassword)
 
@@ -137,17 +136,12 @@ extends HasCloser with Observing
         } else
           Right(completed))
 
-  private lazy val loginUntilReachable: Task[Unit] =
-    Task {
-      if (masterApi.hasSession)
-        Task.unit
-      else
-        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations, logThrowable)
-          .map { _ =>
-            logger.info("Logged in at Master")
-            ()
-          }
-    }.flatten
+  private lazy val loginUntilReachable: Task[Completed] =
+    masterApi.loginUntilReachable(userAndPassword, retryLoginDurations)
+      .map { (_: Completed) =>
+        logger.info("Logged in at Master")
+        Completed
+      }
 
   private def execute(versionId: Option[VersionId], diff: FileBaseds.Diff[TypedPath, FileBased]): Task[Checked[Completed.type]] =
     if (diff.isEmpty && versionId.isEmpty)
@@ -221,9 +215,4 @@ object Provider
     for (provider <- Provider(conf)) yield
       provider.observe
         .guarantee(provider.closeTask.map((_: Completed) => ()))
-
-  private def logThrowable(throwable: Throwable): Unit = {
-    logger.error(throwable.toStringWithCauses)
-    logger.debug(throwable.toString, throwable)
-  }
 }

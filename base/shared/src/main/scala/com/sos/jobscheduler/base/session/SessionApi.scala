@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.auth.{SessionToken, UserAndPassword}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.session.SessionApi._
 import com.sos.jobscheduler.base.session.SessionCommand.{Login, Logout}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.web.HttpClient
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
@@ -21,20 +22,28 @@ trait SessionApi extends HasSessionToken
 
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
-  final def login(userAndPassword: Option[UserAndPassword]): Task[Unit] =
-    for (response <- executeSessionCommand(Login(userAndPassword))) yield
+  final def login(userAndPassword: Option[UserAndPassword]): Task[Completed] =
+    for (response <- executeSessionCommand(Login(userAndPassword))) yield {
       setSessionToken(response.sessionToken)
+      Completed
+    }
 
-  final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration], onError: Throwable => Unit)
-  : Task[Unit] =
-    login(userAndPassword)
-      .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        onError(throwable)
-        if (isTemporary(throwable) && delays.hasNext)
-          retry(()) delayExecution delays.next()
-        else
-          Task.raiseError(throwable)
-      }
+  final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration],
+    onError: Throwable => Unit = logThrowable)
+  : Task[Completed] =
+    Task.defer {
+      if (hasSession)
+        Task.pure(Completed)
+      else
+        login(userAndPassword)
+          .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            onError(throwable)
+            if (isTemporary(throwable) && delays.hasNext)
+              retry(()) delayExecution delays.next()
+            else
+              Task.raiseError(throwable)
+          }
+    }
 
   final def logout(): Task[Completed] = {
     val tokenOption = sessionTokenRef.get
@@ -50,6 +59,7 @@ trait SessionApi extends HasSessionToken
   }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] =
+    Task { scribe.debug(command.toString) } >>
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command, suppressSessionToken = suppressSessionToken)
       .map(_.asInstanceOf[command.Response])
 
@@ -68,6 +78,11 @@ trait SessionApi extends HasSessionToken
 
 object SessionApi
 {
+  private def logThrowable(throwable: Throwable): Unit = {
+    scribe.error(throwable.toStringWithCauses)
+    scribe.debug(throwable.toString, throwable)
+  }
+
   private def isTemporary(throwable: Throwable) =
     throwable match {
       case e: HttpClient.HttpException => e.isUnreachable
