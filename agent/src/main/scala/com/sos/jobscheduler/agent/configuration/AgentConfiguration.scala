@@ -103,6 +103,10 @@ extends CommonConfiguration
     dataDirectory  / "tmp"
 
   lazy val scriptInjectionAllowed = config.getBoolean("jobscheduler.agent.task.signed-script-injection-allowed")
+
+  // Suppresses Config (which may contain secrets)
+  override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
+    s"$logDirectory,$jobWorkingDirectory,$jobJavaOptions,$killScript,$akkaAskTimeout,$journalConf,$name,Config)"
 }
 
 object AgentConfiguration {

@@ -47,6 +47,10 @@ extends CommonConfiguration
   def stateDirectory: Path = dataDirectory / "state"
 
   def journalFileBase = stateDirectory / "master"
+
+  // Suppresses Config (which may contain secrets)
+  override def toString = s"MasterConfiguration($masterId,$dataDirectory,$configDirectory,$webServerPorts," +
+    s"$timeZone,$journalConf,$clusterConf,$name,Config)"
 }
 
 object MasterConfiguration

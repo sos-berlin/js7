@@ -20,6 +20,9 @@ final case class ProviderConfiguration(
 {
   val liveDirectory = configDirectory / "live"
   val orderGeneratorsDirectory = configDirectory / "order-generators"
+
+  // Suppresses Config (which may contain secrets)
+  override def toString = s"ProviderConfiguration($configDirectory,$masterUri,Config)"
 }
 
 object ProviderConfiguration
