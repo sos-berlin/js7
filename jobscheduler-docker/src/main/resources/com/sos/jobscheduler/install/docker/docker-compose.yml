@@ -36,11 +36,11 @@ services:
     image: jobscheduler
     container_name: jobscheduler-backup-master
     command: ["master", "-J-Xmx200m"]
-    hostname: master
+    hostname: backup-master
     networks:
     - default
     ports:
-    - "127.0.0.1:4445:4444"
+    - "127.0.0.2:4444:4444"
     working_dir: /var/opt/jobscheduler/master/data
     volumes:
       - ./volumes/backup-master/config:/var/opt/jobscheduler/master/config:ro

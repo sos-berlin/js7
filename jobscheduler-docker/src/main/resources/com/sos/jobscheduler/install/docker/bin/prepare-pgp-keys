@@ -7,6 +7,8 @@ masterPublicKeyFile=volumes/master/config/private/trusted-pgp-keys.asc
 agent1PublicKeyFile=volumes/agent-1/config/private/trusted-pgp-keys.asc
 agent2PublicKeyFile=volumes/agent-2/config/private/trusted-pgp-keys.asc
 
+umask go-rwx
+
 if [ -s "$privateKeyFile" ] && [ -s "$masterPublicKeyFile" ]; then
   echo "PGP files exist already. Nothing to do"
 else
@@ -40,8 +42,7 @@ EOF
   fi
 fi
 
-for a in volumes/agent-*; do
-  cp "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys.asc"
+for a in volumes/backup-master volumes/agent-*; do
+  cp -p "$masterPublicKeyFile" "$a/config/private/trusted-pgp-keys.asc"
 done
-cp -nv volumes/master/config/private/trusted-pgp-keys.asc volumes/backup-master/config/private/trusted-pgp-keys.asc
 ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys.asc
