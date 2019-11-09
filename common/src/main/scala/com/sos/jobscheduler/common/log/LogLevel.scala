@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.common.log
 
+import com.sos.jobscheduler.base.convert.As
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import org.slf4j
+import org.slf4j.Marker
 
 /**
   * @author Joacim Zschimmer
@@ -38,6 +40,16 @@ object LogLevel {
         case Error => delegate.isErrorEnabled
       }
 
+    def isEnabled(level: LogLevel, marker: Marker): Boolean =
+      level match {
+        case LogNone  => false
+        case Trace => delegate.isTraceEnabled(marker)
+        case Debug => delegate.isDebugEnabled(marker)
+        case Info  => delegate.isInfoEnabled(marker)
+        case Warn  => delegate.isWarnEnabled(marker)
+        case Error => delegate.isErrorEnabled(marker)
+      }
+
     def log(level: LogLevel, message: => String): Unit =
       level match {
         case LogNone  =>
@@ -57,21 +69,36 @@ object LogLevel {
         case Warn  => delegate.warn(message, throwable)
         case Error => delegate.error(message, throwable)
       }
+
+    def log(level: LogLevel, marker: Marker, message: => String): Unit =
+      level match {
+        case LogNone  =>
+        case Trace => delegate.trace(message, marker)
+        case Debug => delegate.debug(message, marker)
+        case Info  => delegate.info(message, marker)
+        case Warn  => delegate.warn(message, marker)
+        case Error => delegate.error(message, marker)
+      }
   }
 
   implicit final class LevelScalaLogger(private val delegate: ScalaLogger) extends AnyVal {
     def isEnabled(level: LogLevel): Boolean = delegate.underlying.isEnabled(level)
 
-    def log(level: LogLevel, message: => String): Unit = {
+    def log(level: LogLevel, message: => String): Unit =
       if (isEnabled(level)) {
         delegate.underlying.log(level, message)
       }
-    }
 
-    def log(level: LogLevel, message: => String, throwable: Throwable): Unit = {
+    def log(level: LogLevel, message: => String, throwable: Throwable): Unit =
       if (isEnabled(level)) {
         delegate.underlying.log(level, message, throwable)
       }
-    }
+
+    def log(level: LogLevel, marker: Marker, message: => String): Unit =
+      if (isEnabled(level)) {
+        delegate.underlying.log(level, marker, message)
+      }
   }
+
+  implicit val StringAsLogLevel = As[String, LogLevel](LogLevel.apply)
 }
