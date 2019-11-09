@@ -86,6 +86,7 @@ for arg in "${args[@]}"; do
   cat <&3
   exec 3>&-
   if [ "$status" != '200' ]; then
+    echo
     exit 1
   fi
 done

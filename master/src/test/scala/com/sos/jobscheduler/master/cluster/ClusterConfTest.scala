@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.master.cluster
 
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.http.configuration.RecouplingStreamReaderConf
@@ -28,9 +30,13 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.web.client.delay-between-polling-gets = 1s""")
       withTemporaryDirectory("ClusterConfTest-") { dir =>
         val file = dir  / "NodeId"
-        val clusterConf = ClusterConf.fromConfigAndFile(config, file)  // Creates file
+        val clusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config, file)  // Creates file
         assert(clusterConf == Right(
-          ClusterConf(ClusterNodeRole.Primary(None, None), ClusterNodeId(file.contentString), streamReaderConf)))
+          ClusterConf(
+            ClusterNodeRole.Primary(None, None),
+            ClusterNodeId(file.contentString),
+            None,
+            streamReaderConf)))
       }
     }
 
@@ -40,14 +46,17 @@ final class ClusterConfTest extends FreeSpec
         jobscheduler.master.cluster.other-node-is-backup.uri = "http://BACKUP"
         jobscheduler.master.cluster.other-node-is-backup.id = BACKUP
         jobscheduler.web.client.polling-get-without-traffic-timeout = 50s
-        jobscheduler.web.client.delay-between-polling-gets = 1s""")
+        jobscheduler.web.client.delay-between-polling-gets = 1s
+        jobscheduler.auth.cluster.password = "PASSWORD" """)
       withTemporaryDirectory("ClusterConfTest-") { dir =>
         val file = dir  / "NodeId"
-        val checkedClusterConf = ClusterConf.fromConfigAndFile(config, file)  // Creates the file as a side-effect
+        val checkedClusterConf = ClusterConf.fromConfigAndFile(UserId("USER"), config, file)  // Creates the file as a side-effect
         assert(checkedClusterConf == Right(
           ClusterConf(
             ClusterNodeRole.Primary(Some(ClusterNodeId("BACKUP")), Some(Uri("http://BACKUP"))),
-            ClusterNodeId("PRIMARY"), streamReaderConf)))
+            ClusterNodeId("PRIMARY"),
+            Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
+            streamReaderConf)))
         assert(!exists(file))
       }
     }
@@ -59,7 +68,7 @@ final class ClusterConfTest extends FreeSpec
       withTemporaryDirectory("ClusterConfTest-") { dir =>
         val file = dir  / "NodeId"
         file := ""
-        assert(ClusterConf.fromConfigAndFile(config, file) ==
+        assert(ClusterConf.fromConfigAndFile(UserId("USER"), config, file) ==
           Left(Problem(s"File '$file' does not contain a valid ClusterNodeId: EmptyString: The empty string is not a value of the ClusterNodeId type")))
       }
     }

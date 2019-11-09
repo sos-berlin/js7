@@ -2,6 +2,7 @@ package com.sos.jobscheduler.core.event.state
 
 import akka.actor.{ActorRef, Props}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.MonixUtils.promiseTask
 import com.sos.jobscheduler.core.event.journal.MainJournalingActor
 import com.sos.jobscheduler.core.event.state.StateJournalingActor._
@@ -21,6 +22,8 @@ private[state] final class StateJournalingActor[S <: JournaledState[S, E], E <: 
   (implicit S: TypeTag[S], s: Scheduler)
 extends MainJournalingActor[E]
 {
+  override def supervisorStrategy = SupervisorStrategies.escalate
+
   // Will be accesses asynchronously via `getStatePromise`
   @volatile private var state: S = initialState
 

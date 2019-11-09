@@ -53,7 +53,7 @@ extends CommandExecutor[MasterCommand]
 
       case MasterCommand.PassiveNodeFollows(passiveNodeId, activeUri) =>
         cluster().passiveNodesFollows(passiveNodeId, activeUri)
-          .map(_.map(eventId => MasterCommand.PassiveNodeFollows.Response(eventId)))
+          .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
       case _ =>
         otherCommandExecutor.executeCommand(command, meta)

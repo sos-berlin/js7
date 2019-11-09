@@ -67,14 +67,13 @@ final class DirectoryProvider(
   suppressRepo: Boolean = false)
 extends HasCloser
 {
-  val directory = useDirectory
-    .getOrElse(
-      createTempDirectory("test-")
-        .withCloser { dir =>
-          repeatUntilNoException(10.s, 10.ms) {  // Windows
-            deleteDirectoryRecursively(dir)
-          }
-        })
+  val directory = useDirectory.getOrElse(
+    createTempDirectory(testName.fold("test-")(_ + "-"))
+      .withCloser { dir =>
+        repeatUntilNoException(10.s, 10.ms) {  // Windows
+          deleteDirectoryRecursively(dir)
+        }
+      })
 
   val master = new MasterTree(directory / "master",
     mutualHttps = masterHttpsMutual, masterConfig, clientCertificate = masterClientCertificate)
@@ -127,8 +126,8 @@ extends HasCloser
       runMaster()(master =>
         body(master, agents)))
 
-  def runMaster[A]()(body: RunningMaster => A): A = {
-    val runningMaster = startMaster() await 99.s
+  def runMaster[A](httpPort: Option[Int] = Some(findFreeTcpPort()))(body: RunningMaster => A): A = {
+    val runningMaster = startMaster(httpPort = httpPort) await 99.s
     try {
       val a = body(runningMaster)
       runningMaster.terminate() await 99.s

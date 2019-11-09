@@ -117,10 +117,7 @@ object MasterCommand extends CommonCommand.Companion
 
   final case class PassiveNodeFollows(passiveNodeId: ClusterNodeId, activeUri: Uri)
   extends MasterCommand {
-    type Response = PassiveNodeFollows.Response
-  }
-  object PassiveNodeFollows {
-    final case class Response(eventId: EventId) extends MasterCommand.Response
+    type Response = Response.Accepted
   }
 
   case object SwitchOverToBackup
@@ -136,8 +133,7 @@ object MasterCommand extends CommonCommand.Companion
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
-      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
-      Subtype.named(deriveCodec[PassiveNodeFollows.Response], "PassiveNodeFollowsResponse"))
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](

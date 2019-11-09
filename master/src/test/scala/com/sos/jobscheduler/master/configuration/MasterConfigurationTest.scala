@@ -53,6 +53,7 @@ final class MasterConfigurationTest extends FreeSpec with BeforeAndAfterAll
       clusterConf = ClusterConf(
         ClusterNodeRole.Primary(),
         ClusterNodeId((directory / "DATA/state/ClusterNodeId").contentString),
+        None,
         RecouplingStreamReaderConf(
           timeout = 55.seconds,
           delay = 1.seconds)),

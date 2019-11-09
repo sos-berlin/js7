@@ -69,7 +69,7 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   }
 
   /** Journal file's JournalHeader. */
-  final def journalHeader = _journalHeader.toOption
+  final def fileJournalHeader = _journalHeader.toOption
 
   /** Calculated next JournalHeader. */
   final def recoveredJournalHeader: Option[JournalHeader] =

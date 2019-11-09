@@ -20,7 +20,6 @@ object ClusterEvent
 
   sealed trait ClusterCoupled
   extends ClusterEvent
-
   case object ClusterCoupled
   extends ClusterCoupled
 

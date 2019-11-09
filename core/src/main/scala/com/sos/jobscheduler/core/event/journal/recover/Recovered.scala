@@ -16,7 +16,7 @@ final case class Recovered[S <: JournaledState[S, E], E <: Event](
   eventId: EventId,
   totalRunningTime: FiniteDuration,
   positionAndFile: Option[PositionAnd[Path]],
-  journalHeader: Option[JournalHeader],
+  fileJournalHeader: Option[JournalHeader],
   recoveredJournalHeader: Option[JournalHeader],
   maybeState: Option[S],
   newStateBuilder: () => JournalStateBuilder[S, E],
@@ -29,11 +29,18 @@ extends AutoCloseable
 
   def journalId: Option[JournalId] = recoveredJournalHeader.map(_.journalId)
 
+  // Suppresses Config (which may contain secrets)
+  override def toString = s"Recovered($journalMeta,$eventId,$totalRunningTime,$positionAndFile," +
+    s"$fileJournalHeader,$recoveredJournalHeader,$maybeState,$newStateBuilder,$eventWatch,Config)"
+
   def startJournalAndFinishRecovery(
     journalActor: ActorRef,
-    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty)
+    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty,
+    requireClusterAcknowledgement: Boolean = false)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, Some(eventWatch),
+    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors,
+      requireClusterAcknowledgement = requireClusterAcknowledgement,
+      Some(eventWatch),
       recoveredJournalHeader.map(_.journalId), recoveredJournalHeader)
 }

@@ -28,14 +28,14 @@ trait JournaledState[Self <: JournaledState[Self, E], E <: Event]
   }
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[E]) =
-    Left(EventNotApplicableProblem(this, keyedEvent))
+    Left(EventNotApplicableProblem(keyedEvent, this))
 }
 
 object JournaledState {
 
-  final case class EventNotApplicableProblem(state: Any, event: KeyedEvent[Event]) extends Problem.Coded {
+  final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {
     def arguments = Map(
-      "state" -> state.toString.truncateWithEllipsis(100),
-      "event" -> event.toString.truncateWithEllipsis(100))
+      "event" -> keyedEvent.toString.truncateWithEllipsis(100),
+      "state" -> state.toString.truncateWithEllipsis(100))
   }
 }

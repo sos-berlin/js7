@@ -53,7 +53,7 @@ extends JournalStateBuilder[MasterState, Event]
     case o: MasterMetaState =>
       masterMetaState = o
 
-    case o: ClusterState.Snapshot =>
+    case o: ClusterState.ClusterStateSnapshot =>
       _clusterState = o.clusterState
   }
 

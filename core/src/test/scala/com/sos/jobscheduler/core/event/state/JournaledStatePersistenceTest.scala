@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
 import com.sos.jobscheduler.common.event.EventIdClock
+import com.sos.jobscheduler.common.log.ScribeUtils
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
@@ -43,6 +44,8 @@ import shapeless.tag
   */
 final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAll with ProvideActorSystem
 {
+  ScribeUtils.coupleScribeWithSlf4j()
+
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected def config = TestConfig
   protected lazy val directory = createTempDirectory("JournaledStatePersistenceTest-")
@@ -141,7 +144,8 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
       val recovered = JournaledStateRecoverer.recover(journalMeta, () => new TestStateBuilder, JournalEventWatch.TestConfig)
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
-      journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](recovered.maybeState getOrElse TestState.empty, journalActor)
+      journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](journalActor)
+      journalStatePersistence.start(recovered.maybeState getOrElse TestState.empty)
       journalStatePersistence
     }
 
@@ -160,7 +164,7 @@ private object JournaledStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(ConfigFactory.parseString("""
-     |jobscheduler.akka.actor-logging = true
+     |jobscheduler.akka.actor-message-log-level = Trace
      |jobscheduler.journal.dispatcher {
      |  type = PinnedDispatcher
      |}

@@ -25,7 +25,7 @@ final class ClusterStateTest extends FreeSpec
         Sole(ClusterNodeId("NODE-ID")),
         json"""{
           "TYPE": "Sole",
-          "nodeId": "NODE-ID"
+          "activeNodeId": "NODE-ID"
         }""")
     }
 

@@ -2,11 +2,13 @@ package com.sos.jobscheduler.master.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.utils.ScodecUtils.RichByteVector
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -17,7 +19,7 @@ import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta,
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles._
 import com.sos.jobscheduler.core.event.journal.recover.{JournalFileStateBuilder, Recovered}
 import com.sos.jobscheduler.core.event.journal.watch.JournalEventWatch
-import com.sos.jobscheduler.data.cluster.{ClusterNodeId, ClusterState}
+import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.event.JournalEvent.SnapshotTaken
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalEvent, JournalId, JournaledState}
@@ -39,7 +41,6 @@ import scodec.bits.ByteVector
 // TODO Nach core.journal schieben?
 
 final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
-  myNodeId: ClusterNodeId,
   activeUri: Uri,
   journalMeta: JournalMeta,
   recovered: Recovered[S, E],
@@ -48,19 +49,19 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
 {
   import recovered.{eventWatch, newStateBuilder}
 
-  def run(recoveredState: S, recoveredClusterState: ClusterState): Task[ClusterFollowUp] =
+  def run(recoveredState: S, recoveredClusterState: ClusterState): Task[(ClusterState, ClusterFollowUp)] =
     Task.deferAction { implicit scheduler =>
       for (PositionAnd(length, file) <- recovered.positionAndFile) {
         cutJournalFile(file, length)
       }
       val recoveredPositionAndFile = recovered.positionAndFile getOrElse PositionAnd(0L, journalMeta.file(EventId.BeforeFirst))
-      Resource.fromAutoCloseable(Task {
-        AkkaHttpMasterApi(baseUri = activeUri.string)
-      }).use(activeNode =>
-        Task.parMap2(
-          activeNode.executeCommand(MasterCommand.PassiveNodeFollows(myNodeId, activeUri)),   // TODO Retry until success
-          replicateJournalFiles(recovered.journalId, recoveredPositionAndFile, recovered.eventId, recoveredState, activeNode, eventWatch)
-        )((_: MasterCommand.PassiveNodeFollows.Response, followUp) => followUp))
+      Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string)))
+        .use(activeNode =>
+          activeNode.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
+            Task.parMap2(
+              activeNode.executeCommand(MasterCommand.PassiveNodeFollows(clusterConf.nodeId, activeUri)),   // TODO Retry until success
+              replicateJournalFiles(recovered.journalId, recoveredPositionAndFile, recovered.eventId, recoveredState, activeNode, eventWatch)
+            )((_: MasterCommand.Response.Accepted, followUp) => followUp))
     }
 
   private def cutJournalFile(file: Path, length: Long): Unit =
@@ -78,32 +79,32 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
     masterApi: HttpMasterApi,
     eventWatch: JournalEventWatch)
     (implicit scheduler: Scheduler)
-  : Task[ClusterFollowUp]
-  = {
-    Task.tailRecM((recoveredJournalId, recoveredEventId, recoveredPositionAndFile, recoveredState)) {
-      case (maybeJournalId, eventId, positionAndFile, state) =>
-        replicateJournalFile(maybeJournalId, positionAndFile, eventId, state, masterApi, eventWatch)
+  : Task[(ClusterState, ClusterFollowUp)]
+  =
+    Task.tailRecM((recoveredJournalId, recovered.fileJournalHeader.fold(EventId.BeforeFirst)(_.eventId), recoveredEventId, recoveredPositionAndFile, recoveredState)) {
+      case (maybeJournalId, fileEventId, eventId, positionAndFile, state) =>
+        replicateJournalFile(maybeJournalId, positionAndFile, fileEventId, eventId, state, masterApi, eventWatch)
           .map {
             case (journalId, eventId, positionAndFile, recoveredJournalHeader, state, clusterState) =>
-              if (clusterState == ClusterState.Sole(clusterConf.nodeId))
-                Right(ClusterFollowUp.BecomeActive(
-                  recovered.copy[S, E](
+              if (!clusterState.isActive(clusterConf.nodeId))
+                Left((Some(journalId), eventId, eventId, PositionAnd(0, journalMeta.file(eventId)), state))
+              else
+                Right((
+                  clusterState,
+                  ClusterFollowUp.BecomeActive(recovered.copy[S, E](
                     eventId = eventId,
-                    //totalRunningTime = recovered.totalRunningTime/*???*/,
                     positionAndFile = Some(positionAndFile),
                     recoveredJournalHeader = recoveredJournalHeader,
-                    maybeState = Some(state))))
-              else
-                Left((Some(journalId), eventId, PositionAnd(0, journalMeta.file(eventId)), state)) }
+                    maybeState = Some(state)))))
+          }
     }
-  }
 
   private def replicateJournalFile(
     recoveredJournalId: Option[JournalId],
     positionAndFile: PositionAnd[Path],
-    eventId: EventId,
+    fileEventId: EventId,
+    fromEventId: EventId,
     initialState: S,
-    //??? continue with built (include in S?) clusterState
     masterApi: HttpMasterApi,
     eventWatch: JournalEventWatch)
     (implicit scheduler: Scheduler)
@@ -111,37 +112,41 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
   =
     Task.defer {
       val PositionAnd(position, file) = positionAndFile
-      val fileLengthAndEventId = PositionAnd(position, eventId)
-      lazy val continueReplicatingMsg = s"Continue replicating events into journal file ${file.getName()}"
-      assert(recoveredJournalId.isEmpty == (fileLengthAndEventId == PositionAnd(0L, EventId.BeforeFirst)))
-      var isReplicatingHeadOfFile = fileLengthAndEventId.position == 0
-      val journalFileStateBuilder = new JournalFileStateBuilder[S, E](journalMeta, journalFileForInfo = file.getFileName, recoveredJournalId, newStateBuilder)
-      //journalFileStateBuilder.startWithState(if (isReplicatingHeadOfFile) JournalRecovererState.Initial else JournalRecovererState.InEventsSection, recovered.journalHeader, initialState)
+      assertThat(recoveredJournalId.isEmpty == (position == 0 && fromEventId == EventId.BeforeFirst))
+      val replicatedJournalId = SetOnce.fromOption(recoveredJournalId)
+      val journalFileStateBuilder = new JournalFileStateBuilder[S, E](journalMeta, journalFileForInfo = file.getFileName,
+        recoveredJournalId, newStateBuilder)
+      var isReplicatingHeadOfFile = position == 0
+      var replicatedLength = position
+      var lastEventId = fromEventId
       var inTransaction = false
+      var eof = false
+      lazy val continueReplicatingMsg = s"Continue replicating events into journal file ${file.getName()}"
       val maybeTmpFile = isReplicatingHeadOfFile ? Paths.get(file.toString + TmpSuffix)
       maybeTmpFile match {
-        case Some(tmpFile) => logger.info(s"Replicating snapshot into journal file ${tmpFile.getName()}")
+        case Some(tmp) => logger.info(s"Replicating snapshot into journal file ${tmp.getName()}")
         case None =>
           logger.info(continueReplicatingMsg)
-          eventWatch.onJournalingStarted(file, fileLengthAndEventId, recoveredJournalId.get)
+          eventWatch.onJournalingStarted(file, PositionAnd(position, fromEventId), recoveredJournalId.get)
       }
-      var replicatedJournalId = SetOnce.fromOption(recoveredJournalId)
-      var lastEventId = fileLengthAndEventId.value
-      var out = FileChannel.open(maybeTmpFile getOrElse file, CREATE, WRITE, TRUNCATE_EXISTING)
-      var eof = false
-      var replicatedLength = 0L
-      observeJournalFile(masterApi, fileEventId = fileLengthAndEventId.value, position = fileLengthAndEventId.position,
-        pos => eof && pos >= replicatedLength
-      ).scan((0L, ByteVector.empty))((s, line) => (s._1 + line.length, line))
-        .flatMap { case (fileLength, line) =>
+      var out = maybeTmpFile match {
+        case Some(tmp) => FileChannel.open(tmp, CREATE, WRITE, TRUNCATE_EXISTING)
+        case None => FileChannel.open(file, APPEND)
+      }
+      // FIXME Der Aktive hat die neue Journaldatei vielleicht noch nicht angelegt, dann "Unknown journal file=..."
+      observeJournalFile(masterApi, fileEventId = fileEventId, position = position, eof = pos => eof && pos >= replicatedLength)
+        .scan((0L, ByteVector.empty))((s, line) => (s._1 + line.length, line))
+        .mapParallelOrdered(sys.runtime.availableProcessors) { case (fileLength, line) =>
+          Task((fileLength, line, line.parseJson.orThrow))
+        }.map { case (fileLength, line, json) =>
           if (line == EndOfJournalFileMarker) {
+            logger.debug(s"End of replicated journal file reached: ${file.getFileName}")
             eof = true
-            Observable.empty
           } else {
             replicatedLength = fileLength
-            val json = line.decodeUtf8.orThrow.parseJsonChecked.orThrow
             journalFileStateBuilder.put(json)
             out.write(line.toByteBuffer)
+            logger.trace(s"Replicated ${line.utf8StringTruncateAt(100).trim}")
             for (tmpFile <- maybeTmpFile if isReplicatingHeadOfFile && json.isOfType[JournalEvent, SnapshotTaken.type]) {
               // SnapshotTaken occurs only as the first event of a journal file, just behind the snapshot
               isReplicatingHeadOfFile = false
@@ -149,9 +154,8 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
               move(tmpFile, file, ATOMIC_MOVE)
               out = FileChannel.open(file, APPEND)
               logger.info(continueReplicatingMsg)
-              eventWatch.onJournalingStarted(file, PositionAnd(fileLength, fileLengthAndEventId.value), replicatedJournalId())
+              eventWatch.onJournalingStarted(file, PositionAnd(fileLength, fromEventId), replicatedJournalId())
               // TODO journalFileStateBuilder.state mit kommenden Schnappschuss vergleichen. Die müssen gleich sein.
-              // TODO Dann Schnappschuss ignorieren und vorhandene Objekte fortschreiben, also Objektreferenzen beibehalten
             }
             if (isReplicatingHeadOfFile) {
               if (replicatedJournalId.isEmpty) {
@@ -163,7 +167,6 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
               for (eventId <- json.asObject.flatMap(_("eventId").flatMap(_.asNumber).flatMap(_.toLong))) {
                 lastEventId = eventId
                 if (!inTransaction) {
-                  //logger.debug(s"### eventWatch.onEventsCommitted(PositionAnd($fileLength, $eventId), 1) ${json.compactPrint}")
                   eventWatch.onEventsCommitted(PositionAnd(fileLength, eventId), 1)
                 }
               }
@@ -171,26 +174,22 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
                 inTransaction = true
               } else if (inTransaction && json == JournalSeparators.Commit) {
                 inTransaction = false
-                //logger.debug(s"### eventWatch.onEventsCommitted(PositionAnd($fileLength, $lastEventId), 1)")
                 eventWatch.onEventsCommitted(PositionAnd(fileLength, lastEventId), 1)
               }
             }
-            val journalId = replicatedJournalId getOrElse sys.error(s"Missing JournalHeader in replicated journal file '$file'")
-            Observable.pure((journalId, fileLength, lastEventId, journalFileStateBuilder.state, journalFileStateBuilder.clusterState))
           }
+          ()
         }
-        .guarantee(Task {
-          out.close()
-        })
-        .takeWhileInclusive(_._5 != ClusterState.Sole(clusterConf.nodeId))
-        .lastL
-        .map { case (journalId, fileLength, eventId, state, clusterState) =>
-          logger.debug(clusterState.toString)
-          eventWatch.onJournalingEnded(fileLength)
-          (journalId, eventId, PositionAnd(fileLength, file), journalFileStateBuilder.recoveredJournalHeader, state, clusterState)
+        .guarantee(Task { out.close() })
+        .takeWhileInclusive(_ => !journalFileStateBuilder.clusterState.isActive(clusterConf.nodeId))
+        .completedL
+        .map { _ =>
+          logger.debug(journalFileStateBuilder.clusterState.toString)
+          eventWatch.onJournalingEnded(replicatedLength)
+          val journalId = replicatedJournalId getOrElse sys.error(s"Missing JournalHeader in replicated journal file '$file'")
+          (journalId, lastEventId, PositionAnd(replicatedLength, file),
+            journalFileStateBuilder.recoveredJournalHeader, journalFileStateBuilder.state, journalFileStateBuilder.clusterState)
         }
-        // TODO EventId des letzten Events aus Journaldatei lesen (beim Replizieren kann das letzte und einzige Event verstümmelt sein).
-        //  Oder einen neuen Webservice befragen?
     }
 
   private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long, eof: Long => Boolean)
@@ -224,14 +223,13 @@ object PassiveClusterNode
     recovered: Recovered[S, E],
     recoveredClusterState: ClusterState,
     recoveredState: S,
-    myNodeId: ClusterNodeId,
     activeUri: Uri,
     journalMeta: JournalMeta,
     clusterConf: ClusterConf,
     actorSystem: ActorSystem)
     (implicit s: Scheduler)
-  : Task[ClusterFollowUp] =
-    new PassiveClusterNode(myNodeId, activeUri, journalMeta, recovered, clusterConf)(actorSystem)
+  : Task[(ClusterState, ClusterFollowUp)] =
+    new PassiveClusterNode(activeUri, journalMeta, recovered, clusterConf)(actorSystem)
       .run(recoveredState, recoveredClusterState)
 
   private final class ServerTimeoutException extends TimeoutException("Journal web service timed out")

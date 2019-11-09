@@ -211,6 +211,7 @@ lazy val base = crossProject(JSPlatform, JVMPlatform)
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "org.scodec" %%% "scodec-bits" % "1.1.12" ++
       "com.lihaoyi" %%% "sourcecode" % "0.1.7" ++
+      "com.outr" %%% "scribe" % scribeVersion ++
       findbugs % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
@@ -277,7 +278,6 @@ lazy val `common-http` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies._
     libraryDependencies += scalaTest % "test"
     libraryDependencies += "io.monix" %%% "monix-eval" % monixVersion
-    libraryDependencies += "com.outr" %%% "scribe" % scribeVersion
   }
   .jvmSettings {
     import Dependencies._

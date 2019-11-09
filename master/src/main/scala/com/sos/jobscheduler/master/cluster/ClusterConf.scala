@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.master.cluster
 
 import cats.syntax.semigroup._
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
@@ -18,11 +20,12 @@ import java.nio.file.Path
 final case class ClusterConf(
   role: ClusterNodeRole,
   nodeId: ClusterNodeId,
+  userAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf)
 
 object ClusterConf
 {
-  def fromConfigAndFile(config: Config, nodeIdFile: Path): Checked[ClusterConf] =
+  def fromConfigAndFile(userId: UserId, config: Config, nodeIdFile: Path): Checked[ClusterConf] =
     for {
       role <- config.checkedOptionAs[Uri]("jobscheduler.master.cluster.other-node-is-primary.uri")
         .flatMap {
@@ -33,16 +36,20 @@ object ClusterConf
               nodeId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.other-node-is-backup.id")
             } yield Primary(nodeId, uri)
         }
+      userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
+        .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      id <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.id")
+      maybeId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.id")
       nodeId <-
-        id.fold {
-          val file = nodeIdFile
-          if (!exists(file)) {
-            file := SecretStringGenerator.newSecretString().string // Side effect !!!
-          }
-          ClusterNodeId.checked(file.contentString.stripLineEnd /*In case it has been edited*/)
-            .mapProblem(Problem(s"File '$file' does not contain a valid ClusterNodeId:") |+| _)
-        }(Right.apply)
-    } yield new ClusterConf(role, nodeId, recouplingStreamReaderConf)
+        (maybeId match {
+          case Some(id) => Right(id)
+          case None =>
+            val file = nodeIdFile
+            if (!exists(file)) {
+              file := SecretStringGenerator.newSecretString().string // Side effect !!!
+            }
+            ClusterNodeId.checked(file.contentString.stripLineEnd /*In case it has been edited*/)
+              .mapProblem(Problem(s"File '$file' does not contain a valid ClusterNodeId:") |+| _)
+        })
+    } yield new ClusterConf(role, nodeId, userAndPassword, recouplingStreamReaderConf)
 }

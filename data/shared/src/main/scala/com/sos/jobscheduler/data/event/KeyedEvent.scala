@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
 import scala.reflect.ClassTag
@@ -10,10 +11,13 @@ import scala.reflect.ClassTag
   *
   * @author Joacim Zschimmer
   */
-final case class KeyedEvent[+E <: Event](key: E#Key, event: E) {
-  override def toString = s"$key <-: $event"
+final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
+{
+  override def toString = s"$keyPrefix$event"
 
-  def toShortString = s"$key <-: ${TypedJsonCodec.typeName(event.getClass)}"
+  def toShortString = s"$keyPrefix${TypedJsonCodec.typeName(event.getClass)}"
+
+  private def keyPrefix = if (key == NoKey) "" else s"$key <-: "
 }
 
 object KeyedEvent {

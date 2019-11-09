@@ -100,7 +100,8 @@ trait JournalRecoverer
     journalingObserver: Option[JournalingObserver] = None)
     (implicit actorRefFactory: ActorRefFactory)
   =
-    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, journalingObserver, expectedJournalId, recoveredJournalHeader)
+    JournalRecoverer.startJournalAndFinishRecovery[Event](journalActor, recoveredActors, requireClusterAcknowledgement = false,
+      journalingObserver, expectedJournalId, recoveredJournalHeader)
 
   final def journalId = maybeJournalHeader.map(_.journalId)
 
@@ -137,6 +138,7 @@ object JournalRecoverer {
   private[recover] def startJournalAndFinishRecovery[E <: Event](
     journalActor: ActorRef,
     recoveredActors: RecoveredJournalingActors,
+    requireClusterAcknowledgement: Boolean,
     observer: Option[JournalingObserver],
     expectedJournalId: Option[JournalId],
     recoveredJournalHeader: Option[JournalHeader])
@@ -148,7 +150,8 @@ object JournalRecoverer {
       Props {
         new Actor {
           journalActor ! JournalActor.Input.Start(recoveredActors, observer,
-            recoveredJournalHeader getOrElse JournalHeader.initial(expectedJournalId getOrElse JournalId.random()))
+            recoveredJournalHeader getOrElse JournalHeader.initial(expectedJournalId getOrElse JournalId.random()),
+            requireClusterAcknowledgement = requireClusterAcknowledgement)
 
           def receive = {
             case JournalActor.Output.Ready(journalHeader, runningSince) =>

@@ -7,7 +7,6 @@ import com.sos.jobscheduler.data.cluster.ClusterNodeId
 import com.sos.jobscheduler.data.command.CancelMode
 import com.sos.jobscheduler.data.common.Uri
 import com.sos.jobscheduler.data.crypt.{GenericSignature, SignedString}
-import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -93,15 +92,6 @@ final class MasterCommandTest extends FreeSpec
         "TYPE": "PassiveNodeFollows",
         "passiveNodeId": "NODE-ID",
         "activeUri": "http://example.com"
-      }""")
-  }
-
-  "PassiveNodeFollowsResponse" in {
-    testJson[MasterCommand.Response](
-      PassiveNodeFollows.Response(EventId(123)),
-      json"""{
-        "TYPE": "PassiveNodeFollowsResponse",
-        "eventId": 123
       }""")
   }
 

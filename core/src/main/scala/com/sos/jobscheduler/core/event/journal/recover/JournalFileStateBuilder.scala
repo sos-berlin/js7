@@ -99,7 +99,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
         throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$recovererState': ${json.compactPrint.truncateWithEllipsis(100)}")
     }
 
-  def journalHeader = builder.journalHeader
+  def fileJournalHeader = builder.fileJournalHeader
 
   def recoveredJournalHeader = builder.recoveredJournalHeader
 

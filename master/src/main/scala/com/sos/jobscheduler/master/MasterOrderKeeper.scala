@@ -80,7 +80,6 @@ final class MasterOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   cluster: Cluster,
   eventWatch: JournalEventWatch,
-  recoveredClusterState: ClusterState,
   masterConfiguration: MasterConfiguration,
   signatureVerifier: SignatureVerifier)
   (implicit scheduler: Scheduler)
@@ -235,7 +234,7 @@ with MainJournalingActor[Event]
   protected def snapshots = Observable.fromTask(masterState)
     .flatMap(_.toSnapshotObservable)
     .flatMap {
-      case _: ClusterState.Snapshot => Observable.empty  // `Cluster.persistence` provides the snapshot
+      case _: ClusterState.ClusterStateSnapshot => Observable.empty  // `Cluster.persistence` provides the snapshot
       case o => Observable.pure(o)
     }
     .toListL.runToFuture
@@ -252,7 +251,8 @@ with MainJournalingActor[Event]
   def receive = {
     case Input.Start(recovered) =>
       val clusterFuture = cluster
-        .start(recovered, recoveredClusterState, recovered.maybeState getOrElse MasterState.Undefined)
+        .start(recovered, recovered.maybeState.fold[ClusterState](ClusterState.Empty)(_.clusterState),
+          recovered.maybeState getOrElse MasterState.Undefined)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
@@ -311,7 +311,8 @@ with MainJournalingActor[Event]
       }
       persistedEventId = masterState.eventId
     }
-    recovered.startJournalAndFinishRecovery(journalActor)
+    recovered.startJournalAndFinishRecovery(journalActor,
+      requireClusterAcknowledgement = recovered.maybeState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
 
   private def recovering: Receive = {

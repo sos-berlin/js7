@@ -32,7 +32,7 @@ object MasterSnapshots
   val SnapshotJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
       Subtype(deriveCodec[MasterMetaState]),
-      Subtype.named(deriveCodec[ClusterState.Snapshot], "ClusterStateSnapshot"),
+      Subtype(deriveCodec[ClusterState.ClusterStateSnapshot]),
       Subtype[AgentRegisteredMaster],  // These events describe complete objects
       Subtype[RepoEvent],  // These events describe complete objects
       Subtype[AgentSnapshot],  // TODO case class AgentState(eventId: EventId)

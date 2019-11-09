@@ -2,11 +2,11 @@ package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
-import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
+import com.sos.jobscheduler.core.event.journal.data.JournalMeta
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.JournalMetaOps
 import com.sos.jobscheduler.core.event.journal.recover.JournaledStateRecoverer._
@@ -25,7 +25,6 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
 {
   private val journalFileStateBuilder = newJournalFileStateBuilder()
 
-  private var _journalHeader = SetOnce[JournalHeader]
   private var _position = 0L
 
   def recoverAll(): Unit = {
@@ -36,7 +35,9 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
         journalFileStateBuilder.put(json)
         _position = jsonReader.position
       }
-      journalFileStateBuilder.journalHeader foreach { _journalHeader := _ }
+      for (h <- journalFileStateBuilder.fileJournalHeader if journalMeta.file(h.eventId) != file) {
+        sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
+      }
       journalFileStateBuilder.logStatistics()
     }
   }
@@ -70,7 +71,7 @@ object JournaledStateRecoverer
           eventId = journalFileStateBuilder.eventId,
           journalFileStateBuilder.totalRunningTime,
           Some(PositionAnd(recoverer.position, file)),
-          journalFileStateBuilder.journalHeader,
+          journalFileStateBuilder.fileJournalHeader,
           journalFileStateBuilder.recoveredJournalHeader,
           Some(journalFileStateBuilder.state),
           newStateBuilder,

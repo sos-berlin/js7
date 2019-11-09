@@ -33,6 +33,7 @@ import com.sos.jobscheduler.core.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.core.crypt.generic.GenericSignatureVerifier
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalActor
+import com.sos.jobscheduler.core.event.journal.JournalActor.Output
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta}
 import com.sos.jobscheduler.core.event.journal.recover.Recovered
 import com.sos.jobscheduler.core.event.state.JournaledStatePersistence
@@ -41,6 +42,7 @@ import com.sos.jobscheduler.core.startup.StartUp
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterState}
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.RunningMaster._
 import com.sos.jobscheduler.master.client.{AkkaHttpMasterApi, HttpMasterApi}
@@ -130,6 +132,13 @@ extends AutoCloseable
     orderApi.addOrder(order)
 
   @TestOnly
+  def runOrder(order: FreshOrder): Unit = {
+    val eventId = eventWatch.lastAddedEventId
+    addOrderBlocking(order)
+    eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
+  }
+
+  @TestOnly
   def addOrderBlocking(order: FreshOrder): Boolean =
     orderApi.addOrder(order).runToFuture.await(99.s).orThrow
 
@@ -138,6 +147,13 @@ extends AutoCloseable
       protected def baseUri = localUri
       protected def actorSystem = RunningMaster.this.actorSystem
     } closeWithCloser closer
+
+
+  @TestOnly
+  def journalActorState: Output.State =
+    (actorSystem.actorSelection("user/Journal") ? JournalActor.Input.GetState)(Timeout(99.s))
+      .mapTo[JournalActor.Output.State]
+      .await(99.s)
 
   def close() = closer.close()
 }
@@ -197,7 +213,7 @@ object RunningMaster
     }
 
     private def startMasterOrderKeeper(journalActor: ActorRef @@ JournalActor.type, cluster: Cluster,
-      recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState)
+      recovered: Recovered[MasterState, Event])
     : (ActorRef @@ MasterOrderKeeper.type, Future[Completed]) = {
       val (actor, whenCompleted) =
         CatchingActor.actorOf[Completed](
@@ -206,7 +222,6 @@ object RunningMaster
                 journalActor,
                 cluster,
                 recovered.eventWatch,
-                recoveredClusterState,
                 masterConfiguration,
                 GenericSignatureVerifier(masterConfiguration.config).orThrow)(
                 scheduler)
@@ -229,7 +244,6 @@ object RunningMaster
       // May take minutes !!!
       val recovered = MasterJournalRecoverer.recover(journalMeta, masterConfiguration.config)
       recovered.closeWithCloser
-      val recoveredClusterState = recovered.maybeState.fold[ClusterState](ClusterState.Empty)(_.clusterState)
       val runningSince = now
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props(recovered.journalMeta, runningSince,
@@ -237,12 +251,12 @@ object RunningMaster
         "Journal"))
       val cluster = new Cluster(
         journalMeta,
-        new JournaledStatePersistence[ClusterState, ClusterEvent](recoveredClusterState, journalActor).closeWithCloser,
+        new JournaledStatePersistence[ClusterState, ClusterEvent](journalActor).closeWithCloser,
         masterConfiguration.clusterConf,
         journalActorAskTimeout = masterConfiguration.akkaAskTimeout,
         actorSystem)
 
-      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(journalActor, cluster, recovered, recoveredClusterState)
+      val (orderKeeper, orderKeeperStopped) = startMasterOrderKeeper(journalActor, cluster, recovered)
 
       val fileBasedApi = new MainFileBasedApi(masterConfiguration, orderKeeper)
       val orderKeeperCommandExecutor = new CommandExecutor[MasterCommand] {
