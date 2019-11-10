@@ -52,7 +52,7 @@ extends Actor with Stash
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   private val eventIdGenerator = new EventIdGenerator(eventIdClock)
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private var snapshotRequested = false
+  private var snapshotRequesters = mutable.Set[ActorRef]()
   private var snapshotSchedule: Cancelable = null
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
@@ -60,6 +60,7 @@ extends Actor with Stash
   private var observer = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
+  private var lastSnapshotTakenEventId = EventId.BeforeFirst
   private val journalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
   private var lastWrittenEventId = EventId.BeforeFirst
@@ -180,9 +181,6 @@ extends Actor with Stash
           case _ =>
             forwardCommit((delay max conf.delay) - alreadyDelayed)
         }
-        if (stampedEvents.nonEmpty) {
-          scheduleNextSnapshot()
-        }
       }
 
     case Internal.Commit(level) =>
@@ -199,22 +197,10 @@ extends Actor with Stash
         logger.trace(s"Commit($level) but writtenBuffer.length=${writtenBuffer.length}")
         commit()
       }
-      if (eventWriter.bytesWritten > conf.snapshotSizeLimit && !snapshotRequested) {  // Snapshot is not counted
-        logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
-        requestSnapshot()
-      }
 
     case Input.TakeSnapshot if !switchedOver =>
-      snapshotRequested = false
-      if (!eventWriter.isEventWritten) {
-        if (sender() != self) sender() ! Output.SnapshotTaken
-      } else {
-        val sender = this.sender()
-        becomeTakingSnapshotThen() { _ =>
-          becomeReady()
-          if (sender != self) sender ! Output.SnapshotTaken
-        }
-      }
+      snapshotRequesters += sender()
+      tryTakeSnapshotIfRequested()
 
     case Input.FollowerAcknowledged(eventId) =>
       onFollowerAcknowledged(eventId)
@@ -333,6 +319,22 @@ extends Actor with Stash
     if (writtenBuffer.isEmpty) {
       waitingForAcknowledgeTimer.cancel()
     }
+    maybeDoASnapshot()
+  }
+
+  private def maybeDoASnapshot(): Unit = {
+    if (eventWriter.bytesWritten > conf.snapshotSizeLimit && snapshotRequesters.isEmpty) {  // Snapshot is not counted
+      logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
+      snapshotRequesters += self
+    }
+    tryTakeSnapshotIfRequested()  // TakeSnapshot has been delayed until last event has been acknowledged
+    if (snapshotSchedule == null) {
+      snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod) {
+        if (!switchedOver) {
+          self ! Input.TakeSnapshot
+        }
+      }
+    }
   }
 
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
@@ -376,6 +378,24 @@ extends Actor with Stash
       }
     }
 
+  def tryTakeSnapshotIfRequested(): Unit =
+    if (snapshotRequesters.nonEmpty) {
+      if (lastWrittenEventId == lastSnapshotTakenEventId) {
+        responseAfterSnapshotTaken()
+      } else if (lastAcknowledgedEventId < lastWrittenEventId) {
+        logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
+      } else
+        becomeTakingSnapshotThen() { _ =>
+          becomeReady()
+          responseAfterSnapshotTaken()
+        }
+    }
+
+  private def responseAfterSnapshotTaken(): Unit = {
+    for (sender <- snapshotRequesters if sender != self) sender ! Output.SnapshotTaken
+    snapshotRequesters.clear()
+  }
+
   private def becomeTakingSnapshotThen()(andThen: JournalHeader => Unit) = {
     val since = now
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
@@ -387,7 +407,9 @@ extends Actor with Stash
       snapshotSchedule = null
     }
     if (eventWriter != null) {
-      commit()
+      if (writtenBuffer.nonEmpty) {  // Unfortunately we must avoid a recursion, because commit() may try a snapshot again
+        commit()
+      }
       closeEventWriter()
     }
 
@@ -397,13 +419,13 @@ extends Actor with Stash
       simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
     snapshotWriter.beginSnapshotSection()
-    takeSnapshot(
+    takeSnapshotNow(
       snapshotWriter,
       journalingActors.toSet,
       () => onSnapshotFinished(snapshotTaken, since, () => andThen(header)))
   }
 
-  private def takeSnapshot(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit =
+  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit =
     if (journalingActors.isEmpty) {
       andThen()
     } else {
@@ -471,6 +493,7 @@ extends Actor with Stash
     val (fileLengthBeforeEvents, fileEventId) = (snapshotWriter.fileLength, lastWrittenEventId)
 
     snapshotWriter.writeEvent(snapshotTaken)
+    lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.flush(sync = conf.syncOnCommit)
     lastWrittenEventId = snapshotTaken.eventId
     totalEventCount += 1
@@ -532,20 +555,6 @@ extends Actor with Stash
   private def handleRegisterMe() = {
     journalingActors += sender()
     watch(sender())
-  }
-
-  private def scheduleNextSnapshot(): Unit =
-    if (snapshotSchedule == null) {
-      snapshotSchedule = scheduler.scheduleOnce(conf.snapshotPeriod) {
-        requestSnapshot()
-      }
-    }
-
-  private def requestSnapshot(): Unit = {
-    if (!snapshotRequested) {
-      snapshotRequested = true
-      self ! Input.TakeSnapshot
-    }
   }
 }
 
