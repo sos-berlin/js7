@@ -59,7 +59,15 @@ with JournalingObserver
 
   override def whenStarted = startedPromise.future
 
-  /*protected[journal]*/ def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId], expectedJournalId: JournalId): Unit = {
+  /*protected[journal]*/ def onJournalingStarted(
+    file: Path,
+    expectedJournalId: JournalId,
+    tornLengthAndEventId: PositionAnd[EventId],
+    flushedLengthAndEventId: PositionAnd[EventId]): Unit
+  = {
+    logger.debug(s"onJournalingStarted ${file.getFileName}, torn length=${tornLengthAndEventId.position}, " +
+      s"torn eventId=${tornLengthAndEventId.value}, flushed length=${flushedLengthAndEventId.position}, " +
+      s"flushed eventId=${flushedLengthAndEventId.value}")
     journalId.toOption match {
       case None => journalId := expectedJournalId
       case Some(o) => require(expectedJournalId == o, s"JournalId $journalId does not match expected $expectedJournalId")
@@ -68,8 +76,9 @@ with JournalingObserver
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be > $lastEventId")
       for (current <- currentEventReaderOption) {
-        if (current.lastEventId != after)
-          throw new IllegalArgumentException(s"onJournalingStarted($after) does not match lastEventId=${current.lastEventId}")
+        if (file == current.journalFile) sys.error(s"onJournalingStarted: file == current.journalFile == ${file.getFileName}")
+        if (current.lastEventId != tornLengthAndEventId.value)
+          throw new IllegalArgumentException(s"onJournalingStarted(${tornLengthAndEventId.value}) does not match lastEventId=${current.lastEventId}")
         for (o <- afterEventIdToHistoric.get(current.tornEventId)) {
           o.closeAfterUse()  // In case last journal file had no events (and `after` remains), we exchange it
         }
@@ -78,7 +87,8 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      currentEventReaderOption = Some(new CurrentEventReader[Event](journalMeta, Some(expectedJournalId), flushedLengthAndEventId, config))
+      currentEventReaderOption = Some(new CurrentEventReader[Event](journalMeta, Some(expectedJournalId),
+        tornLengthAndEventId, flushedLengthAndEventId, config))
     }
     onFileWritten(flushedLengthAndEventId.position)
     onEventsCommitted(flushedLengthAndEventId.value)  // Notify about already written events
@@ -88,6 +98,7 @@ with JournalingObserver
 
   def onJournalingEnded(fileLength: EventId) =
     for (o <- currentEventReaderOption) {
+      logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
       o.onJournalingEnded(fileLength)
     }
 
@@ -194,6 +205,7 @@ with JournalingObserver
           (if (last == after)  // Nothing read
             CloseableIterator.empty
           else {  // Continue with next HistoricEventReader or CurrentEventReader
+            logger.debug(s"Continue with next HistoricEventReader or CurrentEventReader, last=$last after=$after")
             assert(last > after, s"last=$last ≤ after=$after ?")
             eventsAfter(last) getOrElse CloseableIterator.empty  // Should never be torn here because last > after
           })

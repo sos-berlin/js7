@@ -39,7 +39,7 @@ object ClusterConf
       userAndPassword <- config.checkedOptionAs[SecretString]("jobscheduler.auth.cluster.password")
         .map(_.map(UserAndPassword(userId, _)))
       recouplingStreamReaderConf <- RecouplingStreamReaderConfs.fromConfig(config)
-      maybeId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.id")
+      maybeId <- config.checkedOptionAs[ClusterNodeId]("jobscheduler.master.cluster.this-node.id")
       nodeId <-
         (maybeId match {
           case Some(id) => Right(id)

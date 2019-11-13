@@ -42,7 +42,7 @@ final class ClusterConfTest extends FreeSpec
 
     "Full configuration" in {
       val config = ConfigFactory.parseString("""
-        jobscheduler.master.cluster.id = PRIMARY
+        jobscheduler.master.cluster.this-node.id = PRIMARY
         jobscheduler.master.cluster.other-node-is-backup.uri = "http://BACKUP"
         jobscheduler.master.cluster.other-node-is-backup.id = BACKUP
         jobscheduler.web.client.polling-get-without-traffic-timeout = 50s

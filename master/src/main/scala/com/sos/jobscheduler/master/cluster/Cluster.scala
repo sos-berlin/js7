@@ -5,11 +5,10 @@ import akka.http.scaladsl.model.{Uri => AkkaUri}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.Resource
-import com.sos.jobscheduler.base.auth.UserAndPassword
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalActor
@@ -65,22 +64,37 @@ final class Cluster(
       case Empty =>
         conf.role match {
           case _: ClusterNodeRole.Primary =>
+            Task { logger.info(s"Becoming the active primary cluster node still without backup") } >>
             Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
           case ClusterNodeRole.Backup(activeUri) =>
-            logger.info(s"Starting as a cluster backup node for primary node at $activeUri")
+            Task { logger.info(s"Becoming the (still not following) backup cluster node for primary node at $activeUri") } >>
             PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, activeUri, journalMeta, conf, actorSystem)
               .map(Right.apply)
         }
 
       case state if state.isActive(conf.nodeId) =>
+        Task {
+          state match {
+            case state: Coupled => logger.info(s"Becoming the active primary cluster node followed by ${state.passiveUri}")
+            case _ => logger.info("Becoming the active primary cluster node without following node")
+          }
+        } >>
+        Task { proceed(recoveredClusterState, recovered.eventId) } >>
         Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
 
       case state: CoupledOrDecoupled if state.passiveNodeId == conf.nodeId =>
+        Task {
+          logger.info(
+            if (state.isTheFollowingNode(conf.nodeId))
+              s"Becoming the following passive cluster node"
+            else
+              s"Becoming the still not following passive cluster node")
+        } >>
         PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, state.activeUri, journalMeta, conf, actorSystem)
           .map(Right.apply)
 
       case _ =>
-        Task.pure(Left(Problem.pure(s"This cluster node's ClusterNodeId does not match state $recoveredClusterState")))
+        Task.pure(Left(Problem.pure(s"This cluster node's ClusterNodeId(${conf.nodeId}) does not match state $recoveredClusterState")))
     }
 
   def automaticallyAppointConfiguredBackupNode(): Task[Checked[Completed]] =
@@ -145,6 +159,7 @@ final class Cluster(
       case state: Coupled =>
         if (!fetchingEvents.getAndSet(true)) {
           fetchingEventsFuture = fetchAndHandleAcknowledgedEventIds(state.passiveNodeId, state.passiveUri, after = eventId)
+            .executeWithOptions(_.enableAutoCancelableRunLoops)
             .runToFuture
         }
       case _ =>
@@ -154,9 +169,7 @@ final class Cluster(
     Task { logger.debug(s"fetchAndHandleAcknowledgedEventIds(after=$after)") } >>
       Resource.fromAutoCloseable(Task { AkkaHttpMasterApi(AkkaUri(uri.string))(actorSystem) })
         .use(api =>
-          // TODO Logout and login after failure
-          api.loginUntilReachable(conf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
-          observeEventIds(api, after = after, userAndPassword = None)
+          observeEventIds(api, after = after)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .mapEval(eventId =>
               Task.deferFuture {
@@ -164,23 +177,23 @@ final class Cluster(
                   .mapTo[Completed]
               })
             .foldL)
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
 
-  private def observeEventIds(api: HttpMasterApi, after: EventId, userAndPassword: Option[UserAndPassword])(implicit s: Scheduler)
-  : Observable[EventId]
-  =
-    RecouplingStreamReader.observe[EventId, EventId, HttpMasterApi](
-      zeroIndex = EventId.BeforeFirst,
-      toIndex = identity,
-      api,
-      userAndPassword,
-      conf.recouplingStreamReader,
-      after = after,
-      getObservable = (after: EventId) =>
-        AkkaHttpClient.liftProblem(
-          api.eventIdObservable(
-            EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))))
-
+  private def observeEventIds(api: HttpMasterApi, after: EventId): Observable[EventId] =
+    RecouplingStreamReader
+      .observe[EventId, EventId, HttpMasterApi](
+        zeroIndex = EventId.BeforeFirst,
+        toIndex = identity,
+        api,
+        conf.userAndPassword,
+        conf.recouplingStreamReader,
+        after = after,
+        getObservable = (after: EventId) =>
+          AkkaHttpClient.liftProblem(
+            api.eventIdObservable(
+              EventRequest.singleClass[Event](after = after, timeout = Some(conf.recouplingStreamReader.timeout)))))
+      .doOnError(t => Task {
+        logger.debug(s"observeEventIds($api, after=$after, userAndPassword=${conf.userAndPassword}) failed with ${t.toStringWithCauses}", t)
+      })
   /*
   private def queryAgents(otherNodeId: ClusterNodeId): Unit =
     Task

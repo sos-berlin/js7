@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.MonixUtils.ops._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import com.sos.jobscheduler.core.event.journal.files.JournalFiles.listJournalFiles
 import com.sos.jobscheduler.data.agent.AgentRefPath
 import com.sos.jobscheduler.data.cluster.{ClusterEvent, ClusterNodeId}
@@ -89,12 +89,12 @@ final class MasterClusterTest extends FreeSpec
   private implicit val akkaTimeout = Timeout(88.s)
 
   "Cluster replicates journal files properly" in {
-    val primaryHttpPort = findFreeTcpPort()
+    val primaryHttpPort :: backupHttpPort :: Nil = findFreeTcpPorts(2)
     withMasterAndBackup(primaryHttpPort) { (primary, backup) =>
       val primaryMaster = primary.startMaster(httpPort = Some(primaryHttpPort)) await 99.s
       primaryMaster.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
 
-      val backupMaster = backup.startMaster() await 99.s
+      val backupMaster = backup.startMaster(httpPort = Some(backupHttpPort)) await 99.s
       val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
 
@@ -131,8 +131,19 @@ final class MasterClusterTest extends FreeSpec
 
       primaryMaster.terminate() await 99.s
       backupMaster.terminate() await 99.s
-
       assertEqualJournalFiles(3)
+
+      // RESTART
+
+      backup.runMaster(httpPort = Some(backupHttpPort)) { backupMaster =>
+        primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
+          assert(primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
+          val lastEventId = primaryMaster.eventWatch.lastAddedEventId
+          primaryMaster.runOrder(FreshOrder(OrderId("🔹"), workflow.path))
+          primaryMaster.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
+          backupMaster.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
+        }
+      }
     }
   }
 
@@ -162,9 +173,10 @@ final class MasterClusterTest extends FreeSpec
 
         assert(!backupMaster.journalActorState.isRequiringClusterAcknowledgement)
 
-        // Start again passive primary node
+        // Start again the passive primary node
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
           backupMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
+          primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled](after = lastEventId)
           assert(backupMaster.journalActorState.isRequiringClusterAcknowledgement)
 
           val orderId = OrderId("🔴")

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.event.journal.recover
 
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.common.utils.UntilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
@@ -26,6 +26,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
   private val journalFileStateBuilder = newJournalFileStateBuilder()
 
   private var _position = 0L
+  private val _firstEventPosition = SetOnce[Long]
 
   def recoverAll(): Unit = {
     logger.info(s"Recovering from file ${file.getFileName} (${toKBGB(Files.size(file))})")
@@ -34,6 +35,9 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
         journalFileStateBuilder.put(json)
         _position = jsonReader.position
+        if (_firstEventPosition.isEmpty && journalFileStateBuilder.recovererState == JournalRecovererState.InEventsSection) {
+          _firstEventPosition := jsonReader.position
+        }
       }
       for (h <- journalFileStateBuilder.fileJournalHeader if journalMeta.file(h.eventId) != file) {
         sys.error(s"JournalHeaders eventId=${h.eventId} does not match the filename '${file.getFileName}'")
@@ -41,6 +45,8 @@ private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Even
       journalFileStateBuilder.logStatistics()
     }
   }
+
+  def firstEventPosition = _firstEventPosition.toOption
 
   def position: Long = _position
 }
@@ -69,8 +75,8 @@ object JournaledStateRecoverer
         Recovered(
           journalMeta,
           eventId = journalFileStateBuilder.eventId,
-          journalFileStateBuilder.totalRunningTime,
           Some(PositionAnd(recoverer.position, file)),
+          recoverer.firstEventPosition,
           journalFileStateBuilder.fileJournalHeader,
           journalFileStateBuilder.recoveredJournalHeader,
           Some(journalFileStateBuilder.state),
@@ -79,7 +85,7 @@ object JournaledStateRecoverer
           config)
 
       case None =>
-        Recovered(journalMeta, eventId = EventId.BeforeFirst, Duration.Zero, None, None, None, None, newStateBuilder, eventWatch, config)
+        Recovered(journalMeta, eventId = EventId.BeforeFirst, None, None, None, None, None, newStateBuilder, eventWatch, config)
     }
   }
 }

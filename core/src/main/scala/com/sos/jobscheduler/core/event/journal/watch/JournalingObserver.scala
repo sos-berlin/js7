@@ -11,7 +11,8 @@ import java.nio.file.Path
   */
 private[journal] trait JournalingObserver
 {
-  protected[journal] def onJournalingStarted(file: Path, flushedLengthAndEventId: PositionAnd[EventId], expectedJournalId: JournalId): Unit
+  protected[journal] def onJournalingStarted(file: Path, expectedJournalId: JournalId,
+    tornLengthAndEventId: PositionAnd[EventId], flushedLengthAndEventId: PositionAnd[EventId]): Unit
 
   protected[journal] def onJournalingEnded(fileLength: Long): Unit
 

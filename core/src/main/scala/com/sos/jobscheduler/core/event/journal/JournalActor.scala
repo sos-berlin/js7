@@ -226,10 +226,15 @@ extends Actor with Stash
       }
 
     case Internal.StillWaitingForAcknowledge =>
-      if (requireClusterAcknowledgement) {
-        for (stamped <- writtenBuffer.flatMap(_.lastStamped).headOption) {
-          logger.warn(s"Still waiting for acknowledgement from passive cluster node for event ${stamped.toString.truncateWithEllipsis((100))}")
-        }
+      if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
+        val notAckSeq = writtenBuffer.dropWhile(o => !o.lastStamped.map(_.eventId).contains(lastAcknowledgedEventId))
+          .collect { case o: LoggableWritten => o }
+        val stampedSeq = notAckSeq.flatMap(_.stamped)
+        val n = writtenBuffer.map(_.eventCount).sum
+        logger.warn(s"Still waiting for acknowledgement from passive cluster node for $n events starting with " +
+          stampedSeq.headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((100))))
+      } else {
+        waitingForAcknowledgeTimer.cancel()
       }
   }
 
@@ -263,17 +268,22 @@ extends Actor with Stash
       throw tt;
     }
     for (w <- writtenBuffer.reverse collectFirst { case o: NormallyWritten => o }) {
-      w.setLastOfFlushedOrSynced()  // For logging: This last Written (and all before) has been flushed or synced
+      w.isLastOfFlushedOrSynced = true  // For logging: This last Written (with all before) has been flushed or synced
     }
     if (!terminating) {
       if (!requireClusterAcknowledgement) {
         onCommitAcknowledged(writtenBuffer.length)
       } else {
-        waitingForAcknowledgeTimer.cancel()
-        waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(5.s, 10.s) {
-          self ! Internal.StillWaitingForAcknowledge
-        }
+        startWaitingForAcknowledgeTimer()
       }
+    }
+  }
+
+  private def startWaitingForAcknowledgeTimer(): Unit =
+  if (requireClusterAcknowledgement) {
+    waitingForAcknowledgeTimer.cancel()
+    waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(5.s, 10.s) {
+      self ! Internal.StillWaitingForAcknowledge
     }
   }
 
@@ -287,13 +297,13 @@ extends Actor with Stash
       sender() ! Completed
       // The passive node does not know Written blocks (maybe transactions) and acknowledges events as they arrive.
       // We take only complete Written blocks as acknowledged.
-      onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.exists(_.eventId <= eventId)).length)
+      onCommitAcknowledged(n = writtenBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= eventId)).length)
     }
   }
 
   private def onCommitAcknowledged(n: Int): Unit = {
     val ackWritten = writtenBuffer take n
-    logStored(flushed = true, synced = conf.syncOnCommit, ackWritten.iterator.collect { case o: NormallyWritten => o })
+    logStored(ack = requireClusterAcknowledgement, ackWritten.iterator.collect { case o: NormallyWritten => o })
     for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
       //val eventId = lastFileLengthAndEventId.value
@@ -316,7 +326,8 @@ extends Actor with Stash
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
     writtenBuffer.remove(0, n)
-    if (writtenBuffer.isEmpty) {
+    //assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
+    if (lastAcknowledgedEventId == lastWrittenEventId) {
       waitingForAcknowledgeTimer.cancel()
     }
     maybeDoASnapshot()
@@ -356,7 +367,7 @@ extends Actor with Stash
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
   }
 
-  private def logStored(flushed: Boolean, synced: Boolean, writtenIterator: Iterator[LoggableWritten]) =
+  private def logStored(ack: Boolean, writtenIterator: Iterator[LoggableWritten]) =
     logger.whenTraceEnabled {
       while (writtenIterator.hasNext) {
         val written = writtenIterator.next()
@@ -365,14 +376,20 @@ extends Actor with Stash
         while (stampedIterator.hasNext) {
           val stamped = stampedIterator.next()
           val flushOrSync =
-            if (!written.isLastOfFlushedOrSynced || stampedIterator.hasNext || !(flushed | synced)) "     "
-            else if (synced) if (conf.simulateSync.isDefined) "~sync" else "sync "
-            else "flush"   // After the last one, the file buffer was flushed
-          val ack =
-            if (!requireClusterAcknowledgement) ""
-            else if (writtenIterator.hasNext || stampedIterator.hasNext) "    "
-            else " ack"
-          logger.trace(f"#$i $flushOrSync$ack STORED ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
+            if (!written.isLastOfFlushedOrSynced || stampedIterator.hasNext)
+              "     "  // Wether flushed nor synced
+            else if (conf.syncOnCommit) if (conf.simulateSync.isDefined)
+              "~sync" else "sync "  // The file buffer has been flush and synced to disk
+            else
+              "flush"   // The file buffer has been flushed
+          val a =
+            if (!requireClusterAcknowledgement)
+              ""  // No cluster. Caller may continue if flushed or synced
+            else if (ack && !writtenIterator.hasNext && !stampedIterator.hasNext)
+              " ack"  // Acknowledged by passive cluster node. Caller may continue
+            else
+              "    "
+          logger.trace(f"#$i $flushOrSync$a STORED ${written.since.elapsed.pretty}%-7s ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n')}")
           i += 1
         }
       }
@@ -496,10 +513,16 @@ extends Actor with Stash
     lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.flush(sync = conf.syncOnCommit)
     lastWrittenEventId = snapshotTaken.eventId
+    if (!requireClusterAcknowledgement) {
+      lastAcknowledgedEventId = lastWrittenEventId
+    }
     totalEventCount += 1
-    logStored(flushed = false, synced = false,
+    logStored(ack = false,
       Iterator.single(LoggableWritten(totalEventCount + 1, snapshotTaken :: Nil, since, lastOfFlushedOrSynced = true)))
     snapshotWriter.closeAndLog()
+
+    // SnapshotTaken event is not acknowledged, lastAcknowledgedEventId < lastWrittenEventId
+    startWaitingForAcknowledgeTimer()
 
     val file = journalMeta.file(after = fileEventId)
     move(snapshotWriter.file, file, ATOMIC_MOVE)
@@ -661,18 +684,13 @@ object JournalActor
     item: CallersItem)
   extends Written with LoggableWritten
   {
-    private var _lastOfSynced = false
+    /** For logging: last stamped has been flushed */
+    var isLastOfFlushedOrSynced = false
 
     def eventCount = stamped.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
       stamped.reverseIterator.buffered.headOption
-
-    /** For logging. */
-    def setLastOfFlushedOrSynced() = _lastOfSynced = true
-
-    /** For logging. */
-    def isLastOfFlushedOrSynced = _lastOfSynced
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)

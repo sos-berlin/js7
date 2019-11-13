@@ -74,7 +74,7 @@ extends JournaledState[ClusterState, ClusterEvent]
 
   def isActive(nodeId: ClusterNodeId): Boolean
 
-  def isPassive(nodeId: ClusterNodeId): Boolean
+  def isTheFollowingNode(nodeId: ClusterNodeId) = false
 }
 
 object ClusterState
@@ -85,7 +85,6 @@ object ClusterState
     * Like Sole but the NodeId is unknown. */
   case object Empty extends ClusterState {
     def isActive(nodeId: ClusterNodeId) = false
-    def isPassive(nodeId: ClusterNodeId) = false
   }
 
   sealed trait HasActiveNode extends ClusterState {
@@ -102,15 +101,12 @@ object ClusterState
 
   sealed trait HasPassiveNode extends ClusterState {
     def passiveNodeId: ClusterNodeId
-    def isPassive(nodeId: ClusterNodeId) = nodeId == passiveNodeId
   }
 
   /** Sole node of the cluster.
     * Node is active without standby node. */
   final case class Sole(activeNodeId: ClusterNodeId)
-  extends HasActiveNode {
-    def isPassive(nodeId: ClusterNodeId) = false
-  }
+  extends HasActiveNode
 
   /** A passive node follows the active node, but it is not yet appointment.
     * The URI of the following (passive) node is still unknown. */
@@ -146,6 +142,8 @@ object ClusterState
   {
     assertThat(activeNodeId != passiveNodeId)
     assertThat(activeUri != passiveUri)
+
+    override def isTheFollowingNode(nodeId: ClusterNodeId) = nodeId == passiveNodeId
   }
 
   final case class Decoupled(activeNodeId: ClusterNodeId, activeUri: Uri, passiveNodeId: ClusterNodeId, passiveUri: Uri)

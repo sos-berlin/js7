@@ -15,23 +15,23 @@ private[watch] final class CurrentEventReader[E <: Event](
   protected val journalMeta: JournalMeta,
   protected val expectedJournalId: Option[JournalId],
   /** Length and after-EventId of initialized and empty journal. */
+  tornLengthAndEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
   protected val config: Config)
 extends EventReader
 {
   protected def isHistoric = false
-  val tornEventId = flushedLengthAndEventId.value
+  protected def tornPosition = tornLengthAndEventId.position
+  def tornEventId = tornLengthAndEventId.value
   val journalFile = journalMeta.file(after = tornEventId)
 
   /** May contain size(file) + 1 to allow EOF detection. */
   private val flushedLengthSync = new EventSync(initial = 0, o => s"position $o")
-  flushedLengthSync.onAdded(flushedLengthAndEventId.position)   // Initially, the file contains no events
+  flushedLengthSync.onAdded(flushedLengthAndEventId.position)
 
   @volatile private var journalingEnded = false
   @volatile private var _committedLength = flushedLengthAndEventId.position
   @volatile private var _lastEventId = flushedLengthAndEventId.value
-
-  protected def tornPosition = flushedLengthAndEventId.position
 
   protected[journal] def committedLength = _committedLength
 

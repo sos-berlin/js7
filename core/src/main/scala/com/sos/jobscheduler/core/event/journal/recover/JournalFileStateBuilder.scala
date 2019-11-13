@@ -24,7 +24,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   newBuilder: () => JournalStateBuilder[S, E])
 {
   private val builder = newBuilder()
-  private var recovererState = JournalRecovererState()
+  private var _recovererState = JournalRecovererState()
 
   private object transaction
   {
@@ -47,46 +47,46 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
   }
 
   def startWithState(recovererState: JournalRecovererState, journalHeader: Option[JournalHeader], state: S): Unit = {
-    this.recovererState = recovererState
+    this._recovererState = recovererState
     builder.initializeState(journalHeader, state)
   }
 
   def put(json: Json): Unit =
-    recovererState match {
+    _recovererState match {
       case Initial =>
         builder.addSnapshot(JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow)
-        recovererState = AfterHeader
+        _recovererState = AfterHeader
 
       case AfterHeader =>
         if (json != JournalSeparators.SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
-        recovererState = InSnapshotSection
+        _recovererState = InSnapshotSection
 
       case InSnapshotSection =>
         if (json == SnapshotFooter) {
           builder.onAllSnapshotsAdded()
-          recovererState = AfterSnapshotSection
+          _recovererState = AfterSnapshotSection
         } else {
           builder.addSnapshot(journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
         }
 
       case AfterSnapshotSection =>
         if (json != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
-          recovererState = InEventsSection
+        _recovererState = InEventsSection
 
       case InEventsSection =>
         json match {
           case EventFooter =>
-            recovererState = AfterEventsSection
+            _recovererState = AfterEventsSection
           case Transaction =>
             transaction.begin()
-            recovererState = InTransaction
+            _recovererState = InTransaction
           case _ =>
             builder.addEvent(deserialize(json))
        }
 
       case InTransaction =>
         if (json == Commit) {
-          recovererState = InEventsSection
+          _recovererState = InEventsSection
           for (stamped <- transaction.buffer) {
             builder.addEvent(stamped)
           }
@@ -99,6 +99,8 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
         throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$recovererState': ${json.compactPrint.truncateWithEllipsis(100)}")
     }
 
+  def recovererState = _recovererState
+
   def fileJournalHeader = builder.fileJournalHeader
 
   def recoveredJournalHeader = builder.recoveredJournalHeader
@@ -109,16 +111,14 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def clusterState = builder.clusterState
 
-  def totalRunningTime = builder.totalRunningTime
-
   def result: S =
-    recovererState match {
+    _recovererState match {
       case InEventsSection | AfterEventsSection =>
         builder.state
       case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$recovererState'")
     }
 
-  def isAcceptingEvents = recovererState.isAcceptingEvents
+  def isAcceptingEvents = _recovererState.isAcceptingEvents
 
   def logStatistics() = builder.logStatistics()
 
