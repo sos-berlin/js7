@@ -81,7 +81,7 @@ private[watch] final class FileEventIteratorPool(
           logger.debug(s"Closed $toString")
         }
 
-        override def toString = s"${super.toString} #$number)"
+        override def toString = s"${super.toString}#$number"
       }
       lentIterators += result
       result

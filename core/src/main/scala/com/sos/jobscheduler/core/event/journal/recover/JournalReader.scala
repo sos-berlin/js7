@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichJson, _}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.Strings.RichString
