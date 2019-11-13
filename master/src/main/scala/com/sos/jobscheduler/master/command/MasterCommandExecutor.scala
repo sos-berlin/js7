@@ -47,11 +47,11 @@ extends CommandExecutor[MasterCommand]
       case EmergencyStop =>
         Halt.haltJava("Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW")
 
-      case MasterCommand.AppointBackupNode(nodeId, uri) =>
+      case MasterCommand.ClusterAppointBackup(nodeId, uri) =>
         cluster().appointBackupNode(nodeId, uri)
           .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 
-      case MasterCommand.PassiveNodeFollows(passiveNodeId, activeUri) =>
+      case MasterCommand.ClusterPassiveFollows(passiveNodeId, activeUri) =>
         cluster().passiveNodesFollows(passiveNodeId, activeUri)
           .map(_.map((_: Completed) => MasterCommand.Response.Accepted))
 

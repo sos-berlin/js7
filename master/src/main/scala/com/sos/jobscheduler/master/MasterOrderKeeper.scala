@@ -546,7 +546,7 @@ with MainJournalingActor[Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(MasterCommand.Response.Accepted))
 
-      case MasterCommand.SwitchOverToBackup =>
+      case MasterCommand.ClusterSwitchOver =>
         if (switchover.isDefined)
           Future.successful(Left(Problem("Already switching over")))
         else
@@ -556,7 +556,7 @@ with MainJournalingActor[Event]
             promise.future onComplete {
               case Success(Right(Completed)) =>
               case other => // asynchronous
-                logger.error(s"SwitchOverToBackup: $other")
+                logger.error(s"ClusterSwitchOver: $other")
                 switchover = None
                 so.close()
             }
@@ -570,7 +570,7 @@ with MainJournalingActor[Event]
         persist(MasterTestEvent, async = true)(_ =>
           Right(MasterCommand.Response.Accepted))
 
-      case (_: MasterCommand.AppointBackupNode) | (_: MasterCommand.PassiveNodeFollows) =>
+      case (_: MasterCommand.ClusterAppointBackup) | (_: MasterCommand.ClusterPassiveFollows) =>
         // Handled by MasterCommandExecutor
         Future.failed(new NotImplementedError)
     }

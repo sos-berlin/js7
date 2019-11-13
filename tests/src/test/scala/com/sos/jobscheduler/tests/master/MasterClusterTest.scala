@@ -99,7 +99,7 @@ final class MasterClusterTest extends FreeSpec
       primaryMaster.eventWatch.await[ClusterEvent.FollowingStarted]()
 
       assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)
-      primaryMaster.executeCommandAsSystemUser(MasterCommand.AppointBackupNode(backupNodeId, Uri(backupMaster.localUri.toString)))
+      primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterAppointBackup(backupNodeId, Uri(backupMaster.localUri.toString)))
         .await(99.s).orThrow
       primaryMaster.eventWatch.await[ClusterEvent.BackupNodeAppointed]()
       primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
@@ -154,7 +154,7 @@ final class MasterClusterTest extends FreeSpec
       backup.runMaster() { backupMaster =>
         val backupNodeId = ClusterNodeId((backup.master.stateDir / "ClusterNodeId").contentString)  // TODO Web service
         primary.runMaster(httpPort = Some(primaryHttpPort)) { primaryMaster =>
-          primaryMaster.executeCommandAsSystemUser(MasterCommand.AppointBackupNode(backupNodeId, Uri(backupMaster.localUri.toString)))
+          primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterAppointBackup(backupNodeId, Uri(backupMaster.localUri.toString)))
             .await(99.s).orThrow
           primaryMaster.eventWatch.await[ClusterEvent.ClusterCoupled]()
           val orderId = OrderId("⭕")
@@ -163,7 +163,7 @@ final class MasterClusterTest extends FreeSpec
           backupMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO BACKUP
-          primaryMaster.executeCommandAsSystemUser(MasterCommand.SwitchOverToBackup).await(99.s).orThrow
+          primaryMaster.executeCommandAsSystemUser(MasterCommand.ClusterSwitchOver).await(99.s).orThrow
           primaryMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
           Try(primaryMaster.terminated.await(99.s)).failed foreach { t => logger.error(s"Master terminated. $t")}   // Erstmal beendet sich der Master nach SwitchOver
 
@@ -185,7 +185,7 @@ final class MasterClusterTest extends FreeSpec
           primaryMaster.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO PRIMARY
-          backupMaster.executeCommandAsSystemUser(MasterCommand.SwitchOverToBackup).await(99.s).orThrow
+          backupMaster.executeCommandAsSystemUser(MasterCommand.ClusterSwitchOver).await(99.s).orThrow
           backupMaster.eventWatch.await[ClusterEvent.SwitchedOver]()
           Try(backupMaster.terminated.await(99.s)).failed foreach { t => logger.error(s"Master terminated. $t")}   // Erstmal beendet sich der Master nach SwitchOver
           assert(!primaryMaster.journalActorState.isRequiringClusterAcknowledgement)

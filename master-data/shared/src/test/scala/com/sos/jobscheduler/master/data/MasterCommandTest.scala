@@ -16,10 +16,10 @@ import org.scalatest.FreeSpec
 
 final class MasterCommandTest extends FreeSpec
 {
-  "AppointBackupNode" in {
-    testJson[MasterCommand](AppointBackupNode(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+  "ClusterAppointBackup" in {
+    testJson[MasterCommand](ClusterAppointBackup(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
       json"""{
-        "TYPE": "AppointBackupNode",
+        "TYPE": "ClusterAppointBackup",
         "nodeId": "NODE-ID",
         "uri": "http://example.com"
       }""")
@@ -85,11 +85,11 @@ final class MasterCommandTest extends FreeSpec
     }
   }
 
-  "PassiveNodeFollows" in {
+  "ClusterPassiveFollows" in {
     testJson[MasterCommand](
-      PassiveNodeFollows(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
+      ClusterPassiveFollows(ClusterNodeId("NODE-ID"), Uri("http://example.com")),
       json"""{
-        "TYPE": "PassiveNodeFollows",
+        "TYPE": "ClusterPassiveFollows",
         "passiveNodeId": "NODE-ID",
         "activeUri": "http://example.com"
       }""")
@@ -189,10 +189,10 @@ final class MasterCommandTest extends FreeSpec
       }""")
   }
 
-  "SwitchOverToBackup" in {
-    testJson[MasterCommand](SwitchOverToBackup,
+  "ClusterSwitchOver" in {
+    testJson[MasterCommand](ClusterSwitchOver,
       json"""{
-        "TYPE": "SwitchOverToBackup"
+        "TYPE": "ClusterSwitchOver"
       }""")
   }
 

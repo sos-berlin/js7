@@ -110,17 +110,17 @@ object MasterCommand extends CommonCommand.Companion
     override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
   }
 
-  final case class AppointBackupNode(nodeId: ClusterNodeId, uri: Uri)
+  final case class ClusterAppointBackup(nodeId: ClusterNodeId, uri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
   }
 
-  final case class PassiveNodeFollows(passiveNodeId: ClusterNodeId, activeUri: Uri)
+  final case class ClusterPassiveFollows(passiveNodeId: ClusterNodeId, activeUri: Uri)
   extends MasterCommand {
     type Response = Response.Accepted
   }
 
-  case object SwitchOverToBackup
+  case object ClusterSwitchOver
   extends MasterCommand {
     type Response = Response.Accepted
   }
@@ -137,7 +137,7 @@ object MasterCommand extends CommonCommand.Companion
   }
 
   implicit val jsonCodec: TypedJsonCodec[MasterCommand] = TypedJsonCodec[MasterCommand](
-    Subtype(deriveCodec[AppointBackupNode]),
+    Subtype(deriveCodec[ClusterAppointBackup]),
     Subtype(deriveCodec[Batch]),
     Subtype[CancelOrder],
     Subtype(deriveCodec[ReplaceRepo]),
@@ -146,8 +146,8 @@ object MasterCommand extends CommonCommand.Companion
     Subtype(IssueTestEvent),
     Subtype(EmergencyStop),
     Subtype(deriveCodec[KeepEvents]),
-    Subtype(deriveCodec[PassiveNodeFollows]),
+    Subtype(deriveCodec[ClusterPassiveFollows]),
     Subtype(ShutDown),
-    Subtype(SwitchOverToBackup),
+    Subtype(ClusterSwitchOver),
     Subtype(TakeSnapshot))
 }

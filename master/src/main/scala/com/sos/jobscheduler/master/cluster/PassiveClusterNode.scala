@@ -59,7 +59,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
         .use(activeNode =>
           activeNode.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
             Task.parMap2(
-              activeNode.executeCommand(MasterCommand.PassiveNodeFollows(clusterConf.nodeId, activeUri)),   // TODO Retry until success
+              activeNode.executeCommand(MasterCommand.ClusterPassiveFollows(clusterConf.nodeId, activeUri)),   // TODO Retry until success
               replicateJournalFiles(recovered.journalId, recoveredPositionAndFile,
                 recovered.firstEventPosition, recovered.eventId, recoveredState, activeNode, eventWatch)
             )((_: MasterCommand.Response.Accepted, followUp) => followUp))
