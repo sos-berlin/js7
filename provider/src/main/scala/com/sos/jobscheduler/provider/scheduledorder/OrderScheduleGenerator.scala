@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.provider.scheduledorder
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.JavaTimeConverters._
@@ -16,7 +17,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Unit], config: Config)
+final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed], config: Config)
 {
   private val addEvery = config.getDuration("jobscheduler.provider.add-orders-every").toFiniteDuration
   private val addEarlier = config.getDuration("jobscheduler.provider.add-orders-earlier").toFiniteDuration
@@ -45,7 +46,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Unit], con
     val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
     if (!closed) {
       addOrders(orders).runToFuture onComplete {
-        case Success(()) =>
+        case Success(Completed) =>
           continue()
         case Failure(t) =>
           logger.error(t.toString, t)

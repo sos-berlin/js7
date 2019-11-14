@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.provider
 
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
@@ -40,7 +39,8 @@ private[provider] trait Observing extends OrderProvider {
     observeDirectory(conf.orderGeneratorsDirectory, replace, replace)
   }
 
-  private def observeDirectory(directory: Path, replace: Task[Checked[Completed]], update: Task[Checked[Completed]])(implicit s: Scheduler, iox: IOExecutor)
+  private def observeDirectory(directory: Path, replace: Task[Checked[Completed]], update: Task[Checked[Completed]])
+    (implicit s: Scheduler, iox: IOExecutor)
   : Observable[Completed] = {
     // Start DirectoryWatcher before replaceMasterConfiguration, otherwise the first events may get lost!
     val directoryWatcher = new DirectoryWatcher(directory, watchDuration)

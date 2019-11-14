@@ -44,7 +44,7 @@ extends HasCloser with Observing
 {
   protected val masterApi = new AkkaHttpMasterApi(conf.masterUri, config = conf.config)
 
-  private val userAndPassword: Option[UserAndPassword] = for {
+  protected val userAndPassword: Option[UserAndPassword] = for {
       userName <- conf.config.optionAs[String]("jobscheduler.provider.master.user")
       password <- conf.config.optionAs[String]("jobscheduler.provider.master.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
@@ -100,13 +100,13 @@ extends HasCloser with Observing
     }
   }
 
-  def testMasterDiff = masterDiff(readDirectory)
+  def testMasterDiff: Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
+    loginUntilReachable >> masterDiff(readDirectory)
 
   /** Compares the directory with the Master's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
   private def masterDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[FileBaseds.Diff[TypedPath, FileBased]]] =
     for {
-      _ <- loginUntilReachable
       pair <- Task.parZip2(readLocalFileBased(localEntries.map(_.file)), fetchMasterFileBasedSeq)
       (checkedLocalFileBasedSeq, masterFileBasedSeq) = pair
     } yield
@@ -139,7 +139,7 @@ extends HasCloser with Observing
   private lazy val loginUntilReachable: Task[Completed] =
     masterApi.loginUntilReachable(userAndPassword, retryLoginDurations)
       .map { (_: Completed) =>
-        logger.info("Logged in at Master")
+        logger.info("Logged-in at Master")
         Completed
       }
 
