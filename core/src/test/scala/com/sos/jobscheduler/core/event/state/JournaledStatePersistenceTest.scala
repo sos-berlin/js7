@@ -183,7 +183,7 @@ private object JournaledStatePersistenceTest
         numberThings += numberThing.key -> numberThing
     }
 
-    def onAllSnapshotsAdded() =
+    def onOnAllSnapshotsAdded() =
       _state = TestState(EventId.BeforeFirst, NumberThingCollection(numberThings.toMap))
 
     protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {

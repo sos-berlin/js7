@@ -250,13 +250,15 @@ with MainJournalingActor[Event]
 
   def receive = {
     case Input.Start(recovered) =>
+      val getStatePromise = Promise[Task[MasterState]]()
       val clusterFuture = cluster
         .start(recovered, recovered.maybeState.fold[ClusterState](ClusterState.Empty)(_.clusterState),
-          recovered.maybeState getOrElse MasterState.Undefined)
+          recovered.maybeState getOrElse MasterState.Undefined, getStatePromise)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
-      become("startingCluster")(startingCluster(clusterFuture))
+      val totalRunningSince = now - recovered.recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime)
+      become("startingCluster")(startingCluster(clusterFuture, totalRunningSince, getStatePromise))
       clusterFuture onComplete { tried =>
         self ! Internal.ClusterStarted(tried)
       }
@@ -264,7 +266,9 @@ with MainJournalingActor[Event]
     case _ => stash()
   }
 
-  private def startingCluster(cancelableCluster: Cancelable): Receive = {
+  private def startingCluster(cancelableCluster: Cancelable, totalRunningSince: Deadline,
+    getStatePromise: Promise[Task[MasterState]])
+  : Receive = {
     case Internal.ClusterStarted(Success(ClusterFollowUp.BecomeActive(recovered_))) =>
       val recovered = recovered_.asInstanceOf[Recovered[MasterState, Event]]
       recover(recovered)
@@ -284,6 +288,16 @@ with MainJournalingActor[Event]
       logger.debug("cancelableCluster.cancel()")
       cancelableCluster.cancel()
       sender() ! Right(MasterCommand.Response.Accepted)
+
+    case Command.GetTotalRunningTime =>
+      sender() ! totalRunningSince.elapsed
+
+    case Command.GetState =>
+      if (!getStatePromise.isCompleted) {
+        sender() ! Status.Failure(Problem("Cluster is still starting").throwable)
+      } else {
+        Task.fromFuture(getStatePromise.future).flatten.runToFuture pipeTo sender()
+      }
 
     case _ => stash()
   }
@@ -395,8 +409,8 @@ with MainJournalingActor[Event]
     case Command.GetState =>
       masterState.runToFuture pipeTo sender()
 
-    case Command.GetRecoveredJournalHeader =>
-      sender() ! Try(recoveredJournalHeader()).fold(akka.actor.Status.Failure.apply, identity[JournalHeader])
+    case Command.GetTotalRunningTime =>
+      sender() ! Try(recoveredJournalHeader()).fold(akka.actor.Status.Failure.apply, _.totalRunningTime)
 
     case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
       val agentEntry = agentRegister(sender())
@@ -837,7 +851,7 @@ private[master] object MasterOrderKeeper
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
     final case object GetState extends Command
-    final case object GetRecoveredJournalHeader extends Command
+    final case object GetTotalRunningTime extends Command
   }
 
   sealed trait Reponse

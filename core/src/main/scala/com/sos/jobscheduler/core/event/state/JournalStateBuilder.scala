@@ -9,6 +9,8 @@ import com.sos.jobscheduler.core.event.journal.data.JournalHeader
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder._
 import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, Stamped}
+import monix.eval.Task
+import scala.concurrent.Promise
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
@@ -18,17 +20,19 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   private var _eventId = EventId.BeforeFirst
   private var _eventCount = 0L
   private val _journalHeader = SetOnce[JournalHeader]
+  private val getStatePromise = Promise[Task[S]]()
 
   def initializeState(journalHeader: Option[JournalHeader], state: S): Unit = {
     journalHeader foreach { _journalHeader := _ }
     onInitializeState(state)
+    onStateIsAvailable()
   }
 
   protected def onInitializeState(state: S): Unit
 
   protected def onAddSnapshot: PartialFunction[Any, Unit]
 
-  def onAllSnapshotsAdded(): Unit
+  protected def onOnAllSnapshotsAdded(): Unit
 
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
@@ -48,14 +52,27 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
         onAddSnapshot(snapshot)
     }
 
-  final def addEvent(stamped: Stamped[KeyedEvent[Event]]) = {
-    if (stamped.eventId <= _eventId) {
-      throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} ≥ ${stamped.toString.truncateWithEllipsis(100)}")
-    }
-    onAddEvent(stamped)
-    _eventCount += 1
-    _eventId = stamped.eventId
+  def onAllSnapshotsAdded(): Unit = {
+    onOnAllSnapshotsAdded()
+    onStateIsAvailable()
   }
+
+  private def onStateIsAvailable(): Unit =
+    getStatePromise.success(Task {
+      synchronized {
+        state
+      }
+    })
+
+  final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
+    synchronized {  // synchronize with asynchronous execution of synchronizedStateTask
+      if (stamped.eventId <= _eventId) {
+        throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} ≥ ${stamped.toString.truncateWithEllipsis(100)}")
+      }
+      onAddEvent(stamped)
+      _eventCount += 1
+      _eventId = stamped.eventId
+    }
 
   def logStatistics(): Unit = {
     if (stopwatch.duration >= 1.s) {
@@ -67,6 +84,9 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
         s"($snapshotCount snapshot elements and $eventCount events read in ${stopwatch.duration.pretty})")
     }
   }
+
+  def synchronizedStateTask: Task[S] =
+    Task.deferFuture(getStatePromise.future).flatten
 
   /** Journal file's JournalHeader. */
   final def fileJournalHeader = _journalHeader.toOption

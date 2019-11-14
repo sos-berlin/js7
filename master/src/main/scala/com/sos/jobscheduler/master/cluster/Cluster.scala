@@ -28,6 +28,7 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
+import scala.concurrent.Promise
 
 final class Cluster(
   journalMeta: JournalMeta,
@@ -49,15 +50,24 @@ final class Cluster(
       o.cancel()
     }
 
-  def start(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState, recoveredState: MasterState): Task[Checked[ClusterFollowUp]] =
-    startCluster(recovered, recoveredClusterState, recoveredState)
+  def start(
+    recovered: Recovered[MasterState, Event],
+    recoveredClusterState: ClusterState,
+    recoveredState: MasterState,
+    getStatePromise: Promise[Task[MasterState]])
+  : Task[Checked[ClusterFollowUp]] =
+    startCluster(recovered, recoveredClusterState, recoveredState, getStatePromise)
       .map(_.map { case (clusterState, followUp) =>
         persistence.start(clusterState)
         followUp
       })
     .executeWithOptions(_.enableAutoCancelableRunLoops)
 
-  private def startCluster(recovered: Recovered[MasterState, Event], recoveredClusterState: ClusterState, recoveredState: MasterState)
+  private def startCluster(
+    recovered: Recovered[MasterState, Event],
+    recoveredClusterState: ClusterState,
+    recoveredState: MasterState,
+    getStatePromise: Promise[Task[MasterState]])
   : Task[Checked[(ClusterState, ClusterFollowUp)]]
   =
     recoveredClusterState match {
@@ -68,7 +78,7 @@ final class Cluster(
             Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
           case ClusterNodeRole.Backup(activeUri) =>
             Task { logger.info(s"Becoming the (still not following) backup cluster node for primary node at $activeUri") } >>
-            PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, activeUri, journalMeta, conf, actorSystem)
+            PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise, activeUri, journalMeta, conf, actorSystem)
               .map(Right.apply)
         }
 
@@ -90,7 +100,8 @@ final class Cluster(
             else
               s"Becoming the still not following passive cluster node")
         } >>
-        PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, state.activeUri, journalMeta, conf, actorSystem)
+        PassiveClusterNode.run[MasterState, Event](recovered, recoveredClusterState, recoveredState, getStatePromise,
+          state.activeUri, journalMeta, conf, actorSystem)
           .map(Right.apply)
 
       case _ =>

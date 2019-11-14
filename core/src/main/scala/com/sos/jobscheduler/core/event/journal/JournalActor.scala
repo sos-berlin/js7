@@ -521,8 +521,7 @@ extends Actor with Stash
       Iterator.single(LoggableWritten(totalEventCount + 1, snapshotTaken :: Nil, since, lastOfFlushedOrSynced = true)))
     snapshotWriter.closeAndLog()
 
-    // SnapshotTaken event is not acknowledged, lastAcknowledgedEventId < lastWrittenEventId
-    startWaitingForAcknowledgeTimer()
+    // Do not lock when SnapshotTaken is not being acknowledged: startWaitingForAcknowledgeTimer()
 
     val file = journalMeta.file(after = fileEventId)
     move(snapshotWriter.file, file, ATOMIC_MOVE)

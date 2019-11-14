@@ -57,7 +57,7 @@ extends JournalStateBuilder[MasterState, Event]
       _clusterState = o.clusterState
   }
 
-  def onAllSnapshotsAdded() = {
+  def onOnAllSnapshotsAdded() = {
     val (added, removed) = followUpRecoveredSnapshots(repo.idTo[Workflow], idToOrder.toMap)
     idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed

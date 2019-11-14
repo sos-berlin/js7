@@ -268,8 +268,8 @@ object RunningMaster
       val commandExecutor = new MasterCommandExecutor(orderKeeperCommandExecutor, () => cluster)
       val orderApi = new MainOrderApi(orderKeeper, masterConfiguration.akkaAskTimeout)
       val masterState = getMasterState(orderKeeper, masterConfiguration.akkaAskTimeout)
-      val totalRunningTime = getRecoveredJournalHeader(orderKeeper, masterConfiguration.akkaAskTimeout)
-        .map(_.totalRunningTime + runningSince.elapsed)
+      val totalRunningTime = getTotalRunningTime(orderKeeper, masterConfiguration.akkaAskTimeout)
+        .map(_ + runningSince.elapsed)
 
       val terminated = orderKeeperStopped
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
@@ -345,9 +345,9 @@ object RunningMaster
       (orderKeeper ? MasterOrderKeeper.Command.GetState).mapTo[MasterState])
   }
 
-  private def getRecoveredJournalHeader(orderKeeper: ActorRef, akkaAskTimeout: Timeout): Task[JournalHeader] = {
+  private def getTotalRunningTime(orderKeeper: ActorRef, akkaAskTimeout: Timeout): Task[FiniteDuration] = {
     implicit def t = akkaAskTimeout
     Task.deferFuture(
-      (orderKeeper ? MasterOrderKeeper.Command.GetRecoveredJournalHeader).mapTo[JournalHeader])
+      (orderKeeper ? MasterOrderKeeper.Command.GetTotalRunningTime).mapTo[FiniteDuration])
   }
 }
