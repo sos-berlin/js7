@@ -430,8 +430,8 @@ extends Actor with Stash
       closeEventWriter()
     }
 
-    val header = recoveredJournalHeader().update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
-      totalRunningTime = recoveredJournalHeader().totalRunningTime + runningSince.elapsed)
+    val header = recoveredJournalHeader.orThrow.update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
+      totalRunningTime = recoveredJournalHeader.orThrow.totalRunningTime + runningSince.elapsed)
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)
     snapshotWriter.writeHeader(header)
@@ -545,8 +545,8 @@ extends Actor with Stash
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = after)
-    val writer = new EventJournalWriter(journalMeta, file, after = after, recoveredJournalHeader().journalId,
-      observer(), simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
+    val writer = new EventJournalWriter(journalMeta, file, after = after, recoveredJournalHeader.orThrow.journalId,
+      observer.orThrow, simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
 
     Try { createSymbolicLink(symLink, file.getFileName) }
     writer
@@ -564,7 +564,7 @@ extends Actor with Stash
     }
 
   private def deleteObsoleteJournalFiles(): Unit =
-    observer() match {
+    observer.orThrow match {
       case None =>
         for (file <- listJournalFiles(journalFileBase = journalMeta.fileBase) map (_.file) if file != eventWriter.file) {
           try delete(file)

@@ -410,7 +410,7 @@ with MainJournalingActor[Event]
       masterState.runToFuture pipeTo sender()
 
     case Command.GetTotalRunningTime =>
-      sender() ! Try(recoveredJournalHeader()).fold(akka.actor.Status.Failure.apply, _.totalRunningTime)
+      sender() ! Try(recoveredJournalHeader.orThrow).fold(akka.actor.Status.Failure.apply, _.totalRunningTime)
 
     case AgentDriver.Output.RegisteredAtAgent(agentRunId)=>
       val agentEntry = agentRegister(sender())

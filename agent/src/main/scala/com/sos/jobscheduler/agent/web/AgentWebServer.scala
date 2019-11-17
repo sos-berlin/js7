@@ -36,7 +36,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
     super.start()
   }
 
-  private def api = apiOnce()
+  private def api = apiOnce.orThrow
 
   protected def newRoute(binding: WebServerBinding) =
     new AkkaWebServer.BoundRoute with CompleteRoute {

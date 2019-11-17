@@ -79,7 +79,7 @@ with ReceiveLoggingActor.WithStash
   {
     override protected def couple(eventId: EventId) =
       registerAsMasterIfNeeded >>
-        client.commandExecute(AgentCommand.CoupleMaster(agentRunIdOnce(), eventId = eventId))
+        client.commandExecute(AgentCommand.CoupleMaster(agentRunIdOnce.orThrow, eventId = eventId))
           .map(_.map((_: AgentCommand.Response.Accepted) => Completed))
 
     protected def getObservable(api: AgentClient, after: EventId) =

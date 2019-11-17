@@ -13,12 +13,8 @@ class SetOnce[A](name: String)
 {
   protected[this] val promise = Promise[A]
 
-  /**
-   * The value of the set variable.
-   *
-   * @throws IllegalStateException
-   */
-  def apply() = getOrElse { throw new IllegalStateException(s"SetOnce[$name] promise has not been kept so far") }
+  def orThrow: A =
+    getOrElse { throw new IllegalStateException(s"SetOnce[$name] promise has not been kept so far") }
 
   final override def toString = toStringOr(s"SetOnce[$name](not yet set)")
 
