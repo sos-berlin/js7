@@ -140,8 +140,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
       }
       observeJournalFile(masterApi, fileEventId = continuation.fileEventId, position = recoveredFileLength,
         eof = pos => eof && pos >= replicatedFileLength
-      ) .scan((0L, ByteVector.empty))((s, line) => (s._1 + line.length, line))
-        .mapParallelOrdered(sys.runtime.availableProcessors) { case (fileLength, line) =>
+      ) .mapParallelOrdered(sys.runtime.availableProcessors) { case PositionAnd(fileLength, line) =>
           Task((fileLength, line, line.parseJson.orThrow))
         }
         .map {
@@ -211,7 +210,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
 
   private def observeJournalFile(api: HttpMasterApi, fileEventId: EventId, position: Long,
     eof: Long => Boolean)(implicit s: Scheduler)
-  : Observable[ByteVector] =
+  : Observable[PositionAnd[ByteVector]] =
     RecouplingStreamReader
       .observe[Long/*file position*/, PositionAnd[ByteVector], HttpMasterApi](
         zeroIndex = EventId.BeforeFirst,
@@ -226,7 +225,6 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
               .map(_
                 .scan(PositionAnd(after, ByteVector.empty/*unused*/))((s, a) => PositionAnd(s.position + a.length, a)))),
             eof = eof)
-      .map(_.value)  // Return the line without position
       .doOnError(t => Task {
         logger.debug(s"observeJournalFile($api, fileEventId=$fileEventId, position=$position) failed with ${t.toStringWithCauses}", t)
       })
