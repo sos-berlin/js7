@@ -4,11 +4,13 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowableEither
 import com.sos.jobscheduler.base.utils.Strings.RichString
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, Transaction}
 import com.sos.jobscheduler.core.event.journal.data.{JournalHeader, JournalMeta, JournalSeparators}
+import com.sos.jobscheduler.core.event.journal.recover.JournalFileStateBuilder._
 import com.sos.jobscheduler.core.event.journal.recover.JournalRecovererState.{AfterEventsSection, AfterHeader, AfterSnapshotSection, InEventsSection, InSnapshotSection, InTransaction, Initial}
 import com.sos.jobscheduler.core.event.state.JournalStateBuilder
-import com.sos.jobscheduler.data.event.{Event, JournalId, JournaledState, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import io.circe.Json
 import java.nio.file.Path
 import scala.collection.mutable
@@ -46,15 +48,17 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
     private def isInTransaction = buffer != null
   }
 
-  def startWithState(recovererState: JournalRecovererState, journalHeader: Option[JournalHeader], state: S): Unit = {
+  def startWithState(recovererState: JournalRecovererState, journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
     this._recovererState = recovererState
-    builder.initializeState(journalHeader, state)
+    builder.initializeState(journalHeader, eventId, totalEventCount, state)
   }
 
   def put(json: Json): Unit =
     _recovererState match {
       case Initial =>
-        builder.addSnapshot(JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow)
+        val header = JournalHeader.checkedHeader(json, journalFileForInfo, expectedJournalId).orThrow
+        builder.addSnapshot(header)
+        logger.debug(header.toString)
         _recovererState = AfterHeader
 
       case AfterHeader =>
@@ -103,7 +107,7 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
 
   def fileJournalHeader = builder.fileJournalHeader
 
-  def recoveredJournalHeader = builder.recoveredJournalHeader
+  def calculatedJournalHeader = builder.recoveredJournalHeader
 
   def eventId = builder.eventId
 
@@ -128,4 +132,9 @@ final class JournalFileStateBuilder[S <: JournaledState[S, E], E <: Event](
       .orThrow
       .asInstanceOf[Stamped[KeyedEvent[E]]]
   }
+}
+
+object JournalFileStateBuilder
+{
+  private val logger = Logger(getClass)
 }

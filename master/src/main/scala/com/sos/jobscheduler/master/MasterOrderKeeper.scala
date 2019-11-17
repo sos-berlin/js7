@@ -250,14 +250,14 @@ with MainJournalingActor[Event]
 
   def receive = {
     case Input.Start(recovered) =>
+      val state = recovered.recoveredState getOrElse MasterState.Undefined
       val getStatePromise = Promise[Task[MasterState]]()
       val clusterFuture = cluster
-        .start(recovered, recovered.maybeState.fold[ClusterState](ClusterState.Empty)(_.clusterState),
-          recovered.maybeState getOrElse MasterState.Undefined, getStatePromise)
+        .start(recovered, state.clusterState, state, getStatePromise)
         .map(_.orThrow)
         .onCancelRaiseError(new StartingClusterCanceledException)
         .runToFuture
-      val totalRunningSince = now - recovered.recoveredJournalHeader.fold(Duration.Zero)(_.totalRunningTime)
+      val totalRunningSince = now - recovered.recoveredJournalFile.fold(Duration.Zero)(_.calculatedJournalHeader.totalRunningTime)
       become("startingCluster")(startingCluster(clusterFuture, totalRunningSince, getStatePromise))
       clusterFuture onComplete { tried =>
         self ! Internal.ClusterStarted(tried)
@@ -303,7 +303,7 @@ with MainJournalingActor[Event]
   }
 
   private def recover(recovered: Recovered[MasterState, Event]) = {
-    for (masterState <- recovered.maybeState) {
+    for (masterState <- recovered.recoveredState) {
       if (masterState.masterMetaState.masterId != masterConfiguration.masterId)
         throw Problem(s"Recovered masterId='${masterState.masterMetaState.masterId}' differs from configured masterId='${masterConfiguration.masterId}'").throwable
       masterMetaState = masterState.masterMetaState
@@ -326,7 +326,7 @@ with MainJournalingActor[Event]
       persistedEventId = masterState.eventId
     }
     recovered.startJournalAndFinishRecovery(journalActor,
-      requireClusterAcknowledgement = recovered.maybeState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
+      requireClusterAcknowledgement = recovered.recoveredState.fold(false)(_.clusterState.isInstanceOf[ClusterState.Coupled]))
   }
 
   private def recovering: Receive = {

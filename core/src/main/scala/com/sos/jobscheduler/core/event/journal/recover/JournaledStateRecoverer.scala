@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.core.event.journal.recover
 
-import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
@@ -15,7 +14,6 @@ import com.sos.jobscheduler.core.event.state.JournalStateBuilder
 import com.sos.jobscheduler.data.event.{Event, EventId, JournalId, JournaledState}
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
-import scala.concurrent.duration.Duration
 
 private final class JournaledStateRecoverer[S <: JournaledState[S, E], E <: Event](
   protected val file: Path,
@@ -74,18 +72,19 @@ object JournaledStateRecoverer
         recoverer.recoverAll()
         Recovered(
           journalMeta,
-          eventId = journalFileStateBuilder.eventId,
-          Some(PositionAnd(recoverer.position, file)),
-          recoverer.firstEventPosition,
-          journalFileStateBuilder.fileJournalHeader,
-          journalFileStateBuilder.recoveredJournalHeader,
-          Some(journalFileStateBuilder.state),
+          Some(RecoveredJournalFile(
+            file,
+            length = recoverer.position,
+            journalFileStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
+            journalFileStateBuilder.calculatedJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
+            firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
+            journalFileStateBuilder.state)),
           newStateBuilder,
           eventWatch,
           config)
 
       case None =>
-        Recovered(journalMeta, eventId = EventId.BeforeFirst, None, None, None, None, None, newStateBuilder, eventWatch, config)
+        Recovered(journalMeta, None, newStateBuilder, eventWatch, config)
     }
   }
 }

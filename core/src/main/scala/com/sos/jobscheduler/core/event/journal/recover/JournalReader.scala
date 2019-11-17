@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.event.PositionAnd
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.untilNoneIterator
 import com.sos.jobscheduler.core.common.jsonseq.InputStreamJsonSeqReader
 import com.sos.jobscheduler.core.event.journal.data.JournalSeparators.{Commit, EventFooter, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
@@ -32,6 +33,8 @@ extends AutoCloseable
       journalFile, expectedJournalId
     ).orThrow
   }
+  logger.debug(journalHeader.toString)
+
   val tornEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
   private var snapshotHeaderRead = false
@@ -246,7 +249,10 @@ extends AutoCloseable
   def totalEventCount = _totalEventCount
 }
 
-private[recover] object JournalReader {
+private[recover] object JournalReader
+{
+  private val logger = Logger(getClass)
+
   private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[Json])
   extends RuntimeException(
     s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}:" +

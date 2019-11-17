@@ -22,8 +22,10 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   private val _journalHeader = SetOnce[JournalHeader]
   private val getStatePromise = Promise[Task[S]]()
 
-  def initializeState(journalHeader: Option[JournalHeader], state: S): Unit = {
+  def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
     journalHeader foreach { _journalHeader := _ }
+    _eventId = eventId
+    _eventCount = totalEventCount - journalHeader.fold(0L)(_.totalEventCount)
     onInitializeState(state)
     onStateIsAvailable()
   }

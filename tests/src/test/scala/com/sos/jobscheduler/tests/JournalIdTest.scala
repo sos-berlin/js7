@@ -82,7 +82,6 @@ final class JournalIdTest extends FreeSpec with DirectoryProviderForScalaTest
     locally {
       val secondJournalFile = agentStateDir.pathSet
         .filter(o => o.getFileName.toString.startsWith("master-Master--") && o != firstJournalFile).min
-      println(s"### $secondJournalFile")
       val secondJournalFileContent = secondJournalFile.contentString
       val (headerLine, body) = secondJournalFileContent.splitAt(secondJournalFileContent indexOf '\n')
       val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow

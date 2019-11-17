@@ -145,7 +145,7 @@ final class JournaledStatePersistenceTest extends FreeSpec with BeforeAndAfterAl
       recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
       implicit val a = actorSystem
       journalStatePersistence = new JournaledStatePersistence[TestState, TestEvent](journalActor)
-      journalStatePersistence.start(recovered.maybeState getOrElse TestState.empty)
+      journalStatePersistence.start(recovered.recoveredState getOrElse TestState.empty)
       journalStatePersistence
     }
 
