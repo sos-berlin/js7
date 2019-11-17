@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.filebased
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, _}
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.core.crypt.SignatureVerifier
 import com.sos.jobscheduler.core.filebased.FileBasedVerifier._
 import com.sos.jobscheduler.data.crypt.{Signed, SignedString, SignerId}

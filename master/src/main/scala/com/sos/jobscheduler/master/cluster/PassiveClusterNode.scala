@@ -172,6 +172,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
               eventWatch.onJournalingStarted(file, journalId,
                 tornLengthAndEventId = PositionAnd(replicatedFileLength/*Before SnapshotTaken, after EventHeader*/, continuation.fileEventId),
                 flushedLengthAndEventId = PositionAnd(fileLength, stamped.eventId))
+                // Unfortunately comparable: ensureEqualState(continuation, builder.state)
             }
             replicatedFileLength = fileLength
             if (!isReplicatingHeadOfFile) {
@@ -229,6 +230,21 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
       .doOnError(t => Task {
         logger.debug(s"observeJournalFile($api, fileEventId=$fileEventId, position=$position) failed with ${t.toStringWithCauses}", t)
       })
+
+  private def ensureEqualState(continuation: Continuation, snapshot: S)(implicit s: Scheduler): Unit =
+    for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
+      val msg = s"State from recovered journal file ${ recoveredJournalFile.fileEventId } does not match snapshot in next journal file"
+      logger.error(msg)
+      logger.info("Recovered state:")
+      try {
+        for (snapshotObject <- recoveredJournalFile.state.toSnapshotObservable.toListL.runSyncUnsafe(30.s))
+          logger.info("  " + snapshotObject)
+        logger.info("Replicated snapshot state:")
+        for (snapshotObject <- snapshot.toSnapshotObservable.toListL.runSyncUnsafe(30.s))
+          logger.info("  " + snapshotObject)
+      } catch { case t: TimeoutException => logger.error(t.toStringWithCauses) }
+      sys.error(msg)
+    }
 
   private trait Continuation {
     def fileEventId: EventId
