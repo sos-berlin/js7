@@ -24,15 +24,16 @@ final class JournalHeaderTest extends FreeSpec
         timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z")),
       json"""{
         "TYPE": "JobScheduler.Journal",
-        "version": "${JournalHeader.Version}",
-        "softwareVersion": "${BuildInfo.version}",
-        "buildId": "${BuildInfo.buildId}",
         "journalId": "ABEiM0RVZneImaq7zN3u_w",
         "eventId": 777,
+        "generation": 0,
         "totalEventCount": 999,
-        "startedAt": "2019-05-22T12:00:00Z",
         "totalRunningTime": 3600,
-        "timestamp": "2019-05-23T22:22:22.222Z"
+        "timestamp": "2019-05-23T22:22:22.222Z",
+        "startedAt": "2019-05-22T12:00:00Z",
+        "version": "${JournalHeader.Version}",
+        "softwareVersion": "${BuildInfo.version}",
+        "buildId": "${BuildInfo.buildId}"
       }""")
   }
 }

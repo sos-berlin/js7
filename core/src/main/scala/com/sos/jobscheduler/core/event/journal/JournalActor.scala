@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.Assertions.assertThat
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -56,7 +57,7 @@ extends Actor with Stash
   private var snapshotSchedule: Cancelable = null
 
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
-  private val recoveredJournalHeader = SetOnce[JournalHeader]
+  private var journalHeader: JournalHeader = null
   private var observer = SetOnce[Option[JournalingObserver]]
   private var eventWriter: EventJournalWriter = null
   private var snapshotWriter: SnapshotJournalWriter = null
@@ -97,7 +98,7 @@ extends Actor with Stash
     case Input.Start(RecoveredJournalingActors(keyToActor), observer_, header, requireClusterAcknowledgement) =>
       this.requireClusterAcknowledgement = requireClusterAcknowledgement
       observer := observer_
-      recoveredJournalHeader := header
+      journalHeader = header
       lastWrittenEventId = header.eventId
       lastAcknowledgedEventId = header.eventId
       totalEventCount = header.totalEventCount
@@ -120,15 +121,14 @@ extends Actor with Stash
 
     case Input.StartWithoutRecovery(observer_) =>  // Testing only
       observer := observer_
-      val header = JournalHeader.initial(JournalId.random())
-      recoveredJournalHeader := header
+      journalHeader = JournalHeader.initial(JournalId.random()).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
-      eventWriter.writeHeader(header)
+      eventWriter.writeHeader(journalHeader)
       eventWriter.beginEventSection(sync = conf.syncOnCommit)
       eventWriter.onJournalingStarted()
       unstashAll()
       becomeReady()
-      sender() ! Output.Ready(header, runningSince)
+      sender() ! Output.Ready(journalHeader, runningSince)
 
     case Input.RegisterMe =>
       handleRegisterMe()
@@ -430,16 +430,17 @@ extends Actor with Stash
       closeEventWriter()
     }
 
-    val header = recoveredJournalHeader.orThrow.update(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
-      totalRunningTime = recoveredJournalHeader.orThrow.totalRunningTime + runningSince.elapsed)
+    assertThat(journalHeader != null)
+    journalHeader = journalHeader.nextGeneration(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
+      totalRunningTime = journalHeader.totalRunningTime + runningSince.elapsed)
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)
-    snapshotWriter.writeHeader(header)
+    snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
     takeSnapshotNow(
       snapshotWriter,
       journalingActors.toSet,
-      () => onSnapshotFinished(snapshotTaken, since, () => andThen(header)))
+      () => onSnapshotFinished(snapshotTaken, since, () => andThen(journalHeader)))
   }
 
   private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, journalingActors: Set[ActorRef], andThen: () => Unit): Unit =
@@ -545,7 +546,8 @@ extends Actor with Stash
     Try { if (exists(symLink)) delete(symLink) }
 
     val file = journalMeta.file(after = after)
-    val writer = new EventJournalWriter(journalMeta, file, after = after, recoveredJournalHeader.orThrow.journalId,
+    assertThat(journalHeader != null)
+    val writer = new EventJournalWriter(journalMeta, file, after = after, journalHeader.journalId,
       observer.orThrow, simulateSync = conf.simulateSync, withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)
 
     Try { createSymbolicLink(symLink, file.getFileName) }

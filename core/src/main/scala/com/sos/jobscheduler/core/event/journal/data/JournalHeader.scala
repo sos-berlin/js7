@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.BuildInfo
@@ -20,55 +21,62 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
   * @author Joacim Zschimmer
   */
 final case class JournalHeader private[data](
+  journalId: JournalId,
+  eventId: EventId,
+  generation: Long,
+  totalEventCount: Long,
+  totalRunningTime: FiniteDuration,
+  timestamp: Timestamp,
+  startedAt: Timestamp,
   version: String,
   softwareVersion: String,
-  buildId: String,
-  journalId: JournalId,
-  startedAt: Timestamp,
-  totalRunningTime: FiniteDuration,
-  eventId: EventId,
-  totalEventCount: Long,
-  timestamp: Timestamp)
+  buildId: String)
 {
-  def update(eventId: EventId, totalEventCount: Long, totalRunningTime: FiniteDuration) =
+  def nextGeneration(eventId: EventId, totalEventCount: Long, totalRunningTime: FiniteDuration, timestamp: Timestamp = Timestamp.now) =
     copy(
-      version = Version,
-      softwareVersion = BuildInfo.version,
-      buildId = BuildInfo.buildId,
       eventId = eventId,
+      generation = generation + 1,
       totalEventCount = totalEventCount,
       totalRunningTime = totalRunningTime,
-      timestamp = Timestamp.now)
+      timestamp = timestamp,
+      version = Version,
+      softwareVersion = BuildInfo.version,
+      buildId = BuildInfo.buildId)
+
+  override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
+    s"$timestamp, ${totalRunningTime.pretty}, $startedAt, $version, $softwareVersion, $buildId)"
 }
 
 object JournalHeader
 {
-  private[data] val Version = "0.25"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  private[data] val Version = "0.26"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
   private val logger = Logger(getClass)
 
   def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
-      version = Version,
-      softwareVersion = BuildInfo.version,
-      buildId = BuildInfo.buildId,
       journalId,
-      Timestamp.now,
-      Duration.Zero,
       eventId = eventId,
+      generation = 1,
       totalEventCount = 0,
-      Timestamp.now)
+      Duration.Zero,
+      timestamp = Timestamp.now,
+      startedAt = Timestamp.now,
+      softwareVersion = BuildInfo.version,
+      version = Version,
+      buildId = BuildInfo.buildId)
 
   def initial(journalId: JournalId) =
     new JournalHeader(
+      journalId,
+      eventId = EventId.BeforeFirst,
+      generation = 0,
+      totalEventCount = 0,
+      Duration.Zero,
+      timestamp = Timestamp.now,
+      startedAt = Timestamp.now,
       version = Version,
       softwareVersion = BuildInfo.version,
-      buildId = BuildInfo.buildId,
-      journalId,
-      startedAt = Timestamp.now,
-      totalRunningTime = Duration.Zero,
-      eventId = EventId.BeforeFirst,
-      totalEventCount = 0,
-      Timestamp.now)
+      buildId = BuildInfo.buildId)
 
   implicit lazy val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)

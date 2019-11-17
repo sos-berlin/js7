@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.cluster.ClusterState
 import com.sos.jobscheduler.data.event.{Event, EventId, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Promise
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 
 trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
 {
@@ -95,11 +95,12 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
 
   /** Calculated next JournalHeader. */
   final def recoveredJournalHeader: Option[JournalHeader] =
-    _journalHeader.map(o => o.copy(
+    _journalHeader.map(_.copy(
       eventId = eventId,
       totalEventCount = totalEventCount,
-      timestamp = lastEventIdTimestamp,
-      totalRunningTime = totalRunningTime))
+      totalRunningTime = if (eventId == EventId.BeforeFirst) Duration.Zero
+        else _journalHeader.fold(Duration.Zero)(o => o.totalRunningTime + (lastEventIdTimestamp - o.timestamp)),
+      timestamp = lastEventIdTimestamp))
 
   final def eventId = _eventId
 
@@ -108,13 +109,6 @@ trait JournalStateBuilder[S <: JournaledState[S, E], E <: Event]
   final def eventCount = _eventCount
 
   final def totalEventCount = _journalHeader.fold(0L)(_.totalEventCount) + _eventCount
-
-  /** With recovery time added. */
-  final def totalRunningTime: FiniteDuration =
-    if (eventId == EventId.BeforeFirst)
-      Duration.Zero
-    else
-      _journalHeader.fold(Duration.Zero)(o => o.totalRunningTime + (lastEventIdTimestamp - o.timestamp))
 
   private def lastEventIdTimestamp: Timestamp =
     if (eventId == EventId.BeforeFirst) Timestamp.now

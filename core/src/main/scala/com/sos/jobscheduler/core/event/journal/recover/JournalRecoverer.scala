@@ -105,13 +105,6 @@ trait JournalRecoverer
 
   final def journalId = maybeJournalHeader.map(_.journalId)
 
-  /** With recovery time added. */
-  private[event] final lazy val totalRunningTime: FiniteDuration =
-    if (_lastEventId == EventId.BeforeFirst)
-      Duration.Zero
-    else
-      maybeJournalHeader.fold(Duration.Zero)(o => o.totalRunningTime + (lastTimestamp - o.timestamp))
-
   /** Timestamp of the last event */
   private lazy val lastTimestamp: Timestamp =
     if (_lastEventId == EventId.BeforeFirst)
@@ -123,8 +116,9 @@ trait JournalRecoverer
     maybeJournalHeader.map(_.copy(
       eventId = _lastEventId,
       totalEventCount = _totalEventCount,
-      timestamp = lastTimestamp,
-      totalRunningTime = totalRunningTime))
+      totalRunningTime = if (_lastEventId == EventId.BeforeFirst) Duration.Zero
+        else maybeJournalHeader.fold(Duration.Zero)(o => o.totalRunningTime + (lastTimestamp - o.timestamp)),
+      timestamp = lastTimestamp))
 
   final def lastRecoveredEventId = _lastEventId
 
