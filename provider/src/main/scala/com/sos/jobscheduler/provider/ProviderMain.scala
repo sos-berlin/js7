@@ -2,6 +2,7 @@ package com.sos.jobscheduler.provider
 
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.log.ScribeUtils.coupleScribeWithSlf4j
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.IOExecutor.Implicits.globalIOX
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -19,6 +20,8 @@ import scala.concurrent.duration._
   */
 object ProviderMain
 {
+  coupleScribeWithSlf4j()
+
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {

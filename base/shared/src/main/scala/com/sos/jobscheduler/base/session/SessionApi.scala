@@ -22,17 +22,22 @@ trait SessionApi extends HasSessionToken
 
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
-  final def login(userAndPassword: Option[UserAndPassword]): Task[Completed] =
-    for (response <- executeSessionCommand(Login(userAndPassword))) yield {
-      setSessionToken(response.sessionToken)
-      Completed
+  final def login(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
+    Task.defer {
+      if (onlyIfNotLoggedIn && hasSession)
+        Task.pure(Completed)
+      else
+        for (response <- executeSessionCommand(Login(userAndPassword))) yield {
+          setSessionToken(response.sessionToken)
+          Completed
+        }
     }
 
   final def loginUntilReachable(userAndPassword: Option[UserAndPassword], delays: Iterator[FiniteDuration],
-    onError: Throwable => Unit = logThrowable)
+    onError: Throwable => Unit = logThrowable, onlyIfNotLoggedIn: Boolean = false)
   : Task[Completed] =
     Task.defer {
-      if (hasSession)
+      if (onlyIfNotLoggedIn && hasSession)
         Task.pure(Completed)
       else
         login(userAndPassword)
@@ -45,18 +50,18 @@ trait SessionApi extends HasSessionToken
           }
     }
 
-  final def logout(): Task[Completed] = {
-    val tokenOption = sessionTokenRef.get
-    tokenOption match {
-      case None => Task.pure(Completed)
-      case Some(sessionToken) =>
-        executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
-          .map { _: SessionCommand.Response.Accepted =>
-            sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Logout or Login
-            Completed
-        }
+  final def logout(): Task[Completed] =
+    Task.defer {
+      sessionTokenRef.get match {
+        case None => Task.pure(Completed)
+        case sometoken @ Some(sessionToken) =>
+          executeSessionCommand(Logout(sessionToken), suppressSessionToken = true)
+            .map { _: SessionCommand.Response.Accepted =>
+              sessionTokenRef.compareAndSet(sometoken, None)  // Changes nothing in case of a concurrent successful Logout or Login
+              Completed
+          }
+      }
     }
-  }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] =
     Task { scribe.debug(command.toString) } >>

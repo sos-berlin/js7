@@ -27,7 +27,8 @@ private[provider] trait Observing extends OrderProvider {
   def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     val observables = observeLive ::
       exists(conf.orderGeneratorsDirectory).thenList(observeOrderGenerators)
-    Observable.combineLatestList(observables: _*).map((_: Seq[Completed]) => Completed)
+    Observable.combineLatestList(observables: _*)
+      .map((_: Seq[Completed]) => Completed)
   }
 
   private def observeLive(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] =
@@ -53,13 +54,14 @@ private[provider] trait Observing extends OrderProvider {
             retryUntilNoError(update)))
   }
 
-  private def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A] =
+  protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A] =
     body
-      .map(_.asTry).dematerialize  // Collapse Invalid and Failed
+      .map(_.asTry).dematerialize  // Unify Success(Left(problem)) and Failure
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.error(throwable.toStringWithCauses)
         logger.debug(throwable.toStringWithCauses, throwable)
-        relogin >> retry(()).delayExecution(errorWaitDuration)
+        (relogin >> retry(()))
+          .delayExecution(errorWaitDuration)
       }
 }
 

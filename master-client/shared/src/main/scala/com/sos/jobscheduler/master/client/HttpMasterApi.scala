@@ -39,8 +39,11 @@ trait HttpMasterApi extends MasterApi with SessionApi
   final def overview: Task[MasterOverview] =
     httpClient.get[MasterOverview](uris.overview)
 
-  final def addOrder(order: FreshOrder): Task[Boolean]  =
-    httpClient.postDiscardResponse(uris.order.add, order) map (_ == 201/*Created*/)
+  final def addOrder(order: FreshOrder): Task[Boolean]  = {
+    val uri = uris.order.add
+    httpClient.postDiscardResponse(uri, order, allowedStatusCodes = Set(409))
+      .map(_ == 201/*Created*/)
+  }
 
   final def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     httpClient.postDiscardResponse(uris.order.add, orders)

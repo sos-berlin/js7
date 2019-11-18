@@ -30,7 +30,6 @@ import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Files, Path, Paths}
-import java.util.concurrent.TimeoutException
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -54,7 +53,7 @@ final class PassiveClusterNode[S <: JournaledState[S, E], E <: Event] private(
       }
       Resource.fromAutoCloseable(Task(AkkaHttpMasterApi(baseUri = activeUri.string)))
         .use(activeNodeApi =>
-          activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/)) >>
+          activeNodeApi.loginUntilReachable(clusterConf.userAndPassword, Iterator.continually(1.s/*TODO*/), onlyIfNotLoggedIn = true) >>
             Task.parMap2(
               activeNodeApi.executeCommand(MasterCommand.ClusterPassiveFollows(clusterConf.nodeId, activeUri)),   // TODO Retry until success
               replicateJournalFiles(

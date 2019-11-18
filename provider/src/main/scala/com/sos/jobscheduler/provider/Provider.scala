@@ -63,7 +63,7 @@ extends HasCloser with Observing
 
   protected val relogin: Task[Completed] =
     masterApi.logout().onErrorHandle(_ => ()) >>
-      masterApi.login(userAndPassword)
+      loginUntilReachable
 
   // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
   private def replaceMasterConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
@@ -137,11 +137,16 @@ extends HasCloser with Observing
           Right(completed))
 
   private lazy val loginUntilReachable: Task[Completed] =
-    masterApi.loginUntilReachable(userAndPassword, retryLoginDurations)
-      .map { (_: Completed) =>
-        logger.info("Logged-in at Master")
-        Completed
-      }
+    Task.defer {
+      if (masterApi.hasSession)
+        Task.pure(Completed)
+      else
+        masterApi.loginUntilReachable(userAndPassword, retryLoginDurations)
+          .map { completed =>
+            logger.info("Logged-in at Master")
+            completed
+          }
+    }
 
   private def execute(versionId: Option[VersionId], diff: FileBaseds.Diff[TypedPath, FileBased]): Task[Checked[Completed.type]] =
     if (diff.isEmpty && versionId.isEmpty)
@@ -167,10 +172,9 @@ extends HasCloser with Observing
       delete = diff.deleted)
 
   private def fetchMasterFileBasedSeq: Task[Seq[FileBased]] =
-    for {
-      stampedAgents <- masterApi.agents
-      stampedWorkflows <- masterApi.workflows
-    } yield stampedAgents.value ++ stampedWorkflows.value
+    Task.parMap2(masterApi.agents, masterApi.workflows) {
+      _.value ++ _.value
+    }
 
   private def readDirectory: Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector

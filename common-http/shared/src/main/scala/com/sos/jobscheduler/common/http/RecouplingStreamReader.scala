@@ -150,7 +150,7 @@ abstract class RecouplingStreamReader[@specialized(Long/*EventId or file positio
           otherCoupledClient <- coupledApiVar.tryRead
           _ <- otherCoupledClient.fold(Task.unit)(_ => Task.raiseError(new IllegalStateException("Coupling while already coupled")))
           _ <- Task { recouplingPause.onCouple() }
-          _ <- if (api.hasSession) Task.unit else api.login(maybeUserAndPassword)
+          _ <- api.login(maybeUserAndPassword, onlyIfNotLoggedIn = true)
           checkedCompleted <- couple(index = lastIndex)
         } yield checkedCompleted)
           .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked

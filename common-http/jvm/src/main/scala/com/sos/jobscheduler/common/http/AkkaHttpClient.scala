@@ -101,10 +101,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasSessionToken
     post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil, suppressSessionToken = suppressSessionToken)
       .flatMap(unmarshal[B](POST, uri))
 
-  def postDiscardResponse[A: Encoder](uri: String, data: A): Task[Int] =
-    post_[A](uri, data, Accept(`application/json`) :: Nil) map { response =>
-      response.discardEntityBytes()
-      response.status.intValue
+  def postDiscardResponse[A: Encoder](uri: String, data: A, allowedStatusCodes: Set[Int] = Set.empty): Task[Int] =
+    post_[A](uri, data, Accept(`application/json`) :: Nil) map { httpResponse =>
+      httpResponse.discardEntityBytes()
+      if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
+        throw new HttpException(httpResponse, uri, "")
+      httpResponse.status.intValue
     }
 
   def post_[A: Encoder](uri: Uri, data: A, headers: List[HttpHeader], suppressSessionToken: Boolean = false): Task[HttpResponse] =
