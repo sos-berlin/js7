@@ -29,6 +29,8 @@ object LogLevel {
       case _ => throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
     }
 
+  implicit val StringAsLogLevel = As[String, LogLevel](LogLevel.apply)
+
   implicit final class LevelLogger(private val delegate: slf4j.Logger) extends AnyVal {
     def isEnabled(level: LogLevel): Boolean =
       level match {
@@ -73,11 +75,11 @@ object LogLevel {
     def log(level: LogLevel, marker: Marker, message: => String): Unit =
       level match {
         case LogNone  =>
-        case Trace => delegate.trace(message, marker)
-        case Debug => delegate.debug(message, marker)
-        case Info  => delegate.info(message, marker)
-        case Warn  => delegate.warn(message, marker)
-        case Error => delegate.error(message, marker)
+        case Trace => delegate.trace(marker, message)
+        case Debug => delegate.debug(marker, message)
+        case Info  => delegate.info(marker, message)
+        case Warn  => delegate.warn(marker, message)
+        case Error => delegate.error(marker, message)
       }
   }
 
@@ -99,6 +101,4 @@ object LogLevel {
         delegate.underlying.log(level, marker, message)
       }
   }
-
-  implicit val StringAsLogLevel = As[String, LogLevel](LogLevel.apply)
 }
