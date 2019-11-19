@@ -85,7 +85,7 @@ final class Cluster(
       case state if state.isActive(conf.nodeId) =>
         Task {
           state match {
-            case state: Coupled => logger.info(s"Becoming the active primary cluster node followed by ${state.passiveUri}")
+            case state: Coupled => logger.info(s"Becoming the active primary cluster node followed by the passive node ${state.passiveUri}")
             case _ => logger.info("Becoming the active primary cluster node without following node")
           }
         } >>
