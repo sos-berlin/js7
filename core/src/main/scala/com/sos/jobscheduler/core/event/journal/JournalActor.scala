@@ -308,34 +308,26 @@ extends Actor with Stash
 
   private def onCommitAcknowledged(n: Int): Unit = {
     val ackWritten = writtenBuffer take n
-    logStored(ack = requireClusterAcknowledgement, ackWritten.iterator.collect { case o: NormallyWritten => o })
-    for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
-      lastAcknowledgedEventId = lastFileLengthAndEventId.value
-      //val eventId = lastFileLengthAndEventId.value
-      //if (requireClusterAcknowledgement) {
-      //  logger.whenTraceEnabled {
-      //    val i = totalEventCount - writtenBuffer.iterator.drop(ackWritten.length).map(_.eventCount).sum
-      //    val duration = ackWritten.last.sinceStored match {
-      //      case null => ""  // not flushed, no time measured
-      //      case since => "+" + since.elapsed.pretty
-      //    }
-      //    logger.trace(f"#$i ack          $duration%-7s $eventId ${i - acknowledgedEventCount} events")
-      //    acknowledgedEventCount = i
-      //  }
-      //}
-      eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.iterator.map(_.eventCount).sum)
-    }
-    // AcceptEarlyWritten have already been replied.
-    for (NormallyWritten(_, keyedEvents, _, replyTo, sender, item) <- ackWritten) {
-      reply(sender, replyTo, Output.Stored(keyedEvents, item))
-      keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
-    }
+    notifyEventWatchAndContinueCaller(ackWritten)
     writtenBuffer.remove(0, n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       waitingForAcknowledgeTimer.cancel()
+      maybeDoASnapshot()
     }
-    maybeDoASnapshot()
+  }
+
+  private def notifyEventWatchAndContinueCaller(writtenSeq: collection.Seq[Written]): Unit = {
+    logStored(ack = requireClusterAcknowledgement, writtenSeq.iterator.collect { case o: NormallyWritten => o })
+    for (lastFileLengthAndEventId <- writtenSeq.flatMap(_.lastFileLengthAndEventId).lastOption) {
+      lastAcknowledgedEventId = lastFileLengthAndEventId.value
+      eventWriter.onCommitted(lastFileLengthAndEventId, n = writtenSeq.iterator.map(_.eventCount).sum)
+    }
+    // AcceptEarlyWritten have already been replied.
+    for (NormallyWritten(_, keyedEvents, _, replyTo, sender, item) <- writtenSeq) {
+      reply(sender, replyTo, Output.Stored(keyedEvents, item))
+      keyedEvents foreach keyedEventBus.publish
+    }
   }
 
   private def maybeDoASnapshot(): Unit = {
