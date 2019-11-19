@@ -70,7 +70,7 @@ extends Actor with Stash
   private var delayedCommit: Cancelable = null
   private var totalEventCount = 0L
   private var requireClusterAcknowledgement = false
-  private var waitingForAcknowledgeTimer = Cancelable.empty
+  private var waitingForAcknowledgeTimer: Cancelable = null
   private var switchedOver = false
 
   logger.debug(s"fileBase=${journalMeta.fileBase}")
@@ -89,7 +89,7 @@ extends Actor with Stash
     if (eventWriter != null) {
       eventWriter.close()
     }
-    waitingForAcknowledgeTimer.cancel()
+    if (waitingForAcknowledgeTimer != null) waitingForAcknowledgeTimer.cancel()
     logger.debug("Stopped")
     super.postStop()
   }
@@ -233,7 +233,10 @@ extends Actor with Stash
         logger.warn(s"Still waiting for acknowledgement from passive cluster node for $n events starting with " +
           notAckSeq.flatMap(_.stamped).headOption.fold("(unknown)")(_.toString.truncateWithEllipsis((100))))
       } else {
-        waitingForAcknowledgeTimer.cancel()
+        if (waitingForAcknowledgeTimer != null) {
+          waitingForAcknowledgeTimer.cancel()
+          waitingForAcknowledgeTimer = null
+        }
       }
   }
 
@@ -284,8 +287,7 @@ extends Actor with Stash
   }
 
   private def startWaitingForAcknowledgeTimer(): Unit = {
-    if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-      waitingForAcknowledgeTimer.cancel()
+    if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId && waitingForAcknowledgeTimer == null) {
       waitingForAcknowledgeTimer = scheduler.scheduleAtFixedRate(5.s, 10.s) {
         self ! Internal.StillWaitingForAcknowledge
       }
@@ -312,7 +314,10 @@ extends Actor with Stash
     writtenBuffer.remove(0, n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
-      waitingForAcknowledgeTimer.cancel()
+      if (waitingForAcknowledgeTimer != null) {
+        waitingForAcknowledgeTimer.cancel()
+        waitingForAcknowledgeTimer = null
+      }
       maybeDoASnapshot()
     }
   }
