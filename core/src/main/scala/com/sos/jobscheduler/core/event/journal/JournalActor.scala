@@ -331,7 +331,7 @@ extends Actor with Stash
       keyedEvents foreach keyedEventBus.publish  // AcceptedEarlyWritten are not published !!!
     }
     writtenBuffer.remove(0, n)
-    //assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
+    assertThat((lastAcknowledgedEventId == lastWrittenEventId) == writtenBuffer.isEmpty)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       waitingForAcknowledgeTimer.cancel()
     }
@@ -519,9 +519,7 @@ extends Actor with Stash
     lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.flush(sync = conf.syncOnCommit)
     lastWrittenEventId = snapshotTaken.eventId
-    if (!requireClusterAcknowledgement) {
-      lastAcknowledgedEventId = lastWrittenEventId
-    }
+    lastAcknowledgedEventId = lastWrittenEventId  // We do not care for the acknowledgement of SnapshotTaken only, to ease shutdown
     totalEventCount += 1
     logStored(ack = false,
       Iterator.single(LoggableWritten(totalEventCount + 1, snapshotTaken :: Nil, since, lastOfFlushedOrSynced = true)))
