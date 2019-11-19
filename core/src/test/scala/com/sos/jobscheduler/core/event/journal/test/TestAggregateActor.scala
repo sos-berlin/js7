@@ -63,6 +63,12 @@ extends KeyedJournalingActor[TestEvent] {
             sender() ! Response.Completed(disturbance)
           }
 
+        case Command.AppendEmpty =>
+          persistKeyedEvents(Nil) { seq =>
+            assert(seq.isEmpty)
+            sender() ! Response.Completed(disturbance)
+          }
+
         case Command.AcceptEarly =>
           val sender = this.sender()
           val event = TestEvent.NothingDone
@@ -155,6 +161,7 @@ private[journal] object TestAggregateActor
     final case object DisturbAndRespond extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
+    case object AppendEmpty extends Command
     final case object AcceptEarly extends Command
     final case class AppendAsync(string: String) extends Command with IsAsync
     final case class AppendNested(string: String) extends Command

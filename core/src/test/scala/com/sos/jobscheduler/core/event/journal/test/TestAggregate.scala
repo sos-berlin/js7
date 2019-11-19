@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.event.journal.test
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
-import com.sos.jobscheduler.core.event.journal.test.TestEvent.Appended
+import com.sos.jobscheduler.core.event.journal.test.TestEvent.{Appended, NothingDone}
 
 /**
   * @author Joacim Zschimmer
@@ -28,6 +28,7 @@ private[journal] final case class TestAggregate(key: String, string: String,
 
   def applyEvent(event: TestEvent) = event match {
     case Appended(char) => copy(string = string + char)
+    case NothingDone => this
     case _ => sys.error(s"Not applicable: $event")
   }
 }

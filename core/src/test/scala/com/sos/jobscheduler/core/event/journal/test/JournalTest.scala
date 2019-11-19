@@ -20,8 +20,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournalMixin {
-
+final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournalMixin
+{
   "First run" in {
     withTestActor() { (actorSystem, actor) =>
       for ((key, cmd) <- testCommands("TEST")) execute(actorSystem, actor, key, cmd) await 99.s
@@ -96,6 +96,18 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll with TestJournal
         TestAggregate("TEST-E", "ACc"))
     }
     assert(journalFileNames.length == 6)
+  }
+
+  "persist empty event list" in {
+    withTestActor() { (actorSystem, actor) =>
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendEmpty) await 99.s
+      execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("!")) await 99.s
+      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+        TestAggregate("TEST-C", "(C.Add)"),
+        TestAggregate("TEST-D", "DDD"),
+        TestAggregate("TEST-E", "ACc!"))
+    }
+    assert(journalFileNames.length == 7)
   }
 
   "Massive parallel" - {

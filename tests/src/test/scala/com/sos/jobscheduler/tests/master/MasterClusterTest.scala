@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.tests.master
 
 import akka.util.Timeout
+import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.Closer.ops._
@@ -142,6 +144,10 @@ final class MasterClusterTest extends FreeSpec
           primaryMaster.runOrder(FreshOrder(OrderId("🔹"), workflow.path))
           primaryMaster.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
           backupMaster.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
+
+          // Check acknowledgement of empty event list
+          primaryMaster.httpApi.login(Some(UserId("TEST") -> SecretString("TEST-PASSWORD"))).await(99.s)
+          primaryMaster.httpApi.addOrders(Nil).await(99.s)
         }
       }
     }
@@ -210,7 +216,8 @@ final class MasterClusterTest extends FreeSpec
       val primary = new DirectoryProvider(agentRefPath :: Nil, workflow :: Nil, testName = Some("MasterClusterTest-Primary"),
         masterConfig = ConfigFactory.parseString(
           """jobscheduler.auth.users.Master.password = "plain:BACKUP-MASTER-PASSWORD"
-            jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
+             jobscheduler.auth.users.TEST.password = "plain:TEST-PASSWORD"
+             jobscheduler.auth.cluster.password = "PRIMARY-MASTER-PASSWORD" """)
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some("MasterClusterTest-Backup"),

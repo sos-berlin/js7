@@ -274,6 +274,11 @@ extends Actor with Stash
       if (!requireClusterAcknowledgement) {
         onCommitAcknowledged(writtenBuffer.length)
       } else {
+        val nonEventWrittenCount = writtenBuffer.takeWhile(_.isEmpty).size
+        if (nonEventWrittenCount > 0) {
+          // `Written` without events (Nil) are not being acknowledged, so we finish them now
+          onCommitAcknowledged(nonEventWrittenCount)
+        }
         startWaitingForAcknowledgeTimer()
       }
     }
@@ -652,6 +657,7 @@ object JournalActor
 
   sealed trait Written {
     def eventCount: Int
+    def isEmpty: Boolean
     def lastFileLengthAndEventId: Option[PositionAnd[EventId]]
     def lastStamped: Option[Stamped[AnyKeyedEvent]]
 
@@ -688,6 +694,8 @@ object JournalActor
     /** For logging: last stamped has been flushed */
     var isLastOfFlushedOrSynced = false
 
+    def isEmpty = stamped.isEmpty
+
     def eventCount = stamped.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
@@ -698,6 +706,7 @@ object JournalActor
   private case class AcceptEarlyWritten(eventCount: Int, lastFileLengthAndEventId: Option[PositionAnd[EventId]], sender: ActorRef)
   extends Written
   {
+    def isEmpty = true
     def lastStamped = None
   }
 }

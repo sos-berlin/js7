@@ -30,8 +30,9 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
-
+private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[JournalActor.Stopped])
+extends Actor with Stash
+{
   private implicit val executionContext = context.dispatcher
 
   override val supervisorStrategy = SupervisorStrategies.escalate
